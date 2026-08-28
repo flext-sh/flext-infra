@@ -6,8 +6,8 @@ it the one verb allowed to *create* what is missing and forbidden to *destroy*
 what exists.
 
 ``git checkout`` and ``git reset`` are completely prohibited on the setup path.
-Absent checkouts are initialized with ``submodule update --init`` only; detached
-HEAD is attached via ``branch -f`` + ``symbolic-ref`` so dirty work is carried.
+Absent checkouts are initialized with ``submodule update --init`` only; every
+present checkout is validation-only and remains byte-for-byte Git-state stable.
 """
 
 from __future__ import annotations
@@ -60,6 +60,22 @@ def test_setup_never_clears_the_virtualenv() -> None:
     offenders = _offending_lines(r"venv\b[^\n]*--clear")
 
     assert not offenders, f"setup clears the virtualenv: {offenders}"
+
+
+def test_setup_never_fetches_or_attaches_a_present_checkout() -> None:
+    """Initialization must not grow into branch, upstream, or remote mutation."""
+    recipe = _SUBMODULES.read_text(encoding="utf-8")
+
+    assert all(
+        forbidden not in recipe
+        for forbidden in (
+            " fetch ",
+            "branch --quiet -f",
+            "--set-upstream-to",
+            "symbolic-ref HEAD",
+            "ls-remote",
+        )
+    )
 
 
 __all__: tuple[str, ...] = ()

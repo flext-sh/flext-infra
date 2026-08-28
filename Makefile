@@ -566,10 +566,9 @@ _builtin_help_usage:
 # Source: template (submodule_setup_recipe.j2)
 # Computed: workspace uses WORKSPACE_SUBPROJECTS from config; standalone discovers
 #           submodules with flext-managed=true from .gitmodules at runtime.
-# Rule: initialize only an absent checkout; never checkout/reset a present one.
-#       Verification accepts the declared branch or the superproject lane branch,
-#       requires HEAD to contain the gitlink, and treats only typed Git predicate
-#       statuses as negative answers. Every other Git status aborts unchanged.
+# Rule: initialize only an absent checkout. A present checkout is read-only:
+#       detached HEAD must equal the gitlink; a named declared/lane branch must
+#       contain it. Typed predicate negatives are distinct from unexpected errors.
 # Free: no
 # End SECTION: submodule setup
 _builtin_setup_submodules:
@@ -613,15 +612,6 @@ _builtin_setup_submodules:
 		done; \
 	fi; \
 	if [ -z "$$managed" ]; then exit 0; fi; \
-	attach_branch_at_head() { \
-		child_root="$$1"; \
-		branch="$$2"; \
-		git -C "$$child_root" branch --quiet -f "$$branch" HEAD; \
-		git -C "$$child_root" symbolic-ref HEAD "refs/heads/$$branch"; \
-		if git_predicate 1 git -C "$$child_root" show-ref --verify "refs/remotes/origin/$$branch" >/dev/null; then \
-			git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch"; \
-		fi; \
-	}; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
@@ -674,72 +664,29 @@ _builtin_setup_submodules:
 		gitlink="$$2"; \
 		if [ ! -e "$$child_root/.git" ]; then \
 			git -C "$$superproject" submodule update --init -- "$$child_path"; \
-			attach_branch_at_head "$$child_root" "$$branch"; \
+		fi; \
+		if [ ! -e "$$child_root/.git" ]; then \
+			printf 'ERROR: governed gitlink initialization produced no checkout: %s\n' "$$child_path" >&2; \
+			exit 2; \
 		fi; \
 		current=$$(git -C "$$child_root" branch --show-current); \
-		if [ -n "$$current" ] && [ "$$current" != "$$declared_branch" ] && \
-		   [ -n "$$super_branch" ] && [ "$$current" = "$$super_branch" ]; then \
-			branch="$$super_branch"; \
-	fi; \
-	remote_ref="refs/remotes/origin/$$branch"; \
-	if [ -n "$$current" ] && [ "$$current" != "$$branch" ]; then \
-			printf 'ERROR: %s: conflicting branch %s; expected %s (setup never runs checkout/reset; switch it yourself while keeping dirty)\n' "$$child_path" "$$current" "$$accepted_branches" >&2; \
-			exit 1; \
-		fi; \
-		need_fetch=1; \
-		if git_predicate 1 git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-			if git_predicate 1 git -C "$$child_root" show-ref --verify "$$remote_ref" >/dev/null; then \
-				if git_predicate 1 git -C "$$child_root" merge-base --is-ancestor "$$remote_ref" HEAD; then \
-					need_fetch=0; \
-				fi; \
-			else \
-				# Pin is already present; origin tip may be absent on a shallow CI \
-				# clone. Origin lag must not fail verify (setup never destroys). \
-				need_fetch=0; \
+		head=$$(git -C "$$child_root" rev-parse HEAD); \
+		if [ -z "$$current" ]; then \
+			if [ "$$head" != "$$gitlink" ]; then \
+				printf 'ERROR: %s: detached HEAD %s differs from recorded gitlink %s\n' "$$child_path" "$$head" "$$gitlink" >&2; \
+				exit 1; \
 			fi; \
-		fi; \
-		if [ "$$need_fetch" -eq 1 ]; then \
-			fetch_allowed=1; \
-			if [ "$$branch" != "$$declared_branch" ]; then \
-				if git_predicate 2 git -C "$$child_root" ls-remote --exit-code --heads origin "$$branch" >/dev/null; then \
-					fetch_allowed=1; \
-				else \
-					fetch_allowed=0; \
-				fi; \
-			fi; \
-			if [ "$$fetch_allowed" -eq 1 ]; then \
-				git -C "$$child_root" fetch --quiet origin "$$branch"; \
-			fi; \
-		fi; \
-	head=$$(git -C "$$child_root" rev-parse HEAD); \
-	if [ -z "$$current" ]; then \
-			if git_predicate 1 git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-				attach_branch_at_head "$$child_root" "$$branch"; \
-			else \
-				remote_contains=0; \
-				if git_predicate 1 git -C "$$child_root" show-ref --verify "$$remote_ref" >/dev/null; then \
-					if git_predicate 1 git -C "$$child_root" merge-base --is-ancestor "$$head" "$$remote_ref"; then \
-						remote_contains=1; \
-					fi; \
-				fi; \
-				if [ "$$remote_contains" -eq 1 ]; then \
-					attach_branch_at_head "$$child_root" "$$branch"; \
-				else \
-					printf 'ERROR: %s: detached HEAD %s is not on the recorded gitlink and not contained in origin/%s; reconcile it yourself (setup never discards commits)\n' "$$child_path" "$$head" "$$branch" >&2; \
+		else \
+			if [ "$$current" != "$$declared_branch" ]; then \
+				if [ -z "$$super_branch" ] || [ "$$current" != "$$super_branch" ]; then \
+					printf 'ERROR: %s: conflicting branch %s; expected %s\n' "$$child_path" "$$current" "$$accepted_branches" >&2; \
 					exit 1; \
 				fi; \
 			fi; \
-	fi; \
-	if ! git_predicate 1 git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
-		printf 'ERROR: %s: branch %s diverges from recorded gitlink %s (setup never runs checkout/reset; advance or switch it yourself while keeping dirty)\n' "$$child_path" "$$branch" "$$gitlink" >&2; \
-			exit 1; \
-		fi; \
-		if [ -f "$$child_root/.gitmodules" ]; then \
-			nested_keys=$$(git_config_keys "$$child_root" '^submodule\..*\.path$$'); \
-			for nested_key in $$nested_keys; do \
-				nested_path=$$(git -C "$$child_root" config -f .gitmodules --get "$$nested_key"); \
-				validate_submodule "$$child_root" "$$nested_path"; \
-				done; \
+			if ! git_predicate 1 git -C "$$child_root" merge-base --is-ancestor "$$gitlink" HEAD; then \
+				printf 'ERROR: %s: branch %s does not contain recorded gitlink %s\n' "$$child_path" "$$current" "$$gitlink" >&2; \
+				exit 1; \
+			fi; \
 		fi; \
 	}; \
 	for child_path in $$managed; do \
