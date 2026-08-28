@@ -22,9 +22,22 @@
 		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
 		exit 2; \
 	}; \
-	"$$mise" trust "$$project_root/.mise.toml"; \
-	"$$mise" -C "$$project_root" install --locked --yes; \
-	uv_actual=$$("$$mise" -C "$$project_root" exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
+	scratch_parent="$$project_root/.test-tmp"; \
+	mkdir -p "$$scratch_parent"; \
+	scratch=$$(mktemp -d "$$scratch_parent/mise-setup.XXXXXX"); \
+	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
+	global_config="$$scratch/global-config.toml"; \
+	config_dir="$$scratch/config"; \
+	mkdir -p "$$config_dir"; \
+	: > "$$global_config"; \
+	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		"$$mise" trust "$$project_root/.mise.toml"; \
+	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		"$$mise" -C "$$project_root" install --locked --yes; \
+	uv_actual=$$(MISE_CONFIG_DIR="$$config_dir" \
+		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		"$$mise" -C "$$project_root" \
+		exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
 	case "$$uv_actual" in \
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \

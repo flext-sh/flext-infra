@@ -50,6 +50,10 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         runtime_module = f"{module_path.rsplit('.', maxsplit=1)[-1]}.py"
         if u.Infra.runtime_singleton_export(runtime_module) == name:
             return True
+        if (module_path == f"{root_pkg}._config" and name.endswith("Config")) or (
+            module_path == f"{root_pkg}._settings" and name.endswith("Settings")
+        ):
+            return True
         if module_path == root_pkg:
             return True
         if not module_path.startswith(f"{root_pkg}."):

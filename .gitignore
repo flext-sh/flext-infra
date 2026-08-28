@@ -305,7 +305,11 @@ secrets.yml
 .venv
 .venv/
 .bin/
+.runtime/
 .tools/
+bin/*
+!bin/mise
+!bin/mise.cmd
 __pycache__/
 !.pre-commit-config.yaml
 

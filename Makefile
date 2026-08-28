@@ -84,6 +84,21 @@ GEN_INIT_ONLY := $(if $(and $(filter init,$(WHAT)),$(filter gen _builtin_gen_ini
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
+SETUP_MISE_VERSION := 2026.8.14
+ifeq ($(GEN_INIT_ONLY),Y)
+SYSTEM_MISE :=
+SYSTEM_MISE_VERSION :=
+else
+SYSTEM_MISE := $(shell command -v mise 2>/dev/null)
+SYSTEM_MISE_VERSION := $(if $(strip $(SYSTEM_MISE)),$(shell "$(SYSTEM_MISE)" --version 2>/dev/null | cut -d ' ' -f 1),)
+endif
+ifeq ($(OS),Windows_NT)
+TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
+else
+TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
+endif
+SETUP_MISE ?= $(if $(wildcard $(TRACKED_MISE)),$(TRACKED_MISE),$(if $(filter $(SETUP_MISE_VERSION),$(SYSTEM_MISE_VERSION)),$(SYSTEM_MISE),$(TRACKED_MISE)))
+MISE_LOCK_PLATFORMS := linux-x64,linux-arm64,linux-x64-musl,linux-arm64-musl,macos-x64,macos-arm64,windows-x64
 override export FLEXT_PYTEST_TARGET_RAW := tests
 
 # === SECTION: verb dispatch (managed) ===
@@ -204,6 +219,51 @@ override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
 override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
+
+.PHONY: _bootstrap_setup_tools
+
+_bootstrap_setup_tools:
+	@set -eu; \
+	project_root="$(PROJECT_ROOT)"; \
+	mise="$(SETUP_MISE)"; \
+	mise_version="$(SETUP_MISE_VERSION)"; \
+	uv_required="0.12"; \
+	[ -f "$$mise" ] || { \
+		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
+		exit 2; \
+	}; \
+	version_output=$$("$$mise" --version); \
+	current=$$(printf '%s\n' "$$version_output" | cut -d ' ' -f 1); \
+	[ "$$current" = "$$mise_version" ] || { \
+		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
+			"$$mise_version" "$${current:-<missing>}" >&2; \
+		exit 2; \
+	}; \
+	[ -f "$$project_root/mise.lock" ] || { \
+		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
+		exit 2; \
+	}; \
+	scratch_parent="$$project_root/.test-tmp"; \
+	mkdir -p "$$scratch_parent"; \
+	scratch=$$(mktemp -d "$$scratch_parent/mise-setup.XXXXXX"); \
+	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
+	global_config="$$scratch/global-config.toml"; \
+	config_dir="$$scratch/config"; \
+	mkdir -p "$$config_dir"; \
+	: > "$$global_config"; \
+	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		"$$mise" trust "$$project_root/.mise.toml"; \
+	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		"$$mise" -C "$$project_root" install --locked --yes; \
+	uv_actual=$$(MISE_CONFIG_DIR="$$config_dir" \
+		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		"$$mise" -C "$$project_root" \
+		exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
+	case "$$uv_actual" in \
+		"$$uv_required"|"$$uv_required".*) ;; \
+		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
+			"$$uv_required" "$${uv_actual:-<missing>}" >&2; exit 2 ;; \
+	esac
 
 FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
 
@@ -337,7 +397,9 @@ gen: _builtin_gen_init
 else
 	$(call _dispatch,$@)
 endif
-setup:
+# `setup` keeps its own recipe because it cannot require the environment it is
+# about to build. The generated Mise launcher owns tool installation first.
+setup: _bootstrap_setup_tools
 	@$(SELF_MAKE) _builtin_setup_environment
 
 _builtin_help_usage:
@@ -571,7 +633,7 @@ _builtin_run_default: _builtin_require_environment
 _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'project=%s\nruntime=%s\n' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
+	$(call _run_for_selected_projects,--check)
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi
@@ -615,7 +677,7 @@ _builtin_clean_generated:
 	@rm -f "$(PROJECT_ROOT)/.coverage"
 
 _builtin_release_status: _builtin_require_environment
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
+	$(call _run_for_selected_projects,--check)
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
@@ -623,16 +685,103 @@ _builtin_release_status: _builtin_require_environment
 # the complete dependency/tooling projection before it verifies its fixed point.
 # Dependency upgrades remain a separate explicit verb because they rewrite lock
 # floors; gen must never run a second pyproject writer over conform's result.
-_builtin_gen_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+define _mise_launcher_apply
+	@set -eu; \
+	[ -f "$(PROJECT_ROOT)/.mise.toml" ] || { \
+		printf 'ERROR: missing generated .mise.toml in %s\n' "$(PROJECT_ROOT)" >&2; exit 2; \
+	}; \
+	scratch=$$(mktemp -d); \
+	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
+	scratch_parent=$$(dirname "$$scratch"); \
+	mkdir -p "$$scratch/data" "$$scratch/cache" "$$scratch/state" "$$scratch/tmp"; \
+	: > "$$scratch/global-config.toml"; \
+	if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+		XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
+		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
+		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
+		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
+		"$(SETUP_MISE)" -C "$$scratch" generate install-script \
+		--version "$(SETUP_MISE_VERSION)" \
+		--write "$$scratch/mise" --windows \
+		>"$$scratch/generate.log" 2>&1; then \
+		cat "$$scratch/generate.log"; \
+	else \
+		status=$$?; cat "$$scratch/generate.log"; exit "$$status"; \
+	fi; \
+	if grep -F 'mise WARN' "$$scratch/generate.log" >/dev/null; then \
+		printf 'ERROR: Mise launcher generation emitted warnings\n' >&2; exit 2; \
+	fi; \
+	mkdir -p "$(PROJECT_ROOT)/bin"; \
+	shell_tmp="$(PROJECT_ROOT)/bin/.mise.new.$$$$"; \
+	windows_tmp="$(PROJECT_ROOT)/bin/.mise.cmd.new.$$$$"; \
+	cp "$$scratch/mise" "$$shell_tmp"; \
+	cp "$$scratch/mise.cmd" "$$windows_tmp"; \
+	chmod +x "$$shell_tmp"; \
+	mv -f "$$shell_tmp" "$(PROJECT_ROOT)/bin/mise"; \
+	mv -f "$$windows_tmp" "$(PROJECT_ROOT)/bin/mise.cmd"
+endef
+
+define _mise_lock_apply
+	@set -eu; \
+	[ -f "$(PROJECT_ROOT)/.mise.toml" ] || { \
+		printf 'ERROR: missing generated .mise.toml in %s\n' "$(PROJECT_ROOT)" >&2; exit 2; \
+	}; \
+	scratch=$$(mktemp -d); \
+	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
+	scratch_parent=$$(dirname "$$scratch"); \
+	cp "$(PROJECT_ROOT)/.mise.toml" "$$scratch/.mise.toml"; \
+	locked_count=$$(grep -Fxc 'locked = true' "$$scratch/.mise.toml"); \
+	[ "$$locked_count" -eq 1 ] || { \
+		printf 'ERROR: expected one locked tool_config setting in %s\n' "$(PROJECT_ROOT)/.mise.toml" >&2; exit 2; \
+	}; \
+	sed -i 's/^locked = true$$/locked = false/' "$$scratch/.mise.toml"; \
+	mkdir -p "$$scratch/data" "$$scratch/cache" "$$scratch/state" "$$scratch/tmp"; \
+	: > "$$scratch/global-config.toml"; \
+	if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+		XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
+		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
+		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
+		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
+		"$(SETUP_MISE)" -C "$$scratch" lock \
+		--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
+		cat "$$scratch/lock.log"; \
+	else \
+		status=$$?; cat "$$scratch/lock.log"; exit "$$status"; \
+	fi; \
+	if grep -F 'mise WARN' "$$scratch/lock.log" >/dev/null; then \
+		printf 'ERROR: Mise lock generation emitted warnings\n' >&2; exit 2; \
+	fi; \
+	$(FLEXT_INFRA_BOOTSTRAP) codegen mise-artifacts --workspace "$$scratch" --apply; \
+	lock_tmp="$(PROJECT_ROOT)/.mise.lock.new.$$$$"; \
+	cp "$$scratch/mise.lock" "$$lock_tmp"; \
+	mv -f "$$lock_tmp" "$(PROJECT_ROOT)/mise.lock"
+endef
+
+define _mise_artifacts_check
+	@$(FLEXT_INFRA_BOOTSTRAP) codegen mise-artifacts --workspace "$(PROJECT_ROOT)" --check
+endef
+
+define _generated_docs
+	@$(FLEXT_INFRA_BOOTSTRAP) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(1) $(DOCS_PROJECT_ARGS)
+endef
+
+_builtin_gen_check:
+	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	$(call _generated_docs,--check)
+	$(call _mise_artifacts_check)
 
 _builtin_gen_init:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
 	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
-_builtin_gen_all: _builtin_require_environment
+_builtin_gen_all:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	$(call _generated_docs,--apply)
+	$(call _mise_launcher_apply)
+	$(call _mise_lock_apply)
+	$(call _generated_docs,--check)
+	$(call _mise_artifacts_check)
 
 _builtin_gen_apply: _builtin_gen_all

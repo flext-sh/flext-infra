@@ -36,7 +36,6 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
                     c.Infra.PIPELINE_KEY_DRY_RUN: self.dry_run or not self.apply_changes
                 },
             ),
-            fail_fast=True,
             logger=_log,
         )
         if pipeline_result.failure:
@@ -61,10 +60,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
             c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
         }
-        retry_by_stage: t.Cli.PipelineRetryMap = {c.Infra.PipelineStage.AUTO_FIX: 1}
-        return cli.linear_pipeline(
-            c.Infra.PIPELINE_STAGE_ORDER, handlers, retry_by_stage=retry_by_stage
-        )
+        return cli.linear_pipeline(c.Infra.PIPELINE_STAGE_ORDER, handlers)
 
     # ------------------------------------------------------------------
     # Stage harness — single fail-fast boundary, no per-stage duplication
@@ -74,16 +70,13 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
     def _run_stage[V](
         self, stage_id: str, action: Callable[[], V], emit: Callable[[V], t.JsonMapping]
     ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Run one pipeline stage with a single try-boundary.
+        """Run one pipeline stage and preserve the first exception.
 
         ``action`` performs the work and may mutate ``self._state``; ``emit``
-        builds the output payload from the action's return value. Any
-        exception is captured and returned as ``r.fail_op(stage_id, exc)``
-        so the DAG runner can fail-fast — never silenced, never demoted.
+        builds the output payload from the action's return value.
         """
-        return r[m.Cli.PipelineStageResult].create_from_callable(
-            lambda: cli.stage_result(stage_id, output=emit(action())),
-            error_code=stage_id,
+        return r[m.Cli.PipelineStageResult].ok(
+            cli.stage_result(stage_id, output=emit(action()))
         )
 
     # ------------------------------------------------------------------

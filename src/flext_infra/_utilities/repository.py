@@ -70,37 +70,6 @@ class FlextInfraUtilitiesRepository:
             return True
         return integration_branch is not None and declared_branch == integration_branch
 
-    @classmethod
-    def repository_baseline_branch(
-        cls, repository_root: Path, fallback: str | None = None
-    ) -> p.Result[str]:
-        """Return the integration baseline the repository actually publishes.
-
-        A provider declares one default branch, but managed repositories under
-        the same provider legitimately integrate on different branches. The
-        baseline is therefore derived from live Git: the published
-        remote-tracking integration branch wins.
-
-        ``fallback`` carries the provider default for a repository that cannot
-        have published anything yet (project creation). Without it, a checkout
-        with no integration branch fails closed instead of guessing.
-        """
-        from flext_infra.utilities import u
-
-        for candidate in c.Infra.INTEGRATION_BRANCH_PREFERENCE:
-            reference = f"refs/remotes/origin/{candidate}"
-            resolved = u.Infra.git_ref_exists(
-                m.Infra.GitRefRequest(repo_root=repository_root, reference=reference)
-            )
-            if resolved.success and resolved.value.value:
-                return r[str].ok(candidate)
-        if fallback:
-            return r[str].ok(fallback)
-        return r[str].fail(
-            "repository publishes no integration branch "
-            f"({', '.join(c.Infra.INTEGRATION_BRANCH_PREFERENCE)}): {repository_root}"
-        )
-
     @staticmethod
     def workspace_spec_load(repository_root: Path) -> p.Result[m.Infra.WorkspaceSpec]:
         """Load governed topology and derive observed external Git dependencies."""

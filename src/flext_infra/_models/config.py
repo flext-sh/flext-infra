@@ -916,6 +916,10 @@ class FlextInfraConfigModels:
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Single selector variable name")
         ]
+        bootstrap: Annotated[
+            FlextInfraConfigModels.MakeBootstrapSpec,
+            m.Field(description="Hermetic dependency bootstrap contract"),
+        ]
         apply_variable: Annotated[
             t.NonEmptyStr, m.Field(description="Write-enable variable name")
         ]
@@ -933,10 +937,6 @@ class FlextInfraConfigModels:
                     "as an invalid write-enable token"
                 ),
             ),
-        ]
-        bootstrap: Annotated[
-            FlextInfraConfigModels.MakeBootstrapSpec,
-            m.Field(description="Pre-conform project environment contract"),
         ]
         # Why (operator law 2026-08-24): git-hook stages are OFF by default and
         # re-enabled case by case via these config gates. The workflow keeps
@@ -1335,6 +1335,16 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Provider-owned infrastructure baseline branch"),
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured uv tool version")
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Mise launcher version")
+        ]
+        mise_lock_platforms: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Platforms represented in mise.lock"),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
@@ -1593,6 +1603,16 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor tool value")
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured uv tool version")
+        ]
+        mise_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact Mise launcher version")
+        ]
+        mise_lock_platforms: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Platforms represented in mise.lock"),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
@@ -1695,9 +1715,6 @@ class FlextInfraConfigModels:
         ]
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact uv resolver version")
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact qlty code-quality version")

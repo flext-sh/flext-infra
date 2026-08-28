@@ -1119,14 +1119,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # repository's own integration branch is the only branch this layer
             # can name from resolved data; a fleet-wide list hardcoded here would
             # make every repository trigger on branches it does not have.
-            branch = u.Infra.resolve_integration_branch(workspace, provider.value)
+            branch = provider.value.branch
             return r[p.Model].ok(
                 m.Infra.GithubWorkflowRenderSpec(
                     dist=dist,
                     repository_branch=branch,
-                    ci_trigger_branches=tuple(
-                        dict.fromkeys(("develop", "0.12.0-dev", branch, "main"))
-                    ),
+                    ci_trigger_branches=(branch, "main"),
                     python_version=codegen.toolchain.python_version,
                     mise_version=codegen.toolchain.mise_version,
                     dependency_cooldown_days=(
@@ -1176,6 +1174,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     infra_cli=config.Infra.name,
                     infra_repository=infra_repository.value,
                     infra_repository_branch=infra_provider.value.branch,
+                    uv_version=codegen.toolchain.uv_version,
+                    mise_version=codegen.toolchain.mise_version,
+                    mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                     uv_link_mode=FlextInfraCodegenConform._link_mode(codegen.toolchain),
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                     dependency_cooldown_exclusions=(
@@ -1254,6 +1255,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 infra_repository=infra_repository.value,
                 infra_repository_branch=infra_provider.value.branch,
                 python_version=codegen.toolchain.python_version,
+                uv_version=codegen.toolchain.uv_version,
+                mise_version=codegen.toolchain.mise_version,
+                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 uv_link_mode=FlextInfraCodegenConform._link_mode(codegen.toolchain),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                 dependency_cooldown_exclusions=(
@@ -1366,7 +1370,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
-                uv_version=codegen.toolchain.uv_version,
                 qlty_version=codegen.toolchain.qlty_version,
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,

@@ -136,9 +136,9 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
                 # mro-pulj (codex): the generated root TYPE_CHECKING contract
                 # makes the public package itself the single inherited owner.
                 lazy_map[alias_name] = (package_name, alias_name)
-        for alias_name, package_name in local_import_alias_targets:
-            if package_name and package_name != current_pkg:
-                lazy_map.setdefault(alias_name, (package_name, alias_name))
+        for alias_name, target in local_import_alias_targets.items():
+            if target[0] != current_pkg:
+                lazy_map.setdefault(alias_name, target)
 
     def _declared_parent_aliases(self, package_name: str) -> t.StrSequence:
         package_dir = self.rope_workspace.workspace_index.package_dir_by_name.get(
@@ -173,23 +173,19 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             and package_name != current_name
         )
 
-    def _local_import_alias_targets(self, pkg_dir: Path) -> t.StrPairSequence:
+    def _local_import_alias_targets(self, pkg_dir: Path) -> t.LazyAliasMap:
         constants_path = pkg_dir / c.Infra.CONSTANTS_PY
         if self.rope_workspace.resource(constants_path) is None:
-            return ()
+            return {}
         state = self.rope_workspace.semantic(constants_path)
-        return tuple(
-            (alias, package_name)
+        return {
+            alias: (module_path, attribute)
             for alias, target in state.declared_imports.items()
             if self._is_public_root_alias(alias)
-            if (
-                package_name := (
-                    self._package_name_from_target(target)
-                    or target.split(".", maxsplit=1)[0]
-                )
-            )
             if alias != "annotations" and not target.startswith("__future__")
-        )
+            if (module_path := target.rpartition(".")[0])
+            if (attribute := target.rpartition(".")[2])
+        }
 
     @staticmethod
     def _is_public_root_alias(alias: str) -> bool:

@@ -39,8 +39,9 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         planner: FlextInfraCodegenLazyInitPlanner,
         target_package_dir: Path | None = None,
     ) -> tuple[int, int, int, MutableMapping[str, t.LazyAliasMap]]:
-        total = ok = errors = 0
+        total = ok = 0
         dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
+        planned: list[m.Infra.LazyInitPlan] = []
         progress_interval = max(1, len(pkg_dirs) // 20) if pkg_dirs else 1
         for idx, pkg_dir in enumerate(pkg_dirs, start=1):
             total += 1
@@ -51,69 +52,33 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                     else pkg_dir
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")
-            result, exports = self._process_directory(
-                pkg_dir,
-                check_only=check_only,
-                dir_exports=dir_exports,
-                planner=planner,
-                process=(
-                    target_package_dir is None
-                    or pkg_dir.resolve() == target_package_dir.resolve()
-                    or (
-                        target_package_dir.name == c.Infra.DIR_TESTS
-                        and pkg_dir.resolve().is_relative_to(
-                            target_package_dir.resolve()
-                        )
-                    )
-                ),
+            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
+            if plan.lazy_map:
+                dir_exports[str(pkg_dir.resolve())] = dict(plan.lazy_map)
+            should_process = (
+                target_package_dir is None
+                or pkg_dir.resolve() == target_package_dir.resolve()
+                or (
+                    target_package_dir.name == c.Infra.DIR_TESTS
+                    and pkg_dir.resolve().is_relative_to(target_package_dir.resolve())
+                )
             )
-            if exports:
-                dir_exports[str(pkg_dir.resolve())] = exports
-            if result is None:
-                continue
-            if result < 0:
-                errors += 1
-            else:
-                ok += 1
+            if should_process:
+                planned.append(plan)
             if (
                 target_package_dir is not None
                 and pkg_dir.resolve() == target_package_dir.resolve()
             ):
                 break
-        return total, ok, errors, dir_exports
-
-    def _process_directory(
-        self,
-        pkg_dir: Path,
-        *,
-        check_only: bool,
-        dir_exports: t.MappingKV[str, t.LazyAliasMap],
-        planner: FlextInfraCodegenLazyInitPlanner,
-        process: bool = True,
-    ) -> t.Infra.LazyInitProcessResult:
-        """Process directory."""
-        result: t.Infra.LazyInitProcessResult
-        failed_lazy_map: t.MutableLazyAliasMap
-        try:
-            plan = planner.build_plan(pkg_dir, dir_exports=dir_exports)
-        except ValueError as exc:
-            u.Cli.error(
-                f"export collision in {pkg_dir}: {exc}; "
-                "correct the source exports before regenerating __init__.py"
-            )
-            failed_lazy_map = {}
-            result = (-1, failed_lazy_map)
-        except c.EXC_OS_VALUE as exc:
-            u.Cli.error(f"generating {pkg_dir}: {exc}")
-            failed_lazy_map = {}
-            result = (-1, failed_lazy_map)
-        else:
-            result = (
-                self._process_plan(plan, check_only=check_only)
-                if process
-                else (None, dict(plan.lazy_map))
-            )
-        return result
+        u.Cli.info(f"lazy-init: applying {len(planned)} preflighted package plans")
+        for plan in planned:
+            result, _exports = self._process_plan(plan, check_only=check_only)
+            if result is None:
+                continue
+            if result < 0:
+                return total, ok, 1, dir_exports
+            ok += 1
+        return total, ok, 0, dir_exports
 
     def _process_plan(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool

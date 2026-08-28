@@ -205,9 +205,13 @@ Infra:
         branch: develop
     make:
       selector: WHAT
+      bootstrap:
+        environment: isolated
+        dependency_groups: all
+        extras: all
       work_in_progress:
         # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
-        # draft PRs; merges into dev/develop/0.12.0-dev are blocked for those states.
+        # draft PRs; merges into develop/0.12.0-dev are blocked for those states.
         # Restored (hq-36xk): a merge resolution dropped this block while
         # ci.yml.j2 and .pre-commit-config.yaml.j2 kept consuming it, so no
         # repository could regenerate its CI.
@@ -216,7 +220,6 @@ Infra:
           - '^wip/'
           - 'WIP'
         merge_lock_target_branches:
-          - dev
           - develop
           - 0.12.0-dev
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
@@ -279,10 +282,6 @@ Infra:
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
         # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
         - { verb: test, apply: false, contexts: [local, pre_push] }
-      bootstrap:
-        environment: isolated
-        dependency_groups: all
-        extras: all
       # Stale caches cause FALSE DIAGNOSES — a stale __pycache__ produced a
       # pydantic ValidationError for source that was already correct, and stale
       # .reports made a green suite look failed. `clean` owns the full
@@ -313,6 +312,15 @@ Infra:
           - "*.pstats"
       docs:
         api_modules:
+          ai-hub:
+            - api
+            - base
+            - cli
+            - constants
+            - models
+            - protocols
+            - typings
+            - utilities
           flext-infra:
             - api
             - base
@@ -1468,7 +1476,11 @@ Infra:
             - ".venv"
             - ".venv/"
             - ".bin/"
+            - ".runtime/"
             - ".tools/"
+            - "bin/*"
+            - "!bin/mise"
+            - "!bin/mise.cmd"
             - "__pycache__/"
             - "!.pre-commit-config.yaml"
     templates:

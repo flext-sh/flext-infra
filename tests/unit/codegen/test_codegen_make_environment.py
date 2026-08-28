@@ -63,13 +63,11 @@ class TestsCodegenMakeEnvironment:
                 initial_workspace=workspace,
             ).plan(request)
         )
-        makefile = next(
-            file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
-        )
         project_root.mkdir(parents=True)
-        tm.ok(
-            u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
-        )
+        for file in plan.files:
+            tm.ok(u.Cli.atomic_write_text_file(file.path, file.rendered))
+        (project_root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
+        (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
         return project_root, workspace_root
 
     def test_generated_make_uses_project_runtime_venv_under_hostile_env(
@@ -160,6 +158,7 @@ class TestsCodegenMakeEnvironment:
             encoding="utf-8",
         )
         provisioned_uv.chmod(0o755)
+        test_u.Tests.write_mise_stub(provisioned_bin / "mise")
         (project_root / "pyproject.toml").write_text(
             "[project]\nname='fixture'\n", encoding="utf-8"
         )
@@ -196,6 +195,65 @@ class TestsCodegenMakeEnvironment:
             ],
         )
         tm.that(commands[3], has="pip check --python")
+
+    def test_setup_bootstraps_before_the_tracked_mise_launcher_exists(
+        self, tmp_path: Path
+    ) -> None:
+        """Use the exact managed Mise version already available on ``PATH``."""
+        project_root, _workspace_root = self._render_makefile(tmp_path)
+        (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
+        tool_bin = tmp_path / "managed-tools" / "bin"
+        real_mise = test_u.Tests.write_mise_stub(tool_bin / "mise-real")
+        mise_env_log = tmp_path / "mise-env.log"
+        mise = tool_bin / "mise"
+        test_u.Tests.write_executable(
+            mise,
+            "#!/bin/sh\n"
+            f"printf '%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
+            f"\"$MISE_CONFIG_DIR\" >> '{mise_env_log}'\n"
+            f"exec '{real_mise}' \"$@\"\n",
+        )
+        uv = tool_bin / "uv"
+        test_u.Tests.write_executable(
+            uv,
+            "#!/bin/sh\n"
+            'if [ "$1" = "--version" ]; then '
+            f"printf 'uv {config.Infra.codegen.toolchain.uv_version}.0\\n'; exit; fi\n"
+            'if [ "$1" = "venv" ]; then\n'
+            '  mkdir -p "$2/bin"\n'
+            "  printf '#!/bin/sh\\nexit 0\\n' > \"$2/bin/python\"\n"
+            '  chmod +x "$2/bin/python"\n'
+            "fi\n"
+            "exit 0\n",
+        )
+        hostile_global_config = tmp_path / "hostile-global-config.toml"
+        hostile_global_config.write_text(
+            '[tools]\n"github:foreign/tool" = "1.0.0"\n', encoding="utf-8"
+        )
+        env = {
+            "MISE_GLOBAL_CONFIG_FILE": str(hostile_global_config),
+            "PATH": f"{tool_bin}:{os.environ['PATH']}",
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "setup"],
+                cwd=project_root,
+                env=env,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(mise.is_file(), eq=True)
+        tm.that((project_root / ".venv" / "bin" / "python").is_file(), eq=True)
+        tm.that(
+            any(
+                "/.test-tmp/mise-setup." in value and value.endswith("/config")
+                for value in mise_env_log.read_text(encoding="utf-8").splitlines()
+            ),
+            eq=True,
+        )
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path

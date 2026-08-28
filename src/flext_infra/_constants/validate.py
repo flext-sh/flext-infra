@@ -124,17 +124,6 @@ class FlextInfraConstantsSharedInfra:
         "flext-infra/src/flext_infra/",
     )
 
-    # --- Integration baseline discovery ---
-    # Ordered preference used to derive one repository's integration baseline
-    # from live Git. A provider default is a fallback ordering, never the
-    # answer: repositories under the same provider legitimately integrate on
-    # different branches, so the published remote-tracking branch decides.
-    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = (
-        "0.12.0-dev",
-        "develop",
-        "dev",
-    )
-
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
     MAKEFILE_FILENAME: Final[str] = "Makefile"
