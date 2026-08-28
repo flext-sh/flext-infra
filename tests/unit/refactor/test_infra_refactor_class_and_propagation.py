@@ -82,7 +82,7 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
         )
         tm.that(updated, has="rule_cls = Legacy")
 
-    def test_symbol_propagation_updates_flext_base_references(self) -> None:
+    def test_symbol_propagation_updates_mro_base_references(self) -> None:
         source = "from flext_infra import LegacyRemovalRule\n\nclass RuleV2(LegacyRemovalRule):\n    pass\n"
         updated, _ = FlextInfraRefactorSymbolPropagator(
             target_modules={"flext_infra"},
@@ -94,17 +94,17 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
         tm.that(updated, has="class RuleV2(FlextInfraRefactorLegacyRemovalRule):")
 
     def test_signature_propagation_renames_call_keyword(self) -> None:
-        source = "result = migrate(project_root=root, dry_run=True)\n"
+        source = "result = migrate(source_root=root, dry_run=True)\n"
         migration = m.Infra.SignatureMigration.model_validate({
-            "id": "migrate-project-root-to-workspace",
+            "id": "migrate-source-root-to-repository-root",
             "enabled": True,
             "target_simple_names": ["migrate"],
-            "keyword_renames": {"project_root": "workspace_root"},
+            "keyword_renames": {"source_root": "repository_root"},
         })
         updated = FlextInfraRefactorSignaturePropagator(
             migrations=[migration]
         ).apply_to_source(source)
-        tm.that(updated, has="migrate(workspace_root=root, dry_run=True)")
+        tm.that(updated, has="migrate(repository_root=root, dry_run=True)")
 
     def test_signature_propagation_removes_and_adds_keywords(self) -> None:
         source = "run(legacy=True)\n"

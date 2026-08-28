@@ -20,20 +20,12 @@ class FlextInfraUtilitiesProjectDiscoveryShapeMixin:
     """Private project-shape predicates for workspace project discovery."""
 
     @staticmethod
-    def _looks_like_project(
-        path: Path,
-        *,
-        effective_scan_dirs: frozenset[str],
-        configured_project_set: frozenset[str],
-    ) -> bool:
+    def _looks_like_project(path: Path, *, effective_scan_dirs: frozenset[str]) -> bool:
         """Return whether one path matches the canonical governed project shape."""
         if not path.is_dir():
             return False
         pyproject_path = path / c.Infra.PYPROJECT_FILENAME
-        if pyproject_path.exists() and (
-            path.name in configured_project_set
-            or (path / c.Infra.MAKEFILE_FILENAME).exists()
-        ):
+        if pyproject_path.exists() and (path / c.Infra.MAKEFILE_FILENAME).exists():
             return True
         payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)
         if not payload:

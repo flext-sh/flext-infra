@@ -21,41 +21,8 @@ class FlextInfraExtraPathsSyncMixin:
         # Provided by the concrete FlextInfraExtraPathsManager / its base; declared
         # for static resolution only so they don't shadow the runtime implementations.
         root: Path
-        _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
         pyrefly_search_paths: Callable[..., t.StrSequence]
-
-    def resolve_transitive_dependency_names(
-        self, direct_names: t.StrSequence
-    ) -> t.StrSequence:
-        """Return the transitive workspace path-dependency closure of direct_names."""
-        return self._resolve_transitive_deps(direct_names)
-
-    def _resolve_transitive_deps(
-        self, direct_names: t.StrSequence, *, visited: t.Infra.StrSet | None = None
-    ) -> t.StrSequence:
-        """Recursively resolve transitive workspace path dependencies."""
-        resolved_visited: set[str] = visited if visited is not None else set()
-        all_paths: set[str] = set(direct_names)
-        for name in direct_names:
-            if name in resolved_visited:
-                continue
-            resolved_visited.add(name)
-            dep_pyproject = self.root / name / c.Infra.PYPROJECT_FILENAME
-            if not dep_pyproject.exists():
-                continue
-            dep_payload = u.Infra.pyproject_payload(dep_pyproject)
-            transitive = u.Infra.local_dependency_names_from_payload(
-                dep_payload,
-                workspace_project_names=tuple(self._workspace_project_names),
-            )
-            if not transitive:
-                continue
-            all_paths.update(transitive)
-            all_paths.update(
-                self._resolve_transitive_deps(transitive, visited=resolved_visited)
-            )
-        return sorted(all_paths)
 
     def sync_doc(
         self, doc: t.Cli.TomlDocument, *, project_dir: Path, is_root: bool
@@ -173,22 +140,12 @@ class FlextInfraExtraPathsSyncMixin:
                     updated_selected += 1
                     u.Cli.info(f"Updated {pyproject}")
             return r[int].ok(updated_selected)
-        # WHAT=all is the canonical default: an unselected run owns the root AND
-        # every managed member. Syncing only the root left each member's
-        # mypy_path/extraPaths frozen at whatever was last written by hand, so
-        # sibling path dependencies never reached the member analyzers and every
-        # symbol imported from them degraded to Any.
-        targets: t.MutableSequenceOf[Path] = [self.root]
-        targets.extend(
-            self.root / member for member in u.Infra.workspace_project_paths(self.root)
-        )
+        targets: t.SequenceOf[Path] = (self.root,)
         updated = 0
         for target in targets:
             pyproject = target / c.Infra.PYPROJECT_FILENAME
             if not pyproject.exists():
-                if target == self.root:
-                    return r[int].fail(f"Missing {pyproject}")
-                continue
+                return r[int].fail(f"Missing {pyproject}")
             sync_result = self.sync_one(
                 pyproject, dry_run=dry_run, is_root=target == self.root
             )

@@ -7,7 +7,8 @@ from importlib import util as importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra import c, m, r, t
+from flext_core import r
+from flext_infra import c, m, t
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
@@ -25,7 +26,7 @@ class FlextInfraUtilitiesDiscovery(
 ):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
-    _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
+    _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
     @cache
@@ -44,12 +45,7 @@ class FlextInfraUtilitiesDiscovery(
                 wrapper_root = current.parent
                 continue
             if (current / c.Infra.DEFAULT_SRC_DIR).is_dir():
-                relative_parts = candidate.relative_to(current).parts
-                if (
-                    not relative_parts
-                    or relative_parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS
-                ):
-                    return str(current)
+                return str(current)
         return str(wrapper_root) if wrapper_root is not None else ""
 
     @staticmethod
@@ -170,7 +166,7 @@ class FlextInfraUtilitiesDiscovery(
     @staticmethod
     def package_importable(package_name: str) -> bool:
         """Return whether the active official environment resolves one package."""
-        # Standalone consumers inherit aliases
+        # Why (mro-27a9e.1, multi-agent): standalone consumers inherit aliases
         # from installed FLEXT artifacts; plain modules are never facade parents.
         try:
             spec = importlib_util.find_spec(package_name)
@@ -208,14 +204,12 @@ class FlextInfraUtilitiesDiscovery(
         effective_skip = (
             skip_dirs if skip_dirs is not None else c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
         )
-        workspace_excluded = cls._workspace_excluded_top_dirs(project_dir)
         return [
             subdir.name
             for subdir in sorted(project_dir.iterdir())
             if subdir.is_dir()
             and not subdir.name.startswith(".")
             and subdir.name not in effective_skip
-            and subdir.name not in workspace_excluded
             and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
         ]
 
@@ -235,9 +229,8 @@ class FlextInfraUtilitiesDiscovery(
         scaffold can only offer those, and discovery appends the remaining
         roots that actually exist, which is the only set an analyzer accepts.
 
-        A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace subprojects are Python directories
-        too, and each is analyzed under its own local configuration.
+        A directory owning a ``pyproject.toml`` is a project in its own right
+        and is analyzed under its own manifest.
         """
         discovered = cls.discover_python_dirs(project_dir)
         return (
@@ -251,37 +244,22 @@ class FlextInfraUtilitiesDiscovery(
         )
 
     @staticmethod
-    def _workspace_excluded_top_dirs(project_dir: Path) -> frozenset[str]:
-        """Return first segments of read-only external topology paths."""
-        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-
-        excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
-        if excluded.failure:
-            msg = excluded.error or "workspace analysis scope is unavailable"
-            raise ValueError(msg)
-        return frozenset(path.parts[0] for path in excluded.value if path.parts)
-
-    @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
-        """Resolve a package anywhere inside the selected Rope scan root."""
+        """Resolve the public package ``__init__.py`` within a project or workspace."""
         package_parts = Path(*package_name.split("."))
-        resolved_root = workspace_root.resolve()
-        project_roots = {
-            resolved_root,
-            *(
-                path.parent.resolve()
-                for path in resolved_root.rglob(c.Infra.PYPROJECT_FILENAME)
-                if not any(
-                    part.startswith(".") or part in c.Infra.PYPROJECT_SKIP_DIRS
-                    for part in path.relative_to(resolved_root).parts[:-1]
-                )
-            ),
-        }
+        project_dir = package_name.split(".", maxsplit=1)[0].replace("_", "-")
         candidates = (
-            *(
-                project_root / c.Infra.DEFAULT_SRC_DIR / package_parts / c.Infra.INIT_PY
-                for project_root in sorted(project_roots)
-            ),
+            workspace_root / c.Infra.DEFAULT_SRC_DIR / package_parts / c.Infra.INIT_PY,
+            workspace_root
+            / project_dir
+            / c.Infra.DEFAULT_SRC_DIR
+            / package_parts
+            / c.Infra.INIT_PY,
+            workspace_root.parent
+            / project_dir
+            / c.Infra.DEFAULT_SRC_DIR
+            / package_parts
+            / c.Infra.INIT_PY,
         )
         for candidate in candidates:
             if candidate.is_file():
@@ -300,23 +278,10 @@ class FlextInfraUtilitiesDiscovery(
             ordered.append(package_name)
         return tuple(ordered)
 
-    @classmethod
-    def rope_workspace_root(cls, workspace_root: Path) -> Path:
-        """Return the execution-context root for one conditional Rope scan."""
-        resolved_root = workspace_root.resolve()
-        execution_dir = (
-            resolved_root if resolved_root.is_dir() else resolved_root.parent
-        )
-        for candidate in (execution_dir, *execution_dir.parents):
-            if (candidate / c.Infra.GITMODULES).is_file():
-                return candidate.resolve()
-        project_root = cls.project_root(resolved_root)
-        if project_root is not None and (
-            (project_root / c.Infra.PYPROJECT_FILENAME).is_file()
-            or (project_root / c.Infra.GIT_DIR).exists()
-        ):
-            return project_root
-        return resolved_root
+    @staticmethod
+    def rope_workspace_root(workspace_root: Path) -> Path:
+        """Return the repository root explicitly supplied for Rope."""
+        return workspace_root.resolve()
 
     @classmethod
     def find_all_pyproject_files(
@@ -330,8 +295,8 @@ class FlextInfraUtilitiesDiscovery(
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        # Explicit project paths are a hard write-scope boundary. Without one,
-        # discovery is strictly local to the repository supplied by the caller.
+        # NOTE (multi-agent, mro-wkii.17): explicit project paths are a hard
+        # write-scope boundary; sibling workspaces remain discovery-only otherwise.
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
@@ -374,7 +339,7 @@ class FlextInfraUtilitiesDiscovery(
         return r[t.SequenceOf[Path]].ok(all_files)
 
     @classmethod
-    def resolve_parent_constants_flext(
+    def resolve_parent_constants_mro(
         cls, pkg_dir_or_file: Path, *, return_module: bool = False
     ) -> t.StrSequence:
         """Resolve imported parent ``Constants`` targets through Rope semantics."""
@@ -389,7 +354,7 @@ class FlextInfraUtilitiesDiscovery(
         if project_root is None:
             return ()
         cache_key = (str(constants_file.resolve()), return_module)
-        if (cached := cls._PARENT_CONSTANTS_FLEXT_CACHE.get(cache_key)) is not None:
+        if (cached := cls._PARENT_CONSTANTS_MRO_CACHE.get(cache_key)) is not None:
             return cached
         current_module = cls.package_name(constants_file)
         result = cls.parent_constants_targets(
@@ -400,7 +365,7 @@ class FlextInfraUtilitiesDiscovery(
             if current_module
             else "",
         )
-        cls._PARENT_CONSTANTS_FLEXT_CACHE[cache_key] = result
+        cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
         return result
 
     @classmethod
@@ -418,7 +383,7 @@ class FlextInfraUtilitiesDiscovery(
             visited.add(package_name)
             init_path = cls.package_init_path(workspace_root, package_name)
             if init_path is not None:
-                for parent_package in cls.resolve_parent_constants_flext(
+                for parent_package in cls.resolve_parent_constants_mro(
                     init_path.parent, return_module=True
                 ):
                     visit(parent_package)
@@ -442,13 +407,13 @@ class FlextInfraUtilitiesDiscovery(
         )
         if not (package_dir / c.Infra.INIT_PY).is_file():
             return {}
-        parent_packages = cls.resolve_parent_constants_flext(
+        parent_packages = cls.resolve_parent_constants_mro(
             package_dir, return_module=True
         )
         if not parent_packages:
             return {}
         transitive_parent_packages = cls.resolve_transitive_parent_packages(
-            cls.rope_workspace_root(project_root), parent_packages
+            project_root.parent, parent_packages
         )
         allowed_sources = frozenset(
             package.split(".", maxsplit=1)[0]
@@ -456,11 +421,11 @@ class FlextInfraUtilitiesDiscovery(
         )
         for family_dir in c.Infra.FAMILY_DIRECTORIES.values():
             if file_path.is_relative_to(package_dir / family_dir):
-                return dict.fromkeys(c.Infra.FLEXT_FAMILIES, allowed_sources)
+                return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         if file_path.name in {"base.py", c.Infra.NAMESPACE_PRIVATE_BASE_MODULE}:
             return dict.fromkeys(c.Infra.ENFORCEMENT_CANONICAL_ALIASES, allowed_sources)
         if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
-            return dict.fromkeys(c.Infra.FLEXT_FAMILIES, allowed_sources)
+            return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         return {}
 
 

@@ -23,17 +23,12 @@ _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
 class TestsReviewTemplateContracts:
     """Lock the SSOT fixes for bootstrap pin, PROJECT selection, TestPyPI order."""
 
-    def test_makefile_bootstrap_uses_configured_branch_without_git_probe(self) -> None:
+    def test_makefile_bootstrap_uses_declared_remote_revision(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
-        tm.that(text, lacks="FLEXT_INFRA_BOOTSTRAP_REF")
-        tm.that(text, lacks='rev-parse "HEAD:{{ infra_repository.path }}"')
-        tm.that(
-            text,
-            has=(
-                "{{ infra_repository.distribution }} @ git+"
-                "{{ infra_repository.url }}@{{ infra_repository_branch }}"
-            ),
-        )
+        tm.that(text, has="FLEXT_INFRA_BOOTSTRAP_REF")
+        tm.that(text, has="@$(FLEXT_INFRA_BOOTSTRAP_REF)")
+        tm.that(text, has="git+{{ infra_repository.url }}")
+        tm.that(text, lacks=['rev-parse "HEAD:', "@latest", " @ file:"])
 
     def test_makefile_deps_modernize_uses_selected_projects(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
@@ -43,25 +38,6 @@ class TestsReviewTemplateContracts:
         )[0]
         tm.that(upgrade, lacks='selected="$(strip $(PROJECTS))"')
         tm.that(upgrade, has="$(if $(strip $(DEPENDENCY)),,--rewrite-constraints)")
-
-    def test_makefile_explicit_root_selection_is_preserved(self) -> None:
-        """PROJECT=. expands to members for workspace-root; selects root for other profiles."""
-        text = _MAKEFILE.read_text(encoding="utf-8")
-        tm.that(
-            text,
-            has=(
-                "SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),"
-                "$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))"
-            ),
-        )
-        tm.that(
-            text,
-            has=(
-                "SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),"
-                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),"
-                "$(DEFAULT_PROJECTS))"
-            ),
-        )
 
     def test_makefile_has_no_legacy_work_lifecycle(self) -> None:
         """Gas Town is the sole lane lifecycle owner."""

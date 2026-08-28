@@ -46,7 +46,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
         if package_entry is None:
             return {}
         index: t.MutableLazyAliasMap = {}
-        # flext-i6nq.10: Generated support modules are output, never public input.
+        # mro-i6nq.10: Generated support modules are output, never public input.
         skip_names = {
             c.Infra.INIT_PY,
             "__main__.py",
@@ -57,14 +57,14 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             py_file = module_entry.file_path
             child_dir = py_file.parent / py_file.stem
             child_entry = self._package_entry(child_dir)
-            # flext-pulj: test artifacts never enter an installable package ABI.
+            # mro-pulj: test artifacts never enter an installable package ABI.
             test_only_source_module = (
                 context.surface != c.Infra.DIR_TESTS
                 or context.current_pkg == c.Infra.DIR_TESTS
             ) and (
                 c.Infra.TEST_ONLY_SOURCE_MODULE_RE.fullmatch(py_file.name) is not None
             )
-            # flext-6int (claude-ulw): extract predicate to satisfy PLR0916
+            # mro-6int (claude-ulw): extract predicate to satisfy PLR0916
             # (>5 boolean expressions); retired/generated/test modules are
             # never semantic input for the lazy export map.
             is_generated_or_test = (
@@ -106,7 +106,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 and not any(part.startswith("_") for part in context.pkg_dir.parts)
                 and not py_file.stem.startswith("_")
                 and (
-                    u.Infra.is_public_python_module_file(py_file.name)
+                    u.Infra.matches_root_namespace_file(py_file.name)
                     or policy.expected_alias is not None
                     or "." in context.current_pkg
                 )
@@ -124,7 +124,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             if (
                 policy.expected_alias
                 and u.Infra.matches_project_namespace_package(context.current_pkg)
-                and u.Infra.is_public_python_module_file(py_file.name)
+                and u.Infra.matches_root_namespace_file(py_file.name)
             ):
                 targets.setdefault(
                     policy.expected_alias,

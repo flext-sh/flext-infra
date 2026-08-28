@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_tests import tm
-from tests import c, m, u
+from tests import m, u
 
 if TYPE_CHECKING:
     from tests import t
@@ -25,7 +25,10 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
     @pytest.fixture
     def workspace_with_projects(self, tmp_path: Path) -> Path:
         (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace'\n", encoding="utf-8"
+            "[project]\nname='workspace'\n\n"
+            "[tool.uv.workspace]\n"
+            "members = ['project2']\n",
+            encoding="utf-8",
         )
         proj1 = tmp_path / "project1"
         proj1.mkdir()
@@ -52,11 +55,6 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
             "[project]\nname='hidden'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
-        (tmp_path / ".gitmodules").write_text(
-            '[submodule "project1"]\n\tpath = project1\n\turl = https://github.com/flext-sh/project1.git\n'
-            '[submodule "project2"]\n\tpath = project2\n\turl = https://github.com/flext-sh/project2.git\n',
-            encoding="utf-8",
-        )
         return tmp_path
 
     def test_discover_projects_happy_path(
@@ -65,18 +63,10 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         result = service.discover_projects(workspace_with_projects)
         tm.ok(result)
         projects = result.value
-        tm.that(len(projects), eq=2)
-        tm.that(projects[0].name, eq="project1")
-        tm.that(projects[1].name, eq="project2")
-        tm.that(projects[0].has_tests, eq=True)
+        tm.that(len(projects), eq=1)
+        tm.that(projects[0].name, eq="workspace")
+        tm.that(projects[0].has_tests, eq=False)
         tm.that(projects[0].has_src, eq=True)
-        tm.that(projects[1].has_src, eq=False)
-        tm.that(projects[1].has_tests, eq=False)
-        tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.SUBPROJECT)
-        tm.that(
-            (projects[1].workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT),
-            eq=True,
-        )
 
     def test_discover_projects_empty_workspace(
         self, service: u.Infra, tmp_path: Path
@@ -153,36 +143,6 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         result = service.discover_projects(tmp_path)
         tm.ok(result)
         tm.that(result.value, eq=[])
-
-    def test_discover_projects_prefers_workspace_children_over_root_project(
-        self, service: u.Infra, tmp_path: Path
-    ) -> None:
-        (tmp_path / "pyproject.toml").write_text(
-            "[project]\nname='workspace'\ndependencies=['flext-core>=0.1.0']\n",
-            encoding="utf-8",
-        )
-        project1 = tmp_path / "project1"
-        project1.mkdir()
-        (project1 / "pyproject.toml").write_text(
-            "[project]\nname='project1'\nversion='0.1.0'\n"
-            "dependencies=['flext-core>=0.1.0']\n",
-            encoding="utf-8",
-        )
-        project2 = tmp_path / "project2"
-        project2.mkdir()
-        (project2 / "pyproject.toml").write_text(
-            "[project]\nname='project2'\n", encoding="utf-8"
-        )
-        (tmp_path / ".gitmodules").write_text(
-            '[submodule "project1"]\n\tpath = project1\n\turl = https://github.com/flext-sh/project1.git\n'
-            '[submodule "project2"]\n\tpath = project2\n\turl = https://github.com/flext-sh/project2.git\n',
-            encoding="utf-8",
-        )
-
-        result = service.discover_projects(tmp_path)
-
-        tm.ok(result)
-        tm.that([project.name for project in result.value], eq=["project1", "project2"])
 
     def test_discover_projects_derives_package_name_from_hatch_packages(
         self, service: u.Infra, tmp_path: Path

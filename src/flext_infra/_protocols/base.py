@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-# Declaration-only protocol types stay
+# NOTE (multi-agent, mro-wkii.17.9.2.1): declaration-only protocol types stay
 # behind one guard so structural contracts add no reverse runtime dependency.
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -76,53 +76,9 @@ class FlextInfraProtocolsBase(Protocol):
             """Primary Python package name."""
             ...
 
-    # These declaration-only
-    # contracts preserve config-model field types across the public p/u facades.
-    @runtime_checkable
-    class MiseToolSpec(Protocol):
-        """One exact mise backend selector and immutable version."""
-
-        @property
-        def selector(self) -> str:
-            """Canonical mise backend selector."""
-            ...
-
-        @property
-        def version(self) -> str:
-            """Exact tool version installed by mise."""
-            ...
-
-    @runtime_checkable
-    class ProtectedMiseToolSpec(MiseToolSpec, Protocol):
-        """Fleet-owned mise distribution identity."""
-
-        @property
-        def selector_patterns(self) -> t.StrSequence:
-            """Glob patterns identifying equivalent distributions."""
-            ...
-
-    @runtime_checkable
-    class BeadsToolSpec(ProtectedMiseToolSpec, Protocol):
-        """Canonical Beads distribution and Gas City projection contract."""
-
-        @property
-        def endpoint_origin(self) -> str:
-            """Gas City-owned endpoint inheritance mode."""
-            ...
-
-        @property
-        def endpoint_status(self) -> str:
-            """Canonical inherited endpoint status."""
-            ...
-
-        @property
-        def required_custom_types(self) -> t.StrSequence:
-            """Immutable custom bead types required by Gas City."""
-            ...
-
     @runtime_checkable
     class RepositoryRef(Protocol):
-        """Repository fields consumed by codegen path and profile selection."""
+        """Repository identity consumed by local code generation."""
 
         @property
         def name(self) -> str:
@@ -145,81 +101,17 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def role(self) -> str:
-            """Repository role in the declared topology."""
-            ...
-
-        @property
-        def state(self) -> str:
-            """Repository lifecycle state."""
-            ...
-
-        @property
         def provider(self) -> str:
             """Provider catalog key owning Git policy for this repository."""
             ...
 
-        @property
-        def checkout(self) -> str:
-            """Physical checkout topology."""
-            ...
-
-        @property
-        def codegen(self) -> str:
-            """Repository code-generation policy."""
-            ...
-
-        @property
-        def package(self) -> bool:
-            """Whether the repository publishes a Python package."""
-            ...
-
-        @property
-        def editable(self) -> bool:
-            """Whether the repository is overlaid as editable."""
-            ...
-
-        @property
-        def read_only(self) -> bool:
-            """Whether generated mutations are forbidden."""
-            ...
-
     @runtime_checkable
     class ProjectSpec(Protocol):
-        """Scaffold-only project metadata consumed by initial generation."""
+        """Manifest-declared project metadata consumed by conformance."""
 
         @property
         def version(self) -> str:
             """Declared release version, the SSOT for ``[project].version``."""
-            ...
-
-    @runtime_checkable
-    class BeadsProjectSpec(Protocol):
-        """Repository-local Beads identity contract."""
-
-        @property
-        def version(self) -> int:
-            """Configuration schema version."""
-            ...
-
-        @property
-        def workspace(self) -> str:
-            """Stable workspace identity."""
-            ...
-
-        @property
-        def database(self) -> str:
-            """Repository-owned Dolt database."""
-            ...
-
-        @property
-        def issue_prefix(self) -> str:
-            """Repository-owned issue prefix."""
-            ...
-
-        @property
-        def custom_issue_types(self) -> t.StrSequence:
-            """Repository-owned types beyond the Gas City baseline."""
             ...
 
     class WorkspaceSpec(Protocol):
@@ -227,27 +119,18 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def repository(self) -> FlextInfraProtocolsBase.RepositoryRef:
-            """Local repository."""
-            ...
-
-        @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec:
-            """Repository-local Beads identity."""
+            """Workspace root repository."""
             ...
 
         @property
         def project(self) -> FlextInfraProtocolsBase.ProjectSpec | None:
-            """Scaffold metadata; ``None`` for an existing repository."""
-            ...
+            """Manifest project metadata; ``None`` outside a materialized tree.
 
-        @property
-        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
-            """Direct governed repositories declared by local .gitmodules."""
-            ...
-
-        @property
-        def external_dependency_paths(self) -> t.SequenceOf[Path]:
-            """Observed external or fork Git submodule paths."""
+            hq-36xk projects the declared version onto ``[project]`` during
+            conformance, so the protocol must expose the fact the model already
+            carries -- otherwise the only consumer reads through a contract that
+            does not admit it.
+            """
             ...
 
     @runtime_checkable
@@ -272,6 +155,40 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def branch(self) -> str:
             """Provider-owned integration baseline."""
+            ...
+
+    @runtime_checkable
+    class RepositoryTopology(Protocol):
+        """Atomic repository-local runtime topology inspection."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Current Git repository root."""
+            ...
+
+        @property
+        def mode(self) -> c.Infra.WorkspaceMode:
+            """Effective workspace execution mode."""
+            ...
+
+        @property
+        def attached(self) -> bool:
+            """Whether this checkout is a parent-owned gitlink."""
+            ...
+
+        @property
+        def managed_gitlinks(self) -> t.StrSequence:
+            """Manifest-owned mutable repository gitlinks."""
+            ...
+
+        @property
+        def external_gitlinks(self) -> t.StrSequence:
+            """Manifest-declared read-only content gitlinks."""
+            ...
+
+        @property
+        def repository(self) -> FlextInfraProtocolsBase.RepositoryRef | None:
+            """Effective repository identity when a declaration was supplied."""
             ...
 
     @runtime_checkable
@@ -309,19 +226,10 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class WorkspaceEnvironmentRequest(Protocol):
-        """Read-only workspace environment validation request."""
-
-        @property
-        def workspace_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
-            ...
-
-    @runtime_checkable
     class ToolchainSpec(Protocol):
         """Toolchain fields consumed by pyproject conformance and templates."""
 
-        # Keep the protocol
+        # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
         # complete with the validated config model used by codegen consumers.
         @property
         def python_version(self) -> str:
@@ -414,33 +322,23 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def uv_version(self) -> str:
-            """Compatible uv major.minor line."""
-            ...
-
-        @property
-        def go_version(self) -> str:
-            """Exact Go runtime version backing go: mise selectors."""
-            ...
-
-        @property
         def mise_version(self) -> str:
             """Exact mise binary version."""
             ...
 
         @property
         def mise_lock_platforms(self) -> t.StrSequence:
-            """Platforms materialized into the project mise lockfile."""
+            """Platforms materialized into the project Mise lockfile."""
             ...
 
         @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsToolSpec:
-            """Official Beads CLI installed through mise."""
+        def mise_lock_platform_exclusions(self) -> t.StrMapping:
+            """Unsupported platform pairs in the project Mise lockfile."""
             ...
 
         @property
         def protected_mise_tools(self) -> t.StrSequence:
-            """Toolchain field names protected from alternate distributions."""
+            """Toolchain owners protected from alternate distributions."""
             ...
 
     @runtime_checkable
@@ -453,18 +351,13 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def profiles(self) -> t.StrSequence:
-            """Make profiles that consume the template."""
-            ...
-
-        @property
         def delegate(self) -> str:
             """Canonical template rendering delegate."""
             ...
 
     @classmethod
-    def is_public_python_module_file(cls, file_name: str) -> bool:
-        """Return whether a file names a public Python module."""
+    def matches_root_namespace_file(cls, file_name: str) -> bool:
+        """Return whether a file belongs to the governed root namespace."""
         ...
 
     @staticmethod

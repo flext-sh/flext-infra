@@ -1,24 +1,32 @@
-"""Topology comes from each repository, never from an internal project registry."""
+"""Topology comes from the project, never from a registry inside flext-infra.
+
+Operator law: flext-infra owns generic conform behaviour only. A repository's
+identity and public-root contract come from its own ``pyproject.toml``. Its
+topology is the independent presence-or-absence fact of its own ``.gitmodules``;
+topology never creates project relationships or execution policy.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import c, config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import u as test_u
 
 
 def _standalone(root: Path, *, name: str) -> Path:
     """Create a real Git repository that flext-infra has never heard of."""
-    WorktreeFixture.initialize_governed_project(
-        root,
-        name,
-        workspace=f"{name}-workspace",
-        database=f"{name}-database",
-        issue_prefix=f"{name}-prefix",
+    (root / "src" / name.replace("-", "_")).mkdir(parents=True)
+    (root / "pyproject.toml").write_text(
+        f"[project]\nname = '{name}'\nversion = '0.1.0'\n"
+        "requires-python = '>=3.13,<3.14'\n",
+        encoding="utf-8",
+    )
+    provider = config.Infra.codegen.providers[0]
+    test_u.Tests.initialize_git_repo(
+        root, f"{provider.base_url.rstrip('/')}/{name}.git"
     )
     return root
 
@@ -42,5 +50,20 @@ class TestsDetectorOwnsNoProjectRegistry:
 
         tm.that(spec.repository.name, eq="totally-unknown")
         tm.that(spec.repository.path, eq=Path())
-        tm.that(spec.subprojects, empty=True)
-        tm.that(spec.beads.workspace, eq="totally-unknown-workspace")
+        tm.that("members" in type(spec).model_fields, eq=False)
+
+    def test_git_submodules_remain_the_topology_ssot(self, tmp_path: Path) -> None:
+        """A .gitmodules file changes topology without creating member policy."""
+        root = _standalone(tmp_path / "workspace-repo", name="workspace-repo")
+        provider = config.Infra.codegen.providers[0]
+        (root / ".gitmodules").write_text(
+            f'[submodule "member-pkg"]\n\tpath = member-pkg\n\turl = https://github.com/{provider.name}/member-pkg.git\n\tbranch = {provider.branch}\n',
+            encoding="utf-8",
+        )
+        _standalone(root / "member-pkg", name="member-pkg")
+
+        mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
+        spec = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
+        tm.that("members" in type(spec).model_fields, eq=False)

@@ -10,8 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .test_formatting import TestsFlextInfraUtilitiesformatting
     from .test_git_facet_gitpython import TestsFlextInfraGitFacet
     from .test_protected_edit import TestsFlextInfraUtilitiesProtectedEdit
@@ -29,22 +27,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraUtilitiesformatting",
     "TestsFlextInfraUtilitiessafety",
     "TestsFlextInfraUtilitiesscanning",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -58,24 +40,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_rope_structure": ("TestsFlextInfraRopeStructure",),
             ".test_safety": ("TestsFlextInfraUtilitiessafety",),
             ".test_scanning": ("TestsFlextInfraUtilitiesscanning",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

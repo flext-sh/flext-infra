@@ -10,8 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .main_cli_tests import (
         test_main_returns_nonzero_on_unknown,
         test_main_returns_one_without_subcommand,
@@ -19,9 +17,8 @@ if TYPE_CHECKING:
         test_pr_workspace_accepts_repeated_project_options,
     )
     from .main_dispatch_tests import (
-        test_run_github_workspace_pull_requests_aggregates_results,
-        test_run_github_workspace_pull_requests_honors_fail_fast,
-        test_run_github_workspace_pull_requests_respects_project_selection,
+        test_pull_request_dispatch_accepts_only_repository_alias,
+        test_pull_request_dispatch_processes_only_supplied_repository,
     )
     from .main_integration_tests import (
         test_lint_subcommand_writes_report,
@@ -32,16 +29,6 @@ if TYPE_CHECKING:
     from .main_tests import TestsInfraGithub
 __all__: tuple[str, ...] = (
     "TestsInfraGithub",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
     "test_lint_subcommand_writes_report",
     "test_main_returns_nonzero_on_unknown",
     "test_main_returns_one_without_subcommand",
@@ -49,16 +36,9 @@ __all__: tuple[str, ...] = (
     "test_pr_subcommand_rejects_removed_lifecycle_action",
     "test_pr_subcommand_returns_nonzero_for_minimal_repo",
     "test_pr_workspace_accepts_repeated_project_options",
-    "test_run_github_workspace_pull_requests_aggregates_results",
-    "test_run_github_workspace_pull_requests_honors_fail_fast",
-    "test_run_github_workspace_pull_requests_respects_project_selection",
+    "test_pull_request_dispatch_accepts_only_repository_alias",
+    "test_pull_request_dispatch_processes_only_supplied_repository",
     "test_workflows_subcommand_applies_templates",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -71,9 +51,8 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_pr_workspace_accepts_repeated_project_options",
             ),
             ".main_dispatch_tests": (
-                "test_run_github_workspace_pull_requests_aggregates_results",
-                "test_run_github_workspace_pull_requests_honors_fail_fast",
-                "test_run_github_workspace_pull_requests_respects_project_selection",
+                "test_pull_request_dispatch_accepts_only_repository_alias",
+                "test_pull_request_dispatch_processes_only_supplied_repository",
             ),
             ".main_integration_tests": (
                 "test_lint_subcommand_writes_report",
@@ -82,24 +61,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_workflows_subcommand_applies_templates",
             ),
             ".main_tests": ("TestsInfraGithub",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

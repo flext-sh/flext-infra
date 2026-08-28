@@ -49,8 +49,8 @@ class FlextInfraUtilitiesCodegenNamespace:
         return False
 
     @classmethod
-    def is_public_python_module_file(cls, file_name: str) -> bool:
-        """Return whether *file_name* names a public Python module."""
+    def matches_root_namespace_file(cls, file_name: str) -> bool:
+        """Return whether *file_name* belongs to a governed root namespace."""
         return file_name.endswith(c.Infra.EXT_PYTHON) and not file_name.startswith("_")
 
     @staticmethod

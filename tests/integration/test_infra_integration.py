@@ -4,6 +4,7 @@ Tests exercise cross-module flows using the public runtime surfaces, validating:
 - Output/reporting methods via u.Infra
 - Service r chaining
 - Command runtime operations via u.Cli.run_checked/capture
+- Make-backed gate execution
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -15,10 +16,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, r, u
+from flext_core import r
+from flext_infra import m, u
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
@@ -30,27 +31,6 @@ pytestmark = [pytest.mark.integration]
 
 class TestsFlextInfraIntegrationInfraIntegration:
     """Integration tests for the public FlextInfra surface."""
-
-    @pytest.mark.integration
-    def test_workspace_detector_and_orchestrator_share_state(
-        self, tmp_path: Path
-    ) -> None:
-        """Test that FlextInfraWorkspaceDetector and orchestrator share state.
-
-        Validates:
-        - Detector can be created
-        - Orchestrator can be created
-        - Both can access shared workspace information
-        """
-        workspace_root = tmp_path / "workspace"
-        workspace_root.mkdir()
-        (workspace_root / ".git").mkdir()
-        detector = FlextInfraWorkspaceDetector()
-        orchestrator = FlextInfraOrchestratorService(verb="test")
-        tm.that(detector, none=False)
-        tm.that(orchestrator, none=False)
-        tm.that(detector, is_=FlextInfraWorkspaceDetector)
-        tm.that(orchestrator, is_=FlextInfraOrchestratorService)
 
     @pytest.mark.integration
     def test_workspace_detector_returns_flext_result(self) -> None:
@@ -73,7 +53,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         the verb. ``rumdl fmt`` carries formatter-style exit codes, which is
         the contract the mutating verb promises.
 
-        The gate pipeline owns this contract. The document below
+        The owner of this contract is the markdown gate. The document below
         carries an unfixable finding (MD041: no top-level heading) next to a
         fixable one (MD009: trailing whitespace): the linter fails on it, the
         formatter repairs what it can and still succeeds.
@@ -94,7 +74,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
     def test_output_singleton_has_expected_methods(self) -> None:
         """Test that reporting/output methods are exposed through u.Infra.
 
-        Validates u.Infra FLEXT output methods are available:
+        Validates u.Infra MRO output methods are available:
         - status, summary, error, warning, info, header, progress
         """
         tm.that(callable(u.Cli.status), eq=True)
@@ -195,19 +175,19 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(result.value, eq=26)
 
     @pytest.mark.integration
-    def test_discover_projects_via_flext(self) -> None:
+    def test_discover_projects_via_mro(self) -> None:
         """Test u.Infra.discover_projects flow.
 
         Validates:
-        - discover_projects is callable via u.Infra FLEXT
-        - workspace_root is callable via u.Infra FLEXT
+        - discover_projects is callable via u.Infra MRO
+        - workspace_root is callable via u.Infra MRO
         """
         tm.that(callable(u.Infra.discover_projects), eq=True)
         tm.that(callable(u.Infra.resolve_workspace_root_or_cwd), eq=True)
 
     @pytest.mark.integration
-    def test_path_utilities_via_flext(self) -> None:
-        """Test u.Infra path utility methods are available via FLEXT."""
+    def test_path_utilities_via_mro(self) -> None:
+        """Test u.Infra path utility methods are available via MRO."""
         tm.that(callable(u.Infra.resolve_project_root), eq=True)
 
     @pytest.mark.integration

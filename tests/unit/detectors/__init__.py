@@ -10,8 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .test_deferred_self_reference_ast import (
         TestsFlextInfraDeferredSelfReferenceDetector,
     )
@@ -31,22 +29,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLooseObjectDetector",
     "TestsFlextInfraLooseTestFunctionDetector",
     "TestsFlextInfraPatternSmellDetector",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -66,24 +48,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraLooseTestFunctionDetector",
             ),
             ".test_pattern_smell_detector": ("TestsFlextInfraPatternSmellDetector",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

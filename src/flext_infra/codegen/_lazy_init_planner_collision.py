@@ -34,7 +34,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         elif policy.expected_family and name.endswith(policy.expected_family):
             # A governed facade legitimately owns its declared family class
             # (e.g. ``FlextTestsValidator`` in ``validator.py``); it must win
-            # over an FLEXT ``_part_`` module of the same name.
+            # over an MRO ``_part_`` module of the same name.
             score += 25
         elif policy.expected_alias:
             # Governed root facades should primarily own their canonical alias.
@@ -58,7 +58,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 3
         part_number = module_file.stem.rpartition("_part_")[2]
         if part_number.isdecimal():
-            # flext-pulj (codex): the final public facade owns the external
+            # mro-pulj (codex): the final public facade owns the external
             # class identity; numbered implementation parts only rank among
             # themselves when no facade candidate exists.
             score -= 50
@@ -85,7 +85,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if existing is None or existing == target:
             index[name] = target
             return
-        # flext-j47u (codex): MutableLazyAliasMap values are always StrPair.
+        # mro-j47u (codex): MutableLazyAliasMap values are always StrPair.
         winner = self._pick_preferred_target(name, existing, target)
         if self._is_intentional_reexport(existing, target):
             index[name] = winner
@@ -99,9 +99,9 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
 
     def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
-        if self._is_flext_part_reexport(a, b):
+        if self._is_mro_part_reexport(a, b):
             return True
-        # flext-pulj (codex): root typing sidecars are removed; real source
+        # mro-pulj (codex): root typing sidecars are removed; real source
         # owners now participate in the normal collision policy.
         if self._is_private_facade_reexport(a, b):
             return True
@@ -111,7 +111,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
-            if not u.Infra.is_public_python_module_file(pub_file):
+            if not u.Infra.matches_root_namespace_file(pub_file):
                 continue
             if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
                 return True
@@ -170,12 +170,12 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
 
     @staticmethod
     def _is_part_leaf(module_stem: str) -> bool:
-        """Return whether a module stem is an FLEXT implementation part."""
+        """Return whether a module stem is an MRO implementation part."""
         return "_part_" in module_stem
 
     @classmethod
-    def _is_flext_part_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether targets are the same logical FLEXT owner split into parts."""
+    def _is_mro_part_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
+        """Return whether targets are the same logical MRO owner split into parts."""
         if a[1] != b[1]:
             return False
         a_parts = cls._module_parts(a[0])

@@ -75,98 +75,22 @@ class FlextInfraPyprojectModernizerRunMixin:
         """Run pyproject modernization for the workspace."""
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
-        project_names = list(self.project_names or [])
-        # Modernization writes only the requested workspace root and its
-        # declared subprojects, never siblings.
-        include_root = not project_names or "." in project_names
-        selected_names = (
-            [name for name in project_names if name != "."]
-            if project_names
-            else list(u.Infra.workspace_project_paths(self.root))
-        )
-        configured_subproject_paths = {
-            subproject_name: self.root / subproject_name
-            for subproject_name in u.Infra.workspace_project_paths(self.root)
-        }
-        resolved_root = self.root.resolve()
-        outside_subproject_names = [
-            subproject_name
-            for subproject_name, subproject_path in configured_subproject_paths.items()
-            if not subproject_path.resolve().is_relative_to(resolved_root)
-        ]
-        if outside_subproject_names:
+        project_names = tuple(self.project_names or ())
+        unsupported_projects = tuple(name for name in project_names if name != ".")
+        if unsupported_projects:
             u.Cli.error(
-                "workspace subprojects outside root: "
-                f"{', '.join(sorted(outside_subproject_names))}"
+                "dependency modernization is repository-local; unsupported projects: "
+                f"{', '.join(unsupported_projects)}"
             )
             return 2
-        basename_aliases: dict[str, list[Path]] = {}
-        declared_name_aliases: dict[str, list[Path]] = {}
-        for configured_path in configured_subproject_paths.values():
-            basename_aliases.setdefault(configured_path.name, []).append(
-                configured_path
-            )
-            state_result = self._read_document_state(
-                configured_path / c.Infra.PYPROJECT_FILENAME
-            )
-            if state_result.failure:
-                continue
-            state = state_result.value
-            try:
-                declared_name = u.Infra.project_name_from_payload(
-                    state.pyproject_path, state.payload
-                )
-            except c.EXC_TYPE_VALIDATION:
-                continue
-            declared_name_aliases.setdefault(declared_name, []).append(configured_path)
-        project_paths: t.MutableSequenceOf[Path] = []
-        missing_names: t.MutableSequenceOf[str] = []
-        ambiguous_names: t.MutableSequenceOf[str] = []
-        for project_name in selected_names:
-            project_path = configured_subproject_paths.get(project_name)
-            if project_path is None:
-                alias_matches: t.MutableSequenceOf[Path] = []
-                for alias_path in (
-                    *basename_aliases.get(project_name, []),
-                    *declared_name_aliases.get(project_name, []),
-                ):
-                    if alias_path not in alias_matches:
-                        alias_matches.append(alias_path)
-                if len(alias_matches) > 1:
-                    ambiguous_names.append(project_name)
-                    continue
-                project_path = alias_matches[0] if alias_matches else None
-            if project_path is None or not project_path.is_dir():
-                missing_names.append(project_name)
-                continue
-            project_paths.append(project_path)
-        if ambiguous_names:
-            u.Cli.error(f"ambiguous projects: {', '.join(sorted(ambiguous_names))}")
-            return 2
-        if missing_names:
-            u.Cli.error(f"unknown projects: {', '.join(sorted(missing_names))}")
-            return 2
-        files_result = u.Infra.find_all_pyproject_files(
-            self.root,
-            skip_dirs=c.Infra.PYPROJECT_SKIP_DIRS,
-            project_paths=project_paths,
-        )
-        files: t.SequenceOf[Path] = (
-            [] if files_result.failure else sorted(files_result.unwrap())
-        )
         root_pyproject_path = self.root / c.Infra.PYPROJECT_FILENAME
-        if (
-            include_root
-            and root_pyproject_path.is_file()
-            and root_pyproject_path not in files
-        ):
-            files = sorted([root_pyproject_path, *files])
+        files: t.SequenceOf[Path] = (root_pyproject_path,)
         root_state_result = self._read_document_state(root_pyproject_path)
         if root_state_result.failure:
             return 2
         root_state = root_state_result.value
         root_project_name: str | None = None
-        if include_root or self.rewrite_constraints:
+        if self.rewrite_constraints:
             try:
                 root_project_name = u.Infra.project_name_from_payload(
                     root_state.pyproject_path, root_state.payload
@@ -190,12 +114,7 @@ class FlextInfraPyprojectModernizerRunMixin:
                     f"missing or invalid {c.Infra.UV_LOCK_FILENAME} at {lock_path}"
                 )
                 return 2
-            internal_names = tuple(
-                sorted(
-                    set(u.Infra.workspace_project_paths(self.root))
-                    | {root_project_name}
-                )
-            )
+            internal_names = (root_project_name,)
         violations: MutableMapping[str, t.StrSequence] = {}
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []

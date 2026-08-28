@@ -4,7 +4,7 @@ Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-# New file per operator live
+# NOTE (multi-agent, mro-wkii.14 / agent: codegen): new file per operator live
 # order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);
 # accessor typing/config+settings symmetry fixed in templates in the same lane.
 from __future__ import annotations
@@ -41,7 +41,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     package_name: Annotated[
         str, m.Field(description="Python package name (default: name with '-'→'_').")
     ] = ""
-    # Field renamed
+    # NOTE (multi-agent, mro-wkii.14 / agent: codegen): field renamed
     # ``namespace``→``project_namespace`` to avoid colliding with the inherited
     # base field ``target_namespace`` (alias ``namespace``); CLI flag stays ``--ns``.
     project_namespace: Annotated[
@@ -54,7 +54,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     description: Annotated[
         str, m.Field(default="", description="Project description (default: derived).")
     ] = ""
-    # Project config owns the
+    # NOTE (multi-agent, mro-wkii.4.15 / agent: codex): project config owns the
     # already-validated version value consumed directly by project generation.
     version: Annotated[
         str,
@@ -66,15 +66,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     repository_url: Annotated[
         str, m.Field(description="Canonical Git clone URL for the new repository.")
     ] = ""
-    beads_workspace: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads workspace identity.")
-    ]
-    beads_database: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads database identity.")
-    ]
-    beads_issue_prefix: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads issue prefix.")
-    ]
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
@@ -127,22 +118,8 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             provider=self.provider,
             url=repository_url,
             path=Path(),
-            role=c.Infra.RepositoryRole.STANDALONE,
-            state=c.Infra.RepositoryState.ACTIVE,
-            checkout=c.Infra.CheckoutKind.INDEPENDENT,
-            codegen=c.Infra.CodegenKind.CONFORM,
-            package=True,
-            editable=False,
-            read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            name=self.beads_workspace,
-            beads=m.Infra.BeadsProjectSpec(
-                version=c.Infra.BEADS_CONFIG_VERSION,
-                workspace=self.beads_workspace,
-                database=self.beads_database,
-                issue_prefix=self.beads_issue_prefix,
-            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,
@@ -163,7 +140,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 upstream=self.upstream,
                 homepage=repository_page,
                 documentation=repository_page,
-                workspace_root_rel=".",
                 year=self.year,
             ),
         )
