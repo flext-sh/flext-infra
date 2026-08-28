@@ -145,6 +145,30 @@ class FlextInfraUtilitiesPyproject:
         return flext if isinstance(flext, dict) else {}
 
     @staticmethod
+    def tool_flext_declared(project_root: Path) -> p.Result[bool]:
+        """Return whether the project declares a valid ``[tool.flext]`` table."""
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
+        if not pyproject.is_file():
+            return r[bool].ok(False)
+        loaded = u.Cli.toml_read_json(pyproject)
+        if loaded.failure:
+            return r[bool].fail(loaded.error or f"invalid pyproject: {pyproject}")
+        payload = FlextInfraUtilitiesPyproject.validate_infra_payload(loaded.value)
+        if payload is None:
+            return r[bool].fail(f"invalid pyproject payload: {pyproject}")
+        tool = payload.get(c.Infra.TOOL)
+        if tool is None:
+            return r[bool].ok(False)
+        if not isinstance(tool, dict):
+            return r[bool].fail(f"invalid [tool] table: {pyproject}")
+        flext = tool.get("flext")
+        if flext is None:
+            return r[bool].ok(False)
+        if not isinstance(flext, dict):
+            return r[bool].fail(f"invalid [tool.flext] table: {pyproject}")
+        return r[bool].ok(True)
+
+    @staticmethod
     def docs_meta_from_payload(payload: t.JsonMapping) -> t.JsonMapping:
         """Extract ``tool.flext.docs`` metadata from an already-parsed payload."""
         tool = payload.get(c.Infra.TOOL)

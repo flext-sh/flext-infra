@@ -1148,7 +1148,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # disable Dependabot for the repository.
                     has_devcontainer=(repository_root / ".devcontainer").is_dir(),
                     checkout_submodules=codegen.checkout_submodules,
-                    ci_matrix_auto_run=target.ci_matrix_auto_run,
                 )
             )
         destination_path = Path(destination)
@@ -1694,7 +1693,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _uv_environment_plan(
         *, root: Path, config: m.Infra.CodegenConfigSpec
     ) -> m.Infra.UvEnvironmentPlan:
-        """Describe this repository's exact setup without topology fanout."""
+        """Describe this repository's exact local setup."""
         return m.Infra.UvEnvironmentPlan(
             project_root=root,
             environment_root=root,

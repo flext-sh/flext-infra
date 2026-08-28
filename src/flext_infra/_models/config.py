@@ -478,16 +478,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
-        ci_matrix_auto_run: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "When true, ci-matrix triggers include push to main plus "
-                    "workflow_dispatch; when false (default), workflow_dispatch "
-                    "only — file remains projected for root/standalone"
-                )
-            ),
-        ] = False
 
     class MakeWorkflowRenderSpec(_ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
@@ -1362,15 +1352,6 @@ class FlextInfraConfigModels:
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
         ]
-        ci_matrix_auto_run: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "Whether projected ci-matrix auto-runs on push to main; "
-                    "false (default) means workflow_dispatch only"
-                )
-            ),
-        ] = False
         technical_branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Technical branches excluded from ancestry policy"),

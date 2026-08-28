@@ -39,7 +39,6 @@ if TYPE_CHECKING:
         TestsCodegenArtifactSsot,
         codegen,
     )
-    from .test_codegen_beads_projection import TestsCodegenBeadsProjection
     from .test_codegen_conform_progress import TestsFlextInfraCodegenConformProgress
     from .test_codegen_hook_conformance import TestGitHookConformance
     from .test_codegen_make_environment import TestsCodegenMakeEnvironment
@@ -59,7 +58,6 @@ __all__: tuple[str, ...] = (
     "TestGeneratedFilesAreValidPython",
     "TestGitHookConformance",
     "TestsCodegenArtifactSsot",
-    "TestsCodegenBeadsProjection",
     "TestsCodegenMakeEnvironment",
     "TestsFlextInfraCodegenConformProgress",
     "TestsFlextInfraCodegenGeneration",
@@ -111,7 +109,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsCodegenArtifactSsot",
                 "codegen",
             ),
-            ".test_codegen_beads_projection": ("TestsCodegenBeadsProjection",),
             ".test_codegen_conform_progress": (
                 "TestsFlextInfraCodegenConformProgress",
             ),

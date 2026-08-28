@@ -8,7 +8,6 @@ from pathlib import Path
 from flext_infra import c, config
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
-from tests import u
 
 
 def _write_settings(project_root: Path, content: str) -> Path:
@@ -82,7 +81,7 @@ class TestsFlextInfraCodegenVscode:
         """Keep opened-folder settings canonical for roots and subprojects."""
         project_root = tmp_path / "workspace"
         project_root.mkdir()
-        provider = u.Tests.provider()
+        provider = config.Infra.codegen.providers[0]
         (project_root / c.Infra.GITMODULES).write_text(
             '[submodule "app-a"]\n'
             "\tpath = apps/a\n"

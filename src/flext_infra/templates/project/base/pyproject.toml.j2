@@ -175,7 +175,6 @@ warn_untyped_fields = {{ tooling.tools.pydantic_mypy.warn_untyped_fields | lower
 
 [tool.pyrefly]
 disable-project-excludes-heuristics = {{ tooling.tools.pyrefly.disable_project_excludes_heuristics | lower }}
-ignore-errors-in-generated-code = {{ tooling.tools.pyrefly.ignore_errors_in_generated_code | lower }}
 project-excludes = [
 {% for item in tooling.tools.pyrefly.project_exclude_globs | sort %}
   {{ item | tojson }},
@@ -191,9 +190,6 @@ search-path = [{% for item in tooling_runtime.pyrefly_search_path %}{{ item | to
 use-ignore-files = {{ tooling.tools.pyrefly.use_ignore_files | lower }}
 
 [tool.pyrefly.errors]
-{% for item in tooling.tools.pyrefly.disabled_errors | sort %}
-{{ item }} = false
-{% endfor %}
 {% for item in tooling.tools.pyrefly.strict_errors | sort %}
 {{ item }} = "error"
 {% endfor %}

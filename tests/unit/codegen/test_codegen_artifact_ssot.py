@@ -89,21 +89,14 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(unaccounted, eq=())
 
-    def test_makefile_has_one_owner_for_every_declared_profile(
-        self, codegen: CodegenSpec
-    ) -> None:
-        """Cover repository profiles through one generic template entry."""
+    def test_makefile_has_one_template_owner(self, codegen: CodegenSpec) -> None:
+        """Render every repository through one Makefile template entry."""
         entries = tuple(
             entry
             for entry in codegen.templates.entries
             if entry.destination == c.Infra.MAKEFILE_FILENAME
         )
         tm.that(entries, len=1)
-        declared_profiles = {
-            c.Infra.MakeProfile.WORKSPACE,
-            c.Infra.MakeProfile.STANDALONE,
-        }
-        tm.that(set(entries[0].profiles), eq=declared_profiles)
 
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         self, codegen: CodegenSpec
@@ -144,7 +137,6 @@ class TestsCodegenArtifactSsot:
             pyproject='[project]\nname = "artifact-ssot"\nversion = "0.1.0"\n',
             with_src=True,
         )
-        u.Tests.write_project_beads_config(project, "artifact-ssot")
         u.Tests.initialize_git_repo(
             project, origin_url=u.Tests.repository_ref("artifact-ssot").url
         )

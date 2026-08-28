@@ -28,7 +28,6 @@ def _build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
     (project / "index.md").write_text("index\n", encoding="utf-8")
     (project / "output.log").write_text("log-line\n", encoding="utf-8")
     (project / "loose.txt").write_text("unknown\n", encoding="utf-8")
-    u.Tests.declare_workspace_projects(tmp_path, (name,))
     return project
 
 
@@ -44,7 +43,7 @@ def _engine(
 def test_check_reports_move_archive_review_and_gitignore(tmp_path: Path) -> None:
     """Check mode classifies every loose root entry without writing."""
     project = _build_loose_project(tmp_path)
-    engine = _engine(tmp_path)
+    engine = _engine(project)
 
     report = engine.check_project(project)
 
@@ -64,8 +63,8 @@ def test_check_reports_move_archive_review_and_gitignore(tmp_path: Path) -> None
 
 def test_check_execute_passes_while_severity_is_warning(tmp_path: Path) -> None:
     """CLI check posture is report-only while the SSOT severity is warning."""
-    _build_loose_project(tmp_path)
-    engine = _engine(tmp_path)
+    project = _build_loose_project(tmp_path)
+    engine = _engine(project)
 
     result = engine.execute()
 
@@ -76,7 +75,7 @@ def test_check_execute_passes_while_severity_is_warning(tmp_path: Path) -> None:
 def test_apply_moves_archives_and_converges_idempotently(tmp_path: Path) -> None:
     """Apply reorganizes once; a second apply performs zero operations."""
     project = _build_loose_project(tmp_path)
-    engine = _engine(tmp_path, apply_changes=True)
+    engine = _engine(project, apply_changes=True)
 
     first = engine.execute()
 
@@ -101,7 +100,7 @@ def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
     """Gitignore additions from the SSOT are appended once across applies."""
     project = _build_loose_project(tmp_path, name="flext-cli")
     (project / "settings.json").write_text("{}\n", encoding="utf-8")
-    engine = _engine(tmp_path, apply_changes=True)
+    engine = _engine(project, apply_changes=True)
 
     first = engine.execute()
     tm.ok(first)
@@ -124,7 +123,7 @@ def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
     """Tracked sources move through git so history follows the rename."""
     project = _build_loose_project(tmp_path)
     u.Tests.initialize_git_repo(project)
-    engine = _engine(tmp_path, apply_changes=True)
+    engine = _engine(project, apply_changes=True)
 
     result = engine.execute()
 
@@ -143,7 +142,7 @@ def test_apply_docs_collision_keeps_target_and_archives_source(tmp_path: Path) -
     existing = project / "docs" / "guides"
     existing.mkdir(parents=True)
     (existing / "intro.md").write_text("canonical\n", encoding="utf-8")
-    engine = _engine(tmp_path, apply_changes=True)
+    engine = _engine(project, apply_changes=True)
 
     result = engine.execute()
 
@@ -167,8 +166,7 @@ def test_apply_override_move_then_archives_emptied_dir(tmp_path: Path) -> None:
         "[project]\nname='flext-dbt-ldif'\nversion='0.1.0'\n", encoding="utf-8"
     )
     (profiles / "profiles.yml").write_text("profile: 1\n", encoding="utf-8")
-    u.Tests.declare_workspace_projects(tmp_path, (project.name,))
-    engine = _engine(tmp_path, apply_changes=True)
+    engine = _engine(project, apply_changes=True)
 
     result = engine.execute()
 
@@ -222,7 +220,7 @@ def test_keep_root_files_override(tmp_path: Path) -> None:
     (project / "README.md").write_text("# ai-hub\n", encoding="utf-8")
     (project / "UNIVERSAL_CORE.md").write_text("core\n", encoding="utf-8")
     (project / "ECOSYSTEM.md").write_text("eco\n", encoding="utf-8")
-    engine = _engine(tmp_path)
+    engine = _engine(project)
 
     report = engine.check_project(project)
 
@@ -238,7 +236,7 @@ def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:
     (project / "data" / "proposal").mkdir()
     (project / "external-docs").mkdir()
     (project / "external-docs" / "note.md").write_text("ext\n", encoding="utf-8")
-    engine = _engine(tmp_path)
+    engine = _engine(project)
 
     report = engine.check_project(project)
 
@@ -253,7 +251,7 @@ def test_duplicate_root_md_archives_when_docs_copy_exists(tmp_path: Path) -> Non
     docs = project / "docs"
     docs.mkdir(parents=True, exist_ok=True)
     (docs / "index.md").write_text("canonical-index\n", encoding="utf-8")
-    engine = _engine(tmp_path, apply_changes=True)
+    engine = _engine(project, apply_changes=True)
 
     result = engine.execute()
 

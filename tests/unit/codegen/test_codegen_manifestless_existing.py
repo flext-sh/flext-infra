@@ -43,7 +43,6 @@ class TestCodegenManifestlessExisting:
         )
         for relative, content in preserved.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
-        u.Tests.write_project_beads_config(root, config.Infra.name)
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -53,10 +52,12 @@ class TestCodegenManifestlessExisting:
         )
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        metadata = tm.ok(u.read_project_metadata(root))
         tm.that(derived.repository.name, eq=repository.name)
         tm.that(derived.repository.distribution, eq=repository.distribution)
         tm.that(derived.repository.path, eq=Path())
-        tm.that(derived.project, eq=None)
+        tm.that(derived.project.constant_name, eq=metadata.project.name)
+        tm.that(derived.project.package_name, eq=metadata.package_name)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.PYPROJECT,
@@ -114,7 +115,6 @@ class TestCodegenManifestlessExisting:
         package_init = root / "src" / "flext_infra" / "__init__.py"
         package_init.parent.mkdir(parents=True)
         tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
-        u.Tests.write_project_beads_config(root, config.Infra.name)
         (root / ".env.example").mkdir()
 
         planned = FlextInfraCodegenConform(workspace_root=root).plan(

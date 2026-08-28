@@ -307,8 +307,13 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[m.Infra.RepositoryConformTarget].fail(
                 mode_result.error or "unable to infer repository topology"
             )
-        managed = bool(u.Infra.tool_flext_meta(resolved_root))
-        if not managed:
+        managed_result = u.Infra.tool_flext_declared(resolved_root)
+        if managed_result.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                managed_result.error
+                or f"managed declaration resolution failed: {resolved_root}"
+            )
+        if not managed_result.value:
             return r[m.Infra.RepositoryConformTarget].fail(
                 f"managed repository must declare [tool.flext]: {resolved_root}"
             )
@@ -317,7 +322,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 repository=repository,
                 root=resolved_root,
                 topology=mode_result.value,
-                managed=managed,
+                managed=True,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_branch_result.value,
                 ci_enabled=True,

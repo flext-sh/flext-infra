@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     )
     from .test_facade_environment_sync import TestsFlextInfraFacadeEnvironmentSync
     from .test_main import TestsFlextInfraWorkspaceMain, workspace_main
-    from .test_repository_local_topology import TestsRepositoryLocalTopology
     from .test_vscode import TestsFlextInfraCodegenVscode
     from .worktree_fixture import WorktreeFixture
 __all__: tuple[str, ...] = (
@@ -30,7 +29,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenVscode",
     "TestsFlextInfraFacadeEnvironmentSync",
     "TestsFlextInfraWorkspaceMain",
-    "TestsRepositoryLocalTopology",
     "WorktreeFixture",
     "test_project_scope_uses_declared_name_inside_worktree_lane",
     "test_toc_is_inserted_after_h1_preceded_by_html_comment",
@@ -53,7 +51,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_facade_environment_sync": ("TestsFlextInfraFacadeEnvironmentSync",),
             ".test_main": ("TestsFlextInfraWorkspaceMain", "workspace_main"),
-            ".test_repository_local_topology": ("TestsRepositoryLocalTopology",),
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),
             ".worktree_fixture": ("WorktreeFixture",),
         }),

@@ -6,8 +6,7 @@
 # Multi-environment CI base: proves the project bootstrap and canonical Make
 # verbs work identically across distros, macOS, and Windows. The CI invokes
 # the project's own Make surface; it never reimplements bootstrap.
-# Projected identically for workspace and standalone repositories. Workspace
-# projects are covered by the root matrix.
+# Projected identically for every selected repository.
 # Never bind triggers to the integration-line variable.
 ---
 name: ci-matrix

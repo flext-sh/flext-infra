@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import c, config
 from flext_tests import tm
 from tests import u
 
@@ -75,56 +75,17 @@ class WorktreeFixture:
     @staticmethod
     def governed_repository_url(distribution: str) -> str:
         """Build a fixture repository URL from the configured provider."""
-        provider = u.Tests.provider()
+        provider = config.Infra.codegen.providers[0]
         return f"{provider.base_url.rstrip('/')}/{distribution}.git"
 
-    @staticmethod
-    def write_beads_project(
-        root: Path,
-        *,
-        workspace: str,
-        database: str,
-        issue_prefix: str,
-        custom_issue_types: tuple[str, ...] = (),
-    ) -> Path:
-        """Write one repository-local Beads identity input."""
-        path = root / "config" / "beads.yaml"
-        payload: dict[str, t.JsonValue] = {
-            "version": 1,
-            "workspace": workspace,
-            "database": database,
-            "issue_prefix": issue_prefix,
-        }
-        if custom_issue_types:
-            custom_types: list[t.JsonValue] = [*custom_issue_types]
-            payload["custom_issue_types"] = custom_types
-        tm.ok(u.Cli.yaml_dump(path, payload))
-        return path
-
     @classmethod
-    def initialize_governed_project(
-        cls,
-        root: Path,
-        distribution: str,
-        *,
-        workspace: str,
-        database: str,
-        issue_prefix: str,
-        custom_issue_types: tuple[str, ...] = (),
-    ) -> Path:
+    def initialize_governed_project(cls, root: Path, distribution: str) -> Path:
         """Create one self-identifying governed project with a real Git origin."""
         pyproject = cls.write_python_project(root, distribution)
-        cls.write_beads_project(
-            root,
-            workspace=workspace,
-            database=database,
-            issue_prefix=issue_prefix,
-            custom_issue_types=custom_issue_types,
-        )
         u.Tests.initialize_git_repo(
             root, origin_url=cls.governed_repository_url(distribution)
         )
-        provider = u.Tests.provider()
+        provider = config.Infra.codegen.providers[0]
         baseline = tm.ok(u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -148,7 +109,7 @@ class WorktreeFixture:
     @classmethod
     def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
         """Declare governed subprojects from the configured provider contract."""
-        provider = u.Tests.provider()
+        provider = config.Infra.codegen.providers[0]
         path = root / c.Infra.GITMODULES
         path.write_text(
             "".join(

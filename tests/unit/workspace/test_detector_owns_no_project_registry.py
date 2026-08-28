@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_infra import c, config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
@@ -67,3 +68,28 @@ class TestsDetectorOwnsNoProjectRegistry:
 
         tm.that(mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
         tm.that("members" in type(spec).model_fields, eq=False)
+
+    @pytest.mark.parametrize("workspace", [False, True])
+    def test_empty_flext_table_declares_management_independently(
+        self, tmp_path: Path, *, workspace: bool
+    ) -> None:
+        """An empty [tool.flext] table manages either repository topology."""
+        root = _standalone(tmp_path / "managed-project", name="managed-project")
+        pyproject = root / "pyproject.toml"
+        pyproject.write_text(
+            f"{pyproject.read_text(encoding='utf-8')}\n[tool.flext]\n", encoding="utf-8"
+        )
+        if workspace:
+            (root / ".gitmodules").write_text("", encoding="utf-8")
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
+
+        tm.that(target.managed, eq=True)
+        tm.that(
+            target.topology,
+            eq=(
+                c.Infra.WorkspaceMode.WORKSPACE
+                if workspace
+                else c.Infra.WorkspaceMode.STANDALONE
+            ),
+        )
