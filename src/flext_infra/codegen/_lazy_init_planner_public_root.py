@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
@@ -26,13 +25,11 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         lazy_map: t.MutableLazyAliasMap,
         eager_names: frozenset[str],
     ) -> tuple[set[str], t.MutableLazyAliasMap]:
-        inherited_facets = self._declared_inherited_facets(context)
         declared_contract = (
             self._declared_root_contract(context)
             if context.current_pkg.startswith("flext_")
             else None
         )
-        source_import_names = self._source_import_names(context.pkg_dir)
         governed_lazy_map = {
             name: target
             for name, target in lazy_map.items()
@@ -40,9 +37,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
                 name,
                 target,
                 root_pkg=context.current_pkg,
-                inherited_facets=inherited_facets,
                 declared_contract=declared_contract,
-                source_import_names=source_import_names,
             )
         }
         lazy_map.clear()
@@ -86,29 +81,15 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         )
         return contract or None
 
-    def _source_import_names(self, pkg_dir: Path) -> frozenset[str]:
-        constants_path = pkg_dir / c.Infra.CONSTANTS_PY
-        if self.rope_workspace.resource(constants_path) is None:
-            return frozenset()
-        return frozenset(
-            name
-            for name, target in self.rope_workspace.semantic(
-                constants_path
-            ).declared_imports.items()
-            if name != "annotations" and not target.startswith("__future__")
-        )
-
     @staticmethod
     def _is_declared_root_export(
         name: str,
         target: t.StrPair,
         *,
         root_pkg: str,
-        inherited_facets: frozenset[str] | None,
         declared_contract: frozenset[str] | None,
-        source_import_names: frozenset[str],
     ) -> bool:
-        # flext-6szaq.14: private names never widen the public root ABI.
+        # mro-6szaq.14: private names never widen the public root ABI.
         if name.startswith("_"):
             return False
         if declared_contract is not None and name not in declared_contract:
@@ -120,23 +101,13 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         if module_path == root_pkg:
             return True
         if module_path.startswith(f"{root_pkg}."):
-            # flext-6szaq.14 contract: any underscore-prefixed source segment
+            # mro-6szaq.14 contract: any underscore-prefixed source segment
             # marks the owner as private; the symbol stays behind its facade.
             tail = module_path[len(root_pkg) + 1 :].split(".")
             return not any(
                 part.startswith("_") and not part.startswith("__") for part in tail
             )
-        return not (
-            inherited_facets is not None
-            and name not in inherited_facets
-            and name not in source_import_names
-        )
-
-    def _declared_inherited_facets(
-        self, context: m.Infra.LazyInitPackageContext
-    ) -> frozenset[str] | None:
-        del context
-        return None
+        return True
 
 
 __all__: list[str] = ["FlextInfraCodegenLazyInitPlannerPublicRootMixin"]

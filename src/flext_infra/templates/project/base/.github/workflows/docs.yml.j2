@@ -37,15 +37,10 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
+      - name: Install mise toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
-          python-version: "{{ python_version }}"
-
-      - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
-        with:
-          enable-cache: true
+          version: {{ mise_version }}
 
       - name: Sync workspace toolchain
         run: make setup
@@ -125,15 +120,10 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
+      - name: Install mise toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
-          python-version: "{{ python_version }}"
-
-      - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
-        with:
-          enable-cache: true
+          version: {{ mise_version }}
 
       - name: Sync workspace toolchain
         run: make setup

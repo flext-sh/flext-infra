@@ -1,4 +1,4 @@
-"""Verify generated workspace Make behavior across orchestration seams."""
+"""Verify generated workspace-root Make behavior across orchestration seams."""
 
 from __future__ import annotations
 
@@ -11,134 +11,55 @@ from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 
 from tests import c, m, p, u
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
-    remote_root = tmp_path / "remotes"
-    remote_root.mkdir()
-    # The fixture declares the synthetic topology it needs; flext-infra owns
-    # no catalog of real projects to borrow rows from.
     root_repository = u.Tests.repository_ref("fixture-workspace")
-    provider = next(
-        item
-        for item in config.Infra.codegen.providers
-        if item.name == root_repository.provider
-    )
-    members = tuple(
-        u.Tests.repository_ref(
-            name, path=Path(name), role=c.Infra.RepositoryRole.STANDALONE
-        )
+    subprojects = tuple(
+        u.Tests.repository_ref(name, path=Path(name))
         for name in ("fixture-member-one", "fixture-member-two")
     )
-    project_names = tuple(member.path.as_posix() for member in members)
+    project_names = tuple(project.path.as_posix() for project in subprojects)
     root_package = (
         workspace_root / "src" / root_repository.distribution.replace("-", "_")
     )
     root_package.mkdir(parents=True)
     (root_package / "__init__.py").write_text("", encoding="utf-8")
     (workspace_root / "pyproject.toml").write_text(
-        f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n"
-        "dependencies = ['flext-core>=0.1.0']\n",
+        f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n",
         encoding="utf-8",
     )
-    u.Tests.write_standalone_beads_override(workspace_root)
-    for project_name, member in zip(project_names, members, strict=True):
+    u.Tests.write_beads_project(
+        workspace_root,
+        workspace=root_repository.name,
+        database=root_repository.name,
+        issue_prefix=root_repository.name,
+    )
+    u.Tests.initialize_git_repo(
+        workspace_root,
+        origin_url=root_repository.url,
+    )
+    for project_name in project_names:
         project_root = workspace_root / project_name
-        project_root.mkdir(parents=True)
-        package_root = project_root / "src" / project_name.replace("-", "_")
-        package_root.mkdir(parents=True)
-        (package_root / "__init__.py").write_text("", encoding="utf-8")
-        (project_root / "pyproject.toml").write_text(
-            f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n"
-            "dependencies = ['flext-core>=0.1.0']\n",
-            encoding="utf-8",
+        WorktreeFixture.initialize_governed_project(
+            project_root,
+            project_name,
+            workspace=f"{project_name}-workspace",
+            database=f"{project_name}-database",
+            issue_prefix=f"{project_name}-prefix",
         )
-        u.Tests.write_standalone_beads_override(project_root)
-        u.Tests.initialize_git_repo(project_root, origin_url=member.url)
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "branch", provider.branch, "HEAD"], cwd=project_root
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "clone",
-                    "--bare",
-                    str(project_root),
-                    str(remote_root / f"{member.name}.git"),
-                ],
-                cwd=tmp_path,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    "git",
-                    "config",
-                    f"url.file://{remote_root.as_posix()}/.insteadOf",
-                    provider.base_url.rstrip("/") + "/",
-                ],
-                cwd=project_root,
-            )
-        )
-    # Seed the declared provider URL as origin so workspace discovery resolves
-    # this fixture as a provider-governed checkout; the helper owns the fake
-    # baseline ref, and real ancestry is exercised elsewhere.
-    u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
-    tm.ok(
-        u.Cli.run_checked(
-            ["git", "branch", provider.branch, "HEAD"], cwd=workspace_root
-        )
-    )
-    tm.ok(
-        u.Cli.run_checked(
-            [
-                "git",
-                "clone",
-                "--bare",
-                str(workspace_root),
-                str(remote_root / f"{root_repository.name}.git"),
-            ],
-            cwd=tmp_path,
-        )
-    )
-    tm.ok(
-        u.Cli.run_checked(
-            [
-                "git",
-                "config",
-                f"url.file://{remote_root.as_posix()}/.insteadOf",
-                provider.base_url.rstrip("/") + "/",
-            ],
-            cwd=workspace_root,
-        )
-    )
-    # Declare the fixture projects through the same .gitmodules topology used in
-    # production.
-    gitmodules_path = workspace_root / ".gitmodules"
-    gitmodules_lines = []
-    for member in members:
-        section_name = member.name.replace("-", "_")
-        gitmodules_lines.extend([
-            f'[submodule "{section_name}"]\n',
-            f"\tpath = {member.path.as_posix()}\n",
-            f"\turl = {member.url}\n",
-            f"\tbranch = {provider.branch}\n",
-        ])
-    gitmodules_path.write_text("".join(gitmodules_lines), encoding="utf-8")
-    tm.ok(u.Cli.run_checked(["git", "add", ".gitmodules"], cwd=workspace_root))
-    tm.ok(
-        u.Cli.run_checked(
-            ["git", "commit", "-m", "seed fixture gitmodules"], cwd=workspace_root
-        )
-    )
-    # These tests assert what the generated Makefile contains, so only the
-    # rendered artifacts are needed. Planning renders the same files without
-    # applying unrelated repository changes.
+    gitmodules_path = WorktreeFixture.write_gitmodules(workspace_root, project_names)
+    protected_paths = {
+        gitmodules_path,
+        workspace_root / "config" / "beads.yaml",
+        *(workspace_root / name / "config" / "beads.yaml" for name in project_names),
+    }
+    # These tests assert what the generated Makefile contains, so the public
+    # planning surface provides the exact artifacts without writing the fixture.
+    # Generation is runtime-independent and never invokes tracker services.
     planned = tm.ok(
         FlextInfraCodegenConform().plan(
             m.Infra.CodegenConformRequest(
@@ -147,6 +68,10 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
+    )
+    tm.that(
+        tuple(item.path for item in planned.files if item.path in protected_paths),
+        empty=True,
     )
     for planned_file in planned.files:
         planned_file.path.parent.mkdir(parents=True, exist_ok=True)
@@ -214,6 +139,22 @@ class TestsWorkspaceRootMakeContract:
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
 
+    def test_generated_make_does_not_reintroduce_docs_verb(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root, _project_names = _write_workspace(tmp_path)
+
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "docs"], cwd=workspace_root
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(
+            tuple(verb.name for verb in config.Infra.codegen.make.verbs), lacks="docs"
+        )
+
     def test_generated_make_routes_fmt_apply_to_selected_project(
         self, tmp_path: Path
     ) -> None:
@@ -274,7 +215,7 @@ class TestsWorkspaceRootMakeContract:
         """Forward a root-owned test FILE selector with the member fan-out.
 
         A workspace root owns no local gate implementation: Make never emits a
-        ``--projects .`` lane (selecting the root maps to WORKSPACE_SUBPROJECTS).
+        ``--projects .`` lane (selecting the root maps to its subprojects).
         Which project owns the file is decided by the orchestrator
         (_select_file_owner) at runtime, not by this Make recipe, so this
         boundary asserts forwarding rather than owner filtering.
@@ -308,7 +249,7 @@ class TestsWorkspaceRootMakeContract:
         """Default test selection is every declared member, never the root.
 
         A workspace root owns no local gate implementation, so the default
-        fan-out is WORKSPACE_SUBPROJECTS; selecting ``.`` would orchestrate the
+        fan-out is the declared subprojects; selecting ``.`` would orchestrate the
         root against itself forever and is mapped away by the template.
         """
         workspace_root, project_names = _write_workspace(tmp_path)
@@ -401,7 +342,6 @@ class TestsWorkspaceRootMakeContract:
             tm.that(child_log, has="gates=lint,pyrefly")
             tm.that(child_log, lacks=str(hostile_root))
 
-    @pytest.mark.slow
     def test_orchestrator_fail_fast_preserves_child_exit_and_skips_remaining(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

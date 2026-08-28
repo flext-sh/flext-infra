@@ -127,7 +127,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             m.Infra.PyrightConfig.ExecutionEnvironment
         ] = []
         root_source_path = self._project_source_path()
-        # flext-j47u (codex): specific roots precede the broad source environment.
+        # mro-j47u (codex): specific roots precede the broad source environment.
         expected_envs.extend(
             self._diagnostic_override_envs(
                 project_dir=workspace_root,
@@ -199,16 +199,11 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Build environments only for productive directories that exist."""
         rules = self._tool_config.tools.pyright.path_rules
-        # flext-j47u (codex): absent optional roots are not valid Pyright inputs.
-        declared_env_dirs = tuple(
+        # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
+        env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
             if project_dir is None or (project_dir / env_dir).is_dir()
-        )
-        env_dirs = (
-            u.Infra.analyzer_python_roots(project_dir, declared_env_dirs)
-            if project_dir is not None
-            else declared_env_dirs
         )
         source_path = self._project_source_path()
         return (
@@ -239,7 +234,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     @staticmethod
     def _declared_environment_dirs(env_dirs: t.StrSequence) -> t.StrSequence:
         """Apply canonical Python discovery exclusions to pre-write declarations."""
-        # NOTE (multi-agent, flext-wkii.17.9.2.1): declared and on-disk roots must
+        # NOTE (multi-agent, mro-wkii.17.9.2.1): declared and on-disk roots must
         # select the same first-class analyzer environments in the first pass.
         return tuple(
             env_dir
@@ -357,16 +352,13 @@ class FlextInfraEnsurePyrightConfigPhase:
         # Why (fixed point): a root the active codegen plan materializes counts
         # before it exists on disk, so plan and post-apply verification agree.
         if not is_root:
-            declared_roots = [
+            return [
                 env_dir
                 for env_dir in rules.env_dirs
                 if project_dir is None
                 or (project_dir / env_dir).is_dir()
                 or env_dir in generated_roots
             ]
-            if project_dir is None:
-                return declared_roots
-            return u.Infra.analyzer_python_roots(project_dir, declared_roots)
         if workspace_root is None:
             return ()
         includes: t.MutableSequenceOf[str] = [
@@ -381,7 +373,10 @@ class FlextInfraEnsurePyrightConfigPhase:
             (
                 project.path
                 for project in discovered.value
-                if (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
+                if (
+                    project.workspace_role
+                    == c.Infra.WorkspaceProjectRole.SUBPROJECT
+                )
             ),
             key=lambda project_path: project_path.name,
         )
@@ -409,7 +404,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         expected_ignores = self._expected_ignores(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )
-        # flext-j47u (codex): pre-write manifests supply the same typed roots that
+        # mro-j47u (codex): pre-write manifests supply the same typed roots that
         # filesystem discovery observes after the atomic scaffold is materialized.
         #
         # `declared_python_dirs_are_complete` distinguishes "caller listed some
@@ -417,15 +412,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         # discovery outright, including when the declared list is EMPTY -- a
         # project that genuinely has no Python root must render none, not fall
         # back to scanning a directory tree that does not exist yet.
-        workspace_owns_children = bool(
-            is_root
-            and workspace_root is not None
-            and (workspace_root / c.Infra.GITMODULES).is_file()
-        )
         expected_includes = (
             declared_python_dirs
-            if not workspace_owns_children
-            and (declared_python_dirs or declared_python_dirs_are_complete)
+            if declared_python_dirs or declared_python_dirs_are_complete
             else self._expected_includes(
                 is_root=is_root,
                 workspace_root=workspace_root,
@@ -454,8 +443,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 project_root=stub_rules.project_root,
                 rules=stub_rules,
             )
-            if not workspace_owns_children
-            and (declared_python_dirs or declared_python_dirs_are_complete)
+            if declared_python_dirs
             else self._expected_envs(
                 is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
             )

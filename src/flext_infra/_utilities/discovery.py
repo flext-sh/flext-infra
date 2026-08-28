@@ -25,7 +25,7 @@ class FlextInfraUtilitiesDiscovery(
 ):
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
-    _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
+    _PARENT_CONSTANTS_MRO_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
     @cache
@@ -165,7 +165,7 @@ class FlextInfraUtilitiesDiscovery(
     @staticmethod
     def package_importable(package_name: str) -> bool:
         """Return whether the active official environment resolves one package."""
-        # Why (flext-27a9e.1, multi-agent): standalone consumers inherit aliases
+        # Why (mro-27a9e.1, multi-agent): standalone consumers inherit aliases
         # from installed FLEXT artifacts; plain modules are never facade parents.
         try:
             spec = importlib_util.find_spec(package_name)
@@ -231,8 +231,8 @@ class FlextInfraUtilitiesDiscovery(
         roots that actually exist, which is the only set an analyzer accepts.
 
         A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace projects are Python directories too,
-        and each is analyzed under its own manifest.
+        never a root of this one: workspace subprojects are Python directories
+        too, and each is analyzed under its own local configuration.
         """
         discovered = cls.discover_python_dirs(project_dir)
         return (
@@ -247,12 +247,7 @@ class FlextInfraUtilitiesDiscovery(
 
     @staticmethod
     def _workspace_excluded_top_dirs(project_dir: Path) -> frozenset[str]:
-        """Return first segments of manifest-excluded workspace-relative paths.
-
-        Immutable ``content_only`` repositories and explicit ``exclusions`` in
-        repository-local ``config/*.yaml`` must never be discovered as Python source,
-        regardless of any Python files they happen to contain.
-        """
+        """Return first segments of read-only external topology paths."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
         excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
@@ -326,13 +321,21 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def rope_workspace_root(cls, workspace_root: Path) -> Path:
-        """Keep repository roots local while accepting paths inside Python wrappers."""
+        """Return the canonical root for a shared Rope project."""
         resolved_root = workspace_root.resolve()
-        project_root = cls.project_root(resolved_root)
-        if project_root is None or project_root == resolved_root:
+        has_project_marker = any(
+            candidate.is_file()
+            for candidate in (
+                resolved_root / c.Infra.PYPROJECT_FILENAME,
+                resolved_root / c.Infra.MAKEFILE_FILENAME,
+            )
+        )
+        if not has_project_marker and cls.namespace_scan_dirs(resolved_root):
             return resolved_root
-        relative = resolved_root.relative_to(project_root)
-        if relative.parts and relative.parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS:
+        if cls._child_project_roots(resolved_root):
+            return resolved_root
+        project_root = cls.project_root(resolved_root)
+        if project_root is not None:
             return project_root
         return resolved_root
 
@@ -348,12 +351,15 @@ class FlextInfraUtilitiesDiscovery(
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        # NOTE (multi-agent, flext-wkii.17): explicit project paths are a hard
+        # NOTE (multi-agent, mro-wkii.17): explicit project paths are a hard
         # write-scope boundary; sibling workspaces remain discovery-only otherwise.
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
-            else [workspace_root.resolve()]
+            else [
+                workspace_root.resolve(),
+                *cls.discover_external_workspace_roots(workspace_root),
+            ]
         )
         all_files: list[Path] = []
         for scan_root in scan_roots:
@@ -392,7 +398,7 @@ class FlextInfraUtilitiesDiscovery(
         return r[t.SequenceOf[Path]].ok(all_files)
 
     @classmethod
-    def resolve_parent_constants_flext(
+    def resolve_parent_constants_mro(
         cls, pkg_dir_or_file: Path, *, return_module: bool = False
     ) -> t.StrSequence:
         """Resolve imported parent ``Constants`` targets through Rope semantics."""
@@ -407,7 +413,7 @@ class FlextInfraUtilitiesDiscovery(
         if project_root is None:
             return ()
         cache_key = (str(constants_file.resolve()), return_module)
-        if (cached := cls._PARENT_CONSTANTS_FLEXT_CACHE.get(cache_key)) is not None:
+        if (cached := cls._PARENT_CONSTANTS_MRO_CACHE.get(cache_key)) is not None:
             return cached
         current_module = cls.package_name(constants_file)
         result = cls.parent_constants_targets(
@@ -418,7 +424,7 @@ class FlextInfraUtilitiesDiscovery(
             if current_module
             else "",
         )
-        cls._PARENT_CONSTANTS_FLEXT_CACHE[cache_key] = result
+        cls._PARENT_CONSTANTS_MRO_CACHE[cache_key] = result
         return result
 
     @classmethod
@@ -436,7 +442,7 @@ class FlextInfraUtilitiesDiscovery(
             visited.add(package_name)
             init_path = cls.package_init_path(workspace_root, package_name)
             if init_path is not None:
-                for parent_package in cls.resolve_parent_constants_flext(
+                for parent_package in cls.resolve_parent_constants_mro(
                     init_path.parent, return_module=True
                 ):
                     visit(parent_package)
@@ -460,7 +466,7 @@ class FlextInfraUtilitiesDiscovery(
         )
         if not (package_dir / c.Infra.INIT_PY).is_file():
             return {}
-        parent_packages = cls.resolve_parent_constants_flext(
+        parent_packages = cls.resolve_parent_constants_mro(
             package_dir, return_module=True
         )
         if not parent_packages:
@@ -474,11 +480,11 @@ class FlextInfraUtilitiesDiscovery(
         )
         for family_dir in c.Infra.FAMILY_DIRECTORIES.values():
             if file_path.is_relative_to(package_dir / family_dir):
-                return dict.fromkeys(c.Infra.FLEXT_FAMILIES, allowed_sources)
+                return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         if file_path.name in {"base.py", c.Infra.NAMESPACE_PRIVATE_BASE_MODULE}:
             return dict.fromkeys(c.Infra.ENFORCEMENT_CANONICAL_ALIASES, allowed_sources)
         if file_path.name in c.Infra.NAMESPACE_SETTINGS_FILE_NAMES:
-            return dict.fromkeys(c.Infra.FLEXT_FAMILIES, allowed_sources)
+            return dict.fromkeys(c.Infra.MRO_FAMILIES, allowed_sources)
         return {}
 
 

@@ -9,41 +9,30 @@ from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
 from flext_tests import tm
-from tests import u as test_u
+
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 def _workspace(root: Path, distribution: str = "sample-member") -> Path:
-    root.mkdir()
+    WorktreeFixture.initialize_governed_project(
+        root,
+        "sample",
+        workspace="sample-workspace",
+        database="sample-database",
+        issue_prefix="sample-prefix",
+    )
     member = root / distribution
-    (member / "src").mkdir(parents=True)
-    (root / "pyproject.toml").write_text(
-        "[project]\nname = 'sample'\nversion = '0.1.0'\n", encoding="utf-8"
+    WorktreeFixture.initialize_governed_project(
+        member,
+        distribution,
+        workspace=f"{distribution}-workspace",
+        database=f"{distribution}-database",
+        issue_prefix=f"{distribution}-prefix",
     )
-    (member / "pyproject.toml").write_text(
-        f"[project]\nname = '{distribution}'\nversion = '0.1.0'\n", encoding="utf-8"
-    )
-    override = "version: 1\nworkspace: flext\ndatabase: flext\nissue_prefix: flext\n"
-    for project in (root, member):
-        config_dir = project / "config"
-        config_dir.mkdir()
-        (config_dir / "beads.yaml").write_text(override, encoding="utf-8")
-    (root / ".gitmodules").write_text(
-        f"""[submodule \"{distribution}\"]
-\tpath = {distribution}
-\turl = https://github.com/flext-sh/{distribution}.git
-\tbranch = 0.12.0-dev
-""",
-        encoding="utf-8",
-    )
-    test_u.Tests.initialize_git_repo(
-        member, origin_url=f"https://github.com/flext-sh/{distribution}.git"
-    )
-    test_u.Tests.initialize_git_repo(
-        root, origin_url="https://github.com/flext-sh/sample.git"
-    )
+    WorktreeFixture.write_gitmodules(root, (distribution,))
     return root
 
 

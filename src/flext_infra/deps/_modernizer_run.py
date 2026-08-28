@@ -37,8 +37,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             self, path: Path
         ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
 
-        def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]: ...
-
         def _process_document_state(
             self,
             state: m.Infra.PyprojectDocumentState,
@@ -78,17 +76,17 @@ class FlextInfraPyprojectModernizerRunMixin:
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
-        # NOTE (multi-agent, flext-wkii.17): modernization writes only the
+        # NOTE (multi-agent, mro-wkii.17): modernization writes only the
         # requested workspace root and its configured members, never siblings.
         include_root = not project_names or "." in project_names
         selected_names = (
             [name for name in project_names if name != "."]
             if project_names
-            else list(u.Infra.workspace_project_paths(self.root))
+            else list(u.Infra.workspace_member_names(self.root))
         )
         configured_member_paths = {
             member_name: self.root / member_name
-            for member_name in u.Infra.workspace_project_paths(self.root)
+            for member_name in u.Infra.workspace_member_names(self.root)
         }
         resolved_root = self.root.resolve()
         outside_member_names = [
@@ -98,7 +96,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         ]
         if outside_member_names:
             u.Cli.error(
-                "workspace projects outside root: "
+                "workspace members outside root: "
                 f"{', '.join(sorted(outside_member_names))}"
             )
             return 2
@@ -192,47 +190,9 @@ class FlextInfraPyprojectModernizerRunMixin:
                     f"missing or invalid {c.Infra.UV_LOCK_FILENAME} at {lock_path}"
                 )
                 return 2
-            competing_member_locks: t.MutableSequenceOf[Path] = []
-            for member_path in configured_member_paths.values():
-                member_lock_path = member_path / c.Infra.UV_LOCK_FILENAME
-                if not member_lock_path.is_file():
-                    continue
-                submodule_result = self._project_is_flext_child(member_path)
-                if submodule_result.failure:
-                    u.Cli.error(
-                        "failed to resolve Git topology for workspace project "
-                        f"{member_path}: {submodule_result.error}"
-                    )
-                    return 2
-                if submodule_result.value:
-                    topology_root_result = u.Infra.git_workspace_root(
-                        m.Infra.GitRepoRequest(repo_root=member_path)
-                    )
-                    if topology_root_result.failure:
-                        u.Cli.error(
-                            "failed to resolve Git topology for workspace project "
-                            f"{member_path}: {topology_root_result.error}"
-                        )
-                        return 2
-                    if topology_root_result.value.workspace_root.resolve() == (
-                        resolved_root
-                    ):
-                        continue
-                competing_member_locks.append(member_lock_path)
-            member_lock_paths = tuple(sorted(competing_member_locks))
-            if member_lock_paths:
-                relative_paths = ", ".join(
-                    str(path.relative_to(self.root)) for path in member_lock_paths
-                )
-                u.Cli.error(
-                    "package-local uv.lock files conflict with root lock authority: "
-                    f"{relative_paths}"
-                )
-                return 2
             internal_names = tuple(
                 sorted(
-                    set(u.Infra.workspace_project_paths(self.root))
-                    | {root_project_name}
+                    set(u.Infra.workspace_member_names(self.root)) | {root_project_name}
                 )
             )
         violations: MutableMapping[str, t.StrSequence] = {}

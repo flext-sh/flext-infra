@@ -38,7 +38,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if workspace_result.failure:
             return r[int].fail(
-                workspace_result.error or "workspace manifest validation failed"
+                workspace_result.error or "workspace topology validation failed"
             )
         repositories = tuple(
             repository

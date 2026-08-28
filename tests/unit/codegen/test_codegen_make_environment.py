@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import shutil
 from pathlib import Path
 
 import pytest
@@ -21,17 +20,25 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
+        tmp_path: Path,
+        profile: c.Infra.MakeProfile,
+        *,
+        local_infra: bool = False,
     ) -> tuple[Path, Path]:
         provider = config.Infra.codegen.providers[0]
+        role = c.Infra.RepositoryRole(profile.value)
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
             distribution="fixture-project",
             url=f"{provider.base_url}/fixture-project.git",
             path=Path(),
-            role=c.Infra.RepositoryRole(profile.value),
+            role=role,
             provider=provider.name,
-            checkout=c.Infra.CheckoutKind.ROOT,
+            checkout=(
+                c.Infra.CheckoutKind.ROOT
+                if profile is c.Infra.MakeProfile.WORKSPACE
+                else c.Infra.CheckoutKind.INDEPENDENT
+            ),
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=True,
@@ -40,16 +47,19 @@ class TestsCodegenMakeEnvironment:
         project_root = tmp_path / profile.value / "fixture-project"
         workspace_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_members = (
+        local_subprojects = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
         )
         workspace = m.Infra.WorkspaceSpec(
-            beads=m.Infra.BeadsOverrideSpec(
-                version=1, workspace="flext", database="flext", issue_prefix="flext"
-            ),
             name="fixture-project",
+            beads=m.Infra.BeadsProjectSpec(
+                version=1,
+                workspace="fixture-project",
+                database="fixture-project",
+                issue_prefix="fixture-project",
+            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name="fixture_project",
@@ -70,9 +80,8 @@ class TestsCodegenMakeEnvironment:
                 workspace_root_rel=".",
                 year=2026,
             ),
-            subprojects=local_members,
+            subprojects=local_subprojects,
         )
-
         request = m.Infra.CodegenConformRequest(
             root=project_root,
             scope=c.Infra.CodegenConformScope.SELF,
@@ -95,14 +104,17 @@ class TestsCodegenMakeEnvironment:
         return project_root, workspace_root
 
     @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+        "profile",
+        [
+            c.Infra.MakeProfile.WORKSPACE,
+            c.Infra.MakeProfile.STANDALONE,
+        ],
     )
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
-        runtime_root = project_root
+        project_root, runtime_root = self._render_makefile(tmp_path, profile)
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -211,6 +223,54 @@ class TestsCodegenMakeEnvironment:
         if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
+    def test_dispatched_runner_preserves_provisioned_external_tools(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep managed tools reachable while removing the hostile active venv."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        hostile_venv = tmp_path / "hostile" / ".venv"
+        hostile_bin = hostile_venv / "bin"
+        hostile_bin.mkdir(parents=True)
+        provisioned_bin = tmp_path / "provisioned" / "bin"
+        provisioned_bin.mkdir(parents=True)
+        fixture_tool = "managed-tool"
+        for bin_root in (hostile_bin, provisioned_bin):
+            for tool in (fixture_tool, "uv"):
+                test_u.Tests.write_executable(
+                    bin_root / tool, f"#!/bin/sh\nprintf '%s\\n' '{bin_root / tool}'\n"
+                )
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        tool_log = tmp_path / "tools.log"
+        test_u.Tests.write_executable(
+            runtime_python,
+            (
+                "#!/bin/sh\n"
+                f"command -v uv > '{tool_log}'\n"
+                f"command -v {fixture_tool} >> '{tool_log}'\n"
+            ),
+        )
+        active_env = {
+            "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "VIRTUAL_ENV": str(hostile_venv),
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "test"],
+                cwd=project_root,
+                env=active_env,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tools = tool_log.read_text(encoding="utf-8").splitlines()
+        tm.that(
+            tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
+        )
+
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
         project_root, _workspace_root = self._render_makefile(
@@ -253,14 +313,11 @@ class TestsCodegenMakeEnvironment:
         test_u.Tests.write_executable(
             uv, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{uv_log}'\nexit 0\n"
         )
-        make_bin = shutil.which(c.Infra.MAKE)
-        if make_bin is None:
-            pytest.fail("canonical make executable is unavailable")
 
         process = tm.ok(
             u.Cli.run_raw(
                 [
-                    make_bin,
+                    c.Infra.MAKE,
                     "--no-print-directory",
                     "deps",
                     f"{config.Infra.codegen.make.selector}=upgrade",
@@ -270,7 +327,7 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
-                env={"UV": str(uv), "PATH": f"{bin_dir}{os.pathsep}{os.defpath}"},
+                env={"UV": str(uv), "PATH": str(bin_dir)},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )

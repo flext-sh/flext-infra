@@ -1,7 +1,9 @@
 {% from "project/base/tool_bootstrap_recipe.j2" import tool_bootstrap_recipe -%}
-# Detect a FLEXT workspace root by its manifest and canonical base.mk owner.
+# Detect a FLEXT workspace root from the Makefile owner, never the caller CWD.
+BOOTSTRAP_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
+BOOTSTRAP_OWNER := $(patsubst %/,%,$(dir $(BOOTSTRAP_MAKEFILE)))
 FLEXT_WORKSPACE_ROOT := $(shell \
-	current="$(CURDIR)"; \
+	current="$(BOOTSTRAP_OWNER)"; \
 	while [ "$$current" != "/" ]; do \
 		if [ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]; then echo "$$current"; break; fi; \
 		current="$$(dirname "$$current")"; \
@@ -18,30 +20,31 @@ else
 # then restarts with base.mk loaded. All standard verbs become available.
 # =============================================================================
 
-SETUP_ROOT := $(shell git rev-parse --show-toplevel)
-SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+SETUP_ROOT := $(shell git -C "$(BOOTSTRAP_OWNER)" rev-parse --show-toplevel)
+SETUP_BASE_MK := $(SETUP_ROOT)/base.mk
+SETUP_BRANCH := $(shell git -C "$(SETUP_ROOT)" rev-parse --abbrev-ref HEAD)
 SETUP_VENV := $(SETUP_ROOT)/.venv
-SETUP_BIN := $(SETUP_ROOT)/.bin
-MISE_DATA_DIR := $(SETUP_ROOT)/.tools
 SETUP_MISE_VERSION := {{ mise_version }}
+SYSTEM_MISE := $(shell command -v mise 2>/dev/null)
+SYSTEM_MISE_VERSION := $(if $(strip $(SYSTEM_MISE)),$(shell "$(SYSTEM_MISE)" --version 2>/dev/null | cut -d ' ' -f 1),)
 ifeq ($(OS),Windows_NT)
 SETUP_PYTHON := $(SETUP_VENV)/Scripts/python.exe
-SETUP_MISE ?= $(SETUP_BIN)/mise.exe
+TRACKED_MISE := $(SETUP_ROOT)/bin/mise.cmd
 else
 SETUP_PYTHON := $(SETUP_VENV)/bin/python
-SETUP_MISE ?= $(SETUP_BIN)/mise
+TRACKED_MISE := $(SETUP_ROOT)/bin/mise
 endif
-SETUP_UV := $(MISE_DATA_DIR)/shims/uv
-SETUP_UV_ENV := env -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT \
-	MISE_DATA_DIR="$(MISE_DATA_DIR)" UV_PROJECT="$(SETUP_ROOT)" \
-	UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"
+SETUP_MISE ?= $(if $(wildcard $(TRACKED_MISE)),$(TRACKED_MISE),$(if $(filter $(SETUP_MISE_VERSION),$(SYSTEM_MISE_VERSION)),$(SYSTEM_MISE),$(TRACKED_MISE)))
+SETUP_UV := env -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT \
+	UV_PROJECT="$(SETUP_ROOT)" UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)" \
+	"$(SETUP_MISE)" -C "$(SETUP_ROOT)" exec -- uv
 FLEXT_INFRA_BASEMK_GROUP := {{ make.CLI_GROUP_BASEMK }}
 
--include base.mk
+-include $(SETUP_BASE_MK)
 
 .PHONY: setup venv
 
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(SETUP_BIN)", "$(SETUP_MISE)", "$(MISE_DATA_DIR)", "$(SETUP_MISE_VERSION)") }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(SETUP_ROOT)", "$(SETUP_MISE)", "$(SETUP_MISE_VERSION)", uv_version) }}
 
 .PHONY: _setup_require_safe_branch _bootstrap_setup_submodules
 
@@ -81,17 +84,16 @@ _bootstrap_setup_submodules: _setup_require_safe_branch
 	done
 
 venv: ## Create the checkout-local virtual environment from the lock
-	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
+	@$(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 
 setup: _setup_require_safe_branch _bootstrap_setup_tools _bootstrap_setup_submodules ## Create the complete local toolchain and environment
-	@MISE_DATA_DIR="$(MISE_DATA_DIR)" $(SETUP_MISE) install --yes
-	@$(SETUP_UV_ENV) uv sync --project "$(SETUP_ROOT)" --all-extras --all-groups
+	@$(SETUP_UV) sync --project "$(SETUP_ROOT)" --all-extras --all-groups
 	@$(SETUP_PYTHON) -m flext_infra $(FLEXT_INFRA_BASEMK_GROUP) generate \
-		--project-name $(PROJECT_NAME) --output base.mk
-	@test -s base.mk || { echo "ERROR: base.mk generation failed"; exit 1; }
+		--project-name $(PROJECT_NAME) --output "$(SETUP_BASE_MK)"
+	@test -s "$(SETUP_BASE_MK)" || { echo "ERROR: base.mk generation failed"; exit 1; }
 	@echo "==> Setup complete: local .venv and submodules on $(SETUP_BRANCH)."
 
-ifeq ("$(wildcard base.mk)", "")
+ifeq ("$(wildcard $(SETUP_BASE_MK))", "")
 .PHONY: help
 
 help: ## Show available commands

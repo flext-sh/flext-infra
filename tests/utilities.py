@@ -15,9 +15,7 @@ from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.refactor.flext_import_rewriter import (
-    FlextInfraRefactorFLEXTImportRewriter,
-)
+from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
@@ -44,10 +42,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._result = result
 
             def resolve_projects(
-                self, workspace_root: Path, names: t.StrSequence
+                self,
+                workspace_root: Path,
+                names: t.StrSequence,
+                *,
+                include_attached: bool = False,
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
-                del workspace_root, names
+                del workspace_root, names, include_attached
                 return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
@@ -354,7 +356,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def repository_ref(
             name: str,
             *,
-            role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE,
+            role: c.Infra.RepositoryRole | None = None,
             path: Path | None = None,
         ) -> m.Infra.RepositoryRef:
             """Build a repository reference from the provider contract.
@@ -364,35 +366,66 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             from a registry. Only the provider contract (generic policy) is
             read from config, which keeps the fixture valid for any provider.
 
-            The role decides the rest: a workspace root is its own checkout at
-            ``.`` and is never editable, while a member is a submodule at its
-            own directory and is overlaid editable. Letting callers set those
-            independently is how fixtures ended up declaring members at ``.``,
-            which is not a valid submodule pathspec.
+            A non-empty path denotes the root's view of one subproject. The
+            subproject still classifies itself as standalone; only its checkout
+            relationship is ``submodule``.
             """
             provider = config.Infra.codegen.providers[0]
-            is_member = role is c.Infra.RepositoryRole.STANDALONE
+            resolved_path = Path() if path is None else path
+            is_subproject = bool(resolved_path.parts)
+            resolved_role = role or (
+                c.Infra.RepositoryRole.STANDALONE
+                if is_subproject
+                else c.Infra.RepositoryRole.WORKSPACE
+            )
             return m.Infra.RepositoryRef(
                 name=name,
                 distribution=name,
                 url=f"{provider.base_url.rstrip('/')}/{name}.git",
-                path=path if path is not None else Path(name) if is_member else Path(),
-                role=role,
+                path=resolved_path,
+                role=resolved_role,
                 provider=provider.name,
                 checkout=(
                     c.Infra.CheckoutKind.SUBMODULE
-                    if is_member
-                    else c.Infra.CheckoutKind.ROOT
+                    if is_subproject
+                    else (
+                        c.Infra.CheckoutKind.ROOT
+                        if resolved_role is c.Infra.RepositoryRole.WORKSPACE
+                        else c.Infra.CheckoutKind.INDEPENDENT
+                    )
                 ),
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=True,
-                editable=is_member,
+                editable=is_subproject,
                 read_only=False,
             )
 
         @staticmethod
+        def write_beads_project(
+            repository: Path,
+            *,
+            workspace: str,
+            database: str,
+            issue_prefix: str,
+        ) -> Path:
+            """Write the typed repository-local Beads identity fixture."""
+            path = repository / "config" / "beads.yaml"
+            tm.ok(
+                u.Cli.yaml_dump(
+                    path,
+                    m.Infra.BeadsProjectSpec(
+                        version=1,
+                        workspace=workspace,
+                        database=database,
+                        issue_prefix=issue_prefix,
+                    ).model_dump(mode="json"),
+                )
+            )
+            return path
+
+        @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
-            # flext-wkii.17 (codex): tests consume the validated config singleton;
+            # mro-wkii.17 (codex): tests consume the validated config singleton;
             # the removed utility loader must not survive as a hidden test path.
             """Provide the typed test helper `tool_config_document`."""
             return config.Infra.tooling
@@ -515,38 +548,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project_dir
 
         @staticmethod
-        def write_standalone_beads_override(project_dir: Path) -> Path:
-            """Write the required repository-local Beads override fixture."""
-            config_dir = project_dir / "config"
-            config_dir.mkdir(parents=True, exist_ok=True)
-            override_path = config_dir / "beads.yaml"
-            override_path.write_text(
-                (
-                    "version: 1\n"
-                    "workspace: flext\n"
-                    "database: flext\n"
-                    "issue_prefix: flext\n"
-                ),
-                encoding="utf-8",
+        def write_project_beads_config(
+            project_dir: Path,
+            name: str,
+        ) -> Path:
+            """Write a standalone project's required local topology input."""
+            return TestsFlextInfraUtilities.Tests.write_beads_project(
+                project_dir,
+                workspace=name,
+                database=name,
+                issue_prefix=name,
             )
-            return override_path
-
-        @staticmethod
-        def declare_workspace_projects(
-            workspace: Path, project_names: t.StrSequence
-        ) -> None:
-            """Declare fixture projects through the production topology contract."""
-            sections: list[str] = []
-            for name in project_names:
-                sections.extend([
-                    f'[submodule "{name}"]\n',
-                    f"\tpath = {name}\n",
-                    f"\turl = https://github.com/flext-sh/{name}.git\n",
-                ])
-                TestsFlextInfraUtilities.Tests.write_standalone_beads_override(
-                    workspace / name
-                )
-            (workspace / ".gitmodules").write_text("".join(sections), encoding="utf-8")
+            return manifest_path
 
         @staticmethod
         def create_docs_workspace(
@@ -607,11 +620,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 _write(project / "docs/dev.md", "# Development\n")
                 _write(project / "docs/api.md", "# API\n")
 
-            if project_names:
-                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
-                    workspace, project_names
-                )
-
             return workspace
 
         @staticmethod
@@ -642,10 +650,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir = project / "src" / name.replace("-", "_")
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
-            if project_names:
-                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
-                    workspace, project_names
-                )
             return workspace
 
         @staticmethod
@@ -669,7 +673,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             (workspace / "pyproject.toml").write_text(
                 (
                     "[project]\n"
-                    'name = "workspace"\n'
+                    'name = "workspace-root"\n'
                     'version = "0.1.0"\n'
                     'dependencies = ["flext-core>=0.1.0"]\n'
                 ),
@@ -735,10 +739,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 validate_exit_code = validate_exit_codes.get(name, "0")
                 (project / "Makefile").write_text(
                     f"val:\n\t@exit {validate_exit_code}\n", encoding="utf-8"
-                )
-            if project_names:
-                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
-                    workspace, project_names
                 )
             if initialize_root_git:
                 TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace)
@@ -846,7 +846,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             name: str,
             dependency_path: str = "",
-            workspace_subprojects: t.StrSequence = (),
+            workspace_members: t.StrSequence = (),
         ) -> str:
             """Render a pyproject fixture for dependency-path tests."""
             lines = ["[project]", f'name = "{name}"']
@@ -859,8 +859,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "[tool.poetry.dependencies]",
                     f'flext-core = {{ path = "{dependency_path}" }}',
                 ))
-            if workspace_subprojects:
-                members = ", ".join(f'"{member}"' for member in workspace_subprojects)
+            if workspace_members:
+                members = ", ".join(f'"{member}"' for member in workspace_members)
                 lines.extend(("", "[tool.uv.workspace]", f"members = [{members}]"))
             return "\n".join(lines) + "\n"
 
@@ -909,7 +909,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             Isolation is expressed with ``remove_env_keys`` because ``env`` is an
             overlay that can only add or replace keys, never remove them
-            (flext-wt8qp). ``overrides`` carries topology the fixture itself
+            (mro-wt8qp). ``overrides`` carries topology the fixture itself
             requires, such as permitting the file transport for a local bare
             origin.
             """
@@ -1159,8 +1159,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 (
-                    f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'
-                    'dependencies = ["flext-core>=0.1.0"]\n\n'
+                    f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
                     + TestsFlextInfraUtilities.Tests.ruff_per_file_ignores_toml()
                 ),
                 encoding=c.Infra.ENCODING_DEFAULT,
@@ -1240,8 +1239,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
-        def build_flext_import_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
-            """Provide the typed test helper `build_flext_import_workspace`."""
+        def build_mro_import_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
+            """Provide the typed test helper `build_mro_import_workspace`."""
             workspace_root = tmp_path
             project_root = workspace_root / "flext-demo"
             package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "demo_pkg"
@@ -1273,21 +1272,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "value = DEMO_VALUE\n",
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
-            TestsFlextInfraUtilities.Tests.declare_workspace_projects(
-                workspace_root, ("flext-demo",)
-            )
             return (workspace_root, constants_path, consumer_path)
 
         @staticmethod
-        def create_flext_scan_report(constants_path: Path) -> m.Infra.FLEXTScanReport:
-            """Create a typed FLEXT scan report fixture."""
-            return m.Infra.FLEXTScanReport(
+        def create_mro_scan_report(constants_path: Path) -> m.Infra.MROScanReport:
+            """Create a typed MRO scan report fixture."""
+            return m.Infra.MROScanReport(
                 file=str(constants_path),
                 module="demo_pkg.constants",
                 constants_class="DemoConstants",
                 facade_alias="c",
                 candidates=(
-                    m.Infra.FLEXTSymbolCandidate(
+                    m.Infra.MROSymbolCandidate(
                         symbol="DEMO_VALUE",
                         line=3,
                         kind="constant",
@@ -1298,22 +1294,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def migrate_workspace_flext_imports(
+        def migrate_workspace_mro_imports(
             *, workspace_root: Path, constants_path: Path, apply: bool
         ) -> tuple[
-            t.SequenceOf[m.Infra.FLEXTFileMigration],
-            t.SequenceOf[m.Infra.FLEXTRewriteResult],
+            t.SequenceOf[m.Infra.MROFileMigration],
+            t.SequenceOf[m.Infra.MRORewriteResult],
             t.StrSequence,
         ]:
-            """Provide the typed test helper `migrate_workspace_flext_imports`."""
+            """Provide the typed test helper `migrate_workspace_mro_imports`."""
             result: tuple[
-                t.SequenceOf[m.Infra.FLEXTFileMigration],
-                t.SequenceOf[m.Infra.FLEXTRewriteResult],
+                t.SequenceOf[m.Infra.MROFileMigration],
+                t.SequenceOf[m.Infra.MRORewriteResult],
                 t.StrSequence,
-            ] = FlextInfraRefactorFLEXTImportRewriter.migrate_workspace(
+            ] = FlextInfraRefactorMROImportRewriter.migrate_workspace(
                 workspace_root=workspace_root,
                 scan_results=[
-                    TestsFlextInfraUtilities.Tests.create_flext_scan_report(
+                    TestsFlextInfraUtilities.Tests.create_mro_scan_report(
                         constants_path
                     )
                 ],
@@ -1415,35 +1411,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def repository_profile(root: Path) -> c.Infra.MakeProfile:
-            """Return the Make profile *root* declares in its own manifest.
-
-            Only that manifest is read. The full detector also walks the parent
-            superproject on the live filesystem, which breaks the isolation law
-            and races other tests' temp fixtures under xdist.
-
-            Returns:
-                Profile from ``repository.role`` when declared; otherwise
-                ``WORKSPACE_ROOT`` when the manifest declares members, else
-                ``STANDALONE``.
-
-            """
+            """Return the Make profile derived from the repository itself."""
             from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-            workspace: m.Infra.WorkspaceSpec = tm.ok(
-                FlextInfraWorkspaceDetector.load_workspace_spec(root)
-            )
-            role = workspace.repository.role.value
-            if role == c.Infra.MakeProfile.WORKSPACE.value:
-                return c.Infra.MakeProfile.WORKSPACE
-            if role == c.Infra.MakeProfile.STANDALONE.value:
-                return c.Infra.MakeProfile.STANDALONE
-            if role == c.Infra.MakeProfile.STANDALONE.value:
-                return c.Infra.MakeProfile.STANDALONE
-            return (
-                c.Infra.MakeProfile.WORKSPACE
-                if workspace.subprojects
-                else c.Infra.MakeProfile.STANDALONE
-            )
+            mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
+            return {
+                c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
+                c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
+            }[mode]
 
         @staticmethod
         def ignore_patterns_for(root: Path) -> tuple[str, ...]:

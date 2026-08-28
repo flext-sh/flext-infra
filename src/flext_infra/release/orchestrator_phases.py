@@ -242,7 +242,10 @@ class FlextInfraReleaseOrchestratorPhases(
             return r[bool].fail(changed_result.error or "release version update failed")
         if ctx.dry_run:
             logger.info("release_phase_version_checked", checked_version=target)
-        logger.info("release_phase_version_summary", files_changed=changed_result.value)
+        logger.info(
+            "release_phase_version_summary",
+            files_changed=changed_result.value,
+        )
         return r[bool].ok(True)
 
     def _version_update_files(
@@ -275,7 +278,7 @@ class FlextInfraReleaseOrchestratorPhases(
         return r[int].ok(len(updates))
 
     # These methods are defined in the main orchestrator class and
-    # will be resolved via FLEXT when the main class inherits this mixin.
+    # will be resolved via MRO when the main class inherits this mixin.
     def _build_targets(
         self, workspace_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:

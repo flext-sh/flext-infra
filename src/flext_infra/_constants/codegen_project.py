@@ -23,7 +23,7 @@ from typing import Final
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
-    # NOTE (multi-agent, flext-wkii.17 / agent: codex): these enums define the
+    # NOTE (multi-agent, mro-wkii.17 / agent: codex): these enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
     # closed vocabulary used by models and CLI dispatch.
@@ -33,7 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        MEMBERS = "members"
+        SUBPROJECTS = "subprojects"
         ALL = "all"
 
     @unique
@@ -42,7 +42,6 @@ class FlextInfraConstantsCodegenProject:
 
         ALL = "all"
         DEPENDENCIES = "dependencies"
-        GITMODULES = "gitmodules"
         MAKEFILE = "makefile"
         PYPROJECT = "pyproject"
 
@@ -62,7 +61,7 @@ class FlextInfraConstantsCodegenProject:
 
     @unique
     class RepositoryRole(StrEnum):
-        """Repository role in a declared workspace topology."""
+        """Repository role proven by its own topology input."""
 
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
@@ -106,6 +105,8 @@ class FlextInfraConstantsCodegenProject:
         INTERNAL = "internal"
         EXTERNAL = "external"
 
+    BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
+    BEADS_CONFIG_VERSION: Final[int] = 1
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
@@ -115,8 +116,8 @@ class FlextInfraConstantsCodegenProject:
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
     # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
-    # NOTE (multi-agent, flext-wkii.17): one base catalog serves both profiles;
-    # Workspace topology is owned only by the repository's .gitmodules.
+    # NOTE (multi-agent, mro-wkii.17): one base catalog serves both profiles;
+    # workspace topology is read only from each repository's own .gitmodules.
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenProject"]

@@ -58,7 +58,6 @@ jobs:
         run: >-
           docker build
           -f tests/fixtures/ci/docker/{% raw %}${{ matrix.distro }}{% endraw %}.Dockerfile
-          --build-arg GITHUB_TOKEN={% raw %}${{ env.GITHUB_TOKEN }}{% endraw %}
           -t ci-matrix-{% raw %}${{ matrix.distro }}{% endraw %}
           .
       - name: Bootstrap + verb smoke ({% raw %}${{ matrix.distro }}{% endraw %})
@@ -71,30 +70,22 @@ jobs:
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
-  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
+  # Source: template + config:github_actions.checkout/mise
   macos:
     runs-on: macos-latest
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           submodules: {{ checkout_submodules }}
           # No step needs authenticated git after checkout; persisting the
           # token into .git/config would expose it to every later command.
           persist-credentials: false
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
-        with:
-          python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-      - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
-          enable-cache: true
+          version: {{ mise_version }}
       - name: Bootstrap
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
@@ -107,30 +98,22 @@ jobs:
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
-  # Source: template + config:github_actions.checkout/setup-python/mise/setup-uv
+  # Source: template + config:github_actions.checkout/mise
   windows:
     runs-on: windows-latest
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
     steps:
       - uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
         with:
           submodules: {{ checkout_submodules }}
           # No step needs authenticated git after checkout; persisting the
           # token into .git/config would expose it to every later command.
           persist-credentials: false
-      - name: Setup Python
-        uses: {{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}
-        with:
-          python-version-file: .python-version
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-      - name: Install uv
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
         with:
-          enable-cache: true
+          version: {{ mise_version }}
       - name: Bootstrap
         shell: bash
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup

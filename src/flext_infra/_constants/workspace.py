@@ -112,7 +112,7 @@ class FlextInfraConstantsWorkspace:
         ".codegraph",
         ".serena",
     })
-    "Persistent-state artifact basenames owned only by the workspace root."
+    "Persistent-state artifact basenames owned by the local repository."
 
     MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.StrPair]] = (
         (

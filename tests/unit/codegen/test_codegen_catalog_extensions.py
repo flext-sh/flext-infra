@@ -5,6 +5,8 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
@@ -29,12 +31,12 @@ def _repository(
         state=state,
         checkout=(
             c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE
+            if role is c.Infra.RepositoryRole.WORKSPACE_ROOT
             else c.Infra.CheckoutKind.SUBMODULE
         ),
         codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is c.Infra.RepositoryRole.STANDALONE,
-        editable=role is c.Infra.RepositoryRole.STANDALONE,
+        package=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        editable=role is c.Infra.RepositoryRole.WORKSPACE_MEMBER,
         read_only=False,
     )
 
@@ -57,10 +59,10 @@ class TestsCodegenCatalogExtensions:
 
         # uv is supplied by the caller environment and is deliberately not pinned;
         # only the mise binary and the Beads CLI installed through mise declare
-        # immutable selectors: a numeric calendar release for mise, and either
-        # a semver release or a full commit for the Beads pin.
+        # immutable selectors: a semver release for mise, and either a semver
+        # release or a full commit for the Beads go-module pin.
         mise_parts = toolchain.mise_version.split(".")
-        tm.that(len(mise_parts) in {2, 3}, eq=True)
+        tm.that(len(mise_parts), eq=3)
         tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
         beads_version = toolchain.beads.version
         beads_parts = beads_version.split(".")
@@ -75,7 +77,7 @@ class TestsCodegenCatalogExtensions:
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance.
 
-        Operator contract (flext-e9j0.6 C7 final): setup installs mise, the
+        Operator contract (mro-e9j0.6 C7 final): setup installs mise, the
         venv, and dependencies — it never generates, conforms, or mutates
         project code. gen/gen APPLY=Y is the single public conformance and
         generation surface, and no public ``conform`` verb exists.
@@ -125,7 +127,7 @@ class TestsCodegenCatalogExtensions:
         self, tmp_path: Path
     ) -> None:
         root = _repository(
-            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE
+            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE_ROOT
         ).model_copy(
             update={
                 "extra_verbs": (
@@ -161,21 +163,18 @@ class TestsCodegenCatalogExtensions:
             year=2026,
         )
         workspace = m.Infra.WorkspaceSpec(
-            beads=m.Infra.BeadsOverrideSpec(
-                version=1, workspace="flext", database="flext", issue_prefix="flext"
-            ),
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name=root.name,
             repository=root,
             project=project,
-            subprojects=(
+            members=(
                 _repository(
                     "acme-charts",
                     path="acme-charts",
-                    role=c.Infra.RepositoryRole.STANDALONE,
+                    role=c.Infra.RepositoryRole.WORKSPACE_MEMBER,
                 ),
             ),
         )
-
         member_root = tmp_path / "acme-charts"
         member_root.mkdir()
         (member_root / c.Infra.PYPROJECT_FILENAME).write_text(
@@ -288,13 +287,13 @@ class TestsCodegenCatalogExtensions:
             )
         )
         tm.ok(u.Cli.run_checked(["rm", "-rf", bare_repo.as_posix()]))
-        for project_root in (tmp_path, member_root):
-            tm.ok(
-                u.Cli.yaml_dump(
-                    project_root / c.Infra.BEADS_OVERRIDE_RELPATH,
-                    workspace.beads.model_dump(mode="json"),
-                )
+        manifest_path = tmp_path / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        manifest_path.parent.mkdir(parents=True)
+        tm.ok(
+            u.Cli.yaml_dump(
+                manifest_path, workspace.model_dump(mode="json", exclude_none=True)
             )
+        )
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=tmp_path,
@@ -323,7 +322,7 @@ class TestsCodegenCatalogExtensions:
             for file in plan.files
             if file.path == tmp_path.resolve() / c.Infra.MAKEFILE_FILENAME
         )
-        tm.that(root_makefile.rendered, has="WORKSPACE_SUBPROJECTS := acme-charts")
+        tm.that(root_makefile.rendered, has="WORKSPACE_MEMBERS := acme-charts")
         tm.that("acme-content" in root_makefile.rendered, eq=False)
         workflows = tuple(
             file for file in plan.files if ".github/workflows" in file.path.as_posix()
@@ -357,10 +356,10 @@ class TestsCodegenCatalogExtensions:
         mise = tomllib.loads(
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
-        beads = config.Infra.codegen.toolchain.beads
-        rendered_beads = mise["tools"][beads.selector]
-        tm.that(rendered_beads["version"], eq=beads.version)
-        tm.that(rendered_beads["prerelease"], eq=beads.prerelease)
+        tm.that(
+            mise["tools"][config.Infra.codegen.toolchain.beads.selector]["version"],
+            eq=config.Infra.codegen.toolchain.beads.version,
+        )
         pyproject = tomllib.loads(
             next(
                 file.rendered

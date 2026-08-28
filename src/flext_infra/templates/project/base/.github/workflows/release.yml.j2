@@ -98,15 +98,10 @@ jobs:
             exit 1
           fi
 
-      - name: Setup Python
-        uses: {% endraw %}{{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}{% raw %}
+      - name: Install mise toolchain
+        uses: {% endraw %}{{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}{% raw %}
         with:
-          python-version: "{% endraw %}{{ python_version }}{% raw %}"
-
-      - name: Install uv
-        uses: {% endraw %}{{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}{% raw %}
-        with:
-          enable-cache: false
+          version: {% endraw %}{{ mise_version }}{% raw %}
 
       - name: Install system dependencies
         shell: bash
@@ -242,15 +237,10 @@ jobs:
           CORE_OID="$(git rev-parse "${RELEASE_ROOT_SHA}:flext-core")"
           echo "core_oid=$CORE_OID" >> "$GITHUB_OUTPUT"
 
-      - name: Setup Python
-        uses: {% endraw %}{{ github_actions["setup-python"].repository }}@{{ github_actions["setup-python"].sha }}  # {{ github_actions["setup-python"].version }}{% raw %}
+      - name: Install mise toolchain
+        uses: {% endraw %}{{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}{% raw %}
         with:
-          python-version: "{% endraw %}{{ python_version }}{% raw %}"
-
-      - name: Install uv
-        uses: {% endraw %}{{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}{% raw %}
-        with:
-          enable-cache: false
+          version: {% endraw %}{{ mise_version }}{% raw %}
 
       - name: Install system dependencies
         shell: bash
