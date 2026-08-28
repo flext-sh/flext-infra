@@ -209,45 +209,58 @@ class FlextInfraWorkspaceDetector(
                     f"duplicate .gitmodules path: {path.as_posix()}"
                 )
             seen.add(path)
-            if path.is_absolute() or not path.parts or ".." in path.parts:
-                return result_type.fail(f"invalid .gitmodules path: {path.as_posix()}")
-            contract = cls._gitmodule_contract(repository_root, path)
-            if contract.failure:
-                return result_type.fail(contract.error)
-            declared_url, declared_branch = contract.value
-            provider = cls._declared_provider_for_url(declared_url)
-            if provider is None:
+            loaded = cls._load_subproject(repository_root, path)
+            if loaded.failure:
+                return result_type.fail(loaded.error)
+            if loaded.value is None:
                 external.append(path)
                 continue
-            if not u.Infra.gitmodule_branch_is_governed(
-                declared_branch, provider_branch=provider.branch
-            ):
-                return result_type.fail(
-                    "governed subproject branch differs from provider policy: "
-                    f"{path.as_posix()}"
-                )
-            subproject_root = (repository_root / path).resolve()
-            if not subproject_root.is_relative_to(repository_root):
-                return result_type.fail(
-                    f"subproject escapes workspace root: {path.as_posix()}"
-                )
-            if not subproject_root.is_dir():
-                return result_type.fail(
-                    f"governed subproject checkout is missing: {path.as_posix()}"
-                )
-            beads = cls.load_beads_spec(subproject_root)
-            if beads.failure:
-                return result_type.fail(beads.error)
-            repository = cls._local_repository_ref(
-                subproject_root,
-                path=path,
-                checkout=c.Infra.CheckoutKind.SUBMODULE,
-                declared_url=declared_url,
-            )
-            if repository.failure:
-                return result_type.fail(repository.error)
-            subprojects.append(repository.value)
+            subprojects.append(loaded.value)
         return result_type.ok((tuple(subprojects), tuple(external)))
+
+    @classmethod
+    def _load_subproject(
+        cls, repository_root: Path, path: Path
+    ) -> p.Result[m.Infra.RepositoryRef | None]:
+        """Validate and load one governed entry; return None for external entries."""
+        result_type = r[m.Infra.RepositoryRef | None]
+        if path.is_absolute() or not path.parts or ".." in path.parts:
+            return result_type.fail(f"invalid .gitmodules path: {path.as_posix()}")
+        contract = cls._gitmodule_contract(repository_root, path)
+        if contract.failure:
+            return result_type.fail(contract.error)
+        declared_url, declared_branch = contract.value
+        provider = cls._declared_provider_for_url(declared_url)
+        if provider is None:
+            return result_type.ok(None)
+        if not u.Infra.gitmodule_branch_is_governed(
+            declared_branch, provider_branch=provider.branch
+        ):
+            return result_type.fail(
+                "governed subproject branch differs from provider policy: "
+                f"{path.as_posix()}"
+            )
+        subproject_root = (repository_root / path).resolve()
+        if not subproject_root.is_relative_to(repository_root):
+            return result_type.fail(
+                f"subproject escapes workspace root: {path.as_posix()}"
+            )
+        if not subproject_root.is_dir():
+            return result_type.fail(
+                f"governed subproject checkout is missing: {path.as_posix()}"
+            )
+        beads = cls.load_beads_spec(subproject_root)
+        if beads.failure:
+            return result_type.fail(beads.error)
+        repository = cls._local_repository_ref(
+            subproject_root,
+            path=path,
+            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            declared_url=declared_url,
+        )
+        if repository.failure:
+            return result_type.fail(repository.error)
+        return result_type.ok(repository.value)
 
     @classmethod
     def load_workspace_spec(

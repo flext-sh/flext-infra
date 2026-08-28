@@ -151,18 +151,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
             return r[bool].fail(
                 valid_identities.error or "custom .mise.toml identity validation failed"
             )
-        changed = False
-        for name, value in tool_pins_result.value.items():
-            if u.Cli.toml_value(tools, name) == value:
-                continue
-            tools[name] = value
-            changed = True
-        for name in c.Infra.WORKSPACE_MISE_REMOVED_TOOLS:
-            if name not in tools:
-                continue
-            del tools[name]
-            changed = True
-        if not changed:
+        if not cls._merge_mise_tools(tools, tool_pins_result.value):
             return r[bool].ok(False)
         rendered = u.Cli.toml_dumps(doc)
         if rendered == current:
@@ -173,6 +162,22 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if write_result.failure:
             return r[bool].fail(write_result.error or f"{target_path}: write failed")
         return r[bool].ok(True)
+
+    @staticmethod
+    def _merge_mise_tools(tools: t.Cli.TomlTable, pins: dict[str, t.JsonValue]) -> bool:
+        """Converge the governed portion of one custom Mise tool table."""
+        changed = False
+        for name, value in pins.items():
+            if u.Cli.toml_value(tools, name) == value:
+                continue
+            tools[name] = value
+            changed = True
+        for name in c.Infra.WORKSPACE_MISE_REMOVED_TOOLS:
+            if name not in tools:
+                continue
+            del tools[name]
+            changed = True
+        return changed
 
     @classmethod
     def _mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, t.JsonValue]]:

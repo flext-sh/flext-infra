@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_core import r
@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 class FlextInfraCodegenMiseArtifacts(s[bool]):
     """Hydrate generated lock checksums or validate committed Mise artifacts."""
 
+    _PLATFORM_PREFIX: ClassVar[str] = "platforms."
+
     @staticmethod
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
         source = u.Cli.files_read_text(path)
@@ -31,7 +33,15 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return r[t.JsonMapping].ok(payload)
 
     @staticmethod
-    def _tool_specifiers(payload: t.JsonMapping) -> p.Result[t.StrMapping]:
+    def _tool_version(raw_tool: t.JsonValue) -> str | None:
+        """Return one exact version from either supported Mise tool shape."""
+        candidate = (
+            raw_tool.get("version") if isinstance(raw_tool, Mapping) else raw_tool
+        )
+        return candidate.strip() if isinstance(candidate, str) else None
+
+    @classmethod
+    def _tool_specifiers(cls, payload: t.JsonMapping) -> p.Result[t.StrMapping]:
         raw_tools = payload.get("tools")
         if not isinstance(raw_tools, Mapping):
             return r[t.StrMapping].fail(".mise.toml must declare [tools]")
@@ -40,13 +50,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             if not raw_selector.strip():
                 return r[t.StrMapping].fail(".mise.toml contains an invalid tool name")
             selector = raw_selector.strip()
-            version: str | None = None
-            if isinstance(raw_tool, str):
-                version = raw_tool.strip()
-            elif isinstance(raw_tool, Mapping):
-                raw_version = raw_tool.get("version")
-                if isinstance(raw_version, str):
-                    version = raw_version.strip()
+            version = cls._tool_version(raw_tool)
             if not version:
                 return r[t.StrMapping].fail(
                     f".mise.toml tool lacks an exact version: {selector}"
@@ -56,8 +60,28 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[t.StrMapping].fail(".mise.toml must declare at least one tool")
         return r[t.StrMapping].ok(specifiers)
 
-    @staticmethod
-    def _normalize_lock_payload(payload: t.JsonMapping) -> p.Result[t.JsonMapping]:
+    @classmethod
+    def _normalize_lock_entry(
+        cls, selector: str, raw_entry: t.JsonValue
+    ) -> p.Result[t.JsonMapping]:
+        """Normalize one Mise lock entry without weakening its typed boundary."""
+        if not isinstance(raw_entry, Mapping):
+            return r[t.JsonMapping].fail(
+                f"mise.lock contains an invalid entry for {selector}"
+            )
+        normalized_entry: dict[str, t.JsonValue] = {}
+        normalized_platforms: dict[str, t.JsonValue] = {}
+        for raw_key, raw_value in raw_entry.items():
+            if raw_key.startswith(cls._PLATFORM_PREFIX):
+                platform = raw_key.removeprefix(cls._PLATFORM_PREFIX)
+                normalized_platforms[platform] = raw_value
+            else:
+                normalized_entry[raw_key] = raw_value
+        normalized_entry["platforms"] = normalized_platforms
+        return r[t.JsonMapping].ok(normalized_entry)
+
+    @classmethod
+    def _normalize_lock_payload(cls, payload: t.JsonMapping) -> p.Result[t.JsonMapping]:
         """Expand Mise quoted platform keys for typed validation."""
         raw_tools = payload.get("tools")
         if not isinstance(raw_tools, Mapping):
@@ -68,29 +92,22 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[t.JsonMapping].fail("mise.lock contains an invalid tool entry")
             normalized_entries: list[t.JsonValue] = []
             for raw_entry in raw_entries:
-                if not isinstance(raw_entry, Mapping):
+                normalized = cls._normalize_lock_entry(raw_selector, raw_entry)
+                if normalized.failure:
                     return r[t.JsonMapping].fail(
-                        f"mise.lock contains an invalid entry for {raw_selector}"
+                        normalized.error
+                        or f"mise.lock contains an invalid entry for {raw_selector}"
                     )
-                normalized_entry: dict[str, t.JsonValue] = {}
-                normalized_platforms: dict[str, t.JsonValue] = {}
-                for raw_key, raw_value in raw_entry.items():
-                    if raw_key.startswith("platforms."):
-                        platform = raw_key.removeprefix("platforms.")
-                        normalized_platforms[platform] = raw_value
-                    else:
-                        normalized_entry[raw_key] = raw_value
-                normalized_entry["platforms"] = normalized_platforms
-                normalized_entries.append(normalized_entry)
+                normalized_entries.append(dict(normalized.value))
             normalized_tools[raw_selector] = normalized_entries
         return r[t.JsonMapping].ok({
             "lockfile_version": payload.get("lockfile_version"),
             "tools": normalized_tools,
         })
 
-    @staticmethod
+    @classmethod
     def _missing_checksums(
-        payload: t.JsonMapping,
+        cls, payload: t.JsonMapping
     ) -> p.Result[tuple[tuple[str, str, str], ...]]:
         """Return typed selector/platform/URL triples lacking a checksum."""
         raw_tools = payload.get("tools")
@@ -110,19 +127,21 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                         f"mise.lock contains an invalid entry for {raw_selector}"
                     )
                 for raw_key, raw_metadata in raw_entry.items():
-                    if not raw_key.startswith("platforms."):
+                    if not raw_key.startswith(cls._PLATFORM_PREFIX):
                         continue
-                    platform = raw_key.removeprefix("platforms.")
+                    platform = raw_key.removeprefix(cls._PLATFORM_PREFIX)
                     if not platform or not isinstance(raw_metadata, Mapping):
                         return r[tuple[tuple[str, str, str], ...]].fail(
-                            f"mise.lock contains invalid platform metadata for {raw_selector}"
+                            "mise.lock contains invalid platform metadata for "
+                            f"{raw_selector}"
                         )
                     if raw_metadata.get("checksum") is not None:
                         continue
                     raw_url = raw_metadata.get("url")
                     if not isinstance(raw_url, str):
                         return r[tuple[tuple[str, str, str], ...]].fail(
-                            f"mise.lock checksum source missing for {raw_selector}/{platform}"
+                            "mise.lock checksum source missing for "
+                            f"{raw_selector}/{platform}"
                         )
                     parsed_url = urlsplit(raw_url)
                     if (
@@ -132,7 +151,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                         or parsed_url.password is not None
                     ):
                         return r[tuple[tuple[str, str, str], ...]].fail(
-                            f"mise.lock checksum source is not safe for {raw_selector}/{platform}"
+                            "mise.lock checksum source is not safe for "
+                            f"{raw_selector}/{platform}"
                         )
                     missing.append((raw_selector, platform, raw_url))
         return r[tuple[tuple[str, str, str], ...]].ok(tuple(missing))
@@ -157,6 +177,42 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         )
         return r[str].ok(f'[tools.{selector_key}."platforms.{platform}"]')
 
+    @classmethod
+    def _download_checksum(
+        cls, selector: str, platform: str, url: str, artifact: Path
+    ) -> p.Result[str]:
+        """Download and hash one validated HTTPS artifact."""
+        download = u.Cli.run_raw(
+            (
+                "curl",
+                "--fail",
+                "--location",
+                "--proto",
+                "=https",
+                "--proto-redir",
+                "=https",
+                "--silent",
+                "--show-error",
+                "--output",
+                str(artifact),
+                url,
+            ),
+            cwd=artifact.parent,
+        )
+        if download.failure:
+            return r[str].fail(
+                download.error or f"checksum download failed for {selector}/{platform}"
+            )
+        if download.value.exit_code != 0:
+            cause = download.value.stderr.strip() or "curl exited non-zero"
+            return r[str].fail(
+                f"checksum download failed for {selector}/{platform}: {cause}"
+            )
+        digest = u.Cli.sha256_file(artifact)
+        if not cls._is_sha256(digest):
+            return r[str].fail(f"invalid downloaded checksum for {selector}/{platform}")
+        return r[str].ok(digest)
+
     def _hydrate_source(
         self, source: str, missing: tuple[tuple[str, str, str], ...], scratch: Path
     ) -> p.Result[str]:
@@ -166,39 +222,12 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         for index, (selector, platform, url) in enumerate(missing):
             digest = digests.get(url)
             if digest is None:
-                artifact = scratch / f"artifact-{index}"
-                download = u.Cli.run_raw(
-                    (
-                        "curl",
-                        "--fail",
-                        "--location",
-                        "--proto",
-                        "=https",
-                        "--proto-redir",
-                        "=https",
-                        "--silent",
-                        "--show-error",
-                        "--output",
-                        str(artifact),
-                        url,
-                    ),
-                    cwd=scratch,
+                downloaded = self._download_checksum(
+                    selector, platform, url, scratch / f"artifact-{index}"
                 )
-                if download.failure:
-                    return r[str].fail(
-                        download.error
-                        or f"checksum download failed for {selector}/{platform}"
-                    )
-                if download.value.exit_code != 0:
-                    cause = download.value.stderr.strip() or "curl exited non-zero"
-                    return r[str].fail(
-                        f"checksum download failed for {selector}/{platform}: {cause}"
-                    )
-                digest = u.Cli.sha256_file(artifact)
-                if not self._is_sha256(digest):
-                    return r[str].fail(
-                        f"invalid downloaded checksum for {selector}/{platform}"
-                    )
+                if downloaded.failure:
+                    return r[str].fail(downloaded.error)
+                digest = downloaded.value
                 digests[url] = digest
             header = self._platform_header(selector, platform)
             if header.failure:
@@ -206,7 +235,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             marker = f"{header.value}\n"
             if hydrated.count(marker) != 1:
                 return r[str].fail(
-                    f"mise.lock platform section is not unique for {selector}/{platform}"
+                    "mise.lock platform section is not unique for "
+                    f"{selector}/{platform}"
                 )
             hydrated = hydrated.replace(
                 marker, f'{marker}checksum = "sha256:{digest}"\n', 1
@@ -337,7 +367,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Hydrate in explicit apply mode; otherwise validate entirely offline."""
-        if self.apply_changes and not self.check_only and not self.dry_run:
+        if not self.effective_dry_run:
             return self._hydrate_lock_checksums()
         config_result = self._read_toml(self.workspace_root / ".mise.toml")
         if config_result.failure:
