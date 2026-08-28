@@ -29,15 +29,15 @@ class TestsCodegenBeadsProjection:
 
     @staticmethod
     def _plan(root: Path) -> m.Infra.CodegenPlan:
-        return tm.ok(
-            FlextInfraCodegenConform(workspace_root=root).plan(
-                m.Infra.CodegenConformRequest(
-                    root=root,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.CHECK,
-                )
+        result = FlextInfraCodegenConform(workspace_root=root).plan(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
+        tm.ok(result)
+        return m.Infra.CodegenPlan.model_validate(result.value)
 
     @staticmethod
     def _rendered(plan: m.Infra.CodegenPlan, destination: str) -> str | None:

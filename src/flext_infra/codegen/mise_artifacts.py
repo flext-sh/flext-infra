@@ -37,7 +37,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[t.StrMapping].fail(".mise.toml must declare [tools]")
         specifiers: dict[str, str] = {}
         for raw_selector, raw_tool in raw_tools.items():
-            if not isinstance(raw_selector, str) or not raw_selector.strip():
+            if not raw_selector.strip():
                 return r[t.StrMapping].fail(".mise.toml contains an invalid tool name")
             selector = raw_selector.strip()
             version: str | None = None
@@ -64,11 +64,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[t.JsonMapping].fail("mise.lock must declare [tools]")
         normalized_tools: dict[str, t.JsonValue] = {}
         for raw_selector, raw_entries in raw_tools.items():
-            if (
-                not isinstance(raw_selector, str)
-                or not raw_selector.strip()
-                or not isinstance(raw_entries, list)
-            ):
+            if not raw_selector.strip() or not isinstance(raw_entries, list):
                 return r[t.JsonMapping].fail("mise.lock contains an invalid tool entry")
             normalized_entries: list[t.JsonValue] = []
             for raw_entry in raw_entries:
@@ -79,10 +75,6 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 normalized_entry: dict[str, t.JsonValue] = {}
                 normalized_platforms: dict[str, t.JsonValue] = {}
                 for raw_key, raw_value in raw_entry.items():
-                    if not isinstance(raw_key, str):
-                        return r[t.JsonMapping].fail(
-                            f"mise.lock contains an invalid key for {raw_selector}"
-                        )
                     if raw_key.startswith("platforms."):
                         platform = raw_key.removeprefix("platforms.")
                         normalized_platforms[platform] = raw_value
@@ -108,7 +100,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             )
         missing: list[tuple[str, str, str]] = []
         for raw_selector, raw_entries in raw_tools.items():
-            if not isinstance(raw_selector, str) or not isinstance(raw_entries, list):
+            if not isinstance(raw_entries, list):
                 return r[tuple[tuple[str, str, str], ...]].fail(
                     "mise.lock contains an invalid tool entry"
                 )
@@ -118,9 +110,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                         f"mise.lock contains an invalid entry for {raw_selector}"
                     )
                 for raw_key, raw_metadata in raw_entry.items():
-                    if not isinstance(raw_key, str) or not raw_key.startswith(
-                        "platforms."
-                    ):
+                    if not raw_key.startswith("platforms."):
                         continue
                     platform = raw_key.removeprefix("platforms.")
                     if not platform or not isinstance(raw_metadata, Mapping):

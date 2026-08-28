@@ -135,7 +135,6 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         rope: p.Infra.RopeWorkspaceDsl,
         *,
         project_names: t.StrSequence | None,
-        selected_families: frozenset[str],
         rule_names: t.StrSequence | None,
     ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
         """Modules for rules."""
@@ -244,10 +243,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         project_fixes: dict[str, list[m.Infra.Census.Fix]] = defaultdict(list)
         report_projects: set[str] = set()
         for module in self._modules_for_rules(
-            rope,
-            project_names=project_names,
-            selected_families=selected_families,
-            rule_names=rule_names,
+            rope, project_names=project_names, rule_names=rule_names
         ):
             self._scan_module(
                 rope,

@@ -13,7 +13,7 @@ from flext_infra._utilities.namespace_common import (
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesRefactorNamespaceFlext(
