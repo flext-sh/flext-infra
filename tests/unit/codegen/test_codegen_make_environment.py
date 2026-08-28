@@ -229,6 +229,44 @@ class TestsCodegenMakeEnvironment:
         if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
+    def test_setup_bootstraps_before_the_tracked_mise_launcher_exists(
+        self, tmp_path: Path
+    ) -> None:
+        """Use the exact managed Mise version already available on ``PATH``."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
+        tool_bin = tmp_path / "managed-tools" / "bin"
+        mise = test_u.Tests.write_mise_stub(tool_bin / "mise")
+        uv = tool_bin / "uv"
+        test_u.Tests.write_executable(
+            uv,
+            "#!/bin/sh\n"
+            'if [ "$1" = "--version" ]; then '
+            f"printf 'uv {config.Infra.codegen.toolchain.uv_version}.0\\n'; exit; fi\n"
+            'if [ "$1" = "venv" ]; then\n'
+            '  mkdir -p "$2/bin"\n'
+            "  printf '#!/bin/sh\\nexit 0\\n' > \"$2/bin/python\"\n"
+            '  chmod +x "$2/bin/python"\n'
+            "fi\n"
+            "exit 0\n",
+        )
+        env = {"PATH": f"{tool_bin}:{os.environ['PATH']}"}
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.MAKE, "--no-print-directory", "setup"],
+                cwd=project_root,
+                env=env,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(mise.is_file(), eq=True)
+        tm.that((project_root / ".venv" / "bin" / "python").is_file(), eq=True)
+
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
     ) -> None:
