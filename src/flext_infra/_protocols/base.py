@@ -463,8 +463,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @classmethod
-    def matches_root_namespace_file(cls, file_name: str) -> bool:
-        """Return whether a file belongs to the governed root namespace."""
+    def is_public_python_module_file(cls, file_name: str) -> bool:
+        """Return whether a file names a public Python module."""
         ...
 
     @staticmethod
@@ -662,16 +662,6 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def log(self) -> p.Logger: ...
-
-    @runtime_checkable
-    class TemplateRenderer(Protocol):
-        """Protocol for template renderers."""
-
-        def render_all(
-            self, settings: m.Infra.BaseMkConfig | None = None
-        ) -> p.Result[str]:
-            """Render all templates with given configuration."""
-            ...
 
     @runtime_checkable
     class ViolationWithLine(Protocol):

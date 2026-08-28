@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import main as infra_main
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.inventory import FlextInfraInventoryService
 from flext_infra.validate.scanner import FlextInfraTextPatternScanner
 from flext_tests import tm
@@ -26,31 +25,6 @@ if TYPE_CHECKING:
 def _cli(*args: str) -> int:
     """Run validate routing through the canonical infra CLI."""
     return infra_main(["validate", *args])
-
-
-class TestMainBaseMkValidate:
-    """Test basemk-validate subcommand with real services."""
-
-    def test_success(self, tmp_path: Path) -> None:
-        """basemk-validate returns r[bool] based on base.mk match."""
-        (tmp_path / "base.mk").write_text("# root")
-        result = FlextInfraBaseMkValidator(workspace_root=tmp_path).execute()
-        tm.that(result.success, is_=bool)
-
-    def test_with_violations(self, tmp_path: Path) -> None:
-        """basemk-validate returns failure with mismatched base.mk."""
-        (tmp_path / "base.mk").write_text("# root")
-        proj = tmp_path / "project1"
-        proj.mkdir()
-        (proj / "pyproject.toml").write_text("")
-        (proj / "base.mk").write_text("# different")
-        result = FlextInfraBaseMkValidator(workspace_root=tmp_path).execute()
-        tm.that(result.failure, eq=True)
-
-    def test_missing_root_basemk(self, tmp_path: Path) -> None:
-        """basemk-validate returns failure when root base.mk missing."""
-        result = FlextInfraBaseMkValidator(workspace_root=tmp_path).execute()
-        tm.that(result.failure, eq=True)
 
 
 class TestMainInventory:
@@ -106,11 +80,6 @@ class TestMainCliRouting:
     def test_help_flag(self) -> None:
         """--help returns 0."""
         tm.that(_cli("--help"), eq=0)
-
-    def test_basemk_validate_routing(self, tmp_path: Path) -> None:
-        """basemk-validate subcommand routes correctly."""
-        result = _cli("basemk-validate", "--workspace", str(tmp_path))
-        tm.that({0, 1}, has=result)
 
     def test_inventory_routing(self, tmp_path: Path) -> None:
         """Inventory subcommand routes correctly."""

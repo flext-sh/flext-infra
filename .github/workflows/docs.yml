@@ -48,38 +48,58 @@ jobs:
       # upload as artifact so the real error is always reachable.
       - name: Docs audit (blocking)
         run: |
-          .venv/bin/python -m flext_infra docs audit --workspace . --output-dir .reports/docs || {
-            while IFS= read -r -d '' f; do
-              echo "::group::$f"
-              tail -n 80 "$f"
-              echo "::endgroup::"
-            done < <(
-              find .reports apps \
+          set -euo pipefail
+          if .venv/bin/python -m flext_infra docs audit --workspace . --output-dir .reports/docs; then
+            :
+          else
+            command_status="$?"
+            report_roots=()
+            for candidate in .reports apps; do
+              if [ -e "$candidate" ]; then report_roots+=("$candidate"); fi
+            done
+            if [ "${#report_roots[@]}" -gt 0 ]; then
+              report_list="$(mktemp "${RUNNER_TEMP:?}/flext-docs-audit.XXXXXX")"
+              find "${report_roots[@]}" \
                 \( -path '*/audit-summary.json' -o -path '*/audit-report.md' \
                    -o -path '*/validate-summary.json' -o -path '*/validate-report.md' \) \
-                -type f -print0 2>/dev/null || true
-            )
-            exit 1
-          }
+                -type f -print0 >"$report_list"
+              while IFS= read -r -d '' f; do
+                echo "::group::$f"
+                tail -n 80 "$f"
+                echo "::endgroup::"
+              done <"$report_list"
+            fi
+            exit "$command_status"
+          fi
 
       - name: Docs generate (materialize contract artifacts)
         run: .venv/bin/python -m flext_infra docs generate --workspace . --output-dir .reports/docs --apply
 
       - name: Docs validate (blocking)
         run: |
-          .venv/bin/python -m flext_infra docs validate --workspace . --output-dir .reports/docs || {
-            while IFS= read -r -d '' f; do
-              echo "::group::$f"
-              tail -n 80 "$f"
-              echo "::endgroup::"
-            done < <(
-              find .reports apps \
+          set -euo pipefail
+          if .venv/bin/python -m flext_infra docs validate --workspace . --output-dir .reports/docs; then
+            :
+          else
+            command_status="$?"
+            report_roots=()
+            for candidate in .reports apps; do
+              if [ -e "$candidate" ]; then report_roots+=("$candidate"); fi
+            done
+            if [ "${#report_roots[@]}" -gt 0 ]; then
+              report_list="$(mktemp "${RUNNER_TEMP:?}/flext-docs-validate.XXXXXX")"
+              find "${report_roots[@]}" \
                 \( -path '*/validate-summary.json' -o -path '*/validate-report.md' \
                    -o -path '*/audit-summary.json' -o -path '*/audit-report.md' \) \
-                -type f -print0 2>/dev/null || true
-            )
-            exit 1
-          }
+                -type f -print0 >"$report_list"
+              while IFS= read -r -d '' f; do
+                echo "::group::$f"
+                tail -n 80 "$f"
+                echo "::endgroup::"
+              done <"$report_list"
+            fi
+            exit "$command_status"
+          fi
 
       # flext-o6h5 (agent: kimi) — include-hidden-files: .reports/ is a dot-dir and
       # upload-artifact skips hidden paths by default (artifact silently empty).

@@ -115,29 +115,7 @@ class FlextInfraConstantsWorkspace:
     })
     "Persistent-state artifact basenames owned by the local repository."
 
-    MAKEFILE_REPLACEMENTS: Final[t.VariadicTuple[t.StrPair]] = (
-        (
-            'python3 "$(BASE_MK_DIR)/scripts/mode.py"',
-            "python -m flext_infra workspace detect",
-        ),
-        (
-            'python "$(WORKSPACE_ROOT)/scripts/check/fix_pyrefly_config.py"',
-            "python -m flext_infra check fix-pyrefly-settings",
-        ),
-        (
-            'python "$(WORKSPACE_ROOT)/scripts/check/workspace_check.py"',
-            "python -m flext_infra check run",
-        ),
-        (
-            '$(VENV_PYTHON) "$(BASE_MK_DIR)/scripts/core/pytest_diag_extract.py"',
-            "$(VENV_PYTHON) -m flext_infra validate pytest-diag",
-        ),
-        (
-            'python3 "$(WORKSPACE_ROOT)/scripts/github/pr_manager.py"',
-            "python3 -m flext_infra github pr",
-        ),
-    )
-    # NOTE (flext-jnm1.2): the .gitignore body is derived from the artifact SSOT
+    # The .gitignore body is derived from the artifact SSOT
     # (config/codegen.yaml artifacts -> CodegenConfigSpec.gitignore_sections)
     # and written only by codegen conform; the old REQUIRED_GITIGNORE_ENTRIES,
     # GITIGNORE_REMOVE_EXACT and GITIGNORE_MANAGED_HEADER append-paths were

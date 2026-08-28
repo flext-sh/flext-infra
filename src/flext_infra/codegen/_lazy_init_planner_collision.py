@@ -112,7 +112,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
-            if not u.Infra.matches_root_namespace_file(pub_file):
+            if not u.Infra.is_public_python_module_file(pub_file):
                 continue
             if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
                 return True

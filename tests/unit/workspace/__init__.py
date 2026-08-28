@@ -25,10 +25,7 @@ if TYPE_CHECKING:
     from .test_environment_provenance import (
         TestsFlextInfraWorkspaceEnvironmentProvenance,
     )
-    from .test_facade_environment_sync import (
-        TestsFlextInfraFacadeBaseMk,
-        TestsFlextInfraFacadeEnvironmentSync,
-    )
+    from .test_facade_environment_sync import TestsFlextInfraFacadeEnvironmentSync
     from .test_main import TestsFlextInfraWorkspaceMain, workspace_main
     from .test_repository_local_topology import TestsRepositoryLocalTopology
     from .test_vscode import TestsFlextInfraCodegenVscode
@@ -37,7 +34,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "TestsDetectorOwnsNoProjectRegistry",
     "TestsFlextInfraCodegenVscode",
-    "TestsFlextInfraFacadeBaseMk",
     "TestsFlextInfraFacadeEnvironmentSync",
     "TestsFlextInfraWorkspaceEnvironmentProvenance",
     "TestsFlextInfraWorkspaceMain",
@@ -82,10 +78,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_environment_provenance": (
                 "TestsFlextInfraWorkspaceEnvironmentProvenance",
             ),
-            ".test_facade_environment_sync": (
-                "TestsFlextInfraFacadeBaseMk",
-                "TestsFlextInfraFacadeEnvironmentSync",
-            ),
+            ".test_facade_environment_sync": ("TestsFlextInfraFacadeEnvironmentSync",),
             ".test_main": ("TestsFlextInfraWorkspaceMain", "workspace_main"),
             ".test_repository_local_topology": ("TestsRepositoryLocalTopology",),
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),

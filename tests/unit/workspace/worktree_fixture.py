@@ -124,6 +124,25 @@ class WorktreeFixture:
         u.Tests.initialize_git_repo(
             root, origin_url=cls.governed_repository_url(distribution)
         )
+        provider = u.Tests.provider()
+        baseline = tm.ok(u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "config", "remote.origin.skipDefaultUpdate", "true"],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "update-ref",
+                    f"refs/remotes/origin/{provider.branch}",
+                    baseline,
+                ],
+                cwd=root,
+            )
+        )
         return pyproject
 
     @classmethod

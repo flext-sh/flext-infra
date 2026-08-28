@@ -380,6 +380,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             files.extend(governed.value)
+            if contract.complete_governed:
+                retired = self.retired_projection_plans(
+                    repository_root, target.make_profile
+                )
+                if retired.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        retired.error
+                        or (
+                            f"stage=plan position={repository_index}/"
+                            f"{total_repositories} repository={repository.name}: "
+                            "retired projection planning failed"
+                        )
+                    )
+                files.extend(retired.value)
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -942,7 +956,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
-            providers=codegen.providers,
+            codegen=codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
@@ -1028,7 +1042,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
-                providers=codegen.providers,
+                codegen=codegen,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
             )
@@ -1073,7 +1087,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
-            providers=codegen.providers,
+            codegen=codegen,
             workspace=workspace,
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
@@ -1322,33 +1336,33 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _infra_repository(
-        workspace: m.Infra.WorkspaceSpec,
+        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Resolve the repository that owns the infrastructure CLI.
 
         The owner is read from the live workspace topology when that topology
         declares it. A standalone consumer legitimately declares no
-        flext-infra subproject, so the reference is then derived from the provider
-        contract. Either way nothing is looked up in a project catalog, which
-        flext-infra is forbidden to own.
+        infrastructure subproject, so the reference is then derived from the
+        typed source and provider contracts. Either way nothing is read from a
+        generated pyproject or looked up in a project catalog.
         """
+        source = codegen.infra_repository
         matches = tuple(
             item
             for item in (workspace.repository, *workspace.subprojects)
-            if item.distribution == config.Infra.name
+            if item.distribution == source.distribution
         )
         if len(matches) > 1:
             return r[m.Infra.RepositoryRef].fail(
                 "workspace topology declares more than one "
-                f"{config.Infra.name} checkout"
+                f"{source.distribution} checkout"
             )
         if matches:
             return r[m.Infra.RepositoryRef].ok(matches[0])
-        return r[m.Infra.RepositoryRef].ok(
-            u.Infra.derived_repository_ref(
-                config.Infra.name, provider=config.Infra.codegen.providers[0]
-            )
+        resolved: p.Result[m.Infra.RepositoryRef] = u.Infra.configured_repository_ref(
+            source.distribution, codegen=codegen
         )
+        return resolved
 
     @staticmethod
     def _repository_provider(
@@ -1531,7 +1545,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
-            infra_repository = self._infra_repository(workspace)
+            infra_repository = self._infra_repository(workspace, codegen)
             if infra_repository.failure:
                 return r[p.Model].fail(
                     infra_repository.error
@@ -1629,7 +1643,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        infra_repository = FlextInfraCodegenConform._infra_repository(workspace)
+        infra_repository = FlextInfraCodegenConform._infra_repository(
+            workspace, codegen
+        )
         if infra_repository.failure:
             return r[m.Infra.MakeRenderContext].fail(
                 infra_repository.error
@@ -2033,35 +2049,94 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.BranchAncestryPlan]:
         """Inventory governed refs and prove descent from the provider baseline."""
         root = target.root
-        # Refresh the provider baseline from origin when a remote exists so
-        # CI/local gates do not compare against a stale remote-tracking SHA.
-        # Fixtures and offline clones keep the existing tracking ref.
-        remote_probe = u.Cli.run_raw(
-            (c.Infra.GIT, "remote", "get-url", "origin"), cwd=root
-        )
-        if (
-            remote_probe.success
-            and remote_probe.value.exit_code == 0
-            and remote_probe.value.stdout.strip()
-        ):
-            fetch_command = (
+        # Refresh the provider baseline when origin is configured. A checkout
+        # without remotes may validate an explicitly materialized tracking ref,
+        # but a configured remote must be readable and fetchable.
+        remotes_command = (c.Infra.GIT, "remote")
+        remotes_result = u.Cli.run_raw(remotes_command, cwd=root)
+        if remotes_result.failure:
+            return r[m.Infra.BranchAncestryPlan].fail(
+                "cannot enumerate Git remotes: "
+                f"command={' '.join(remotes_command)}; error={remotes_result.error}"
+            )
+        if remotes_result.value.exit_code != 0:
+            return r[m.Infra.BranchAncestryPlan].fail(
+                "cannot enumerate Git remotes: "
+                f"command={' '.join(remotes_command)}; "
+                f"exit={remotes_result.value.exit_code}; "
+                f"stderr={remotes_result.value.stderr.strip() or '<empty>'}"
+            )
+        if "origin" in remotes_result.value.stdout.splitlines():
+            remote_command = (c.Infra.GIT, "remote", "get-url", "origin")
+            remote_result = u.Cli.run_raw(remote_command, cwd=root)
+            if remote_result.failure:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin URL: "
+                    f"command={' '.join(remote_command)}; error={remote_result.error}"
+                )
+            if (
+                remote_result.value.exit_code != 0
+                or not remote_result.value.stdout.strip()
+            ):
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin URL: "
+                    f"command={' '.join(remote_command)}; "
+                    f"exit={remote_result.value.exit_code}; "
+                    f"stderr={remote_result.value.stderr.strip() or '<empty>'}"
+                )
+            skip_fetch_command = (
                 c.Infra.GIT,
-                "fetch",
-                "--no-tags",
-                "--prune",
-                "origin",
-                (
-                    f"+refs/heads/{target.baseline_branch}:"
-                    f"refs/remotes/origin/{target.baseline_branch}"
-                ),
+                "config",
+                "--type=bool",
+                "--get",
+                "remote.origin.skipDefaultUpdate",
             )
-            fetch_result = u.Cli.run_raw(
-                fetch_command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT
+            skip_fetch_result = u.Cli.run_raw(skip_fetch_command, cwd=root)
+            if skip_fetch_result.failure:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin update policy: "
+                    f"command={' '.join(skip_fetch_command)}; "
+                    f"error={skip_fetch_result.error}"
+                )
+            if skip_fetch_result.value.exit_code not in {0, 1}:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot resolve origin update policy: "
+                    f"command={' '.join(skip_fetch_command)}; "
+                    f"exit={skip_fetch_result.value.exit_code}; "
+                    f"stderr={skip_fetch_result.value.stderr.strip() or '<empty>'}"
+                )
+            skip_fetch = (
+                skip_fetch_result.value.exit_code == 0
+                and skip_fetch_result.value.stdout.strip() == "true"
             )
-            if fetch_result.failure or fetch_result.value.exit_code != 0:
-                # Soft: ancestry still validates against the local tracking ref
-                # when present; hard-fail only if that ref is missing below.
-                pass
+            if not skip_fetch:
+                fetch_command = (
+                    c.Infra.GIT,
+                    "fetch",
+                    "--no-tags",
+                    "--prune",
+                    "origin",
+                    (
+                        f"+refs/heads/{target.baseline_branch}:"
+                        f"refs/remotes/origin/{target.baseline_branch}"
+                    ),
+                )
+                fetch_result = u.Cli.run_raw(
+                    fetch_command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT
+                )
+                if fetch_result.failure:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "provider baseline fetch failed: "
+                        f"command={' '.join(fetch_command)}; "
+                        f"error={fetch_result.error}"
+                    )
+                if fetch_result.value.exit_code != 0:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "provider baseline fetch failed: "
+                        f"command={' '.join(fetch_command)}; "
+                        f"exit={fetch_result.value.exit_code}; "
+                        f"stderr={fetch_result.value.stderr.strip() or '<empty>'}"
+                    )
         baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
@@ -2318,6 +2393,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """
         codegen = config.Infra.codegen
         planned: list[m.Infra.CodegenFilePlan] = []
+        for retired in codegen.retired_projections:
+            path = root / retired.path
+            if not path.exists() and not path.is_symlink():
+                continue
+            if not path.is_file() or path.is_symlink():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"retired projection is not a regular file: {retired.path}"
+                )
+            current = u.Cli.files_read_text(path)
+            if current.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    current.error or f"retired projection read failed: {retired.path}"
+                )
+            missing_markers = tuple(
+                marker for marker in retired.markers if marker not in current.value
+            )
+            if missing_markers:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"retired projection identity mismatch: {retired.path}"
+                )
+            planned.append(cls._absent_file_plan(path, current.value))
         for entry in codegen.templates.entries:
             if profile in entry.profiles or "{" in entry.destination:
                 continue

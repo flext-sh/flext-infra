@@ -3,52 +3,20 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import flext_infra
-from flext_infra import u
-from flext_tests import tm
 
 ROOT = Path(flext_infra.__file__).resolve().parents[2]
-COMMON_DIR = Path(
-    tm.ok(
-        u.Cli.capture(
-            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT
-        )
-    )
-)
-# When flext-infra is a submodule, the git common-dir resolves to the
-# superproject's <superproject>/.git/modules/<name> and --show-toplevel
-# returns the submodule checkout. Governance assets (docs/, AGENTS.md,
-# .agents/skills) live in the superproject, so resolve its root instead.
-_super_modules = [
-    p for p in COMMON_DIR.parents if p.name == "modules" and p.parent.name == ".git"
-]
-_resolve_root = _super_modules[0].parent.parent if _super_modules else ROOT
-WORKSPACE_ROOT = Path(
-    tm.ok(
-        u.Cli.capture(
-            ["git", "rev-parse", "--path-format=absolute", "--show-toplevel"],
-            cwd=_resolve_root,
-        )
-    )
-)
 
 
-def test_prompt_skills_resolve_to_existing_paths() -> None:
-    prompts = ROOT / ".github" / "prompts"
-    law_link = "../../.agents/skills/flext-law/SKILL.md"
-    for prompt in prompts.glob("*.prompt.md"):
-        text = prompt.read_text(encoding="utf-8")
-        assert "flext-inviolable-rules" not in text
-        assert "quality-gates" not in text
-        if (
-            "flext-aggressive-scale-refactor" in prompt.name
-            or "flext-strict-jsonvalue" in prompt.name
-        ):
-            assert law_link in text
-            target = (prompt.parent / law_link).resolve()
-            assert target.exists(), f"{prompt.name} dead skill path: {law_link}"
+def test_standalone_governance_never_climbs_to_parent_authority() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+    assert "standalone authority" in agents
+    assert "Never climb to a parent checkout" in agents
+    assert re.search(r"(?<![\w-])(bd|gt)(?![\w-])", agents) is None
 
 
 def test_markdownlint_does_not_suppress_strict_rules() -> None:

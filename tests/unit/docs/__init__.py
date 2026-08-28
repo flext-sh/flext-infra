@@ -77,6 +77,7 @@ if TYPE_CHECKING:
         test_update_toc_replaces_existing_block,
     )
     from .generator_tests import (
+        test_configured_api_modules_own_generated_module_pages,
         test_docs_policy_declares_cross_project_relative_link_pattern,
         test_generate_apply_writes_summary_and_report,
         test_generate_dry_run_reports_real_drift,
@@ -203,6 +204,7 @@ __all__: tuple[str, ...] = (
     "test_build_uses_custom_output_dir",
     "test_builder_execute_fails_when_mkdocs_is_missing",
     "test_builder_execute_fails_with_invalid_mkdocs_config",
+    "test_configured_api_modules_own_generated_module_pages",
     "test_doc_scope_creation",
     "test_doc_scope_requires_name",
     "test_docs_cli_validate_apply_passes_after_generate_apply",
@@ -341,6 +343,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_update_toc_replaces_existing_block",
             ),
             ".generator_tests": (
+                "test_configured_api_modules_own_generated_module_pages",
                 "test_docs_policy_declares_cross_project_relative_link_pattern",
                 "test_generate_apply_writes_summary_and_report",
                 "test_generate_dry_run_reports_real_drift",

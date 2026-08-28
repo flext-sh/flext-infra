@@ -6,7 +6,6 @@ from typing import ClassVar
 
 from flext_infra import m
 from flext_infra.services.cli_route_base import CliRouteBase
-from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
@@ -39,12 +38,6 @@ class ValidationCommandRoutes(CliRouteBase):
                 "Render a bounded cProfile report",
                 FlextInfraCProfileReport,
                 lambda params, mc=FlextInfraCProfileReport: mc.execute_command(params),
-            ),
-            (
-                "basemk-validate",
-                "Validate base.mk sync",
-                FlextInfraBaseMkValidator,
-                lambda params, mc=FlextInfraBaseMkValidator: mc.execute_command(params),
             ),
             (
                 "inventory",

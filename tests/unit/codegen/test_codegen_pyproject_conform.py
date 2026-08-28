@@ -9,7 +9,20 @@ from flext_infra import c, config, m, u
 from flext_tests import tm
 from tests import u as test_u
 
-_PROVIDER_SPEC = config.Infra.codegen.providers[0]
+_PROVIDER_SPEC = tm.ok(
+    u.Infra.repository_provider(
+        test_u.Tests.repository_ref("provider-fixture"), config.Infra.codegen.providers
+    )
+)
+
+
+def _provider(name: str) -> m.Infra.ProviderSpec:
+    matches = tuple(
+        provider for provider in config.Infra.codegen.providers if provider.name == name
+    )
+    tm.that(len(matches), eq=1)
+    (provider,) = matches
+    return provider
 
 
 def _repository(
@@ -76,7 +89,7 @@ members = ["flext-core"]
 [tool.uv.sources.flext-core]
 workspace = true
 """,
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -89,7 +102,7 @@ workspace = true
         member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
@@ -98,6 +111,117 @@ workspace = true
             document["project"]["dependencies"],
             eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
         )
+
+    def test_standalone_derives_bare_internal_dependency_from_config_authority(
+        self,
+    ) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        source = config.Infra.codegen.infra_repository
+        provider = _provider(source.provider)
+        result = u.Infra.pyproject_dependencies_conform(
+            '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
+            codegen=config.Infra.codegen,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        tm.that(
+            document["project"]["dependencies"],
+            eq=[
+                f"flext-core @ git+{provider.base_url}/flext-core.git@{provider.branch}"
+            ],
+        )
+
+    def test_bare_internal_dependency_requires_exactly_one_configured_provider(
+        self,
+    ) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        source = config.Infra.codegen.infra_repository
+        selected = _provider(source.provider)
+        missing = tuple(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name != source.provider
+        )
+        duplicate = (*config.Infra.codegen.providers, selected)
+
+        for providers in (missing, duplicate):
+            codegen = config.Infra.codegen.model_copy(update={"providers": providers})
+            result = u.Infra.pyproject_dependencies_conform(
+                '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
+                codegen=codegen,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+
+            tm.fail(
+                result, has="configured repository provider must resolve exactly once"
+            )
+
+    def test_standalone_resolves_explicit_https_internal_dependency(self) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        provider = _provider("datacosmos-br")
+        requirement = (
+            "flext-core @ "
+            f"git+{provider.base_url.rstrip('/')}/flext-core.git@stale-branch"
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            f'[project]\nname = "external-consumer"\ndependencies = ["{requirement}"]\n',
+            codegen=config.Infra.codegen,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        expected = (
+            f"flext-core @ git+{provider.base_url.rstrip('/')}/"
+            f"flext-core.git@{provider.branch}"
+        )
+        tm.that(document["project"]["dependencies"], eq=[expected])
+
+    def test_standalone_resolves_explicit_ssh_internal_dependency(self) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        provider = _provider("datacosmos-br")
+        requirement = (
+            "flext-core @ git+ssh://git@github.com/"
+            f"{provider.organization}/flext-core.git@stale-branch"
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            f'[project]\nname = "external-consumer"\ndependencies = ["{requirement}"]\n',
+            codegen=config.Infra.codegen,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        expected = (
+            f"flext-core @ git+{provider.base_url.rstrip('/')}/"
+            f"flext-core.git@{provider.branch}"
+        )
+        tm.that(document["project"]["dependencies"], eq=[expected])
+
+    def test_standalone_rejects_explicit_internal_dependency_identity_mismatch(
+        self,
+    ) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        provider = _PROVIDER_SPEC
+        raw_url = (
+            "git+ssh://git@github.com/"
+            f"{provider.organization}/different-project.git@{provider.branch}"
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            (
+                '[project]\nname = "external-consumer"\n'
+                f'dependencies = ["flext-core @ {raw_url}"]\n'
+            ),
+            codegen=config.Infra.codegen,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        error = tm.fail(result, has="repository identity does not match distribution")
+        tm.that(error, lacks=raw_url)
 
     def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
         workspace = _workspace()
@@ -111,7 +235,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
         first = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
@@ -119,7 +243,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
         second = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 first,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
@@ -142,7 +266,7 @@ constraint-dependencies = ["uv>=0"]
         conformed = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 source,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             )
@@ -160,7 +284,7 @@ constraint-dependencies = ["uv>=0"]
         invalid_workspace = workspace.model_copy(update={"subprojects": (member,)})
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=invalid_workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
@@ -178,7 +302,7 @@ constraint-dependencies = ["uv>=0"]
                 "\n[tool.uv.sources.flext-core]\n"
                 "workspace = true\n"
             ),
-            providers=config.Infra.codegen.providers,
+            codegen=config.Infra.codegen,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -206,7 +330,7 @@ python-interpreter-path = "../.venv/bin/python"
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
@@ -216,7 +340,7 @@ python-interpreter-path = "../.venv/bin/python"
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
@@ -288,7 +412,7 @@ python-interpreter-path = "../.venv/bin/python"
             u.Infra.pyproject_conform(
                 '[project]\nname = "external-consumer"\n'
                 'version = "0.0.1"\ndependencies = []\n',
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -310,7 +434,7 @@ python-interpreter-path = "../.venv/bin/python"
         first = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -320,7 +444,7 @@ python-interpreter-path = "../.venv/bin/python"
         second = tm.ok(
             u.Infra.pyproject_conform(
                 first,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -338,7 +462,7 @@ python-interpreter-path = "../.venv/bin/python"
             u.Infra.pyproject_conform(
                 '[project]\nname = "external-consumer"\n'
                 'version = "0.0.1"\ndependencies = []\n',
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
@@ -361,7 +485,7 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=toolchain,
@@ -388,7 +512,7 @@ dependencies = []
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 source,
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,

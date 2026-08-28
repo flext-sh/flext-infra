@@ -409,6 +409,23 @@ class FlextInfraConfigModels:
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
 
+    class RepositorySourceSpec(_ConfigContract):
+        """Portable repository identity derived through one declared provider."""
+
+        distribution: Annotated[
+            t.NonEmptyStr, m.Field(description="Repository distribution name")
+        ]
+        provider: Annotated[
+            t.NonEmptyStr, m.Field(description="Provider key owning URL and branch")
+        ]
+
+        @m.computed_field()
+        @property
+        def internal_distribution_prefix(self) -> str:
+            """Derive the internal distribution namespace from the owner name."""
+            namespace, _, _ = self.distribution.partition("-")
+            return f"{namespace}-"
+
     class BranchPolicySpec(_ConfigContract):
         """Global ancestry policy shared by every governed provider."""
 
@@ -975,6 +992,16 @@ class FlextInfraConfigModels:
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
+        api_modules: Annotated[
+            Mapping[t.NonEmptyStr, tuple[t.NonEmptyStr, ...]],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Public API modules generated per distribution; absent "
+                    "distributions own no module pages"
+                ),
+            ),
+        ]
         mutable_actions: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
@@ -1002,6 +1029,29 @@ class FlextInfraConfigModels:
                 description="Governed org/repo/branch map for cross-repo doc URLs",
             ),
         ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_api_modules(self) -> Self:
+            """Reject duplicate or non-importable API module declarations."""
+            for distribution, modules in self.api_modules.items():
+                if not modules:
+                    msg = f"docs api_modules must not be empty: {distribution}"
+                    raise ValueError(msg)
+                if len(set(modules)) != len(modules):
+                    msg = f"docs api_modules must be unique: {distribution}"
+                    raise ValueError(msg)
+                invalid = next(
+                    (
+                        module
+                        for module in modules
+                        if not all(part.isidentifier() for part in module.split("."))
+                    ),
+                    None,
+                )
+                if invalid is not None:
+                    msg = f"docs api module is not importable: {invalid}"
+                    raise ValueError(msg)
+            return self
 
     class TestmonCacheSpec(_ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy."""
@@ -1405,6 +1455,27 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
+
+    class RetiredProjectionSpec(_ConfigContract):
+        """One obsolete generated file removable only by exact identity markers."""
+
+        path: Annotated[Path, m.Field(description="Repository-relative retired path")]
+        markers: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Required legacy identity markers"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_path(self) -> Self:
+            """Reject broad or escaping retirement targets at config load."""
+            if (
+                self.path == Path()
+                or self.path.is_absolute()
+                or ".." in self.path.parts
+            ):
+                msg = "retired projection path must be repository-relative and exact"
+                raise ValueError(msg)
+            return self
 
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""
@@ -2532,6 +2603,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
         ] = ()
+        infra_repository: Annotated[
+            FlextInfraConfigModels.RepositorySourceSpec,
+            m.Field(description="Canonical infrastructure repository identity"),
+        ]
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
@@ -2705,6 +2780,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
             m.Field(description="Files owned by conform"),
         ]
+        retired_projections: Annotated[
+            tuple[FlextInfraConfigModels.RetiredProjectionSpec, ...],
+            m.Field(description="Obsolete generated files awaiting exact retirement"),
+        ] = ()
         scaffold: Annotated[
             FlextInfraConfigModels.ScaffoldSpec,
             m.Field(description="Typed new-project scaffold policy"),
@@ -2974,20 +3053,6 @@ class FlextInfraConfigModels:
         def changed(self) -> bool:
             """Whether the sync altered any environment file."""
             return bool(self.changed_files)
-
-    class BaseMkRenderRequest(_ConfigContract):
-        """Validated public request for one base.mk render."""
-
-        project_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
-        ]
-
-    class BaseMkRenderResult(_ConfigContract):
-        """Rendered base.mk content for one project."""
-
-        content: Annotated[
-            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
-        ]
 
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""
