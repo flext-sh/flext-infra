@@ -9,7 +9,7 @@ this rollout.
 
 - Phase: OPEN
 - Integration branch: `0.12.0-dev`
-- Active branch: `fix/beads-optout-preserve-state-20260827`
+- Active branch: `fix/beads-1.2.2-ssot-cutover-20260828`
 - Static projection target: Beads `1.2.2`, `127.0.0.1:3307`
 - Rope scope: conditional on execution context; any call below a repository
   carrying `.gitmodules` scans that entire workspace, independent of submodule
@@ -54,6 +54,8 @@ this rollout.
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `be442f8f8` | Residual active policy vocabulary removed from comments and checkpoint pushed |
 | 2026-08-28T12:11:10-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0bc446d9f` | Full-suite worker budget reduced at its typed owner after repeated memory exhaustion; seven net lines removed and checkpoint pushed |
 | 2026-08-28T12:16:16-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `fc68f07da` | Stable complete-suite evidence recorded and pushed after the typed worker-budget repair |
+| 2026-08-28T12:17:59-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `c7a2818e0` | Final static and zero-residue evidence recorded and pushed |
+| 2026-08-28T12:19:08-03:00 | `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | `c7a2818e0` | Neutral replacement lane created at the fully validated tip and pushed without altering the preserved predecessor |
 
 ## Validation log
 
@@ -127,6 +129,7 @@ this rollout.
 | 2026-08-28T12:16:00-03:00 | `0bc446d9f` | Complete `COV=Y make test` without testmon, random seed `1650846145` | PASS: 2,386 tests in 179.87s; 80.22% coverage against 45% minimum | Two fixed workers completed every subprocess-heavy case with zero failures, errors, warnings, or skips; no retry, dynamic fallback, or timeout expansion was added |
 | 2026-08-28T12:17:25-03:00 | `fc68f07da` | Full `make check` | PASS: all seven static stages; 0 errors and 0 skips | Lint, smells, Markdown, Pyrefly, Mypy, security, and Pyright are green after the worker-budget projection and validation evidence update |
 | 2026-08-28T12:17:48-03:00 | `fc68f07da` | Precise tracked-content, filename, runtime-command, topology, and static-projection audit | PASS: zero active retired-contract or prohibited-command matches; projections equal `1.2.2`, `flext`, and `127.0.0.1:3307` | Historical ledger wording and its recorded branch names are evidence, not executable/product contract; production has no parent inference or runtime Beads surface |
+| 2026-08-28T12:18:43-03:00 | `c7a2818e0` | `git fetch origin 0.12.0-dev` and integration ancestry | PASS: feature is 0 commits behind and 59 ahead; `origin/0.12.0-dev` is an ancestor | No synchronization merge is needed; the next required graph edge is the explicit non-FF PR merge after operator approval |
 
 ## Unresolved boundaries
 
@@ -141,7 +144,7 @@ this rollout.
 
 | Repository | Source branch | Pull request | Approval | Merge SHA | Integrated verification |
 | --- | --- | --- | --- | --- | --- |
-| `flext-infra` | `fix/beads-optout-preserve-state-20260827` | PENDING | PENDING | PENDING | PENDING |
+| `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | PENDING | PENDING | PENDING | PENDING |
 
 The phase remains OPEN until every required repository has an independently
 approved pull request, an explicit merge commit on its integration branch, and
