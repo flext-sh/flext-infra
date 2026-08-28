@@ -7,7 +7,7 @@
 # BLOCK: AI/Agent Local Data (NEVER track these)
 .claude/*
 
-# BLOCK: member-local lockfile (the workspace root owns uv.lock)
+# BLOCK: subproject-local lockfile (the workspace root owns uv.lock)
 uv.lock
 
 # BLOCK: Agent surface outside the workspace root
@@ -223,7 +223,7 @@ secrets.yml
 .worktrees/
 legado/
 
-# Beads ledger identity (workspace and standalone; see mro-9wv8)
+# Beads ledger identity (workspace and standalone)
 !.beads/metadata.json
 
 # codegen module-standardizer reject artifacts (ADR-005 §9)

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Final
 import pytest
 
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.validate.basemk_validator import FlextInfraBaseMkValidator
 from flext_tests import tf, tm
 from tests import m, u
@@ -23,15 +24,26 @@ if TYPE_CHECKING:
     from tests import t
 
 _ROOT: Final[str] = "# root content"
+_PROJECT_NAME: Final[str] = "validator-project"
 
 
 def _generated_content() -> str:
     """Get the canonical generated base.mk content for hash-matching tests."""
     gen = FlextInfraBaseMkGenerator()
-    result = gen.generate_basemk()
+    render_settings = FlextInfraBaseMkTemplateRenderer.default_config().model_copy(
+        update={"project_name": _PROJECT_NAME}
+    )
+    result = gen.generate_basemk(render_settings)
     tm.ok(result)
     generated_content: str = result.value
     return generated_content
+
+
+def _write_project_identity(project_root: Path) -> None:
+    """Write the canonical project-name owner consumed by validation."""
+    (project_root / "pyproject.toml").write_text(
+        f'[project]\nname = "{_PROJECT_NAME}"\n', encoding="utf-8"
+    )
 
 
 @pytest.fixture
@@ -53,6 +65,7 @@ class TestBaseMkValidatorCore:
     def test_matching_basemk_returns_report_model(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
+        _write_project_identity(tmp_path)
         (tmp_path / "base.mk").write_text(_generated_content(), encoding="utf-8")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
@@ -61,6 +74,7 @@ class TestBaseMkValidatorCore:
     def test_stale_basemk_fails(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
+        _write_project_identity(tmp_path)
         tf(base_dir=tmp_path).create("# stale content", "base.mk")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
@@ -69,6 +83,7 @@ class TestBaseMkValidatorCore:
     def test_matching_basemk_passes(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
+        _write_project_identity(tmp_path)
         (tmp_path / "base.mk").write_text(_generated_content(), encoding="utf-8")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
@@ -87,6 +102,7 @@ class TestBaseMkValidatorEdgeCases:
     def test_violations_include_stale_message(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
+        _write_project_identity(tmp_path)
         tf(base_dir=tmp_path).create("# different", "base.mk")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
@@ -95,6 +111,7 @@ class TestBaseMkValidatorEdgeCases:
     def test_stale_report_has_violations(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
+        _write_project_identity(tmp_path)
         tf(base_dir=tmp_path).create("# mismatch", "base.mk")
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(not report.passed, eq=True)
@@ -103,6 +120,7 @@ class TestBaseMkValidatorEdgeCases:
     def test_oserror_returns_failure(
         self, tmp_path: Path, v: FlextInfraBaseMkValidator
     ) -> None:
+        _write_project_identity(tmp_path)
         basemk = tf(base_dir=tmp_path).create("# content", "base.mk")
         basemk.chmod(0)
         try:

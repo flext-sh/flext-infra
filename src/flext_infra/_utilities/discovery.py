@@ -165,7 +165,7 @@ class FlextInfraUtilitiesDiscovery(
     @staticmethod
     def package_importable(package_name: str) -> bool:
         """Return whether the active official environment resolves one package."""
-        # Why (mro-27a9e.1, multi-agent): standalone consumers inherit aliases
+        # Standalone consumers inherit aliases
         # from installed FLEXT artifacts; plain modules are never facade parents.
         try:
             spec = importlib_util.find_spec(package_name)

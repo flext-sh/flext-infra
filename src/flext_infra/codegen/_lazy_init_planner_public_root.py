@@ -89,7 +89,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         root_pkg: str,
         declared_contract: frozenset[str] | None,
     ) -> bool:
-        # mro-6szaq.14: private names never widen the public root ABI.
+        # Private names never widen the public root ABI.
         if name.startswith("_"):
             return False
         if declared_contract is not None and name not in declared_contract:
@@ -101,7 +101,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         if module_path == root_pkg:
             return True
         if module_path.startswith(f"{root_pkg}."):
-            # mro-6szaq.14 contract: any underscore-prefixed source segment
+            # Any underscore-prefixed source segment
             # marks the owner as private; the symbol stays behind its facade.
             tail = module_path[len(root_pkg) + 1 :].split(".")
             return not any(

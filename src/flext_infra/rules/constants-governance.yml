@@ -97,13 +97,6 @@ canonical_values:
       - TYPEVAR_CALLABLES
 
   # tuple canonical values
-  - value: ["src", "tests", "scripts", "examples"]
-    type: tuple
-    canonical_ref: "FLEXT_SCAN_DIRECTORIES"
-    semantic_names:
-      - SCAN_DIRECTORIES
-      - KNOWN_DIRS
-      - SCOPE_DIRS
   - value: ["constants.py", "typings.py", "protocols.py"]
     type: tuple
     canonical_ref: "TIER0_MODULE_FILES"
@@ -130,6 +123,5 @@ canonical_values:
     semantic_names:
       - CONSTANT_PATTERN
       - CONSTANT_NAME_RE
-      - FLEXT_SCAN_CONSTANT_PATTERN
 
 constants_class_pattern: 'Flext\w+Constants'

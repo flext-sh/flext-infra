@@ -275,7 +275,7 @@ class FlextInfraReleaseOrchestratorPhases(
         return r[int].ok(len(updates))
 
     # These methods are defined in the main orchestrator class and
-    # will be resolved via MRO when the main class inherits this mixin.
+    # is supplied by the composed release orchestrator.
     def _build_targets(
         self, workspace_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:

@@ -684,7 +684,7 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[bool].ok(True)
         workspace_names = {member.distribution for member in workspace.subprojects}
         for source_name in tuple(sources):
-            # NOTE (multi-agent, mro-wkii.17 / agent: codex): preserve resolved
+            # Preserve resolved
             # TOML tables in place so conformance cannot accumulate blank trivia.
             if source_name.startswith("flext-") and (
                 not workspace_root or source_name not in workspace_names
@@ -749,12 +749,14 @@ class FlextInfraUtilitiesPyprojectConform:
                 uv_workspace.get("members"), strict=True
             )
         except c.ValidationError as exc:
-            return r[bool].fail_op("validate root uv workspace members", exc)
+            return r[bool].fail_op("validate root uv workspace package entries", exc)
         expected_members = tuple(
             member.path.as_posix() for member in workspace.subprojects
         )
         if tuple(members) != expected_members:
-            return r[bool].fail("root uv workspace members differ from workspace SSOT")
+            return r[bool].fail(
+                "root uv workspace package entries differ from workspace SSOT"
+            )
         sources = uv.get("sources")
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")

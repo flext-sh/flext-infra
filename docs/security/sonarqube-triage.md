@@ -1093,7 +1093,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 57 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/_utilities/flext_scan.py:21` · **Effort**: 6min
+**Local**: retired composition scanner (removed) · **Effort**: 6min
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
@@ -1121,9 +1121,9 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        22      """Helpers for FLEXT completeness and future-import rewrites."""
        23  
        24      @staticmethod
->>>    25      def rewrite_flext_completeness_violations(
+>>>    25      def retired_composition_rewrite(
        26          *,
-       27          violations: t.SequenceOf[m.Infra.FLEXTCompletenessViolation],
+       27          violations: t.SequenceOf[m.Infra.RetiredCompositionViolation],
        28          parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
        29      ) -> None:
 ```
@@ -1834,7 +1834,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 96 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/_utilities/rope_flext_transform.py:23` · **Effort**: 9min
+**Local**: retired composition transformer (removed) · **Effort**: 9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
@@ -1845,7 +1845,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        22      @staticmethod
 >>>    23      def migrate_file(
        24          *, scan_result: m.Infra.FLEXTScanReport
-       25      ) -> tuple[str, m.Infra.FLEXTFileMigration, t.StrMapping]:
+       25      ) -> tuple[str, m.Infra.RetiredCompositionChange, t.StrMapping]:
        26          """Transform a candidate file and return code plus symbol map."""
        27          source = Path(scan_result.file).read_text(encoding=c.Cli.ENCODING_DEFAULT)
 ```
@@ -3145,18 +3145,18 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 165 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/flext_completeness_detector.py:21` · **Effort**: 16min
+**Local**: retired composition detector (removed) · **Effort**: 16min
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
 ```python
-       17  class FlextInfraFLEXTCompletenessDetector:
+       17  class RetiredCompositionDetector:
        18      """Detect facade classes missing FLEXT bases via rope."""
        19  
        20      @staticmethod
 >>>    21      def detect_file(
        22          ctx: m.Infra.DetectorContext,
-       23      ) -> t.SequenceOf[m.Infra.FLEXTCompletenessViolation]:
+       23      ) -> t.SequenceOf[m.Infra.RetiredCompositionViolation]:
        24          """Detect missing FLEXT bases: expected - declared = violations."""
        25          file_path = ctx.file_path
 ```
@@ -3164,7 +3164,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 166 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/flext_shape_detector.py:434` · **Effort**: 6min
+**Local**: retired inheritance-shape detector (removed) · **Effort**: 6min
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
@@ -3183,7 +3183,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 167 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/flext_shape_detector.py:453` · **Effort**: 9min
+**Local**: retired inheritance-shape detector (removed) · **Effort**: 9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
@@ -3202,7 +3202,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 168 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/flext_shape_detector.py:500` · **Effort**: 25min
+**Local**: retired inheritance-shape detector (removed) · **Effort**: 25min
 
 > Refactor this function to reduce its Cognitive Complexity from 35 to the 15 allowed.
 
@@ -3848,7 +3848,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 202 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/refactor/migrate_to_class_flext.py:36` · **Effort**: 6min
+**Local**: retired composition migrator (removed) · **Effort**: 6min
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
@@ -5596,21 +5596,12 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 294 · 🟡 MAJOR · CODE_SMELL · `python:S108`
-**Local**: `src/flext_infra/codegen/conform.py:2622` · **Effort**: 5min
+**Local**: retired runtime probe (removed) · **Effort**: 5min
 
 > Either remove or fill this block of code.
 
-```python
-     2618              return r[bool].fail(f"mise-managed Beads CLI is unavailable: {ledger_root}")
-     2619          version_parts = version.value.stdout.strip().split()
-     2620          match version_parts:
-     2621              case ["bd", "version", actual_version, *_]:
->>>  2622                  pass
-     2623              case _:
-     2624                  actual_version = ""
-     2625          if actual_version != plan.expected_version:
-     2626              return r[bool].fail(
-```
+The cited executable probe was deleted during the static-projection cutover;
+there is no active source block to triage.
 
 **Decisão**:
 
@@ -6782,11 +6773,11 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       662      "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
       663  
       664      # --- FLEXT scan patterns ---
-      665      FLEXT_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
+      665      RETIRED_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
 >>>   666          r"^_?[A-Za-z][A-Za-z0-9_]*$"
       667      )
       668      "Regex: valid Python identifier (used for FLEXT type/class name validation)."
-      669      FLEXT_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
+      669      RETIRED_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
       670          r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])"
 ```
 
@@ -6983,7 +6974,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 367 · ⚪ MINOR · CODE_SMELL · `python:S6353`
-**Local**: `src/flext_infra/_utilities/flext_scan_source.py:20` · **Effort**: 5min
+**Local**: retired composition source scanner (removed) · **Effort**: 5min
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 

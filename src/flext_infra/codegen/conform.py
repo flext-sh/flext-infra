@@ -74,7 +74,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 msg = f"Unsupported codegen conform surface: {surface}"
                 raise ValueError(msg)
 
-    # NOTE (multi-agent, mro-wkii.17 / agent: codex): this is the only
+    # This is the only
     # orchestrator for Make/toolchain/source conformance. Rendering stays in
     # flext-cli; Git-source TOML policy and attached detection are composed from
     # their separately owned u.Infra/workspace services.
@@ -527,11 +527,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                     continue
             if governed.policy == "merge" and relative.as_posix() == c.Infra.GITIGNORE:
-                # NOTE (mro-jnm1.2): the canonical .gitignore body is rendered
+                # The canonical .gitignore body is rendered
                 # from the same base/gitignore.j2 + computed
                 # CodegenConfigSpec.gitignore_sections used by `codegen new` —
                 # ONE render mechanism derived from the artifact SSOT.
-                # Per-project exception fields land with mro-jnm1.3.
+                # Per-project exception fields land in their typed owner.
                 rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
                     codegen,
                     profile=profile,
@@ -585,7 +585,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` for one named project.
 
-        Public seam consumed by the layout engine (mro-0wuz): per-project
+        Public seam consumed by the layout engine: per-project
         layout ``gitignore_additions`` from the layout SSOT are appended as
         one trailing derived section so conform and layout never diverge.
         """
@@ -603,7 +603,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
-        NOTE (mro-jnm1.2): ``codegen new`` renders ``base/gitignore.j2`` with
+        ``codegen new`` renders ``base/gitignore.j2`` with
         the full project context; conform renders the same template with the
         codegen config — both consume the same computed ``gitignore_sections``
         projection, so the body is byte-identical.
@@ -720,7 +720,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         entries: t.SequenceOf[p.Infra.TemplateEntrySpec], profile: c.Infra.MakeProfile
     ) -> t.StrSequence:
         """Return Python roots the selected scaffold manifest actually creates."""
-        # NOTE (multi-agent, mro-wkii.17.9.2.1): derive future roots from both
+        # Derive future roots from both
         # declarative owners so scaffold and existing-tree discovery converge.
         generated_roots = {
             Path(entry.destination).parts[0]
@@ -753,9 +753,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = target.make_profile
         pyproject = root / c.Infra.PYPROJECT_FILENAME
-        # mro-j47u (codex): new and existing repositories share the exact same
+        # New and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
-        # NOTE(mro-p68a.5, agent codex): a declared subproject consumes its parent
+        # A declared subproject consumes the workspace root
         # tooling profile even before the atomic scaffold creates files on disk.
         tooling_root = target.root
         modernizer = FlextInfraPyprojectModernizer(
@@ -856,7 +856,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if not contract.delegates:
                 continue
-            # mro-i6nq.10: One formatted path governs validation and planning.
+            # One formatted path governs validation and planning.
             destination = entry.destination.format(
                 package_name=context.package_name, ns=context.ns
             )
@@ -1111,7 +1111,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         planned = [pyproject_plan.value]
         if not contract.templates:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
-        # NOTE(mro-p68a.5, agent codex): managed_files is the existing-tree
+        # managed_files is the existing-tree
         # ownership SSOT; templates.entries remains the single render manifest.
         managed_result = self._plan_existing_templates(
             root=root,
@@ -1206,7 +1206,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     managed.path.parts[:2] == (".github", "workflows")
                     and path.is_file()
                 ):
-                    # Why: mro-4p0t orphan_read avoids Result[str] vs str overlap on current.
+                    # Keep the typed read result distinct from its string payload.
                     orphan_read = u.Cli.files_read_text(path)
                     if orphan_read.failure:
                         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -2165,7 +2165,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if reference.startswith("worktree:")
                 else reference
             )
-            # mro-e9j0.6: ancestry is a development-line rule. Only refs on the
+            # Ancestry is a development-line rule. Only refs on the
             # governed allowlist are gated; parked releases (0.10/0.11), snapshots
             # and lane branches are inventoried but must never block conform.
             excluded = cls._technical_branch(
@@ -2271,7 +2271,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[t.SequenceOf[m.Infra.CodegenFilePlan]]:
         r"""Plan removal of generated files this profile must not carry.
 
-        Operator law mro-68rcj: git hooks belong to the workspace ROOT only, and
+        Git hooks belong to the workspace root only, and
         the template already encodes that by excluding standalone from its
         profiles. But a non-matching profile was merely SKIPPED, never retired,
         so 31 subprojects kept an orphan .pre-commit-config.yaml that ``make gen``

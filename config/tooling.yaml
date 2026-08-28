@@ -252,7 +252,7 @@ Infra:
           warn_unused_ignores: true
         disabled-error-codes:
           assignment: Dependency-injector descriptors lose their FLEXT-bound type only in Mypy.
-          attr-defined: PEP 562 facade members inherited through FLEXT are invisible to Mypy.
+          attr-defined: PEP 562 facade members installed by FLEXT composition are invisible to Mypy.
           call-arg: Pydantic v2 init signatures behind facade FLEXT are incomplete in Mypy.
           misc: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
           name-defined: Generated PEP 562 exports are installed at runtime but absent to Mypy.

@@ -597,16 +597,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     })
     "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
 
-    # --- FLEXT scan patterns ---
-    FLEXT_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"^_?[A-Za-z][A-Za-z0-9_]*$"
-    )
-    "Regex: valid Python identifier (used for FLEXT type/class name validation)."
-    FLEXT_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
-        r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])"
-    )
-    "Regex: Protocol base in class definition (with optional namespace prefix)."
-
     # --- Symbol/identifier patterns ---
     IDENTIFIER_PATTERN: Final[t.RegexPattern] = re.compile(r"\b[A-Za-z_]\w*\b")
     "Regex: Python identifier word boundary match."

@@ -1,7 +1,7 @@
 # =============================================================================
 # FLEXT BASE MAKEFILE - Shared patterns for all FLEXT projects
 # =============================================================================
-# Usage: Set PROJECT_NAME before including: include ../base.mk
+# Usage: Set PROJECT_NAME before including the repository-local base.mk.
 # Silent by default. Use VERBOSE=1 for detailed output.
 # =============================================================================
 
@@ -13,7 +13,7 @@ TESTS_DIR ?= {{ settings.tests_dir }}
 DOCSTRING_MIN ?= 80
 COMPLEXITY_MAX ?= 10
 {% for variable_name, default_value in make.PROJECT_VARIABLE_DEFAULTS -%}
-{{ variable_name }} ?={% if default_value is not none %} {{ default_value }}{% endif %}
+{{ variable_name }} ?={% if default_value is not none and default_value != "" %} {{ default_value }}{% endif %}
 {% endfor %}
 
 PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short

@@ -1,16 +1,12 @@
 {% from "project/base/tool_bootstrap_recipe.j2" import tool_bootstrap_recipe -%}
-# Detect a FLEXT workspace root from the Makefile owner, never the caller CWD.
+# Classify only the repository that owns this Makefile, never a parent checkout
+# or the caller CWD.
 BOOTSTRAP_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 BOOTSTRAP_OWNER := $(patsubst %/,%,$(dir $(BOOTSTRAP_MAKEFILE)))
-FLEXT_WORKSPACE_ROOT := $(shell \
-	current="$(BOOTSTRAP_OWNER)"; \
-	while [ "$$current" != "/" ]; do \
-		if [ -f "$$current/.gitmodules" ] && [ -f "$$current/flext-infra/base.mk" ]; then echo "$$current"; break; fi; \
-		current="$$(dirname "$$current")"; \
-	done)
+FLEXT_WORKSPACE_ROOT := $(if $(and $(wildcard $(BOOTSTRAP_OWNER)/.gitmodules),$(wildcard $(BOOTSTRAP_OWNER)/flext-infra/base.mk)),$(BOOTSTRAP_OWNER),)
 
 ifneq ($(FLEXT_WORKSPACE_ROOT),)
-FLEXT_INFRA_BASE_MK := $(FLEXT_WORKSPACE_ROOT)/flext-infra/base.mk
+FLEXT_INFRA_BASE_MK := $(BOOTSTRAP_OWNER)/flext-infra/base.mk
 include $(FLEXT_INFRA_BASE_MK)
 else
 # =============================================================================

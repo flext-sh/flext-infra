@@ -24,7 +24,7 @@ from flext_infra._models.layout import FlextInfraModelsLayout
 class _ConfigContract(m.ContractModel):
     """Private declarative base for schema-loaded codegen records."""
 
-    # NOTE (multi-agent, mro-wkii.17 / agent: codex): rendered file payloads are
+    # Rendered file payloads are
     # byte contracts; Pydantic must never trim their final newline.
     model_config = m.ConfigDict(
         strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
@@ -998,7 +998,7 @@ class FlextInfraConfigModels:
         ] = ()
 
     class TestmonCacheSpec(_ConfigContract):
-        """Adaptive pytest-testmon GitHub Actions cache policy (mro-dipb)."""
+        """Adaptive pytest-testmon GitHub Actions cache policy."""
 
         schema_version: Annotated[
             int, m.Field(ge=1, description="Cache key schema version")
@@ -1986,7 +1986,7 @@ class FlextInfraConfigModels:
             ),
         ]
 
-    # mro-wkii.17 (Codex): project creation metadata remains a typed manifest input.
+    # Project creation metadata remains a typed manifest input.
     class ProjectSpec(_ConfigContract):
         """Deterministic project metadata required to materialize a new tree."""
 
@@ -2411,7 +2411,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-    # NOTE (mro-jnm1.1 / mro-jnm1.4): the artifact list is the SINGLE SSOT for
+    # The artifact list is the SINGLE SSOT for
     # ephemeral/generated resources; VS Code excludes and source_scan ignores
     # are derived projections, never re-declared in YAML.
     class CodegenArtifactSpec(_ConfigContract):
@@ -2588,11 +2588,11 @@ class FlextInfraConfigModels:
                 if artifact.source_scan_ignore
             )
 
-        # NOTE (mro-jnm1.2): the canonical .gitignore body is ONE computed
+        # The canonical .gitignore body is ONE computed
         # projection — the artifact SSOT feeds the Python/build section and the
         # static scaffold sections carry only what the SSOT cannot express
         # (file globs, secrets, editor/OS noise). Per-project exception fields
-        # (extra_ignored / allowed dirs) land in WorkspaceSpec with mro-jnm1.3;
+        # (extra_ignored / allowed dirs) land in their typed owner;
         # this projection is the seam they will extend.
         @m.computed_field()
         @property
@@ -2743,7 +2743,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-    # NOTE (multi-agent, mro-wkii.17.24 / agent: codex): production source
+    # Production source
     # selection is modeled once so iteration, Rope, and census share one SSOT.
     class SourceScanSpec(_ConfigContract):
         """Canonical production roots and recursively ignored directories."""
@@ -2839,7 +2839,7 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Ordered static-analysis rules"),
         ]
 
-    # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): this
+    # This
     # field-only namespace is the sole validated owner exposed as config.Infra.
     class Infra(_ConfigContract):
         """Complete flext-infra configuration namespace."""
@@ -2860,7 +2860,7 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
         ]
-        # mro-j47u (codex): static policy is validated data, never detector code.
+        # Static policy is validated data, never detector code.
         enforcement: Annotated[
             FlextInfraConfigModels.StaticEnforcementSpec,
             m.Field(description="Rope-only static enforcement policy"),

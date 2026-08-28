@@ -213,8 +213,8 @@ class TestGitHookConformance:
         tm.that(commit_only, has="stages: [pre-commit]")
         tm.that(commit_only, lacks="stages: [pre-push]")
 
-    def test_member_hook_config_is_retired_by_conform(self, tmp_path: Path) -> None:
-        """A workspace member keeps its own hook config; conform does not retire it."""
+    def test_subproject_hook_config_is_retired_by_conform(self, tmp_path: Path) -> None:
+        """A standalone subproject keeps its hook config; conform does not retire it."""
         root = tmp_path / "flext-member"
         root.mkdir()
         hook_config = root / ".pre-commit-config.yaml"

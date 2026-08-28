@@ -4,7 +4,7 @@ Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
 """
 
-# NOTE (multi-agent, mro-wkii.14 / agent: codegen): new file per operator live
+# New file per operator live
 # order (ULW). ctx via u.derive_class_stem (no parallel detection, ADR-005 §9);
 # accessor typing/config+settings symmetry fixed in templates in the same lane.
 from __future__ import annotations
@@ -41,7 +41,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     package_name: Annotated[
         str, m.Field(description="Python package name (default: name with '-'→'_').")
     ] = ""
-    # NOTE (multi-agent, mro-wkii.14 / agent: codegen): field renamed
+    # Field renamed
     # ``namespace``→``project_namespace`` to avoid colliding with the inherited
     # base field ``target_namespace`` (alias ``namespace``); CLI flag stays ``--ns``.
     project_namespace: Annotated[
@@ -54,7 +54,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     description: Annotated[
         str, m.Field(default="", description="Project description (default: derived).")
     ] = ""
-    # NOTE (multi-agent, mro-wkii.4.15 / agent: codex): project config owns the
+    # Project config owns the
     # already-validated version value consumed directly by project generation.
     version: Annotated[
         str,

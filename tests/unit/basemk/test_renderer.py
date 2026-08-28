@@ -58,6 +58,15 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         tm.that(result.value, lacks="scripts/")
 
+    def test_render_all_has_no_trailing_whitespace(self) -> None:
+        """Render empty variable defaults without trailing spaces."""
+        rendered = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
+
+        tm.that(
+            [line for line in rendered.splitlines() if line != line.rstrip()],
+            empty=True,
+        )
+
     def test_render_all_preflight_is_read_only_and_fail_closed(self) -> None:
         """Reject stale state without deleting environments or syncing source."""
         rendered: str = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())

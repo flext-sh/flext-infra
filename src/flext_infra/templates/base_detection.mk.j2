@@ -4,29 +4,17 @@ PROJECT_ROOT := $(CURDIR)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 
-ifeq ($(FLEXT_STANDALONE),1)
-FLEXT_MODE := standalone
-else
-# Caller may already know the workspace root (e.g., when including flext-infra/base.mk).
-ifdef FLEXT_WORKSPACE_ROOT
-FLEXT_MODE := workspace
-else
-# Pure Make detection: if base.mk lives in a parent dir, we are inside a workspace.
-# No Python dependency — shell/Make only until venv is ready.
-ifneq ($(BASE_MK_DIR),$(PROJECT_ROOT))
+# Repository-local topology: only the Makefile owner's own .gitmodules can
+# classify it as a workspace. Parent directories and caller environment never
+# alter a standalone repository's mode.
+ifneq ($(wildcard $(PROJECT_ROOT)/.gitmodules),)
 FLEXT_MODE := workspace
 else
 FLEXT_MODE := standalone
-endif
-endif
 endif
 
 ifeq ($(FLEXT_MODE),workspace)
-# Prefer the caller-provided workspace root; fall back to the directory holding base.mk.
-WORKSPACE_ROOT := $(FLEXT_WORKSPACE_ROOT)
-ifndef WORKSPACE_ROOT
-WORKSPACE_ROOT := $(BASE_MK_DIR)
-endif
+WORKSPACE_ROOT := $(PROJECT_ROOT)
 WORKSPACE_VENV := $(WORKSPACE_ROOT)/.venv
 ACTIVE_VENV := $(WORKSPACE_VENV)
 else

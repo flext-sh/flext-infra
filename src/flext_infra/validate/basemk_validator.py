@@ -15,6 +15,7 @@ from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.base import s
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -63,8 +64,18 @@ class FlextInfraBaseMkValidator(s[bool]):
         self, source: Path
     ) -> p.Result[m.Infra.ValidationReport]:
         """Compare source base.mk with freshly generated content."""
+        project_root = source.parent
+        pyproject_path = project_root / c.Infra.PYPROJECT_FILENAME
+        try:
+            payload = u.Infra.pyproject_payload(pyproject_path)
+            project_name = u.Infra.project_name_from_payload(project_root, payload)
+        except (OSError, TypeError, ValueError) as exc:
+            return r[m.Infra.ValidationReport].fail_op("base.mk project identity", exc)
+        settings = FlextInfraBaseMkTemplateRenderer.default_config().model_copy(
+            update={"project_name": project_name}
+        )
         generator = self.generator or FlextInfraBaseMkGenerator()
-        gen_result = generator.generate_basemk()
+        gen_result = generator.generate_basemk(settings)
         if gen_result.failure:
             return r[m.Infra.ValidationReport].ok(
                 m.Infra.ValidationReport(

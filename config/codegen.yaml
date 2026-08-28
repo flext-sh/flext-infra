@@ -1,6 +1,6 @@
 Infra:
   codegen:
-    # NOTE(mro-wkii.17.5, agent implement_manifest): declarative SSOT for deterministic project conformance.
+    # Declarative SSOT for deterministic project conformance.
     version: 1
 
     toolchain:
@@ -262,7 +262,7 @@ Infra:
     make:
       selector: WHAT
       work_in_progress:
-        # Operator law (mro-g3zl2): pre-push gates skip WIP branches and GitHub
+        # Operator law: pre-push gates skip WIP branches and GitHub
         # draft PRs; merges into dev/develop/0.12.0-dev are blocked for those states.
         # Restored (hq-36xk): a merge resolution dropped this block while
         # ci.yml.j2 and .pre-commit-config.yaml.j2 kept consuming it, so no
@@ -275,7 +275,7 @@ Infra:
           - dev
           - develop
           - 0.12.0-dev
-      # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
+      # Adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
       testmon_cache:
@@ -333,7 +333,7 @@ Infra:
         - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
-        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
+        # CI must not execute pytest. Local + pre-push keep make test.
         - { verb: test, apply: false, contexts: [local, pre_push] }
       bootstrap:
         environment: isolated
@@ -515,7 +515,7 @@ Infra:
           allow_public_targets: true
           allow_toolchain_declarations: true
 
-    # NOTE (mro-jnm1.1 / mro-jnm1.4): SINGLE SSOT for ephemeral/generated
+    # SINGLE SSOT for ephemeral/generated
     # resources. VS Code files.exclude/search.exclude (vscode_exclude),
     # files.watcherExclude (watch_exclude), and source_scan.ignored_resources
     # (source_scan_ignore) are DERIVED from this list by CodegenConfigSpec
@@ -527,13 +527,13 @@ Infra:
       - { name: .agents }
       - { name: .beads }
       - { name: .benchmarks }
-      # mro-0wuz: archive-not-delete target for the layout engine; the generated
+      # Archive-not-delete target for the layout engine; the generated
       # .gitignore projection must never track archived loose files.
       - { name: .bkp }
       - { name: .cache, source_scan_ignore: true }
-      # mro-j47u: agent worktrees are duplicate repositories, never production input.
+      # Agent worktrees are duplicate repositories, never production input.
       - { name: .claude, source_scan_ignore: true }
-      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # Gitignore-only entries absorbed from the removed
       # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
       # watch/source-scan projections (order-sensitive, after .claude).
       - { name: .direnv, source_scan_ignore: true }
@@ -626,7 +626,7 @@ Infra:
           watch_exclude: false,
           source_scan_ignore: true,
         }
-      # mro-jnm1.2: gitignore-only entries absorbed from the removed
+      # Gitignore-only entries absorbed from the removed
       # REQUIRED_GITIGNORE_ENTRIES constant; they feed no other projection.
       # NOTA: .flext-deps foi removido — o cutover para fontes git eliminou o
       # cache, e o gate de actions proibe qualquer referencia ao mecanismo.
@@ -697,7 +697,7 @@ Infra:
           PATH: ${workspaceFolder}/.venv/bin:${env:PATH}
           VIRTUAL_ENV: ${workspaceFolder}/.venv
 
-    # NOTE(mro-0wuz, epic mro-hzox): declarative project-layout SSOT consumed by
+    # Declarative project-layout SSOT consumed by
     # the layout engine (codegen/layout.py) and the layout quality gate. Every
     # move/archive/gitignore decision derives from this section — the engine
     # carries zero hardcoded layout knowledge. severity=warning keeps the gate
@@ -870,7 +870,6 @@ Infra:
         - pytest_*.txt
         - pyright_errors*.log
         - test_output.txt
-        - mro-to59-*
       # Content submodule trees and agent law dirs are out of product-docs relocate.
       # .agents is already skipped via allow_hidden (dotdir); data/ is explicit.
       special_root_dirs:
@@ -982,7 +981,6 @@ Infra:
             - cosmos_main.egg-info
             - evals
             - json
-            - mro
             - platform-namespaces
             - policy
             - scratchpad
@@ -1248,11 +1246,11 @@ Infra:
         enabled_default: true
         reply: pong
         disabled_reply: disabled
-      # mro-jnm1.2: the first section is merged AFTER the artifact-SSOT derived
+      # The first section is merged AFTER the artifact-SSOT derived
       # patterns by the CodegenConfigSpec.gitignore_sections projection
       # (deduplicated, SSOT wins); declare here only what the SSOT cannot
       # express (file globs, secrets, editor/OS noise). Per-project exception
-      # fields are added by mro-jnm1.3.
+      # fields are added only in their typed project owner.
       gitignore_sections:
         - name: "BLOCK EVERYTHING BY DEFAULT"
           profiles: [workspace]
@@ -1302,15 +1300,10 @@ Infra:
             - "!.beads/"
             - ".beads/*"
             - "!.beads/config.yaml"
-            # metadata.json is what bd reads to resolve the ledger. Without it
-            # bd warns "no beads configuration found" and silently falls back
-            # to the default database, so beads created from a clean clone land
-            # in a throwaway store (mro-9wv8). In workspace and standalone
-            # the file holds only the portable storage and database identity
-            # declared by config/beads.yaml -- no secret and no per-machine
-            # value -- so it is safe to track. Members keep it
-            # ignored: their embedded-mode file carries a per-machine
-            # project_id UUID.
+            # metadata.json is a mandatory static projection of the portable
+            # storage and database identity declared by config/beads.yaml. It
+            # contains no secret or per-machine value and is tracked in every
+            # workspace root and standalone project.
             - "!.beads/metadata.json"
         - name: "Python configuration"
           profiles: [workspace]
@@ -1380,20 +1373,20 @@ Infra:
             - "!.vscode/**"
             - "!.claude/**"
             - "!.claude-plugin/**"
-        # NOTE: member contents are emitted by the same derived section as the
-        # member directories themselves (see the note above), so both come from
+        # NOTE: subproject contents are emitted by the same derived section as the
+        # subproject directories themselves (see the note above), so both come from
         # the live workspace topology and can never diverge from each other.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
-        # mro-zmoc6: `uv sync` inside a member lane writes a member-local
+        # `uv sync` inside a subproject checkout writes a local
         # uv.lock. Only the workspace root resolves and tracks a lockfile
-        # (whitelisted in "Python configuration" above); for a member the
+        # (whitelisted in "Python configuration" above); for a subproject the
         # file is a local build artifact of that shared resolution. Left
         # undeclared it surfaced as untracked in every freshly created lane
         # and made the retired Make lane lifecycle refuse a committed increment
         # with "requires a clean lane worktree".
-        - name: "BLOCK: member-local lockfile (the workspace root owns uv.lock)"
+        - name: "BLOCK: subproject-local lockfile (the workspace root owns uv.lock)"
           profiles: [standalone]
           patterns:
             - "uv.lock"
@@ -1608,11 +1601,9 @@ Infra:
         - name: "--- codegen conform: tracked owner inputs ---"
           patterns:
             - "!base.mk"
-        # This final policy re-ignores .beads/* for every profile, so the
-        # workspace exception for metadata.json is re-stated in a
-        # workspace-scoped section immediately after it (last rule wins).
-        # Members are deliberately NOT covered: their embedded-mode
-        # metadata.json carries a per-machine project_id UUID.
+        # This final policy re-ignores .beads/* for every profile. The portable
+        # static identity projections are re-stated immediately afterward so
+        # workspace roots and standalone projects follow the same rule.
         - name: "FINAL BEADS TRACKING POLICY"
           patterns:
             - "!.beads/"
@@ -1620,20 +1611,15 @@ Infra:
             - ".beads/.*"
             - "!.beads/config.yaml"
             - ".beads/proxieddb/"
-            # The bd gate lock is per-run runtime state written at the
-            # REPOSITORY ROOT, not inside .beads/, so the .beads/* rules above
-            # never reach it. Every profile runs bd, so every profile must
-            # ignore it. Without this the lock reappears after every bd
-            # invocation and dirties the checkout -- in a submodule that also
-            # dirties the superproject gitlink, which is enough to fail
-            # `make release WHAT=status` and block the release verb outright.
+            # Per-run lock state is written at the repository root rather than
+            # inside .beads/, so it needs an explicit ignore in every profile.
             - ".beads.gate.lock"
             - ".dolt/"
             - "*.db"
             - ".beads-credential-key"
             - ".worktrees/"
             - "legado/"
-        - name: "Beads ledger identity (workspace and standalone; see mro-9wv8)"
+        - name: "Beads ledger identity (workspace and standalone)"
           profiles: [workspace, standalone]
           patterns:
             - "!.beads/metadata.json"
@@ -1903,20 +1889,20 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE(codex, mro-j47u): domain behavior is generated in services, not base.py.
+        # Domain behavior is generated in services, not base.py.
         - source: base/src/services/ping.py.j2
           destination: "src/{package_name}/services/ping.py"
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE (multi-agent, mro-wkii.19.1): runtime config is app-owned and loaded
+        # Runtime config is app-owned and loaded
         # by FlextConfig from the project-root config directory.
         - source: base/src/config/ns.yaml.j2
           destination: "config/{ns}.yaml"
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE (multi-agent, mro-wkii.19.1): config/settings declarations live in
+        # Config/settings declarations live in
         # the canonical public models/config/settings facets, never parallel parts.
         - source: base/src/_models/__init__.py.j2
           destination: "src/{package_name}/_models/__init__.py"

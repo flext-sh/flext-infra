@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-# NOTE (multi-agent, mro-wkii.17.9.2.1): declaration-only protocol types stay
+# Declaration-only protocol types stay
 # behind one guard so structural contracts add no reverse runtime dependency.
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -76,7 +76,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Primary Python package name."""
             ...
 
-    # NOTE (multi-agent, mro-wkii.17.16 / agent: codex): these declaration-only
+    # These declaration-only
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
     class MiseToolSpec(Protocol):
@@ -320,7 +320,7 @@ class FlextInfraProtocolsBase(Protocol):
     class ToolchainSpec(Protocol):
         """Toolchain fields consumed by pyproject conformance and templates."""
 
-        # NOTE (multi-agent, mro-wkii.17 / agent: codex): keep the protocol
+        # Keep the protocol
         # complete with the validated config model used by codegen consumers.
         @property
         def python_version(self) -> str:

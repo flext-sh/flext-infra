@@ -1278,7 +1278,7 @@ class TestScriptDispatchMakefile:
         extra_verbs: tuple[m.Infra.MakeVerbSpec, ...],
         script_dispatch: m.Infra.ScriptDispatchSpec | None,
     ) -> str:
-        # mro-4gbp: the engine is consumer-agnostic, so this fixture models a
+        # The engine is consumer-agnostic, so this fixture models a
         # neutral downstream root and takes its provider from the engine's own
         # configured provider catalog instead of naming a real consumer.
         provider = u.Tests.provider()
@@ -1413,7 +1413,7 @@ class TestScriptDispatchMakefile:
     ) -> None:
         """``make gen`` is THE conform verb; ``codegen`` no longer exists.
 
-        The convergence spine (mro-e9j0.6 C7) fuses codegen+conform under the
+        The convergence spine fuses codegen+conform under the
         single short ``gen`` verb: one verb, one meaning. The old ``codegen``
         Make verb is fully replaced across config, rendered handlers, and the
         regeneration header.
@@ -1562,7 +1562,7 @@ class TestScriptDispatchMakefile:
         tm.that(" work" in public_line, eq=False)
         tm.that(rendered, lacks=["_builtin_work_", "make work", "work start"])
 
-    # NOTE (mro-4gbp): a test asserting a downstream consumer's verbs from this
+    # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
     # declares extra_verbs/script_dispatch in its own typed repository input. The
     # generic capability stays covered by the fixture-driven cases below.

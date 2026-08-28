@@ -73,7 +73,7 @@ class TestsFlextInfraLazyInitHelpers:
         self, tmp_path: Path
     ) -> None:
         """Generate every governed src root regardless of its package prefix."""
-        # Why (mro-27a9e.1, multi-agent): external consumers such as ai_hub are
+        # External consumers such as ai_hub are
         # first-class FLEXT packages; prefix-specific planning created dual truth.
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="ai-hub", package_name="ai_hub"
@@ -166,7 +166,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
 
-        # Why (mro-27a9e.1, multi-agent): the prior projection is never an ABI
+        # The prior projection is never an ABI
         # owner; regeneration converges it to declarations that still exist.
         tm.that(generated, has='"FlextDemoModels"')
         tm.that(generated, has='"m"')
@@ -192,7 +192,7 @@ class TestsFlextInfraLazyInitHelpers:
             "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
 
-        # mro-i6nq.10: private child classes never become root ABI.
+        # Private child classes never become root ABI.
         tm.that(exports_content, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks="FlextDemoEnforcementEngine")
         tm.that(public_exports, lacks='"_enforcement"')
@@ -457,7 +457,7 @@ class TestsFlextInfraLazyInitHelpers:
             tm.that(init_content, has=f'    "{alias_name}",')
         has_all, public_exports = u.Tests.extract_lazy_init_exports(init_content)
         tm.that(has_all, eq=True)
-        # mro-wkii.17 (Codex): __all__ follows RUF022; dependency order remains
+        # __all__ follows RUF022; dependency order remains
         # exclusively in the static facade imports.
         alias_positions = tuple(
             public_exports.index(alias) for alias in ruff_ordered_aliases
@@ -569,8 +569,8 @@ class TestsFlextInfraLazyInitHelpers:
         self, tmp_path: Path
     ) -> None:
         """Derive the root ABI from facade owners, never the prior projection."""
-        # Why (mro-27a9e.1, multi-agent): ai_hub's stale __all__ omitted r and
-        # became a second SSOT; regeneration must follow the declared MRO parent.
+        # ai_hub's stale __all__ omitted r and became a second SSOT;
+        # regeneration must follow the declared composition parent.
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="ai-hub", package_name="ai_hub"
         )
