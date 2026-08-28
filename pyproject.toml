@@ -169,10 +169,6 @@ warn_unreachable = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-disable_error_code = ["arg-type"]
-module = ["*.cli"]
-
-[[tool.mypy.overrides]]
 disable_error_code = ["unreachable"]
 module = ["dcdoc._utilities._charts._matplotlib_renderer._renders_spec"]
 
