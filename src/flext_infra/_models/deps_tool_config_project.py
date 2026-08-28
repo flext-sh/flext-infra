@@ -14,6 +14,7 @@ callables; no deferred-resolution lambda, no self-referential model.
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated
 
@@ -35,8 +36,22 @@ class FlextInfraModelsDepsToolConfigProjectRuff:
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
 
 
-class FlextInfraModelsDepsToolConfigProjectArtifacts(
+class FlextInfraModelsDepsToolConfigProjectMise(
     FlextInfraModelsDepsToolConfigProjectRuff
+):
+    """Project-local Mise tools that extend, but never replace, fleet tools."""
+
+    class ProjectMiseConfig(m.ArbitraryTypesModel):
+        """Exact project-owned Mise selector and version pairs."""
+
+        tools: Annotated[
+            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            m.Field(description="Project-local Mise tools added to generated config."),
+        ]
+
+
+class FlextInfraModelsDepsToolConfigProjectArtifacts(
+    FlextInfraModelsDepsToolConfigProjectMise
 ):
     """Managed-artifact layer; ``ProjectRuffConfig`` is an inherited attribute."""
 
@@ -49,6 +64,28 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
         ] = m.Field(
             default_factory=FlextInfraModelsDepsToolConfigProjectRuff.ProjectRuffConfig
         )
+        Mise: Annotated[
+            FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig,
+            m.Field(description="Mise additions owned by the current project."),
+        ] = m.Field(
+            default_factory=lambda: (
+                FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig(
+                    tools=MappingProxyType({})
+                )
+            )
+        )
+
+    class ProjectManagedArtifactsResolution(m.ArbitraryTypesModel):
+        """Composed project configuration plus selector provenance."""
+
+        artifacts: Annotated[
+            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsConfig,
+            m.Field(description="Composed managed-artifact configuration."),
+        ]
+        mise_tool_sources: Annotated[
+            t.MappingKV[t.NonEmptyStr, Path],
+            m.Field(description="Source YAML path for every local Mise selector."),
+        ]
 
 
 class FlextInfraModelsDepsToolConfigProject(
@@ -72,5 +109,6 @@ class FlextInfraModelsDepsToolConfigProject(
 __all__: list[str] = [
     "FlextInfraModelsDepsToolConfigProject",
     "FlextInfraModelsDepsToolConfigProjectArtifacts",
+    "FlextInfraModelsDepsToolConfigProjectMise",
     "FlextInfraModelsDepsToolConfigProjectRuff",
 ]

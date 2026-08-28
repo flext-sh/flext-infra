@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,7 +43,7 @@ class FlextInfraCodegenLazyInitPlannerCacheMixin:
             package_name
         )
         if package_dir is None:
-            return frozenset()
+            return u.Infra.installed_package_exports(package_name)
         init_path = package_dir / c.Infra.INIT_PY
         if self.rope_workspace.resource(init_path) is None:
             return frozenset()

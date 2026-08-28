@@ -150,18 +150,17 @@ class _CollectExistingLocal(cst.CSTVisitor, _TypeCheckingContext):
         self._leave_if()
 
     @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> bool:
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         if self._in_type_checking():
-            return True
+            return
         module = _CstImportHelpers.dotted_name(node.module)
         if module is None or not (
             module == self.import_root or module.startswith(f"{self.import_root}.")
         ):
-            return True
+            return
         for alias in _CstImportHelpers.import_aliases(node):
             bound = alias.evaluated_alias or alias.evaluated_name
             self.existing_local.setdefault(module, set()).add(bound)
-        return True
 
 
 class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):

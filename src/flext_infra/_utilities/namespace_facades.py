@@ -105,11 +105,16 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
     def _write_missing_facade_file(
         *,
         file_path: Path,
+        package_root: Path,
         family: str,
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
         """Write missing facade file."""
+        file_path = file_path.resolve()
+        if not file_path.is_relative_to(package_root.resolve()):
+            msg = f"refusing facade write outside package: {file_path}"
+            raise ValueError(msg)
         content = (
             '"""Auto-generated facade to enforce MRO namespace contracts."""\n\n'
             "from __future__ import annotations\n\n"
@@ -166,6 +171,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             if target_path.exists():
                 FlextInfraUtilitiesRefactorNamespaceFacades._patch_existing_facade_file(
                     target_path=target_path,
+                    package_root=package_dir,
                     family=status.family,
                     class_name=class_name,
                     base_chains=base_chains,
@@ -173,6 +179,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
                 continue
             FlextInfraUtilitiesRefactorNamespaceFacades._write_missing_facade_file(
                 file_path=target_path,
+                package_root=package_dir,
                 family=status.family,
                 class_name=class_name,
                 base_chains=base_chains,
@@ -203,11 +210,16 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
     def _patch_existing_facade_file(
         *,
         target_path: Path,
+        package_root: Path,
         family: str,
         class_name: str,
         base_chains: t.StrSequenceMapping | None = None,
     ) -> None:
         """Patch existing facade file."""
+        target_path = target_path.resolve()
+        if not target_path.is_relative_to(package_root.resolve()):
+            msg = f"refusing facade patch outside package: {target_path}"
+            raise ValueError(msg)
         source = target_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         lines = source.splitlines()
         base_class = FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(

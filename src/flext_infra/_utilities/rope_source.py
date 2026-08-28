@@ -426,6 +426,10 @@ class FlextInfraUtilitiesRopeSource:
         workspace_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
         if workspace_root is None:
             return (source, [])
+        file_path = file_path.resolve()
+        if not file_path.is_relative_to(workspace_root.resolve()):
+            msg = f"refusing Rope rewrite outside project: {file_path}"
+            raise ValueError(msg)
         original_disk_source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         try:
             with FlextInfraUtilitiesRopeCore.open_project(

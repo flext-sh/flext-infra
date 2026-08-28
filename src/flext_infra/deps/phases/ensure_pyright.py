@@ -282,18 +282,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         return validated
 
     def _venv_settings(self, *, is_root: bool) -> t.StrMapping:
-        """Return the Pyright venv location for this topology.
-
-        Why (hq-36xk): this read `rules.root_venv_path` / `rules.project_venv_path`,
-        neither of which has ever existed on the path-rules model — `git log -S`
-        finds no commit that ever declared them. Every call therefore raised
-        AttributeError and took `deps modernize`, and with it `make check`, down.
-        The model owns exactly one venv fact, `venv_name`; the location is pure
-        topology, which `_modernizer_document` already states: a workspace root
-        owns its venv in place, a member borrows the parent's. Deriving both from
-        the single declared name keeps one owner for the name and one rule for
-        the position.
-        """
+        """Return the Pyright venv location for this topology."""
         rules = self._tool_config.tools.pyright.path_rules
         venv_path = "." if is_root else ".."
         return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
@@ -489,8 +478,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 phase_builder = phase_builder.deprecated("stubPath")
         else:
             phase_builder = phase_builder.deprecated("stubPath")
-        for key, value in self._venv_settings(is_root=is_root).items():
-            phase_builder = phase_builder.value(key, value)
+        phase_builder = phase_builder.deprecated("venv").deprecated(c.Infra.VENV_PATH)
         phase_builder = phase_builder.value(
             "executionEnvironments",
             [

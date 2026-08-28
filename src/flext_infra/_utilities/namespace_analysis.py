@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
@@ -144,10 +145,19 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
     def rewrite_missing_future_annotations(*, py_files: t.SequenceOf[Path]) -> None:
         """Rewrite missing future annotations."""
         for file_path in py_files:
-            if file_path.name == c.Infra.PY_TYPED:
+            project_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+            resolved_file = file_path.resolve()
+            if project_root is None or not resolved_file.is_relative_to(
+                project_root.resolve()
+            ):
+                msg = (
+                    f"refusing future-annotations rewrite outside project: {file_path}"
+                )
+                raise ValueError(msg)
+            if resolved_file.name == c.Infra.PY_TYPED:
                 continue
             try:
-                source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+                source = resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
             except c.EXC_OS_DECODING:
                 continue
             if c.Infra.FUTURE_ANNOTATIONS in source:
@@ -158,9 +168,12 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             rewritten = FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
                 lines=lines, imports=["", c.Infra.FUTURE_ANNOTATIONS, ""]
             )
-            _ = file_path.write_text(
-                "\n".join(rewritten).rstrip() + "\n", encoding=c.Cli.ENCODING_DEFAULT
+            write_result = u.Cli.files_write_text(
+                resolved_file, "\n".join(rewritten).rstrip() + "\n"
             )
+            if write_result.failure:
+                msg = write_result.error or f"failed to rewrite {resolved_file}"
+                raise RuntimeError(msg)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceMro"]

@@ -99,6 +99,41 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(selected_generated, lacks="FlextTestsUnrelatedModels")
         tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
 
+    def test_root_aggregates_declared_module_and_subpackage_publics(
+        self, tmp_path: Path
+    ) -> None:
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        package_root.joinpath("runner.py").write_text(
+            'class FlextTestsLibraryRunner:\n    """Root runner."""\n\n'
+            '__all__ = ["FlextTestsLibraryRunner"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        services_root = package_root / "services"
+        services_root.mkdir()
+        services_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        services_root.joinpath("dbt.py").write_text(
+            'class FlextTestsDbtServiceBase:\n    """DBT service."""\n\n'
+            '__all__ = ["FlextTestsDbtServiceBase"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.apply_changes = True
+
+        result = service.execute()
+        generated_root = package_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+        generated_services = services_root.joinpath(c.Infra.INIT_PY).read_text(
+            encoding=c.Cli.ENCODING_DEFAULT
+        )
+
+        tm.that(result.success, eq=True)
+        tm.that(generated_root, contains="FlextTestsLibraryRunner")
+        tm.that(generated_root, contains="FlextTestsDbtServiceBase")
+        tm.that(generated_services, contains="FlextTestsDbtServiceBase")
+
     def test_target_plans_private_children_without_writing_them(
         self, tmp_path: Path
     ) -> None:

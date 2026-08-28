@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_tests import tm
+
+pytestmark = pytest.mark.slow
 
 
 class TestCodegenCiMatrix:
@@ -183,6 +186,7 @@ class TestCodegenCiMatrix:
             dist="cosmos-main",
             make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
             repository_branch="develop",
+            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
             dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,
@@ -191,7 +195,9 @@ class TestCodegenCiMatrix:
             checkout_submodules=codegen.checkout_submodules,
             private_submodules=private,
         )
-        rendered_text = tm.ok(cli_u.Cli.template_render(tpl, spec))
+        rendered = cli_u.Cli.template_render(tpl, spec)
+        tm.ok(rendered)
+        rendered_text: str = rendered.value
         tm.that(rendered_text, has="Init private workspace members")
         tm.that(rendered_text.count("Init private workspace members"), eq=2)
 
@@ -386,6 +392,7 @@ class TestCodegenCiMatrix:
             dist="flext-demo",
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch="develop",
+            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
             dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,

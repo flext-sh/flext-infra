@@ -40,7 +40,7 @@ class TestsReviewTemplateContracts:
         tm.that(upgrade, has="$(if $(strip $(DEPENDENCY)),,--rewrite-constraints)")
 
     def test_makefile_explicit_root_selection_is_preserved(self) -> None:
-        """PROJECT=. selects the root instead of silently expanding to members."""
+        """PROJECT=. expands to members for workspace-root; selects root for other profiles."""
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(
             text,
@@ -49,7 +49,14 @@ class TestsReviewTemplateContracts:
                 "$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))"
             ),
         )
-        tm.that(text, lacks="$(if $(filter .,$(REQUESTED_PROJECTS))")
+        tm.that(
+            text,
+            has=(
+                "SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),"
+                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_MEMBERS),$(REQUESTED_PROJECTS)),"
+                "$(DEFAULT_PROJECTS))"
+            ),
+        )
 
     def test_makefile_has_no_legacy_work_lifecycle(self) -> None:
         """Gas Town is the sole lane lifecycle owner."""
@@ -103,10 +110,18 @@ class TestsReviewTemplateContracts:
         tm.that(dump, has="coverage.xml")
 
     def test_ci_template_is_yamllint_safe_at_step_and_section_boundaries(self) -> None:
-        """Generated CI must not create blank-line or comment-indent violations."""
+        """Generated CI must not create blank-line or comment-indent violations.
+
+        Why (aihub-g8e1j): trim-after (`-%}`) on the loop-open tag ate the
+        required loop-body indentation/newlines of the following literal
+        text, producing invalid YAML on render (confirmed via yaml.safe_load
+        ParserError on both ai-hub's and flext-infra's own dogfooded
+        ci.yml). Trim-before (`{%-`) on loop-open/endfor removes the same
+        blank source lines without touching body indentation.
+        """
         text = _CI.read_text(encoding="utf-8")
-        tm.that(text, has='{% for step in make.workflow if "ci" in step.contexts -%}')
-        tm.that(text, has="{% endfor -%}")
+        tm.that(text, has='{%- for step in make.workflow if "ci" in step.contexts %}')
+        tm.that(text, has="{% endfor %}")
         tm.that(text, has="  # End SECTION: ci job")
         tm.that("    # End SECTION: ci job" not in text.splitlines(), eq=True)
 

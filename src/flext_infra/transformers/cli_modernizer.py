@@ -73,17 +73,17 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
         return updated, list(self.changes)
 
     @staticmethod
-    def _banned_modules() -> frozenset[str]:
+    def _get_banned_modules() -> frozenset[str]:
         """Return the set of CLI helper modules whose imports are removed."""
         return FlextInfraRefactorCliModernizer._BANNED_MODULES
 
     @staticmethod
-    def _cli_pkg() -> str:
+    def _get_cli_pkg() -> str:
         """Return the canonical FLEXT CLI package name."""
         return FlextInfraRefactorCliModernizer._CLI_PKG
 
     @staticmethod
-    def _manual_attrs() -> dict[str, frozenset[str]]:
+    def _get_manual_attrs() -> dict[str, frozenset[str]]:
         """Return banned-module attributes that require manual conversion."""
         return FlextInfraRefactorCliModernizer._MANUAL_ATTRS
 
@@ -99,7 +99,7 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
         @override
         def visit_Import(self, node: ast.Import) -> None:
             """Remove ``import <banned-module>`` statements."""
-            banned = FlextInfraRefactorCliModernizer._banned_modules()
+            banned = FlextInfraRefactorCliModernizer._get_banned_modules()
             if node.names and all(alias.name in banned for alias in node.names):
                 names = ", ".join(alias.name for alias in node.names)
                 self.append_rewrite(node, "", f"Removed import {names}")
@@ -114,11 +114,11 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             if module is None:
                 self.generic_visit(node)
                 return
-            banned = FlextInfraRefactorCliModernizer._banned_modules()
+            banned = FlextInfraRefactorCliModernizer._get_banned_modules()
             if module in banned:
                 self.append_rewrite(node, "", f"Removed from {module} import")
                 self.removed_modules.add(module)
-            elif module == FlextInfraRefactorCliModernizer._cli_pkg():
+            elif module == FlextInfraRefactorCliModernizer._get_cli_pkg():
                 for alias in node.names:
                     if alias.name == "cli":
                         self._cli_symbol = alias.asname or alias.name
@@ -189,10 +189,10 @@ class FlextInfraRefactorCliModernizer(FlextInfraRopeTransformer):
             if not isinstance(value, ast.Name):
                 return
             module = value.id
-            banned = FlextInfraRefactorCliModernizer._banned_modules()
+            banned = FlextInfraRefactorCliModernizer._get_banned_modules()
             if module not in banned:
                 return
-            attrs = FlextInfraRefactorCliModernizer._manual_attrs().get(
+            attrs = FlextInfraRefactorCliModernizer._get_manual_attrs().get(
                 module, frozenset()
             )
             if func.attr in attrs:

@@ -61,38 +61,41 @@ Infra:
       # qlty (hq-36xk): same missing-owner defect as uv_version above.
       qlty_version: "0.642"
       mise_version: "2026.7"
-      # Go runtime required by mise go: backend selectors (beads).
+      # Go runtime retained for projects that use mise go: backend selectors.
       go_version: "1.26"
-      # The shared mro Dolt ledger is at schema v61; the newest official
-      # gastownhall release (1.1.2) only knows v53 and fails preflight with
-      # "schema version mismatch". Pin the go-module commit that migrated the
-      # ledger. Its `bd version` self-reports the module version (1.1.0), so
-      # reported_version feeds the conform preflight gate; the immutable commit
-      # stays the installed selector version. The artifact identity is
-      # content-proven: checksum is the SHA-256 of the pinned binary, and
-      # expected_schema is the ledger schema the binary must know.
+      # Canonical Beads distribution for every governed repository. The exact
+      # official release and extracted binary digest are fleet-wide invariants;
+      # schema v53 is the only supported schema for configured ledgers.
       beads:
-        selector: go:github.com/steveyegge/beads/cmd/bd
-        version: "423afdcb2813e36b2bc4c96b07e0fc3516a34495"
-        reported_version: "1.1.0"
-        checksum: "ecf032358ff126810c1ebf6733d71bc836b9b53e39f8c8753e313138d02eb3d1"
-        expected_schema: 61
-        # Machine-wide shared Dolt server facts: every FLEXT ledger on this
-        # host routes through this server; a repository-local server is never
-        # used. Rendered into .beads/config.yaml and .beads/metadata.json by
-        # codegen for ledger owners (workspace-root) and attached standalones
-        # (routing only).
+        selector: github:gastownhall/beads
+        version: "1.2.2"
+        reported_version: "1.2.2"
+        prerelease: false
+        minimum_release_age: null
+        # SHA-256 of the extracted official linux-x64 executable. The release
+        # archive digest remains platform-specific in each generated mise.lock.
+        checksum: 54fc0e0581ce4c5487a5b242f0a4f34af1ef09cf056e164a1af63a6ec7aa1e0e
+        expected_schema: 53
+        # Future Gas City server routing. Configuration is generated while the
+        # operator E-STOP remains active; generation never starts the server.
+        # Why (aihub-g8e1j): shared_server: true routes bd's PID/port/lock
+        # bookkeeping through bd's OWN independently-lifecycled server at
+        # ~/.beads/shared-server/ (see beads internal/doltserver resolveServerDir),
+        # ignoring the host/port below entirely — a distinct bd feature flag, not
+        # "shared" in the sense this comment used to imply. shared_server: false
+        # makes bd honor the per-project host/port and consume only the external
+        # Gas City server; a repository-local or bd-owned server is never
+        # used. This exact value was fixed once in 6d5fc8df and silently reverted
+        # by a later merge-conflict resolution before the port-only fix in
+        # 62238830 (aihub-v01jg) — restoring it here, do not re-flip it back.
+        # Rendered into .beads/config.yaml and .beads/metadata.json by codegen
+        # for ledger owners (workspace-root) and attached standalones (routing
+        # only).
         server:
           mode: server
           backend: dolt
-          shared_server: true
+          shared_server: false
           host: 127.0.0.1
-          # Why (aihub-v01jg): 3307 is where the Gas Town town server actually
-          # listens, and what `bd config get dolt.port` reports as canonical.
-          # This key had drifted to 3308, so every generated .beads/config.yaml
-          # pointed at a closed port and `bd` failed with "Dolt server
-          # unreachable at 127.0.0.1:3308" — which took `make gen` down with it,
-          # because the gen verb inspects the beads ledger.
           port: 3307
           user: root
           auto_commit: "on"
@@ -308,7 +311,18 @@ Infra:
         # was meant to complement.
         # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
         # full pytest+coverage; absent = testmon incremental.
-        local_check_gates: [lint, pyrefly]
+        #
+        # The set is the SLOW whole-program type checkers, matching
+        # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
+        # off the fast CI leg, and they are what CI=N exists to own. `lint` is
+        # not here -- ruff is cheap, so making CI skip it buys nothing and
+        # leaves the fast leg without a linter.
+        local_check_gates: [pyrefly, mypy]
+      # Why (operator law 2026-08-24): git-hook stages are disabled by default;
+      # the workflow below still declares stage membership so re-enabling is a
+      # one-key change, case by case.
+      pre_commit: false
+      pre_push: false
       workflow:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
@@ -471,7 +485,10 @@ Infra:
         apply_guarded: false
       - name: gen
         default_what: check
-        whats: [check, all, apply]
+        # `init` is the narrow package-initializer owner. It intentionally
+        # bypasses conform so regenerating lazy ``__init__.py`` files never
+        # discovers workspace topology or inspects external runtime state.
+        whats: [check, all, apply, init]
         apply_guarded: true
         apply_what: apply
       - name: mod
@@ -530,6 +547,8 @@ Infra:
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
       - { name: .pytest_cache, source_scan_ignore: true }
+      # Project-local scratch owned by generated .envrc (TMPDIR/GOTMPDIR).
+      - { name: .test-tmp, source_scan_ignore: true }
       - { name: .testmondata, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }
@@ -1194,6 +1213,14 @@ Infra:
           - mypy>=2.3.0
           - pyrefly>=1.1.1
           - pyright>=1.1.411
+          # `gen` installs the git hooks it just wrote, so the tool that owns
+          # them has to exist in the environment running codegen — including CI,
+          # which provisions only the declared groups.
+          # Why (flext-6itas.4): restored after merge 0d4d07b33 resolved a
+          # conflict by keeping parent2's pre-02475b0f7 content, silently
+          # dropping this entry (proven: parent1 8675f171c has the line,
+          # parent2 648ca5707 never did).
+          - pre-commit>=4.6.1
           - pytest>=9.0.3
           - pytest-testmon>=2.2.0
           - ruff>=0.15.12

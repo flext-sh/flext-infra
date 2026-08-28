@@ -12,11 +12,17 @@ name: CI
 "on":
   push:
     branches:
-- 0.12.0-dev
-pull_request:
+      - dev
+      - develop
+      - 0.12.0-dev
+      - main
+  pull_request:
     branches:
-- 0.12.0-dev
-types: [opened, synchronize, reopened, ready_for_review]
+      - dev
+      - develop
+      - 0.12.0-dev
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
 # === SECTION: permissions (managed) ===
@@ -66,8 +72,6 @@ jobs:
             testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-${{ hashFiles('uv.lock', '**/uv.lock') }}-
             testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-
 
-
-
       - name: setup (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make setup
@@ -89,8 +93,8 @@ jobs:
         run: CI=Y make check
 
       # Why (aihub-v01jg): CI=Y runs ONE HALF of the gate set
-      # (mypy pyright security markdown smells); the complement
-      # (lint pyrefly) is owned by
+      # (lint pyright security markdown smells); the complement
+      # (pyrefly mypy) is owned by
       # CI=N and, without this step, ran on developer
       # machines only. That split let real defects reach main twice: five
       # missing-attribute errors and an inconsistent-inheritance error, each

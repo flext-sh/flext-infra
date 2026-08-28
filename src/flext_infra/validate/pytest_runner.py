@@ -391,6 +391,15 @@ class FlextInfraPytestRunner(s[int]):
             )
         diagnostics = diagnostics_result.value
         self._write_diagnostic_files(report_dir, diagnostics)
+        # The child status is not authoritative when its durable diagnostics
+        # contain failures. Compute the effective status before persisting the
+        # summary so the report and returned result cannot contradict each other.
+        if exit_code == 0 and any((
+            diagnostics.failed_count,
+            diagnostics.error_count,
+            diagnostics.warning_count,
+        )):
+            exit_code = 1
         timed_out = exit_code in {
             c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
             c.Infra.PROCESS_SIGNAL_EXIT_OFFSET + 9,
@@ -416,16 +425,6 @@ class FlextInfraPytestRunner(s[int]):
         u.Cli.atomic_write_text_file(
             self.root / self.reports / "latest.txt", f"{report_dir.name}\n"
         ).unwrap()
-        # Why (ai-hub-h2aq): optional host tools (waza, markdownlint, live
-        # systemd/hooks) legitimately skip on CI. Promoting skipped_count to
-        # exit 1 made tip ``make test`` fail with 0 FAILED / N SKIPPED.
-        # Failures, errors, and warnings still flip the exit code.
-        if exit_code == 0 and any((
-            diagnostics.failed_count,
-            diagnostics.error_count,
-            diagnostics.warning_count,
-        )):
-            exit_code = 1
         pytest_log = report_dir / "pytest.log"
         coverage_enabled = self._cov_enabled()
         if exit_code == 0:

@@ -12,14 +12,14 @@ name: CI
 "on":
   push:
     branches:
-{% for branch in ci_trigger_branches -%}
+{%- for branch in ci_trigger_branches %}
       - {{ branch }}
-{% endfor -%}
+{%- endfor %}
   pull_request:
     branches:
-{% for branch in ci_trigger_branches -%}
+{%- for branch in ci_trigger_branches %}
       - {{ branch }}
-{% endfor -%}
+{%- endfor %}
     types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
@@ -63,7 +63,7 @@ jobs:
 
 {%- include "_fragments/testmon_cache.j2" %}
 
-{% for step in make.workflow if "ci" in step.contexts %}
+{%- for step in make.workflow if "ci" in step.contexts %}
       - name: {{ step.verb }} (blocking)
         # Why (mro-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}

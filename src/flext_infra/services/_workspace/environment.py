@@ -18,7 +18,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -101,7 +104,12 @@ class FlextInfraWorkspaceEnvironmentMixin:
         rendered = cls._render_environment_template(c.Infra.MISE_TOML_FILENAME)
         if rendered.failure:
             return r[str].fail(rendered.error or ".mise.toml template render failed")
-        doc = u.Cli.toml_parse_text(rendered.value)
+        composed = FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
+            workspace_root, rendered.value
+        )
+        if composed.failure:
+            return r[str].fail(composed.error or "project Mise composition failed")
+        doc = u.Cli.toml_parse_text(composed.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
         python_version = cls._workspace_python_version(workspace_root)
@@ -158,27 +166,31 @@ class FlextInfraWorkspaceEnvironmentMixin:
         return r[bool].ok(True)
 
     @classmethod
-    def _mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, str]]:
+    def _mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, t.JsonValue]]:
         """Return canonical mise tool pins for one workspace."""
         rendered = cls._render_mise_toml(workspace_root)
         if rendered.failure:
-            return r[dict[str, str]].fail(
+            return r[dict[str, t.JsonValue]].fail(
                 rendered.error or "canonical .mise.toml render failed"
             )
         mapping = u.Cli.toml_mapping_from_text(rendered.value)
         if mapping is None:
-            return r[dict[str, str]].fail("canonical .mise.toml template is invalid")
+            return r[dict[str, t.JsonValue]].fail(
+                "canonical .mise.toml template is invalid"
+            )
         tools = u.Cli.toml_mapping_child(mapping, "tools")
         if tools is None:
-            return r[dict[str, str]].fail("canonical .mise.toml template lacks [tools]")
-        pins: dict[str, str] = {}
+            return r[dict[str, t.JsonValue]].fail(
+                "canonical .mise.toml template lacks [tools]"
+            )
+        pins: dict[str, t.JsonValue] = {}
         for name, value in tools.items():
-            if not isinstance(value, str):
-                return r[dict[str, str]].fail(
-                    f"canonical .mise.toml [tools].{name} must be a string"
+            if not isinstance(value, (str, dict)):
+                return r[dict[str, t.JsonValue]].fail(
+                    f"canonical .mise.toml [tools].{name} must be a string or table"
                 )
             pins[name] = value
-        return r[dict[str, str]].ok(pins)
+        return r[dict[str, t.JsonValue]].ok(pins)
 
     @staticmethod
     def _workspace_python_version(workspace_root: Path) -> str | None:
