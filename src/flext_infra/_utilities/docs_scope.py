@@ -78,20 +78,10 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def resolve_projects(
-        workspace_root: Path, names: t.StrSequence, *, include_attached: bool = False
+        workspace_root: Path, names: t.StrSequence
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
-        """Resolve project names into canonical project descriptors.
-
-        ``include_attached`` is forwarded to
-        :meth:`FlextInfraUtilitiesDocsScope.discover_projects` so external
-        sub-repos at workspace top-level (git repos with their own
-        ``pyproject.toml`` not registered in the workspace submodule index)
-        are surfaced when explicitly requested. Discovery is structural and
-        name-agnostic.
-        """
-        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
-            workspace_root, include_attached=include_attached
-        )
+        """Resolve project names through repository-local topology only."""
+        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
         if discover_result.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 discover_result.error or "discovery failed"
@@ -103,7 +93,7 @@ class FlextInfraUtilitiesDocsScope:
         ):
             root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
                 resolved_workspace_root,
-                workspace_members=FlextInfraUtilitiesDocsScope._workspace_member_name_set(
+                workspace_subprojects=FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(
                     resolved_workspace_root
                 ),
             )
@@ -141,15 +131,22 @@ class FlextInfraUtilitiesDocsScope:
         return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
     @staticmethod
-    def _workspace_member_name_set(workspace_root: Path) -> t.Infra.StrSet:
-        """Return configured uv workspace members for the current workspace root."""
-        return set(FlextInfraUtilitiesPyproject.workspace_member_names(workspace_root))
+    def _workspace_subproject_path_set(workspace_root: Path) -> frozenset[Path]:
+        """Return resolved subprojects declared by this root's ``.gitmodules``."""
+        resolved_root = workspace_root.resolve()
+        return frozenset(
+            (resolved_root / path).resolve()
+            for path in FlextInfraUtilitiesPyproject.workspace_project_paths(
+                resolved_root
+            )
+        )
 
     @staticmethod
     def _project_info_for_entry(
-        entry: Path, *, workspace_members: t.Infra.StrSet
+        entry: Path, *, workspace_subprojects: frozenset[Path]
     ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
+        entry = entry.resolve()
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
@@ -166,20 +163,26 @@ class FlextInfraUtilitiesDocsScope:
         ):
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
-        is_workspace_member = entry.name in workspace_members
+        is_workspace_subproject = entry in workspace_subprojects
         enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
         has_src = (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
         has_tests = (entry / c.Infra.DIR_TESTS).is_dir()
         has_deps = bool(project_section.get("dependencies"))
-        if not is_workspace_member and not has_src and not has_tests and not has_deps:
+        if (
+            not is_workspace_subproject
+            and not has_src
+            and not has_tests
+            and not has_deps
+        ):
             return None
-        workspace_role = (
-            c.Infra.WorkspaceProjectRole.SUBPROJECT
-            if is_workspace_member
-            else c.Infra.WorkspaceProjectRole.ATTACHED
-        )
+        if is_workspace_subproject:
+            workspace_role = c.Infra.WorkspaceProjectRole.SUBPROJECT
+        elif (entry / c.Infra.GITMODULES).is_file():
+            workspace_role = c.Infra.WorkspaceProjectRole.WORKSPACE_ROOT
+        else:
+            workspace_role = c.Infra.WorkspaceProjectRole.STANDALONE
         project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
             path=entry,
             name=project_state.project_name,
@@ -326,25 +329,19 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def discover_projects(
-        workspace_root: Path, *, include_attached: bool = False
+        workspace_root: Path,
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
-        """Discover workspace projects that participate in the docs scope.
-
-        ``include_attached`` is forwarded to
-        :meth:`FlextInfraUtilitiesProjectDiscovery.discover_project_candidates`.
-        When True, sub-repos opted in via ``[tool.flext.workspace] attached = true``
-        are surfaced alongside the workspace's git-tracked projects.
-        """
+        """Discover the root or projects declared by its own ``.gitmodules``."""
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 f"discovery failed: invalid workspace root {workspace_root}"
             )
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
-        workspace_members = FlextInfraUtilitiesDocsScope._workspace_member_name_set(
-            workspace_root
+        workspace_subprojects = (
+            FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(workspace_root)
         )
         project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
-            workspace_root, include_attached=include_attached
+            workspace_root
         )
         root_project: mw.ProjectInfo | None = None
         projects: list[mw.ProjectInfo] = []
@@ -357,7 +354,7 @@ class FlextInfraUtilitiesDocsScope:
             ):
                 continue
             project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
-                project_root, workspace_members=workspace_members
+                project_root, workspace_subprojects=workspace_subprojects
             )
             if project_info is None:
                 continue

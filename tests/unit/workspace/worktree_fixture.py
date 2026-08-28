@@ -80,11 +80,7 @@ class WorktreeFixture:
 
     @staticmethod
     def write_beads_project(
-        root: Path,
-        *,
-        workspace: str,
-        database: str,
-        issue_prefix: str,
+        root: Path, *, workspace: str, database: str, issue_prefix: str
     ) -> Path:
         """Write one repository-local Beads identity input."""
         path = root / "config" / "beads.yaml"
@@ -114,14 +110,10 @@ class WorktreeFixture:
         """Create one self-identifying governed project with a real Git origin."""
         pyproject = cls.write_python_project(root, distribution)
         cls.write_beads_project(
-            root,
-            workspace=workspace,
-            database=database,
-            issue_prefix=issue_prefix,
+            root, workspace=workspace, database=database, issue_prefix=issue_prefix
         )
         u.Tests.initialize_git_repo(
-            root,
-            origin_url=cls.governed_repository_url(distribution),
+            root, origin_url=cls.governed_repository_url(distribution)
         )
         return pyproject
 
@@ -162,5 +154,6 @@ class WorktreeFixture:
             )
         )
         return tree, status
+
 
 __all__: tuple[str, ...] = ("WorktreeFixture",)

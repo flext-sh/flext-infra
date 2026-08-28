@@ -1605,8 +1605,7 @@ class FlextInfraConfigModels:
             m.Field(description="Repository-local Beads identity"),
         ]
         canonical_project_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical PEP 621 project name"),
+            t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
         baseline_branch: Annotated[
             t.NonEmptyStr,
@@ -2341,6 +2340,7 @@ class FlextInfraConfigModels:
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
+
         @u.model_validator(mode="after")
         def _validate_topology_paths(self) -> Self:
             """Reject duplicate, ambiguous, or escaping topology paths."""
@@ -2731,18 +2731,18 @@ class FlextInfraConfigModels:
         )
 
     class StaticImportMemberRule(StaticRule):
-        """Reject one subproject imported from a configured module."""
+        """Reject one member imported from a configured module."""
 
         operator: Literal["import_member"] = m.Field(description="Operator")
         module: t.NonEmptyStr = m.Field(description="Import source module")
-        subproject: t.NonEmptyStr = m.Field(description="Rejected imported subproject")
+        member: t.NonEmptyStr = m.Field(description="Rejected imported member")
 
     class StaticAttributeRule(StaticRule):
-        """Reject one subproject accessed through a semantically imported module alias."""
+        """Reject one member accessed through a semantically imported module alias."""
 
         operator: Literal["attribute"] = m.Field(description="Operator")
         module: t.NonEmptyStr = m.Field(description="Imported module")
-        subproject: t.NonEmptyStr = m.Field(description="Rejected attribute")
+        member: t.NonEmptyStr = m.Field(description="Rejected attribute")
 
     class StaticCallRule(StaticRule):
         """Reject calls to one bare callable name."""

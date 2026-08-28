@@ -82,8 +82,8 @@ class FlextInfraModelsWorkspace:
         ] = ""
         workspace_role: Annotated[
             c.Infra.WorkspaceProjectRole,
-            m.Field(description="Operational role relative to the uv workspace root"),
-        ] = c.Infra.WorkspaceProjectRole.ATTACHED
+            m.Field(description="Repository-local topology role"),
+        ] = c.Infra.WorkspaceProjectRole.STANDALONE
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.

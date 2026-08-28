@@ -76,33 +76,33 @@ class FlextInfraPyprojectModernizerRunMixin:
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
-        # NOTE (multi-agent, mro-wkii.17): modernization writes only the
-        # requested workspace root and its configured members, never siblings.
+        # Modernization writes only the requested workspace root and its
+        # declared subprojects, never siblings.
         include_root = not project_names or "." in project_names
         selected_names = (
             [name for name in project_names if name != "."]
             if project_names
-            else list(u.Infra.workspace_member_names(self.root))
+            else list(u.Infra.workspace_project_paths(self.root))
         )
-        configured_member_paths = {
-            member_name: self.root / member_name
-            for member_name in u.Infra.workspace_member_names(self.root)
+        configured_subproject_paths = {
+            subproject_name: self.root / subproject_name
+            for subproject_name in u.Infra.workspace_project_paths(self.root)
         }
         resolved_root = self.root.resolve()
-        outside_member_names = [
-            member_name
-            for member_name, member_path in configured_member_paths.items()
-            if not member_path.resolve().is_relative_to(resolved_root)
+        outside_subproject_names = [
+            subproject_name
+            for subproject_name, subproject_path in configured_subproject_paths.items()
+            if not subproject_path.resolve().is_relative_to(resolved_root)
         ]
-        if outside_member_names:
+        if outside_subproject_names:
             u.Cli.error(
-                "workspace members outside root: "
-                f"{', '.join(sorted(outside_member_names))}"
+                "workspace subprojects outside root: "
+                f"{', '.join(sorted(outside_subproject_names))}"
             )
             return 2
         basename_aliases: dict[str, list[Path]] = {}
         declared_name_aliases: dict[str, list[Path]] = {}
-        for configured_path in configured_member_paths.values():
+        for configured_path in configured_subproject_paths.values():
             basename_aliases.setdefault(configured_path.name, []).append(
                 configured_path
             )
@@ -123,7 +123,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         missing_names: t.MutableSequenceOf[str] = []
         ambiguous_names: t.MutableSequenceOf[str] = []
         for project_name in selected_names:
-            project_path = configured_member_paths.get(project_name)
+            project_path = configured_subproject_paths.get(project_name)
             if project_path is None:
                 alias_matches: t.MutableSequenceOf[Path] = []
                 for alias_path in (
@@ -192,7 +192,8 @@ class FlextInfraPyprojectModernizerRunMixin:
                 return 2
             internal_names = tuple(
                 sorted(
-                    set(u.Infra.workspace_member_names(self.root)) | {root_project_name}
+                    set(u.Infra.workspace_project_paths(self.root))
+                    | {root_project_name}
                 )
             )
         violations: MutableMapping[str, t.StrSequence] = {}

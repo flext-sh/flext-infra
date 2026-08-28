@@ -97,8 +97,9 @@ class FlextInfraConstantsWorkspace:
     class WorkspaceProjectRole(StrEnum):
         """Relationship of one discovered project to an aggregate workspace."""
 
+        WORKSPACE_ROOT = "workspace-root"
         SUBPROJECT = "subproject"
-        ATTACHED = "attached"
+        STANDALONE = "standalone"
 
     EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
         ".ai-hub",

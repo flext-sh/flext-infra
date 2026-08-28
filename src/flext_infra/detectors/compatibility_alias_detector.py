@@ -6,8 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import sys
-from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
@@ -144,10 +142,8 @@ class FlextInfraCompatibilityAliasDetector:
         """Detect runtime canonical aliases imported from ``flext_core``."""
         current_module = u.Infra.package_name(file_path)
         migration_context = u.Infra.alias_migration_context(file_path)
-        local_aliases = (
-            FlextInfraCompatibilityAliasDetector._project_alias_owners().get(
-                migration_context.policy_owner
-            )
+        local_aliases = c.ENFORCEMENT_PROJECT_ALIAS_OWNERS.get(
+            migration_context.policy_owner
         )
         if not local_aliases:
             return ()
@@ -199,19 +195,6 @@ class FlextInfraCompatibilityAliasDetector:
                         )
                     )
         return violations
-
-    @staticmethod
-    def _project_alias_owners() -> t.StrSequenceMapping:
-        """Return live alias owners after test/runtime facade reloads."""
-        constants_module = sys.modules.get("flext_infra.constants")
-        if constants_module is None:
-            return c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
-        live_c = constants_module.c
-        owners = live_c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
-        if not isinstance(owners, Mapping):
-            msg = "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS is invalid"
-            raise TypeError(msg)
-        return owners
 
     @staticmethod
     def _is_private_facade_implementation(file_path: Path) -> bool:

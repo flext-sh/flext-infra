@@ -15,7 +15,6 @@ from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
 from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
@@ -42,14 +41,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._result = result
 
             def resolve_projects(
-                self,
-                workspace_root: Path,
-                names: t.StrSequence,
-                *,
-                include_attached: bool = False,
+                self, workspace_root: Path, names: t.StrSequence
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
-                del workspace_root, names, include_attached
+                del workspace_root, names
                 return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
@@ -402,11 +397,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def write_beads_project(
-            repository: Path,
-            *,
-            workspace: str,
-            database: str,
-            issue_prefix: str,
+            repository: Path, *, workspace: str, database: str, issue_prefix: str
         ) -> Path:
             """Write the typed repository-local Beads identity fixture."""
             path = repository / "config" / "beads.yaml"
@@ -548,16 +539,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project_dir
 
         @staticmethod
-        def write_project_beads_config(
-            project_dir: Path,
-            name: str,
-        ) -> Path:
+        def write_project_beads_config(project_dir: Path, name: str) -> Path:
             """Write a standalone project's required local topology input."""
             return TestsFlextInfraUtilities.Tests.write_beads_project(
-                project_dir,
-                workspace=name,
-                database=name,
-                issue_prefix=name,
+                project_dir, workspace=name, database=name, issue_prefix=name
             )
             return manifest_path
 
@@ -1063,7 +1048,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             project_class: str = "FlextTestProject",
             package_name: str = "test_project",
             workspace_role: c.Infra.WorkspaceProjectRole = (
-                c.Infra.WorkspaceProjectRole.ATTACHED
+                c.Infra.WorkspaceProjectRole.STANDALONE
             ),
         ) -> m.Infra.ProjectInfo:
             """Provide the typed test helper `create_project_info`."""
@@ -1273,49 +1258,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
             return (workspace_root, constants_path, consumer_path)
-
-        @staticmethod
-        def create_mro_scan_report(constants_path: Path) -> m.Infra.MROScanReport:
-            """Create a typed MRO scan report fixture."""
-            return m.Infra.MROScanReport(
-                file=str(constants_path),
-                module="demo_pkg.constants",
-                constants_class="DemoConstants",
-                facade_alias="c",
-                candidates=(
-                    m.Infra.MROSymbolCandidate(
-                        symbol="DEMO_VALUE",
-                        line=3,
-                        kind="constant",
-                        class_name="",
-                        facade_name="c",
-                    ),
-                ),
-            )
-
-        @staticmethod
-        def migrate_workspace_mro_imports(
-            *, workspace_root: Path, constants_path: Path, apply: bool
-        ) -> tuple[
-            t.SequenceOf[m.Infra.MROFileMigration],
-            t.SequenceOf[m.Infra.MRORewriteResult],
-            t.StrSequence,
-        ]:
-            """Provide the typed test helper `migrate_workspace_mro_imports`."""
-            result: tuple[
-                t.SequenceOf[m.Infra.MROFileMigration],
-                t.SequenceOf[m.Infra.MRORewriteResult],
-                t.StrSequence,
-            ] = FlextInfraRefactorMROImportRewriter.migrate_workspace(
-                workspace_root=workspace_root,
-                scan_results=[
-                    TestsFlextInfraUtilities.Tests.create_mro_scan_report(
-                        constants_path
-                    )
-                ],
-                apply=apply,
-            )
-            return result
 
         @staticmethod
         def detect_command(

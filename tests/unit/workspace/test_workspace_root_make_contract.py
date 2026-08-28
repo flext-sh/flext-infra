@@ -38,10 +38,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         database=root_repository.name,
         issue_prefix=root_repository.name,
     )
-    u.Tests.initialize_git_repo(
-        workspace_root,
-        origin_url=root_repository.url,
-    )
+    u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
     for project_name in project_names:
         project_root = workspace_root / project_name
         WorktreeFixture.initialize_governed_project(

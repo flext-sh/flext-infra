@@ -45,8 +45,7 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.beads, eq=beads)
 
     @pytest.mark.parametrize(
-        "missing_field",
-        ["version", "workspace", "database", "issue_prefix"],
+        "missing_field", ["version", "workspace", "database", "issue_prefix"]
     )
     def test_beads_identity_requires_every_declared_field(
         self, tmp_path: Path, missing_field: str
@@ -190,9 +189,7 @@ class TestsRepositoryLocalTopology:
             beads = tm.ok(
                 FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
             )
-            tm.that(
-                (beads.workspace, beads.database, beads.issue_prefix), eq=identity
-            )
+            tm.that((beads.workspace, beads.database, beads.issue_prefix), eq=identity)
 
     def test_invalid_repository_path_fails_closed(self, tmp_path: Path) -> None:
         """Return a typed failure for a path that is not a repository directory."""

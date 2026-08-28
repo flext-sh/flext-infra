@@ -20,10 +20,7 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path,
-        profile: c.Infra.MakeProfile,
-        *,
-        local_infra: bool = False,
+        tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
     ) -> tuple[Path, Path]:
         provider = config.Infra.codegen.providers[0]
         role = c.Infra.RepositoryRole(profile.value)
@@ -104,11 +101,7 @@ class TestsCodegenMakeEnvironment:
         return project_root, workspace_root
 
     @pytest.mark.parametrize(
-        "profile",
-        [
-            c.Infra.MakeProfile.WORKSPACE,
-            c.Infra.MakeProfile.STANDALONE,
-        ],
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         self, tmp_path: Path, profile: c.Infra.MakeProfile

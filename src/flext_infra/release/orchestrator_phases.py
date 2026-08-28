@@ -242,10 +242,7 @@ class FlextInfraReleaseOrchestratorPhases(
             return r[bool].fail(changed_result.error or "release version update failed")
         if ctx.dry_run:
             logger.info("release_phase_version_checked", checked_version=target)
-        logger.info(
-            "release_phase_version_summary",
-            files_changed=changed_result.value,
-        )
+        logger.info("release_phase_version_summary", files_changed=changed_result.value)
         return r[bool].ok(True)
 
     def _version_update_files(

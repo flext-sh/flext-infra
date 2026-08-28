@@ -743,7 +743,9 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         except c.ValidationError as exc:
             return r[bool].fail_op("validate root uv workspace members", exc)
-        expected_members = tuple(member.path.as_posix() for member in workspace.subprojects)
+        expected_members = tuple(
+            member.path.as_posix() for member in workspace.subprojects
+        )
         if tuple(members) != expected_members:
             return r[bool].fail("root uv workspace members differ from workspace SSOT")
         sources = uv.get("sources")
@@ -782,7 +784,9 @@ class FlextInfraUtilitiesPyprojectConform:
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
             return r[bool].fail("pyproject document is not a TOML mapping")
-        member_names = frozenset(member.distribution for member in workspace.subprojects)
+        member_names = frozenset(
+            member.distribution for member in workspace.subprojects
+        )
         raw_values: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
