@@ -102,7 +102,7 @@ class TestsMakeTestSelector:
             )
         )
 
-        tm.that(executed.exit_code, eq=0)
+        tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(invocation_log.exists(), eq=False)
 
     def test_external_makefile_owns_the_runtime_engine(self, tmp_path: Path) -> None:
@@ -115,16 +115,14 @@ class TestsMakeTestSelector:
         selected_makefile.write_text(
             tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
         )
-        invocation_log = engine_root / "python-args.log"
-        test_u.Tests.write_executable(
-            engine_root / ".venv" / "bin" / "python",
-            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n',
-        )
+        invocation_log = engine_root / "bootstrap-args.log"
         test_u.Tests.write_executable(
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
         )
         uv = caller_root / "bin" / "uv"
-        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+        test_u.Tests.write_executable(
+            uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n'
+        )
 
         executed = tm.ok(
             test_u.Tests.run_isolated_make(
@@ -144,6 +142,8 @@ class TestsMakeTestSelector:
         tm.that(
             invocation_log.read_text(encoding="utf-8"),
             has=[
+                f"run --project {engine_root}",
+                f"--with-editable {engine_root}",
                 "-m flext_infra codegen conform",
                 f"--root {engine_root}",
                 "--scope self",

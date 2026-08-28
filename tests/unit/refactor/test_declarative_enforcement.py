@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 from typing import TYPE_CHECKING
 
 import pytest
@@ -21,8 +20,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra.typings import t
-
-constants_module = importlib.import_module("flext_infra.constants")
 
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:
@@ -185,11 +182,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-079"), self._ctx(rope_project, source)
             )
 
-    def test_foreign_canonical_alias_detection(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_foreign_canonical_alias_detection(self, tmp_path: Path) -> None:
         """ENFORCE-080 detects a canonical alias imported from flext_core."""
-        source = tmp_path / "src" / "demo_pkg" / "consumer.py"
+        source = tmp_path / "src" / "flext_infra" / "consumer.py"
         source.parent.mkdir(parents=True)
         # Why (flext-ygc2k): package discovery requires src/<pkg>/__init__.py;
         # without it the policy owner resolves empty and detection is vacuous.
@@ -199,16 +194,11 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             encoding="utf-8",
         )
         (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "demo_pkg"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-        monkeypatch.setattr(
-            constants_module.c,
-            "ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c", "m", "p", "t", "u")},
+            '[project]\nname = "flext_infra"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         with u.Infra.open_project(tmp_path) as rope_project:
             ctx = self._ctx(rope_project, source)
-            ctx.project_name = "demo_pkg"
+            ctx.project_name = "flext_infra"
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-080"), ctx
             )
@@ -352,21 +342,15 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         tm.that(violations[0].fixable, eq=False)
 
     def test_census_reports_enforce_080_foreign_canonical_alias(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """ENFORCE-080 appears in the census for foreign canonical aliases."""
-        workspace = self._build_workspace(tmp_path, "demo_pkg")
-        source = workspace / "src" / "demo_pkg" / "service.py"
+        workspace = self._build_workspace(tmp_path, "flext_infra")
+        source = workspace / "src" / "flext_infra" / "service.py"
         source.write_text(
             "from __future__ import annotations\nfrom flext_core import c\n",
             encoding="utf-8",
         )
-        monkeypatch.setattr(
-            constants_module.c,
-            "ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c", "m", "p", "t", "u")},
-        )
-
         report_result = FlextInfraRefactorCensus(
             workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-080",)
         ).execute()

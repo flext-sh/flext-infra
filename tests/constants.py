@@ -72,6 +72,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "RUFF_ARGS",
             "UV",
             "VALIDATE_GATES",
+            "WHAT",
             "WORKSPACE_ROOT",
             *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
