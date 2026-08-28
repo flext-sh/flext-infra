@@ -33,6 +33,7 @@ this rollout.
 | 2026-08-28T08:57:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0acb0ba7e9951e63c8324f075569195057735114` | Conditional execution-context Rope scope, standalone isolation, and manual evidence pushed to `origin` |
 | 2026-08-28T09:12:58-03:00 | `flext-infra` | `fix/mise-beads-canonical` | `e47da1189e01c432f9ce2154c60c42381a6f9792` | Dirty canonical lane checkpointed in full and pushed before consolidation |
 | 2026-08-28T09:16:22-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `8398a4c409e9024e3b94d555135cf48766e61049` | Canonical Mise lane consolidated by a two-parent merge; conflicts resolved to the final repository-local contract and pushed |
+| 2026-08-28T09:41:16-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `7d535be725af122fae5c76afb8146957fd9644c3` | Required static endpoint restored from the typed codegen SSOT; obsolete override/workspace fixtures, runtime-hook projection, and tracked backup removed; checkpoint pushed |
 
 ## Validation log
 
@@ -67,6 +68,12 @@ this rollout.
 | 2026-08-28T09:02:54-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 888 files unchanged | Current WIP is formatter-clean |
 | 2026-08-28T09:17:13-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py` from `flext-infra` | PASS: 21 tests | Removed `ci_matrix_auto_run`; static dispatch-only CI matrix and generated project consumers are green |
 | 2026-08-28T09:18:44-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 5 files reformatted, 885 unchanged | Merge-adopted Mise source/tests and the CI policy cut are formatter-clean |
+| 2026-08-28T09:41:16-03:00 | worktree | `make gen WHAT=apply APPLY=Y` from `flext-infra` | PASS: final conform apply changed 0 files; fixed-point check and static Mise artifact validation passed | `.beads/config.yaml` and `.beads/metadata.json` project `127.0.0.1:3307` from the required typed endpoint; no Beads executable invoked |
+| 2026-08-28T09:41:16-03:00 | worktree | Focused pyproject topology/config gates | PASS: 6 topology-source, 2 gitignore-policy, and 12 pyproject-conform tests | Removed the retired override schema, projected declared versions, and kept standalone/workspace provenance deterministic |
+| 2026-08-28T09:41:16-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_beads_projection.py` | PASS: 3 tests | Local identity plus the codegen-owned endpoint produce static Beads projections without a runtime surface |
+| 2026-08-28T09:41:16-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_workspace_root_setup_submodules.py` | PASS: 2 tests | Generated workspace Make syntax is valid and initializes only the declared gitlink before environment provisioning |
+| 2026-08-28T09:41:16-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_root_artifact_ownership.py` | PASS: 7 tests | Existing-repository fixed point, GitHub ownership bijection, and bounded ancestry fetch are green |
+| 2026-08-28T09:41:16-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 1 file reformatted, 889 unchanged | Current checkpoint is formatter-clean |
 
 ## Unresolved boundaries
 
@@ -76,11 +83,6 @@ this rollout.
 - The checked-out FLEXT command router still names three superseded home-level
   skill paths. Current installed owners were used for this slice; repairing that
   generated governance projection is not yet part of this checkpoint.
-- `GithubWorkflowRenderSpec.ci_matrix_auto_run` and its config model still claim
-  that `true` projects a push-to-main trigger, while the canonical template is
-  static `workflow_dispatch` and ignores the field. This policy contradiction
-  was resolved by the operator: remove the unused field and keep the workflow
-  static `workflow_dispatch` for both repository profiles.
 
 ## GitHub lifecycle
 
