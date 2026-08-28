@@ -311,7 +311,7 @@ class FlextInfraWorkspaceDetector(
                 "repository provider must resolve exactly once: "
                 f"{workspace.repository.provider}"
             )
-        provider = providers[0]
+        (provider,) = providers
         metadata = u.read_project_metadata(resolved_root)
         if metadata.failure:
             return r[m.Infra.RepositoryConformTarget].fail(

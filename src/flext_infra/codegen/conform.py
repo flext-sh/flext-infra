@@ -242,6 +242,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     "repository provider must resolve exactly once: "
                     f"{current_repository.provider}"
                 )
+            (provider,) = providers
             current_make_profile = (
                 c.Infra.MakeProfile.WORKSPACE
                 if current_repository.role is c.Infra.RepositoryRole.WORKSPACE
@@ -253,7 +254,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=current_make_profile,
                 beads=workspace.beads,
                 canonical_project_name=current_repository.distribution,
-                baseline_branch=providers[0].branch,
+                baseline_branch=provider.branch,
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
@@ -1432,20 +1433,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
-            server = codegen.toolchain.beads.server
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
                     issue_prefix=target.beads.issue_prefix,
                     database=target.beads.database,
-                    server=server,
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
-            server = codegen.toolchain.beads.server
             return r[p.Model].ok(
-                m.Infra.BeadsMetadataRenderSpec(
-                    database=target.beads.database, server=server
-                )
+                m.Infra.BeadsMetadataRenderSpec(database=target.beads.database)
             )
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)

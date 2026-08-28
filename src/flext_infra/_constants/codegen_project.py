@@ -106,7 +106,7 @@ class FlextInfraConstantsCodegenProject:
         EXTERNAL = "external"
 
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
-    BEADS_CONFIG_VERSION: Final[int] = 1
+    BEADS_CONFIG_VERSION: Final = 1
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"

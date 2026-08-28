@@ -348,6 +348,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def provider(name: str = "flext-sh") -> m.Infra.ProviderSpec:
+            """Resolve one explicitly named provider for repository fixtures."""
+            providers = tuple(
+                provider
+                for provider in config.Infra.codegen.providers
+                if provider.name == name
+            )
+            tm.that(len(providers), eq=1, msg="fixture provider must resolve once")
+            (provider,) = providers
+            return provider
+
+        @staticmethod
         def repository_ref(
             name: str,
             *,
@@ -365,7 +377,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             subproject still classifies itself as standalone; only its checkout
             relationship is ``submodule``.
             """
-            provider = config.Infra.codegen.providers[0]
+            provider = TestsFlextInfraUtilities.Tests.provider()
             resolved_path = Path() if path is None else path
             is_subproject = bool(resolved_path.parts)
             resolved_role = role or (
@@ -396,6 +408,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def beads_project(name: str) -> m.Infra.BeadsProjectSpec:
+            """Build portable Beads identity for one repository fixture."""
+            return m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=name,
+                database=name.replace("-", "_"),
+                issue_prefix=name,
+            )
+
+        @staticmethod
         def write_beads_project(
             repository: Path, *, workspace: str, database: str, issue_prefix: str
         ) -> Path:
@@ -405,7 +427,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 u.Cli.yaml_dump(
                     path,
                     m.Infra.BeadsProjectSpec(
-                        version=1,
+                        version=c.Infra.BEADS_CONFIG_VERSION,
                         workspace=workspace,
                         database=database,
                         issue_prefix=issue_prefix,
@@ -963,7 +985,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             repository itself; fixtures that must be recognised as
             provider-governed pass their declared provider URL instead.
             """
-            baseline_branch = config.Infra.codegen.providers[0].branch
+            baseline_branch = TestsFlextInfraUtilities.Tests.provider().branch
             bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
             bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
             bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))

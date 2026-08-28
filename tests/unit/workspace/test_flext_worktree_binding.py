@@ -18,13 +18,14 @@ from flext_core import p as core_p
 from flext_infra import config
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_tests import tm
+from tests import u
 
 from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 def _consumer(tmp_path: Path) -> Path:
     """Return an external consumer declaring flext packages by pinned git URL."""
-    provider = config.Infra.codegen.providers[0]
+    provider = u.Tests.provider()
     consumer = tmp_path / "consumer"
     consumer.mkdir()
     (consumer / "pyproject.toml").write_text(

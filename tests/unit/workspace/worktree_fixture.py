@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config
+from flext_infra import c
 from flext_tests import tm
-from tests import m, u
+from tests import u
 
 
 class WorktreeFixture:
@@ -75,7 +75,7 @@ class WorktreeFixture:
     @staticmethod
     def governed_repository_url(distribution: str) -> str:
         """Build a fixture repository URL from the configured provider."""
-        provider = config.Infra.codegen.providers[0]
+        provider = u.Tests.provider()
         return f"{provider.base_url.rstrip('/')}/{distribution}.git"
 
     @staticmethod
@@ -120,7 +120,7 @@ class WorktreeFixture:
     @classmethod
     def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
         """Declare governed subprojects from the configured provider contract."""
-        provider = config.Infra.codegen.providers[0]
+        provider = u.Tests.provider()
         path = root / c.Infra.GITMODULES
         path.write_text(
             "".join(

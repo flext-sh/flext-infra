@@ -55,21 +55,5 @@ class TestsToolchainBeadsDistribution:
                 version=beads.version,
             )
 
-    def test_server_port_is_required_and_deployment_owned(self) -> None:
-        """Accept alternate valid ports and reject absent or invalid values."""
-        server = config.Infra.codegen.toolchain.beads.server
-        if server is None:
-            pytest.fail("Beads server is required by this deployment")
-        payload = server.model_dump(mode="python")
-        alternate = server.model_validate({**payload, "port": 4242})
-
-        tm.that(alternate.port, eq=4242)
-        with pytest.raises(c.ValidationError, match="port"):
-            server.model_validate({
-                key: value for key, value in payload.items() if key != "port"
-            })
-        with pytest.raises(c.ValidationError, match="port"):
-            server.model_validate({**payload, "port": 0})
-
 
 __all__: tuple[str, ...] = ()

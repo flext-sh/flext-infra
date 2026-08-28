@@ -763,7 +763,7 @@ _builtin_release_status: _builtin_require_environment
 # the complete dependency/tooling projection before it verifies its fixed point.
 # Dependency upgrades remain a separate explicit verb because they rewrite lock
 # floors; gen must never run a second pyproject writer over conform's result.
-define _mise_launcher
+define _mise_launcher_apply
 	@set -eu; \
 	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
 	mkdir -p "$$scratch_parent"; \
@@ -771,79 +771,108 @@ define _mise_launcher
 	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
 	mkdir -p "$$scratch/data" "$$scratch/cache" "$$scratch/state" "$$scratch/tmp"; \
 	: > "$$scratch/global-config.toml"; \
-	MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+	if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
 		XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
 		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
 		"$(SETUP_MISE)" -C "$$scratch" generate install-script \
 		--version "$(SETUP_MISE_VERSION)" \
-		--write "$$scratch/mise" --windows; \
-	if [ "$(1)" = check ]; then \
-		cmp -s "$(PROJECT_ROOT)/bin/mise" "$$scratch/mise" \
-			&& cmp -s "$(PROJECT_ROOT)/bin/mise.cmd" "$$scratch/mise.cmd" || { \
-			printf 'ERROR: generated mise launcher drift; run make gen WHAT=apply APPLY=Y\n' >&2; \
-			exit 2; \
-		}; \
+		--write "$$scratch/mise" --windows \
+		>"$$scratch/generate.log" 2>&1; then \
+		cat "$$scratch/generate.log"; \
 	else \
-		mkdir -p "$(PROJECT_ROOT)/bin"; \
-		cp "$$scratch/mise" "$(PROJECT_ROOT)/bin/mise"; \
-		cp "$$scratch/mise.cmd" "$(PROJECT_ROOT)/bin/mise.cmd"; \
-		chmod +x "$(PROJECT_ROOT)/bin/mise"; \
-	fi
+		status=$$?; cat "$$scratch/generate.log"; exit "$$status"; \
+	fi; \
+	if grep -F 'mise WARN' "$$scratch/generate.log" >/dev/null; then \
+		printf 'ERROR: Mise launcher generation emitted warnings\n' >&2; exit 2; \
+	fi; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		[ -f "$$project_root/.mise.toml" ] || { \
+			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
+		}; \
+		mkdir -p "$$project_root/bin"; \
+		shell_tmp="$$project_root/bin/.mise.new.$$$$"; \
+		windows_tmp="$$project_root/bin/.mise.cmd.new.$$$$"; \
+		cp "$$scratch/mise" "$$shell_tmp"; \
+		cp "$$scratch/mise.cmd" "$$windows_tmp"; \
+		chmod +x "$$shell_tmp"; \
+		mv -f "$$shell_tmp" "$$project_root/bin/mise"; \
+		mv -f "$$windows_tmp" "$$project_root/bin/mise.cmd"; \
+	done
 endef
 
-define _mise_lock
+define _mise_lock_apply
+	@set -eu; \
+	credential_command="$${MISE_GITHUB_CREDENTIAL_COMMAND:-}"; \
+	if [ -z "$${MISE_GITHUB_TOKEN:-}$${GITHUB_API_TOKEN:-}$${GITHUB_TOKEN:-}$$credential_command" ]; then \
+		credential_command=$$("$(SETUP_MISE)" settings get github.credential_command); \
+	fi; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		[ -f "$$project_root/.mise.toml" ] || { \
+			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
+		}; \
+		scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
+		scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
+		trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
+		cp "$$project_root/.mise.toml" "$$scratch/.mise.toml"; \
+		locked_count=$$(grep -Fxc 'locked = true' "$$scratch/.mise.toml"); \
+		[ "$$locked_count" -eq 1 ] || { \
+			printf 'ERROR: expected one locked tool_config setting in %s\n' "$$project_root/.mise.toml" >&2; exit 2; \
+		}; \
+		sed -i 's/^locked = true$$/locked = false/' "$$scratch/.mise.toml"; \
+		mkdir -p "$$scratch/data" "$$scratch/cache" \
+			"$$scratch/state" "$$scratch/tmp"; \
+		: > "$$scratch/global-config.toml"; \
+		if MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
+			MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+			XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
+			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
+			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
+			MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
+			"$(SETUP_MISE)" -C "$$scratch" lock \
+			--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
+			cat "$$scratch/lock.log"; \
+		else \
+			status=$$?; cat "$$scratch/lock.log"; exit "$$status"; \
+		fi; \
+		if grep -F 'mise WARN' "$$scratch/lock.log" >/dev/null; then \
+			printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
+		fi; \
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+			--workspace "$$scratch" --apply; \
+		lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
+		cp "$$scratch/mise.lock" "$$lock_tmp"; \
+		mv -f "$$lock_tmp" "$$project_root/mise.lock"; \
+		rm -rf -- "$$scratch"; trap - EXIT HUP INT TERM; \
+	done
+endef
+
+define _mise_artifacts_check
 	@set -eu; \
 	for project in $(MISE_LOCK_PROJECTS); do \
 		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
 		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		if [ "$(1)" = check ]; then \
-			[ -f "$$project_root/mise.lock" ] || { \
-				printf 'ERROR: missing generated mise.lock in %s\n' "$$project_root" >&2; exit 2; \
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+			--workspace "$$project_root" --check; \
+		if [ "$$project" != . ]; then \
+			cmp -s "$(PROJECT_ROOT)/bin/mise" "$$project_root/bin/mise" || { \
+				printf 'ERROR: Unix Mise launcher differs in %s\n' "$$project_root" >&2; exit 2; \
 			}; \
-			scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
-			scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
-			trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
-			cp "$$project_root/.mise.toml" "$$scratch/.mise.toml"; \
-			cp "$$project_root/mise.lock" "$$scratch/mise.lock"; \
-			mkdir -p "$$scratch/data" "$$scratch/cache" \
-				"$$scratch/state" "$$scratch/tmp"; \
-			: > "$$scratch/global-config.toml"; \
-			MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-				XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-				MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-				MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-				MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-				"$(SETUP_MISE)" -C "$$scratch" lock --platform "$(MISE_LOCK_PLATFORMS)"; \
-			cmp -s "$$project_root/mise.lock" "$$scratch/mise.lock" || { \
-				printf 'ERROR: mise lock metadata drift in %s\n' "$$project_root" >&2; exit 2; \
+			cmp -s "$(PROJECT_ROOT)/bin/mise.cmd" "$$project_root/bin/mise.cmd" || { \
+				printf 'ERROR: Windows Mise launcher differs in %s\n' "$$project_root" >&2; exit 2; \
 			}; \
-			rm -rf -- "$$scratch"; trap - EXIT HUP INT TERM; \
-		else \
-			scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
-			scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
-			trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
-			mkdir -p "$$scratch/data" "$$scratch/cache" \
-				"$$scratch/state" "$$scratch/tmp"; \
-			: > "$$scratch/global-config.toml"; \
-			MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-				XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-				MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-				MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-				MISE_CEILING_PATHS="$$(dirname "$$project_root")" \
-				MISE_TRUSTED_CONFIG_PATHS="$$project_root" \
-				"$(SETUP_MISE)" -C "$$project_root" lock \
-				--platform "$(MISE_LOCK_PLATFORMS)"; \
-			rm -rf -- "$$scratch"; trap - EXIT HUP INT TERM; \
 		fi; \
 	done
 endef
 
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	$(call _mise_launcher,check)
-	$(call _mise_lock,check)
+	$(call _mise_artifacts_check)
 
 _builtin_gen_init:
 	$(call _require_apply)
@@ -853,10 +882,9 @@ _builtin_gen_init:
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	$(call _mise_launcher,apply)
-	$(call _mise_launcher,check)
-	$(call _mise_lock,apply)
+	$(call _mise_launcher_apply)
+	$(call _mise_lock_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	$(call _mise_lock,check)
+	$(call _mise_artifacts_check)
 
 _builtin_gen_apply: _builtin_gen_all

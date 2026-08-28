@@ -31,6 +31,7 @@ this rollout.
 | 2026-08-28T08:27:37-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `b08c6ffb3c52ae77d9c1a77ea5b69a7646cf1eb7` | Static projections, launchers, 75-entry Mise lock, and owner-driven report/cache cleanup pushed to `origin` |
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `fc498bad217ef8f12dbb0def079c10837dc26b78` | Repository-local topology fixture convergence pushed to `origin` |
 | 2026-08-28T08:57:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0acb0ba7e9951e63c8324f075569195057735114` | Conditional execution-context Rope scope, standalone isolation, and manual evidence pushed to `origin` |
+| 2026-08-28T09:12:58-03:00 | `flext-infra` | `fix/mise-beads-canonical` | `e47da1189e01c432f9ce2154c60c42381a6f9792` | Dirty canonical lane checkpointed in full and pushed before consolidation |
 
 ## Validation log
 
@@ -75,7 +76,8 @@ this rollout.
 - `GithubWorkflowRenderSpec.ci_matrix_auto_run` and its config model still claim
   that `true` projects a push-to-main trigger, while the canonical template is
   static `workflow_dispatch` and ignores the field. This policy contradiction
-  awaits operator direction; no owner has been selected unilaterally.
+  was resolved by the operator: remove the unused field and keep the workflow
+  static `workflow_dispatch` for both repository profiles.
 
 ## GitHub lifecycle
 

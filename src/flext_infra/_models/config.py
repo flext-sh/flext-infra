@@ -63,47 +63,6 @@ class FlextInfraConfigModels:
             ),
         ] = None
 
-    class BeadsServerSpec(_ConfigContract):
-        """Machine-wide shared Dolt server connection for Beads ledgers."""
-
-        backend: Annotated[
-            Literal["dolt"],
-            m.Field(
-                description=(
-                    "Ledger storage engine bd binds a checkout to through "
-                    ".beads/metadata.json"
-                )
-            ),
-        ]
-        mode: Annotated[
-            Literal["server"],
-            m.Field(description="Dolt connection mode; ledgers never embed locally"),
-        ]
-        shared_server: Annotated[
-            Literal[False],
-            m.Field(
-                description=(
-                    "Always false: consume the explicitly configured external "
-                    "Gas Town Dolt endpoint; bd-owned shared-server lifecycle is "
-                    "forbidden"
-                )
-            ),
-        ] = False
-        host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
-        port: Annotated[
-            int,
-            m.Field(
-                ge=1,
-                le=65535,
-                description="External Dolt server TCP port declared by deployment",
-            ),
-        ]
-        user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
-        auto_commit: Annotated[
-            Literal["off", "on", "batch"],
-            m.Field(description="Dolt auto-commit policy for ledger writes"),
-        ]
-
     class ProtectedMiseToolSpec(MiseToolSpec):
         """One fleet-owned mise distribution identity."""
 
@@ -133,17 +92,72 @@ class FlextInfraConfigModels:
             return self
 
     class BeadsToolSpec(ProtectedMiseToolSpec):
-        """Beads tool pin plus the shared Dolt ledger connection."""
+        """Canonical Beads distribution identity."""
 
-        server: Annotated[
-            FlextInfraConfigModels.BeadsServerSpec | None,
+    class MiseLockPlatformSpec(_ConfigContract):
+        """Immutable download metadata for one tool platform."""
+
+        checksum: Annotated[
+            t.NonEmptyStr,
             m.Field(
-                description=(
-                    "Shared Dolt server connection rendered into ledger routing "
-                    "configs; None keeps repository-local embedded state"
-                )
+                pattern=r"^sha256:[0-9a-f]{64}$",
+                description="SHA-256 digest emitted by Mise",
             ),
+        ]
+        url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://",
+                description="Immutable HTTPS artifact URL emitted by Mise",
+            ),
+        ]
+        url_api: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional immutable provider API URL"),
         ] = None
+        provenance: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional artifact provenance mechanism"),
+        ] = None
+        provenance_verified: Annotated[
+            bool | None,
+            m.Field(description="Optional local provenance verification result"),
+        ] = None
+
+    class MiseLockToolSpec(_ConfigContract):
+        """One resolved tool version and its platform artifacts."""
+
+        version: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved immutable tool version")
+        ]
+        backend: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved Mise backend identity")
+        ]
+        specifiers: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Source selectors resolved by this entry"),
+        ]
+        platforms: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConfigModels.MiseLockPlatformSpec],
+            m.Field(
+                default_factory=dict,
+                description="Resolved platform download metadata",
+            ),
+        ]
+
+    class MiseLockSpec(_ConfigContract):
+        """Typed shape of the generated Mise lockfile."""
+
+        lockfile_version: Annotated[
+            Literal[1], m.Field(description="Supported Mise lock schema version")
+        ]
+        tools: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                tuple[FlextInfraConfigModels.MiseLockToolSpec, ...],
+            ],
+            m.Field(description="Exactly resolved generated tool set"),
+        ]
 
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
@@ -274,6 +288,28 @@ class FlextInfraConfigModels:
                 description="Platforms materialized into the project mise lockfile",
             ),
         ]
+        mise_lock_platform_exclusions: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                tuple[
+                    Literal[
+                        "linux-x64",
+                        "linux-arm64",
+                        "linux-x64-musl",
+                        "linux-arm64-musl",
+                        "macos-x64",
+                        "macos-arm64",
+                        "windows-x64",
+                    ],
+                    ...,
+                ],
+            ],
+            m.Field(
+                description=(
+                    "Explicit platforms a backend cannot represent in mise.lock"
+                )
+            ),
+        ] = MappingProxyType({})
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -298,7 +334,7 @@ class FlextInfraConfigModels:
                     FlextInfraConfigModels.ProtectedMiseToolSpec,
                 ):
                     msg = f"protected_mise_tools references invalid owner: {owner}"
-                    raise ValueError(msg)
+                    raise TypeError(msg)
             return self
 
         @u.model_validator(mode="after")
@@ -307,6 +343,18 @@ class FlextInfraConfigModels:
             if len(set(self.mise_lock_platforms)) != len(self.mise_lock_platforms):
                 msg = "mise_lock_platforms must be unique"
                 raise ValueError(msg)
+            declared = set(self.mise_lock_platforms)
+            for selector, exclusions in self.mise_lock_platform_exclusions.items():
+                if len(set(exclusions)) != len(exclusions):
+                    msg = f"mise lock platform exclusions must be unique: {selector}"
+                    raise ValueError(msg)
+                unknown = set(exclusions) - declared
+                if unknown:
+                    msg = (
+                        "mise lock platform exclusions must be declared targets: "
+                        f"{selector}"
+                    )
+                    raise ValueError(msg)
             return self
 
         @m.computed_field()
@@ -1804,32 +1852,19 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
         ]
-        server: Annotated[
-            FlextInfraConfigModels.BeadsServerSpec,
-            m.Field(
-                description="Shared Dolt server connection from the toolchain SSOT"
-            ),
-        ]
 
     class BeadsMetadataRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
         The Beads CLI resolves a checkout to its Dolt database through
-        ``.beads/metadata.json``; ``bd init`` never writes it, so a fresh
-        clone that carries only the generated ``config.yaml`` silently falls
-        back to the default ``beads`` database. Generating the marker binds
-        every checkout to the shared server database declared by the SSOT.
+        ``.beads/metadata.json``. The generated marker contains only portable
+        storage and database identity; runtime connection facts remain owned
+        outside the repository.
         """
 
         database: Annotated[
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
-        ]
-        server: Annotated[
-            FlextInfraConfigModels.BeadsServerSpec,
-            m.Field(
-                description="Shared Dolt server connection from the toolchain SSOT"
-            ),
         ]
 
     class GitignoreRenderSpec(_ConfigContract):
