@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def main(argv: list[str] | None = None) -> int:
+def _run_maintenance(argv: list[str] | None = None) -> int:
     args = ["maintenance"]
     if argv is not None:
         args.extend(argv)
@@ -53,10 +53,10 @@ class TestsFlextInfraInfraMaintenanceMain:
     """Tests for the maintenance main entry point."""
 
     def test_main_with_help_flag(self) -> None:
-        tm.that(main(["--help"]), eq=0)
+        tm.that(_run_maintenance(["--help"]), eq=0)
 
     def test_main_calls_sys_exit_on_help(self) -> None:
-        tm.that(main(["--help"]), eq=0)
+        tm.that(_run_maintenance(["--help"]), eq=0)
 
     def test_enforcer_check_only_success(self, tmp_path: Path) -> None:
         workspace = _create_workspace(

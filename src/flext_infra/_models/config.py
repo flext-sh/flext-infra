@@ -94,6 +94,71 @@ class FlextInfraConfigModels:
     class BeadsToolSpec(ProtectedMiseToolSpec):
         """Canonical Beads distribution identity."""
 
+    class MiseLockPlatformSpec(_ConfigContract):
+        """Immutable download metadata for one tool platform."""
+
+        checksum: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^sha256:[0-9a-f]{64}$",
+                description="SHA-256 digest emitted by Mise",
+            ),
+        ]
+        url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://",
+                description="Immutable HTTPS artifact URL emitted by Mise",
+            ),
+        ]
+        url_api: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional immutable provider API URL"),
+        ] = None
+        provenance: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional artifact provenance mechanism"),
+        ] = None
+        provenance_verified: Annotated[
+            bool | None,
+            m.Field(description="Optional local provenance verification result"),
+        ] = None
+
+    class MiseLockToolSpec(_ConfigContract):
+        """One resolved tool version and its platform artifacts."""
+
+        version: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved immutable tool version")
+        ]
+        backend: Annotated[
+            t.NonEmptyStr, m.Field(description="Resolved Mise backend identity")
+        ]
+        specifiers: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Source selectors resolved by this entry"),
+        ]
+        platforms: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConfigModels.MiseLockPlatformSpec],
+            m.Field(
+                default_factory=dict,
+                description="Resolved platform download metadata",
+            ),
+        ]
+
+    class MiseLockSpec(_ConfigContract):
+        """Typed shape of the generated Mise lockfile."""
+
+        lockfile_version: Annotated[
+            Literal[1], m.Field(description="Supported Mise lock schema version")
+        ]
+        tools: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                tuple[FlextInfraConfigModels.MiseLockToolSpec, ...],
+            ],
+            m.Field(description="Exactly resolved generated tool set"),
+        ]
+
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
 
@@ -223,6 +288,28 @@ class FlextInfraConfigModels:
                 description="Platforms materialized into the project mise lockfile",
             ),
         ]
+        mise_lock_platform_exclusions: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                tuple[
+                    Literal[
+                        "linux-x64",
+                        "linux-arm64",
+                        "linux-x64-musl",
+                        "linux-arm64-musl",
+                        "macos-x64",
+                        "macos-arm64",
+                        "windows-x64",
+                    ],
+                    ...,
+                ],
+            ],
+            m.Field(
+                description=(
+                    "Explicit platforms a backend cannot represent in mise.lock"
+                )
+            ),
+        ] = MappingProxyType({})
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -247,7 +334,7 @@ class FlextInfraConfigModels:
                     FlextInfraConfigModels.ProtectedMiseToolSpec,
                 ):
                     msg = f"protected_mise_tools references invalid owner: {owner}"
-                    raise ValueError(msg)
+                    raise TypeError(msg)
             return self
 
         @u.model_validator(mode="after")
@@ -256,6 +343,18 @@ class FlextInfraConfigModels:
             if len(set(self.mise_lock_platforms)) != len(self.mise_lock_platforms):
                 msg = "mise_lock_platforms must be unique"
                 raise ValueError(msg)
+            declared = set(self.mise_lock_platforms)
+            for selector, exclusions in self.mise_lock_platform_exclusions.items():
+                if len(set(exclusions)) != len(exclusions):
+                    msg = f"mise lock platform exclusions must be unique: {selector}"
+                    raise ValueError(msg)
+                unknown = set(exclusions) - declared
+                if unknown:
+                    msg = (
+                        "mise lock platform exclusions must be declared targets: "
+                        f"{selector}"
+                    )
+                    raise ValueError(msg)
             return self
 
         @m.computed_field()
@@ -2277,6 +2376,7 @@ class FlextInfraConfigModels:
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
+
         @u.model_validator(mode="after")
         def _validate_topology_paths(self) -> Self:
             """Reject duplicate, ambiguous, or escaping topology paths."""

@@ -69,6 +69,7 @@ if TYPE_CHECKING:
         ManagedConflictError,
         recover_managed_toml,
     )
+    from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .codegen.pipeline import FlextInfraCodegenPipeline
     from .codegen.project_new import FlextInfraCodegenProjectNew
     from .codegen.py_typed import FlextInfraCodegenPyTyped
@@ -346,6 +347,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenManagedConflicts",
+    "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenPyTyped",
@@ -616,6 +618,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "ManagedConflictError",
                 "recover_managed_toml",
             ),
+            ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),
