@@ -35,6 +35,8 @@ this rollout.
 | 2026-08-28T09:16:22-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `8398a4c409e9024e3b94d555135cf48766e61049` | Canonical Mise lane consolidated by a two-parent merge; conflicts resolved to the final repository-local contract and pushed |
 | 2026-08-28T09:41:16-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `7d535be725af122fae5c76afb8146957fd9644c3` | Required static endpoint restored from the typed codegen SSOT; obsolete override/workspace fixtures, runtime-hook projection, and tracked backup removed; checkpoint pushed |
 | 2026-08-28T09:58:21-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `a9f4b8f2e7b6475797b244163cea932e8e844a00` | Retired facade-inheritance scanners, migrators, transformers, hidden Rope post-hook, models, routes, and obsolete tests removed; generated public exports converged and checkpoint pushed |
+| 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `f033fc4bd` | Retired-tooling validation evidence recorded and pushed |
+| 2026-08-28T10:22:00-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `97d55739ced18c5a59fa997582de7dc7925b1f11` | Repository-local topology owners, typed `base.mk` validation, static projection convergence, and final active-vocabulary cleanup pushed |
 
 ## Validation log
 
@@ -42,7 +44,7 @@ this rollout.
 | --- | --- | --- | --- | --- |
 | 2026-08-28 | worktree | Repository test gate | FAIL before collection | Repair generic configuration member fields altered by the topology vocabulary cutover |
 | 2026-08-28 | worktree | Repository test gate | FAIL before collection | Rewire documentation scope to repository-local project discovery |
-| 2026-08-28 | worktree | Repository test gate | FAIL before collection | Remove the obsolete attached-project selector contract |
+| 2026-08-28 | worktree | Repository test gate | FAIL before collection | Remove the obsolete topology selector contract |
 | 2026-08-28 | worktree | Repository test gate | FAIL: 1,112 passed, 264 failed, 1 error | Converge stale topology and mandatory local-override fixtures; remove retired refactor tooling |
 | 2026-08-28 | worktree | Repository format gate, apply mode | PASS | Source slice formatted through the public Make surface |
 | 2026-08-28 | worktree | Repository-local topology contract | PASS: 14 tests | Own override, own `.gitmodules`, parent isolation, and distinct subproject identities verified |
@@ -64,10 +66,10 @@ this rollout.
 | 2026-08-28T08:57:50-03:00 | worktree | `make test WHAT=all FILE=tests/unit/discovery/test_infra_discovery_edge_cases.py` from `flext-infra` | PASS: 4 selected, 2 impact-deselected | Repository-local generic pyproject discovery stays isolated from parent and sibling trees |
 | 2026-08-28T08:59:11-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_catalog_extensions.py` from `flext-infra` | PASS: 5 tests | Removed the obsolete second workspace manifest fixture while retaining generic selector, setup/gen ownership, and TOML composition coverage |
 | 2026-08-28T08:59:32-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py` from `flext-infra` | FAIL: 20 failed, 2 passed | New-project helper lacked mandatory local Beads identity; three remaining expectations also described divergent current CI policy |
-| 2026-08-28T09:00:43-03:00 | worktree | Same CI matrix test gate after typed local Beads fixture repair | FAIL: 19 passed, 3 failed | One matcher defect and the unresolved `ci_matrix_auto_run` owner/template contradiction remained |
+| 2026-08-28T09:00:43-03:00 | worktree | Same CI matrix test gate after typed local Beads fixture repair | FAIL: 19 passed, 3 failed | One matcher defect and the unresolved automatic CI-matrix owner/template contradiction remained |
 | 2026-08-28T09:02:24-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py::TestCodegenCiMatrix::test_dependabot_uses_uv_dependency_cooldown` from `flext-infra` | PASS: 1 test | Corrected set equality assertion; two CI auto-run policy tests remain intentionally unresolved pending operator direction |
 | 2026-08-28T09:02:54-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 888 files unchanged | Current WIP is formatter-clean |
-| 2026-08-28T09:17:13-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py` from `flext-infra` | PASS: 21 tests | Removed `ci_matrix_auto_run`; static dispatch-only CI matrix and generated project consumers are green |
+| 2026-08-28T09:17:13-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py` from `flext-infra` | PASS: 21 tests | Removed the automatic-run selector; static dispatch-only CI matrix and generated project consumers are green |
 | 2026-08-28T09:18:44-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 5 files reformatted, 885 unchanged | Merge-adopted Mise source/tests and the CI policy cut are formatter-clean |
 | 2026-08-28T09:41:16-03:00 | worktree | `make gen WHAT=apply APPLY=Y` from `flext-infra` | PASS: final conform apply changed 0 files; fixed-point check and static Mise artifact validation passed | `.beads/config.yaml` and `.beads/metadata.json` project `127.0.0.1:3307` from the required typed endpoint; no Beads executable invoked |
 | 2026-08-28T09:41:16-03:00 | worktree | Focused pyproject topology/config gates | PASS: 6 topology-source, 2 gitignore-policy, and 12 pyproject-conform tests | Removed the retired override schema, projected declared versions, and kept standalone/workspace provenance deterministic |
@@ -79,6 +81,10 @@ this rollout.
 | 2026-08-28T09:57:32-03:00 | worktree | Focused retired-tooling regression gates through typed `FILE=` selectors | PASS: 3 refactor service, 27 census CLI, and 36 namespace-enforcer tests | Surviving composition-based refactor paths remain green after removing hidden migration and inheritance-shape behavior |
 | 2026-08-28T09:57:32-03:00 | worktree | Focused Beads/topology gates through typed `FILE=` selectors | PASS: 2 selected static-projection and 14 repository-local topology tests | Static Beads projection and repository-local generic topology remain unchanged by the refactor-tooling cut |
 | 2026-08-28T09:58:21-03:00 | worktree | `make fmt` | PASS: 869 files already formatted | Published structural checkpoint is formatter-clean |
+| 2026-08-28T10:22:00-03:00 | worktree | Canonical `base.mk` generator plus focused renderer/bootstrap tests | PASS: generated with `--project-name flext-infra`; 8 renderer and 2 foreign-CWD/topology tests passed | Empty defaults have no trailing whitespace; a nested standalone checkout ignores parent workspace markers |
+| 2026-08-28T10:22:00-03:00 | worktree | `make test FILE=tests/unit/validate/basemk_validator_tests.py` and real `validate basemk-validate --workspace .` | PASS: 11 tests; real CLI exit 0 | Freshness validation reads `[project].name` from the canonical pyproject owner and accepts the generated `flext-infra` projection |
+| 2026-08-28T10:22:00-03:00 | worktree | `make fmt WHAT=apply APPLY=Y`; two `make gen WHAT=apply APPLY=Y`; `make gen WHAT=check` | PASS: 869 files formatter-clean; both applies changed 0 files; all fixed-point and static Mise checks passed with 12 tools/75 entries | Static projections are byte-stable; the Beads distribution was resolved only as lock metadata and no runtime command was invoked |
+| 2026-08-28T10:22:00-03:00 | worktree | Tracked-source zero-residue audit plus `git diff --check` | PASS: no retired vocabulary, tracked backups, positive parent inference, or Beads runtime/fallback prose; diff hygiene clean | Removed an orphan codemod rule and retained negative topology tests as behavioral evidence |
 
 ## Unresolved boundaries
 
