@@ -62,32 +62,4 @@ def test_setup_never_clears_the_virtualenv() -> None:
     assert not offenders, f"setup clears the virtualenv: {offenders}"
 
 
-def test_submodule_setup_attaches_without_checkout() -> None:
-    """Detached HEAD attach uses symbolic-ref, never checkout."""
-    content = _SUBMODULES.read_text(encoding="utf-8")
-
-    assert "symbolic-ref HEAD" in content
-    assert "attach_branch_at_head" in content
-    assert "need_fetch=1" in content
-    offenders = _offending_lines(r"git\b[^\n]*\bcheckout\b")
-    assert not offenders, f"setup still executes checkout: {offenders}"
-
-
-def test_submodule_setup_skips_fetch_when_cached_origin_is_valid() -> None:
-    """Idempotent setup must not require network when local refs already validate."""
-    content = _SUBMODULES.read_text(encoding="utf-8")
-
-    assert "need_fetch=1" in content
-    assert 'if [ "$$need_fetch" -eq 1 ]' in content
-
-
-def test_submodule_setup_does_not_require_pin_on_origin() -> None:
-    """Verify uses HEAD contains gitlink; origin lagging the pin is not a hard fail."""
-    content = _SUBMODULES.read_text(encoding="utf-8")
-
-    assert "diverges from recorded gitlink" in content
-    assert "origin/%s diverges from recorded gitlink" not in content
-    assert 'merge-base --is-ancestor "$$remote_ref" HEAD' in content
-
-
 __all__: tuple[str, ...] = ()

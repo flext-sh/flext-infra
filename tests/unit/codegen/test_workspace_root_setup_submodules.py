@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import shlex
+import shutil
 from pathlib import Path
 
 import pytest
@@ -16,9 +18,7 @@ pytestmark = pytest.mark.slow
 
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
-    member = test_u.Tests.repository_ref(
-        "flext-core", role=c.Infra.RepositoryRole.STANDALONE
-    )
+    member = test_u.Tests.repository_ref("flext-core", path=Path("flext-core"))
     workspace = m.Infra.WorkspaceSpec(
         name="flext",
         beads=test_u.Tests.beads_project("flext"),
@@ -47,6 +47,7 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
     root = tmp_path / "render-root"
     request = m.Infra.CodegenConformRequest(
         root=root,
+        what=c.Infra.CodegenConformSurface.MAKEFILE,
         scope=c.Infra.CodegenConformScope.SELF,
         mode=c.Infra.CodegenConformMode.CHECK,
     )
@@ -175,3 +176,41 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(process.exit_code, eq=0)
         tm.that(process.stdout + process.stderr, has="Submodule path 'flext-core'")
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
+
+    def test_unexpected_git_probe_failure_preserves_cause(
+        self, tmp_path: Path
+    ) -> None:
+        """A Git probe error is never reclassified as a missing remote ref."""
+        workspace = _create_uninitialized_workspace(
+            tmp_path, _render_workspace_root_makefile(tmp_path)
+        )
+        real_git = tm.not_none(shutil.which("git"))
+        fake_bin = tmp_path / "failing-git-bin"
+        fake_bin.mkdir()
+        command_fragment = "show-ref --verify refs/remotes/origin/0.12.0-dev"
+        test_u.Tests.write_executable(
+            fake_bin / "git",
+            "#!/bin/sh\n"
+            "set -eu\n"
+            f'case "$*" in *{shlex.quote(command_fragment)}*)\n'
+            "  printf 'injected git failure\\n' >&2\n"
+            "  exit 42\n"
+            "  ;;\n"
+            "esac\n"
+            f'exec {shlex.quote(real_git)} "$@"\n',
+        )
+        env = {
+            **os.environ,
+            "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+            "GIT_ALLOW_PROTOCOL": "file",
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                ["make", "_builtin_setup_submodules"], cwd=workspace, env=env
+            )
+        )
+
+        tm.that(process.exit_code, eq=2)
+        tm.that(process.stderr, has="injected git failure")
+        tm.that(process.stderr, has="Error 42")
