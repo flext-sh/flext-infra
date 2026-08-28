@@ -117,11 +117,18 @@ class FlextInfraEnsurePyrightConfigPhase:
         return f"{prefix}/{rules.source_dir}" if prefix else rules.source_dir
 
     def _expected_envs(
-        self, *, is_root: bool, workspace_root: Path | None, project_dir: Path | None
+        self,
+        *,
+        is_root: bool,
+        workspace_root: Path | None,
+        project_dir: Path | None,
+        generated_roots: t.StrSequence = (),
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
         """Return the expected execution environments."""
         if not is_root or workspace_root is None:
-            return self._expected_envs_for_project(project_dir=project_dir)
+            return self._expected_envs_for_project(
+                project_dir=project_dir, generated_roots=generated_roots
+            )
         rules = self._tool_config.tools.pyright.path_rules
         expected_envs: t.MutableSequenceOf[
             m.Infra.PyrightConfig.ExecutionEnvironment
@@ -135,7 +142,13 @@ class FlextInfraEnsurePyrightConfigPhase:
                 source_path=root_source_path,
             )
         )
-        for env_dir in u.Infra.discover_python_dirs(workspace_root):
+        root_dirs = tuple(
+            dict.fromkeys((
+                *u.Infra.discover_python_dirs(workspace_root),
+                *generated_roots,
+            ))
+        )
+        for env_dir in root_dirs:
             if (workspace_root / env_dir / c.Infra.PYPROJECT_FILENAME).is_file():
                 continue
             expected_envs.append(
@@ -195,15 +208,17 @@ class FlextInfraEnsurePyrightConfigPhase:
         return expected_envs
 
     def _expected_envs_for_project(
-        self, *, project_dir: Path | None
+        self, *, project_dir: Path | None, generated_roots: t.StrSequence = ()
     ) -> t.SequenceOf[m.Infra.PyrightConfig.ExecutionEnvironment]:
-        """Build environments only for productive directories that exist."""
+        """Build environments for existing and atomically generated roots."""
         rules = self._tool_config.tools.pyright.path_rules
         # mro-j47u (codex): absent optional roots are not valid Pyright inputs.
         env_dirs = tuple(
             env_dir
             for env_dir in rules.env_dirs
-            if project_dir is None or (project_dir / env_dir).is_dir()
+            if project_dir is None
+            or (project_dir / env_dir).is_dir()
+            or env_dir in generated_roots
         )
         source_path = self._project_source_path()
         return (
@@ -442,7 +457,14 @@ class FlextInfraEnsurePyrightConfigPhase:
             )
             if declared_python_dirs
             else self._expected_envs(
-                is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
+                is_root=is_root,
+                workspace_root=workspace_root,
+                project_dir=project_dir,
+                generated_roots=(
+                    paths_manager.generated_python_roots
+                    if paths_manager is not None
+                    else ()
+                ),
             )
         )
         phase_builder = m.Infra.Deps.Toml.PhaseConfig.Builder("pyright").table(

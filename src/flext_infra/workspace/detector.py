@@ -66,12 +66,13 @@ class FlextInfraWorkspaceDetector(
         beads_path = cls._beads_path(resolved_root)
         if not beads_path.is_file():
             return r[m.Infra.BeadsProjectSpec].fail(
-                f"repository-local Beads configuration is required: {beads_path}"
+                f"missing required repository-local Beads configuration: {beads_path}"
             )
         loaded = u.Cli.config_load(beads_path, expand_env=False)
         if loaded.failure:
             return r[m.Infra.BeadsProjectSpec].fail(
-                loaded.error or f"invalid Beads configuration: {beads_path}"
+                f"invalid repository-local Beads configuration ({beads_path}): "
+                f"{loaded.error or 'configuration load failed'}"
             )
         try:
             validated = m.Infra.BeadsProjectSpec.model_validate(loaded.value.data)

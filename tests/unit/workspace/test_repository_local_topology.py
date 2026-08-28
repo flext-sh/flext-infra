@@ -147,7 +147,7 @@ class TestsRepositoryLocalTopology:
         resolved = tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(child))
 
         tm.that(mode, eq=c.Infra.WorkspaceMode.STANDALONE)
-        tm.that(workspace.name, eq="child")
+        tm.that(workspace.repository.name, eq="child")
         tm.that(workspace.beads.workspace, eq="child-workspace")
         tm.that(workspace.subprojects, empty=True)
         tm.that(resolved, eq=child.resolve())

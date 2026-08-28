@@ -4,9 +4,10 @@ This is the only place that knows how ``.vscode/settings.json`` is produced.
 It parses that explicitly JSONC document through the canonical string-aware
 normalizer, validates the resulting mapping, merges the config-driven canonical
 keys from ``config.Infra.codegen.vscode`` plus the artifact-derived exclude maps,
-derives shallow subproject ``.venv`` globs from local topology, and serializes
-the result with ``u.Cli.json_dumps``. Rendering, planning, atomic writes, and
-fixed-point verification stay owned by ``FlextInfraCodegenConform``.
+and serializes the result with ``u.Cli.json_dumps``. Rendering is deliberately
+independent of repository topology so opening a root or subproject produces the
+same document. Planning, atomic writes, and fixed-point verification stay owned
+by ``FlextInfraCodegenConform``.
 """
 
 from __future__ import annotations
@@ -251,22 +252,9 @@ class FlextInfraCodegenVscodeMixin:
     def _resolve_list_setting(
         key: str, base_entries: tuple[str, ...], *, workspace_root: Path
     ) -> p.Result[tuple[str, ...]]:
-        """Resolve one canonical list, deriving extra globs from the topology."""
-        if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
-            return r[tuple[str, ...]].ok(base_entries)
-        derived = list(base_entries)
-        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
-
-        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
-        if workspace.failure:
-            return r[tuple[str, ...]].fail(
-                workspace.error or "workspace topology is unavailable"
-            )
-        derived.extend(
-            f"./{subproject.path.as_posix()}/.venv"
-            for subproject in workspace.value.subprojects
-        )
-        return r[tuple[str, ...]].ok(tuple(dict.fromkeys(derived)))
+        """Return one canonical list without consulting repository topology."""
+        del key, workspace_root
+        return r[tuple[str, ...]].ok(base_entries)
 
 
 __all__: list[str] = ["FlextInfraCodegenVscodeMixin"]

@@ -39,7 +39,6 @@ class TestsFlextInfraCodegenVscode:
         )
 
         result = FlextInfraCodegen.render_vscode_settings(project_root)
-
         tm.ok(result)
         doc = json.loads(result.value)
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
@@ -96,8 +95,13 @@ class TestsFlextInfraCodegenVscode:
         )
 
         result = FlextInfraCodegen.render_vscode_settings(project_root)
+        standalone_root = tmp_path / "standalone"
+        standalone_root.mkdir()
+        standalone = FlextInfraCodegen.render_vscode_settings(standalone_root)
 
         tm.ok(result)
+        tm.ok(standalone)
+        tm.that(result.value.encode(), eq=standalone.value.encode())
         doc = json.loads(result.value)
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(

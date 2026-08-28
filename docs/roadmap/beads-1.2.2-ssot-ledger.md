@@ -22,6 +22,7 @@ this rollout.
 | 2026-08-28T07:46:32-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `4b6a6e1be11fc55027304b9a93868f91691a4b3e` | WIP preserved and pushed to `origin` |
 | 2026-08-28T07:48:14-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `713d99d8d7d2f352d04335b4a40c76ce62a5bfa8` | Useful lane content consolidated by a two-parent merge and pushed to `origin` |
 | 2026-08-28T08:04:46-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `88425ac9eeae9a649b0a335564359ba79951c87b` | Repository-local topology and deterministic public alias gate checkpoint pushed to `origin` |
+| 2026-08-28T08:07:38-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `15cec463e514ec50af9b1813c2716ca224d3cc84` | Residual canonical distribution pin lane preserved by a two-parent merge and pushed to `origin` |
 
 ## Validation log
 
@@ -32,6 +33,10 @@ this rollout.
 | 2026-08-28 | worktree | Repository test gate | FAIL before collection | Remove the obsolete attached-project selector contract |
 | 2026-08-28 | worktree | Repository test gate | FAIL: 1,112 passed, 264 failed, 1 error | Converge stale topology and mandatory local-override fixtures; remove retired refactor tooling |
 | 2026-08-28 | worktree | Repository format gate, apply mode | PASS | Source slice formatted through the public Make surface |
+| 2026-08-28 | worktree | Repository-local topology contract | PASS: 14 tests | Own override, own `.gitmodules`, parent isolation, and distinct subproject identities verified |
+| 2026-08-28 | worktree | Linked-worktree/static generation contract | PASS: 5 tests | Invalid input fails before writes; lane inputs are preserved; first apply reaches a fixed point |
+| 2026-08-28 | worktree | Canonical alias public fix | PASS: 1 focused test | Deterministic rewrite and byte-stable clean file verified without lazy-facade instrumentation |
+| 2026-08-28 | worktree | VS Code owner | PASS: 4 tests | Root and standalone render byte-equivalent documents; second render is stable |
 
 ## GitHub lifecycle
 
