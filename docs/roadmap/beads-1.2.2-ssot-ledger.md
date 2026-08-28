@@ -52,6 +52,7 @@ this rollout.
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `d1126b35c` | Stale generated contract copies removed from tests; 21 net lines removed and checkpoint pushed |
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0ad635785` | Complete green test and coverage evidence recorded and pushed |
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `be442f8f8` | Residual active policy vocabulary removed from comments and checkpoint pushed |
+| 2026-08-28T12:11:10-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0bc446d9f` | Full-suite worker budget reduced at its typed owner after repeated memory exhaustion; seven net lines removed and checkpoint pushed |
 
 ## Validation log
 
@@ -120,6 +121,9 @@ this rollout.
 | 2026-08-28T12:04:35-03:00 | `be442f8f8` | Two consecutive `make gen WHAT=apply APPLY=Y`, then `make gen WHAT=check` | PASS: both applies changed 0 projections; all fixed-point and 12-tool/75-entry static Mise comparisons passed | Final projections are byte-stable; artifacts were downloaded only for checksum/provenance and no Beads executable or service was invoked |
 | 2026-08-28T12:05:10-03:00 | `be442f8f8` | Complete `COV=Y make test` without testmon, random seed `2659627366` | ENVIRONMENTAL RED: 597 passed before an xdist worker raised `MemoryError` while pytest formatted an exception | No functional failure was reported; preserve the RED, verify the named case in isolation, then repeat the complete official gate without changing code |
 | 2026-08-28T12:06:37-03:00 | `be442f8f8` | `make test FILE=tests/unit/codegen/test_codegen_ci_matrix.py MATCH=fedora_dockerfile_installs_libatomic_only_for_fedora` | PASS: 1 selected, 20 deselected | The xdist crash item passes through the public Make boundary; the transient worker failure remains recorded rather than hidden |
+| 2026-08-28T12:09:10-03:00 | `a5d67d071` | Second complete `COV=Y make test` without testmon, random seed `3720813960` | FAIL: 4 memory-exhausted cases, 2,382 passed in 101.64s | Repetition disproved a one-off worker crash; reduce only the typed fixed-worker owner, retain parallel execution, and regenerate its Make projection |
+| 2026-08-28T12:12:36-03:00 | `0bc446d9f` | Focused typed pytest policy/runner gates through `make test FILE=... MATCH=...` | PASS: 1 selected case in each owner test file | The runner consumes the generated worker count and the tooling model round-trips its SSOT; prior testmon-only deselections were not counted as passes |
+| 2026-08-28T12:16:00-03:00 | `0bc446d9f` | Complete `COV=Y make test` without testmon, random seed `1650846145` | PASS: 2,386 tests in 179.87s; 80.22% coverage against 45% minimum | Two fixed workers completed every subprocess-heavy case with zero failures, errors, warnings, or skips; no retry, dynamic fallback, or timeout expansion was added |
 
 ## Unresolved boundaries
 
