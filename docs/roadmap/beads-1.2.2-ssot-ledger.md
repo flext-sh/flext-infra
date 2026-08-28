@@ -14,7 +14,7 @@ this rollout.
 - Rope scope: conditional on execution context; any call below a repository
   carrying `.gitmodules` scans that entire workspace, independent of submodule
   declaration membership; a standalone call remains repository-local
-- Independent approval: PENDING
+- Independent approval: APPROVED by operator at 2026-08-28T13:17:08-03:00
 - Integrated-SHA verification: PENDING
 
 ## Immutable checkpoints
@@ -144,6 +144,9 @@ this rollout.
 | 2026-08-28T12:58:46-03:00 | `b06fe30b5` | Full `make check` after the official generation sequence | PASS: all seven static stages; 0 errors and 0 skips | Lint, smells, Markdown, Pyrefly, Mypy, security, and Pyright are green on the published source and converged projections |
 | 2026-08-28T12:58:57-03:00 | `b06fe30b5` | Final complete `COV=Y make test` after formatting, generation, and static checks | PASS: 2,386 tests in 171.42s; 80.23% coverage against 45% minimum | Zero failures, errors, warnings, or skips under random seed `784003618`; a second distinct order also preserves deterministic public-alias behavior |
 | 2026-08-28T13:02:00-03:00 | `b06fe30b5` | Pull request #444 remote gates and precise tracked-source audit | PASS: clean-checkout CI, merge-guard, SonarCloud, and Semgrep all succeeded; zero active retired-contract, opt-out, obsolete topology, or prohibited runtime-command vocabulary | The substantive worktree is clean and synchronized with `origin`; approval, explicit non-FF merge, and integrated-SHA verification remain pending |
+| 2026-08-28T13:17:08-03:00 | `8c90b1476` | Independent operator approval for pull request #444 | APPROVED: the operator replied literally `aprovo` after receiving the green branch, local-gate, remote-gate, idempotence, reduction, and residue evidence | Record the approval on GitHub, publish this ledger transition, require fresh remote gates, then perform the explicit non-FF merge and integrated-SHA verification |
+| 2026-08-28T13:17:30-03:00 | approval ledger worktree | First `make check` after approval recording | ENVIRONMENTAL RED before any stage: public import raised `MemoryError` while Pydantic inspected a model field | No code, commit, push, or merge followed the failure; process and cgroup limits were unlimited, no cgroup OOM occurred, and host commit charge subsequently stabilized around 77-79 GiB against the strict 130.9 GiB limit before a new invocation |
+| 2026-08-28T13:19:04-03:00 | approval ledger worktree | New `make check` invocation after host commit pressure receded | PASS: lint, smells, Markdown, Pyrefly, Mypy, security, and Pyright reported 0 errors and 0 skips | The approval record is valid; publish it and require the resulting remote tip to pass before integration changes |
 
 ## Unresolved boundaries
 
@@ -158,7 +161,7 @@ this rollout.
 
 | Repository | Source branch | Pull request | Approval | Merge SHA | Integrated verification |
 | --- | --- | --- | --- | --- | --- |
-| `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | [#444](https://github.com/flext-sh/flext-infra/pull/444) | PENDING | PENDING | PENDING |
+| `flext-infra` | `fix/beads-1.2.2-ssot-cutover-20260828` | [#444](https://github.com/flext-sh/flext-infra/pull/444) | APPROVED by operator | PENDING | PENDING |
 
 The phase remains OPEN until every required repository has an independently
 approved pull request, an explicit merge commit on its integration branch, and
