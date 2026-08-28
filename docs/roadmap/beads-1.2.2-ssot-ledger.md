@@ -106,6 +106,8 @@ this rollout.
 | 2026-08-28 | worktree | Canonical incremental `make test` | FAIL: 2 failed, 621 passed in 57.61s | Remaining defects were an undeclared workspace in one Rope fixture and the obsolete rule that ignored the authoritative standalone `uv.lock` |
 | 2026-08-28 | worktree | Rope transitive-parent and standalone lock focused gates through `make test FILE=...` | PASS: 1 test each; Git also reports `uv.lock` as trackable | Empty local `.gitmodules` activates whole-workspace Rope scope; standalone Python/lock projections derive from the same SSOT section with duplicate lock entries removed |
 | 2026-08-28 | worktree | `make gen WHAT=apply APPLY=Y` after lock-policy repair | PASS: one `.gitignore` projection changed; conform fixed point and static Mise validation passed with 12 tools/75 entries | Beads was resolved only as static lock provenance; no Beads executable, daemon, database, or endpoint was invoked |
+| 2026-08-28 | `eefd777d6` | `make fmt WHAT=apply APPLY=Y`; full `make check` | PASS: 869 files unchanged; lint, smells, markdown, Pyrefly, Mypy, security, and Pyright reported 0 errors and 0 skips | Published source checkpoint is formatter-clean and all seven static gates are green |
+| 2026-08-28 | `eefd777d6` | Two consecutive `make gen WHAT=apply APPLY=Y`, then `make gen WHAT=check` | PASS: both applies changed 0 projections; every conform fixed point and static 12-tool/75-entry Mise comparison passed | Independent repeated generation is byte-stable; no runtime Beads, database, daemon, or endpoint command was invoked |
 
 ## Unresolved boundaries
 
