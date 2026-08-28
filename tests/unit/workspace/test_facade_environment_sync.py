@@ -13,6 +13,7 @@ from pathlib import Path
 
 from flext_infra import c, infra, m
 from flext_tests import tm
+from tests import u as test_u
 
 
 def _write_pyproject(root: Path, *, requires_python: str = ">=3.13") -> None:
@@ -54,6 +55,27 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.that('export TMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
         tm.that('export GOTMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
         tm.that('python = "3.13"' in mise, eq=True)
+
+    def test_direnv_preserves_mise_activation_failure(self, tmp_path: Path) -> None:
+        """A tracked Mise activation error blocks the requested child process."""
+        workspace = tmp_path / "workspace"
+        _write_pyproject(workspace)
+        request = m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+        tm.ok(infra.sync_environment_files(request))
+        test_u.Tests.write_executable(
+            workspace / "bin" / "mise",
+            "#!/bin/sh\nprintf 'injected Mise activation failure\\n' >&2\n"
+            "exit 42\n",
+        )
+        tm.ok(test_u.Cli.run_checked(["direnv", "allow", str(workspace)]))
+        process = tm.ok(
+            test_u.Cli.run_raw(
+                ["direnv", "exec", str(workspace), "sh", "-c", "printf child-ran"]
+            )
+        )
+        tm.that(process.exit_code == 0, eq=False)
+        tm.that(process.stderr, has="injected Mise activation failure")
+        tm.that(process.stdout, lacks="child-ran")
 
     def test_sync_preserves_custom_envrc_without_force(self, tmp_path: Path) -> None:
         """Custom (non-generated) .envrc content is never clobbered."""
