@@ -26,6 +26,7 @@ def _render_ci(*, repository_branch: str) -> str:
             dict.fromkeys((*_BASELINE_BRANCHES[:-1], repository_branch, "main"))
         ),
         python_version=codegen.toolchain.python_version,
+        mise_version=codegen.toolchain.mise_version,
         dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
         github_actions=codegen.github_actions,
         make=codegen.make,

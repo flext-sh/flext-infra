@@ -23,15 +23,10 @@ class TestsCodegenMakeEnvironment:
         tmp_path: Path,
         profile: c.Infra.MakeProfile,
         *,
-        attached: bool = False,
         local_infra: bool = False,
     ) -> tuple[Path, Path]:
         provider = config.Infra.codegen.providers[0]
-        role = (
-            c.Infra.RepositoryRole.WORKSPACE_MEMBER
-            if attached
-            else c.Infra.RepositoryRole(profile.value)
-        )
+        role = c.Infra.RepositoryRole(profile.value)
         repository = m.Infra.RepositoryRef(
             name="fixture-project",
             distribution="fixture-project",
@@ -40,9 +35,9 @@ class TestsCodegenMakeEnvironment:
             role=role,
             provider=provider.name,
             checkout=(
-                c.Infra.CheckoutKind.SUBMODULE
-                if attached
-                else c.Infra.CheckoutKind.ROOT
+                c.Infra.CheckoutKind.ROOT
+                if profile is c.Infra.MakeProfile.WORKSPACE
+                else c.Infra.CheckoutKind.INDEPENDENT
             ),
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
@@ -50,16 +45,21 @@ class TestsCodegenMakeEnvironment:
             read_only=False,
         )
         project_root = tmp_path / profile.value / "fixture-project"
-        workspace_root = project_root.parent if attached else project_root
+        workspace_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_members = (
+        local_subprojects = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
             name="fixture-project",
+            beads=m.Infra.BeadsProjectSpec(
+                version=1,
+                workspace="fixture-project",
+                database="fixture-project",
+                issue_prefix="fixture-project",
+            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name="fixture_project",
@@ -80,7 +80,7 @@ class TestsCodegenMakeEnvironment:
                 workspace_root_rel=".",
                 year=2026,
             ),
-            members=local_members,
+            subprojects=local_subprojects,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -97,56 +97,24 @@ class TestsCodegenMakeEnvironment:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        if attached:
-            member_source = tmp_path / "member-source"
-            member_source.mkdir()
-            (member_source / "README.md").write_text(
-                "fixture member\n", encoding="utf-8"
-            )
-            test_u.Tests.initialize_git_repo(member_source)
-            workspace_root.mkdir(parents=True)
-            (workspace_root / "README.md").write_text(
-                "fixture workspace\n", encoding="utf-8"
-            )
-            test_u.Tests.initialize_git_repo(workspace_root)
-            tm.ok(
-                u.Cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "-c",
-                        "protocol.file.allow=always",
-                        "submodule",
-                        "add",
-                        "-q",
-                        str(member_source),
-                        project_root.name,
-                    ],
-                    cwd=workspace_root,
-                )
-            )
-        else:
-            project_root.mkdir(parents=True)
+        project_root.mkdir(parents=True)
         tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
         return project_root, workspace_root
 
     @pytest.mark.parametrize(
-        ("profile", "attached"),
+        "profile",
         [
-            (c.Infra.MakeProfile.WORKSPACE_ROOT, False),
-            (c.Infra.MakeProfile.STANDALONE, True),
-            (c.Infra.MakeProfile.STANDALONE, False),
+            c.Infra.MakeProfile.WORKSPACE,
+            c.Infra.MakeProfile.STANDALONE,
         ],
     )
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
-        self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
         """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, workspace_root = self._render_makefile(
-            tmp_path, profile, attached=attached
-        )
-        runtime_root = workspace_root if attached else project_root
+        project_root, runtime_root = self._render_makefile(tmp_path, profile)
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -201,7 +169,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE]
     )
     def test_setup_provisions_environment_before_project_runtime(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
@@ -252,7 +220,7 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --project")
-        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
     def test_dispatched_runner_preserves_provisioned_external_tools(

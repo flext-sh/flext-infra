@@ -76,17 +76,22 @@ class TestsFlextInfraCodegenVscode:
         tm.ok(second)
         tm.that(second.value, eq=first.value)
 
-    def test_derives_member_venv_globs_from_workspace_manifest(
+    def test_search_paths_are_independent_from_repository_topology(
         self, tmp_path: Path
     ) -> None:
-        """Derive shallow venv globs from config/workspace.yaml member paths."""
+        """Keep opened-folder settings canonical for roots and subprojects."""
         project_root = tmp_path / "workspace"
         project_root.mkdir()
-        config_dir = project_root / "config"
-        config_dir.mkdir()
-        (config_dir / "workspace.yaml").write_text(
-            "version: 2\nmembers:\n  - name: a\n    path: apps/a\n"
-            "  - name: b\n    path: libs/b\n",
+        provider = config.Infra.codegen.providers[0]
+        (project_root / c.Infra.GITMODULES).write_text(
+            '[submodule "app-a"]\n'
+            "\tpath = apps/a\n"
+            f"\turl = {provider.base_url.rstrip('/')}/app-a.git\n"
+            f"\tbranch = {provider.branch}\n"
+            '[submodule "lib-b"]\n'
+            "\tpath = libs/b\n"
+            f"\turl = {provider.base_url.rstrip('/')}/lib-b.git\n"
+            f"\tbranch = {provider.branch}\n",
             encoding="utf-8",
         )
 
@@ -97,15 +102,14 @@ class TestsFlextInfraCodegenVscode:
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(
             search_paths,
-            eq=[
-                *config.Infra.codegen.vscode.list_settings[
+            eq=list(
+                config.Infra.codegen.vscode.list_settings[
                     c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY
-                ],
-                "./apps/a/.venv",
-                "./libs/b/.venv",
-            ],
+                ]
+            ),
         )
-        tm.that("./apps/*/.venv" in search_paths, eq=False)
+        tm.that("./apps/a/.venv" in search_paths, eq=False)
+        tm.that("./libs/b/.venv" in search_paths, eq=False)
 
     def test_invalid_json_fails_without_producing_a_document(
         self, tmp_path: Path

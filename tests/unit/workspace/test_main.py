@@ -12,6 +12,7 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 from tests import c, u
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 _INFRA_SRC = Path(__file__).resolve().parents[3] / "src"
 
@@ -28,64 +29,29 @@ def _write_project(project_root: Path, name: str) -> None:
         ),
         encoding="utf-8",
     )
-    u.Tests.write_standalone_workspace_manifest(project_root, name)
-    u.Tests.initialize_git_repo(project_root)
+    u.Tests.write_project_beads_config(project_root, name)
+    u.Tests.initialize_git_repo(
+        project_root, origin_url=u.Tests.repository_ref(name).url
+    )
 
 
 def _write_workspace(workspace_root: Path) -> None:
     workspace_root.mkdir(parents=True, exist_ok=True)
-    (workspace_root / ".gitmodules").write_text(
-        '[submodule "demo-a"]\n\tpath = demo-a\n\turl = https://example.invalid/demo-a.git\n',
-        encoding="utf-8",
-    )
     (workspace_root / "pyproject.toml").write_text(
         (
             "[project]\n"
             'name = "workspace-root"\n'
             'version = "0.1.0"\n'
-            "\n"
-            "[tool.flext.workspace]\n"
-            'members = ["demo-a"]\n'
         ),
         encoding="utf-8",
     )
-    config_dir = workspace_root / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    (config_dir / "workspace.yaml").write_text(
-        (
-            "version: 3\n"
-            "name: workspace-root\n"
-            "repository:\n"
-            "  name: workspace-root\n"
-            "  distribution: workspace-root\n"
-            "  provider: flext-sh\n"
-            "  url: https://github.com/flext-sh/workspace-root.git\n"
-            "  path: .\n"
-            "  role: workspace-root\n"
-            "  state: active\n"
-            "  checkout: root\n"
-            "  codegen: conform\n"
-            "  package: false\n"
-            "  editable: false\n"
-            "  read_only: false\n"
-            "members:\n"
-            "  - name: demo-a\n"
-            "    distribution: demo-a\n"
-            "    provider: flext-sh\n"
-            "    url: https://example.invalid/demo-a.git\n"
-            "    path: demo-a\n"
-            "    role: workspace-member\n"
-            "    state: active\n"
-            "    checkout: submodule\n"
-            "    codegen: conform\n"
-            "    package: true\n"
-            "    editable: true\n"
-            "    read_only: false\n"
-            "exclusions: []\n"
-        ),
-        encoding="utf-8",
+    u.Tests.write_project_beads_config(workspace_root, "workspace-root")
+    u.Tests.initialize_git_repo(
+        workspace_root,
+        origin_url=u.Tests.repository_ref("workspace-root").url,
     )
     _write_project(workspace_root / "demo-a", "demo-a")
+    WorktreeFixture.write_gitmodules(workspace_root, ("demo-a",))
 
 
 def _write_orchestratable_workspace(
@@ -93,59 +59,22 @@ def _write_orchestratable_workspace(
 ) -> Path:
     """Build a workspace whose single member has a trivial ``make check``."""
     workspace_root.mkdir(parents=True, exist_ok=True)
-    (workspace_root / ".gitmodules").write_text(
-        '[submodule "demo"]\n\tpath = demo\n\turl = https://example.invalid/demo.git\n',
-        encoding="utf-8",
-    )
     (workspace_root / "pyproject.toml").write_text(
         (
             "[project]\n"
             'name = "workspace-root"\n'
             'version = "0.1.0"\n'
-            "\n"
-            "[tool.flext.workspace]\n"
-            'members = ["demo"]\n'
         ),
         encoding="utf-8",
     )
-    config_dir = workspace_root / "config"
-    config_dir.mkdir(parents=True, exist_ok=True)
-    (config_dir / "workspace.yaml").write_text(
-        (
-            "version: 3\n"
-            "name: workspace-root\n"
-            "repository:\n"
-            "  name: workspace-root\n"
-            "  distribution: workspace-root\n"
-            "  provider: flext-sh\n"
-            "  url: https://github.com/flext-sh/workspace-root.git\n"
-            "  path: .\n"
-            "  role: workspace-root\n"
-            "  state: active\n"
-            "  checkout: root\n"
-            "  codegen: conform\n"
-            "  package: false\n"
-            "  editable: false\n"
-            "  read_only: false\n"
-            "members:\n"
-            "  - name: demo\n"
-            "    distribution: demo\n"
-            "    provider: flext-sh\n"
-            "    url: https://example.invalid/demo.git\n"
-            "    path: demo\n"
-            "    role: workspace-member\n"
-            "    state: active\n"
-            "    checkout: submodule\n"
-            "    codegen: conform\n"
-            "    package: true\n"
-            "    editable: true\n"
-            "    read_only: false\n"
-            "exclusions: []\n"
-        ),
-        encoding="utf-8",
+    u.Tests.write_project_beads_config(workspace_root, "workspace-root")
+    u.Tests.initialize_git_repo(
+        workspace_root,
+        origin_url=u.Tests.repository_ref("workspace-root").url,
     )
     member_root = workspace_root / "demo"
     _write_project(member_root, "demo")
+    WorktreeFixture.write_gitmodules(workspace_root, ("demo",))
     check_recipe = (
         '\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CAPTURE_PATH)\n'
         if capture_fail_fast

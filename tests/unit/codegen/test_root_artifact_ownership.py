@@ -46,9 +46,7 @@ class TestsRootArtifactOwnership:
         self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
-        u.Tests.write_standalone_workspace_manifest(
-            root, "flext-demo", upstream="flext_cli"
-        )
+        u.Tests.write_project_beads_config(root, "flext-demo")
         package_root = root / "src" / "flext_demo"
         tm.ok(u.Cli.ensure_dir(package_root))
         tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
@@ -153,9 +151,7 @@ class TestsRootArtifactOwnership:
 
     def test_conform_uses_one_fixed_point_plan(self, infra_git_repo: Path) -> None:
         root = infra_git_repo
-        u.Tests.write_standalone_workspace_manifest(
-            root, "flext-demo", upstream="flext_cli"
-        )
+        u.Tests.write_project_beads_config(root, "flext-demo")
         package_root = root / "src" / "flext_demo"
         tm.ok(u.Cli.ensure_dir(package_root))
         tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))

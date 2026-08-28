@@ -37,8 +37,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             self, path: Path
         ) -> p.Result[m.Infra.PyprojectDocumentState]: ...
 
-        def _project_is_flext_child(self, project_dir: Path) -> p.Result[bool]: ...
-
         def _process_document_state(
             self,
             state: m.Infra.PyprojectDocumentState,
@@ -190,43 +188,6 @@ class FlextInfraPyprojectModernizerRunMixin:
             if not locked_versions:
                 u.Cli.error(
                     f"missing or invalid {c.Infra.UV_LOCK_FILENAME} at {lock_path}"
-                )
-                return 2
-            competing_member_locks: t.MutableSequenceOf[Path] = []
-            for member_path in configured_member_paths.values():
-                member_lock_path = member_path / c.Infra.UV_LOCK_FILENAME
-                if not member_lock_path.is_file():
-                    continue
-                submodule_result = self._project_is_flext_child(member_path)
-                if submodule_result.failure:
-                    u.Cli.error(
-                        "failed to resolve Git topology for workspace member "
-                        f"{member_path}: {submodule_result.error}"
-                    )
-                    return 2
-                if submodule_result.value:
-                    topology_root_result = u.Infra.git_workspace_root(
-                        m.Infra.GitRepoRequest(repo_root=member_path)
-                    )
-                    if topology_root_result.failure:
-                        u.Cli.error(
-                            "failed to resolve Git topology for workspace member "
-                            f"{member_path}: {topology_root_result.error}"
-                        )
-                        return 2
-                    if topology_root_result.value.workspace_root.resolve() == (
-                        resolved_root
-                    ):
-                        continue
-                competing_member_locks.append(member_lock_path)
-            member_lock_paths = tuple(sorted(competing_member_locks))
-            if member_lock_paths:
-                relative_paths = ", ".join(
-                    str(path.relative_to(self.root)) for path in member_lock_paths
-                )
-                u.Cli.error(
-                    "package-local uv.lock files conflict with root lock authority: "
-                    f"{relative_paths}"
                 )
                 return 2
             internal_names = tuple(

@@ -49,10 +49,8 @@ def _conform_target(
 
 
 def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
-    """Load the smallest owner-written standalone manifest for conform tests."""
-    u.Tests.write_standalone_workspace_manifest(
-        root, "flext-demo", upstream="flext_cli"
-    )
+    """Load the smallest repository-local topology for conform tests."""
+    u.Tests.write_project_beads_config(root, "flext-demo")
     package_root = root / "src" / "flext_demo"
     tm.ok(u.Cli.ensure_dir(package_root))
     tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))

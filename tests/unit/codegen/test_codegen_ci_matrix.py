@@ -118,6 +118,7 @@ class TestCodegenCiMatrix:
             ("flext-pre-commit", "pre_commit"),
             ("flext-pre-push", "pre_push"),
         ):
+            enabled = bool(getattr(config.Infra.codegen.make, context))
             commands = " && ".join(
                 (
                     f"{ci.variable}={ci.value} make {step.verb}"
@@ -133,10 +134,11 @@ class TestCodegenCiMatrix:
                 for step in workflow
                 if context in step.contexts
             )
-            tm.that(hooks, has=f"id: {hook_id}")
-            tm.that(hooks, has=f"'{commands}'")
-        tm.that(hooks, has=f"{ci.variable}={ci.value} make check")
-        tm.that(hooks, has="make test")
+            if enabled:
+                tm.that(hooks, has=f"id: {hook_id}")
+                tm.that(hooks, has=f"'{commands}'")
+            else:
+                tm.that(hooks, lacks=f"id: {hook_id}")
         tm.that(hooks, lacks=f"export {ci.variable}={ci.value}")
 
     def test_ci_workflow_cancels_superseded_ref_runs(self, tmp_path: Path) -> None:
@@ -188,6 +190,7 @@ class TestCodegenCiMatrix:
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
+            mise_version=codegen.toolchain.mise_version,
             dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,
             make=codegen.make,
@@ -222,8 +225,19 @@ class TestCodegenCiMatrix:
         dependabot = (root / ".github" / "dependabot.yml").read_text(encoding="utf-8")
         cooldown = config.Infra.codegen.toolchain.dependency_cooldown_days
 
-        tm.that(dependabot, has=f"default-days: {cooldown}")
-        tm.that(dependabot.count(f"default-days: {cooldown}"), eq=3)
+        document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
+        updates = t.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
+        ecosystems = {
+            str(t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)["package-ecosystem"])
+            for item in updates
+        }
+        tm.that(ecosystems, has={"github-actions", "pip"})
+        for item in updates:
+            update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
+            cooldown_config = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+                update["cooldown"]
+            )
+            tm.that(cooldown_config["default-days"], eq=cooldown)
         tm.that(config.Infra.codegen.toolchain.uv_exclude_newer, eq=f"{cooldown} days")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
@@ -258,6 +272,10 @@ class TestCodegenCiMatrix:
             if distro == "alpine":
                 tm.that(content, has="bash")
                 tm.that(content, has="build-base")
+            tm.that(content, has="USER runner")
+            tm.that(content, has="./bin/mise install --locked --yes")
+            tm.that(content, lacks="chmod -R a+rwX")
+            tm.that(content, lacks="GITHUB_TOKEN")
 
     def test_fedora_dockerfile_installs_libatomic_only_for_fedora(
         self, tmp_path: Path
@@ -317,7 +335,7 @@ class TestCodegenCiMatrix:
         for host in (macos, windows):
             tm.that(host, has="run: CI=Y make setup")
             tm.that(host, has="run: CI=Y make help")
-        tm.that(windows.count("shell: bash"), eq=2)
+        tm.that(windows.count("shell: bash"), eq=3)
 
     def test_workflow_ci_policy_matrix_default_dispatch_only(
         self, tmp_path: Path
@@ -399,6 +417,7 @@ class TestCodegenCiMatrix:
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
+            mise_version=codegen.toolchain.mise_version,
             dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,
             make=codegen.make,
@@ -536,6 +555,10 @@ class TestCodegenCiMatrix:
             "!README.md",
             "!uv.lock",
             "!.mise.toml",
+            "!mise.lock",
+            "!bin/",
+            "!bin/mise",
+            "!bin/mise.cmd",
             "!.python-version",
             "!.default-python-packages",
             "!config/",

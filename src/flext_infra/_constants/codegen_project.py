@@ -33,7 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        MEMBERS = "members"
+        SUBPROJECTS = "subprojects"
         ALL = "all"
 
     @unique
@@ -42,7 +42,6 @@ class FlextInfraConstantsCodegenProject:
 
         ALL = "all"
         DEPENDENCIES = "dependencies"
-        GITMODULES = "gitmodules"
         MAKEFILE = "makefile"
         PYPROJECT = "pyproject"
 
@@ -57,16 +56,14 @@ class FlextInfraConstantsCodegenProject:
     class MakeProfile(StrEnum):
         """Generated Makefile profile for one repository."""
 
-        WORKSPACE_ROOT = "workspace-root"
-        WORKSPACE_MEMBER = "workspace-member"
+        WORKSPACE = "workspace"
         STANDALONE = "standalone"
 
     @unique
     class RepositoryRole(StrEnum):
-        """Repository role in a declared workspace topology."""
+        """Repository role proven by its own topology input."""
 
-        WORKSPACE_ROOT = "workspace-root"
-        WORKSPACE_MEMBER = "workspace-member"
+        WORKSPACE = "workspace"
         STANDALONE = "standalone"
         EXCLUDED = "excluded"
 
@@ -108,9 +105,8 @@ class FlextInfraConstantsCodegenProject:
         INTERNAL = "internal"
         EXTERNAL = "external"
 
-    WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
-    WORKSPACE_SCHEMA_FILENAME: Final[str] = "workspace.schema.json"
-    WORKSPACE_MANIFEST_VERSION: Final[int] = 3
+    BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
+    BEADS_CONFIG_VERSION: Final[int] = 1
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
@@ -121,7 +117,7 @@ class FlextInfraConstantsCodegenProject:
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
     # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
     # NOTE (multi-agent, mro-wkii.17): one base catalog serves both profiles;
-    # workspace topology is owned only by config/workspace.yaml.
+    # workspace topology is read only from each repository's own .gitmodules.
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenProject"]

@@ -176,7 +176,7 @@ class FlextInfraUtilitiesDocsScope:
         if not is_workspace_member and not has_src and not has_tests and not has_deps:
             return None
         workspace_role = (
-            c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+            c.Infra.WorkspaceProjectRole.SUBPROJECT
             if is_workspace_member
             else c.Infra.WorkspaceProjectRole.ATTACHED
         )

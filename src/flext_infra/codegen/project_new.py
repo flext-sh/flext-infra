@@ -66,6 +66,15 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     repository_url: Annotated[
         str, m.Field(description="Canonical Git clone URL for the new repository.")
     ] = ""
+    beads_workspace: Annotated[
+        str, m.Field(min_length=1, description="Explicit Beads workspace identity.")
+    ]
+    beads_database: Annotated[
+        str, m.Field(min_length=1, description="Explicit Beads database identity.")
+    ]
+    beads_issue_prefix: Annotated[
+        str, m.Field(min_length=1, description="Explicit Beads issue prefix.")
+    ]
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
@@ -127,8 +136,13 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-            name=self.name,
+            name=self.beads_workspace,
+            beads=m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=self.beads_workspace,
+                database=self.beads_database,
+                issue_prefix=self.beads_issue_prefix,
+            ),
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,

@@ -11,21 +11,18 @@ from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 
 from tests import c, m, p, u
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     workspace_root = tmp_path / "workspace"
     workspace_root.mkdir()
-    # The fixture declares the synthetic topology it needs; flext-infra owns
-    # no catalog of real projects to borrow rows from.
     root_repository = u.Tests.repository_ref("fixture-workspace")
-    members = tuple(
-        u.Tests.repository_ref(
-            name, path=Path(name), role=c.Infra.RepositoryRole.WORKSPACE_MEMBER
-        )
+    subprojects = tuple(
+        u.Tests.repository_ref(name, path=Path(name))
         for name in ("fixture-member-one", "fixture-member-two")
     )
-    project_names = tuple(member.path.as_posix() for member in members)
+    project_names = tuple(project.path.as_posix() for project in subprojects)
     root_package = (
         workspace_root / "src" / root_repository.distribution.replace("-", "_")
     )
@@ -35,57 +32,34 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n",
         encoding="utf-8",
     )
-    manifest = m.Infra.WorkspaceSpec(
-        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-        name=root_repository.name,
-        repository=root_repository,
-        members=members,
+    u.Tests.write_beads_project(
+        workspace_root,
+        workspace=root_repository.name,
+        database=root_repository.name,
+        issue_prefix=root_repository.name,
     )
-    tm.ok(
-        u.Cli.yaml_dump(
-            workspace_root / "config" / "workspace.yaml",
-            manifest.model_dump(mode="json", exclude_none=True),
-        )
+    u.Tests.initialize_git_repo(
+        workspace_root,
+        origin_url=root_repository.url,
     )
     for project_name in project_names:
         project_root = workspace_root / project_name
-        project_root.mkdir(parents=True)
-        package_root = project_root / "src" / project_name.replace("-", "_")
-        package_root.mkdir(parents=True)
-        (package_root / "__init__.py").write_text("", encoding="utf-8")
-        (project_root / "pyproject.toml").write_text(
-            f"[project]\nname = '{project_name}'\nversion = '0.1.0'\n", encoding="utf-8"
+        WorktreeFixture.initialize_governed_project(
+            project_root,
+            project_name,
+            workspace=f"{project_name}-workspace",
+            database=f"{project_name}-database",
+            issue_prefix=f"{project_name}-prefix",
         )
-    # Seed the declared provider URL as origin so workspace discovery resolves
-    # this fixture as a provider-governed checkout; the helper owns the fake
-    # baseline ref, and real ancestry is exercised elsewhere.
-    u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
-    # mro-z89e.2.2: seed a minimal .gitmodules so the conform detector sees the
-    # declared members as governed submodules; the real setup/Gitlink lifecycle is
-    # covered by tests/unit/codegen/test_workspace_root_setup_submodules.py.
-    gitmodules_path = workspace_root / ".gitmodules"
-    provider = config.Infra.codegen.providers[0]
-    gitmodules_lines = []
-    for member in members:
-        section_name = member.name.replace("-", "_")
-        gitmodules_lines.extend([
-            f'[submodule "{section_name}"]\n',
-            f"\tpath = {member.path.as_posix()}\n",
-            f"\turl = {member.url}\n",
-            f"\tbranch = {provider.branch}\n",
-        ])
-    gitmodules_path.write_text("".join(gitmodules_lines), encoding="utf-8")
-    tm.ok(u.Cli.run_checked(["git", "add", ".gitmodules"], cwd=workspace_root))
-    tm.ok(
-        u.Cli.run_checked(
-            ["git", "commit", "-m", "seed fixture gitmodules"], cwd=workspace_root
-        )
-    )
-    # These tests assert what the GENERATED Makefile contains, so only the
-    # rendered artifacts are needed. Running the apply path additionally drove
-    # the Beads lifecycle, which inspects a live Dolt tracker: a unit test then
-    # depended on an external service and failed on any machine without it.
-    # Planning renders the same files and touches no tracker.
+    gitmodules_path = WorktreeFixture.write_gitmodules(workspace_root, project_names)
+    protected_paths = {
+        gitmodules_path,
+        workspace_root / "config" / "beads.yaml",
+        *(workspace_root / name / "config" / "beads.yaml" for name in project_names),
+    }
+    # These tests assert what the generated Makefile contains, so the public
+    # planning surface provides the exact artifacts without writing the fixture.
+    # Generation is runtime-independent and never invokes tracker services.
     planned = tm.ok(
         FlextInfraCodegenConform().plan(
             m.Infra.CodegenConformRequest(
@@ -95,15 +69,13 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             )
         )
     )
+    tm.that(
+        tuple(item.path for item in planned.files if item.path in protected_paths),
+        empty=True,
+    )
     for planned_file in planned.files:
         planned_file.path.parent.mkdir(parents=True, exist_ok=True)
         planned_file.path.write_text(planned_file.rendered, encoding="utf-8")
-    # mro-z89e.2.2: this fixture validates the environment/toolchain contract,
-    # not Gitlink reconciliation. The generated .gitmodules would classify the
-    # plain member directories as managed submodules and fail the setup
-    # preflight; Gitlink behavior is covered by
-    # tests/unit/codegen/test_workspace_root_setup_submodules.py.
-    (workspace_root / ".gitmodules").unlink(missing_ok=True)
     for project_name in project_names:
         _write_child_makefile(workspace_root / project_name, exit_code=0)
     return workspace_root, project_names
@@ -134,7 +106,7 @@ class TestsWorkspaceRootMakeContract:
         )
 
         tm.that(make_entries, len=1)
-        tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE)
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.
@@ -243,7 +215,7 @@ class TestsWorkspaceRootMakeContract:
         """Forward a root-owned test FILE selector with the member fan-out.
 
         A workspace root owns no local gate implementation: Make never emits a
-        ``--projects .`` lane (selecting the root maps to WORKSPACE_MEMBERS).
+        ``--projects .`` lane (selecting the root maps to its subprojects).
         Which project owns the file is decided by the orchestrator
         (_select_file_owner) at runtime, not by this Make recipe, so this
         boundary asserts forwarding rather than owner filtering.
@@ -277,7 +249,7 @@ class TestsWorkspaceRootMakeContract:
         """Default test selection is every declared member, never the root.
 
         A workspace root owns no local gate implementation, so the default
-        fan-out is WORKSPACE_MEMBERS; selecting ``.`` would orchestrate the
+        fan-out is the declared subprojects; selecting ``.`` would orchestrate the
         root against itself forever and is mapped away by the template.
         """
         workspace_root, project_names = _write_workspace(tmp_path)

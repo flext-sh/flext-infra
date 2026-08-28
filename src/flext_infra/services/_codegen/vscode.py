@@ -4,7 +4,7 @@ This is the only place that knows how ``.vscode/settings.json`` is produced.
 It parses that explicitly JSONC document through the canonical string-aware
 normalizer, validates the resulting mapping, merges the config-driven canonical
 keys from ``config.Infra.codegen.vscode`` plus the artifact-derived exclude maps,
-derives shallow member ``.venv`` globs from the workspace manifest, and serializes
+derives shallow subproject ``.venv`` globs from local topology, and serializes
 the result with ``u.Cli.json_dumps``. Rendering, planning, atomic writes, and
 fixed-point verification stay owned by ``FlextInfraCodegenConform``.
 """
@@ -39,7 +39,9 @@ class FlextInfraCodegenVscodeMixin:
             key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
-        _ = cls._apply_canonical_settings(settings, workspace_root)
+        applied = cls._apply_canonical_settings(settings, workspace_root)
+        if applied.failure:
+            return r[str].fail(applied.error or "VS Code settings merge failed")
         serialized = u.Cli.json_dumps(dict(settings), indent=2)
         if serialized.failure:
             return r[str].fail(serialized.error or "VS Code settings serialize failed")
@@ -162,7 +164,7 @@ class FlextInfraCodegenVscodeMixin:
     @classmethod
     def _apply_canonical_settings(
         cls, settings: t.MutableJsonMapping, workspace_root: Path
-    ) -> bool:
+    ) -> p.Result[bool]:
         """Merge canonical codegen VS Code settings into one settings mapping."""
         spec = config.Infra.codegen.vscode
         changed = cls._apply_enforced_settings(
@@ -171,6 +173,8 @@ class FlextInfraCodegenVscodeMixin:
             list_settings=spec.list_settings,
             workspace_root=workspace_root,
         )
+        if changed.failure:
+            return r[bool].fail(changed.error)
         # The three exclude maps derive from the codegen artifact SSOT;
         # map_union_settings keeps only the remaining non-artifact keys.
         codegen = config.Infra.codegen
@@ -180,7 +184,9 @@ class FlextInfraCodegenVscodeMixin:
             "search.exclude": dict(codegen.vscode_search_exclude_map),
             **spec.map_union_settings,
         }
-        return cls._apply_union_settings(settings, map_union_settings) or changed
+        return r[bool].ok(
+            cls._apply_union_settings(settings, map_union_settings) or changed.value
+        )
 
     @classmethod
     def _apply_enforced_settings(
@@ -190,7 +196,7 @@ class FlextInfraCodegenVscodeMixin:
         scalar_settings: Mapping[str, str | bool],
         list_settings: Mapping[str, tuple[str, ...]],
         workspace_root: Path,
-    ) -> bool:
+    ) -> p.Result[bool]:
         """Enforce exact scalar and list VS Code keys from the codegen config."""
         changed = False
         for key, value in scalar_settings.items():
@@ -203,14 +209,16 @@ class FlextInfraCodegenVscodeMixin:
             entries = cls._resolve_list_setting(
                 key, list_value, workspace_root=workspace_root
             )
+            if entries.failure:
+                return r[bool].fail(entries.error)
             canonical: list[t.JsonValue] = [
-                u.normalize_to_json_value(entry) for entry in entries
+                u.normalize_to_json_value(entry) for entry in entries.value
             ]
             if settings.get(key) == canonical:
                 continue
             settings[key] = canonical
             changed = True
-        return changed
+        return r[bool].ok(changed)
 
     @staticmethod
     def _apply_union_settings(
@@ -242,27 +250,23 @@ class FlextInfraCodegenVscodeMixin:
     @staticmethod
     def _resolve_list_setting(
         key: str, base_entries: tuple[str, ...], *, workspace_root: Path
-    ) -> tuple[str, ...]:
+    ) -> p.Result[tuple[str, ...]]:
         """Resolve one canonical list, deriving extra globs from the topology."""
         if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
-            return base_entries
+            return r[tuple[str, ...]].ok(base_entries)
         derived = list(base_entries)
-        manifest = (
-            workspace_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
+        if workspace.failure:
+            return r[tuple[str, ...]].fail(
+                workspace.error or "workspace topology is unavailable"
+            )
+        derived.extend(
+            f"./{subproject.path.as_posix()}/.venv"
+            for subproject in workspace.value.subprojects
         )
-        if manifest.is_file():
-            loaded = u.Cli.yaml_safe_load(manifest)
-            if loaded.success:
-                members = loaded.value.get("members")
-                if isinstance(members, list):
-                    for member in members:
-                        if not isinstance(member, Mapping):
-                            continue
-                        path = member.get("path")
-                        if not isinstance(path, str) or path in {"", "."}:
-                            continue
-                        derived.append(f"./{path}/.venv")
-        return tuple(dict.fromkeys(derived))
+        return r[tuple[str, ...]].ok(tuple(dict.fromkeys(derived)))
 
 
 __all__: list[str] = ["FlextInfraCodegenVscodeMixin"]

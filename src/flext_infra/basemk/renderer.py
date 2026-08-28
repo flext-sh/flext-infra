@@ -82,6 +82,7 @@ class FlextInfraBaseMkTemplateRenderer(s[str]):
             c.Infra.MAKEFILE_BOOTSTRAP_TEMPLATE,
             make=c.Infra,
             mise_version=config.Infra.codegen.toolchain.mise_version,
+            uv_version=config.Infra.codegen.toolchain.uv_version,
         )
 
     @override

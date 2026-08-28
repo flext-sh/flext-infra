@@ -19,7 +19,7 @@ class FlextInfraUtilitiesRepository:
         distribution: str,
         *,
         provider: m.Infra.ProviderSpec,
-        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_MEMBER,
+        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.STANDALONE,
         checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.SUBMODULE,
     ) -> m.Infra.RepositoryRef:
         """Derive one repository reference from generic provider policy.
@@ -61,10 +61,8 @@ class FlextInfraUtilitiesRepository:
     def resolve_integration_branch(
         workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec
     ) -> str:
-        """Return the workspace overlay branch, else the provider catalog branch."""
-        if workspace.integration is not None:
-            integration_branch: str = workspace.integration.branch
-            return integration_branch
+        """Return the provider-owned integration branch."""
+        del workspace
         provider_branch: str = provider.branch
         return provider_branch
 
@@ -132,7 +130,7 @@ class FlextInfraUtilitiesRepository:
             loaded = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
             if loaded.failure:
                 return r[m.Infra.RepositoryConformTarget].fail(
-                    loaded.error or "workspace manifest load failed"
+                    loaded.error or "workspace topology load failed"
                 )
             resolved_workspace = loaded.value
         return FlextInfraWorkspaceDetector.conform_target(

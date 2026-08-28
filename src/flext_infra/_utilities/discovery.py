@@ -231,8 +231,8 @@ class FlextInfraUtilitiesDiscovery(
         roots that actually exist, which is the only set an analyzer accepts.
 
         A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace members are Python directories too,
-        and each is analyzed under its own manifest.
+        never a root of this one: workspace subprojects are Python directories
+        too, and each is analyzed under its own local configuration.
         """
         discovered = cls.discover_python_dirs(project_dir)
         return (
@@ -247,12 +247,7 @@ class FlextInfraUtilitiesDiscovery(
 
     @staticmethod
     def _workspace_excluded_top_dirs(project_dir: Path) -> frozenset[str]:
-        """Return first segments of manifest-excluded workspace-relative paths.
-
-        Immutable ``content_only`` repositories and explicit ``exclusions`` in
-        ``config/workspace.yaml`` must never be discovered as Python source,
-        regardless of any Python files they happen to contain.
-        """
+        """Return first segments of read-only external topology paths."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
         excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)

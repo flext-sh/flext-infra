@@ -356,7 +356,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def repository_ref(
             name: str,
             *,
-            role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.WORKSPACE_ROOT,
+            role: c.Infra.RepositoryRole | None = None,
             path: Path | None = None,
         ) -> m.Infra.RepositoryRef:
             """Build a repository reference from the provider contract.
@@ -366,63 +366,62 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             from a registry. Only the provider contract (generic policy) is
             read from config, which keeps the fixture valid for any provider.
 
-            The role decides the rest: a workspace root is its own checkout at
-            ``.`` and is never editable, while a member is a submodule at its
-            own directory and is overlaid editable. Letting callers set those
-            independently is how fixtures ended up declaring members at ``.``,
-            which is not a valid submodule pathspec.
+            A non-empty path denotes the root's view of one subproject. The
+            subproject still classifies itself as standalone; only its checkout
+            relationship is ``submodule``.
             """
             provider = config.Infra.codegen.providers[0]
-            is_member = role is c.Infra.RepositoryRole.WORKSPACE_MEMBER
+            resolved_path = Path() if path is None else path
+            is_subproject = bool(resolved_path.parts)
+            resolved_role = role or (
+                c.Infra.RepositoryRole.STANDALONE
+                if is_subproject
+                else c.Infra.RepositoryRole.WORKSPACE
+            )
             return m.Infra.RepositoryRef(
                 name=name,
                 distribution=name,
                 url=f"{provider.base_url.rstrip('/')}/{name}.git",
-                path=path if path is not None else Path(name) if is_member else Path(),
-                role=role,
+                path=resolved_path,
+                role=resolved_role,
                 provider=provider.name,
                 checkout=(
                     c.Infra.CheckoutKind.SUBMODULE
-                    if is_member
-                    else c.Infra.CheckoutKind.ROOT
+                    if is_subproject
+                    else (
+                        c.Infra.CheckoutKind.ROOT
+                        if resolved_role is c.Infra.RepositoryRole.WORKSPACE
+                        else c.Infra.CheckoutKind.INDEPENDENT
+                    )
                 ),
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=True,
-                editable=is_member,
+                editable=is_subproject,
                 read_only=False,
             )
 
         @staticmethod
-        def declare_workspace_ledger(
-            repository: Path, ledger_id: str, ledger_prefix: str | None = None
-        ) -> None:
-            """Declare the typed workspace manifest that owns the ledger.
-
-            A bare ``.beads/config.yaml`` no longer makes a checkout a tracker:
-            the ledger is resolved from the typed manifest. Fixtures that need a
-            tracker therefore declare it here, in one place, instead of each
-            repeating the same manifest construction.
-            """
-            repository_ref = TestsFlextInfraUtilities.Tests.repository_ref(
-                "fixture"
-            ).model_copy(update={"path": Path(), "package": False, "editable": False})
+        def write_beads_project(
+            repository: Path,
+            *,
+            workspace: str,
+            database: str,
+            issue_prefix: str,
+        ) -> Path:
+            """Write the typed repository-local Beads identity fixture."""
+            path = repository / "config" / "beads.yaml"
             tm.ok(
                 u.Cli.yaml_dump(
-                    repository / "config" / "workspace.yaml",
-                    m.Infra.WorkspaceSpec(
-                        version=c.Infra.WORKSPACE_MANIFEST_VERSION,
-                        name=repository_ref.distribution,
-                        repository=repository_ref,
-                        ledger_id=ledger_id,
-                        # A tracker-owning manifest declares BOTH identifiers
-                        # (mro-cdzxf); callers that need a prefix distinct from
-                        # the SQL-safe database identity state it explicitly.
-                        ledger_prefix=(
-                            ledger_id if ledger_prefix is None else ledger_prefix
-                        ),
-                    ).model_dump(mode="json", exclude_none=True),
+                    path,
+                    m.Infra.BeadsProjectSpec(
+                        version=1,
+                        workspace=workspace,
+                        database=database,
+                        issue_prefix=issue_prefix,
+                    ).model_dump(mode="json"),
                 )
             )
+            return path
 
         @staticmethod
         def tool_config_document() -> m.Infra.ToolConfigDocument:
@@ -549,61 +548,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project_dir
 
         @staticmethod
-        def write_standalone_workspace_manifest(
+        def write_project_beads_config(
             project_dir: Path,
             name: str,
-            *,
-            upstream: str = "flext_core",
-            inherited_facets: t.StrSequence = (),
         ) -> Path:
-            """Write a local standalone workspace manifest for codegen conform."""
-            config_dir = project_dir / "config"
-            config_dir.mkdir(parents=True, exist_ok=True)
-            package_name = name.replace("-", "_")
-            class_stem = "".join(part.capitalize() for part in name.split("-"))
-            namespace = class_stem
-            env_prefix = f"{name.upper().replace('-', '_')}_"
-            manifest_path = config_dir / "workspace.yaml"
-            manifest_path.write_text(
-                (
-                    "version: 3\n"
-                    f"name: {name}\n"
-                    "repository:\n"
-                    f"  name: {name}\n"
-                    f"  distribution: {name}\n"
-                    "  provider: flext-sh\n"
-                    f"  url: https://github.com/flext-sh/{name}.git\n"
-                    "  path: .\n"
-                    "  role: standalone\n"
-                    "  state: active\n"
-                    "  checkout: independent\n"
-                    "  codegen: conform\n"
-                    "  package: true\n"
-                    "  editable: true\n"
-                    "  read_only: false\n"
-                    "project:\n"
-                    f"  package_name: {package_name}\n"
-                    f"  class_stem: {class_stem}\n"
-                    f"  namespace: {namespace}\n"
-                    f"  constant_name: {name}\n"
-                    f"  namespace_attribute: {package_name}\n"
-                    f"  alias: {package_name}\n"
-                    f"  environment_prefix: {env_prefix}\n"
-                    f'  description: "Demo {name}"\n'
-                    '  version: "0.1.0"\n'
-                    "  license: MIT\n"
-                    "  author_name: FLEXT Team\n"
-                    "  author_email: team@flext.sh\n"
-                    f"  upstream: {upstream}\n"
-                    f"  inherited_facets: {list(inherited_facets)!r}\n"
-                    f"  homepage: https://github.com/flext-sh/{name}\n"
-                    f"  documentation: https://github.com/flext-sh/{name}\n"
-                    "  workspace_root_rel: .\n"
-                    "  year: 2026\n"
-                    "members: []\n"
-                    "exclusions: []\n"
-                ),
-                encoding="utf-8",
+            """Write a standalone project's required local topology input."""
+            return TestsFlextInfraUtilities.Tests.write_beads_project(
+                project_dir,
+                workspace=name,
+                database=name,
+                issue_prefix=name,
             )
             return manifest_path
 
@@ -1457,35 +1411,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def repository_profile(root: Path) -> c.Infra.MakeProfile:
-            """Return the Make profile *root* declares in its own manifest.
-
-            Only that manifest is read. The full detector also walks the parent
-            superproject on the live filesystem, which breaks the isolation law
-            and races other tests' temp fixtures under xdist.
-
-            Returns:
-                Profile from ``repository.role`` when declared; otherwise
-                ``WORKSPACE_ROOT`` when the manifest declares members, else
-                ``STANDALONE``.
-
-            """
+            """Return the Make profile derived from the repository itself."""
             from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-            workspace: m.Infra.WorkspaceSpec = tm.ok(
-                FlextInfraWorkspaceDetector.load_workspace_spec(root)
-            )
-            role = workspace.repository.role.value
-            if role == c.Infra.MakeProfile.WORKSPACE_ROOT.value:
-                return c.Infra.MakeProfile.WORKSPACE_ROOT
-            if role == c.Infra.MakeProfile.WORKSPACE_MEMBER.value:
-                return c.Infra.MakeProfile.WORKSPACE_MEMBER
-            if role == c.Infra.MakeProfile.STANDALONE.value:
-                return c.Infra.MakeProfile.STANDALONE
-            return (
-                c.Infra.MakeProfile.WORKSPACE_ROOT
-                if workspace.members
-                else c.Infra.MakeProfile.STANDALONE
-            )
+            mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
+            return {
+                c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
+                c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
+            }[mode]
 
         @staticmethod
         def ignore_patterns_for(root: Path) -> tuple[str, ...]:

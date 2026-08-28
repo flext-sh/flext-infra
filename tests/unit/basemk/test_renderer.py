@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import m, main as infra_main
+from flext_infra import config, m, main as infra_main
 from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_tests import tm
@@ -31,16 +31,17 @@ class TestsFlextInfraBasemkRenderer:
         )
 
         for required in (
-            "SETUP_ROOT := $(shell git rev-parse --show-toplevel)",
-            "SETUP_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)",
+            'SETUP_ROOT := $(shell git -C "$(BOOTSTRAP_OWNER)" rev-parse --show-toplevel)',
+            'SETUP_BRANCH := $(shell git -C "$(SETUP_ROOT)" rev-parse --abbrev-ref HEAD)',
             'UV_PROJECT_ENVIRONMENT="$(SETUP_VENV)"',
-            "SETUP_BIN := $(SETUP_ROOT)/.bin",
-            "MISE_DATA_DIR := $(SETUP_ROOT)/.tools",
-            "SETUP_MISE ?= $(SETUP_BIN)/mise",
-            "SETUP_UV := $(MISE_DATA_DIR)/shims/uv",
-            "github.com/jdx/mise/releases/download",
-            "$(SETUP_MISE) install --yes",
-            "$(SETUP_UV_ENV) uv sync --project",
+            "BOOTSTRAP_OWNER :=",
+            "TRACKED_MISE := $(SETUP_ROOT)/bin/mise",
+            "SYSTEM_MISE_VERSION :=",
+            '"$(SETUP_MISE)" -C "$(SETUP_ROOT)" exec -- uv',
+            f'uv_required="{config.Infra.codegen.toolchain.uv_version}"',
+            '"$$mise" trust "$$project_root/.mise.toml"',
+            "install --locked --yes",
+            "$(SETUP_UV) sync --project",
             "git submodule update --init --recursive",
             'test -z "$$(git status --porcelain)"',
             'test "$$(git rev-parse HEAD)" = "$$sha1"',
@@ -51,10 +52,10 @@ class TestsFlextInfraBasemkRenderer:
             tm.that(rendered, has=required)
         for forbidden in (
             "SETUP_UV ?= uv",
+            "MISE_DATA_DIR := $(SETUP_ROOT)",
             "BOOTSTRAP_PIP",
             "pip install",
             "poetry",
-            "mise exec",
             "$(PYTHON_CMD) -c 'import flext_infra'",
         ):
             tm.that(rendered, lacks=forbidden)

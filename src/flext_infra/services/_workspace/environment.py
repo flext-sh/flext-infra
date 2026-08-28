@@ -142,6 +142,15 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if tool_pins_result.failure:
             return r[bool].fail(tool_pins_result.error or ".mise.toml pins failed")
         tools = u.Cli.toml_ensure_table(doc, "tools")
+        valid_identities = (
+            FlextInfraUtilitiesProjectManagedArtifacts.validate_mise_tool_selectors(
+                tuple(tools), source=target_path
+            )
+        )
+        if valid_identities.failure:
+            return r[bool].fail(
+                valid_identities.error or "custom .mise.toml identity validation failed"
+            )
         changed = False
         for name, value in tool_pins_result.value.items():
             if u.Cli.toml_value(tools, name) == value:

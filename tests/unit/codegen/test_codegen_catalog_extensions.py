@@ -74,119 +74,6 @@ class TestsCodegenCatalogExtensions:
         )
         tm.that(beads_is_semver or beads_is_commit, eq=True)
 
-    def test_beads_gate_compares_the_binary_reported_version(self) -> None:
-        """The conform preflight gate uses the binary's self-reported version.
-
-        The pinned Beads build is a go-module commit (schema v61-capable) whose
-        ``bd version`` output does NOT echo the pin. The toolchain therefore
-        declares ``reported_version`` — what the binary actually prints — and
-        the gate consumes that value directly so preflight compares like with
-        like. (mro-e9j0.6 / shared mro ledger at Dolt schema v61)
-        """
-        beads = config.Infra.codegen.toolchain.beads
-        tm.that(beads.selector, eq="go:github.com/steveyegge/beads/cmd/bd")
-        is_commit = len(beads.version) == 40 and all(
-            char in "0123456789abcdef" for char in beads.version
-        )
-        tm.that(is_commit, eq=True)
-        # ONE declared field, no optional/computed pair: the model states what
-        # the binary prints and the gate reads exactly that.
-        tm.that(beads.reported_version, eq="1.1.0")
-        tm.that(hasattr(beads, "gate_version"), eq=False)
-
-    def test_mise_tool_spec_requires_the_reported_version(self) -> None:
-        """``reported_version`` is a required field validated by Pydantic.
-
-        It was previously declared ``str | None`` with a fallback inside the
-        model. Every mise tool knows what its binary prints, so the value is
-        declared, required, and validated at construction instead.
-        """
-        spec = m.Infra.MiseToolSpec(
-            selector="go:example.com/tool/cmd/x",
-            version="0123456789abcdef0123456789abcdef01234567",
-            reported_version="1.2.3",
-        )
-        tm.that(spec.reported_version, eq="1.2.3")
-        with pytest.raises(c.ValidationError):
-            m.Infra.MiseToolSpec.model_validate({
-                "selector": "go:example.com/tool/cmd/x",
-                "version": "0123456789abcdef0123456789abcdef01234567",
-            })
-        with pytest.raises(c.ValidationError):
-            m.Infra.MiseToolSpec(
-                selector="go:example.com/tool/cmd/x",
-                version="0123456789abcdef0123456789abcdef01234567",
-                reported_version="",
-            )
-
-    def test_beads_plan_declares_the_ledger_root_it_owns(self, tmp_path: Path) -> None:
-        """``BeadsPlan.ledger_root`` is always the tree that owns the ledger.
-
-        It was ``Path | None``, where ``None`` encoded "same as
-        repository_root" — so three separate call sites re-derived the real
-        value with ``plan.ledger_root or plan.repository_root`` and a fourth
-        compared against ``None`` to detect routing. The plan now declares the
-        owning root outright: consumers read one validated field and routing is
-        the honest comparison between two paths.
-        """
-        repo = tmp_path / "member"
-        principal = tmp_path / "principal"
-        own = m.Infra.BeadsPlan(
-            repository_root=repo,
-            enabled=True,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-            ledger_root=repo,
-            ledger_id="mro",
-        )
-        tm.that(own.ledger_root, eq=repo)
-        tm.that(own.routes_to_principal_ledger, eq=False)
-        routed = own.model_copy(update={"ledger_root": principal})
-        tm.that(routed.routes_to_principal_ledger, eq=True)
-        # The field is required: "no ledger root" is not a representable state.
-        with pytest.raises(c.ValidationError):
-            m.Infra.BeadsPlan.model_validate({
-                "repository_root": repo,
-                "enabled": True,
-                "canonical_prefix": "mro",
-                "expected_version": "1.1.0",
-                "ledger_id": "mro",
-            })
-
-    def test_beads_tracker_declaration_is_a_validated_model(
-        self, tmp_path: Path
-    ) -> None:
-        """The committed tracker config parses once into a typed model.
-
-        mro-o0cc: a committed ``.beads/config.yaml`` (e.g. the shared ``mro``
-        ledger) is the tracker declaration for that repository. Reading it
-        returned a bare ``str`` chosen by runtime isinstance checks against an
-        untyped mapping, with a ``fallback`` argument deciding the outcome.
-        Parsing happens once, at the boundary, into ``BeadsTrackerDeclaration``;
-        absence is the model's absence, never a substituted string.
-        """
-        root = tmp_path / "flext-demo"
-        beads_dir = root / ".beads"
-        beads_dir.mkdir(parents=True)
-        (beads_dir / "config.yaml").write_text(
-            'issue-prefix: "mro"\ndolt:\n  database: mro\n', encoding="utf-8"
-        )
-        declared = tm.ok(FlextInfraCodegenConform.beads_declaration(root))
-        tm.that(isinstance(declared, m.Infra.BeadsTrackerDeclaration), eq=True)
-        tm.that(declared.issue_prefix, eq="mro")
-        # A repository without a committed tracker declares nothing; the
-        # caller — not the reader — decides what that means.
-        bare = tmp_path / "bare-demo"
-        bare.mkdir()
-        tm.fail(FlextInfraCodegenConform.beads_declaration(bare))
-        # An empty prefix is rejected by the model, not silently replaced.
-        broken = tmp_path / "broken-demo"
-        (broken / ".beads").mkdir(parents=True)
-        (broken / ".beads" / "config.yaml").write_text(
-            'issue-prefix: ""\n', encoding="utf-8"
-        )
-        tm.fail(FlextInfraCodegenConform.beads_declaration(broken))
-
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance.
 
@@ -212,69 +99,6 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_gen_apply:" in content, eq=True)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
-
-    def test_transaction_worktrees_skip_the_beads_lifecycle(
-        self, tmp_path: Path
-    ) -> None:
-        """Inside a worktree transaction the Beads lifecycle is fully skipped.
-
-        A transaction checkout routes its ledger to the principal worktree, so
-        the repository_root never owns the tracker lifecycle.  The principal
-        ledger is verified separately at the real tree on apply.
-        """
-        principal = tmp_path / "principal"
-        principal.mkdir()
-        tx = tmp_path / "tx-checkout"
-        (tx / ".beads").mkdir(parents=True)
-        (tx / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
-        )
-        plan = m.Infra.BeadsPlan(
-            repository_root=tx,
-            ledger_root=principal,
-            enabled=False,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-        )
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan, allow_missing=False))
-        # Outside a transaction, routing-only files remain valid.
-        plan_at_root = m.Infra.BeadsPlan(
-            repository_root=tx,
-            enabled=False,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-            ledger_root=tx,
-        )
-        tm.ok(verify(plan_at_root, allow_missing=False))
-        (tx / ".beads" / "issues.jsonl").write_text("{}\n", encoding="utf-8")
-        tm.fail(verify(plan_at_root, allow_missing=False))
-
-    def test_github_actions_ci_skips_the_beads_lifecycle(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Inside GitHub Actions CI the Beads lifecycle is fully skipped.
-
-        CI runners are ephemeral and do not carry a live Dolt tracker; the
-        committed ``.beads`` tree is present but the tracker database is not.
-        Attempting to verify a missing tracker in CI used to fail with
-        'Beads tracker inspection failed'. CI is not a tracker owner.
-        """
-        root = tmp_path / "ci-checkout"
-        (root / ".beads").mkdir(parents=True)
-        (root / ".beads" / "config.yaml").write_text(
-            'issue-prefix: "mro"\n', encoding="utf-8"
-        )
-        plan = m.Infra.BeadsPlan(
-            repository_root=root,
-            enabled=False,
-            canonical_prefix="mro",
-            expected_version="1.1.0",
-            ledger_root=root,
-        )
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_ACTIONS, "true")
-        verify = FlextInfraCodegenConform._verify_beads_plan  # ruff: ignore[private-member-access]
-        tm.ok(verify(plan, allow_missing=False))
 
     def test_conform_has_no_global_workspace_catalog_validator(self) -> None:
         tm.that(
@@ -533,7 +357,7 @@ class TestsCodegenCatalogExtensions:
             next(file.rendered for file in plan.files if file.path.name == ".mise.toml")
         )
         tm.that(
-            mise["tools"]["go:github.com/steveyegge/beads/cmd/bd"],
+            mise["tools"][config.Infra.codegen.toolchain.beads.selector]["version"],
             eq=config.Infra.codegen.toolchain.beads.version,
         )
         pyproject = tomllib.loads(

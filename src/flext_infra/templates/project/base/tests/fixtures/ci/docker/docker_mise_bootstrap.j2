@@ -1,0 +1,25 @@
+{% macro docker_mise_bootstrap() -%}
+# === SECTION: managed tool bootstrap (managed) ===
+# Source: generated bin/mise + .mise.toml + mise.lock
+# The official launcher and locked tools are installed by the same unprivileged
+# user that executes project verbs, so trust and XDG state have one owner.
+ENV HOME=/home/runner \
+    XDG_DATA_HOME=/home/runner/.local/share \
+    XDG_CACHE_HOME=/home/runner/.cache \
+    XDG_STATE_HOME=/home/runner/.local/state \
+    MISE_DATA_DIR=/home/runner/.local/share/mise \
+    MISE_CACHE_DIR=/home/runner/.cache/mise \
+    MISE_STATE_DIR=/home/runner/.local/state/mise \
+    MISE_TRUSTED_CONFIG_PATHS=/workspace
+RUN mkdir -p /workspace && chown runner:runner /workspace
+WORKDIR /workspace
+COPY --chown=runner:runner .mise.toml mise.lock ./
+COPY --chown=runner:runner bin/mise bin/mise.cmd ./bin/
+USER runner
+RUN mkdir -p /workspace/.test-tmp
+RUN ./bin/mise trust .mise.toml \
+    && ./bin/mise install --locked --yes
+COPY --chown=runner:runner . .
+ENV PATH="/home/runner/.local/share/mise/shims:${PATH}"
+# End SECTION: managed tool bootstrap
+{%- endmacro %}

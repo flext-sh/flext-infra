@@ -38,11 +38,11 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         )
         if workspace_result.failure:
             return r[int].fail(
-                workspace_result.error or "workspace manifest validation failed"
+                workspace_result.error or "workspace topology validation failed"
             )
         repositories = tuple(
             repository
-            for repository in workspace_result.value.members
+            for repository in workspace_result.value.subprojects
             if repository.package and repository.editable
         )
         validated = 0

@@ -159,7 +159,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                     for project in discovered.value
                     if (
                         project.workspace_role
-                        == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+                        == c.Infra.WorkspaceProjectRole.SUBPROJECT
                     )
                 ),
                 key=lambda project_path: project_path.name,
@@ -375,7 +375,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 for project in discovered.value
                 if (
                     project.workspace_role
-                    == c.Infra.WorkspaceProjectRole.WORKSPACE_MEMBER
+                    == c.Infra.WorkspaceProjectRole.SUBPROJECT
                 )
             ),
             key=lambda project_path: project_path.name,

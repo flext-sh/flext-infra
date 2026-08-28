@@ -33,10 +33,8 @@ class TestGitHookConformance:
 
     @staticmethod
     def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
-        """Load the smallest owner-written manifest needed by conform."""
-        test_u.Tests.write_standalone_workspace_manifest(
-            root, "flext-demo", upstream="flext_cli"
-        )
+        """Load the smallest repository-local topology needed by conform."""
+        test_u.Tests.write_project_beads_config(root, "flext-demo")
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
     @staticmethod
