@@ -97,14 +97,12 @@ MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
 SETUP_MISE_VERSION := 2026.8.14
-SYSTEM_MISE := $(shell command -v mise 2>/dev/null)
-SYSTEM_MISE_VERSION := $(if $(strip $(SYSTEM_MISE)),$(shell "$(SYSTEM_MISE)" --version 2>/dev/null | cut -d ' ' -f 1),)
 ifeq ($(OS),Windows_NT)
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
-SETUP_MISE ?= $(if $(wildcard $(TRACKED_MISE)),$(TRACKED_MISE),$(if $(filter $(SETUP_MISE_VERSION),$(SYSTEM_MISE_VERSION)),$(SYSTEM_MISE),$(TRACKED_MISE)))
+SETUP_MISE := $(TRACKED_MISE)
 MISE_LOCK_PLATFORMS := linux-x64,linux-arm64,linux-x64-musl,linux-arm64-musl,macos-x64,macos-arm64,windows-x64
 MISE_LOCK_PROJECTS := .
 override export FLEXT_PYTEST_TARGET_RAW := tests
@@ -134,38 +132,47 @@ BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean 
 SCRIPT_VERBS :=
 
 ifeq ($(GEN_INIT_ONLY),Y)
-_ALLOWED_WHATS_help := usage
-_ALLOWED_WHATS_setup := environment
-_ALLOWED_WHATS_deps := check lock upgrade
-_ALLOWED_WHATS_build := artifacts
-_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells
-_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint
-_ALLOWED_WHATS_fmt := check all apply
-_ALLOWED_WHATS_fix := check all apply
-_ALLOWED_WHATS_run := default
-_ALLOWED_WHATS_status := diagnostics
-_ALLOWED_WHATS_docs := all generate fix audit build validate
-_ALLOWED_WHATS_clean := status generated
-_ALLOWED_WHATS_release := status
-_ALLOWED_WHATS_gen := check all apply init
-_ALLOWED_WHATS_mod := check all apply
-else
-_ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_setup := environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_deps := check lock upgrade $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_build := artifacts $(shell sed -n 's/^_custom_build_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells $(shell sed -n 's/^_custom_check_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(shell sed -n 's/^_custom_test_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_fmt := check all apply $(shell sed -n 's/^_custom_fmt_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_fix := check all apply $(shell sed -n 's/^_custom_fix_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_run := default $(shell sed -n 's/^_custom_run_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_status := diagnostics $(shell sed -n 's/^_custom_status_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_docs := all generate fix audit build validate $(shell sed -n 's/^_custom_docs_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_clean := status generated $(shell sed -n 's/^_custom_clean_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_release := status $(shell sed -n 's/^_custom_release_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_gen := check all apply init $(shell sed -n 's/^_custom_gen_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_CUSTOM_HANDLER_TARGETS :=
+else ifneq ($(wildcard $(MAKEFILE_ROOT)/custom.mk),)
+_CUSTOM_HANDLER_TARGETS := $(shell sed -n 's/^\(\(pre\|post\)-[a-z][a-z0-9-]*\|_custom_[a-z][a-z0-9_-]*\)[[:space:]]*:.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom Make handlers)
 endif
+else
+_CUSTOM_HANDLER_TARGETS :=
+endif
+_CUSTOM_HOOKS := $(filter pre-% post-%,$(_CUSTOM_HANDLER_TARGETS))
+_CUSTOM_WHATS_help := $(patsubst _custom_help_%,%,$(filter _custom_help_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_help := usage $(_CUSTOM_WHATS_help)
+_CUSTOM_WHATS_setup := $(patsubst _custom_setup_%,%,$(filter _custom_setup_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_setup := environment $(_CUSTOM_WHATS_setup)
+_CUSTOM_WHATS_deps := $(patsubst _custom_deps_%,%,$(filter _custom_deps_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_deps := check lock upgrade $(_CUSTOM_WHATS_deps)
+_CUSTOM_WHATS_build := $(patsubst _custom_build_%,%,$(filter _custom_build_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_build := artifacts $(_CUSTOM_WHATS_build)
+_CUSTOM_WHATS_check := $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells $(_CUSTOM_WHATS_check)
+_CUSTOM_WHATS_test := $(patsubst _custom_test_%,%,$(filter _custom_test_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(_CUSTOM_WHATS_test)
+_CUSTOM_WHATS_fmt := $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_fmt := check all apply $(_CUSTOM_WHATS_fmt)
+_CUSTOM_WHATS_fix := $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_fix := check all apply $(_CUSTOM_WHATS_fix)
+_CUSTOM_WHATS_run := $(patsubst _custom_run_%,%,$(filter _custom_run_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_run := default $(_CUSTOM_WHATS_run)
+_CUSTOM_WHATS_status := $(patsubst _custom_status_%,%,$(filter _custom_status_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_status := diagnostics $(_CUSTOM_WHATS_status)
+_CUSTOM_WHATS_docs := $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_docs := all generate fix audit build validate $(_CUSTOM_WHATS_docs)
+_CUSTOM_WHATS_clean := $(patsubst _custom_clean_%,%,$(filter _custom_clean_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_clean := status generated $(_CUSTOM_WHATS_clean)
+_CUSTOM_WHATS_release := $(patsubst _custom_release_%,%,$(filter _custom_release_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_release := status $(_CUSTOM_WHATS_release)
+_CUSTOM_WHATS_gen := $(patsubst _custom_gen_%,%,$(filter _custom_gen_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_gen := check all apply init $(_CUSTOM_WHATS_gen)
+_CUSTOM_WHATS_mod := $(patsubst _custom_mod_%,%,$(filter _custom_mod_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_mod := check all apply $(_CUSTOM_WHATS_mod)
+
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
  DOCS_ACTIONS := generate fix audit build validate
@@ -245,8 +252,14 @@ ifeq ($(OS),Windows_NT)
 RUNTIME_BIN := $(RUNTIME_VENV)/Scripts
 RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe
 FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/Scripts/python.exe
-NORMALIZED_CALLER_PATH := $(shell cygpath --path "$(CALLER_PATH)" 2>/dev/null)
-NORMALIZED_CALLER_VIRTUAL_ENV := $(shell cygpath --unix "$(CALLER_VIRTUAL_ENV)" 2>/dev/null)
+NORMALIZED_CALLER_PATH := $(shell cygpath --path "$(CALLER_PATH)")
+ifneq ($(.SHELLSTATUS),0)
+$(error cygpath failed to normalize caller PATH)
+endif
+NORMALIZED_CALLER_VIRTUAL_ENV := $(shell cygpath --unix "$(CALLER_VIRTUAL_ENV)")
+ifneq ($(.SHELLSTATUS),0)
+$(error cygpath failed to normalize caller virtual environment)
+endif
 CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/Scripts
 else
 RUNTIME_BIN := $(RUNTIME_VENV)/bin
@@ -264,15 +277,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-ifneq ($(filter Y,$(GEN_INIT_ONLY) $(SETUP_BOOTSTRAP_ONLY)),)
-RESOLVED_UV :=
-else
-RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)" 2>/dev/null)
-ifeq ($(strip $(RESOLVED_UV)),)
-$(error Required uv executable not found: $(UV_REQUESTED))
-endif
-endif
-override UV := $(RESOLVED_UV)
+override UV := $(UV_REQUESTED)
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
@@ -409,8 +414,8 @@ define _dispatch
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
 	custom="_custom_$(1)_$$what"; \
-	$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
-	if [ "$$custom_rc" -eq 2 ]; then \
+	case " $(_CUSTOM_WHATS_$(1)) " in *" $$what "*) custom_present=1 ;; *) custom_present=0 ;; esac; \
+	if [ "$$custom_present" -eq 0 ]; then \
 		case " $(_ALLOWED_WHATS_$(1)) " in \
 			*" $$what "*) ;; \
 			*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
@@ -418,17 +423,15 @@ define _dispatch
 	fi; \
 	builtin="_builtin_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done; \
-	if [ "$$custom_rc" -ne 2 ]; then \
+	if [ "$$custom_present" -eq 1 ]; then \
 		$(SELF_MAKE) "$$custom" || exit $$?; \
 	else \
 		$(SELF_MAKE) "$$builtin" || exit $$?; \
 	fi; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done
 endef
 
@@ -477,13 +480,11 @@ setup: _bootstrap_setup_tools
 
 _builtin_setup_lifecycle:
 	@for hook in "pre-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done
 	@$(SELF_MAKE) _builtin_setup_environment
 	@for hook in "post-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done
 
 _builtin_help_usage:
@@ -556,12 +557,9 @@ _builtin_help_usage:
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
 	@printf '  %s\n' 'Add _custom_<verb>_<what> to define a new WHAT.';
-	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
-		if [ -n "$$hooks" ]; then \
-			printf '  %s\n' 'Defined in this project:'; \
-			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
-		fi; \
+	@if [ -n "$(_CUSTOM_HANDLER_TARGETS)" ]; then \
+		printf '  %s\n' 'Defined in this project:'; \
+		for hook in $(_CUSTOM_HANDLER_TARGETS); do printf '    %s\n' "$$hook"; done; \
 	fi
 
 # A project owns the sources declared by its manifest. The generated setup

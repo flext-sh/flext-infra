@@ -100,14 +100,12 @@ MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
 SETUP_MISE_VERSION := {{ mise_version }}
-SYSTEM_MISE := $(shell command -v mise 2>/dev/null)
-SYSTEM_MISE_VERSION := $(if $(strip $(SYSTEM_MISE)),$(shell "$(SYSTEM_MISE)" --version 2>/dev/null | cut -d ' ' -f 1),)
 ifeq ($(OS),Windows_NT)
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
-SETUP_MISE ?= $(if $(wildcard $(TRACKED_MISE)),$(TRACKED_MISE),$(if $(filter $(SETUP_MISE_VERSION),$(SYSTEM_MISE_VERSION)),$(SYSTEM_MISE),$(TRACKED_MISE)))
+SETUP_MISE := $(TRACKED_MISE)
 MISE_LOCK_PLATFORMS := {{ mise_lock_platforms | join(",") }}
 MISE_LOCK_PROJECTS := .{% if make_profile == "workspace" %}{% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}{% endif %}
 override export FLEXT_PYTEST_TARGET_RAW := tests
@@ -135,16 +133,26 @@ endif
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
 SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
-{# Builtin whats from config, plus live `_custom_<verb>_<what>` selectors from
-   custom.mk so help/allowlist stay aligned with handlers without hand-editing
-   the managed Makefile after each custom surface change. #}
+{# Builtin whats from config, plus exact custom targets declared by custom.mk.
+   The parse-time scan is checked immediately through .SHELLSTATUS; recipe
+   dispatch never probes a target with `make -q` and cannot reinterpret a Make
+   parse failure as target absence. #}
 ifeq ($(GEN_INIT_ONLY),Y)
-{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in make.handler_whats[verb.name] %} {{ what }}{% endfor %}
-{% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %}
-{% endfor %}else
-{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in make.handler_whats[verb.name] %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
-{% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %} $(shell sed -n 's/^_custom_{{ verb.name }}_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}" 2>/dev/null | sort -u | tr '\n' ' ')
-{% endfor %}endif
+_CUSTOM_HANDLER_TARGETS :=
+else ifneq ($(wildcard $(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}),)
+_CUSTOM_HANDLER_TARGETS := $(shell sed -n 's/^\(\(pre\|post\)-[a-z][a-z0-9-]*\|_custom_[a-z][a-z0-9_-]*\)[[:space:]]*:.*/\1/p' "$(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}")
+ifneq ($(.SHELLSTATUS),0)
+$(error Failed to inspect custom Make handlers)
+endif
+else
+_CUSTOM_HANDLER_TARGETS :=
+endif
+_CUSTOM_HOOKS := $(filter pre-% post-%,$(_CUSTOM_HANDLER_TARGETS))
+{% for verb in make.verbs %}_CUSTOM_WHATS_{{ verb.name }} := $(patsubst _custom_{{ verb.name }}_%,%,$(filter _custom_{{ verb.name }}_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_{{ verb.name }} :={% for what in make.handler_whats[verb.name] %} {{ what }}{% endfor %} $(_CUSTOM_WHATS_{{ verb.name }})
+{% endfor %}{% for verb in extra_verbs %}_CUSTOM_WHATS_{{ verb.name }} := $(patsubst _custom_{{ verb.name }}_%,%,$(filter _custom_{{ verb.name }}_%,$(_CUSTOM_HANDLER_TARGETS)))
+_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %} $(_CUSTOM_WHATS_{{ verb.name }})
+{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
  DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
@@ -217,8 +225,14 @@ ifeq ($(OS),Windows_NT)
 RUNTIME_BIN := $(RUNTIME_VENV)/Scripts
 RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe
 FLEXT_INFRA_RUNTIME_PYTHON := $(FLEXT_INFRA_RUNTIME_ROOT)/.venv/Scripts/python.exe
-NORMALIZED_CALLER_PATH := $(shell cygpath --path "$(CALLER_PATH)" 2>/dev/null)
-NORMALIZED_CALLER_VIRTUAL_ENV := $(shell cygpath --unix "$(CALLER_VIRTUAL_ENV)" 2>/dev/null)
+NORMALIZED_CALLER_PATH := $(shell cygpath --path "$(CALLER_PATH)")
+ifneq ($(.SHELLSTATUS),0)
+$(error cygpath failed to normalize caller PATH)
+endif
+NORMALIZED_CALLER_VIRTUAL_ENV := $(shell cygpath --unix "$(CALLER_VIRTUAL_ENV)")
+ifneq ($(.SHELLSTATUS),0)
+$(error cygpath failed to normalize caller virtual environment)
+endif
 CALLER_VIRTUAL_ENV_BIN := $(NORMALIZED_CALLER_VIRTUAL_ENV)/Scripts
 else
 RUNTIME_BIN := $(RUNTIME_VENV)/bin
@@ -236,15 +250,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-ifneq ($(filter Y,$(GEN_INIT_ONLY) $(SETUP_BOOTSTRAP_ONLY)),)
-RESOLVED_UV :=
-else
-RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)" 2>/dev/null)
-ifeq ($(strip $(RESOLVED_UV)),)
-$(error Required uv executable not found: $(UV_REQUESTED))
-endif
-endif
-override UV := $(RESOLVED_UV)
+override UV := $(UV_REQUESTED)
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
 override UV_PROJECT := $(RUNTIME_ROOT)
 override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)
@@ -358,8 +364,8 @@ define _dispatch
 		*[!a-z0-9_-]*|'') printf 'ERROR: invalid WHAT selector %s\n' "$$what" >&2; exit 2 ;; \
 	esac; \
 	custom="_custom_$(1)_$$what"; \
-	$(SELF_MAKE) -q "$$custom" >/dev/null 2>&1; custom_rc=$$?; \
-	if [ "$$custom_rc" -eq 2 ]; then \
+	case " $(_CUSTOM_WHATS_$(1)) " in *" $$what "*) custom_present=1 ;; *) custom_present=0 ;; esac; \
+	if [ "$$custom_present" -eq 0 ]; then \
 		case " $(_ALLOWED_WHATS_$(1)) " in \
 			*" $$what "*) ;; \
 			*) printf 'ERROR: unsupported %s WHAT=%s (allowed:%s)\n' "$(1)" "$$what" "$(_ALLOWED_WHATS_$(1))" >&2; exit 2 ;; \
@@ -367,10 +373,9 @@ define _dispatch
 	fi; \
 	builtin="_builtin_$(1)_$$what"; \
 	for hook in "pre-$(1)" "pre-$(1)-$$what"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done; \
-	if [ "$$custom_rc" -ne 2 ]; then \
+	if [ "$$custom_present" -eq 1 ]; then \
 		$(SELF_MAKE) "$$custom" || exit $$?; \
 {%- if script_dispatch %}
 	else \
@@ -397,8 +402,7 @@ define _dispatch
 {%- endif %}
 	fi; \
 	for hook in "post-$(1)-$$what" "post-$(1)"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done
 endef
 
@@ -447,13 +451,11 @@ setup: _bootstrap_setup_tools
 
 _builtin_setup_lifecycle:
 	@for hook in "pre-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done
 	@$(SELF_MAKE) _builtin_setup_environment
 	@for hook in "post-setup"; do \
-		$(SELF_MAKE) -q "$$hook" >/dev/null 2>&1; rc=$$?; \
-		if [ "$$rc" -ne 2 ]; then $(SELF_MAKE) "$$hook" || exit $$?; fi; \
+		case " $(_CUSTOM_HOOKS) " in *" $$hook "*) $(SELF_MAKE) "$$hook" || exit $$? ;; esac; \
 	done
 
 _builtin_help_usage:
@@ -474,12 +476,9 @@ _builtin_help_usage:
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
 	@printf '  %s\n' 'Add _custom_<verb>_<what> to define a new WHAT.';
-	@if [ -f custom.mk ]; then \
-		hooks=$$(grep -oE '^(pre|post)-[a-z][a-z0-9-]*|^_custom_[a-z][a-z0-9_-]*' custom.mk 2>/dev/null | sort -u); \
-		if [ -n "$$hooks" ]; then \
-			printf '  %s\n' 'Defined in this project:'; \
-			for hook in $$hooks; do printf '    %s\n' "$$hook"; done; \
-		fi; \
+	@if [ -n "$(_CUSTOM_HANDLER_TARGETS)" ]; then \
+		printf '  %s\n' 'Defined in this project:'; \
+		for hook in $(_CUSTOM_HANDLER_TARGETS); do printf '    %s\n' "$$hook"; done; \
 	fi
 
 # A project owns the sources declared by its manifest. The generated setup

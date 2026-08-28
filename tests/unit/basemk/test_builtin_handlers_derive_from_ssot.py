@@ -20,8 +20,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import yaml
-
 _TEMPLATE = (
     Path(__file__).resolve().parents[3]
     / "src"
@@ -65,30 +63,15 @@ def _invoked_handlers() -> set[str]:
     return set(re.findall(r"\$\(SELF_MAKE\)\s+(_builtin_[a-z_]+)", _template_text()))
 
 
-def _ssot_handlers() -> set[str]:
-    """Return the handler names the codegen SSOT declares through verb whats."""
-    config = yaml.safe_load(
-        (Path(__file__).resolve().parents[3] / "config" / "codegen.yaml").read_text(
-            encoding="utf-8"
-        )
-    )
-    verbs = config["Infra"]["codegen"]["make"]["verbs"]
-    return {
-        f"_builtin_{verb['name']}_{what}"
-        for verb in verbs
-        for what in verb.get("whats") or ()
-    }
+def test_every_direct_private_invocation_is_defined() -> None:
+    """Every literal private helper invoked through recursive Make exists.
 
-
-def test_every_invoked_handler_is_declared_in_the_ssot() -> None:
-    """A recipe never calls a handler the SSOT does not declare.
-
-    The routing list is rendered from ``make.verbs[].whats``, so a handler that
-    a recipe invokes but the SSOT never declares can never be routed.
+    Direct helpers such as ``_builtin_setup_lifecycle`` are deliberately not a
+    public ``WHAT``. Public route coverage is proven separately from the SSOT.
     """
-    missing = sorted(_invoked_handlers() - _ssot_handlers())
+    missing = sorted(_invoked_handlers() - _defined_handlers())
 
-    assert not missing, f"invoked but absent from make.verbs[].whats: {missing}"
+    assert not missing, f"invoked but never defined: {missing}"
 
 
 def test_every_routed_handler_is_defined() -> None:

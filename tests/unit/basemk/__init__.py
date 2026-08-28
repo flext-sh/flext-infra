@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from .test_bootstrap_refname_safety import TestsBootstrapRefnameSafety
     from .test_builtin_handlers_derive_from_ssot import (
-        test_every_invoked_handler_is_declared_in_the_ssot,
+        test_every_direct_private_invocation_is_defined,
         test_every_routed_handler_is_defined,
         test_routing_declares_one_allowed_whats_per_verb,
     )
@@ -45,7 +45,7 @@ __all__: tuple[str, ...] = (
     "s",
     "t",
     "td",
-    "test_every_invoked_handler_is_declared_in_the_ssot",
+    "test_every_direct_private_invocation_is_defined",
     "test_every_routed_handler_is_defined",
     "test_routing_declares_one_allowed_whats_per_verb",
     "tf",
@@ -61,7 +61,7 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".test_bootstrap_refname_safety": ("TestsBootstrapRefnameSafety",),
             ".test_builtin_handlers_derive_from_ssot": (
-                "test_every_invoked_handler_is_declared_in_the_ssot",
+                "test_every_direct_private_invocation_is_defined",
                 "test_every_routed_handler_is_defined",
                 "test_routing_declares_one_allowed_whats_per_verb",
             ),
