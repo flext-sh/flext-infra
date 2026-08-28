@@ -32,6 +32,7 @@ this rollout.
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `fc498bad217ef8f12dbb0def079c10837dc26b78` | Repository-local topology fixture convergence pushed to `origin` |
 | 2026-08-28T08:57:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0acb0ba7e9951e63c8324f075569195057735114` | Conditional execution-context Rope scope, standalone isolation, and manual evidence pushed to `origin` |
 | 2026-08-28T09:12:58-03:00 | `flext-infra` | `fix/mise-beads-canonical` | `e47da1189e01c432f9ce2154c60c42381a6f9792` | Dirty canonical lane checkpointed in full and pushed before consolidation |
+| 2026-08-28T09:16:22-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `8398a4c409e9024e3b94d555135cf48766e61049` | Canonical Mise lane consolidated by a two-parent merge; conflicts resolved to the final repository-local contract and pushed |
 
 ## Validation log
 
@@ -64,6 +65,8 @@ this rollout.
 | 2026-08-28T09:00:43-03:00 | worktree | Same CI matrix test gate after typed local Beads fixture repair | FAIL: 19 passed, 3 failed | One matcher defect and the unresolved `ci_matrix_auto_run` owner/template contradiction remained |
 | 2026-08-28T09:02:24-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py::TestCodegenCiMatrix::test_dependabot_uses_uv_dependency_cooldown` from `flext-infra` | PASS: 1 test | Corrected set equality assertion; two CI auto-run policy tests remain intentionally unresolved pending operator direction |
 | 2026-08-28T09:02:54-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 888 files unchanged | Current WIP is formatter-clean |
+| 2026-08-28T09:17:13-03:00 | worktree | `make test WHAT=all FILE=tests/unit/codegen/test_codegen_ci_matrix.py` from `flext-infra` | PASS: 21 tests | Removed `ci_matrix_auto_run`; static dispatch-only CI matrix and generated project consumers are green |
+| 2026-08-28T09:18:44-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 5 files reformatted, 885 unchanged | Merge-adopted Mise source/tests and the CI policy cut are formatter-clean |
 
 ## Unresolved boundaries
 

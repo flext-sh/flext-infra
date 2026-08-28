@@ -953,8 +953,7 @@ class TestCodegenConform:
         tm.that(rendered.infra_repository.distribution, eq=config.Infra.name)
         tm.that(
             rendered.infra_repository.url,
-            eq=f"{u.Tests.provider().base_url.rstrip('/')}"
-            f"/{config.Infra.name}.git",
+            eq=f"{u.Tests.provider().base_url.rstrip('/')}/{config.Infra.name}.git",
         )
         tm.that(rendered.infra_source_root_rel, eq=None)
 
@@ -971,9 +970,7 @@ class TestCodegenConform:
             subprojects=(infra_repository,),
         )
         target = _conform_target(
-            tmp_path,
-            workspace_repository,
-            make_profile=c.Infra.MakeProfile.WORKSPACE,
+            tmp_path, workspace_repository, make_profile=c.Infra.MakeProfile.WORKSPACE
         )
         tooling_runtime = tm.ok(
             FlextInfraPyprojectModernizer(

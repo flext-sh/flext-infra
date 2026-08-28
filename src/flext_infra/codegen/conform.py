@@ -1488,7 +1488,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         dist, codegen.checkout_submodules
                     ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
-                    ci_matrix_auto_run=target.ci_matrix_auto_run,
                 )
             )
         destination_path = Path(destination)

@@ -68,10 +68,7 @@ class TestsCodegenBeadsProjection:
         tm.that(metadata["database"], eq="dolt")
         tm.that(metadata["backend"], eq="dolt")
         tm.that(metadata["dolt_database"], eq="project_database")
-        tm.that(
-            set(metadata),
-            eq={"database", "backend", "dolt_database"},
-        )
+        tm.that(set(metadata), eq={"database", "backend", "dolt_database"})
         forbidden = ("host", "port", "user", "mode", "shared-server")
         for value in forbidden:
             tm.that(value in rendered_config, eq=False)

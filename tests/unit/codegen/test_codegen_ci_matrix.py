@@ -376,7 +376,7 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="branches: [dev]")
 
     def test_ci_matrix_template_defaults_dispatch_only(self) -> None:
-        """SSOT template gates main-push auto-run behind ci_matrix_auto_run."""
+        """The SSOT template is statically dispatch-only for every profile."""
         template = (
             Path(__file__).resolve().parents[3]
             / "src"
@@ -392,54 +392,14 @@ class TestCodegenCiMatrix:
         triggers = content.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
-        tm.that(triggers, has="{%- if ci_matrix_auto_run %}")
-        tm.that(triggers, has="branches: [main]")
         tm.that(triggers, has="workflow_dispatch: {}")
+        tm.that(triggers, lacks="branches: [main]")
         tm.that(triggers, lacks="pull_request:")
         tm.that(triggers, lacks="repository_branch")
         tm.that(triggers, lacks="0.12.0-dev")
         tm.that(triggers, lacks="develop")
         tm.that(triggers, lacks="branches: [dev]")
         tm.that(content, lacks="{% if make_profile")
-
-    def test_ci_matrix_overlay_enables_main_push_auto_run(self) -> None:
-        """repository_policy_overlays.ci_matrix_auto_run restores push to main."""
-        from flext_infra import m
-        from flext_cli import u as cli_u
-
-        codegen = config.Infra.codegen
-        tpl = (
-            Path(__file__).resolve().parents[3]
-            / "src/flext_infra/templates/project/base/.github/workflows/ci-matrix.yml.j2"
-        )
-        disabled = m.Infra.GithubWorkflowRenderSpec(
-            dist="flext-demo",
-            make_profile=c.Infra.MakeProfile.STANDALONE,
-            repository_branch="develop",
-            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
-            python_version=codegen.toolchain.python_version,
-            mise_version=codegen.toolchain.mise_version,
-            dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-            github_actions=codegen.github_actions,
-            make=codegen.make,
-            workspace_repositories=(),
-            checkout_submodules=codegen.checkout_submodules,
-            ci_matrix_auto_run=False,
-        )
-        enabled = disabled.model_copy(update={"ci_matrix_auto_run": True})
-        disabled_text = tm.ok(cli_u.Cli.template_render(tpl, disabled))
-        enabled_text = tm.ok(cli_u.Cli.template_render(tpl, enabled))
-        disabled_triggers = disabled_text.split('"on":', maxsplit=1)[1].split(
-            "# End SECTION: triggers", maxsplit=1
-        )[0]
-        enabled_triggers = enabled_text.split('"on":', maxsplit=1)[1].split(
-            "# End SECTION: triggers", maxsplit=1
-        )[0]
-        tm.that(disabled_triggers, has="workflow_dispatch: {}")
-        tm.that(disabled_triggers, lacks="branches: [main]")
-        tm.that(enabled_triggers, has="branches: [main]")
-        tm.that(enabled_triggers, has="workflow_dispatch: {}")
-        tm.that(enabled_triggers, lacks="pull_request:")
 
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path
