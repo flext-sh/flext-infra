@@ -707,17 +707,17 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        if workspace_root:
-            workspace_table = u.Cli.toml_table_child(uv, "workspace")
-            if workspace_table is None:
-                workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(
-                workspace_table,
-                "members",
-                tuple(member.path.as_posix() for member in workspace.subprojects),
-            )
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "workspace")
+        # A standalone checkout is an empty uv workspace root. Without this
+        # marker, uv walks upward and may mutate an unrelated parent lockfile.
+        members = (
+            tuple(member.path.as_posix() for member in workspace.subprojects)
+            if workspace_root
+            else ()
+        )
+        workspace_table = u.Cli.toml_table_child(uv, "workspace")
+        if workspace_table is None:
+            workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
+        u.Cli.toml_sync_string_list(workspace_table, "members", members)
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None and workspace_root:
             sources = u.Cli.toml_ensure_table(uv, "sources")

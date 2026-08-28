@@ -22,9 +22,9 @@
 		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
 		exit 2; \
 	}; \
-	"$$mise" trust "$$project_root/.mise.toml"; \
-	"$$mise" -C "$$project_root" install --locked --yes; \
-	uv_actual=$$("$$mise" -C "$$project_root" exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
+	$(MISE_PROJECT_CONFIG_ENV) "$$mise" trust "$$project_root/.mise.toml"; \
+	$(MISE_PROJECT_CONFIG_ENV) "$$mise" -C "$$project_root" install --locked --yes; \
+	uv_actual=$$($(MISE_PROJECT_CONFIG_ENV) "$$mise" -C "$$project_root" exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
 	case "$$uv_actual" in \
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
