@@ -114,7 +114,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
-        sources_result = cls._sync_uv_sources(source)
+        sources_result = cls._sync_uv_sources(source, manage_repository_policy=False)
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
         rendered = u.Cli.toml_dumps(source)
@@ -448,6 +448,7 @@ class FlextInfraUtilitiesPyprojectConform:
         cls,
         document: t.Cli.TomlDocument,
         *,
+        manage_repository_policy: bool = True,
         link_mode: str | None = None,
         exclude_newer: str | None = None,
         exclude_newer_packages: t.StrSequence = (),
@@ -455,24 +456,21 @@ class FlextInfraUtilitiesPyprojectConform:
         exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[bool]:
         """Keep repository-local uv policy and remove topology projections."""
+        has_repository_policy = bool(
+            link_mode
+            or exclude_newer
+            or exclude_newer_packages
+            or exclude_newer_overrides
+            or exclude_dependencies
+        )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if (
-                link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
+            if not manage_repository_policy or not has_repository_policy:
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if (
-                link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
+            if not manage_repository_policy or not has_repository_policy:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
@@ -490,9 +488,9 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         else:
             u.Cli.toml_remove_key_if_present(uv, "constraint-dependencies")
-        if link_mode is not None:
+        if manage_repository_policy and link_mode is not None:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
-        if exclude_newer is not None:
+        if manage_repository_policy and exclude_newer is not None:
             u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
         # Two shapes share this uv key. A bare exemption is `false` (waive the
         # cooldown entirely, for a reviewed security floor). An override is a
@@ -505,10 +503,13 @@ class FlextInfraUtilitiesPyprojectConform:
             sorted(exclude_newer_packages), False
         )
         exclude_newer_payload.update(sorted(exclude_newer_overrides.items()))
-        if exclude_newer_payload:
-            u.Cli.toml_sync_value(uv, "exclude-newer-package", exclude_newer_payload)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
+        if manage_repository_policy:
+            if exclude_newer_payload:
+                u.Cli.toml_sync_value(
+                    uv, "exclude-newer-package", exclude_newer_payload
+                )
+            else:
+                u.Cli.toml_remove_key_if_present(uv, "exclude-newer-package")
         # Project is a flext-infra routing key only; uv scoped form is
         # {package={name, version?}, dependencies=[...]} (uv settings docs).
         # Emit on every owning pyproject so standalone CI clones resolve;
@@ -525,10 +526,11 @@ class FlextInfraUtilitiesPyprojectConform:
                 for item in exclude_dependencies
             ])
         )
-        if exclude_payload:
-            u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
+        if manage_repository_policy:
+            if exclude_payload:
+                u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
+            else:
+                u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
         u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None:

@@ -202,3 +202,37 @@ class TestsFlextInfraDepsExtraPathsSync:
         tm.that(changes, eq=[])
         changes_again = manager.sync_doc(doc, project_dir=tmp_path, is_root=True)
         tm.that(changes_again, eq=[])
+
+    @pytest.mark.parametrize(
+        ("declared_python_dirs", "expected_mypy"),
+        [((), ["."]), (("src", "tests"), ["src", "."])],
+    )
+    def test_sync_payload_honors_complete_declared_python_dirs(
+        self,
+        tmp_path: Path,
+        declared_python_dirs: t.StrSequence,
+        expected_mypy: list[str],
+    ) -> None:
+        """Disk contents cannot widen or narrow a complete root declaration."""
+        (tmp_path / "src").mkdir()
+        payload: t.MutableJsonMapping = {
+            "tool": {"pyright": {"extraPaths": []}, "mypy": {"mypy_path": ["stale"]}}
+        }
+
+        changes = _manager(tmp_path).sync_payload(
+            payload,
+            project_dir=tmp_path,
+            is_root=True,
+            declared_python_dirs=declared_python_dirs,
+        )
+
+        tm.that(changes, contains="synchronized mypy mypy_path")
+        tool = u.Cli.toml_mapping_child(payload, "tool")
+        tm.that(tool, none=False)
+        if tool is None:
+            return
+        mypy = u.Cli.toml_mapping_child(tool, "mypy")
+        tm.that(mypy, none=False)
+        if mypy is None:
+            return
+        tm.that(u.Cli.json_as_sequence(mypy.get("mypy_path")), eq=expected_mypy)

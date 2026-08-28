@@ -113,6 +113,20 @@ class FlextInfraExtraPathsManager(
             return (source_root, *ordered)
         return tuple(ordered)
 
+    @staticmethod
+    @override
+    def declared_search_paths(
+        declared_python_dirs: t.StrSequence,
+        *,
+        source_dir: str,
+        shared_search_paths: t.StrSequence,
+    ) -> t.StrSequence:
+        """Derive import search paths from one complete analyzer-root declaration."""
+        source_roots = (source_dir,) if source_dir in declared_python_dirs else ()
+        remaining = {*shared_search_paths}
+        remaining.discard(source_dir)
+        return (*source_roots, *sorted(remaining))
+
     def pyrefly_project_includes(self, *, project_dir: Path) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules

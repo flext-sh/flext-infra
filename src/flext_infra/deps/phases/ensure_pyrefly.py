@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-
-if TYPE_CHECKING:
-    from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
 
 class FlextInfraEnsurePyreflyConfigPhase:
@@ -44,25 +41,13 @@ class FlextInfraEnsurePyreflyConfigPhase:
         # flext-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
         if declared_python_dirs_are_complete:
-            declared_import_roots = (
-                (pyrefly_rules.path_rules.source_dir,)
-                if pyrefly_rules.path_rules.source_dir in declared_python_dirs
-                else ()
+            expected_search = FlextInfraExtraPathsManager.declared_search_paths(
+                declared_python_dirs,
+                source_dir=pyrefly_rules.path_rules.source_dir,
+                shared_search_paths=(
+                    pyrefly_rules.path_rules.project_shared_search_paths
+                ),
             )
-            # Why (ai-hub-qwoc, fleet-wide fix): sorted({...}) places "."
-            # before "src" (ASCII '.' < 's'), so pyrefly resolves every
-            # module twice (ai_hub.X via src AND src.ai_hub.X via "."),
-            # producing phantom bad-argument-type errors. The declared
-            # source import root must stay first; everything else (typically
-            # ".", for tests.* resolution) sorts after it.
-            merged_search = {
-                *expected_search,
-                *pyrefly_rules.path_rules.project_shared_search_paths,
-            }
-            if not declared_import_roots:
-                merged_search.discard(pyrefly_rules.path_rules.source_dir)
-            merged_search.difference_update(declared_import_roots)
-            expected_search = [*declared_import_roots, *sorted(merged_search)]
             # NOTE (multi-agent, flext-wkii.17.9.2.1): analysis roots belong in
             # project-includes; only import roots belong in search-path.
             expected_includes = tuple(

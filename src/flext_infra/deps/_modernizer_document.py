@@ -232,7 +232,14 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if effective_paths_manager is not None:
             changes.extend(
                 effective_paths_manager.sync_payload(
-                    payload, project_dir=path.parent, is_root=is_root
+                    payload,
+                    project_dir=path.parent,
+                    is_root=is_root,
+                    declared_python_dirs=(
+                        declared_python_dirs
+                        if declared_python_dirs_are_complete
+                        else None
+                    ),
                 )
             )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)

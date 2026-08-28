@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, config, u
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,6 +21,7 @@ class FlextInfraExtraPathsSyncMixin:
         # Provided by the concrete FlextInfraExtraPathsManager / its base; declared
         # for static resolution only so they don't shadow the runtime implementations.
         root: Path
+        declared_search_paths: Callable[..., t.StrSequence]
         pyright_extra_paths: Callable[..., t.StrSequence]
         pyrefly_search_paths: Callable[..., t.StrSequence]
 
@@ -66,7 +67,12 @@ class FlextInfraExtraPathsSyncMixin:
         return changes
 
     def sync_payload(
-        self, payload: t.MutableJsonMapping, *, project_dir: Path, is_root: bool
+        self,
+        payload: t.MutableJsonMapping,
+        *,
+        project_dir: Path,
+        is_root: bool,
+        declared_python_dirs: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply computed extra paths to one normalized TOML payload."""
         expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
@@ -87,10 +93,21 @@ class FlextInfraExtraPathsSyncMixin:
         # Mypy resolves the same import graph as Pyrefly, so it needs the same
         # roots. pyright_extra_paths omits path dependencies, which left sibling
         # packages unresolvable and degraded every symbol they export to Any.
+        expected_mypy = (
+            self.declared_search_paths(
+                declared_python_dirs,
+                source_dir=config.Infra.tooling.tools.pyrefly.path_rules.source_dir,
+                shared_search_paths=(
+                    config.Infra.tooling.tools.pyrefly.path_rules.project_shared_search_paths
+                ),
+            )
+            if declared_python_dirs is not None
+            else self.pyrefly_search_paths(project_dir=project_dir, is_root=is_root)
+        )
         if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
-            self.pyrefly_search_paths(project_dir=project_dir, is_root=is_root),
+            expected_mypy,
         ):
             changes.append("synchronized mypy mypy_path")
         return changes
