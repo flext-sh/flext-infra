@@ -382,6 +382,15 @@ Infra:
           - "*.pstats"
       docs:
         api_modules:
+          ai-hub:
+            - api
+            - base
+            - cli
+            - constants
+            - models
+            - protocols
+            - typings
+            - utilities
           flext-infra:
             - api
             - base
