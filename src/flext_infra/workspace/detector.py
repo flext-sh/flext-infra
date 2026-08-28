@@ -80,6 +80,26 @@ class FlextInfraWorkspaceDetector(
         """Resolve one configured provider, failing closed when none owns the URL."""
         return u.Infra.remote_provider(url, config.Infra.codegen.providers)
 
+    @classmethod
+    def _repository_origin_url(
+        cls,
+        repository_root: Path,
+        *,
+        path: Path = Path(),
+        declared_url: str | None = None,
+    ) -> p.Result[str]:
+        """Return the origin after proving any declared Git identity agrees."""
+        origin = cls._git_origin_url(repository_root)
+        if origin.failure:
+            return r[str].fail(origin.error)
+        if declared_url is not None and u.Infra.git_remote_identity(
+            origin.value
+        ) != u.Infra.git_remote_identity(declared_url):
+            return r[str].fail(
+                f"subproject origin differs from its .gitmodules URL: {path.as_posix()}"
+            )
+        return r[str].ok(origin.value)
+
     @staticmethod
     def _gitmodule_contract(
         workspace_root: Path, subproject_path: Path
@@ -112,15 +132,11 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail(
                 metadata.error or f"unable to read project metadata: {repository_root}"
             )
-        origin = cls._git_origin_url(repository_root)
+        origin = cls._repository_origin_url(
+            repository_root, path=path, declared_url=declared_url
+        )
         if origin.failure:
             return r[m.Infra.RepositoryRef].fail(origin.error)
-        if declared_url is not None and u.Infra.git_remote_identity(
-            origin.value
-        ) != u.Infra.git_remote_identity(declared_url):
-            return r[m.Infra.RepositoryRef].fail(
-                f"subproject origin differs from its .gitmodules URL: {path.as_posix()}"
-            )
         effective_url = declared_url or origin.value
         provider_result = cls._provider_for_url(effective_url)
         if provider_result.failure:
@@ -163,6 +179,7 @@ class FlextInfraWorkspaceDetector(
                 declared.error or "unable to read local .gitmodules"
             )
         subprojects: list[m.Infra.RepositoryRef] = []
+        external: list[Path] = []
         seen: set[Path] = set()
         for path in declared.value:
             if path in seen:
@@ -173,15 +190,18 @@ class FlextInfraWorkspaceDetector(
             loaded = cls._load_subproject(repository_root, path)
             if loaded.failure:
                 return result_type.fail(loaded.error)
+            if isinstance(loaded.value, Path):
+                external.append(loaded.value)
+                continue
             subprojects.append(loaded.value)
-        return result_type.ok((tuple(subprojects), ()))
+        return result_type.ok((tuple(subprojects), tuple(external)))
 
     @classmethod
     def _load_subproject(
         cls, repository_root: Path, path: Path
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Validate and load one governed entry without external fallthrough."""
-        result_type = r[m.Infra.RepositoryRef]
+    ) -> p.Result[m.Infra.RepositoryRef | Path]:
+        """Load one governed Python entry or classify its non-Python checkout."""
+        result_type = r[m.Infra.RepositoryRef | Path]
         if path.is_absolute() or not path.parts or ".." in path.parts:
             return result_type.fail(f"invalid .gitmodules path: {path.as_posix()}")
         contract = cls._gitmodule_contract(repository_root, path)
@@ -208,6 +228,13 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(
                 f"governed subproject checkout is missing: {path.as_posix()}"
             )
+        origin = cls._repository_origin_url(
+            subproject_root, path=path, declared_url=declared_url
+        )
+        if origin.failure:
+            return result_type.fail(origin.error)
+        if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
+            return result_type.ok(path)
         beads = cls.load_beads_spec(subproject_root)
         if beads.failure:
             return result_type.fail(beads.error)

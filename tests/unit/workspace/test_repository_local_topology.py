@@ -262,6 +262,52 @@ class TestsRepositoryLocalTopology:
             )
             tm.that((beads.workspace, beads.database, beads.issue_prefix), eq=identity)
 
+    def test_workspace_excludes_governed_non_python_gitlinks_from_codegen(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep provider-owned services outside Python conformance ownership."""
+        root = tmp_path / "workspace"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="root-workspace",
+            database="root-database",
+            issue_prefix="root-prefix",
+        )
+        python_project = "fixture-python"
+        WorktreeFixture.initialize_governed_project(
+            root / python_project,
+            python_project,
+            workspace="python-workspace",
+            database="python-database",
+            issue_prefix="python-prefix",
+        )
+        service_project = "fixture-service"
+        service_root = root / service_project
+        service_root.mkdir()
+        (service_root / "go.mod").write_text(
+            "module github.com/flext-sh/fixture-service\n", encoding="utf-8"
+        )
+        u.Tests.initialize_git_repo(
+            service_root,
+            origin_url=WorktreeFixture.governed_repository_url(service_project),
+        )
+        WorktreeFixture.write_gitmodules(
+            root, (python_project, service_project)
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(
+            tuple(project.path.as_posix() for project in workspace.subprojects),
+            eq=(python_project,),
+        )
+        tm.that(workspace.external_dependency_paths, eq=(Path(service_project),))
+        tm.that(
+            FlextInfraWorkspaceDetector.workspace_analysis_exclusion_paths(workspace),
+            eq=(Path(service_project),),
+        )
+
     def test_invalid_repository_path_fails_closed(self, tmp_path: Path) -> None:
         """Return a typed failure for a path that is not a repository directory."""
         result = FlextInfraWorkspaceDetector().detect(tmp_path / "absent")
