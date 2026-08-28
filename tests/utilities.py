@@ -424,11 +424,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def write_beads_project(
-            repository: Path,
-            *,
-            workspace: str,
-            database: str,
-            issue_prefix: str,
+            repository: Path, *, workspace: str, database: str, issue_prefix: str
         ) -> Path:
             """Write the typed repository-local Beads identity fixture."""
             path = repository / "config" / "beads.yaml"
@@ -570,16 +566,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return project_dir
 
         @staticmethod
-        def write_project_beads_config(
-            project_dir: Path,
-            name: str,
-        ) -> Path:
+        def write_project_beads_config(project_dir: Path, name: str) -> Path:
             """Write a standalone project's required local topology input."""
             return TestsFlextInfraUtilities.Tests.write_beads_project(
-                project_dir,
-                workspace=name,
-                database=name,
-                issue_prefix=name,
+                project_dir, workspace=name, database=name, issue_prefix=name
             )
 
         @staticmethod

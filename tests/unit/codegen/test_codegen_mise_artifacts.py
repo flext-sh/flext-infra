@@ -86,11 +86,7 @@ class TestsCodegenMiseArtifacts:
             lines.extend((
                 "",
                 f'[tools."{selector}"."platforms.{platform}"]',
-                *(
-                    (f'checksum = "sha256:{checksum}"',)
-                    if include_checksum
-                    else ()
-                ),
+                *((f'checksum = "sha256:{checksum}"',) if include_checksum else ()),
                 f'url = "https://example.invalid/{platform}/tool"',
             ))
         if extra_lock_selector is not None:
@@ -101,9 +97,7 @@ class TestsCodegenMiseArtifacts:
                 f'backend = "{extra_lock_selector}"',
                 'specifiers = ["9.9"]',
             ))
-        (root / "mise.lock").write_text(
-            "\n".join((*lines, "")), encoding="utf-8"
-        )
+        (root / "mise.lock").write_text("\n".join((*lines, "")), encoding="utf-8")
 
     @classmethod
     def _project(
@@ -139,10 +133,7 @@ class TestsCodegenMiseArtifacts:
         tm.ok(result, eq=True)
 
     def test_missing_platform_checksum_is_rejected(self, tmp_path: Path) -> None:
-        root = self._project(
-            tmp_path / "project",
-            include_checksum=False,
-        )
+        root = self._project(tmp_path / "project", include_checksum=False)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "workspace_root": root,
@@ -157,9 +148,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", include_checksum=False)
         commands: list[tuple[str, ...]] = []
 
-        def run_raw(
-            command: tuple[str, ...], *, cwd: Path
-        ) -> r[m.Cli.CommandOutput]:
+        def run_raw(command: tuple[str, ...], *, cwd: Path) -> r[m.Cli.CommandOutput]:
             commands.append(command)
             output_index = command.index("--output") + 1
             artifact = Path(command[output_index])
@@ -184,8 +173,7 @@ class TestsCodegenMiseArtifacts:
         tm.ok(check_result, eq=True)
         tm.that(commands, len=len(config.Infra.codegen.toolchain.mise_lock_platforms))
         tm.that(
-            (root / "mise.lock").read_text(encoding="utf-8"),
-            has='checksum = "sha256:',
+            (root / "mise.lock").read_text(encoding="utf-8"), has='checksum = "sha256:'
         )
 
     def test_explicit_apply_rejects_unsafe_checksum_source(
@@ -208,10 +196,7 @@ class TestsCodegenMiseArtifacts:
         tm.fail(result, has="not safe")
 
     def test_missing_declared_platform_is_rejected(self, tmp_path: Path) -> None:
-        root = self._project(
-            tmp_path / "project",
-            platforms=("linux-x64",),
-        )
+        root = self._project(tmp_path / "project", platforms=("linux-x64",))
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "workspace_root": root,
@@ -222,8 +207,7 @@ class TestsCodegenMiseArtifacts:
 
     def test_lock_tool_set_must_equal_generated_config(self, tmp_path: Path) -> None:
         root = self._project(
-            tmp_path / "project",
-            extra_lock_selector="github:example/other",
+            tmp_path / "project", extra_lock_selector="github:example/other"
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
@@ -254,9 +238,7 @@ class TestsCodegenMiseArtifacts:
             if platform not in excluded
         )
         root = self._project(
-            tmp_path / "project",
-            selector="ast-grep",
-            platforms=platforms,
+            tmp_path / "project", selector="ast-grep", platforms=platforms
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({

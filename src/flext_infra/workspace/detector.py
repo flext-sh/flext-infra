@@ -86,8 +86,7 @@ class FlextInfraWorkspaceDetector(
         """Read one exact URL/branch pair from the local ``.gitmodules``."""
         contract = u.Infra.gitmodule_contract(
             m.Infra.GitSubmoduleContractRequest(
-                repo_root=workspace_root,
-                member_path=subproject_path.as_posix(),
+                repo_root=workspace_root, member_path=subproject_path.as_posix()
             )
         )
         if contract.failure:
@@ -110,20 +109,16 @@ class FlextInfraWorkspaceDetector(
         metadata = u.read_project_metadata(repository_root)
         if metadata.failure:
             return r[m.Infra.RepositoryRef].fail(
-                metadata.error
-                or f"unable to read project metadata: {repository_root}"
+                metadata.error or f"unable to read project metadata: {repository_root}"
             )
         origin = cls._git_origin_url(repository_root)
         if origin.failure:
             return r[m.Infra.RepositoryRef].fail(origin.error)
-        if (
-            declared_url is not None
-            and u.Infra.git_remote_identity(origin.value)
-            != u.Infra.git_remote_identity(declared_url)
-        ):
+        if declared_url is not None and u.Infra.git_remote_identity(
+            origin.value
+        ) != u.Infra.git_remote_identity(declared_url):
             return r[m.Infra.RepositoryRef].fail(
-                "subproject origin differs from its .gitmodules URL: "
-                f"{path.as_posix()}"
+                f"subproject origin differs from its .gitmodules URL: {path.as_posix()}"
             )
         effective_url = declared_url or origin.value
         provider_result = cls._provider_for_url(effective_url)
@@ -161,9 +156,7 @@ class FlextInfraWorkspaceDetector(
     ) -> p.Result[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]:
         """Validate every direct governed .gitmodules entry before planning writes."""
         declared = u.Infra.git_declared_submodule_paths(repository_root)
-        result_type = r[
-            tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]
-        ]
+        result_type = r[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]
         if declared.failure:
             return result_type.fail(
                 declared.error or "unable to read local .gitmodules"
@@ -177,9 +170,7 @@ class FlextInfraWorkspaceDetector(
                 )
             seen.add(path)
             if path.is_absolute() or not path.parts or ".." in path.parts:
-                return result_type.fail(
-                    f"invalid .gitmodules path: {path.as_posix()}"
-                )
+                return result_type.fail(f"invalid .gitmodules path: {path.as_posix()}")
             contract = cls._gitmodule_contract(repository_root, path)
             if contract.failure:
                 return result_type.fail(contract.error)
@@ -220,10 +211,7 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def load_workspace_spec(
-        cls,
-        repository_root: Path,
-        *,
-        project_metadata: p.ProjectMetadata | None = None,
+        cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.WorkspaceSpec]:
         """Load local identity and validate local, read-only Git topology."""
         del project_metadata
@@ -324,9 +312,7 @@ class FlextInfraWorkspaceDetector(
         """Return the requested checkout; parent and primary trees are irrelevant."""
         resolved_root = repository_root.expanduser().resolve()
         if not resolved_root.is_dir():
-            return r[Path].fail(
-                f"repository root is not a directory: {resolved_root}"
-            )
+            return r[Path].fail(f"repository root is not a directory: {resolved_root}")
         return r[Path].ok(resolved_root)
 
     @staticmethod

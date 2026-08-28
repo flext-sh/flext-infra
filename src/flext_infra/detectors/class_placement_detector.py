@@ -24,8 +24,6 @@ class FlextInfraClassPlacementDetector:
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
         """Detect classes and class-level constants outside canonical families."""
-        if u.Infra.matches_root_namespace_file(ctx.file_path.name):
-            return []
         res = u.Infra.fetch_python_resource(
             ctx.rope_project, ctx.file_path, skip_protected=True, skip_settings=True
         )

@@ -45,10 +45,7 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def configured_repository_ref(
-        cls,
-        distribution: str,
-        *,
-        codegen: m.Infra.CodegenConfigSpec,
+        cls, distribution: str, *, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Derive one repository from the unique provider selected by config."""
         source = codegen.infra_repository

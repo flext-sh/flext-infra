@@ -313,8 +313,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 target = current_target
                 local_workspace = workspace
             else:
-                local_workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                    repository_root
+                local_workspace_result = (
+                    FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
                 )
                 if local_workspace_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
@@ -781,9 +781,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Why (flext-6itas.4): a scaffold's declared roots are the complete
         # future topology only for a subproject/standalone target; a workspace
         # root aggregates subproject trees it has not declared here.
-        declared_python_dirs_are_complete = (
-            profile is not c.Infra.MakeProfile.WORKSPACE
-        )
+        declared_python_dirs_are_complete = profile is not c.Infra.MakeProfile.WORKSPACE
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
@@ -1347,9 +1345,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if matches:
             return r[m.Infra.RepositoryRef].ok(matches[0])
-        return u.Infra.configured_repository_ref(
-            source.distribution, codegen=codegen
-        )
+        return u.Infra.configured_repository_ref(source.distribution, codegen=codegen)
 
     @staticmethod
     def _repository_provider(
@@ -1371,7 +1367,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
                 return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].fail(
-                    provider.error or f"subproject provider is invalid: {repository.name}"
+                    provider.error
+                    or f"subproject provider is invalid: {repository.name}"
                 )
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
@@ -2244,9 +2241,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
         del workspace_root
-        workspace_environment = (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE
-        )
+        workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
         editable_repositories: tuple[m.Infra.RepositoryRef, ...] = ()

@@ -11,8 +11,7 @@ from tests import u as test_u
 
 _PROVIDER_SPEC = tm.ok(
     u.Infra.repository_provider(
-        test_u.Tests.repository_ref("provider-fixture"),
-        config.Infra.codegen.providers,
+        test_u.Tests.repository_ref("provider-fixture"), config.Infra.codegen.providers
     )
 )
 
@@ -82,9 +81,7 @@ def _workspace() -> m.Infra.WorkspaceSpec:
         ),
         subprojects=(
             _repository(
-                "flext-core",
-                role=c.Infra.RepositoryRole.STANDALONE,
-                path="flext-core",
+                "flext-core", role=c.Infra.RepositoryRole.STANDALONE, path="flext-core"
             ),
         ),
     )
@@ -143,7 +140,9 @@ workspace = true
         document = tomllib.loads(tm.ok(result))
         tm.that(
             document["project"]["dependencies"],
-            eq=[f"flext-core @ git+{provider.base_url}/flext-core.git@{provider.branch}"],
+            eq=[
+                f"flext-core @ git+{provider.base_url}/flext-core.git@{provider.branch}"
+            ],
         )
 
     def test_bare_internal_dependency_requires_exactly_one_configured_provider(
@@ -169,8 +168,7 @@ workspace = true
             )
 
             tm.fail(
-                result,
-                has="configured repository provider must resolve exactly once",
+                result, has="configured repository provider must resolve exactly once"
             )
 
     def test_standalone_resolves_explicit_https_internal_dependency(self) -> None:
@@ -192,10 +190,7 @@ workspace = true
             f"flext-core @ git+{provider.base_url.rstrip('/')}/"
             f"flext-core.git@{provider.branch}"
         )
-        tm.that(
-            document["project"]["dependencies"],
-            eq=[expected],
-        )
+        tm.that(document["project"]["dependencies"], eq=[expected])
 
     def test_standalone_resolves_explicit_ssh_internal_dependency(self) -> None:
         workspace = _workspace().model_copy(update={"subprojects": ()})
@@ -216,10 +211,7 @@ workspace = true
             f"flext-core @ git+{provider.base_url.rstrip('/')}/"
             f"flext-core.git@{provider.branch}"
         )
-        tm.that(
-            document["project"]["dependencies"],
-            eq=[expected],
-        )
+        tm.that(document["project"]["dependencies"], eq=[expected])
 
     def test_standalone_rejects_explicit_internal_dependency_identity_mismatch(
         self,

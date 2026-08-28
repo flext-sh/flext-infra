@@ -25,8 +25,7 @@ class TestsFlextInfraCodegenLazyInitService:
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
         unit_root.joinpath("test_live.py").write_text(
-            "def test_live() -> None:\n    pass\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            "def test_live() -> None:\n    pass\n", encoding=c.Cli.ENCODING_DEFAULT
         )
         service = u.Tests.create_lazy_init_service(workspace_root)
         service.apply_changes = True

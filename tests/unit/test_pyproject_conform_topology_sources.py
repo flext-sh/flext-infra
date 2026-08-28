@@ -21,8 +21,7 @@ _ROLE = c.Infra.RepositoryRole
 # never from literals repeated in the test.
 _PROVIDER_SPEC = tm.ok(
     u.Infra.repository_provider(
-        tu.Tests.repository_ref("provider-fixture"),
-        config.Infra.codegen.providers,
+        tu.Tests.repository_ref("provider-fixture"), config.Infra.codegen.providers
     )
 )
 _PROVIDER = _PROVIDER_SPEC.name

@@ -136,9 +136,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if attached_workspace_root:
             sources_result = cls._validate_root_uv_sources(
-                source,
-                workspace=workspace,
-                codegen=codegen,
+                source, workspace=workspace, codegen=codegen
             )
             if sources_result.failure:
                 return r[str].fail(
@@ -268,10 +266,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item,
-                repositories=repositories,
-                codegen=codegen,
-                attached=attached,
+                item, repositories=repositories, codegen=codegen, attached=attached
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -372,8 +367,7 @@ class FlextInfraUtilitiesPyprojectConform:
         if not matches:
             if direct_url is None:
                 configured = FlextInfraUtilitiesRepository.configured_repository_ref(
-                    distribution,
-                    codegen=codegen,
+                    distribution, codegen=codegen
                 )
                 if configured.failure:
                     return r.fail(
@@ -386,9 +380,7 @@ class FlextInfraUtilitiesPyprojectConform:
                     remote.error or "internal dependency Git source is invalid"
                 )
             resolved = FlextInfraUtilitiesRepository.remote_repository_ref(
-                distribution,
-                url=remote.value,
-                providers=codegen.providers,
+                distribution, url=remote.value, providers=codegen.providers
             )
             if resolved.failure:
                 return r.fail(resolved.error or "repository resolution failed")
@@ -417,9 +409,7 @@ class FlextInfraUtilitiesPyprojectConform:
             else remote_with_revision
         )
         if not remote.endswith(".git"):
-            return r[str].fail(
-                "internal dependency Git source must end with .git"
-            )
+            return r[str].fail("internal dependency Git source must end with .git")
         return r[str].ok(remote)
 
     @staticmethod
@@ -732,9 +722,7 @@ class FlextInfraUtilitiesPyprojectConform:
             # TOML tables in place so conformance cannot accumulate blank trivia.
             if source_name.startswith(
                 codegen.infra_repository.internal_distribution_prefix
-            ) and (
-                not workspace_root or source_name not in workspace_names
-            ):
+            ) and (not workspace_root or source_name not in workspace_names):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if workspace_root:
             for member in workspace.subprojects:
@@ -749,19 +737,13 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @classmethod
     def _resolved_root_sources(
-        cls,
-        *,
-        workspace: p.Infra.WorkspaceSpec,
-        codegen: m.Infra.CodegenConfigSpec,
+        cls, *, workspace: p.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
         """Resolve the workspace source overlay from typed metadata."""
         candidates = (workspace.repository, *workspace.subprojects)
         for distribution in dict.fromkeys(item.distribution for item in candidates):
             reference_result = cls._repository_reference(
-                distribution,
-                direct_url=None,
-                repositories=candidates,
-                codegen=codegen,
+                distribution, direct_url=None, repositories=candidates, codegen=codegen
             )
             if reference_result.failure:
                 return r.fail(reference_result.error or "repository resolution failed")
@@ -799,15 +781,16 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         except c.ValidationError as exc:
             return r[bool].fail_op("validate root uv workspace members", exc)
-        expected_members = tuple(member.path.as_posix() for member in workspace.subprojects)
+        expected_members = tuple(
+            member.path.as_posix() for member in workspace.subprojects
+        )
         if tuple(members) != expected_members:
             return r[bool].fail("root uv workspace members differ from workspace SSOT")
         sources = uv.get("sources")
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
         resolved_result = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
-            workspace=workspace,
-            codegen=codegen,
+            workspace=workspace, codegen=codegen
         )
         if resolved_result.failure:
             return r[bool].fail(resolved_result.error or "repository resolution failed")
@@ -839,7 +822,9 @@ class FlextInfraUtilitiesPyprojectConform:
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
             return r[bool].fail("pyproject document is not a TOML mapping")
-        member_names = frozenset(member.distribution for member in workspace.subprojects)
+        member_names = frozenset(
+            member.distribution for member in workspace.subprojects
+        )
         raw_values: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):

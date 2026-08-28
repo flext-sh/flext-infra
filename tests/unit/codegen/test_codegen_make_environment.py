@@ -20,10 +20,7 @@ class TestsCodegenMakeEnvironment:
 
     @staticmethod
     def _render_makefile(
-        tmp_path: Path,
-        profile: c.Infra.MakeProfile,
-        *,
-        local_infra: bool = False,
+        tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
     ) -> tuple[Path, Path]:
         provider = test_u.Tests.provider()
         role = c.Infra.RepositoryRole(profile.value)
@@ -128,11 +125,7 @@ class TestsCodegenMakeEnvironment:
         (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
 
     @pytest.mark.parametrize(
-        "profile",
-        [
-            c.Infra.MakeProfile.WORKSPACE,
-            c.Infra.MakeProfile.STANDALONE,
-        ],
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         self, tmp_path: Path, profile: c.Infra.MakeProfile

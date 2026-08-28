@@ -45,8 +45,7 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.beads, eq=beads)
 
     @pytest.mark.parametrize(
-        "missing_field",
-        ["version", "workspace", "database", "issue_prefix"],
+        "missing_field", ["version", "workspace", "database", "issue_prefix"]
     )
     def test_beads_identity_requires_every_declared_field(
         self, tmp_path: Path, missing_field: str
@@ -190,9 +189,7 @@ class TestsRepositoryLocalTopology:
             beads = tm.ok(
                 FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
             )
-            tm.that(
-                (beads.workspace, beads.database, beads.issue_prefix), eq=identity
-            )
+            tm.that((beads.workspace, beads.database, beads.issue_prefix), eq=identity)
 
     def test_invalid_repository_path_fails_closed(self, tmp_path: Path) -> None:
         """Return a typed failure for a path that is not a repository directory."""
@@ -290,8 +287,7 @@ class TestsRepositoryLocalTopology:
             issue_prefix="fixture-workspace",
         )
         (root / c.Infra.GITMODULES).write_text(
-            '[submodule "unterminated"\npath = fixture-child\n',
-            encoding="utf-8",
+            '[submodule "unterminated"\npath = fixture-child\n', encoding="utf-8"
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
@@ -340,9 +336,7 @@ class TestsRepositoryLocalTopology:
 
         tm.fail(result, has="governed subproject checkout is missing")
 
-    def test_gitmodule_rejects_provider_branch_divergence(
-        self, tmp_path: Path
-    ) -> None:
+    def test_gitmodule_rejects_provider_branch_divergence(self, tmp_path: Path) -> None:
         """Reject a governed checkout declared on another integration line."""
         root = tmp_path / "branch-divergence"
         WorktreeFixture.initialize_governed_project(
@@ -446,11 +440,15 @@ class TestsRepositoryLocalTopology:
             "git@private-github-alias:flext-sh/fixture-project.git",
         ],
     )
-    def test_provider_resolution_reuses_semantic_git_identity(self, remote: str) -> None:
+    def test_provider_resolution_reuses_semantic_git_identity(
+        self, remote: str
+    ) -> None:
         """Resolve HTTPS, SSH, and SSH aliases through one owner identity."""
         provider = u.Tests.provider()
 
-        resolved = tm.ok(u.Infra.remote_provider(remote, config.Infra.codegen.providers))
+        resolved = tm.ok(
+            u.Infra.remote_provider(remote, config.Infra.codegen.providers)
+        )
 
         tm.that(resolved, eq=provider)
 
@@ -471,8 +469,7 @@ class TestsRepositoryLocalTopology:
         duplicate = provider.model_copy(update={"name": "duplicate-provider"})
 
         result = u.Infra.remote_provider(
-            "git@github-alias:flext-sh/fixture-project.git",
-            (provider, duplicate),
+            "git@github-alias:flext-sh/fixture-project.git", (provider, duplicate)
         )
 
         tm.fail(result, has="repository owner must resolve exactly once")

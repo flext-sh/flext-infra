@@ -63,14 +63,18 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.ok(infra.sync_environment_files(request))
         test_u.Tests.write_executable(
             workspace / "bin" / "mise",
-            "#!/bin/sh\nprintf 'injected Mise activation failure\\n' >&2\n"
-            "exit 42\n",
+            "#!/bin/sh\nprintf 'injected Mise activation failure\\n' >&2\nexit 42\n",
         )
         tm.ok(test_u.Cli.run_checked(["direnv", "allow", str(workspace)]))
         process = tm.ok(
-            test_u.Cli.run_raw(
-                ["direnv", "exec", str(workspace), "sh", "-c", "printf child-ran"]
-            )
+            test_u.Cli.run_raw([
+                "direnv",
+                "exec",
+                str(workspace),
+                "sh",
+                "-c",
+                "printf child-ran",
+            ])
         )
         tm.that(process.exit_code == 0, eq=False)
         tm.that(process.stderr, has="injected Mise activation failure")

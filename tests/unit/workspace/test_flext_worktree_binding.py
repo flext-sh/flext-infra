@@ -54,19 +54,11 @@ def _flext_workspace(tmp_path: Path) -> Path:
     """
     flext_root = tmp_path / "flext"
     WorktreeFixture.initialize_governed_project(
-        flext_root,
-        "flext",
-        workspace="flext",
-        database="flext",
-        issue_prefix="flext",
+        flext_root, "flext", workspace="flext", database="flext", issue_prefix="flext"
     )
     for name in ("flext-core", "flext-cli"):
         WorktreeFixture.initialize_governed_project(
-            flext_root / name,
-            name,
-            workspace=name,
-            database=name,
-            issue_prefix=name,
+            flext_root / name, name, workspace=name, database=name, issue_prefix=name
         )
     WorktreeFixture.write_gitmodules(flext_root, ("flext-core", "flext-cli"))
     return flext_root

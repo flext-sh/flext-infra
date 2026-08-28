@@ -204,12 +204,7 @@ class TestsCodegenCatalogExtensions:
         )
         tm.ok(
             u.Cli.run_checked(
-                [
-                    "git",
-                    "add",
-                    c.Infra.PYPROJECT_FILENAME,
-                    "config/beads.yaml",
-                ],
+                ["git", "add", c.Infra.PYPROJECT_FILENAME, "config/beads.yaml"],
                 cwd=member_root,
             )
         )
@@ -280,10 +275,7 @@ class TestsCodegenCatalogExtensions:
             )
         )
         WorktreeFixture.write_beads_project(
-            tmp_path,
-            workspace=root.name,
-            database=root.name,
-            issue_prefix=root.name,
+            tmp_path, workspace=root.name, database=root.name, issue_prefix=root.name
         )
         tm.ok(
             u.Cli.atomic_write_text_file(

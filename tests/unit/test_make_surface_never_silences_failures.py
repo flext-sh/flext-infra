@@ -90,7 +90,9 @@ class TestsFlextInfraMakeSurfaceNeverSilencesFailures:
         """The CQRS wrapper preserves a scanner crash instead of reporting green."""
         script = tmp_path / ".github" / "scripts" / "check-cqrs-compliance.sh"
         script.parent.mkdir(parents=True)
-        script.write_text(_cqrs_template().read_text(encoding="utf-8"), encoding="utf-8")
+        script.write_text(
+            _cqrs_template().read_text(encoding="utf-8"), encoding="utf-8"
+        )
         source = tmp_path / "demo" / "src"
         source.mkdir(parents=True)
         (source / "sample.py").write_text("value = 1\n", encoding="utf-8")

@@ -75,10 +75,7 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(projects[1].has_tests, eq=False)
         tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.ATTACHED)
         tm.that(
-            (
-                projects[1].workspace_role
-                == c.Infra.WorkspaceProjectRole.SUBPROJECT
-            ),
+            (projects[1].workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT),
             eq=True,
         )
 

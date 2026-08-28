@@ -207,9 +207,7 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(process.stderr, has="conflicting branch conflict")
         tm.that(_git_state(child), eq=("conflict", state[1]))
 
-    def test_unexpected_git_probe_failure_preserves_cause(
-        self, tmp_path: Path
-    ) -> None:
+    def test_unexpected_git_probe_failure_preserves_cause(self, tmp_path: Path) -> None:
         """A Git probe error is never reclassified as a missing remote ref."""
         workspace = _create_uninitialized_workspace(
             tmp_path, _render_workspace_root_makefile(tmp_path)

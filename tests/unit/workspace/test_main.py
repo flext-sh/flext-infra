@@ -38,17 +38,11 @@ def _write_project(project_root: Path, name: str) -> None:
 def _write_workspace(workspace_root: Path) -> None:
     workspace_root.mkdir(parents=True, exist_ok=True)
     (workspace_root / "pyproject.toml").write_text(
-        (
-            "[project]\n"
-            'name = "workspace-root"\n'
-            'version = "0.1.0"\n'
-        ),
-        encoding="utf-8",
+        ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
     )
     u.Tests.write_project_beads_config(workspace_root, "workspace-root")
     u.Tests.initialize_git_repo(
-        workspace_root,
-        origin_url=u.Tests.repository_ref("workspace-root").url,
+        workspace_root, origin_url=u.Tests.repository_ref("workspace-root").url
     )
     _write_project(workspace_root / "demo-a", "demo-a")
     WorktreeFixture.write_gitmodules(workspace_root, ("demo-a",))
@@ -60,17 +54,11 @@ def _write_orchestratable_workspace(
     """Build a workspace whose single member has a trivial ``make check``."""
     workspace_root.mkdir(parents=True, exist_ok=True)
     (workspace_root / "pyproject.toml").write_text(
-        (
-            "[project]\n"
-            'name = "workspace-root"\n'
-            'version = "0.1.0"\n'
-        ),
-        encoding="utf-8",
+        ('[project]\nname = "workspace-root"\nversion = "0.1.0"\n'), encoding="utf-8"
     )
     u.Tests.write_project_beads_config(workspace_root, "workspace-root")
     u.Tests.initialize_git_repo(
-        workspace_root,
-        origin_url=u.Tests.repository_ref("workspace-root").url,
+        workspace_root, origin_url=u.Tests.repository_ref("workspace-root").url
     )
     member_root = workspace_root / "demo"
     _write_project(member_root, "demo")
@@ -80,9 +68,7 @@ def _write_orchestratable_workspace(
         if capture_fail_fast
         else "\t@true\n"
     )
-    (member_root / "Makefile").write_text(
-        f"check:\n{check_recipe}", encoding="utf-8"
-    )
+    (member_root / "Makefile").write_text(f"check:\n{check_recipe}", encoding="utf-8")
 
     # Commit the member so the detector sees a real HEAD/gitlink pair.
     u.Tests.commit_git_changes(member_root, "fixture: standalone Makefile")

@@ -430,10 +430,7 @@ class TestsFlextInfraUtilitiesdiscoveryconsolidated:
         tm.ok(result)
         tm.that(len(result.value), eq=1)
         tm.that(
-            (
-                result.value[0].workspace_role
-                == c.Infra.WorkspaceProjectRole.SUBPROJECT
-            ),
+            (result.value[0].workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT),
             eq=True,
         )
 

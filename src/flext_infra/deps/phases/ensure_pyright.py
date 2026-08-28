@@ -373,10 +373,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             (
                 project.path
                 for project in discovered.value
-                if (
-                    project.workspace_role
-                    == c.Infra.WorkspaceProjectRole.SUBPROJECT
-                )
+                if (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
             ),
             key=lambda project_path: project_path.name,
         )

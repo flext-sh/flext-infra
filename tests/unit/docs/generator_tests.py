@@ -219,9 +219,7 @@ def test_configured_api_modules_own_generated_module_pages(tmp_path: Path) -> No
     """Generate only config-owned API modules, never modules inferred from exports."""
     project_name = config.Infra.name
     declared = config.Infra.codegen.make.docs.api_modules[project_name]
-    workspace = u.Tests.create_docs_workspace(
-        tmp_path, project_names=(project_name,)
-    )
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=(project_name,))
     project = workspace / project_name
     package = project / "src" / project_name.replace("-", "_")
     (package / "exported_but_undocumented.py").write_text(

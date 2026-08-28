@@ -135,13 +135,14 @@ class FlextInfraConfigModels:
         ]
         specifiers: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Source selectors resolved by this entry"),
+            m.Field(
+                min_length=1, description="Source selectors resolved by this entry"
+            ),
         ]
         platforms: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.MiseLockPlatformSpec],
             m.Field(
-                default_factory=dict,
-                description="Resolved platform download metadata",
+                default_factory=dict, description="Resolved platform download metadata"
             ),
         ]
 
@@ -152,10 +153,7 @@ class FlextInfraConfigModels:
             Literal[1], m.Field(description="Supported Mise lock schema version")
         ]
         tools: Annotated[
-            Mapping[
-                t.NonEmptyStr,
-                tuple[FlextInfraConfigModels.MiseLockToolSpec, ...],
-            ],
+            Mapping[t.NonEmptyStr, tuple[FlextInfraConfigModels.MiseLockToolSpec, ...]],
             m.Field(description="Exactly resolved generated tool set"),
         ]
 
@@ -1724,8 +1722,7 @@ class FlextInfraConfigModels:
             m.Field(description="Repository-local Beads identity"),
         ]
         canonical_project_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Canonical PEP 621 project name"),
+            t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
         baseline_branch: Annotated[
             t.NonEmptyStr,

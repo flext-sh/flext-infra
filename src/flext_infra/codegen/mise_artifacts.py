@@ -162,18 +162,13 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[str].fail("mise.lock contains an unsupported TOML key")
         selector_key = (
             selector
-            if all(
-                character.isalnum() or character in "_-" for character in selector
-            )
+            if all(character.isalnum() or character in "_-" for character in selector)
             else f'"{selector}"'
         )
         return r[str].ok(f'[tools.{selector_key}."platforms.{platform}"]')
 
     def _hydrate_source(
-        self,
-        source: str,
-        missing: tuple[tuple[str, str, str], ...],
-        scratch: Path,
+        self, source: str, missing: tuple[tuple[str, str, str], ...], scratch: Path
     ) -> p.Result[str]:
         """Download each unique URL and return lock text with complete checksums."""
         hydrated = source
@@ -224,9 +219,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                     f"mise.lock platform section is not unique for {selector}/{platform}"
                 )
             hydrated = hydrated.replace(
-                marker,
-                f'{marker}checksum = "sha256:{digest}"\n',
-                1,
+                marker, f'{marker}checksum = "sha256:{digest}"\n', 1
             )
         return r[str].ok(hydrated)
 
@@ -310,21 +303,15 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             "checksum_macos_arm64",
         )
         for checksum_name in shell_checksums:
-            if not cls._is_sha256(
-                cls._assignment(shell_source.value, checksum_name)
-            ):
-                return r[bool].fail(
-                    f"Mise launcher checksum missing: {checksum_name}"
-                )
+            if not cls._is_sha256(cls._assignment(shell_source.value, checksum_name)):
+                return r[bool].fail(f"Mise launcher checksum missing: {checksum_name}")
         if not cls._is_sha256(cls._assignment(windows_source.value, "sum_x64")):
             return r[bool].fail("Mise launcher checksum missing: windows-x64")
         return r[bool].ok(True)
 
     @staticmethod
     def _validate_lock(
-        lock: m.Infra.MiseLockSpec,
-        *,
-        configured_tools: t.StrMapping,
+        lock: m.Infra.MiseLockSpec, *, configured_tools: t.StrMapping
     ) -> p.Result[bool]:
         expected_tools = frozenset(configured_tools)
         actual_tools = frozenset(lock.tools)
@@ -338,14 +325,10 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         for selector in sorted(expected_tools):
             entries = lock.tools[selector]
             if len(entries) != 1:
-                return r[bool].fail(
-                    f"Mise lock must contain one entry for {selector}"
-                )
+                return r[bool].fail(f"Mise lock must contain one entry for {selector}")
             entry = entries[0]
             if configured_tools[selector] not in entry.specifiers:
-                return r[bool].fail(
-                    f"Mise lock specifier drift for {selector}"
-                )
+                return r[bool].fail(f"Mise lock specifier drift for {selector}")
             if selector.startswith("github:") and entry.backend != selector:
                 return r[bool].fail(f"Mise lock backend drift for {selector}")
             excluded = frozenset(

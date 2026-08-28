@@ -38,8 +38,7 @@ class TestGitHookConformance:
         """Load the smallest repository-local topology needed by conform."""
         test_u.Tests.write_project_beads_config(root, "flext-demo")
         (root / c.Infra.PYPROJECT_FILENAME).write_text(
-            '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
-            encoding="utf-8",
+            '[project]\nname = "flext-demo"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 

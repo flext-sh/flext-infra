@@ -88,22 +88,15 @@ class TestCodegenLinkedWorktreeTopology:
         ("beads_content", "expected_error"),
         [
             pytest.param(
-                None,
-                "repository-local Beads configuration is required",
-                id="missing",
+                None, "repository-local Beads configuration is required", id="missing"
             ),
             pytest.param(
-                "version: [\nworkspace: invalid\n",
-                "YAML parse error",
-                id="malformed",
+                "version: [\nworkspace: invalid\n", "YAML parse error", id="malformed"
             ),
         ],
     )
     def test_invalid_local_beads_identity_fails_before_any_write(
-        self,
-        tmp_path: Path,
-        beads_content: str | None,
-        expected_error: str,
+        self, tmp_path: Path, beads_content: str | None, expected_error: str
     ) -> None:
         """Fail planning atomically when the required local input is invalid."""
         root = tmp_path / "project"
@@ -181,9 +174,7 @@ class TestCodegenLinkedWorktreeTopology:
             beads = tm.ok(
                 FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
             )
-            tm.that(
-                (beads.workspace, beads.database, beads.issue_prefix), eq=identity
-            )
+            tm.that((beads.workspace, beads.database, beads.issue_prefix), eq=identity)
 
         applied = tm.ok(
             FlextInfraCodegenConform.execute_request(
