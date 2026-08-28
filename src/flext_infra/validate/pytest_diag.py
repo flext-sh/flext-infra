@@ -135,9 +135,13 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         return r[str].ok(log_read.value)
 
     @staticmethod
-    def _diagnostics_model(diag: m.Infra.DiagResult) -> m.Infra.PytestDiagnostics:
+    def _diagnostics_model(
+        diag: m.Infra.DiagResult, *, junit_parsed: bool
+    ) -> m.Infra.PytestDiagnostics:
         """Convert mutable extraction state to the canonical diagnostics model."""
         return m.Infra.PytestDiagnostics(
+            junit_parsed=junit_parsed,
+            test_count=diag.test_count,
             failed_count=len(diag.failed_cases),
             error_count=len(diag.error_cases),
             warning_count=len(diag.warning_lines),
@@ -166,7 +170,9 @@ class FlextInfraPytestDiagExtractor(FlextInfraPytestDiagXmlMixin, s[bool]):
         self._extract_warnings(lines, diag)
         if not diag.slow_entries:
             self._extract_slow_from_log(lines, diag)
-        return r[m.Infra.PytestDiagnostics].ok(self._diagnostics_model(diag))
+        return r[m.Infra.PytestDiagnostics].ok(
+            self._diagnostics_model(diag, junit_parsed=xml_parsed)
+        )
 
     @override
     def execute(self) -> p.Result[bool]:

@@ -98,6 +98,7 @@ class FlextInfraPytestDiagXmlMixin:
             case = FlextInfraPytestDiagXmlMixin._as_xml_element(case_raw)
             if case is None:
                 continue
+            diag.test_count += 1
             slow_rows.append(FlextInfraPytestDiagXmlMixin._process_testcase(case, diag))
         if slow_rows:
             diag.slow_entries = [

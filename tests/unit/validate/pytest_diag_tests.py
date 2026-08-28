@@ -50,6 +50,8 @@ class TestPytestDiagExtractorBehavior:
         )
 
         tm.that(report, is_=m.Infra.PytestDiagnostics)
+        tm.that(report.junit_parsed, eq=True)
+        tm.that(report.test_count, eq=0)
         tm.that(report.failed_count, eq=0)
         tm.that(report.error_count, eq=0)
 
@@ -63,6 +65,7 @@ class TestPytestDiagExtractorBehavior:
         missing_report: m.Infra.PytestDiagnostics = tm.ok(
             _extractor(missing_xml, log).extract(missing_xml, log)
         )
+        tm.that(missing_report.junit_parsed, eq=False)
         tm.that(missing_report.failed_cases, length_gt=0)
 
         bad_xml = tmp_path / "bad.xml"
@@ -130,6 +133,7 @@ class TestPytestDiagExtractorBehavior:
             _extractor(slow_xml, log).extract(slow_xml, log)
         )
         tm.that(slow_report.slow_entries, length_gt=0)
+        tm.that(slow_report.test_count, eq=2)
 
     def test_extract_missing_log_is_graceful(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
@@ -145,6 +149,8 @@ class TestPytestDiagExtractorBehavior:
         )
 
         tm.that(report.warning_count, eq=0)
+        tm.that(report.junit_parsed, eq=True)
+        tm.that(report.test_count, eq=0)
 
     def test_extract_unreadable_log_surfaces_failure(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"

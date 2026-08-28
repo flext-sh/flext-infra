@@ -20,6 +20,8 @@ class FlextInfraConstantsCli:
     "Exit code emitted by the canonical wall-time limiter."
     PROCESS_SIGNAL_EXIT_OFFSET: Final[int] = 128
     "POSIX shell offset used to encode a terminating signal."
+    PYTEST_NO_TESTS_EXIT_CODE: Final[int] = 5
+    "Pytest status for a successful collection that selected zero tests."
     PROCESS_EXIT_ERROR_CODE: Final[str] = "EXTERNAL_PROCESS_EXIT"
     "Stable result error code for non-zero external process exits."
 

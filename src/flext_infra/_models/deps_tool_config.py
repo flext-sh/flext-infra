@@ -96,6 +96,17 @@ class FlextInfraModelsDepsToolSettings(
                 description="Grace period reserved inside the invocation deadline.",
             ),
         ]
+        testmon_focused_max_tests: Annotated[
+            int,
+            m.Field(
+                alias="testmon-focused-max-tests",
+                gt=0,
+                le=32,
+                description=(
+                    "Maximum cached testmon rows one focused selector may invalidate."
+                ),
+            ),
+        ]
         enforcement_plugin: Annotated[
             t.NonEmptyStr,
             m.Field(

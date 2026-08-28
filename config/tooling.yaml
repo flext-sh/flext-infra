@@ -556,6 +556,7 @@ Infra:
         # process wall adds one minute for orderly worker/report shutdown.
         run-timeout-seconds: 600
         termination-grace-seconds: 2
+        testmon-focused-max-tests: 32
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]

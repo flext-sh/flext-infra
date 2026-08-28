@@ -122,4 +122,55 @@ def test_uv_invocations_are_actually_present_in_the_template() -> None:
     )
 
 
+def test_gate_runner_uses_the_declared_runtime_without_uv_discovery() -> None:
+    """Gate execution cannot create or select a workspace environment."""
+    definition = re.search(r"^UV_RUN\s*:?=\s*(.+)$", _template_text(), re.MULTILINE)
+
+    assert definition is not None, "template declares no UV_RUN"
+    runner = definition.group(1)
+    assert "$(UV) run" not in runner
+    assert 'PATH="$(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)"' in runner
+    assert 'PYTHONPATH="$(PROJECT_ROOT)/src"' in runner
+
+
+def test_setup_exports_the_owner_lock_outside_parent_workspace_discovery() -> None:
+    """Setup resolves only the manifests copied under its declared runtime."""
+    template = _template_text()
+
+    assert "UV_SYNC_FLAGS" not in template
+    assert '$(UV) sync --project "$(PROJECT_ROOT)"' not in template
+    assert 'cp "$(PROJECT_ROOT)/pyproject.toml"' in template
+    assert 'cp "$(PROJECT_ROOT)/uv.lock"' in template
+    assert (
+        '$(UV) export --quiet --project "$(SETUP_MANIFEST_ROOT)" --locked '
+        "--all-extras --all-groups --no-emit-project"
+    ) in template
+    assert '$(UV) pip sync --python "$(RUNTIME_VENV)"' not in template
+    assert (
+        '$(UV) pip install --python "$(RUNTIME_VENV)" '
+        '--link-mode "$(UV_LINK_MODE)" --exact --no-deps '
+        '--requirements "$(SETUP_REQUIREMENTS)" --editable "$(PROJECT_ROOT)"'
+    ) in template
+    assert "--all-packages" not in template
+    assert "SETUP_MANIFEST_ROOT := $(RUNTIME_VENV).flext-setup" in template
+
+
+def test_dependency_locking_uses_an_isolated_manifest_copy() -> None:
+    """Lock commands cannot select or rewrite an ancestor workspace lock."""
+    template = _template_text()
+
+    assert 'manifest_root="$(RUNTIME_VENV).flext-lock/$$project"' in template
+    assert '$(UV) lock --project "$$manifest_root"' in template
+    assert '$(UV) lock --project "$$project_root"' not in template
+    assert 'cp "$$manifest_root/uv.lock" "$$project_root/uv.lock"' in template
+
+
+def test_help_documents_the_isolated_setup_environment() -> None:
+    """Operators can discover the supported external environment override."""
+    assert (
+        "'RUNTIME_VENV' 'isolated environment path override (command line only)'"
+        in _template_text()
+    )
+
+
 __all__: tuple[str, ...] = ()

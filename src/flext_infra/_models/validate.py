@@ -78,6 +78,12 @@ class FlextInfraModelsCore:
     class PytestDiagnostics(m.ArbitraryTypesModel):
         """Extracted diagnostics summary from junit XML and pytest logs."""
 
+        junit_parsed: Annotated[
+            bool, m.Field(description="JUnit XML was present and parseable")
+        ]
+        test_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Collected JUnit testcase count")
+        ]
         failed_count: Annotated[
             t.NonNegativeInt, m.Field(description="Failed test case count")
         ]
@@ -113,6 +119,9 @@ class FlextInfraModelsCore:
         mutable state.
         """
 
+        test_count: Annotated[
+            t.NonNegativeInt, m.Field(description="Collected JUnit testcase count")
+        ] = 0
         failed_cases: Annotated[
             t.MutableSequenceOf[str],
             m.Field(description="Collected failed test-case labels"),

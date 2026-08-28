@@ -104,7 +104,6 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             for path, backup in backup_paths.items()
         ]
 
-    _NO_TESTS_EXIT_CODE = 5
     _NO_TESTS_MARKERS: ClassVar[frozenset[str]] = frozenset({
         "no tests collected",
         "no tests ran",
@@ -176,7 +175,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             )
         output = (run_result.value.stdout + run_result.value.stderr)[:300]
         passed_or_no_tests = run_result.value.exit_code == 0 or (
-            run_result.value.exit_code == cls._NO_TESTS_EXIT_CODE
+            run_result.value.exit_code == c.Infra.PYTEST_NO_TESTS_EXIT_CODE
             and cls._has_no_tests_marker(output)
         )
         return r[bool].ok(True) if passed_or_no_tests else r[bool].fail(output)

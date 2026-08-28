@@ -303,6 +303,4 @@ CLAUDE.local.md
 !sgconfig.yml
 !.vscode/settings.json
 !LICENSE
-!config/
-!config/workspace.yaml
 !custom.mk

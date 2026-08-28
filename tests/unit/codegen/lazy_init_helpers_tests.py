@@ -470,7 +470,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
-    def test_existing_root_exports_only_declared_inherited_aliases(
+    def test_legacy_workspace_manifest_cannot_widen_root_exports(
         self, tmp_path: Path
     ) -> None:
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -497,11 +497,11 @@ class TestsFlextInfraLazyInitHelpers:
             workspace_root, "flext-demo", inherited_facets=("r",)
         )
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        declared_generated = self._generated_init(package_root)
-        declared_exports = self._generated_exports(package_root)
-        tm.that(declared_exports, has='"flext_cli": ("r",)')
-        tm.that(declared_generated, has='    "r",')
-        tm.that(declared_generated, has='    "c",')
+        regenerated = self._generated_init(package_root)
+        regenerated_exports = self._generated_exports(package_root)
+        tm.that(regenerated_exports, lacks='"flext_cli": (\n        "r",')
+        tm.that(regenerated, lacks='    "r",')
+        tm.that(regenerated, has='    "c",')
 
     def test_generated_parent_initializer_is_not_an_alias_owner(
         self, tmp_path: Path

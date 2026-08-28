@@ -57,23 +57,16 @@ class FlextInfraPytestSelectorValidator(s[bool]):
         for field_name, value in (("file", file), ("match", match), ("what", what)):
             if value is not None and any(character in value for character in "\0\r\n"):
                 return f"{field_name} must not contain control separators"
-        allowed = {
-            None,
-            "all",
-            "full",
-            "profile",
-            "cache-status",
-            "cache-clear",
-            "cache-checkpoint",
-        }
+        allowed = {None, "all", "full", "profile", "cache-status", "cache-checkpoint"}
         if what not in allowed:
-            return (
-                "what must be: all, full, profile, cache-status, cache-clear, "
-                "or cache-checkpoint"
-            )
+            return "what must be: all, full, profile, cache-status, or cache-checkpoint"
+        if match is not None and (
+            not match.isascii() or not match.replace("_", "").isalnum()
+        ):
+            return "match must be one literal pytest keyword"
         if what == "profile" and file is None and match is None:
             return "profile requires FILE or MATCH"
-        if what in {"cache-status", "cache-clear", "cache-checkpoint"} and (
+        if what in {"cache-status", "cache-checkpoint"} and (
             file is not None or match is not None
         ):
             return f"{what} rejects FILE and MATCH"
@@ -118,6 +111,8 @@ class FlextInfraPytestSelectorValidator(s[bool]):
         resolved = self.resolve_file(self.root, self.file)
         if resolved.failure:
             return r[bool].fail(resolved.error or "pytest FILE resolution failed")
+        if not resolved.value.is_file():
+            return r[bool].fail("pytest FILE must name one regular test file or nodeid")
         return r[bool].ok(True)
 
 

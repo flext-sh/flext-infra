@@ -139,14 +139,14 @@ class TestsCodegenMakeEnvironment:
             (c.Infra.MakeProfile.STANDALONE, False),
         ],
     )
-    def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
+    def test_generated_make_uses_project_runtime_venv_under_hostile_env(
         self, tmp_path: Path, profile: c.Infra.MakeProfile, *, attached: bool
     ) -> None:
-        """Every generated shell receives the profile-resolved runtime venv."""
-        project_root, workspace_root = self._render_makefile(
+        """Every generated shell receives the project-owned runtime venv."""
+        project_root, _workspace_root = self._render_makefile(
             tmp_path, profile, attached=attached
         )
-        runtime_root = workspace_root if attached else project_root
+        runtime_root = project_root
         runtime_bin = runtime_root / ".venv" / "bin"
         runtime_bin.mkdir(parents=True)
         runtime_python = runtime_bin / "python"
@@ -222,14 +222,18 @@ class TestsCodegenMakeEnvironment:
             "#!/bin/sh\n"
             f"printf '%s\\n' \"$*\" >> '{uv_log}'\n"
             'if [ "$1" = "venv" ]; then\n'
-            '  mkdir -p "$3/bin"\n'
-            "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
-            '  chmod +x "$3/bin/python"\n'
+            '  mkdir -p "$2/bin"\n'
+            "  printf '#!/bin/sh\\nexit 0\\n' > \"$2/bin/python\"\n"
+            '  chmod +x "$2/bin/python"\n'
             "fi\n"
             "exit 0\n",
             encoding="utf-8",
         )
         provisioned_uv.chmod(0o755)
+        (project_root / "pyproject.toml").write_text(
+            "[project]\nname='fixture'\n", encoding="utf-8"
+        )
+        (project_root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
 
         clean_env = {
             **{
@@ -251,9 +255,17 @@ class TestsCodegenMakeEnvironment:
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
-        tm.that(commands[1], has="sync --project")
-        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
-            tm.that(commands[2], has="pip check")
+        tm.that(commands[1], has="export --quiet --project")
+        tm.that(commands[1], has=["--locked", "--no-emit-project"])
+        tm.that(
+            commands[2],
+            has=[
+                "pip install --python",
+                "--exact --no-deps --requirements",
+                "--editable",
+            ],
+        )
+        tm.that(commands[3], has="pip check --python")
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -304,7 +316,7 @@ class TestsCodegenMakeEnvironment:
         )
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
-        """All generated uv operations use the profile-owned environment."""
+        """All generated uv operations use the project-owned environment."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -318,8 +330,8 @@ class TestsCodegenMakeEnvironment:
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
                 "-u UV_PROJECT_ENVIRONMENT "
-                'PYTHONPATH="$(PROJECT_ROOT)/src" '
-                '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
+                'PATH="$(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)" '
+                'PYTHONPATH="$(PROJECT_ROOT)/src"'
             )
             in makefile,
             eq=True,
@@ -327,7 +339,7 @@ class TestsCodegenMakeEnvironment:
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
-        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=False)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
     def test_dependency_upgrade_selects_only_one_distribution(
@@ -339,6 +351,10 @@ class TestsCodegenMakeEnvironment:
         )
         runtime_python = project_root / ".venv" / "bin" / "python"
         test_u.Tests.write_executable(runtime_python, "#!/bin/sh\nexit 0\n")
+        (project_root / "pyproject.toml").write_text(
+            "[project]\nname='fixture'\n", encoding="utf-8"
+        )
+        (project_root / "uv.lock").write_text("version = 1\n", encoding="utf-8")
         uv_log = tmp_path / "uv.log"
         bin_dir = tmp_path / "bin"
         uv = bin_dir / "uv"
@@ -359,16 +375,17 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
-                env={"UV": str(uv), "PATH": str(bin_dir)},
+                env={"UV": str(uv), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )
 
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
-        tm.that(
-            commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
-        )
+        upgrade = next(line for line in commands if "--upgrade-package" in line)
+        tm.that(upgrade, has="lock --project")
+        tm.that(upgrade, has="--upgrade-package flext-cli")
+        tm.that(upgrade, lacks=f"--project {project_root} ")
         tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
 
     def test_dependency_upgrade_rejects_non_distribution_selector(
@@ -439,7 +456,10 @@ class TestsCodegenMakeEnvironment:
         for required in (
             "UV ?= uv",
             '$(UV) venv "$(RUNTIME_VENV)"',
-            '$(UV) sync --project "$(PROJECT_ROOT)"',
+            '$(UV) export --quiet --project "$(SETUP_MANIFEST_ROOT)"',
+            '$(UV) pip install --python "$(RUNTIME_VENV)"',
+            '--exact --no-deps --requirements "$(SETUP_REQUIREMENTS)"',
+            '--no-deps --editable "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$superproject" submodule update --init -- "$$child_path"',
             "refs/heads/$$branch",
@@ -451,8 +471,7 @@ class TestsCodegenMakeEnvironment:
             "define _setup_submodules",
             "SETUP_BRANCH :=",
             "--no-install-project",
-            '--editable "$(PROJECT_ROOT)"',
-            "pip install",
+            "--all-packages",
         ):
             tm.that(makefile, lacks=forbidden)
 

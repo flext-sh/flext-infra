@@ -28,21 +28,19 @@ def _recipe(name: str) -> str:
     return body[1].split("\n\n", 1)[0]
 
 
-def test_provisioning_replaces_only_a_foreign_environment_symlink() -> None:
+def test_provisioning_rejects_a_foreign_environment_symlink() -> None:
     recipe = _recipe("SETUP_ENVIRONMENT_RECIPE")
     assert '[ -L "$(RUNTIME_VENV)" ]' in recipe
-    assert 'rm -f "$(RUNTIME_VENV)"' in recipe
+    assert "runtime environment must not be a symlink" in recipe
+    assert 'rm -f "$(RUNTIME_VENV)"' not in recipe
     assert '[ ! -x "$(RUNTIME_PYTHON)" ]' in recipe
 
 
-def test_delegated_runtime_sanitizes_recursive_make_state() -> None:
-    member_branch = (
-        _template_text()
-        .split('if [ "$(RUNTIME_ROOT)" = "$(PROJECT_ROOT)" ]; then', 1)[1]
-        .split("\n\n", 1)[0]
-    )
-    for key in ("MAKEFILES", "GNUMAKEFLAGS", "MAKEFLAGS", "PYTHONPATH"):
-        assert f"-u {key}" in member_branch
+def test_runtime_is_owned_by_the_project() -> None:
+    template = _template_text()
+    assert "RUNTIME_ROOT := $(PROJECT_ROOT)" in template
+    assert "BORROW_RUNTIME_VENV_RECIPE" not in template
+    assert '$(MAKE) -C "$(RUNTIME_ROOT)" _builtin_setup_environment' not in template
 
 
 def test_uv_run_prefers_project_src() -> None:

@@ -139,16 +139,13 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         package_entry = self.rope_workspace.package(context.pkg_dir)
         if package_entry is None or package_entry.project_root is None:
             return None
-        manifest_path = (
-            package_entry.project_root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        )
-        if not manifest_path.is_file():
-            return None
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             package_entry.project_root
         )
         if workspace.failure:
-            msg = workspace.error or f"invalid workspace manifest: {manifest_path}"
+            msg = workspace.error or (
+                f"invalid project metadata: {package_entry.project_root}"
+            )
             raise ValueError(msg)
         project = workspace.value.project
         return frozenset(project.inherited_facets if project is not None else ())

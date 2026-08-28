@@ -428,14 +428,11 @@ Infra:
         apply_guarded: false
       - name: test
         default_what: all
-        # all = incremental testmon run; cache-* maintain .testmondata locally.
-        # Coverage is on unless CI=Y (no separate cov verb).
-        # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without declaring
-        # test apply-guarded (fingerprint still ignores .testmondata*).
-        whats: [all, cache-status, cache-clear, cache-checkpoint]
+        # all/full/CI keep Testmon impact selection active. Exact FILE/MATCH
+        # invalidates only a bounded cached selector before forceselect.
+        # cache-* inspect/checkpoint .testmondata without global deletion.
+        whats: [all, full, cache-status, cache-checkpoint]
         apply_guarded: false
-        accepts_apply: true
-        apply_what: all
       - name: fmt
         default_what: check
         whats: [check, all, apply]

@@ -140,18 +140,22 @@ class TestBanditAndMarkdownGates:
         if raw_output:
             tm.that(result.raw_output, contains=raw_output)
 
-    def test_markdown_prefers_local_config_when_root_is_missing(
+    def test_markdown_prefers_repository_config_over_parent(
         self, tmp_path: Path
     ) -> None:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
-        (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")
+        local_config = project_dir / ".markdownlint.json"
+        local_config.write_text("{}", encoding="utf-8")
+        (tmp_path / ".markdownlint.json").write_text(
+            '{"MD013": true}', encoding="utf-8"
+        )
         runner = self.make_runner(r.ok(u.Tests.stub_run()))
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
         _ = gate.check(project_dir, self.make_ctx(tmp_path))
 
-        tm.that(runner.commands[0], has="--config")
+        tm.that(runner.commands[0], has=["--config", str(local_config.resolve())])
 
     def test_markdown_uses_uv_managed_tool_with_sanitized_path(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

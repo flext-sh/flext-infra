@@ -23,10 +23,7 @@ class TestsFlextInfraPytestSelectorValidator:
         target.write_text("", encoding="utf-8")
         file = f"{relative}::TestsSample::test exact"
         validator = FlextInfraPytestSelectorValidator(
-            workspace_root=tmp_path,
-            file=file,
-            match="exact name and not slow",
-            what="all",
+            workspace_root=tmp_path, file=file, match="exact", what="all"
         )
 
         tm.ok(validator.execute())
@@ -55,7 +52,7 @@ class TestsFlextInfraPytestSelectorValidator:
             workspace_root=workspace_root, what="all"
         )
         tm.ok(validator.execute())
-        for what in ("cache-status", "cache-clear", "cache-checkpoint"):
+        for what in ("cache-status", "cache-checkpoint"):
             tm.ok(
                 FlextInfraPytestSelectorValidator(
                     workspace_root=workspace_root, what=what
@@ -76,6 +73,10 @@ class TestsFlextInfraPytestSelectorValidator:
             )
         with pytest.raises(c.ValidationError, match="what must be"):
             FlextInfraPytestSelectorValidator(workspace_root=workspace_root, what="cov")
+        with pytest.raises(c.ValidationError, match="one literal pytest keyword"):
+            FlextInfraPytestSelectorValidator(
+                workspace_root=workspace_root, match="exact and not slow"
+            )
         with pytest.raises(
             c.ValidationError, match="cache-status rejects FILE and MATCH"
         ):
@@ -114,3 +115,14 @@ class TestsFlextInfraPytestSelectorValidator:
         ).execute()
 
         tm.fail(result, has="does not exist")
+
+    def test_directory_file_selector_fails_at_typed_boundary(
+        self, tmp_path: Path
+    ) -> None:
+        (tmp_path / "tests" / "unit").mkdir(parents=True)
+
+        result = FlextInfraPytestSelectorValidator(
+            workspace_root=tmp_path, file="tests/unit"
+        ).execute()
+
+        tm.fail(result, has="one regular test file or nodeid")
