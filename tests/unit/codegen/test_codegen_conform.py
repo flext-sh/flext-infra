@@ -930,6 +930,42 @@ class TestCodegenConform:
 
         tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
 
+    def test_make_context_bootstraps_standalone_infra_from_itself(
+        self, tmp_path: Path
+    ) -> None:
+        """The engine repository never resolves itself through an invalid Git ref."""
+        repository = u.Tests.repository_ref(config.Infra.name)
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
+            repository=repository,
+        )
+        target = _conform_target(
+            tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
+        )
+        tooling_runtime = tm.ok(
+            FlextInfraPyprojectModernizer(
+                workspace_root=tmp_path, skip_check=True
+            ).resolve_tooling_context(
+                project_name=repository.distribution,
+                package_name=repository.distribution.replace("-", "_"),
+                path=tmp_path / "pyproject.toml",
+                declared_python_dirs=("src",),
+            )
+        )
+
+        rendered = tm.ok(
+            FlextInfraCodegenConform.make_render_context(
+                repository,
+                target,
+                workspace,
+                config.Infra.codegen,
+                tooling_runtime=tooling_runtime,
+            )
+        )
+
+        tm.that(rendered.infra_source_root_rel, eq=".")
+
     # Why (suite budget): parametrized over both conform modes, each running a
     # full plan/apply cycle on a real git repo; 10s only holds on an idle CPU.
     @pytest.mark.slow
@@ -1377,13 +1413,31 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_check_body.count("codegen conform"), eq=1)
         tm.that("--mode check" in gen_check_body, eq=True)
-        tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
+        tm.that(gen_check_body, has="$(FLEXT_INFRA_BOOTSTRAP)")
+        tm.that(
+            gen_check_body,
+            lacks=[
+                "_builtin_require_environment",
+                "$(PROJECT_FLEXT_INFRA)",
+                "codegen init",
+                "deps modernize",
+            ],
+        )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=2)
         tm.that("--mode apply" in gen_all_body, eq=True)
         tm.that("--mode check" in gen_all_body, eq=True)
-        tm.that(gen_all_body, lacks=["codegen init", "deps modernize"])
+        tm.that(gen_all_body, has="$(FLEXT_INFRA_BOOTSTRAP)")
+        tm.that(
+            gen_all_body,
+            lacks=[
+                "_builtin_require_environment",
+                "$(PROJECT_FLEXT_INFRA)",
+                "codegen init",
+                "deps modernize",
+            ],
+        )
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)

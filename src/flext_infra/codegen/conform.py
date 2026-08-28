@@ -1390,8 +1390,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         infra_repository: m.Infra.RepositoryRef,
     ) -> str | None:
         """Return a local engine source path only when the workspace declares it."""
-        if target.make_profile is not c.Infra.MakeProfile.WORKSPACE:
-            return None
         workspace_repositories: tuple[m.Infra.RepositoryRef, ...] = (
             workspace.repository,
             *workspace.subprojects,
@@ -1409,6 +1407,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if local is None:
             return None
         workspace_root_rel = FlextInfraCodegenConform._workspace_root_rel(workspace)
+        if local == workspace.repository:
+            return workspace_root_rel
+        if target.make_profile is not c.Infra.MakeProfile.WORKSPACE:
+            return None
         local_path: Path = local.path
         return (Path(workspace_root_rel) / local_path).as_posix()
 
