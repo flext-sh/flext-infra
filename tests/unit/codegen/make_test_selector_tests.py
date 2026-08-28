@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
 from flext_infra import config, u
 from flext_tests import tm
 from tests import u as test_u
@@ -38,16 +37,18 @@ class TestsMakeTestSelector:
 
         makefile = tm.ok(u.Cli.files_read_text(Path("Makefile")))
         (tmp_path / "Makefile").write_text(makefile, encoding="utf-8")
-        # Public verbs dispatch straight into their builtin, so the managed
-        # interpreter only has to exist for the environment guard.
+        (tmp_path / "src").mkdir()
+        (tmp_path / "tests").mkdir()
         test_u.Tests.write_executable(
             tmp_path / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
-        invocation_log = tmp_path / "uv-args.log"
-        uv = tmp_path / "bin" / "uv"
+        invocation_log = tmp_path / "ruff-args.log"
         test_u.Tests.write_executable(
-            uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n'
+            tmp_path / ".venv" / "bin" / "ruff",
+            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n',
         )
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
         canonical = tm.ok(
             test_u.Tests.run_isolated_make(
@@ -56,7 +57,7 @@ class TestsMakeTestSelector:
         )
         tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)
         invocations = invocation_log.read_text(encoding="utf-8")
-        tm.that(invocations, has="ruff format --check")
+        tm.that(invocations, has="format --check")
         calls_before_retired = invocations.splitlines()
 
         retired = tm.ok(
@@ -160,28 +161,13 @@ class TestsMakeTestSelector:
             tmp_path / ".venv" / "bin" / "python",
             (
                 "#!/bin/sh\n"
-                "mode=''\n"
-                'for argument in "$@"; do\n'
-                '  if [ "$argument" = "validate" ]; then mode="validate"; fi\n'
-                "done\n"
-                'if [ "$mode" = "validate" ]; then\n'
-                "  printf '%s\\n' failed_count=0 error_count=0 "
-                "warning_count=0 skipped_count=0\n"
-                "  exit 0\n"
-                "fi\n"
-                "exit 2\n"
-            ),
-        )
-        invocation_log = tmp_path / "uv-args.log"
-        uv = tmp_path / "bin" / "uv"
-        test_u.Tests.write_executable(
-            uv,
-            (
-                "#!/bin/sh\n"
                 f'printf "file=%s\\nargs=%s\\n" "$FLEXT_PYTEST_FILE_RAW" "$*" '
-                f'> "{invocation_log}"\n'
+                f'> "{tmp_path / "python-args.log"}"\n'
             ),
         )
+        invocation_log = tmp_path / "python-args.log"
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
         selected = "tests/unit/selected_test.py"
         selected_path = tmp_path / selected
         selected_path.parent.mkdir(parents=True)
@@ -206,11 +192,7 @@ class TestsMakeTestSelector:
         )
         arguments = invocation_log.read_text(encoding="utf-8")
         tm.that(arguments, has=f"file={selected}")
-        # The contract is that the explicit FILE reaches the typed runner
-        # through uv. Which uv flags the generated Makefile uses is template
-        # policy (it moved from --offline to --project/--no-sync), so freezing
-        # them here breaks the test on a legitimate template change.
-        tm.that(arguments, has="python -m flext_infra._pytest_entry")
+        tm.that(arguments, has="-m flext_infra._pytest_entry")
 
     def test_generated_test_recipe_uses_one_typed_runner_boundary(self) -> None:
         """Forward supported selectors without reconstructing pytest in shell.
@@ -241,11 +223,8 @@ class TestsMakeTestSelector:
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
 
     def test_generated_owner_uses_the_canonical_gen_verb(self) -> None:
-        """Keep generation on the Makefile with no second custom owner."""
+        """Keep generation on the sole generated Makefile owner."""
         template = _makefile_template().read_text(encoding="utf-8")
 
         tm.that(template, has="_builtin_gen_apply")
         tm.that(template, lacks="_builtin_build_gen")
-        tm.that(
-            Path(flext_infra.__file__).resolve().parents[2] / "custom.mk", exists=False
-        )

@@ -27,7 +27,7 @@ This section is generated from public exports and real docstrings.
 
 - Primary facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
   `FlextInfraGitService`, `FlextInfraModels`,
-  `FlextInfraProjectSelectionServiceBase` (+6 more)
-- Generated module pages: `13`
+  `FlextInfraProjectSelectionServiceBase` (+7 more)
+- Generated module pages: `27`
 
 Back to [project docs](../index.md).

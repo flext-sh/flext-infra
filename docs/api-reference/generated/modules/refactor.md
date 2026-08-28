@@ -1,4 +1,4 @@
-# flext_infra.work
+# flext_infra.refactor
 
 <!-- TOC START -->
 - No sections found
@@ -6,7 +6,7 @@
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-::: flext_infra.work
+::: flext_infra.refactor
     options:
       show_root_heading: true
       show_root_full_path: false

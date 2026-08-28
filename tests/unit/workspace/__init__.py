@@ -20,17 +20,13 @@ if TYPE_CHECKING:
     from .test_docs_scope_worktree import (
         test_project_scope_uses_declared_name_inside_worktree_lane,
     )
-    from .test_facade_environment_sync import (
-        TestsFlextInfraFacadeBaseMk,
-        TestsFlextInfraFacadeEnvironmentSync,
-    )
+    from .test_facade_environment_sync import TestsFlextInfraFacadeEnvironmentSync
     from .test_main import TestsFlextInfraWorkspaceMain, workspace_main
     from .test_vscode import TestsFlextInfraCodegenVscode
     from .worktree_fixture import WorktreeFixture
 __all__: tuple[str, ...] = (
     "TestsDetectorOwnsNoProjectRegistry",
     "TestsFlextInfraCodegenVscode",
-    "TestsFlextInfraFacadeBaseMk",
     "TestsFlextInfraFacadeEnvironmentSync",
     "TestsFlextInfraWorkspaceMain",
     "WorktreeFixture",
@@ -53,10 +49,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_docs_scope_worktree": (
                 "test_project_scope_uses_declared_name_inside_worktree_lane",
             ),
-            ".test_facade_environment_sync": (
-                "TestsFlextInfraFacadeBaseMk",
-                "TestsFlextInfraFacadeEnvironmentSync",
-            ),
+            ".test_facade_environment_sync": ("TestsFlextInfraFacadeEnvironmentSync",),
             ".test_main": ("TestsFlextInfraWorkspaceMain", "workspace_main"),
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),
             ".worktree_fixture": ("WorktreeFixture",),

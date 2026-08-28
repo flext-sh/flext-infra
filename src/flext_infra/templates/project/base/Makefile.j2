@@ -20,7 +20,7 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
 
 # === SECTION: user overrides (managed) ===
-# Source: template (canonical public knobs documented by base.mk)
+# Source: template (canonical public invocation knobs)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 {{ make.apply_variable }} ?= {{ make.apply_absent_value }}
 # The seeded absent value means "not applying", so every guard compares against
@@ -123,12 +123,6 @@ UV_BOOTSTRAP_FLAGS := --{{ make.bootstrap.environment }} --{{ make.bootstrap.dep
 endif
 # End SECTION: infra bootstrap
 
-{# base_mypy_limit.mk.j2 was removed with the daemon-*/pr verbs it served
-   (mro-x0rau.3, recorded in FlextInfraConstantsBasemk): no generated Makefile
-   includes base.mk, so its recipes were unreachable and the Mypy cap it defined
-   was never invoked. The live cap is enforced in Python by
-   FlextInfraUtilitiesResourceLimits at the gate boundary. The include outlived
-   the file and made every render fail with "not found in search path". #}
 {% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor -%}

@@ -41,12 +41,8 @@ def _workspace_root() -> Path:
 def _make_surfaces() -> tuple[Path, ...]:
     """Return every Make surface plus the templates that generate them."""
     root = _workspace_root()
-    names = (c.Infra.MAKEFILE_FILENAME, c.Infra.BASE_MK)
     templates = Path(flext_infra.__file__).resolve().parent / "templates"
-    return (
-        *(path for name in names if (path := root / name).is_file()),
-        *sorted(templates.rglob("*.mk.j2")),
-    )
+    return (root / c.Infra.MAKEFILE_FILENAME, *sorted(templates.rglob("*.mk.j2")))
 
 
 def _is_immediate_shell_assignment(line: str) -> bool:

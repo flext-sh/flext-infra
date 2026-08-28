@@ -67,7 +67,6 @@ class FlextInfraConstantsCli:
     SHARED_BOOL_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_BOOL_FLAG_VALUES)
     SHARED_VALUE_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_VALUE_FLAG_VALUES)
     CLI_GROUP_DESCRIPTIONS: Final[t.StrMapping] = MappingProxyType({
-        "basemk": "Base.mk template generation",
         "check": "Lint gates and pyrefly settings management",
         "codegen": "Code generation and workspace standardization",
         "validate": "Infrastructure validators and diagnostics",

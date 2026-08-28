@@ -37,16 +37,6 @@ class TestsFlextInfraRootMakefileSingleOwner:
 
         tm.that(dedicated.exists(), eq=False)
 
-    def test_generic_template_carries_the_single_custom_include(self) -> None:
-        """The sole template injects the one custom-include directive from SSOT."""
-        templates_root = Path(flext_infra.__file__).resolve().parent / "templates"
-        generic = (templates_root / "project" / "base" / "Makefile.j2").read_text(
-            encoding="utf-8"
-        )
-
-        tm.that(generic, has="{{ makefile_custom_include }}")
-        tm.that(generic, lacks="workspace_custom.mk")
-
     def test_generic_template_routes_generation_through_conform_once(self) -> None:
         templates_root = Path(flext_infra.__file__).resolve().parent / "templates"
         generic = (templates_root / "project" / "base" / "Makefile.j2").read_text(

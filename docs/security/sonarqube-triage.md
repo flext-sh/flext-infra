@@ -3999,25 +3999,6 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 **Decisão**:
 
-### 210 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`
-**Local**: `src/flext_infra/services/cli_routes.py:25` · **Effort**: 8min
-
-> Define a constant instead of duplicating this literal "flext_infra.services.cli_routes_codegen" 4 times.
-
-```python
-       21  # dispatched per invocation. Only the owning module for the RESOLVED group is
-       22  # imported now, cutting startup to that one module's cost.
-       23  _GROUP_OWNERS: Final[dict[str, tuple[str, str, str]]] = {
-       24      c.Infra.CLI_GROUP_BASEMK: (
->>>    25          "flext_infra.services.cli_routes_codegen",
-       26          "CodegenRoutes",
-       27          "codegen_routes",
-       28      ),
-       29      c.Infra.CLI_GROUP_CHECK: (
-```
-
-**Decisão**:
-
 ### 211 · 🟠 CRITICAL · CODE_SMELL · `python:S1192`
 **Local**: `src/flext_infra/services/cli_routes.py:45` · **Effort**: 8min
 

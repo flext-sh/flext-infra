@@ -17,7 +17,7 @@ src/flext_infra/
 ├── api.py cli.py __main__.py iteration.py
 ├── codegen/ detectors/ fixers/ transformers/ rules/ schemas/ templates/
 ├── config/ deps/ gates/ check/ validate/ docs/ github/ maintenance/
-├── release/ workspace/ services/ _enforcement/ basemk/
+├── release/ workspace/ services/ _enforcement/
 ├── constants.py typings.py protocols.py models.py utilities.py
 └── _constants/ _typings/ _protocols/ _models/ _utilities/
 ```

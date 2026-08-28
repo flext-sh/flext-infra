@@ -31,13 +31,9 @@ class TestsFlextInfraInfraConstantsCore:
     def test_makefile_filename_constant(self) -> None:
         tm.that(c.Infra.MAKEFILE_FILENAME, eq="Makefile")
 
-    def test_base_mk_constant(self) -> None:
-        tm.that(c.Infra.BASE_MK, eq="base.mk")
-
     def test_files_constants_are_strings(self) -> None:
         tm.that(c.Infra.PYPROJECT_FILENAME, is_=str)
         tm.that(c.Infra.MAKEFILE_FILENAME, is_=str)
-        tm.that(c.Infra.BASE_MK, is_=str)
 
     def test_gate_constants_exist(self) -> None:
         tm.that(c.Infra.LINT, eq="lint")

@@ -11,7 +11,6 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import _utilities as _utilities
-    from . import basemk as basemk
     from . import check as check
     from . import codegen as codegen
     from . import codemod as codemod
@@ -47,9 +46,6 @@ if TYPE_CHECKING:
     )
     from .fixtures_git import real_git_repo
     from .runner_service import RealSubprocessRunner
-    from .test_custom_make_surface_is_single import (
-        TestsFlextInfraCustomMakeSurfaceIsSingle,
-    )
     from .test_engine_is_consumer_agnostic import (
         TestsFlextInfraEngineIsConsumerAgnostic,
         owned_provider,
@@ -110,7 +106,6 @@ __all__: tuple[str, ...] = (
     "RealSubprocessRunner",
     "TestInfraGitIdentitySubmodules",
     "TestsFlextInfraCliWhatSelector",
-    "TestsFlextInfraCustomMakeSurfaceIsSingle",
     "TestsFlextInfraEngineIsConsumerAgnostic",
     "TestsFlextInfraGitignoreIsGeneratedFromSsot",
     "TestsFlextInfraInfraConstantsCore",
@@ -145,7 +140,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceFactory",
     "WorktreeFixture",
     "_utilities",
-    "basemk",
     "check",
     "codegen",
     "codemod",
@@ -185,7 +179,6 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._utilities": ("_utilities",),
-            ".basemk": ("basemk",),
             ".check": ("check",),
             ".check.tests_workspace_check": (
                 "test_workspace_check_main_returns_error_without_projects",
@@ -218,9 +211,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor": ("refactor",),
             ".release": ("release",),
             ".runner_service": ("RealSubprocessRunner",),
-            ".test_custom_make_surface_is_single": (
-                "TestsFlextInfraCustomMakeSurfaceIsSingle",
-            ),
             ".test_engine_is_consumer_agnostic": (
                 "TestsFlextInfraEngineIsConsumerAgnostic",
                 "owned_provider",

@@ -614,7 +614,6 @@ Infra:
       canonical_root_files:
         - pyproject.toml
         - Makefile
-        - base.mk
         - README.md
         - LICENSE
         - CHANGELOG.md
@@ -989,9 +988,6 @@ Infra:
       - path: README.md
         owner: codegen
         policy: create-only
-      - path: base.mk
-        owner: make
-        policy: delegated
       - path: pyproject.toml
         owner: codegen
         policy: merge
@@ -1423,9 +1419,6 @@ Infra:
             - ".devcontainer/.host-gitsettings"
             - ".devcontainer/.env"
             - ".github/*.rej"
-        - name: "--- codegen conform: tracked owner inputs ---"
-          patterns:
-            - "!base.mk"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
           patterns:
             - "*.tpl.rej"
@@ -1438,7 +1431,6 @@ Infra:
             - ".bin/"
             - ".tools/"
             - "__pycache__/"
-            - "base.mk"
             - "!.pre-commit-config.yaml"
     templates:
       root: project

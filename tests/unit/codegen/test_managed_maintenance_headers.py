@@ -43,17 +43,3 @@ class TestsFlextInfraManagedMaintenanceHeaders:
         )
         tm.that(pyproject_fields.get("@flext-ssot", ""), has="_constants/deps.py")
         tm.that(pyproject_fields.get("@flext-maintenance", ""), has="do not edit")
-
-    def test_scaffold_once_owner_has_no_continuous_contract(self) -> None:
-        """Keep user-owned scaffold output outside continuous maintenance."""
-        template = (
-            Path(__file__).parents[3]
-            / "src"
-            / "flext_infra"
-            / "templates"
-            / "project"
-            / "base"
-            / "custom.mk.j2"
-        )
-        text = template.read_text(encoding="utf-8")
-        tm.that(text, lacks="[MANAGED]")

@@ -19,14 +19,16 @@
 - Main facades: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
   `FlextInfraGitService`, `FlextInfraModels`,
   `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols`,
-  `FlextInfraServiceBase` (+4 more)
+  `FlextInfraProtocolsBase` (+5 more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `FlextInfra`, `FlextInfraCli`, `FlextInfraConstants`,
   `FlextInfraGitService`, `FlextInfraModels`,
   `FlextInfraProjectSelectionServiceBase`, `FlextInfraProtocols`,
-  `FlextInfraServiceBase`, `FlextInfraTypes`, `FlextInfraUtilities` (+7 more)
-- Exported module shortcuts: `basemk`
-- Generated module pages: `13`
+  `FlextInfraProtocolsBase`, `FlextInfraServiceBase`, `FlextInfraTypes` (+8
+  more)
+- Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
+  `docs`, `fixers`, `gates` (+7 more)
+- Generated module pages: `27`
 
 ## Next Pages
 

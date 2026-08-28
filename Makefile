@@ -19,7 +19,7 @@ UV_LINK_MODE := copy
 # End SECTION: project identity
 
 # === SECTION: user overrides (managed) ===
-# Source: template (canonical public knobs documented by base.mk)
+# Source: template (canonical public invocation knobs)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 APPLY ?= N
 # The seeded absent value means "not applying", so every guard compares against
@@ -135,7 +135,6 @@ FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 endif
 # End SECTION: infra bootstrap
-
 
 _DEFAULT_help := usage
 _DEFAULT_deps := check

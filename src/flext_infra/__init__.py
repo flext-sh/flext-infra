@@ -19,7 +19,6 @@ from .__version__ import __version__ as __version__
 from .__version__ import __version_info__ as __version_info__
 
 if TYPE_CHECKING:
-    from . import basemk as basemk
     from . import check as check
     from . import codegen as codegen
     from . import codemod as codemod
@@ -77,7 +76,6 @@ __all__: tuple[str, ...] = (
     "__url__",
     "__version__",
     "__version_info__",
-    "basemk",
     "c",
     "check",
     "codegen",
@@ -119,7 +117,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".api": ("FlextInfra", "infra"),
             ".base": ("FlextInfraServiceBase", "s"),
             ".base_selection": ("FlextInfraProjectSelectionServiceBase",),
-            ".basemk": ("basemk",),
             ".check": ("check",),
             ".cli": ("FlextInfraCli", "docs_main", "main"),
             ".codegen": ("codegen",),

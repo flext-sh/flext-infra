@@ -66,7 +66,7 @@ class FlextInfraConstantsCodegenProject:
 
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
-    # delegate: "render" (cli engine) today; lazy_init/version_file/basemk later.
+    # delegate: "render" (CLI engine) today; lazy_init/version_file later.
     # One base catalog serves every repository; topology never selects policy.
 
 

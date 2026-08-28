@@ -296,9 +296,6 @@ secrets.yml
 .devcontainer/.env
 .github/*.rej
 
-# --- codegen conform: tracked owner inputs ---
-!base.mk
-
 # codegen module-standardizer reject artifacts (ADR-005 §9)
 *.tpl.rej
 
@@ -310,7 +307,6 @@ secrets.yml
 .bin/
 .tools/
 __pycache__/
-base.mk
 !.pre-commit-config.yaml
 
 # Derived build and tool artifacts

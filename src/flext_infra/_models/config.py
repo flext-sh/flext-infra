@@ -2128,20 +2128,6 @@ class FlextInfraConfigModels:
             """Whether the sync altered any environment file."""
             return bool(self.changed_files)
 
-    class BaseMkRenderRequest(_ConfigContract):
-        """Validated public request for one base.mk render."""
-
-        project_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
-        ]
-
-    class BaseMkRenderResult(_ConfigContract):
-        """Rendered base.mk content for one project."""
-
-        content: Annotated[
-            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
-        ]
-
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""
 
