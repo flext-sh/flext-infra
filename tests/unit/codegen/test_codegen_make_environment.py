@@ -404,7 +404,7 @@ class TestsCodegenMakeEnvironment:
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$superproject" submodule update --init -- "$$child_path"',
-            "refs/heads/$$branch",
+            'merge-base --is-ancestor "$$gitlink" HEAD',
         ):
             tm.that(makefile, has=required)
         for forbidden in (
@@ -415,6 +415,7 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "pip install",
+            "git checkout",
         ):
             tm.that(makefile, lacks=forbidden)
 
