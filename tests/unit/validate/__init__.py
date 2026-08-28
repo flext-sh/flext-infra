@@ -14,14 +14,9 @@ if TYPE_CHECKING:
 
     from .cprofile_report_tests import TestsFlextInfraCProfileReport
     from .governance_authority_tests import (
-        COMMON_DIR,
         ROOT,
-        WORKSPACE_ROOT,
-        test_docs_validation_required_skills_exist_with_adr,
-        test_governance_authority_sequence_matches_agents,
-        test_july_handoff_plans_are_marked_historical,
         test_markdownlint_does_not_suppress_strict_rules,
-        test_prompt_skills_resolve_to_existing_paths,
+        test_standalone_governance_never_climbs_to_parent_authority,
     )
     from .main_cli_tests import TestValidateCli
     from .namespace_validator_tests import TestFlextInfraNamespaceValidator
@@ -29,9 +24,7 @@ if TYPE_CHECKING:
     from .pytest_selector_tests import TestsFlextInfraPytestSelectorValidator
     from .testmon_db_tests import TestsFlextInfraTestmonDbInspector
 __all__: tuple[str, ...] = (
-    "COMMON_DIR",
     "ROOT",
-    "WORKSPACE_ROOT",
     "TestFlextInfraNamespaceValidator",
     "TestValidateCli",
     "TestsFlextInfraCProfileReport",
@@ -48,11 +41,8 @@ __all__: tuple[str, ...] = (
     "s",
     "t",
     "td",
-    "test_docs_validation_required_skills_exist_with_adr",
-    "test_governance_authority_sequence_matches_agents",
-    "test_july_handoff_plans_are_marked_historical",
     "test_markdownlint_does_not_suppress_strict_rules",
-    "test_prompt_skills_resolve_to_existing_paths",
+    "test_standalone_governance_never_climbs_to_parent_authority",
     "tf",
     "tk",
     "tm",
@@ -66,14 +56,9 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".cprofile_report_tests": ("TestsFlextInfraCProfileReport",),
             ".governance_authority_tests": (
-                "COMMON_DIR",
                 "ROOT",
-                "WORKSPACE_ROOT",
-                "test_docs_validation_required_skills_exist_with_adr",
-                "test_governance_authority_sequence_matches_agents",
-                "test_july_handoff_plans_are_marked_historical",
                 "test_markdownlint_does_not_suppress_strict_rules",
-                "test_prompt_skills_resolve_to_existing_paths",
+                "test_standalone_governance_never_climbs_to_parent_authority",
             ),
             ".main_cli_tests": ("TestValidateCli",),
             ".namespace_validator_tests": ("TestFlextInfraNamespaceValidator",),
