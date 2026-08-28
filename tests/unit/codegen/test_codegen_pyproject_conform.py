@@ -134,7 +134,7 @@ name = "workspace-member"
         uv = document.get("tool", {}).get("uv", {})
         tm.that("workspace" not in uv, eq=True)
 
-    def test_root_checkout_keeps_empty_uv_workspace_owner(self) -> None:
+    def test_standalone_root_removes_empty_uv_workspace_owner(self) -> None:
         repository = _repository(
             "standalone-root", role=c.Infra.RepositoryRole.STANDALONE, path="."
         ).model_copy(update={"checkout": c.Infra.CheckoutKind.ROOT})
@@ -154,7 +154,8 @@ link-mode = "copy"
         )
 
         document = tomllib.loads(tm.ok(result))
-        tm.that(document["tool"]["uv"]["workspace"], eq={})
+        tm.that("workspace" not in document["tool"]["uv"], eq=True)
+        tm.that(document["tool"]["uv"]["link-mode"], eq="copy")
 
     def test_standalone_derives_bare_internal_dependency_from_config_authority(
         self,
