@@ -1516,9 +1516,7 @@ class FlextInfraConfigModels:
                 t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
             ],
             m.Field(
-                default=MappingProxyType[
-                    t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
-                ]({}),
+                default_factory=dict,
                 description="Per-distribution deviations from the shared contract",
             ),
         ]
