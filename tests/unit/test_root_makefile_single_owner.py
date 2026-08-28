@@ -57,5 +57,12 @@ class TestsFlextInfraRootMakefileSingleOwner:
         tm.that(check_body, lacks=["codegen init", "deps modernize"])
         tm.that(all_body, lacks=["codegen init", "deps modernize"])
 
+    def test_generator_owner_self_hosts_through_its_setup_runtime(self) -> None:
+        """The owner validates the pending owner source, not an older baseline."""
+        makefile = Path(__file__).resolve().parents[2] / c.Infra.MAKEFILE_FILENAME
+        content = makefile.read_text(encoding="utf-8")
+
+        tm.that(content, has="FLEXT_INFRA_BOOTSTRAP = $(PROJECT_FLEXT_INFRA)")
+
 
 __all__: tuple[str, ...] = ()

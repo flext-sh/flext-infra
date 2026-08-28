@@ -172,6 +172,7 @@ class TestsCodegenMakeEnvironment:
             },
             "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
             "VIRTUAL_ENV": str(hostile_venv),
+            "GITHUB_TOKEN": "fixture-token",
         }
         result = u.Cli.run_raw(
             [c.Infra.MAKE, "--no-print-directory", "setup"],
@@ -233,6 +234,7 @@ class TestsCodegenMakeEnvironment:
         env = {
             "MISE_GLOBAL_CONFIG_FILE": str(hostile_global_config),
             "PATH": f"{tool_bin}:{os.environ['PATH']}",
+            "GITHUB_TOKEN": "fixture-token",
         }
 
         process = tm.ok(
@@ -306,6 +308,8 @@ class TestsCodegenMakeEnvironment:
         project_root, _workspace_root = self._render_makefile(tmp_path)
         makefile = (project_root / "Makefile").read_text()
 
+        tm.that(makefile, lacks="FLEXT_INFRA_BOOTSTRAP = $(PROJECT_FLEXT_INFRA)")
+        tm.that(makefile, has='--with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)"')
         tm.that(
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
         )

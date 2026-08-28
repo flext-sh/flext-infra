@@ -220,9 +220,17 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
+define _require_mise_github_auth
+	@if [ -z "$${MISE_GITHUB_TOKEN:-}$${GITHUB_API_TOKEN:-}$${GITHUB_TOKEN:-}" ]; then \
+		printf 'ERROR: Mise GitHub operations require explicit MISE_GITHUB_TOKEN, GITHUB_API_TOKEN, or GITHUB_TOKEN\n' >&2; \
+		exit 2; \
+	fi
+endef
+
 .PHONY: _bootstrap_setup_tools
 
 _bootstrap_setup_tools:
+	$(call _require_mise_github_auth)
 	@set -eu; \
 	project_root="$(PROJECT_ROOT)"; \
 	mise="$(SETUP_MISE)"; \
@@ -265,8 +273,9 @@ _bootstrap_setup_tools:
 			"$$uv_required" "$${uv_actual:-<missing>}" >&2; exit 2 ;; \
 	esac
 
-FLEXT_INFRA_BOOTSTRAP := env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(SANITIZED_CALLER_PATH)" $(UV) run --project "$(PROJECT_ROOT)" $(UV_BOOTSTRAP_FLAGS) --with "$(FLEXT_INFRA_BOOTSTRAP_REQUIREMENT)" python -m flext_infra
-
+# The generator owner validates the source installed by its own setup. A remote
+# baseline cannot validate the owner change that is about to update that baseline.
+FLEXT_INFRA_BOOTSTRAP = $(PROJECT_FLEXT_INFRA)
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 
@@ -777,6 +786,7 @@ _builtin_gen_init:
 
 _builtin_gen_all:
 	$(call _require_apply)
+	$(call _require_mise_github_auth)
 	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	$(call _generated_docs,--apply)
 	$(call _mise_launcher_apply)

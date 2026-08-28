@@ -2,6 +2,7 @@
 .PHONY: {{ target }}
 
 {{ target }}:
+	$(call _require_mise_github_auth)
 	@set -eu; \
 	project_root="{{ project_root }}"; \
 	mise="{{ mise }}"; \
