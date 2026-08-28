@@ -106,56 +106,64 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         })
 
     @classmethod
+    def _entry_missing_checksums(
+        cls, selector: str, raw_entry: t.JsonValue
+    ) -> p.Result[tuple[tuple[str, str, str], ...]]:
+        """Return missing checksum sources from one normalized lock entry."""
+        result_type = r[tuple[tuple[str, str, str], ...]]
+        normalized = cls._normalize_lock_entry(selector, raw_entry)
+        if normalized.failure:
+            return result_type.fail(normalized.error)
+        platforms = normalized.value.get("platforms")
+        if not isinstance(platforms, Mapping):
+            return result_type.fail(
+                f"mise.lock contains invalid platform metadata for {selector}"
+            )
+        missing: list[tuple[str, str, str]] = []
+        for platform, metadata in platforms.items():
+            if not platform or not isinstance(metadata, Mapping):
+                return result_type.fail(
+                    f"mise.lock contains invalid platform metadata for {selector}"
+                )
+            if metadata.get("checksum") is not None:
+                continue
+            raw_url = metadata.get("url")
+            if not isinstance(raw_url, str):
+                return result_type.fail(
+                    f"mise.lock checksum source missing for {selector}/{platform}"
+                )
+            parsed_url = urlsplit(raw_url)
+            if (
+                parsed_url.scheme != "https"
+                or parsed_url.hostname is None
+                or parsed_url.username is not None
+                or parsed_url.password is not None
+            ):
+                return result_type.fail(
+                    f"mise.lock checksum source is not safe for {selector}/{platform}"
+                )
+            missing.append((selector, platform, raw_url))
+        return result_type.ok(tuple(missing))
+
+    @classmethod
     def _missing_checksums(
         cls, payload: t.JsonMapping
     ) -> p.Result[tuple[tuple[str, str, str], ...]]:
         """Return typed selector/platform/URL triples lacking a checksum."""
+        result_type = r[tuple[tuple[str, str, str], ...]]
         raw_tools = payload.get("tools")
         if not isinstance(raw_tools, Mapping):
-            return r[tuple[tuple[str, str, str], ...]].fail(
-                "mise.lock must declare [tools]"
-            )
+            return result_type.fail("mise.lock must declare [tools]")
         missing: list[tuple[str, str, str]] = []
-        for raw_selector, raw_entries in raw_tools.items():
+        for selector, raw_entries in raw_tools.items():
             if not isinstance(raw_entries, list):
-                return r[tuple[tuple[str, str, str], ...]].fail(
-                    "mise.lock contains an invalid tool entry"
-                )
+                return result_type.fail("mise.lock contains an invalid tool entry")
             for raw_entry in raw_entries:
-                if not isinstance(raw_entry, Mapping):
-                    return r[tuple[tuple[str, str, str], ...]].fail(
-                        f"mise.lock contains an invalid entry for {raw_selector}"
-                    )
-                for raw_key, raw_metadata in raw_entry.items():
-                    if not raw_key.startswith(cls._PLATFORM_PREFIX):
-                        continue
-                    platform = raw_key.removeprefix(cls._PLATFORM_PREFIX)
-                    if not platform or not isinstance(raw_metadata, Mapping):
-                        return r[tuple[tuple[str, str, str], ...]].fail(
-                            "mise.lock contains invalid platform metadata for "
-                            f"{raw_selector}"
-                        )
-                    if raw_metadata.get("checksum") is not None:
-                        continue
-                    raw_url = raw_metadata.get("url")
-                    if not isinstance(raw_url, str):
-                        return r[tuple[tuple[str, str, str], ...]].fail(
-                            "mise.lock checksum source missing for "
-                            f"{raw_selector}/{platform}"
-                        )
-                    parsed_url = urlsplit(raw_url)
-                    if (
-                        parsed_url.scheme != "https"
-                        or parsed_url.hostname is None
-                        or parsed_url.username is not None
-                        or parsed_url.password is not None
-                    ):
-                        return r[tuple[tuple[str, str, str], ...]].fail(
-                            "mise.lock checksum source is not safe for "
-                            f"{raw_selector}/{platform}"
-                        )
-                    missing.append((raw_selector, platform, raw_url))
-        return r[tuple[tuple[str, str, str], ...]].ok(tuple(missing))
+                entry = cls._entry_missing_checksums(selector, raw_entry)
+                if entry.failure:
+                    return result_type.fail(entry.error)
+                missing.extend(entry.value)
+        return result_type.ok(tuple(missing))
 
     @staticmethod
     def _platform_header(selector: str, platform: str) -> p.Result[str]:
@@ -333,12 +341,12 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     def _validate_lock(
         lock: m.Infra.MiseLockSpec, *, configured_tools: t.StrMapping
     ) -> p.Result[bool]:
-        expected_tools = frozenset(configured_tools)
-        actual_tools = frozenset(lock.tools)
+        expected_tools = sorted(configured_tools)
+        actual_tools = sorted(lock.tools)
         if actual_tools != expected_tools:
             return r[bool].fail(
                 "Mise lock tool set mismatch: "
-                f"expected={sorted(expected_tools)} actual={sorted(actual_tools)}"
+                f"expected={expected_tools} actual={actual_tools}"
             )
         toolchain = config.Infra.codegen.toolchain
         declared_platforms = frozenset(toolchain.mise_lock_platforms)
