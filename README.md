@@ -52,12 +52,12 @@ slot registry verification).
 ## Integration Points
 
 - Parent FLEXT chain: read this project's `pyproject.toml` `dependencies` array
-  filtered by `flext-*`. The FLEXT cascade is encoded in the inheritance lists of
-  the facade classes listed under Module Map above.
+  filtered by `flext-*`. The FLEXT cascade is encoded in the inheritance lists
+  of the facade classes listed under Module Map above.
 - Public extensions exposed by this project: `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+194 more).
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+186 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates

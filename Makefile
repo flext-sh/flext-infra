@@ -190,15 +190,15 @@ UV ?= uv
 UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
-# Bootstrap uses the configured integration branch. An attached workspace uses
-# its declared editable source below; lazy-init uses the installed CLI only.
+# Bootstrap uses the configured integration branch; lazy-init uses the installed
+# CLI only.
 ifeq ($(GEN_INIT_ONLY),Y)
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT :=
 FLEXT_INFRA_SOURCE_ROOT_REL :=
 UV_BOOTSTRAP_FLAGS :=
 else
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@0.12.0-dev
-FLEXT_INFRA_SOURCE_ROOT_REL :=
+FLEXT_INFRA_SOURCE_ROOT_REL := .
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
 endif
 # End SECTION: infra bootstrap
@@ -993,7 +993,7 @@ define _mise_lock_apply
 		if grep -F 'mise WARN' "$$scratch/lock.log" >/dev/null; then \
 			printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
 		fi; \
-		$(FLEXT_INFRA_BOOTSTRAP) codegen mise-artifacts \
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
 			--workspace "$$scratch" --apply; \
 		lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
 		cp "$$scratch/mise.lock" "$$lock_tmp"; \
@@ -1007,7 +1007,7 @@ define _mise_artifacts_check
 	for project in $(MISE_LOCK_PROJECTS); do \
 		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
 		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		$(FLEXT_INFRA_BOOTSTRAP) codegen mise-artifacts \
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
 			--workspace "$$project_root" --check; \
 		if [ "$$project" != . ]; then \
 			cmp -s "$(PROJECT_ROOT)/bin/mise" "$$project_root/bin/mise" || { \

@@ -19,17 +19,17 @@
 - Main facades: `FlextInfra`, `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
   `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport`,
-  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+192
+  `FlextInfraCanonicalAliasGate`, `FlextInfraCensusImportDiscoveryVisitor` (+184
   more)
 - Alias exports: `c`, `d`, `e`, `h`, `m`, `p`, `r`, `s`, `t`, `u`, `x`
 - Public symbol exports: `CliDispatchService`, `CliRouteBase`,
   `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+214 more)
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+206 more)
 - Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
   `docs`, `fixers`, `gates` (+7 more)
-- Generated module pages: `219`
+- Generated module pages: `211`
 
 ## Next Pages
 
