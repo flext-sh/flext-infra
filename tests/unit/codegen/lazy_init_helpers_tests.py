@@ -470,9 +470,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
-    def test_existing_root_exports_only_source_imported_aliases(
-        self, tmp_path: Path
-    ) -> None:
+    def test_existing_root_composes_public_parent_aliases(self, tmp_path: Path) -> None:
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -489,8 +487,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
         exports = self._generated_exports(package_root)
-        tm.that(exports, lacks='"flext_cli": (\n        "r",')
-        tm.that(generated, lacks='    "r",')
+        tm.that(exports, has='"flext_cli": (')
+        tm.that(generated, has='    "r",')
         tm.that(generated, has='    "c",')
 
     def test_generated_parent_initializer_is_not_an_alias_owner(

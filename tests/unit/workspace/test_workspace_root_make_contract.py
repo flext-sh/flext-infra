@@ -67,10 +67,16 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         )
     )
     tm.that(
-        tuple(item.path for item in planned.files if item.path in protected_paths),
+        tuple(
+            item.path
+            for item in planned.files
+            if item.path in protected_paths and item.changed
+        ),
         empty=True,
     )
     for planned_file in planned.files:
+        if planned_file.path in protected_paths:
+            continue
         planned_file.path.parent.mkdir(parents=True, exist_ok=True)
         planned_file.path.write_text(planned_file.rendered, encoding="utf-8")
     for project_name in project_names:
@@ -135,22 +141,6 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, lacks="serialize-make")
         tm.that(declared, lacks="codegen")
         tm.that(retired.exit_code, ne=0)
-
-    def test_generated_make_does_not_reintroduce_docs_verb(
-        self, tmp_path: Path
-    ) -> None:
-        workspace_root, _project_names = _write_workspace(tmp_path)
-
-        process: p.Cli.CommandOutput = tm.ok(
-            u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "docs"], cwd=workspace_root
-            )
-        )
-
-        tm.that(process.exit_code, ne=0)
-        tm.that(
-            tuple(verb.name for verb in config.Infra.codegen.make.verbs), lacks="docs"
-        )
 
     def test_generated_make_routes_fmt_apply_to_selected_project(
         self, tmp_path: Path

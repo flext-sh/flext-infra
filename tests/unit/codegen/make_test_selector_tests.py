@@ -118,7 +118,7 @@ class TestsMakeTestSelector:
         invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
             engine_root / ".venv" / "bin" / "python",
-            f'#!/bin/sh\nprintf "%s\\n" "$*" > "{invocation_log}"\n',
+            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n',
         )
         test_u.Tests.write_executable(
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
@@ -133,8 +133,7 @@ class TestsMakeTestSelector:
                     "-f",
                     str(selected_makefile),
                     "gen",
-                    "WHAT=all",
-                    "APPLY=Y",
+                    "WHAT=check",
                     f"UV={uv}",
                 ],
                 cwd=caller_root,
@@ -148,7 +147,7 @@ class TestsMakeTestSelector:
                 "-m flext_infra codegen conform",
                 f"--root {engine_root}",
                 "--scope self",
-                "--mode apply",
+                "--mode check",
             ],
         )
 

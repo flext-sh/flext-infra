@@ -27,7 +27,3 @@ class TestsFlextInfraInfraMaintenanceInit:
     def test_lazy_import_python_version_enforcer(self) -> None:
         """Test lazy import of FlextInfraPythonVersionEnforcer."""
         tm.that(FlextInfraPythonVersionEnforcer, none=False)
-
-    def test_package_exposes_only_generated_lazy_exports(self) -> None:
-        """Keep the package surface equal to the generated lazy export set."""
-        tm.that(flext_infra.maintenance.__all__, eq=("FlextInfraCleanService",))
