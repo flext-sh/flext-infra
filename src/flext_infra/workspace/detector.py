@@ -284,6 +284,13 @@ class FlextInfraWorkspaceDetector(
                 f"{workspace.repository.provider}"
             )
         (provider,) = providers
+        baseline = u.Infra.repository_baseline_branch(
+            resolved_root, fallback=provider.branch
+        )
+        if baseline.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                baseline.error or "repository integration baseline resolution failed"
+            )
         metadata = u.read_project_metadata(resolved_root)
         if metadata.failure:
             return r[m.Infra.RepositoryConformTarget].fail(
@@ -307,7 +314,7 @@ class FlextInfraWorkspaceDetector(
                 make_profile=make_profile,
                 beads=workspace.beads,
                 canonical_project_name=canonical_project_name,
-                baseline_branch=provider.branch,
+                baseline_branch=baseline.value,
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
