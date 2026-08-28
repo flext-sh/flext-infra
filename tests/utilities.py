@@ -516,13 +516,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             _write(workspace / "docs/projects/README.md", "# Projects\n")
             _write(workspace / "docs/api-reference/README.md", "# API Reference\n")
             if project_names:
-                members = ", ".join(f'"{name}"' for name in project_names)
                 _write(
                     workspace / "pyproject.toml",
-                    (
-                        '[project]\nname = "workspace"\nversion = "0.1.0"\n\n'
-                        f"[tool.uv.workspace]\nmembers = [{members}]\n"
-                    ),
+                    '[project]\nname = "workspace"\nversion = "0.1.0"\n',
                 )
 
             for name in project_names:

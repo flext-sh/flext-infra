@@ -51,7 +51,7 @@ class TestsFlextInfraDocServer:
             _write_mkdocs_yml(workspace)
             _write_mkdocs_yml(workspace / "flext-a")
 
-            result = FlextInfraDocServer().serve(workspace)
+            result = FlextInfraDocServer().serve(workspace, projects=("flext-a",))
 
             tm.fail(result)
             tm.that((result.error or ""), has="--project")

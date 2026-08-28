@@ -5,8 +5,8 @@ project name baked in from ``u.read_project_metadata()`` at generation
 time.  No fallback, no hardcoded defaults — ``PackageNotFoundError``
 propagates if the package is not installed.
 
-Uses the canonical Jinja2 template ``templates/version_file.py.j2``
-and workspace project discovery via ``u.Infra.discover_projects``.
+Uses the canonical Jinja2 template ``templates/version_file.py.j2`` and
+repository-local or explicitly selected project resolution.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -27,15 +27,15 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenVersionFile(s[bool]):
-    """Generate ``__version__.py`` for every workspace project.
+    """Generate ``__version__.py`` for the explicitly resolved projects.
 
     Projects whose derived version class name equals ``FlextVersion``
     (the base class defined in flext-core) are skipped — that file is
     the SSOT base and is never generated.  Detection is 100% SSOT-derived
     via ``u.derive_class_stem`` from installed generated lazy exports.
 
-    Project discovery uses ``u.Infra.discover_projects`` — the canonical
-    workspace project list. No manual directory iteration.
+    Without ``--projects`` the supplied repository is the only target. Explicit
+    selectors are relative locators resolved by the canonical project resolver.
     """
 
     @override
@@ -48,14 +48,15 @@ class FlextInfraCodegenVersionFile(s[bool]):
             / "templates"
             / c.Infra.TEMPLATE_VERSION_FILE
         )
-        discovered = u.Infra.discover_projects(self.workspace_root)
-        if not discovered.success:
-            return r[bool].fail("version-file: project discovery failed")
+        project_names = u.Infra.normalize_cli_values(self.project_filter)
+        resolved = u.Infra.resolve_projects(self.workspace_root, project_names)
+        if resolved.failure:
+            return r[bool].fail(resolved.error or "version-file: resolution failed")
 
         generated = 0
         skipped = 0
 
-        for project_info in discovered.value:
+        for project_info in resolved.value:
             metadata_result = u.read_project_metadata(project_info.path)
             if metadata_result.failure:
                 return r[bool].fail(
@@ -67,9 +68,6 @@ class FlextInfraCodegenVersionFile(s[bool]):
 
             if class_name == FlextVersion.__name__:
                 skipped += 1
-                continue
-
-            if self.project_filter and meta.project.name != self.project_filter:
                 continue
 
             src_pkg = project_info.path / "src" / meta.package_name

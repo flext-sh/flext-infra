@@ -10,12 +10,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_cli import u as cli_u
 from flext_core import r
 from flext_infra import c, main
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_tests import tm
-from tests import u as test_u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,38 +51,6 @@ class TestFlextInfraWorkspaceChecker:
         """Test that check run fails when a workspace has no projects."""
         exit_code = main(["check", "run", "--workspace", str(tmp_path)])
         tm.that(exit_code, eq=1)
-
-    def test_cli_auto_discovers_projects(self, tmp_path: Path) -> None:
-        """Test that check run discovers workspace projects by default."""
-        project_dir = test_u.Tests.mk_project(
-            tmp_path,
-            "flext-core",
-            pyproject=(
-                '[project]\nname = "flext-core"\nversion = "0.1.0"\n'
-                "[tool.hatch.build.targets.wheel]\n"
-                'packages = ["src/flext_core"]\n'
-            ),
-            with_src=True,
-        )
-        package_dir = project_dir / "src" / "flext_core"
-        package_dir.mkdir(parents=True, exist_ok=True)
-        (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        (package_dir / "module.py").write_text("value = 1\n", encoding="utf-8")
-        init_result = cli_u.Cli.run_raw(["git", "init"], cwd=tmp_path)
-        add_result = cli_u.Cli.run_raw(["git", "add", "flext-core"], cwd=tmp_path)
-        tm.ok(init_result)
-        tm.ok(add_result)
-
-        exit_code = main([
-            "check",
-            "run",
-            "--workspace",
-            str(tmp_path),
-            "--gates",
-            "lint",
-        ])
-
-        tm.that(exit_code, eq=0)
 
     def test_resolve_gates_with_valid_gates(self) -> None:
         """Test that resolve_gates normalizes valid gate names."""

@@ -79,28 +79,46 @@ class FlextInfraUtilitiesDocsScope:
     def resolve_projects(
         workspace_root: Path, names: t.StrSequence
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
-        """Resolve selectors against the repository explicitly supplied."""
-        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
-        if discover_result.failure:
-            return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                discover_result.error or "discovery failed"
-            )
-        projects = list(discover_result.value)
+        """Resolve only the repository or explicit relative project locators."""
         if not names:
-            return r[t.SequenceOf[mw.ProjectInfo]].ok(projects)
-        if not projects:
+            return FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
+        root = workspace_root.resolve()
+        if not root.is_dir():
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                f"unknown projects: {', '.join(sorted(names))}"
+                f"project resolution failed: invalid workspace root {workspace_root}"
             )
-        project = projects[0]
-        allowed = frozenset((".", project.name, project.path.name))
-        missing = [name for name in names if name not in allowed]
+        local_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(root)
+        projects: list[mw.ProjectInfo] = []
+        missing: list[str] = []
+        seen_paths: set[Path] = set()
+        for name in dict.fromkeys(names):
+            is_local_name = local_project is not None and name in {
+                ".",
+                local_project.name,
+                root.name,
+            }
+            locator = Path(name)
+            project_root = root if is_local_name else (root / locator).resolve()
+            if locator.is_absolute() or not project_root.is_relative_to(root):
+                missing.append(name)
+                continue
+            project = (
+                local_project
+                if project_root == root
+                else FlextInfraUtilitiesDocsScope._project_info_for_entry(project_root)
+            )
+            if project is None:
+                missing.append(name)
+                continue
+            resolved_path = project.path.resolve()
+            if resolved_path not in seen_paths:
+                seen_paths.add(resolved_path)
+                projects.append(project)
         if missing:
-            missing_text = ", ".join(sorted(missing))
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                f"unknown projects: {missing_text}"
+                f"unknown project locators: {', '.join(sorted(missing))}"
             )
-        return r[t.SequenceOf[mw.ProjectInfo]].ok((project,))
+        return r[t.SequenceOf[mw.ProjectInfo]].ok(tuple(projects))
 
     @staticmethod
     def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:

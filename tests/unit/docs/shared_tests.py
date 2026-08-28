@@ -79,8 +79,7 @@ def test_build_scopes_preserves_declared_workspace_root_and_projects(
 ) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-        "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers=['flext-a']\n",
-        encoding="utf-8",
+        "[project]\nname='workspace'\n", encoding="utf-8"
     )
 
     result = u.Infra.build_scopes(
@@ -94,14 +93,13 @@ def test_build_scopes_preserves_declared_workspace_root_and_projects(
     )
 
 
-def test_build_scopes_skips_declared_workspace_without_materialized_projects(
+def test_build_scopes_does_not_derive_projects_from_workspace_topology(
     tmp_path: Path,
 ) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-        "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers=['flext-a']\n",
-        encoding="utf-8",
+        "[project]\nname='workspace'\n", encoding="utf-8"
     )
     (workspace / ".gitmodules").write_text(
         '[submodule "flext-a"]\n\tpath = flext-a\n'
@@ -115,7 +113,8 @@ def test_build_scopes_skips_declared_workspace_without_materialized_projects(
 
     tm.ok(result)
     tm.that(
-        [(scope.name, scope.path) for scope in result.value], eq=[("root", workspace)]
+        [(scope.name, scope.path) for scope in result.value],
+        eq=[("workspace", workspace)],
     )
 
 
@@ -149,7 +148,7 @@ def test_build_scopes_uses_custom_output_dir(tmp_path: Path) -> None:
     tm.that(result.value[1].report_dir, eq=workspace / "flext-a/.custom-docs")
 
 
-def test_build_scopes_skips_missing_projects(tmp_path: Path) -> None:
+def test_build_scopes_rejects_missing_project_locators(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
     result = u.Infra.build_scopes(
@@ -158,8 +157,8 @@ def test_build_scopes_skips_missing_projects(tmp_path: Path) -> None:
         output_dir=c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
     )
 
-    tm.ok(result)
-    tm.that([scope.name for scope in result.value], eq=["root"])
+    tm.fail(result)
+    tm.that(result.error, has="unknown project locators: flext-missing")
 
 
 def test_build_scopes_preserves_discovered_package_name(tmp_path: Path) -> None:
@@ -168,8 +167,7 @@ def test_build_scopes_preserves_discovered_package_name(tmp_path: Path) -> None:
     package_root = project_root / "src" / "demo_pkg"
     package_root.mkdir(parents=True)
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-        "[project]\nname='workspace'\n\n[tool.uv.workspace]\nmembers=['flext-demo']\n",
-        encoding="utf-8",
+        "[project]\nname='workspace'\n", encoding="utf-8"
     )
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     (project_root / c.Infra.PYPROJECT_FILENAME).write_text(

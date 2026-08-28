@@ -45,13 +45,6 @@ class TestWorkspaceCheckCLI:
             eq=0,
         )
 
-    def test_run_auto_discovers_workspace_projects(self, tmp_path: Path) -> None:
-        workspace = self._workspace(tmp_path)
-        tm.that(
-            main(["check", "run", "--workspace", str(workspace), "--gates", "lint"]),
-            eq=0,
-        )
-
     def test_with_projects_success(self, tmp_path: Path) -> None:
         workspace = self._workspace(tmp_path)
         tm.that(
@@ -72,7 +65,6 @@ class TestWorkspaceCheckCLI:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("CI", raising=False)
-        workspace = self._workspace(tmp_path)
         workspace = self._workspace(tmp_path)
         broken_file = workspace / "p1" / "src" / "broken.py"
         broken_file.write_text("def broken(:\n", encoding="utf-8")
@@ -100,7 +92,6 @@ class TestWorkspaceCheckCLI:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("CI", raising=False)
-        workspace = self._workspace(tmp_path)
         workspace = self._workspace(tmp_path)
         current = Path.cwd()
         runner_root = tmp_path / "runner"
