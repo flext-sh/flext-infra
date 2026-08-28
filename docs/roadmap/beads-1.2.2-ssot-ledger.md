@@ -21,6 +21,7 @@ this rollout.
 | 2026-08-28T07:45:11-03:00 | `flext-infra` | `fix/mise-beads-canonical` | `54b2ca8ecdc29fc5cdb28629bf3643238fa785a6` | WIP preserved and pushed to `origin` |
 | 2026-08-28T07:46:32-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `4b6a6e1be11fc55027304b9a93868f91691a4b3e` | WIP preserved and pushed to `origin` |
 | 2026-08-28T07:48:14-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `713d99d8d7d2f352d04335b4a40c76ce62a5bfa8` | Useful lane content consolidated by a two-parent merge and pushed to `origin` |
+| 2026-08-28T08:04:46-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `88425ac9eeae9a649b0a335564359ba79951c87b` | Repository-local topology and deterministic public alias gate checkpoint pushed to `origin` |
 
 ## Validation log
 
