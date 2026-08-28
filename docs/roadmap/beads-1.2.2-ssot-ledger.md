@@ -53,6 +53,7 @@ this rollout.
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0ad635785` | Complete green test and coverage evidence recorded and pushed |
 | 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `be442f8f8` | Residual active policy vocabulary removed from comments and checkpoint pushed |
 | 2026-08-28T12:11:10-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0bc446d9f` | Full-suite worker budget reduced at its typed owner after repeated memory exhaustion; seven net lines removed and checkpoint pushed |
+| 2026-08-28T12:16:16-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `fc68f07da` | Stable complete-suite evidence recorded and pushed after the typed worker-budget repair |
 
 ## Validation log
 
@@ -124,6 +125,8 @@ this rollout.
 | 2026-08-28T12:09:10-03:00 | `a5d67d071` | Second complete `COV=Y make test` without testmon, random seed `3720813960` | FAIL: 4 memory-exhausted cases, 2,382 passed in 101.64s | Repetition disproved a one-off worker crash; reduce only the typed fixed-worker owner, retain parallel execution, and regenerate its Make projection |
 | 2026-08-28T12:12:36-03:00 | `0bc446d9f` | Focused typed pytest policy/runner gates through `make test FILE=... MATCH=...` | PASS: 1 selected case in each owner test file | The runner consumes the generated worker count and the tooling model round-trips its SSOT; prior testmon-only deselections were not counted as passes |
 | 2026-08-28T12:16:00-03:00 | `0bc446d9f` | Complete `COV=Y make test` without testmon, random seed `1650846145` | PASS: 2,386 tests in 179.87s; 80.22% coverage against 45% minimum | Two fixed workers completed every subprocess-heavy case with zero failures, errors, warnings, or skips; no retry, dynamic fallback, or timeout expansion was added |
+| 2026-08-28T12:17:25-03:00 | `fc68f07da` | Full `make check` | PASS: all seven static stages; 0 errors and 0 skips | Lint, smells, Markdown, Pyrefly, Mypy, security, and Pyright are green after the worker-budget projection and validation evidence update |
+| 2026-08-28T12:17:48-03:00 | `fc68f07da` | Precise tracked-content, filename, runtime-command, topology, and static-projection audit | PASS: zero active retired-contract or prohibited-command matches; projections equal `1.2.2`, `flext`, and `127.0.0.1:3307` | Historical ledger wording and its recorded branch names are evidence, not executable/product contract; production has no parent inference or runtime Beads surface |
 
 ## Unresolved boundaries
 
