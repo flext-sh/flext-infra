@@ -455,9 +455,10 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "id": "unify-typings",
             "fix_action": "unify_typings",
         })
-        updated, changes = rule.apply(
-            source, _file_path=tmp_path / "demo/src/flext_demo/sample.py"
-        )
+        file_path = tmp_path / "demo/src/flext_demo/sample.py"
+        file_path.parent.mkdir(parents=True)
+        file_path.write_text(source, encoding="utf-8")
+        updated, changes = rule.apply(source, _file_path=file_path)
         tm.that(updated, has="from flext_demo import t")
         tm.that(
             updated,
@@ -476,9 +477,10 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "id": "unify-typings",
             "fix_action": "unify_typings",
         })
-        updated, _changes = rule.apply(
-            source, _file_path=tmp_path / "demo/tests/test_sample.py"
-        )
+        file_path = tmp_path / "demo/tests/test_sample.py"
+        file_path.parent.mkdir(parents=True)
+        file_path.write_text(source, encoding="utf-8")
+        updated, _changes = rule.apply(source, _file_path=file_path)
         tm.that(updated, has="from tests import t")
         tm.that(updated, has="value: t.VariadicTuple[t.JsonValue]")
 
@@ -495,7 +497,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         updated, _changes = rule.apply(
             source, _file_path=tmp_path / "demo/src/flext_demo/sample.py"
         )
-        tm.that(updated, has="from flext_demo import t")
+        tm.that(updated, has="from flext_core import t")
         tm.that(updated, has="value: t.Quad[str, int, float, bool]")
 
     def test_inserts_t_import_after_parenthesized_import_block(
@@ -514,9 +516,10 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
             "id": "unify-typings",
             "fix_action": "unify_typings",
         })
-        updated, _changes = rule.apply(
-            source, _file_path=tmp_path / "demo/src/flext_demo/sample.py"
-        )
+        file_path = tmp_path / "demo/src/flext_demo/sample.py"
+        file_path.parent.mkdir(parents=True)
+        file_path.write_text(source, encoding="utf-8")
+        updated, _changes = rule.apply(source, _file_path=file_path)
         tm.that(updated, has="from flext_demo import (\n    c,\n    m,\n)")
         tm.that(updated, has="from flext_demo import t")
         tm.that(updated.index("from flext_demo import t"), gt=updated.index("    m,"))

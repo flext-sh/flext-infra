@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     )
     from .auditor_scope_tests import TestAuditorForbiddenTerms, TestAuditorScope
     from .auditor_stale_symbols_tests import (
-        test_docstring_issues_accepts_direct_part_mro_docstring,
+        test_docstring_issues_accepts_direct_part_flext_docstring,
         test_generated_api_reference_accepts_live_public_symbol,
         test_generated_api_reference_reports_missing_public_symbol,
         test_manual_docs_report_live_symbol_mentions,
@@ -116,10 +116,10 @@ if TYPE_CHECKING:
     from .shared_iter_tests import TestIterMarkdownFiles
     from .shared_tests import (
         test_build_scopes_preserves_declared_workspace_root_and_projects,
-        test_build_scopes_skips_declared_workspace_without_materialized_projects,
         test_build_scopes_preserves_disabled_root_policy,
         test_build_scopes_preserves_discovered_package_name,
         test_build_scopes_returns_root_and_selected_projects,
+        test_build_scopes_skips_declared_workspace_without_materialized_projects,
         test_build_scopes_skips_missing_projects,
         test_build_scopes_treats_non_flext_project_as_its_own_root,
         test_build_scopes_uses_custom_output_dir,
@@ -218,7 +218,7 @@ __all__: tuple[str, ...] = (
     "test_docs_update_toc_still_invents_h1_for_headingless_stub",
     "test_docs_write_todo_writes_only_for_project_scopes",
     "test_docstring_issues_accept_assignment_docstrings",
-    "test_docstring_issues_accepts_direct_part_mro_docstring",
+    "test_docstring_issues_accepts_direct_part_flext_docstring",
     "test_fix_apply_updates_docs_file_and_writes_reports",
     "test_fix_check_apply_check_converges",
     "test_fix_item_model_tracks_link_and_toc_counts",
@@ -295,7 +295,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".auditor_scope_tests": ("TestAuditorForbiddenTerms", "TestAuditorScope"),
             ".auditor_stale_symbols_tests": (
-                "test_docstring_issues_accepts_direct_part_mro_docstring",
+                "test_docstring_issues_accepts_direct_part_flext_docstring",
                 "test_generated_api_reference_accepts_live_public_symbol",
                 "test_generated_api_reference_reports_missing_public_symbol",
                 "test_manual_docs_report_live_symbol_mentions",
@@ -380,10 +380,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".shared_iter_tests": ("TestIterMarkdownFiles",),
             ".shared_tests": (
                 "test_build_scopes_preserves_declared_workspace_root_and_projects",
-                "test_build_scopes_skips_declared_workspace_without_materialized_projects",
                 "test_build_scopes_preserves_disabled_root_policy",
                 "test_build_scopes_preserves_discovered_package_name",
                 "test_build_scopes_returns_root_and_selected_projects",
+                "test_build_scopes_skips_declared_workspace_without_materialized_projects",
                 "test_build_scopes_skips_missing_projects",
                 "test_build_scopes_treats_non_flext_project_as_its_own_root",
                 "test_build_scopes_uses_custom_output_dir",

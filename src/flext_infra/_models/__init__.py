@@ -34,12 +34,12 @@ if TYPE_CHECKING:
     )
     from .docs import FlextInfraModelsDocs
     from .enforcement import FlextInfraModelsEnforcement
+    from .flext_scan import FlextInfraModelsFlextScan
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
     from .github import FlextInfraModelsGithub
     from .layout import FlextInfraModelsLayout
     from .mixins import FlextInfraModelsMixins
-    from .mro_scan import FlextInfraModelsMroScan
     from .refactor import FlextInfraModelsRefactor
     from .refactor_ast_grep import FlextInfraModelsRefactorGrep
     from .refactor_census import FlextInfraModelsRefactorCensus
@@ -74,13 +74,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
     "FlextInfraModelsEnforcement",
+    "FlextInfraModelsFlextScan",
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
     "FlextInfraModelsGitIdentity",
     "FlextInfraModelsGithub",
     "FlextInfraModelsLayout",
     "FlextInfraModelsMixins",
-    "FlextInfraModelsMroScan",
     "FlextInfraModelsNamespaceEnforcer",
     "FlextInfraModelsRefactor",
     "FlextInfraModelsRefactorCensus",
@@ -124,12 +124,12 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".docs": ("FlextInfraModelsDocs",),
             ".enforcement": ("FlextInfraModelsEnforcement",),
+            ".flext_scan": ("FlextInfraModelsFlextScan",),
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
             ".github": ("FlextInfraModelsGithub",),
             ".layout": ("FlextInfraModelsLayout",),
             ".mixins": ("FlextInfraModelsMixins",),
-            ".mro_scan": ("FlextInfraModelsMroScan",),
             ".refactor": ("FlextInfraModelsRefactor",),
             ".refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
             ".refactor_census": ("FlextInfraModelsRefactorCensus",),

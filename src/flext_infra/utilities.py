@@ -30,10 +30,10 @@ from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
-from flext_infra._utilities.mro_scan import FlextInfraUtilitiesRefactorMroScan
+from flext_infra._utilities.flext_scan import FlextInfraUtilitiesRefactorFlextScan
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_analysis import (
-    FlextInfraUtilitiesRefactorNamespaceMro,
+    FlextInfraUtilitiesRefactorNamespaceFlext,
 )
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
@@ -66,8 +66,8 @@ from flext_infra._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
 from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra._utilities.rope_inventory import FlextInfraUtilitiesRopeInventory
 from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
-from flext_infra._utilities.rope_mro_transform import (
-    FlextInfraUtilitiesRopeMroTransform,
+from flext_infra._utilities.rope_flext_transform import (
+    FlextInfraUtilitiesRopeFlextTransform,
 )
 from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
@@ -132,15 +132,15 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRefactorCensus,
         FlextInfraUtilitiesRefactorDiscovery,
-        FlextInfraUtilitiesRefactorMroScan,
-        FlextInfraUtilitiesRefactorNamespaceMro,
+        FlextInfraUtilitiesRefactorFlextScan,
+        FlextInfraUtilitiesRefactorNamespaceFlext,
         FlextInfraUtilitiesRefactorNamespaceCommon,
         FlextInfraUtilitiesRefactorNamespaceFacades,
         FlextInfraUtilitiesRefactorNamespaceMoves,
         FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
-        FlextInfraUtilitiesRopeMroTransform,
+        FlextInfraUtilitiesRopeFlextTransform,
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,

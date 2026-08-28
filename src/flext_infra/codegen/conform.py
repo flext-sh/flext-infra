@@ -1267,6 +1267,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     rendered.error or f"template render failed: {entry.source}"
                 )
             rendered_content = rendered.value
+            conflict_marker = next(
+                (
+                    line
+                    for line in rendered_content.splitlines()
+                    if line.startswith(("<<<<<<< ", "||||||| "))
+                ),
+                "",
+            )
+            if conflict_marker:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"rendered template contains merge conflict marker {conflict_marker!r}: "
+                    f"template={entry.source} destination={path} root={root}"
+                )
             composed = self._compose_project_artifact(
                 root, entry.destination, rendered_content
             )
@@ -1862,6 +1875,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 alias=project.alias,
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
+                inherited_facets=project.inherited_facets,
                 description=project.description,
                 version=project.version,
                 license=project.license,
@@ -2131,6 +2145,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
+        merge_head_result = u.Cli.run_raw(
+            (c.Infra.GIT, "rev-parse", "--verify", c.Infra.GIT_MERGE_HEAD), cwd=root
+        )
+        if merge_head_result.failure:
+            return r[m.Infra.BranchAncestryPlan].fail(
+                f"cannot inspect active merge parent: {merge_head_result.error}"
+            )
+        merge_head_sha = (
+            merge_head_result.value.stdout.strip()
+            if merge_head_result.value.exit_code == 0
+            else ""
+        )
         current_branch_result = u.Cli.run_raw(
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
@@ -2280,6 +2306,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
                     )
                 ancestor = ancestry_result.value.exit_code == 0
+                if not ancestor and merge_head_sha:
+                    merge_ancestry_command = (
+                        c.Infra.GIT,
+                        "merge-base",
+                        "--is-ancestor",
+                        baseline_sha,
+                        merge_head_sha,
+                    )
+                    merge_ancestry_result = u.Cli.run_raw(
+                        merge_ancestry_command, cwd=root
+                    )
+                    if merge_ancestry_result.failure:
+                        return r[m.Infra.BranchAncestryPlan].fail(
+                            "cannot validate active merge-parent ancestry: "
+                            f"{reference}; error={merge_ancestry_result.error}"
+                        )
+                    if merge_ancestry_result.value.exit_code not in {0, 1}:
+                        return r[m.Infra.BranchAncestryPlan].fail(
+                            "active merge-parent ancestry validation failed: "
+                            f"{reference}; "
+                            f"exit={merge_ancestry_result.value.exit_code}"
+                        )
+                    ancestor = merge_ancestry_result.value.exit_code == 0
             references.append(
                 m.Infra.BranchAncestryRef(
                     reference=reference, sha=sha, excluded=excluded, ancestor=ancestor

@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from .test_generator_edge_cases import TestsFlextInfraBasemkGeneratorEdgeCases
     from .test_init import TestsFlextInfraBasemkInit
     from .test_main import TestsFlextInfraBasemkMain, basemk_main
-    from .test_make_contract import TestsFlextInfraBasemkMakeContract
     from .test_renderer import TestsFlextInfraBasemkRenderer
 __all__: tuple[str, ...] = (
     "TestsBootstrapRefnameSafety",
@@ -31,7 +30,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraBasemkGeneratorEdgeCases",
     "TestsFlextInfraBasemkInit",
     "TestsFlextInfraBasemkMain",
-    "TestsFlextInfraBasemkMakeContract",
     "TestsFlextInfraBasemkRenderer",
     "TestsFlextInfraCustomMkPolicy",
     "basemk_main",
@@ -70,7 +68,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_generator_edge_cases": ("TestsFlextInfraBasemkGeneratorEdgeCases",),
             ".test_init": ("TestsFlextInfraBasemkInit",),
             ".test_main": ("TestsFlextInfraBasemkMain", "basemk_main"),
-            ".test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
             ".test_renderer": ("TestsFlextInfraBasemkRenderer",),
             "flext_tests": (
                 "c",

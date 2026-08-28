@@ -293,7 +293,7 @@ class FlextInfraUtilitiesDocsApi:
         return symbol_name in FlextInfraUtilitiesDocsApi._assignment_docstrings(source)
 
     @classmethod
-    def _has_mro_docstring(
+    def _has_flext_docstring(
         cls,
         project_root: Path,
         *,
@@ -302,7 +302,7 @@ class FlextInfraUtilitiesDocsApi:
         symbol_name: str,
         visited: frozenset[str],
     ) -> bool:
-        """Return whether one class inherits documentation through its MRO chain."""
+        """Return whether one class inherits documentation through its FLEXT chain."""
         if not FlextInfraUtilitiesRopeAnalysis.class_declared_source(
             source, symbol_name
         ):
@@ -357,7 +357,7 @@ class FlextInfraUtilitiesDocsApi:
         source = module_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         if cls._has_symbol_docstring(source, symbol_name):
             return True
-        if cls._has_mro_docstring(
+        if cls._has_flext_docstring(
             project_root,
             module_name=module_name,
             source=source,

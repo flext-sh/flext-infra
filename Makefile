@@ -78,6 +78,11 @@ override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 override export FLEXT_PYTEST_COV_RAW := $(value COV)
 WHAT ?=
+# The explicit lazy-init selector is a hermetic, target-local transformation.
+# Detect it before any parse-time topology probes so the public invocation and
+# its recursive builtin never consult Git, worktrees, remotes, or a parent
+# workspace merely to regenerate Python package initializers.
+GEN_INIT_ONLY := $(if $(and $(filter init,$(WHAT)),$(filter gen _builtin_gen_init,$(MAKECMDGOALS))),Y,)
 # End SECTION: user overrides
 
 # === SECTION: derived paths (managed) ===
@@ -117,6 +122,23 @@ PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean r
 BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
 SCRIPT_VERBS :=
 
+ifeq ($(GEN_INIT_ONLY),Y)
+_ALLOWED_WHATS_help := usage
+_ALLOWED_WHATS_setup := environment
+_ALLOWED_WHATS_deps := check lock upgrade
+_ALLOWED_WHATS_build := artifacts
+_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells
+_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint
+_ALLOWED_WHATS_fmt := check all apply
+_ALLOWED_WHATS_fix := check all apply
+_ALLOWED_WHATS_run := default
+_ALLOWED_WHATS_status := diagnostics
+_ALLOWED_WHATS_docs := all generate fix audit build validate
+_ALLOWED_WHATS_clean := status generated
+_ALLOWED_WHATS_release := status
+_ALLOWED_WHATS_gen := check all apply init
+_ALLOWED_WHATS_mod := check all apply
+else
 _ALLOWED_WHATS_help := usage $(shell sed -n 's/^_custom_help_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_setup := environment $(shell sed -n 's/^_custom_setup_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_deps := check lock upgrade $(shell sed -n 's/^_custom_deps_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
@@ -130,9 +152,9 @@ _ALLOWED_WHATS_status := diagnostics $(shell sed -n 's/^_custom_status_\([a-z0-9
 _ALLOWED_WHATS_docs := all generate fix audit build validate $(shell sed -n 's/^_custom_docs_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_clean := status generated $(shell sed -n 's/^_custom_clean_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_release := status $(shell sed -n 's/^_custom_release_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-_ALLOWED_WHATS_gen := check all apply $(shell sed -n 's/^_custom_gen_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
+_ALLOWED_WHATS_gen := check all apply init $(shell sed -n 's/^_custom_gen_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
 _ALLOWED_WHATS_mod := check all apply $(shell sed -n 's/^_custom_mod_\([a-z0-9_-]*\):.*/\1/p' "$(MAKEFILE_ROOT)/custom.mk" 2>/dev/null | sort -u | tr '\n' ' ')
-
+endif
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
  DOCS_ACTIONS := generate fix audit build validate
@@ -151,7 +173,14 @@ UV_REQUESTED := $(UV)
 CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # Prefer the recorded flext-infra gitlink OID (immutable) when the workspace
-# root can resolve it; otherwise fall back to the provider integration branch.
+# root can resolve it. Lazy-init uses the installed CLI and has no bootstrap
+# contract at all.
+ifeq ($(GEN_INIT_ONLY),Y)
+FLEXT_INFRA_BOOTSTRAP_REF :=
+FLEXT_INFRA_BOOTSTRAP_REQUIREMENT :=
+FLEXT_INFRA_SOURCE_ROOT_REL :=
+UV_BOOTSTRAP_FLAGS :=
+else
 FLEXT_INFRA_BOOTSTRAP_REF := $(shell git -C "$(WORKSPACE_ROOT)" rev-parse "HEAD:." 2>/dev/null)
 ifeq ($(strip $(FLEXT_INFRA_BOOTSTRAP_REF)),)
 FLEXT_INFRA_BOOTSTRAP_REF := 0.12.0-dev
@@ -159,6 +188,7 @@ endif
 FLEXT_INFRA_BOOTSTRAP_REQUIREMENT := flext-infra @ git+https://github.com/flext-sh/flext-infra.git@$(FLEXT_INFRA_BOOTSTRAP_REF)
 FLEXT_INFRA_SOURCE_ROOT_REL :=
 UV_BOOTSTRAP_FLAGS := --isolated --all-groups --all-extras
+endif
 # End SECTION: infra bootstrap
 
 
@@ -223,9 +253,13 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
+ifeq ($(GEN_INIT_ONLY),Y)
+RESOLVED_UV :=
+else
 RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)" 2>/dev/null)
 ifeq ($(strip $(RESOLVED_UV)),)
 $(error Required uv executable not found: $(UV_REQUESTED))
+endif
 endif
 override UV := $(RESOLVED_UV)
 override FLEXT_INFRA_PYTHON := $(FLEXT_INFRA_RUNTIME_PYTHON)
@@ -328,7 +362,9 @@ endif
 endif
 
 
+ifneq ($(GEN_INIT_ONLY),Y)
 -include custom.mk
+endif
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
@@ -393,10 +429,20 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
-$(filter-out setup,$(PUBLIC_VERBS)):
+$(filter-out setup gen,$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
+
+# `gen init` deliberately bypasses generic lifecycle hooks. Hooks are allowed
+# to discover workspaces and operational state, which would violate the narrow
+# initializer contract before the canonical owner even starts.
+gen:
+ifeq ($(GEN_INIT_ONLY),Y)
+gen: _builtin_gen_init
+else
+	$(call _dispatch,$@)
+endif
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
@@ -894,6 +940,11 @@ _builtin_release_status: _builtin_require_environment
 # floors; gen must never run a second pyproject writer over conform's result.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+
+_builtin_gen_init:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all: _builtin_require_environment
 	$(call _require_apply)

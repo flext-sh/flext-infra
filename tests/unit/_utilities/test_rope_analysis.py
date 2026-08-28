@@ -76,7 +76,7 @@ class TestsFlextInfraRopeAnalysis:
             encoding="utf-8",
         )
 
-        parent_packages = u.Infra.resolve_parent_constants_mro(
+        parent_packages = u.Infra.resolve_parent_constants_flext(
             package_dir, return_module=True
         )
         model_context = u.Infra.contextual_runtime_alias_sources(

@@ -2,7 +2,7 @@
 
 Every qlty smell type (identical/similar-code, function/file-complexity,
 function-parameters, return-statements, nested-control-flow, boolean-logic)
-is reported per project and ALSO emitted as a ``FlextMroViolation`` warning on
+is reported per project and ALSO emitted as a ``FlextSmellViolation`` warning on
 every run — warnings fire for all findings, always, regardless of gate mode.
 ``c.Infra.SMELLS_GATE_MODE`` only decides pass/fail: WARN is report-only.
 """

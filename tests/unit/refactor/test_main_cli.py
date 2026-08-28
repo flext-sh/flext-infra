@@ -87,6 +87,7 @@ class TestsFlextInfraRefactorMainCli:
         module_path.write_text(
             (
                 "from __future__ import annotations\n\n"
+                '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
                 "class FlextDemoModels:\n"
                 "    pass\n\n"
                 "m = FlextDemoModels\n"
@@ -105,6 +106,7 @@ class TestsFlextInfraRefactorMainCli:
         module_path.write_text(
             (
                 "from __future__ import annotations\n\n"
+                '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
                 "class FlextDemoModels:\n"
                 "    pass\n\n"
                 "m = FlextDemoModels\n"
@@ -132,7 +134,7 @@ class TestsFlextInfraRefactorMainCli:
         return workspace, module_path
 
     @staticmethod
-    def _build_mro_incomplete_workspace(tmp_path: Path) -> Path:
+    def _build_flext_incomplete_workspace(tmp_path: Path) -> Path:
         workspace: Path
         package_root: Path
         workspace, package_root = u.Tests.create_lazy_init_workspace(
@@ -372,7 +374,14 @@ class TestsFlextInfraRefactorMainCli:
             encoding="utf-8",
         )
 
-        result = self._refactor_main("--workspace", str(workspace), "census", "--apply")
+        result = self._refactor_main(
+            "--workspace",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            "runtime_alias",
+        )
 
         tm.that(result, eq=0)
         source = module_path.read_text(encoding="utf-8")
@@ -446,14 +455,14 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].object_kind, eq="class")
         tm.that(violations[0].description, has="should use 'NewThing' directly")
 
-    def test_refactor_census_reports_mro_completeness(self, tmp_path: Path) -> None:
-        workspace = self._build_mro_incomplete_workspace(tmp_path)
+    def test_refactor_census_reports_flext_completeness(self, tmp_path: Path) -> None:
+        workspace = self._build_flext_incomplete_workspace(tmp_path)
 
         report_result = FlextInfraRefactorCensus(
             workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class",),
-            rules=("mro_completeness",),
+            rules=("flext_completeness",),
         ).execute()
 
         tm.ok(report_result)
@@ -463,7 +472,7 @@ class TestsFlextInfraRefactorMainCli:
         ]
         tm.that(len(violations), eq=1)
         tm.that(report.fixes_total, eq=1)
-        tm.that(violations[0].kind, eq="mro_completeness")
+        tm.that(violations[0].kind, eq="flext_completeness")
         tm.that(violations[0].object_name, eq="FlextDemoModels")
         tm.that(violations[0].object_kind, eq="class")
         tm.that(violations[0].description, has="FlextDemoModelsDomain")
@@ -490,10 +499,10 @@ class TestsFlextInfraRefactorMainCli:
                 "compatibility_alias",
             ),
             (
-                "_build_mro_incomplete_workspace",
+                "_build_flext_incomplete_workspace",
                 ("class",),
-                ("mro_completeness",),
-                "mro_completeness",
+                ("flext_completeness",),
+                "flext_completeness",
             ),
         ],
     )
@@ -539,10 +548,10 @@ class TestsFlextInfraRefactorMainCli:
             all(violation.kind == expected_kind for violation in violations), eq=True
         )
 
-    def test_refactor_census_mro_completeness_skips_irrelevant_modules(
+    def test_refactor_census_flext_completeness_skips_irrelevant_modules(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        workspace = self._build_mro_incomplete_workspace(tmp_path)
+        workspace = self._build_flext_incomplete_workspace(tmp_path)
         service_path = workspace / "src" / "flext_demo" / "service.py"
         self._write(
             service_path,
@@ -560,7 +569,9 @@ class TestsFlextInfraRefactorMainCli:
             include_references: bool = True,
         ) -> t.SequenceOf[object]:
             if file_path.resolve() == service_path.resolve():
-                msg = "irrelevant module should not be inventoried for mro_completeness"
+                msg = (
+                    "irrelevant module should not be inventoried for flext_completeness"
+                )
                 raise AssertionError(msg)
             return original_objects(
                 self,
@@ -575,7 +586,7 @@ class TestsFlextInfraRefactorMainCli:
             workspace_root=workspace,
             include_local_scopes=False,
             kinds=("class",),
-            rules=("mro_completeness",),
+            rules=("flext_completeness",),
         ).execute()
 
         tm.ok(report_result)
@@ -584,7 +595,7 @@ class TestsFlextInfraRefactorMainCli:
             violation for project in report.projects for violation in project.violations
         ]
         tm.that(len(violations), eq=1)
-        tm.that(violations[0].kind, eq="mro_completeness")
+        tm.that(violations[0].kind, eq="flext_completeness")
 
     def test_refactor_census_apply_rewrites_manual_typing_alias(
         self, tmp_path: Path
@@ -628,10 +639,10 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(source, lacks="LegacyThing = NewThing")
         tm.that(source, has="class NewThing:")
 
-    def test_refactor_census_apply_rewrites_mro_completeness(
+    def test_refactor_census_apply_rewrites_flext_completeness(
         self, tmp_path: Path
     ) -> None:
-        workspace = self._build_mro_incomplete_workspace(tmp_path)
+        workspace = self._build_flext_incomplete_workspace(tmp_path)
         module_path = workspace / "src" / "flext_demo" / "models.py"
 
         result = self._refactor_main(
@@ -640,7 +651,7 @@ class TestsFlextInfraRefactorMainCli:
             "census",
             "--apply",
             "--rules",
-            "mro_completeness",
+            "flext_completeness",
         )
 
         tm.that(result, eq=0)

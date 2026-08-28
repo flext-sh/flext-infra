@@ -184,7 +184,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
             t.StrMapping,
             m.Field(
                 alias="global-suppression-rationales",
-                description="Global Pyright exclusions mapped to verified facade-MRO rationales.",
+                description="Global Pyright exclusions mapped to verified facade-FLEXT rationales.",
             ),
         ] = m.Field(default_factory=lambda: MappingProxyType({}))
         source_env_suppressions: Annotated[

@@ -61,7 +61,7 @@ class FlextInfraModelsCensus:
                 str, m.Field(description="Tier determined by classifier")
             ] = ""
             is_facade_member: Annotated[
-                bool, m.Field(description="Whether object is exposed via facade MRO")
+                bool, m.Field(description="Whether object is exposed via facade FLEXT")
             ] = False
             references_count: Annotated[
                 t.NonNegativeInt,
@@ -140,7 +140,7 @@ class FlextInfraModelsCensus:
             kind: Annotated[
                 str,
                 m.Field(
-                    description="Violation kind (misplaced/duplicate/unused/missing_mro_base/flat_alias/wrong_tier)"
+                    description="Violation kind (misplaced/duplicate/unused/missing_flext_base/flat_alias/wrong_tier)"
                 ),
             ]
             severity: Annotated[str, m.Field(description="Severity level")] = (

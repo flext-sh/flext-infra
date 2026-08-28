@@ -1,4 +1,4 @@
-"""Census structural rule scanners (compatibility + MRO) — extracted concern."""
+"""Census structural rule scanners (compatibility + FLEXT) — extracted concern."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
 from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportDetector
-from flext_infra.detectors.mro_completeness_detector import (
-    FlextInfraMROCompletenessDetector,
+from flext_infra.detectors.flext_completeness_detector import (
+    FlextInfraFLEXTCompletenessDetector,
 )
-from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
+from flext_infra.detectors.flext_shape_detector import FlextInfraFLEXTShapeDetector
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -30,10 +30,10 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorCensusRulesStructMixin:
-    """Compatibility-alias + MRO-completeness rule scanners for one module.
+    """Compatibility-alias + FLEXT-completeness rule scanners for one module.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
-    detector-context + violation/fix builders from sibling mixins via MRO.
+    detector-context + violation/fix builders from sibling mixins via FLEXT.
     """
 
     if TYPE_CHECKING:
@@ -238,7 +238,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             )
         return violations, fixes
 
-    def _rule_mro_completeness(
+    def _rule_flext_completeness(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
@@ -250,15 +250,15 @@ class FlextInfraRefactorCensusRulesStructMixin:
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
-        """Detect + plan fixes for MRO-completeness violations."""
+        """Detect + plan fixes for FLEXT-completeness violations."""
         parse_failures: list[m.Infra.ParseFailureViolation] = []
-        mro_ctx = self._detector_context(
+        flext_ctx = self._detector_context(
             rope, file_path, parse_failures=parse_failures, convention=convention
         )
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
-        for detector_violation in FlextInfraMROCompletenessDetector.detect_file(
-            mro_ctx
+        for detector_violation in FlextInfraFLEXTCompletenessDetector.detect_file(
+            flext_ctx
         ):
             matched = (
                 self._named_object(objects, detector_violation.facade_class)
@@ -269,13 +269,13 @@ class FlextInfraRefactorCensusRulesStructMixin:
             if selected_kinds and object_kind not in selected_kinds:
                 continue
             symbol = symbol_index.get(detector_violation.facade_class)
-            action = "rewrite_mro_completeness"
+            action = "rewrite_flext_completeness"
             violations.append(
                 self._raw_violation(
                     project=project_name,
                     object_name=detector_violation.facade_class,
                     object_kind=object_kind,
-                    kind="mro_completeness",
+                    kind="flext_completeness",
                     file_path=file_path,
                     line=(
                         matched.line
@@ -303,7 +303,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
             )
         return violations, fixes
 
-    def _rule_mro_shape(
+    def _rule_flext_shape(
         self,
         rope: p.Infra.RopeWorkspaceDsl,
         file_path: Path,
@@ -315,12 +315,12 @@ class FlextInfraRefactorCensusRulesStructMixin:
         symbol_index: dict[str, tuple[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
-        """Detect + plan fixes for MRO-shape violations (manual-only)."""
+        """Detect + plan fixes for FLEXT-shape violations (manual-only)."""
         _ = objects, symbol_index
         ctx = self._detector_context(rope, file_path, convention=convention)
         violations: list[m.Infra.Census.Violation] = []
         fixes: list[m.Infra.Census.Fix] = []
-        for detector_violation in FlextInfraMROShapeDetector.detect_file(ctx):
+        for detector_violation in FlextInfraFLEXTShapeDetector.detect_file(ctx):
             object_kind = "class"
             if selected_kinds and object_kind not in selected_kinds:
                 continue
@@ -330,7 +330,7 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     project=project_name,
                     object_name=detector_violation.class_name,
                     object_kind=object_kind,
-                    kind="mro_shape",
+                    kind="flext_shape",
                     file_path=file_path,
                     line=detector_violation.line,
                     description=detector_violation.detail,

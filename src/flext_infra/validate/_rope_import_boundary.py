@@ -1,4 +1,4 @@
-"""MRO base for rope-driven module-import boundary validators.
+"""FLEXT base for rope-driven module-import boundary validators.
 
 Consolidates the shared skeleton between tier-whitelist and metadata-discipline
 validators (and any future rope-import boundary guard): build_report,

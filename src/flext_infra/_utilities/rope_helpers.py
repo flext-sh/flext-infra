@@ -28,9 +28,9 @@ class FlextInfraUtilitiesRopeHelpers(
     _post_hooks: ClassVar[list[p.Infra.RopePostHook]] = []
     _default_post_hooks_registered: ClassVar[bool] = False
     _default_post_hook_module: ClassVar[str] = (
-        "flext_infra.refactor.migrate_to_class_mro"
+        "flext_infra.refactor.migrate_to_class_flext"
     )
-    _default_post_hook_owner: ClassVar[str] = "FlextInfraRefactorMigrateToClassMRO"
+    _default_post_hook_owner: ClassVar[str] = "FlextInfraRefactorMigrateToClassFLEXT"
 
     @classmethod
     def _ensure_default_post_hooks_registered(cls) -> None:

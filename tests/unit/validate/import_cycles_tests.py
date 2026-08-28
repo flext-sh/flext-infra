@@ -17,7 +17,7 @@ import pytest
 
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
 from flext_tests import tf, tm
-from tests import m
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -161,6 +161,7 @@ class TestImportCyclesPerProjectScope:
             {"b.py": "from examples.a import X\n", "a.py": "X = 1\n"},
             pkg="examples",
         )
+        u.Tests.declare_workspace_projects(tmp_path, ("alpha", "beta"))
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=True)
         tm.that(report.summary, has="scanned 6 modules")
@@ -177,6 +178,7 @@ class TestImportCyclesPerProjectScope:
         self._seed_project(
             tmp_path, "beta", {"a.py": "X = 1\n", "b.py": "from tests.a import X\n"}
         )
+        u.Tests.declare_workspace_projects(tmp_path, ("alpha", "beta"))
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report.passed, eq=False)
         joined = " | ".join(report.violations)

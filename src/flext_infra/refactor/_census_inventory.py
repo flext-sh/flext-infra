@@ -17,7 +17,7 @@ class FlextInfraRefactorCensusInventoryMixin:
     """Governed-parent facade-alias inventory + workspace collision cross-ref.
 
     Composed into FlextInfraRefactorCensus via inheritance; ``_is_flext_owned``
-    is provided by the sibling objects mixin through MRO.
+    is provided by the sibling objects mixin through FLEXT.
     """
 
     if TYPE_CHECKING:

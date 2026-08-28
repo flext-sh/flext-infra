@@ -9,14 +9,12 @@ class FlextInfraInjectCommentsPhase:
     """Inject managed/custom markers into pyproject.toml."""
 
     _MYPY_RATIONALE_HEADER = (
-        "# FLEXT mypy suppression rationale (validated at the facade-MRO boundary):"
+        "# FLEXT mypy suppression rationale (validated at the facade-FLEXT boundary):"
     )
     _RUFF_RATIONALE_HEADER = (
         "# FLEXT Ruff suppression rationale (validated against semantic facet order):"
     )
-    _PYRIGHT_RATIONALE_HEADER = (
-        "# FLEXT Pyright suppression rationale (validated at the facade-MRO boundary):"
-    )
+    _PYRIGHT_RATIONALE_HEADER = "# FLEXT Pyright suppression rationale (validated at the facade-FLEXT boundary):"
 
     @classmethod
     def _mypy_rationale_lines(cls) -> t.StrSequence:

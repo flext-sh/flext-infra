@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.codegen.version_file import FlextInfraCodegenVersionFile
 from flext_tests import tm
-from tests import c
+from tests import c, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -57,6 +57,7 @@ def _create_workspace(tmp_path: Path, project_name: str) -> tuple[Path, Path, Pa
     pkg = proj / "src" / pkg_name
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text("", encoding="utf-8")
+    u.Tests.declare_workspace_projects(ws, (project_name,))
     return ws, proj, pkg
 
 
@@ -152,6 +153,9 @@ class TestsFlextInfraCodegenVersionFile:
             pkg = proj / "src" / name.replace("-", "_")
             pkg.mkdir(parents=True)
             (pkg / "__init__.py").write_text("", encoding="utf-8")
+        u.Tests.declare_workspace_projects(
+            ws, c.Tests.PROJECT_MEMBERS_BY_SCENARIO["filtered"]
+        )
         svc = FlextInfraCodegenVersionFile.model_validate({
             "workspace_root": ws,
             "project_filter": c.Tests.PROJECT_A_NAME,

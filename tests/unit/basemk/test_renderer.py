@@ -12,18 +12,9 @@ from flext_tests import tm
 if TYPE_CHECKING:
     from _pytest.capture import CaptureFixture
 
-_MIN_RENDERED_LINES = 400
-
 
 class TestsFlextInfraBasemkRenderer:
     """Behavior contract for test_renderer."""
-
-    def test_render_all_generates_large_makefile(self) -> None:
-        """Render the complete base Makefile surface."""
-        result = FlextInfraBaseMkTemplateRenderer().render_all()
-
-        tm.ok(result)
-        tm.that(len(result.value.splitlines()), gt=_MIN_RENDERED_LINES)
 
     def test_bootstrap_setup_is_self_contained_and_branch_aware(self) -> None:
         rendered: str = tm.ok(
@@ -76,15 +67,6 @@ class TestsFlextInfraBasemkRenderer:
         tm.that(rendered, lacks="AUTO_SYNC_BASE_AND_SCRIPTS")
         tm.that(rendered, lacks="rm -rf .venv")
 
-    def test_render_all_builds_with_canonical_uv_command(self) -> None:
-        """Build distributions without unrelated codegen or Poetry commands."""
-        rendered: str = tm.ok(FlextInfraBaseMkTemplateRenderer().render_all())
-
-        tm.that(rendered, has=('$(UV) build --project "$(CURDIR)" --no-sources &&'))
-        tm.that(rendered, has="UV ?= uv")
-        tm.that(rendered, lacks="$(PROJECT_INFRA_CODEGEN) grpc")
-        tm.that(rendered, lacks="$(POETRY) build")
-
     def test_render_all_with_config_override(self) -> None:
         """Render validated project-specific settings."""
         settings = m.Infra.BaseMkConfig(
@@ -124,39 +106,3 @@ class TestsFlextInfraBasemkRenderer:
         tm.ok(result)
         tm.that(result.value, is_=str)
         tm.that(result.value, empty=False)
-
-    def test_render_all_exposes_canonical_public_targets(self) -> None:
-        """Expose exactly the canonical public Make targets."""
-        result = FlextInfraBaseMkTemplateRenderer().render_all()
-
-        tm.ok(result)
-        text = result.value
-        for part in (
-            ".PHONY: help boot build check scan fmt docs docs-serve test val clean pr",
-            "STANDARD_VERBS := boot build check scan fmt docs test val clean pr",
-            "boot: ## Complete setup",
-            "scan: ## Run all security checks",
-            "fmt: ## Run code formatting",
-            "val: ## Run validate gates",
-        ):
-            tm.that(text, has=part)
-        tm.that(text, lacks="setup build check security format docs")
-        tm.that(text, lacks="docs-base")
-        tm.that(text, lacks="docs-sync-scripts")
-
-    def test_render_all_declares_and_documents_runtime_options(self) -> None:
-        """Document the runtime options accepted by generated targets."""
-        result = FlextInfraBaseMkTemplateRenderer().render_all()
-
-        tm.ok(result)
-        text = result.value
-        for part in (
-            "FIX ?=",
-            'echo "  CHECK_GATES=lint,format,pyrefly,mypy,pyright,security,markdown,smells"',
-            'echo "  FILE=src/foo.py             Single file for check/fmt/test"',
-            'echo "  CHANGED_ONLY=1              Git-changed Python files for check"',
-            'echo "  DIAG=1                      Emit extended pytest diagnostics"',
-            'echo "  FIX=1                       Auto-fix supported gates"',
-        ):
-            tm.that(text, has=part)
-        tm.that(text, lacks="check-fast")

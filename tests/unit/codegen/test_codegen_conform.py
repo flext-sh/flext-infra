@@ -139,6 +139,7 @@ class TestCodegenConform:
         package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
         package_init.parent.mkdir(parents=True, exist_ok=True)
         package_init.write_text("", encoding="utf-8")
+        u.Tests.write_standalone_beads_override(root)
         original_render = u.Cli.template_render
 
         def _render(path: Path, context: p.Model) -> p.Result[str]:
@@ -237,6 +238,7 @@ class TestCodegenConform:
         package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
         package_init.parent.mkdir(parents=True, exist_ok=True)
         package_init.write_text("", encoding="utf-8")
+        u.Tests.write_standalone_beads_override(root)
 
         applied = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
@@ -261,17 +263,14 @@ class TestCodegenConform:
     def test_branch_ancestry_accepts_active_merge_parent(self, tmp_path: Path) -> None:
         root = tmp_path / "repository"
         root.mkdir()
-        u.Tests.initialize_git_repo(root)
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
+        )
+        u.Tests.initialize_git_repo(root, origin_url=repository.url)
         baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
                 ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", baseline],
-                cwd=root,
-            )
-        )
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
                 cwd=root,
             )
         )
@@ -293,9 +292,6 @@ class TestCodegenConform:
             )
         )
         tm.that(divergent_check.exit_code, eq=1)
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
-        )
         u.Tests.write_standalone_beads_override(root)
         (root / "pyproject.toml").write_text(
             f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
@@ -322,7 +318,9 @@ class TestCodegenConform:
         merge_head = tm.ok(
             u.Cli.capture(["git", "rev-parse", "--git-path", "MERGE_HEAD"], cwd=root)
         )
-        (root / merge_head).write_text(f"{baseline}\n", encoding="utf-8")
+        (root / merge_head).write_text(
+            f"{before_merge.baseline_sha}\n", encoding="utf-8"
+        )
         during_merge = tm.ok(service.plan(request)).branch_ancestry[0]
         merging_current = next(
             reference
@@ -344,6 +342,20 @@ class TestCodegenConform:
         """
         bare = tmp_path / "repo.git"
         tm.ok(u.Cli.run_checked(["git", "init", "-b", "dev", "--bare", str(bare)]))
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
+        )
+        tm.ok(
+            u.Cli.run_checked([
+                "git",
+                "-C",
+                str(bare),
+                "remote",
+                "add",
+                "origin",
+                repository.url,
+            ])
+        )
         tm.ok(
             u.Cli.run_checked([
                 "git",
@@ -392,9 +404,6 @@ class TestCodegenConform:
                 "refs/remotes/origin/0.12.0-dev",
                 seed,
             ])
-        )
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path(), "profile": c.Infra.MakeProfile.STANDALONE}
         )
         u.Tests.write_standalone_beads_override(checkout)
         (checkout / "pyproject.toml").write_text(
@@ -568,6 +577,7 @@ class TestCodegenConform:
         """
         root = infra_git_repo
         _seed_infra_package_tree(root)
+        u.Tests.write_standalone_beads_override(root)
         # The defect needs a Python root the declarative env_dirs never lists.
         extra_root = "tools"
         module = root / extra_root / "maintenance.py"
@@ -613,13 +623,13 @@ class TestCodegenConform:
     ) -> None:
         root = infra_git_repo
         repository = u.Tests.repository_ref(config.Infra.name)
-        local_repository = repository.model_copy(update={"path": Path()})
         create_only = {
             "LICENSE": "existing license\n",
             "README.md": "# Existing repository\n",
             "custom.mk": "_custom_status_diagnostics:\n\t@true\n",
         }
         _seed_infra_package_tree(root)
+        u.Tests.write_standalone_beads_override(root)
         for relative, content in create_only.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
@@ -631,7 +641,9 @@ class TestCodegenConform:
         )
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        tm.that(derived.repository, eq=local_repository)
+        tm.that(derived.repository.name, eq=repository.name)
+        tm.that(derived.repository.distribution, eq=repository.distribution)
+        tm.that(derived.repository.path, eq=Path())
         tm.that(derived.project, eq=None)
 
         request = m.Infra.CodegenConformRequest(

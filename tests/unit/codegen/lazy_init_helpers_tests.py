@@ -547,7 +547,7 @@ class TestsFlextInfraLazyInitHelpers:
     ) -> None:
         """Derive the root ABI from facade owners, never the prior projection."""
         # Why (flext-27a9e.1, multi-agent): ai_hub's stale __all__ omitted r and
-        # became a second SSOT; regeneration must follow the declared MRO parent.
+        # became a second SSOT; regeneration must follow the declared FLEXT parent.
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="ai-hub", package_name="ai_hub"
         )

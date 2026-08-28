@@ -1,7 +1,7 @@
 """Apply orchestration for the project-layout engine (flext-0wuz).
 
 Executes the typed findings produced by the planning mixin, composing the
-file/archive primitives and the gitignore owner through MRO.
+file/archive primitives and the gitignore owner through FLEXT.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

@@ -225,7 +225,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             "projects_total": total,
             "projects_passed": passed,
             "projects_failed": total - passed,
-            "mro_failures": 0,
+            "flext_failures": 0,
             "layer_violations": 0,
             "cross_project_reference_violations": 0,
             "modified_python_files": modified_python_files,
@@ -246,7 +246,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         # (e.g. ``total_violations`` → ``total``).
         metric_check_rows: tuple[tuple[str, str, str], ...] = (
             (c.Infra.QG_CHECK_NAMESPACE_COMPLIANCE, "total_violations", "total"),
-            (c.Infra.QG_CHECK_MRO_VALIDITY, "mro_failures", "mro_failures"),
+            (c.Infra.QG_CHECK_FLEXT_VALIDITY, "flext_failures", "flext_failures"),
             (
                 c.Infra.QG_CHECK_IMPORT_RESOLUTION,
                 "cross_project_reference_violations",
@@ -312,7 +312,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                         violations_total=report.violations_total,
                         fixable_violations=len(report.fixes),
                         validator_passed=report.violations_total == 0,
-                        mro_failures=0,
+                        flext_failures=0,
                         layer_violations=0,
                         cross_project_reference_violations=0,
                     )

@@ -17,7 +17,7 @@ class TestsFlextInfraLazyInitTransforms:
     """Behavior tests for generated lazy-init transform output."""
 
     def test_private_subpackage_initializer_is_lazy(self, tmp_path: Path) -> None:
-        """Private implementation packages retain a lazy MRO facade."""
+        """Private implementation packages retain a lazy FLEXT facade."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )

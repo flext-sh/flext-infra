@@ -85,6 +85,10 @@ class FlextInfraCodegenScaffolder(s[str]):
 
         """
         project_path = project.path
+        if not (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            return m.Infra.ScaffoldResult(
+                project=project_path.name, files_created=[], files_skipped=[]
+            )
         project_layout = u.Infra.layout(project_path)
         if project_layout is None or not project_layout.class_stem:
             return m.Infra.ScaffoldResult(

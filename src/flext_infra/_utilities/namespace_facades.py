@@ -116,7 +116,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             msg = f"refusing facade write outside package: {file_path}"
             raise ValueError(msg)
         content = (
-            '"""Auto-generated facade to enforce MRO namespace contracts."""\n\n'
+            '"""Auto-generated facade to enforce FLEXT namespace contracts."""\n\n'
             "from __future__ import annotations\n\n"
             f"{FlextInfraUtilitiesRefactorNamespaceFacades._base_import_for_family(family=family, base_chains=base_chains)}\n\n"
             f"class {class_name}({FlextInfraUtilitiesRefactorNamespaceFacades._base_class_for_family(family=family, base_chains=base_chains)}):\n"

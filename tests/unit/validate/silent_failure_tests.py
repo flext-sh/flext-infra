@@ -96,9 +96,9 @@ class TestSilentFailureDetector:
 
 class TestSilentFailureValidator:
     def test_execute_reports_detected_issues(self, tmp_path: Path) -> None:
-        _create_silent_failure_project(tmp_path)
+        project = _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace_root=tmp_path, project_filter="flext-infra"
+            workspace_root=project, project_filter="flext-infra"
         ).execute()
 
         tm.fail(result, has="silent failure validation found 3 issue(s)")
@@ -107,9 +107,9 @@ class TestSilentFailureValidator:
         tm.that(error, has="silent-failure-except")
 
     def test_execute_json_output_format_emits_full_report(self, tmp_path: Path) -> None:
-        _create_silent_failure_project(tmp_path)
+        project = _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace_root=tmp_path, project_filter="flext-infra", output_format="json"
+            workspace_root=project, project_filter="flext-infra", output_format="json"
         ).execute()
 
         tm.that(result.failure, eq=True)
@@ -132,14 +132,14 @@ class TestSilentFailureValidator:
             "    return r[bool].ok(True)\n"
             for index in range(finding_count)
         )
-        _ = u.Tests.create_codegen_project(
+        project = u.Tests.create_codegen_project(
             tmp_path=tmp_path,
             name="flext-infra",
             pkg_name="flext_infra",
             files={"utilities.py": source},
         )
         result = FlextInfraSilentFailureValidator(
-            workspace_root=tmp_path, project_filter="flext-infra"
+            workspace_root=project, project_filter="flext-infra"
         ).execute()
 
         tm.fail(result, has=f"found {finding_count} issue(s)")
@@ -149,12 +149,12 @@ class TestSilentFailureValidator:
     def test_validate_cli_route_returns_non_zero_for_violations(
         self, tmp_path: Path
     ) -> None:
-        _create_silent_failure_project(tmp_path)
+        project = _create_silent_failure_project(tmp_path)
         exit_code = infra_main([
             "validate",
             "silent-failure",
             "--workspace",
-            str(tmp_path),
+            str(project),
             "--project-filter",
             "flext-infra",
         ])

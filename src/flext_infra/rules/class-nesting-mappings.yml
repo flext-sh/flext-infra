@@ -809,10 +809,10 @@ class_nesting:
   target_name: FlextInfraRefactorLegacyRemovalRule
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraRefactorMRORedundancyChecker
-  current_file: flext-core/src/flext_infra/rules/mro_redundancy_checker.py
-  target_namespace: FlextRefactorRulesMroRedundancyChecker
-  target_name: FlextInfraRefactorMRORedundancyChecker
+- loose_name: FlextInfraRefactorFLEXTRedundancyChecker
+  current_file: flext-core/src/flext_infra/rules/flext_redundancy_checker.py
+  target_namespace: FlextRefactorRulesFlextRedundancyChecker
+  target_name: FlextInfraRefactorFLEXTRedundancyChecker
   confidence: medium
   reason: top_level_class_without_namespace_prefix
 - loose_name: _DictToMappingTransformer
@@ -929,10 +929,10 @@ class_nesting:
   target_name: FlextInfraRefactorLazyImportFixer
   confidence: medium
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraRefactorMRORemover
-  current_file: flext-core/src/flext_infra/refactor/transformers/mro_remover.py
-  target_namespace: FlextRefactorTransformersMroRemover
-  target_name: FlextInfraRefactorMRORemover
+- loose_name: FlextInfraRefactorFLEXTRemover
+  current_file: flext-core/src/flext_infra/refactor/transformers/flext_remover.py
+  target_namespace: FlextRefactorTransformersFlextRemover
+  target_name: FlextInfraRefactorFLEXTRemover
   confidence: medium
   reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraRefactorSymbolPropagator

@@ -475,10 +475,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         single_class = [v for v in violations if v.kind == "single_class"]
         tm.that(len(single_class), eq=1)
 
-    def test_loose_object_detector_skips_private_base_module_mro_contract(
+    def test_loose_object_detector_skips_private_base_module_flext_contract(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
-        """Skip the private base-module MRO contract exception."""
+        """Skip the private base-module FLEXT contract exception."""
         target = tmp_path / "_base.py"
         target.write_text(
             "from __future__ import annotations\n\n"
@@ -826,10 +826,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
 
         tm.that(report.total_cyclic_imports, gte=1)
 
-    def test_namespace_enforcer_skips_mro_completeness_for_tests_typings(
+    def test_namespace_enforcer_skips_flext_completeness_for_tests_typings(
         self, tmp_path: Path
     ) -> None:
-        """Skip MRO completeness for a tests typings facade."""
+        """Skip FLEXT completeness for a tests typings facade."""
         workspace = tmp_path / "workspace"
         project = workspace / "sample-proj"
         pkg = project / "src" / "sample_pkg"

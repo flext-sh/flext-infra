@@ -110,7 +110,9 @@ class TestMainEntryPoint:
             "--help",
         ])
         tm.ok(result)
-        tm.that(result.value.exit_code, eq=0)
+        tm.that(
+            result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
+        )
         tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
 
     def test_apply_bootstraps_managed_conflict_before_facade_imports(
@@ -165,7 +167,9 @@ class TestMainEntryPoint:
         )
 
         tm.ok(result)
-        tm.that(result.value.exit_code, eq=0)
+        tm.that(
+            result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
+        )
         tm.that(
             result.value.stdout + result.value.stderr,
             contains="recovered owner-declared managed conflicts",

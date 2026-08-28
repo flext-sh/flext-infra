@@ -113,6 +113,10 @@ if TYPE_CHECKING:
     from .detectors.deferred_self_reference_detector import (
         FlextInfraDeferredSelfReferenceDetector,
     )
+    from .detectors.flext_completeness_detector import (
+        FlextInfraFLEXTCompletenessDetector,
+    )
+    from .detectors.flext_shape_detector import FlextInfraFLEXTShapeDetector
     from .detectors.future_annotations_detector import (
         FlextInfraFutureAnnotationsDetector,
     )
@@ -127,8 +131,6 @@ if TYPE_CHECKING:
     from .detectors.manual_typing_alias_detector import (
         FlextInfraManualTypingAliasDetector,
     )
-    from .detectors.mro_completeness_detector import FlextInfraMROCompletenessDetector
-    from .detectors.mro_shape_detector import FlextInfraMROShapeDetector
     from .detectors.namespace_source_detector import FlextInfraNamespaceSourceDetector
     from .detectors.private_import_bypass_detector import (
         FlextInfraPrivateImportBypassDetector,
@@ -184,15 +186,15 @@ if TYPE_CHECKING:
         FlextInfraClassNestingPostCheckGate,
         FlextInfraRefactorFileExecutor,
     )
+    from .refactor.flext_import_rewriter import FlextInfraRefactorFLEXTImportRewriter
+    from .refactor.flext_migration_validator import (
+        FlextInfraRefactorFLEXTMigrationValidator,
+    )
+    from .refactor.flext_resolver import FlextInfraRefactorFLEXTResolver
     from .refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
     from .refactor.loader import FlextInfraRefactorRuleLoader
-    from .refactor.migrate_to_class_mro import FlextInfraRefactorMigrateToClassMRO
+    from .refactor.migrate_to_class_flext import FlextInfraRefactorMigrateToClassFLEXT
     from .refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
-    from .refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
-    from .refactor.mro_migration_validator import (
-        FlextInfraRefactorMROMigrationValidator,
-    )
-    from .refactor.mro_resolver import FlextInfraRefactorMROResolver
     from .refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from .refactor.namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
@@ -230,6 +232,10 @@ if TYPE_CHECKING:
     from .transformers.cli_modernizer import FlextInfraRefactorCliModernizer
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.deprecated_remover import FlextInfraRefactorDeprecatedRemover
+    from .transformers.flext_remover import FlextInfraRefactorFLEXTRemover
+    from .transformers.flext_symbol_propagator import (
+        FlextInfraRefactorFLEXTSymbolPropagator,
+    )
     from .transformers.future_import import FlextInfraRefactorFutureImport
     from .transformers.hardcoded_version import FlextInfraRefactorHardcodedVersion
     from .transformers.helper_consolidation import (
@@ -241,10 +247,6 @@ if TYPE_CHECKING:
     from .transformers.import_modernizer import FlextInfraRefactorImportModernizer
     from .transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
     from .transformers.logging_modernizer import FlextInfraRefactorLoggingModernizer
-    from .transformers.mro_remover import FlextInfraRefactorMRORemover
-    from .transformers.mro_symbol_propagator import (
-        FlextInfraRefactorMROSymbolPropagator,
-    )
     from .transformers.nested_class_propagation import (
         FlextInfraNestedClassPropagationTransformer,
     )
@@ -385,6 +387,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraEnsureRuffConfigPhase",
     "FlextInfraEnsureVultureConfigPhase",
     "FlextInfraExtraPathsManager",
+    "FlextInfraFLEXTCompletenessDetector",
+    "FlextInfraFLEXTShapeDetector",
     "FlextInfraFixerAdapter",
     "FlextInfraFlextBindingService",
     "FlextInfraFutureAnnotationsDetector",
@@ -408,8 +412,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraLocDeltaValidator",
     "FlextInfraLooseObjectDetector",
     "FlextInfraLooseTestFunctionDetector",
-    "FlextInfraMROCompletenessDetector",
-    "FlextInfraMROShapeDetector",
     "FlextInfraManualCommandValidator",
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
@@ -448,6 +450,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCliModernizer",
     "FlextInfraRefactorCompatibilityAlias",
     "FlextInfraRefactorDeprecatedRemover",
+    "FlextInfraRefactorFLEXTImportRewriter",
+    "FlextInfraRefactorFLEXTMigrationValidator",
+    "FlextInfraRefactorFLEXTRemover",
+    "FlextInfraRefactorFLEXTResolver",
+    "FlextInfraRefactorFLEXTSymbolPropagator",
     "FlextInfraRefactorFileExecutor",
     "FlextInfraRefactorFutureImport",
     "FlextInfraRefactorHardcodedVersion",
@@ -457,12 +464,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLoggingModernizer",
     "FlextInfraRefactorLooseClassScanner",
-    "FlextInfraRefactorMROImportRewriter",
-    "FlextInfraRefactorMROMigrationValidator",
-    "FlextInfraRefactorMRORemover",
-    "FlextInfraRefactorMROResolver",
-    "FlextInfraRefactorMROSymbolPropagator",
-    "FlextInfraRefactorMigrateToClassMRO",
+    "FlextInfraRefactorMigrateToClassFLEXT",
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorPatternModernizer",
@@ -667,6 +669,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".detectors.deferred_self_reference_detector": (
                 "FlextInfraDeferredSelfReferenceDetector",
             ),
+            ".detectors.flext_completeness_detector": (
+                "FlextInfraFLEXTCompletenessDetector",
+            ),
+            ".detectors.flext_shape_detector": ("FlextInfraFLEXTShapeDetector",),
             ".detectors.future_annotations_detector": (
                 "FlextInfraFutureAnnotationsDetector",
             ),
@@ -685,10 +691,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".detectors.manual_typing_alias_detector": (
                 "FlextInfraManualTypingAliasDetector",
             ),
-            ".detectors.mro_completeness_detector": (
-                "FlextInfraMROCompletenessDetector",
-            ),
-            ".detectors.mro_shape_detector": ("FlextInfraMROShapeDetector",),
             ".detectors.namespace_source_detector": (
                 "FlextInfraNamespaceSourceDetector",
             ),
@@ -751,15 +753,19 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraClassNestingPostCheckGate",
                 "FlextInfraRefactorFileExecutor",
             ),
+            ".refactor.flext_import_rewriter": (
+                "FlextInfraRefactorFLEXTImportRewriter",
+            ),
+            ".refactor.flext_migration_validator": (
+                "FlextInfraRefactorFLEXTMigrationValidator",
+            ),
+            ".refactor.flext_resolver": ("FlextInfraRefactorFLEXTResolver",),
             ".refactor.legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
             ".refactor.loader": ("FlextInfraRefactorRuleLoader",),
-            ".refactor.migrate_to_class_mro": ("FlextInfraRefactorMigrateToClassMRO",),
-            ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
-            ".refactor.mro_import_rewriter": ("FlextInfraRefactorMROImportRewriter",),
-            ".refactor.mro_migration_validator": (
-                "FlextInfraRefactorMROMigrationValidator",
+            ".refactor.migrate_to_class_flext": (
+                "FlextInfraRefactorMigrateToClassFLEXT",
             ),
-            ".refactor.mro_resolver": ("FlextInfraRefactorMROResolver",),
+            ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".refactor.namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".refactor.namespace_enforcer_phases": (
                 "FlextInfraNamespaceEnforcerPhasesMixin",
@@ -810,6 +816,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.deprecated_remover": (
                 "FlextInfraRefactorDeprecatedRemover",
             ),
+            ".transformers.flext_remover": ("FlextInfraRefactorFLEXTRemover",),
+            ".transformers.flext_symbol_propagator": (
+                "FlextInfraRefactorFLEXTSymbolPropagator",
+            ),
             ".transformers.future_import": ("FlextInfraRefactorFutureImport",),
             ".transformers.hardcoded_version": ("FlextInfraRefactorHardcodedVersion",),
             ".transformers.helper_consolidation": (
@@ -822,10 +832,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
             ".transformers.logging_modernizer": (
                 "FlextInfraRefactorLoggingModernizer",
-            ),
-            ".transformers.mro_remover": ("FlextInfraRefactorMRORemover",),
-            ".transformers.mro_symbol_propagator": (
-                "FlextInfraRefactorMROSymbolPropagator",
             ),
             ".transformers.nested_class_propagation": (
                 "FlextInfraNestedClassPropagationTransformer",

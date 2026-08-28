@@ -101,6 +101,7 @@ class TestsCodegenBeadsProjection:
         )
         return match.rendered if match is not None else None
 
+    @pytest.mark.slow
     def test_opted_standalone_renders_only_declarative_beads_files(
         self, tmp_path: Path
     ) -> None:

@@ -26,8 +26,8 @@ from flext_infra.detectors.manual_protocol_detector import (
 from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
 )
-from flext_infra.detectors.mro_completeness_detector import (
-    FlextInfraMROCompletenessDetector,
+from flext_infra.detectors.flext_completeness_detector import (
+    FlextInfraFLEXTCompletenessDetector,
 )
 from flext_infra.detectors.namespace_source_detector import (
     FlextInfraNamespaceSourceDetector,
@@ -49,7 +49,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
 
     Composed alongside the phases/orchestration mixins into the concrete
     enforcer; ``self`` provides facade scan / file-collection / detect-apply
-    helpers through the concrete's MRO.
+    helpers through the concrete's FLEXT.
     """
 
     if TYPE_CHECKING:
@@ -310,9 +310,9 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             rewrite_fn=None,
             apply=apply,
         )
-        mro_completeness_violations = self._detect_and_apply(
+        flext_completeness_violations = self._detect_and_apply(
             py_files=py_files,
-            detect_fn=lambda f: FlextInfraMROCompletenessDetector.detect_file(
+            detect_fn=lambda f: FlextInfraFLEXTCompletenessDetector.detect_file(
                 self._detector_context(
                     file_path=f,
                     rope_project=rope_project,
@@ -320,7 +320,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
                     project_root=project_root,
                 )
             ),
-            rewrite_fn=lambda vs: u.Infra.rewrite_mro_completeness_violations(
+            rewrite_fn=lambda vs: u.Infra.rewrite_flext_completeness_violations(
                 violations=vs, parse_failures=parse_failures
             ),
             apply=apply,
@@ -374,7 +374,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             compatibility_alias_violations=list(compatibility_alias_violations),
             foreign_canonical_alias_violations=list(foreign_canonical_alias_violations),
             class_placement_violations=list(class_placement_violations),
-            mro_completeness_violations=list(mro_completeness_violations),
+            flext_completeness_violations=list(flext_completeness_violations),
             bare_except_violations=smell_buckets["bare_except"],
             print_violations=smell_buckets["print"],
             breakpoint_violations=smell_buckets["breakpoint"],

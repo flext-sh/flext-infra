@@ -14,7 +14,7 @@ from {{ package_name }}.services.ping import {{ class_stem }}Ping
 
 
 class {{ class_stem }}({{ class_stem }}Ping):
-    """Public {{ class_stem }} facade composed through cooperative MRO."""
+    """Public {{ class_stem }} facade composed through cooperative FLEXT."""
 
 
 {{ alias }} = {{ class_stem }}.fetch_global()

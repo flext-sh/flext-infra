@@ -40,13 +40,14 @@ def _build_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
         "value = FOO\n",
         encoding="utf-8",
     )
+    u.Tests.declare_workspace_projects(workspace_root, (project_root.name,))
     return (workspace_root, constants_path, consumer_path)
 
 
 class TestsFlextInfraUtilitiesRopeHooks:
     """Behavior contract for test_rope_hooks."""
 
-    def test_run_rope_post_hooks_applies_mro_migration(self, tmp_path: Path) -> None:
+    def test_run_rope_post_hooks_applies_flext_migration(self, tmp_path: Path) -> None:
         workspace_root, constants_path, consumer_path = _build_workspace(tmp_path)
 
         results: list[m.Infra.Result] = list(

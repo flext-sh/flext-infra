@@ -14,7 +14,7 @@ from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
 )
 from flext_infra.transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
-from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
+from flext_infra.transformers.flext_remover import FlextInfraRefactorFLEXTRemover
 from flext_infra.transformers.signature_propagator import (
     FlextInfraRefactorSignaturePropagator,
 )
@@ -46,8 +46,8 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         match kind:
             case c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS:
                 result = self._apply_future_annotations(source)
-            case c.Infra.RefactorRuleKind.MRO_CLASS_MIGRATION:
-                result = self._apply_mro_class_migration(source, file_path)
+            case c.Infra.RefactorRuleKind.FLEXT_CLASS_MIGRATION:
+                result = self._apply_flext_class_migration(source, file_path)
             case c.Infra.RefactorRuleKind.LEGACY_REMOVAL:
                 result = self._apply_legacy_removal(settings, source)
             case c.Infra.RefactorRuleKind.IMPORT_MODERNIZER:
@@ -66,9 +66,9 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
                 result = self._apply_symbol_propagation(settings, source)
             case c.Infra.RefactorRuleKind.SIGNATURE_PROPAGATION:
                 result = self._apply_signature_propagation(settings, source)
-            case c.Infra.RefactorRuleKind.MRO_REDUNDANCY:
+            case c.Infra.RefactorRuleKind.FLEXT_REDUNDANCY:
                 result = self._apply_change_tracker_transformer(
-                    FlextInfraRefactorMRORemover(), source
+                    FlextInfraRefactorFLEXTRemover(), source
                 )
         return result
 
@@ -94,16 +94,16 @@ class FlextInfraRefactorTextExecutor(FlextInfraRefactorLegacyTextOps):
         return FlextInfraRefactorFutureImport().apply_to_source(source)
 
     @staticmethod
-    def _apply_mro_class_migration(
+    def _apply_flext_class_migration(
         source: str, file_path: Path
     ) -> t.Infra.TransformResult:
-        """Apply mro class migration."""
+        """Apply flext class migration."""
         if file_path.name != c.Infra.CONSTANTS_PY:
             return (source, list[str]())
         candidates = u.Infra.find_final_candidates(source)
         if not candidates:
             return (source, list[str]())
-        scan_result = m.Infra.MROScanReport(
+        scan_result = m.Infra.FLEXTScanReport(
             file=str(file_path),
             module="",
             constants_class=u.Infra.first_constants_class_name(source),

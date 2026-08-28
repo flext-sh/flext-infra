@@ -9,6 +9,7 @@ blacklist at make parse time (see test_make_contract.py).
 
 from __future__ import annotations
 
+from flext_infra import c, config
 from flext_infra.basemk.custom_policy import FlextInfraCustomMkPolicy
 from flext_tests import tm
 
@@ -58,13 +59,10 @@ class TestsFlextInfraCustomMkPolicy:
         """Reserved verbs derive from the codegen SSOT plus base.mk verbs."""
         reserved = FlextInfraCustomMkPolicy.reserved_verbs()
 
-        tm.that({"check", "gen", "work"} <= reserved, eq=True)
-        # flext-x0rau.3 unreserved `pr` with the recipe it named; `clean` and
-        # `help` are the project-surface verbs base.mk still ships.
-        tm.that({"clean", "help"} <= reserved, eq=True)
-        tm.that(
-            reserved.isdisjoint({"pr", "boot", "daemon-start", "scan", "val"}), eq=True
+        expected = {verb.name for verb in config.Infra.codegen.make.verbs} | set(
+            c.Infra.CUSTOM_MK_RESERVED_PROJECT_VERBS
         )
+        tm.that(reserved, eq=frozenset(expected))
 
     def test_reserved_targets_cover_builtin_what_pairs(self) -> None:
         """Reserved targets include every builtin _custom_<verb>_<what> pair."""

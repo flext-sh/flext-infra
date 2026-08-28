@@ -294,8 +294,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         validator_passed: Annotated[
             bool, m.Field(description="Whether validator passed")
         ]
-        mro_failures: Annotated[
-            t.NonNegativeInt, m.Field(description="MRO failure count")
+        flext_failures: Annotated[
+            t.NonNegativeInt, m.Field(description="FLEXT failure count")
         ]
         layer_violations: Annotated[
             t.NonNegativeInt, m.Field(description="Layer violation count")

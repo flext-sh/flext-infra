@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Final
 from flext_core import c
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
 from flext_infra._constants.namespace import FlextInfraConstantsNamespace
-from flext_infra._models.mro_scan import FlextInfraModelsMroScan
+from flext_infra._models.flext_scan import FlextInfraModelsFlextScan
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -67,7 +67,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
     RK_TARGET_NAME: Final[str] = "target_name"
     RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
-    RK_MRO_VALID: Final[str] = "mro_valid"
+    RK_FLEXT_VALID: Final[str] = "flext_valid"
     RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
     CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
     CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
@@ -105,7 +105,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         """Canonical executable text-rule kinds."""
 
         FUTURE_ANNOTATIONS = "future_annotations"
-        MRO_CLASS_MIGRATION = "mro_class_migration"
+        FLEXT_CLASS_MIGRATION = "flext_class_migration"
         LEGACY_REMOVAL = "legacy_removal"
         IMPORT_MODERNIZER = "import_modernizer"
         CLASS_RECONSTRUCTOR = "class_reconstructor"
@@ -115,7 +115,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         TIER0_IMPORT_FIX = "tier0_import_fix"
         SYMBOL_PROPAGATION = "symbol_propagation"
         SIGNATURE_PROPAGATION = "signature_propagation"
-        MRO_REDUNDANCY = "mro_redundancy"
+        FLEXT_REDUNDANCY = "flext_redundancy"
 
     @unique
     class RefactorFileRuleKind(StrEnum):
@@ -140,9 +140,9 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
                 frozenset(),
             ),
         ),
-        RefactorRuleKind.MRO_CLASS_MIGRATION: (
+        RefactorRuleKind.FLEXT_CLASS_MIGRATION: (
             (
-                frozenset({"migrate_to_class_mro"}),
+                frozenset({"migrate_to_class_flext"}),
                 frozenset(),
                 frozenset(),
                 frozenset(),
@@ -225,9 +225,9 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
                 frozenset({RK_SIGNATURE_MIGRATIONS}),
             ),
         ),
-        RefactorRuleKind.MRO_REDUNDANCY: (
+        RefactorRuleKind.FLEXT_REDUNDANCY: (
             (
-                frozenset({"remove_inheritance_keep_class", "fix_mro_redeclaration"}),
+                frozenset({"remove_inheritance_keep_class", "fix_flext_redeclaration"}),
                 frozenset(),
                 frozenset(),
                 frozenset(),
@@ -254,7 +254,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         cb.RK_ENABLED,
         cb.RK_SEVERITY,
     )
-    MRO_TARGETS: Final[frozenset[str]] = frozenset({
+    FLEXT_TARGETS: Final[frozenset[str]] = frozenset({
         "constants",
         "typings",
         "protocols",
@@ -262,86 +262,86 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "utilities",
         "all",
     })
-    "Accepted target arguments for MRO migration runs."
-    MRO_CONSTANTS_FILE_NAMES: Final[frozenset[str]] = frozenset({
+    "Accepted target arguments for FLEXT migration runs."
+    FLEXT_CONSTANTS_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "constants.py",
         "_constants.py",
     })
     "Canonical constants module file names."
-    MRO_CONSTANTS_DIRECTORY: Final[str] = "constants"
+    FLEXT_CONSTANTS_DIRECTORY: Final[str] = "constants"
     "Canonical constants package directory name."
-    MRO_TYPINGS_FILE_NAMES: Final[frozenset[str]] = frozenset({
+    FLEXT_TYPINGS_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "typings.py",
         "_typings.py",
     })
     "Canonical typings module file names."
-    MRO_TYPINGS_DIRECTORY: Final[str] = "typings"
+    FLEXT_TYPINGS_DIRECTORY: Final[str] = "typings"
     "Canonical typings package directory name."
-    MRO_PROTOCOLS_FILE_NAMES: Final[frozenset[str]] = frozenset({
+    FLEXT_PROTOCOLS_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "protocols.py",
         "_protocols.py",
     })
     "Canonical protocols module file names."
-    MRO_PROTOCOLS_DIRECTORY: Final[str] = "protocols"
+    FLEXT_PROTOCOLS_DIRECTORY: Final[str] = "protocols"
     "Canonical protocols package directory name."
-    MRO_PROTOCOLS_DIRECTORIES: Final[frozenset[str]] = frozenset({
-        MRO_PROTOCOLS_DIRECTORY,
-        f"_{MRO_PROTOCOLS_DIRECTORY}",
+    FLEXT_PROTOCOLS_DIRECTORIES: Final[frozenset[str]] = frozenset({
+        FLEXT_PROTOCOLS_DIRECTORY,
+        f"_{FLEXT_PROTOCOLS_DIRECTORY}",
     })
     "Sanctioned protocol package directory names (public and private)."
-    MRO_MODELS_FILE_NAMES: Final[frozenset[str]] = frozenset({"models.py"})
+    FLEXT_MODELS_FILE_NAMES: Final[frozenset[str]] = frozenset({"models.py"})
     "Canonical models module file names."
-    MRO_MODELS_DIRECTORY: Final[str] = "models"
+    FLEXT_MODELS_DIRECTORY: Final[str] = "models"
     "Canonical models package directory name."
-    MRO_MODELS_DIRECTORIES: Final[frozenset[str]] = frozenset({
-        MRO_MODELS_DIRECTORY,
-        f"_{MRO_MODELS_DIRECTORY}",
+    FLEXT_MODELS_DIRECTORIES: Final[frozenset[str]] = frozenset({
+        FLEXT_MODELS_DIRECTORY,
+        f"_{FLEXT_MODELS_DIRECTORY}",
     })
     "Sanctioned model package directory names (public and private)."
-    MRO_UTILITIES_FILE_NAMES: Final[frozenset[str]] = frozenset({
+    FLEXT_UTILITIES_FILE_NAMES: Final[frozenset[str]] = frozenset({
         "utilities.py",
         "_utilities.py",
     })
     "Canonical utilities module file names."
-    MRO_UTILITIES_DIRECTORY: Final[str] = "utilities"
+    FLEXT_UTILITIES_DIRECTORY: Final[str] = "utilities"
     "Canonical utilities package directory name."
     DEFAULT_CONSTANTS_CLASS: Final[str] = "FlextConstants"
     "Fallback constants class name when none exists in module."
     CONSTANTS_CLASS_SUFFIX: Final[str] = "Constants"
     "Class-name suffix used to identify constants facades."
-    MRO_TARGET_SPECS: Final[tuple[FlextInfraModelsMroScan.MROTargetSpec, ...]] = (
-        FlextInfraModelsMroScan.MROTargetSpec(
+    FLEXT_TARGET_SPECS: Final[tuple[FlextInfraModelsFlextScan.FLEXTTargetSpec, ...]] = (
+        FlextInfraModelsFlextScan.FLEXTTargetSpec(
             family_alias="c",
-            file_names=MRO_CONSTANTS_FILE_NAMES,
-            package_directory=MRO_CONSTANTS_DIRECTORY,
+            file_names=FLEXT_CONSTANTS_FILE_NAMES,
+            package_directory=FLEXT_CONSTANTS_DIRECTORY,
             class_suffix=CONSTANTS_CLASS_SUFFIX,
         ),
-        FlextInfraModelsMroScan.MROTargetSpec(
+        FlextInfraModelsFlextScan.FLEXTTargetSpec(
             family_alias="t",
-            file_names=MRO_TYPINGS_FILE_NAMES,
-            package_directory=MRO_TYPINGS_DIRECTORY,
+            file_names=FLEXT_TYPINGS_FILE_NAMES,
+            package_directory=FLEXT_TYPINGS_DIRECTORY,
             class_suffix="Types",
         ),
-        FlextInfraModelsMroScan.MROTargetSpec(
+        FlextInfraModelsFlextScan.FLEXTTargetSpec(
             family_alias="p",
-            file_names=MRO_PROTOCOLS_FILE_NAMES,
-            package_directory=MRO_PROTOCOLS_DIRECTORY,
+            file_names=FLEXT_PROTOCOLS_FILE_NAMES,
+            package_directory=FLEXT_PROTOCOLS_DIRECTORY,
             class_suffix="Protocols",
         ),
-        FlextInfraModelsMroScan.MROTargetSpec(
+        FlextInfraModelsFlextScan.FLEXTTargetSpec(
             family_alias="m",
-            file_names=MRO_MODELS_FILE_NAMES,
-            package_directory=MRO_MODELS_DIRECTORY,
+            file_names=FLEXT_MODELS_FILE_NAMES,
+            package_directory=FLEXT_MODELS_DIRECTORY,
             class_suffix="Models",
         ),
-        FlextInfraModelsMroScan.MROTargetSpec(
+        FlextInfraModelsFlextScan.FLEXTTargetSpec(
             family_alias="u",
-            file_names=MRO_UTILITIES_FILE_NAMES,
-            package_directory=MRO_UTILITIES_DIRECTORY,
+            file_names=FLEXT_UTILITIES_FILE_NAMES,
+            package_directory=FLEXT_UTILITIES_DIRECTORY,
             class_suffix="Utilities",
         ),
     )
-    "Canonical MRO target specs shared by scan and migration code."
+    "Canonical FLEXT target specs shared by scan and migration code."
 
     CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
     "Compiled naming pattern for module-level constant candidates."
@@ -378,29 +378,29 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     })
     "Facade family letter → public facade module suffix mapping."
     NAMESPACE_FILE_TO_FAMILY: Final[t.StrMapping] = _build_namespace_file_to_family((
-        ("c", tuple(MRO_CONSTANTS_FILE_NAMES)),
-        ("t", tuple(MRO_TYPINGS_FILE_NAMES)),
-        ("p", tuple(MRO_PROTOCOLS_FILE_NAMES)),
-        ("m", tuple(MRO_MODELS_FILE_NAMES)),
-        ("u", tuple(MRO_UTILITIES_FILE_NAMES)),
+        ("c", tuple(FLEXT_CONSTANTS_FILE_NAMES)),
+        ("t", tuple(FLEXT_TYPINGS_FILE_NAMES)),
+        ("p", tuple(FLEXT_PROTOCOLS_FILE_NAMES)),
+        ("m", tuple(FLEXT_MODELS_FILE_NAMES)),
+        ("u", tuple(FLEXT_UTILITIES_FILE_NAMES)),
     ))
     "Canonical facade file name → family alias mapping."
     NAMESPACE_FAMILY_EXPECTED_ALIAS: Final[t.MappingKV[str, t.StrPair]] = (
         _build_namespace_family_expected_alias(
             (
-                ("c", tuple(MRO_CONSTANTS_FILE_NAMES)),
-                ("t", tuple(MRO_TYPINGS_FILE_NAMES)),
-                ("p", tuple(MRO_PROTOCOLS_FILE_NAMES)),
-                ("m", tuple(MRO_MODELS_FILE_NAMES)),
-                ("u", tuple(MRO_UTILITIES_FILE_NAMES)),
+                ("c", tuple(FLEXT_CONSTANTS_FILE_NAMES)),
+                ("t", tuple(FLEXT_TYPINGS_FILE_NAMES)),
+                ("p", tuple(FLEXT_PROTOCOLS_FILE_NAMES)),
+                ("m", tuple(FLEXT_MODELS_FILE_NAMES)),
+                ("u", tuple(FLEXT_UTILITIES_FILE_NAMES)),
             ),
             FAMILY_SUFFIXES,
         )
     )
     "Canonical facade file name → expected (alias, suffix) pair."
-    MRO_FAMILIES: Final[frozenset[str]] = frozenset({"c", "t", "p", "m", "u"})
-    "All MRO families."
-    MRO_FAMILY_PACKAGE_DIRS: Final[t.StrMapping] = MappingProxyType({
+    FLEXT_FAMILIES: Final[frozenset[str]] = frozenset({"c", "t", "p", "m", "u"})
+    "All FLEXT families."
+    FLEXT_FAMILY_PACKAGE_DIRS: Final[t.StrMapping] = MappingProxyType({
         "c": "flext_core/constants.py",
         "t": "flext_core/typings.py",
         "p": "flext_core/protocols.py",
@@ -408,7 +408,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "u": "flext_core/_utilities",
     })
     "Family letter → relative package dir/file."
-    MRO_FAMILY_FACADE_MODULES: Final[t.StrMapping] = MappingProxyType({
+    FLEXT_FAMILY_FACADE_MODULES: Final[t.StrMapping] = MappingProxyType({
         "c": "flext_core/constants.py",
         "t": "flext_core/typings.py",
         "p": "flext_core/protocols.py",
@@ -609,7 +609,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     # --- Method category StrEnum (was: plain class MethodCategory) ---
     @unique
     class MethodCategory(StrEnum):
-        """Canonical method category identifiers for MRO reordering."""
+        """Canonical method category identifiers for FLEXT reordering."""
 
         MAGIC = "magic"
         PROPERTY = "property"
@@ -627,7 +627,7 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     })
     "Top-level names allowed without namespace classification."
     NAMESPACE_PRIVATE_BASE_MODULE: Final[str] = "_base.py"
-    "Private base module name allowed to host private MRO base contracts."
+    "Private base module name allowed to host private FLEXT base contracts."
     NAMESPACE_PRIVATE_BASE_CLASS_SUFFIXES: Final[frozenset[str]] = frozenset({
         "Base",
         "Mixin",
@@ -661,12 +661,12 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     })
     "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
 
-    # --- MRO scan patterns ---
-    MRO_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
+    # --- FLEXT scan patterns ---
+    FLEXT_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
         r"^_?[A-Za-z][A-Za-z0-9_]*$"
     )
-    "Regex: valid Python identifier (used for MRO type/class name validation)."
-    MRO_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
+    "Regex: valid Python identifier (used for FLEXT type/class name validation)."
+    FLEXT_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
         r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])"
     )
     "Regex: Protocol base in class definition (with optional namespace prefix)."

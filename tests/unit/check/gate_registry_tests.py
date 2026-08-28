@@ -21,7 +21,8 @@ if TYPE_CHECKING:
 
     import pytest
 
-importlib.import_module("flext_infra.constants")
+constants_module = importlib.import_module("flext_infra.constants")
+canonical_alias_module = importlib.import_module("flext_infra.gates.canonical_alias")
 
 
 class TestGateRegistry:
@@ -59,7 +60,7 @@ class TestGateRegistry:
             '[project]\nname = "demo"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo": ("c",)}
+            constants_module.c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo": ("c",)}
         )
 
         def _fail_read(path: Path) -> p.Result[str]:
@@ -94,8 +95,7 @@ class TestGateRegistry:
             '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c",)},
+            constants_module.c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo_pkg": ("c",)}
         )
         gate = FlextInfraCanonicalAliasGate(tmp_path)
         result = gate.check(
@@ -127,8 +127,7 @@ class TestGateRegistry:
             '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c",)},
+            constants_module.c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo_pkg": ("c",)}
         )
         gate = FlextInfraCanonicalAliasGate(tmp_path)
         result = gate.fix(
@@ -161,8 +160,7 @@ class TestGateRegistry:
             '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c",)},
+            constants_module.c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo_pkg": ("c",)}
         )
         planned_reads: list[Path] = []
         original_read = u.Cli.files_read_text
@@ -201,8 +199,7 @@ class TestGateRegistry:
             '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c",)},
+            constants_module.c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo_pkg": ("c",)}
         )
         gate = FlextInfraCanonicalAliasGate(tmp_path)
         result = gate.fix(
@@ -240,8 +237,7 @@ class TestGateRegistry:
             '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c",)},
+            constants_module.c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo_pkg": ("c",)}
         )
 
         result = FlextInfraCanonicalAliasGate(tmp_path).fix(
@@ -270,8 +266,7 @@ class TestGateRegistry:
             '[project]\nname = "demo-project"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
-            {"demo_pkg": ("c",)},
+            constants_module.c, "ENFORCEMENT_PROJECT_ALIAS_OWNERS", {"demo_pkg": ("c",)}
         )
         original_writer: Callable[..., t.Infra.EditResult] = (
             FlextInfraUtilities.Infra.protected_source_writes
@@ -285,7 +280,9 @@ class TestGateRegistry:
             consumer.write_text(concurrent, encoding="utf-8")
             return original_writer(updates, request=request)
 
-        monkeypatch.setattr(u.Infra, "protected_source_writes", _concurrent_write)
+        monkeypatch.setattr(
+            canonical_alias_module.u.Infra, "protected_source_writes", _concurrent_write
+        )
         result = FlextInfraCanonicalAliasGate(tmp_path).fix(
             project_dir,
             m.Infra.GateContext(

@@ -218,7 +218,7 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Collection Rules",
             "",
-            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline,",
+            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent FLEXT chain, Scope bootstrap, skill loading, zero-debt baseline,",
             "slot registry verification).",
         ]
 
@@ -359,7 +359,7 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "## Integration Points",
             "",
-            "- Parent MRO chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.",
+            "- Parent FLEXT chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The FLEXT cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.",
             f"- Public extensions exposed by this project: {FlextInfraUtilitiesDocsRender._preview(facades)}.",
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",

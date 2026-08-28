@@ -19,7 +19,7 @@ class FlextInfraRefactorCensusProjectMixin:
     """Build one project report (violations + removal candidates) for census.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
-    rule-inclusion + object-classification helpers from sibling mixins via MRO.
+    rule-inclusion + object-classification helpers from sibling mixins via FLEXT.
     """
 
     if TYPE_CHECKING:

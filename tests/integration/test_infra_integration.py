@@ -160,7 +160,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
     def test_output_singleton_has_expected_methods(self) -> None:
         """Test that reporting/output methods are exposed through u.Infra.
 
-        Validates u.Infra MRO output methods are available:
+        Validates u.Infra FLEXT output methods are available:
         - status, summary, error, warning, info, header, progress
         """
         tm.that(callable(u.Cli.status), eq=True)
@@ -261,19 +261,19 @@ class TestsFlextInfraIntegrationInfraIntegration:
         tm.that(result.value, eq=26)
 
     @pytest.mark.integration
-    def test_discover_projects_via_mro(self) -> None:
+    def test_discover_projects_via_flext(self) -> None:
         """Test u.Infra.discover_projects flow.
 
         Validates:
-        - discover_projects is callable via u.Infra MRO
-        - workspace_root is callable via u.Infra MRO
+        - discover_projects is callable via u.Infra FLEXT
+        - workspace_root is callable via u.Infra FLEXT
         """
         tm.that(callable(u.Infra.discover_projects), eq=True)
         tm.that(callable(u.Infra.resolve_workspace_root_or_cwd), eq=True)
 
     @pytest.mark.integration
-    def test_path_utilities_via_mro(self) -> None:
-        """Test u.Infra path utility methods are available via MRO."""
+    def test_path_utilities_via_flext(self) -> None:
+        """Test u.Infra path utility methods are available via FLEXT."""
         tm.that(callable(u.Infra.resolve_project_root), eq=True)
 
     @pytest.mark.integration

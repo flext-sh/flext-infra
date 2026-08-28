@@ -311,10 +311,10 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
     def git_merge_no_edit(
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitTextReport]:
-        """Merge ``commitish`` into HEAD with ``--no-edit``."""
+        """Merge ``commitish`` into HEAD with an explicit merge commit."""
         try:
             repo = cls._repo(request.repo_root)
-            text = repo.git.merge("--no-edit", request.commitish)
+            text = repo.git.merge("--no-ff", "--no-edit", request.commitish)
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
         except (OSError, ValueError) as exc:

@@ -125,8 +125,8 @@ from collections.abc import Mapping, Sequence"
       decorators: true
 
   - id: fix-flext-redeclaration
-    name: "Fix MRO redeclaration"
-    description: "Remove herança redundante em classes aninhadas (MRO issues)"
+    name: "Fix FLEXT redeclaration"
+    description: "Remove herança redundante em classes aninhadas (FLEXT issues)"
     enabled: true
     severity: error
     auto_fix: true

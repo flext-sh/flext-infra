@@ -19,7 +19,7 @@ class FlextInfraRefactorViolationHelperClassifierMixin:
 
     Composed into FlextInfraRefactorViolationAnalyzer via inheritance; every
     method is a ``cls``-dispatched classmethod so the facade's ``analyze_files``
-    reaches them through MRO without hardcoding the facade name.
+    reaches them through FLEXT without hardcoding the facade name.
     """
 
     @classmethod

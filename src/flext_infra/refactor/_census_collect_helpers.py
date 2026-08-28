@@ -26,7 +26,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         "runtime_alias",
         "manual_typing_alias",
         "compatibility_alias",
-        "mro_completeness",
+        "flext_completeness",
     })
     _PYI_GLOB: ClassVar[str] = "*.pyi"
     _PYI_SUFFIX: ClassVar[str] = ".pyi"
@@ -116,12 +116,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         return ""
 
     @staticmethod
-    def _mro_facade_module_names(selected_families: frozenset[str]) -> frozenset[str]:
-        """Mro facade module names."""
-        families = selected_families or c.Infra.MRO_FAMILIES
+    def _flext_facade_module_names(selected_families: frozenset[str]) -> frozenset[str]:
+        """Flext facade module names."""
+        families = selected_families or c.Infra.FLEXT_FAMILIES
         return frozenset(
             Path(module_path).name
-            for family, module_path in c.Infra.MRO_FAMILY_FACADE_MODULES.items()
+            for family, module_path in c.Infra.FLEXT_FAMILY_FACADE_MODULES.items()
             if family in families
         )
 
@@ -158,9 +158,9 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         declarative_rules = self._declarative_rules_for_selection(rule_names)
         if any(self._rule_requires_stub_file(rule) for rule in declarative_rules):
             modules = (*modules, *self._stub_modules(rope, modules, project_names))
-        if rule_names is None or set(rule_names) != {"mro_completeness"}:
+        if rule_names is None or set(rule_names) != {"flext_completeness"}:
             return modules
-        facade_module_names = self._mro_facade_module_names(selected_families)
+        facade_module_names = self._flext_facade_module_names(selected_families)
         return tuple(
             module
             for module in modules

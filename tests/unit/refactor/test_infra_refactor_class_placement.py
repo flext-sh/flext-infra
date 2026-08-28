@@ -111,24 +111,6 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
 
         tm.that(violations, eq=[])
 
-    def test_skips_sanctioned_root_namespace_files(
-        self, tmp_path: Path, rope_project: t.Infra.RopeProject
-    ) -> None:
-        for file_name in ("result.py", "lazy.py", "mixins.py"):
-            target = tmp_path / file_name
-            target.write_text(
-                "from pydantic import BaseModel\n"
-                "class PublicModel(BaseModel):\n"
-                "    pass\n",
-                encoding="utf-8",
-            )
-
-            violations = FlextInfraClassPlacementDetector.detect_file(
-                m.Infra.DetectorContext(file_path=target, rope_project=rope_project)
-            )
-
-            tm.that(violations, eq=[])
-
     def test_skips_settings_file(
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:

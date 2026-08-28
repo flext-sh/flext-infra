@@ -962,7 +962,7 @@ Infra:
             - cosmos_main.egg-info
             - evals
             - json
-            - mro
+            - flext
             - platform-namespaces
             - policy
             - scratchpad
@@ -1125,10 +1125,7 @@ Infra:
         # tooling.yaml exactly like the pytest and uv sections; leaving it
         # undeclared made absorbing an integration base that still carried the
         # previous lint projection unresolvable through the canonical surface.
-        conflict_sections:
-          - tool.pytest.ini_options
-          - tool.uv
-          - tool.ruff.lint.per-file-ignores
+        conflict_sections: [tool.pytest.ini_options, tool.uv, tool.ruff.lint.per-file-ignores]
 
     # Automated semantic versioning, owned by the market tool rather than by a
     # local implementation. python-semantic-release reads Conventional Commits,

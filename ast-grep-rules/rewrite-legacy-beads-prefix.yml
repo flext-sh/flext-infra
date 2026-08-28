@@ -3,5 +3,5 @@ language: Yaml
 severity: error
 message: the FLEXT workspace ledger uses the flext issue prefix
 rule:
-  pattern: 'issue-prefix: "mro"'
+  pattern: 'issue-prefix: "flext"'
 fix: 'issue-prefix: "flext"'

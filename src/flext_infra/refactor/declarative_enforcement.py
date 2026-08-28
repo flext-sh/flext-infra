@@ -22,7 +22,7 @@ from flext_infra.detectors.compatibility_alias_detector import (
 from flext_infra.detectors.loose_test_function_detector import (
     FlextInfraLooseTestFunctionDetector,
 )
-from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
+from flext_infra.detectors.flext_shape_detector import FlextInfraFLEXTShapeDetector
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
@@ -52,7 +52,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
     })
     _BEARTYPE_PREDICATES: ClassVar[frozenset[str]] = frozenset({
         "classvar_constant",
-        "mro_shape",
+        "flext_shape",
     })
 
     @classmethod
@@ -91,8 +91,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
             predicate_value = getattr(predicate_kind, "value", predicate_kind)
             if predicate_value == "classvar_constant":
                 return cls._detect_classvar_constants(ctx, rule_id=rule_id)
-            if predicate_value == "mro_shape":
-                return cls._detect_mro_shape(ctx, rule_id=rule_id)
+            if predicate_value == "flext_shape":
+                return cls._detect_flext_shape(ctx, rule_id=rule_id)
         violation_field = getattr(source, "violation_field", "")
         predicate_kind = getattr(source, "predicate_kind", "")
         msg = (
@@ -199,12 +199,12 @@ class FlextInfraRefactorDeclarativeEnforcement:
         )
 
     @classmethod
-    def _detect_mro_shape(
+    def _detect_flext_shape(
         cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
-        """Delegate MRO-shape detection to the canonical rope scanner."""
+        """Delegate FLEXT-shape detection to the canonical rope scanner."""
         try:
-            violations = FlextInfraMROShapeDetector.detect_file(ctx)
+            violations = FlextInfraFLEXTShapeDetector.detect_file(ctx)
         except RuntimeError as exc:
             detail = str(exc)
             if "could not parse" in detail or "Cannot resolve" in detail:
@@ -213,13 +213,13 @@ class FlextInfraRefactorDeclarativeEnforcement:
                 return ()
             msg = (
                 f"declarative enforcement {ctx.file_path} failed: "
-                f"mro_shape detector failed: {type(exc).__name__}: {exc}"
+                f"flext_shape detector failed: {type(exc).__name__}: {exc}"
             )
             raise RuntimeError(msg) from exc
         except c.EXC_BROAD_RUNTIME as exc:
             msg = (
                 f"declarative enforcement {ctx.file_path} failed: "
-                f"mro_shape detector failed: {type(exc).__name__}: {exc}"
+                f"flext_shape detector failed: {type(exc).__name__}: {exc}"
             )
             raise RuntimeError(msg) from exc
         return tuple(

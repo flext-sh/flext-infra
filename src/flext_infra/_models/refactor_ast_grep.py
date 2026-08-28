@@ -9,10 +9,10 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra._models.mro_scan import FlextInfraModelsMroScan
+from flext_infra._models.flext_scan import FlextInfraModelsFlextScan
 
 
-class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
+class FlextInfraModelsRefactorGrep(FlextInfraModelsFlextScan):
     """Mixin containing migration/reporting contracts for refactor orchestration."""
 
     class RewriteFilesInput(m.Value):
@@ -35,8 +35,8 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             m.Field(description="Optional protected-write gate selectors"),
         ] = None
 
-    class MROImportRewrite(m.ArbitraryTypesModel):
-        """Unified import rewrite payload for MRO reference updates."""
+    class FLEXTImportRewrite(m.ArbitraryTypesModel):
+        """Unified import rewrite payload for FLEXT reference updates."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
@@ -48,7 +48,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         as_name: Annotated[str | None, m.Field(description="Optional alias")] = None
         symbol: Annotated[str, m.Field(description="Resolved symbol in facade")] = ""
 
-    class MROFileMigration(m.ArbitraryTypesModel):
+    class FLEXTFileMigration(m.ArbitraryTypesModel):
         """Migration summary for one transformed file."""
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
@@ -60,7 +60,7 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             default_factory=tuple, description="Facade classes created during migration"
         )
 
-    class MRORewriteResult(m.ArbitraryTypesModel):
+    class FLEXTRewriteResult(m.ArbitraryTypesModel):
         """Reference rewrite summary for one file."""
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
@@ -68,8 +68,8 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
             int, m.Field(description="Reference replacements applied")
         ]
 
-    class MROMigrationReport(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
-        """End-to-end report for migrate-to-mro command execution."""
+    class FLEXTMigrationReport(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
+        """End-to-end report for migrate-to-flext command execution."""
 
         workspace: Annotated[str, m.Field(description="Workspace root path")]
         target: Annotated[t.NonEmptyStr, m.Field(description="constants|typings|all")]
@@ -88,17 +88,17 @@ class FlextInfraModelsRefactorGrep(FlextInfraModelsMroScan):
         files_with_candidates: Annotated[
             int, m.Field(ge=0, description="Files containing movable declarations")
         ]
-        migrations: t.VariadicTuple[FlextInfraModelsRefactorGrep.MROFileMigration] = (
+        migrations: t.VariadicTuple[FlextInfraModelsRefactorGrep.FLEXTFileMigration] = (
             m.Field(default_factory=tuple, description="File migration summaries")
         )
-        rewrites: t.VariadicTuple[FlextInfraModelsRefactorGrep.MRORewriteResult] = (
+        rewrites: t.VariadicTuple[FlextInfraModelsRefactorGrep.FLEXTRewriteResult] = (
             m.Field(default_factory=tuple, description="Reference rewrite summaries")
         )
         remaining_violations: Annotated[
             int, m.Field(ge=0, description="Loose declarations remaining after run")
         ]
-        mro_failures: Annotated[
-            t.NonNegativeInt, m.Field(description="MRO validation failures")
+        flext_failures: Annotated[
+            t.NonNegativeInt, m.Field(description="FLEXT validation failures")
         ]
         scan_duration_seconds: Annotated[
             float, m.Field(ge=0.0, description="Scan phase duration in seconds")

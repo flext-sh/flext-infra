@@ -39,7 +39,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     """Read, classify, and process one parsed pyproject document state."""
 
     if TYPE_CHECKING:
-        # Members provided by sibling mixins / the facade at runtime via MRO.
+        # Members provided by sibling mixins / the facade at runtime via FLEXT.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
 
         @property

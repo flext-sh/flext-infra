@@ -93,7 +93,7 @@ class FlextInfraConstantsCodegen(
     QG_REPORT_DIR: Final[str] = ".reports/codegen/constants-quality-gate"
     "Report directory for constants quality gate."
     QG_CHECK_NAMESPACE_COMPLIANCE: Final[str] = "namespace_compliance"
-    QG_CHECK_MRO_VALIDITY: Final[str] = "mro_validity"
+    QG_CHECK_FLEXT_VALIDITY: Final[str] = "flext_validity"
     QG_CHECK_IMPORT_RESOLUTION: Final[str] = "import_resolution"
     QG_CHECK_LAYER_COMPLIANCE: Final[str] = "layer_compliance"
     QG_CHECK_DUPLICATION_REDUCTION: Final[str] = "duplication_reduction"

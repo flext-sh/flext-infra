@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from flext_infra.typings import t
 
-importlib.import_module("flext_infra.constants")
+constants_module = importlib.import_module("flext_infra.constants")
 
 
 class TestsFlextInfraRefactorDeclarativeEnforcement:
@@ -202,7 +202,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             '[project]\nname = "demo_pkg"\nversion = "0.1.0"\n', encoding="utf-8"
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            constants_module.c,
+            "ENFORCEMENT_PROJECT_ALIAS_OWNERS",
             {"demo_pkg": ("c", "m", "p", "t", "u")},
         )
         with u.Infra.open_project(tmp_path) as rope_project:
@@ -361,7 +362,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             encoding="utf-8",
         )
         monkeypatch.setattr(
-            "flext_infra.constants.c.ENFORCEMENT_PROJECT_ALIAS_OWNERS",
+            constants_module.c,
+            "ENFORCEMENT_PROJECT_ALIAS_OWNERS",
             {"demo_pkg": ("c", "m", "p", "t", "u")},
         )
 

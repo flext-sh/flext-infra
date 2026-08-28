@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenConsolidatorStepsMixin:
     """Value-map build + per-file scan/match/apply for constants consolidation.
 
-    Composed into FlextInfraCodegenConsolidator via MRO; self-contained (no
+    Composed into FlextInfraCodegenConsolidator via FLEXT; self-contained (no
     facade state), so the facade's ``execute`` orchestrator only sequences
     these workers across selected projects.
     """

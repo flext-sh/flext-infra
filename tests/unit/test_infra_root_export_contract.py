@@ -28,7 +28,7 @@ class TestsFlextInfraRootExportContract:
             # config/settings SSOT singletons
             "config",
             "settings",
-            # facade aliases (MRO layering c/t/p/m/u + operational r/e/x/h/d/s)
+            # facade aliases (FLEXT layering c/t/p/m/u + operational r/e/x/h/d/s)
             "c",
             "t",
             "p",

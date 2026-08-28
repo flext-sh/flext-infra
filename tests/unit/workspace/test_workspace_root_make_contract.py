@@ -401,6 +401,7 @@ class TestsWorkspaceRootMakeContract:
             tm.that(child_log, has="gates=lint,pyrefly")
             tm.that(child_log, lacks=str(hostile_root))
 
+    @pytest.mark.slow
     def test_orchestrator_fail_fast_preserves_child_exit_and_skips_remaining(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

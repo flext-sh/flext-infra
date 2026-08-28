@@ -182,6 +182,7 @@ class FlextInfraConstantsSharedInfra:
     GIT_ORIGIN: Final[str] = "origin"
     GIT_MAIN: Final[str] = "main"
     GIT_HEAD: Final[str] = "HEAD"
+    GIT_MERGE_HEAD: Final[str] = "MERGE_HEAD"
 
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: Final[str] = "flext-core"

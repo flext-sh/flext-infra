@@ -2,7 +2,7 @@
 
 Holds the discriminated ``m.Infra.Deps.Toml.Operation`` appliers for both the
 ``t.Cli.TomlTable`` (document) and ``t.MutableJsonMapping`` (payload) paths.
-Composed into ``FlextInfraTomlPhaseService`` via MRO.
+Composed into ``FlextInfraTomlPhaseService`` via FLEXT.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

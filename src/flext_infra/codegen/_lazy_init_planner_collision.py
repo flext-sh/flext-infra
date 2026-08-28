@@ -35,7 +35,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         elif policy.expected_family and name.endswith(policy.expected_family):
             # A governed facade legitimately owns its declared family class
             # (e.g. ``FlextTestsValidator`` in ``validator.py``); it must win
-            # over an MRO ``_part_`` module of the same name.
+            # over an FLEXT ``_part_`` module of the same name.
             score += 25
         elif policy.expected_alias:
             # Governed root facades should primarily own their canonical alias.
@@ -100,7 +100,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
 
     def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
-        if self._is_mro_part_reexport(a, b):
+        if self._is_flext_part_reexport(a, b):
             return True
         # flext-pulj (codex): root typing sidecars are removed; real source
         # owners now participate in the normal collision policy.
@@ -171,12 +171,12 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
 
     @staticmethod
     def _is_part_leaf(module_stem: str) -> bool:
-        """Return whether a module stem is an MRO implementation part."""
+        """Return whether a module stem is an FLEXT implementation part."""
         return "_part_" in module_stem
 
     @classmethod
-    def _is_mro_part_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
-        """Return whether targets are the same logical MRO owner split into parts."""
+    def _is_flext_part_reexport(cls, a: t.StrPair, b: t.StrPair) -> bool:
+        """Return whether targets are the same logical FLEXT owner split into parts."""
         if a[1] != b[1]:
             return False
         a_parts = cls._module_parts(a[0])

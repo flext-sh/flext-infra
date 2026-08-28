@@ -1,4 +1,4 @@
-"""Shared helpers and MRO/future-import rewrites for namespace refactors."""
+"""Shared helpers and FLEXT/future-import rewrites for namespace refactors."""
 
 from __future__ import annotations
 
@@ -17,21 +17,21 @@ if TYPE_CHECKING:
     from flext_infra import m, t
 
 
-class FlextInfraUtilitiesRefactorNamespaceMro(
+class FlextInfraUtilitiesRefactorNamespaceFlext(
     FlextInfraUtilitiesRefactorNamespaceCommon
 ):
-    """Helpers for MRO completeness and future-import rewrites."""
+    """Helpers for FLEXT completeness and future-import rewrites."""
 
     @staticmethod
-    def rewrite_mro_completeness_violations(
+    def rewrite_flext_completeness_violations(
         *,
-        violations: t.SequenceOf[m.Infra.MROCompletenessViolation],
+        violations: t.SequenceOf[m.Infra.FLEXTCompletenessViolation],
         parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
     ) -> None:
-        """Rewrite mro completeness violations."""
+        """Rewrite flext completeness violations."""
         _ = parse_failures
         violations_by_file: t.MappingKV[
-            Path, t.MutableSequenceOf[m.Infra.MROCompletenessViolation]
+            Path, t.MutableSequenceOf[m.Infra.FLEXTCompletenessViolation]
         ] = defaultdict(list)
         for violation in violations:
             violations_by_file[Path(violation.file)].append(violation)
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
                     if not stripped.startswith(f"class {facade_name}"):
                         continue
                     updated, added = (
-                        FlextInfraUtilitiesRefactorNamespaceMro._rewrite_class_header(
+                        FlextInfraUtilitiesRefactorNamespaceFlext._rewrite_class_header(
                             line=line,
                             facade_name=facade_name,
                             missing=missing,
@@ -65,11 +65,11 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
                         changed = True
             if not changed:
                 continue
-            imports = FlextInfraUtilitiesRefactorNamespaceMro._build_missing_imports(
+            imports = FlextInfraUtilitiesRefactorNamespaceFlext._build_missing_imports(
                 lines=lines, new_bases=new_bases
             )
             rewritten_lines = (
-                FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
+                FlextInfraUtilitiesRefactorNamespaceFlext.insert_import_lines(
                     lines=lines, imports=imports
                 )
             )
@@ -126,10 +126,8 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
         """Build missing imports."""
         existing_imports: t.Infra.StrSet = set()
         for line in lines:
-            parsed = (
-                FlextInfraUtilitiesRefactorNamespaceMro._parse_simple_from_import_line(
-                    line
-                )
+            parsed = FlextInfraUtilitiesRefactorNamespaceFlext._parse_simple_from_import_line(
+                line
             )
             if parsed is None:
                 continue
@@ -165,7 +163,7 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
             lines = source.splitlines()
             if not lines:
                 continue
-            rewritten = FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
+            rewritten = FlextInfraUtilitiesRefactorNamespaceFlext.insert_import_lines(
                 lines=lines, imports=["", c.Infra.FUTURE_ANNOTATIONS, ""]
             )
             write_result = u.Cli.files_write_text(
@@ -176,4 +174,4 @@ class FlextInfraUtilitiesRefactorNamespaceMro(
                 raise RuntimeError(msg)
 
 
-__all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceMro"]
+__all__: list[str] = ["FlextInfraUtilitiesRefactorNamespaceFlext"]

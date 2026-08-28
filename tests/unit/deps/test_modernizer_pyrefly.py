@@ -306,6 +306,7 @@ class TestsFlextInfraModernizerPyrefly:
         project_dir.mkdir()
         for directory in ("src", "tests"):
             (project_dir / directory).mkdir()
+        (project_dir / "src" / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
         (project_dir / c.Infra.PYPROJECT_FILENAME).write_text(
             "[tool.pyright]\ninclude = ['src']\n", encoding="utf-8"
         )
@@ -328,12 +329,20 @@ class TestsFlextInfraModernizerPyrefly:
         project_includes = u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES])
         tm.that(project_includes, eq=["src/**/*.py*"])
 
-    def test_pyright_include_globs_preserve_declared_files_and_patterns(
+    def test_pyright_include_globs_derive_existing_python_roots(
         self, tmp_path: Path
     ) -> None:
-        """Keep explicit file/glob selectors while expanding directory roots."""
+        """Derive canonical recursive selectors from existing Python roots."""
         project_dir = tmp_path / "flext-core"
         project_dir.mkdir()
+        (project_dir / "src").mkdir()
+        (project_dir / "tests" / "unit").mkdir(parents=True)
+        (project_dir / "scripts").mkdir()
+        (project_dir / "src" / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (project_dir / "tests" / "unit" / "test_module.py").write_text(
+            "", encoding="utf-8"
+        )
+        (project_dir / "scripts" / "check.py").write_text("", encoding="utf-8")
         (project_dir / c.Infra.PYPROJECT_FILENAME).write_text(
             "[tool.pyright]\n"
             "include = ['src', 'tests/unit/**/*.py', 'scripts/check.py']\n",
@@ -344,7 +353,7 @@ class TestsFlextInfraModernizerPyrefly:
             workspace_root=tmp_path
         ).pyrefly_project_includes(project_dir=project_dir, is_root=False)
 
-        tm.that(includes, eq=["scripts/check.py", "src/**/*.py*", "tests/unit/**/*.py"])
+        tm.that(includes, eq=["scripts/**/*.py*", "src/**/*.py*", "tests/**/*.py*"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_root_context(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument

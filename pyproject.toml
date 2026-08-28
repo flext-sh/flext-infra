@@ -133,13 +133,13 @@ ignore-property-decorators = true
 
 # [MANAGED] mypy
 [tool.mypy]
-# FLEXT mypy suppression rationale (validated at the facade-MRO boundary):
-# FLEXT mypy[assignment]: Dependency-injector descriptors lose their MRO-bound type only in Mypy.
-# FLEXT mypy[attr-defined]: PEP 562 facade members inherited through MRO are invisible to Mypy.
-# FLEXT mypy[call-arg]: Pydantic v2 init signatures behind facade MRO are incomplete in Mypy.
+# FLEXT mypy suppression rationale (validated at the facade-FLEXT boundary):
+# FLEXT mypy[assignment]: Dependency-injector descriptors lose their FLEXT-bound type only in Mypy.
+# FLEXT mypy[attr-defined]: PEP 562 facade members inherited through FLEXT are invisible to Mypy.
+# FLEXT mypy[call-arg]: Pydantic v2 init signatures behind facade FLEXT are incomplete in Mypy.
 # FLEXT mypy[misc]: Valid PEP 695 nested facade aliases are rejected under Mypy's misc bucket.
 # FLEXT mypy[name-defined]: Generated PEP 562 exports are installed at runtime but absent to Mypy.
-# FLEXT mypy[prop-decorator]: Mypy loses Pydantic computed-field descriptors across composed MRO.
+# FLEXT mypy[prop-decorator]: Mypy loses Pydantic computed-field descriptors across composed FLEXT.
 # FLEXT mypy[valid-type]: Mypy rejects facade namespaces used as owners in valid PEP 695 aliases.
 check_untyped_defs = true
 disable_error_code = [
@@ -295,9 +295,9 @@ variance-mismatch = "error"
 
 # [MANAGED] pyright
 [tool.pyright]
-# FLEXT Pyright suppression rationale (validated at the facade-MRO boundary):
-# FLEXT pyright[reportAssignmentType]: Pyright rejects the canonical class-alias rebind after MRO facade composition although runtime and the other analyzers resolve it.
-# FLEXT pyright[reportGeneralTypeIssues]: Pyright groups the same valid MRO facade alias rebind under its broad general diagnostic in every execution environment.
+# FLEXT Pyright suppression rationale (validated at the facade-FLEXT boundary):
+# FLEXT pyright[reportAssignmentType]: Pyright rejects the canonical class-alias rebind after FLEXT facade composition although runtime and the other analyzers resolve it.
+# FLEXT pyright[reportGeneralTypeIssues]: Pyright groups the same valid FLEXT facade alias rebind under its broad general diagnostic in every execution environment.
 exclude = [
   "**/.*",
   "**/.mypy_cache",
@@ -418,7 +418,7 @@ addopts = [
 enable_assertion_pass_hook = true
 filterwarnings = [
   "error",
-  "module::flext_core._constants.enforcement.FlextMroViolation",
+  "module::flext_core._constants.enforcement.FlextSmellViolation",
 ]
 flext_slow_timeout_seconds = "60"
 markers = [

@@ -82,7 +82,7 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
         )
         tm.that(updated, has="rule_cls = Legacy")
 
-    def test_symbol_propagation_updates_mro_base_references(self) -> None:
+    def test_symbol_propagation_updates_flext_base_references(self) -> None:
         source = "from flext_infra import LegacyRemovalRule\n\nclass RuleV2(LegacyRemovalRule):\n    pass\n"
         updated, _ = FlextInfraRefactorSymbolPropagator(
             target_modules={"flext_infra"},

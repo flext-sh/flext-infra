@@ -246,9 +246,11 @@ class FlextInfraUtilitiesRopeSource:
         return shadowed
 
     @staticmethod
-    def find_final_candidates(source: str) -> t.SequenceOf[m.Infra.MROSymbolCandidate]:
+    def find_final_candidates(
+        source: str,
+    ) -> t.SequenceOf[m.Infra.FLEXTSymbolCandidate]:
         """Find module-level ``Final``-annotated constants via regex."""
-        candidates: t.MutableSequenceOf[m.Infra.MROSymbolCandidate] = []
+        candidates: t.MutableSequenceOf[m.Infra.FLEXTSymbolCandidate] = []
         for line_number, line in enumerate(source.splitlines(), start=1):
             stripped = line.lstrip()
             if line != stripped and stripped:
@@ -256,7 +258,9 @@ class FlextInfraUtilitiesRopeSource:
             match = c.Infra.FINAL_ASSIGN_RE.match(stripped)
             if match and c.Infra.CONSTANT_NAME_RE.match(match.group(1)) is not None:
                 candidates.append(
-                    m.Infra.MROSymbolCandidate(symbol=match.group(1), line=line_number)
+                    m.Infra.FLEXTSymbolCandidate(
+                        symbol=match.group(1), line=line_number
+                    )
                 )
         return candidates
 

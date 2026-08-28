@@ -130,7 +130,11 @@ class FlextInfraRefactorCensusFiltersMixin:
         family = convention.module_policy.expected_family or ""
         if layout is None or not family:
             return ""
-        return f"{layout.class_stem}{family}"
+        return (
+            family
+            if family.startswith(layout.class_stem)
+            else f"{layout.class_stem}{family}"
+        )
 
     @staticmethod
     def _rewrite_runtime_alias_source(

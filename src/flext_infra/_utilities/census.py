@@ -47,19 +47,19 @@ class FlextInfraUtilitiesRefactorCensus:
         return name
 
     @staticmethod
-    def build_mro_target(
+    def build_flext_target(
         family: str, core_project: str = c.Infra.PKG_CORE
-    ) -> mrc.MROFamilyTarget:
+    ) -> mrc.FLEXTFamilyTarget:
         """Create a generic target settings from a family code."""
-        if family not in c.Infra.MRO_FAMILIES:
-            msg = f"Invalid MRO family {family}"
+        if family not in c.Infra.FLEXT_FAMILIES:
+            msg = f"Invalid FLEXT family {family}"
             raise ValueError(msg)
         sf = c.Infra.FAMILY_SUFFIXES[family]
-        return mrc.MROFamilyTarget(
+        return mrc.FLEXTFamilyTarget(
             family=family,
             class_suffix=sf,
-            package_dir=c.Infra.MRO_FAMILY_PACKAGE_DIRS[family],
-            facade_module=c.Infra.MRO_FAMILY_FACADE_MODULES[family],
+            package_dir=c.Infra.FLEXT_FAMILY_PACKAGE_DIRS[family],
+            facade_module=c.Infra.FLEXT_FAMILY_FACADE_MODULES[family],
             facade_class_prefix=f"Flext{sf}",
             core_project=core_project,
         )

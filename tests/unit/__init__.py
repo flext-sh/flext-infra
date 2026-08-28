@@ -61,6 +61,9 @@ if TYPE_CHECKING:
     from .test_custom_surface_never_shadows_public_verbs import (
         TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs,
     )
+    from .test_flext_service_base_alias import (
+        test_service_base_generic_alias_flext_is_permitted,
+    )
     from .test_gitignore_is_generated_from_ssot import (
         TestsFlextInfraGitignoreIsGeneratedFromSsot,
     )
@@ -105,9 +108,6 @@ if TYPE_CHECKING:
     )
     from .test_make_surface_never_silences_failures import (
         TestsFlextInfraMakeSurfaceNeverSilencesFailures,
-    )
-    from .test_mro_service_base_alias import (
-        test_service_base_generic_alias_mro_is_permitted,
     )
     from .test_pyproject_conform_preserves_lint_scope import (
         TestsFlextInfraPyprojectConformPreservesLintScope,
@@ -202,7 +202,7 @@ __all__: tuple[str, ...] = (
     "services_resource",
     "t",
     "td",
-    "test_service_base_generic_alias_mro_is_permitted",
+    "test_service_base_generic_alias_flext_is_permitted",
     "test_version_diag",
     "test_version_full_import",
     "test_workspace_check_main_returns_error_without_projects",
@@ -267,6 +267,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_custom_surface_never_shadows_public_verbs": (
                 "TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs",
             ),
+            ".test_flext_service_base_alias": (
+                "test_service_base_generic_alias_flext_is_permitted",
+            ),
             ".test_gitignore_is_generated_from_ssot": (
                 "TestsFlextInfraGitignoreIsGeneratedFromSsot",
             ),
@@ -314,9 +317,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_make_surface_never_silences_failures": (
                 "TestsFlextInfraMakeSurfaceNeverSilencesFailures",
-            ),
-            ".test_mro_service_base_alias": (
-                "test_service_base_generic_alias_mro_is_permitted",
             ),
             ".test_pyproject_conform_preserves_lint_scope": (
                 "TestsFlextInfraPyprojectConformPreservesLintScope",

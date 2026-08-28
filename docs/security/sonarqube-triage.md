@@ -36,7 +36,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```python
       157                  continue
-      158              rewritten = FlextInfraUtilitiesRefactorNamespaceMro.insert_import_lines(
+      158              rewritten = FlextInfraUtilitiesRefactorNamespaceFlext.insert_import_lines(
       159                  lines=lines, imports=["", c.Infra.FUTURE_ANNOTATIONS, ""]
       160              )
 >>>   161              _ = file_path.write_text(
@@ -1093,13 +1093,13 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 57 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/_utilities/mro_scan.py:21` · **Effort**: 6min
+**Local**: `src/flext_infra/_utilities/flext_scan.py:21` · **Effort**: 6min
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
 ```python
-       17  class FlextInfraUtilitiesRefactorMroScan:
-       18      """Scan project sources for declarations movable into MRO facade classes."""
+       17  class FlextInfraUtilitiesRefactorFlextScan:
+       18      """Scan project sources for declarations movable into FLEXT facade classes."""
        19  
        20      @classmethod
 >>>    21      def scan_workspace(
@@ -1118,12 +1118,12 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```python
        21  ):
-       22      """Helpers for MRO completeness and future-import rewrites."""
+       22      """Helpers for FLEXT completeness and future-import rewrites."""
        23  
        24      @staticmethod
->>>    25      def rewrite_mro_completeness_violations(
+>>>    25      def rewrite_flext_completeness_violations(
        26          *,
-       27          violations: t.SequenceOf[m.Infra.MROCompletenessViolation],
+       27          violations: t.SequenceOf[m.Infra.FLEXTCompletenessViolation],
        28          parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation],
        29      ) -> None:
 ```
@@ -1834,18 +1834,18 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 96 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/_utilities/rope_mro_transform.py:23` · **Effort**: 9min
+**Local**: `src/flext_infra/_utilities/rope_flext_transform.py:23` · **Effort**: 9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
 ```python
-       19  class FlextInfraUtilitiesRopeMroTransform:
+       19  class FlextInfraUtilitiesRopeFlextTransform:
        20      """Move module-level constants into the constants facade class."""
        21  
        22      @staticmethod
 >>>    23      def migrate_file(
-       24          *, scan_result: m.Infra.MROScanReport
-       25      ) -> tuple[str, m.Infra.MROFileMigration, t.StrMapping]:
+       24          *, scan_result: m.Infra.FLEXTScanReport
+       25      ) -> tuple[str, m.Infra.FLEXTFileMigration, t.StrMapping]:
        26          """Transform a candidate file and return code plus symbol map."""
        27          source = Path(scan_result.file).read_text(encoding=c.Cli.ENCODING_DEFAULT)
 ```
@@ -3145,26 +3145,26 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 165 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/mro_completeness_detector.py:21` · **Effort**: 16min
+**Local**: `src/flext_infra/detectors/flext_completeness_detector.py:21` · **Effort**: 16min
 
 > Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.
 
 ```python
-       17  class FlextInfraMROCompletenessDetector:
-       18      """Detect facade classes missing MRO bases via rope."""
+       17  class FlextInfraFLEXTCompletenessDetector:
+       18      """Detect facade classes missing FLEXT bases via rope."""
        19  
        20      @staticmethod
 >>>    21      def detect_file(
        22          ctx: m.Infra.DetectorContext,
-       23      ) -> t.SequenceOf[m.Infra.MROCompletenessViolation]:
-       24          """Detect missing MRO bases: expected - declared = violations."""
+       23      ) -> t.SequenceOf[m.Infra.FLEXTCompletenessViolation]:
+       24          """Detect missing FLEXT bases: expected - declared = violations."""
        25          file_path = ctx.file_path
 ```
 
 **Decisão**:
 
 ### 166 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/mro_shape_detector.py:434` · **Effort**: 6min
+**Local**: `src/flext_infra/detectors/flext_shape_detector.py:434` · **Effort**: 6min
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
@@ -3183,7 +3183,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 167 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/mro_shape_detector.py:453` · **Effort**: 9min
+**Local**: `src/flext_infra/detectors/flext_shape_detector.py:453` · **Effort**: 9min
 
 > Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.
 
@@ -3202,7 +3202,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 168 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/detectors/mro_shape_detector.py:500` · **Effort**: 25min
+**Local**: `src/flext_infra/detectors/flext_shape_detector.py:500` · **Effort**: 25min
 
 > Refactor this function to reduce its Cognitive Complexity from 35 to the 15 allowed.
 
@@ -3702,7 +3702,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```python
        19  class FlextInfraRefactorClassNestingAnalyzer:
-       20      """Detect class nesting violations and report MRO hierarchy issues."""
+       20      """Detect class nesting violations and report FLEXT hierarchy issues."""
        21  
        22      @classmethod
 >>>    23      def analyze_files(cls, files: t.SequenceOf[Path]) -> m.Infra.ClassNestingReport:
@@ -3848,7 +3848,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 202 · 🟠 CRITICAL · CODE_SMELL · `python:S3776`
-**Local**: `src/flext_infra/refactor/migrate_to_class_mro.py:36` · **Effort**: 6min
+**Local**: `src/flext_infra/refactor/migrate_to_class_flext.py:36` · **Effort**: 6min
 
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
@@ -4335,7 +4335,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 >>>   367      def check_rule_3(
       368          self, tree: object, filepath: Path, *, class_stem: str, package_name: str
       369      ) -> t.StrSequence:
-      370          """Rule 3 — Runtime modules use namespaced MRO aliases (c/m/p/t/u)."""
+      370          """Rule 3 — Runtime modules use namespaced FLEXT aliases (c/m/p/t/u)."""
       371          owner_rules = self._owner_direct_facade_rules(class_stem)
 ```
 
@@ -6781,12 +6781,12 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 ```python
       662      "Public accessor name prefixes that should be renamed (drop the prefix or use a canonical verb)."
       663  
-      664      # --- MRO scan patterns ---
-      665      MRO_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
+      664      # --- FLEXT scan patterns ---
+      665      FLEXT_SCAN_TYPE_PATTERN: Final[t.RegexPattern] = re.compile(
 >>>   666          r"^_?[A-Za-z][A-Za-z0-9_]*$"
       667      )
-      668      "Regex: valid Python identifier (used for MRO type/class name validation)."
-      669      MRO_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
+      668      "Regex: valid Python identifier (used for FLEXT type/class name validation)."
+      669      FLEXT_SCAN_PROTOCOL_BASE_PATTERN: Final[t.RegexPattern] = re.compile(
       670          r"(^|[\s,(])(?:[A-Za-z_]\w*\.)?Protocol(?:\[[^\]]+\])?(?=$|[\s,)])"
 ```
 
@@ -6983,7 +6983,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 **Decisão**:
 
 ### 367 · ⚪ MINOR · CODE_SMELL · `python:S6353`
-**Local**: `src/flext_infra/_utilities/mro_scan_source.py:20` · **Effort**: 5min
+**Local**: `src/flext_infra/_utilities/flext_scan_source.py:20` · **Effort**: 5min
 
 > Use concise character class syntax '\w' instead of '[A-Za-z0-9_]'.
 

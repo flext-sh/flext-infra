@@ -1,6 +1,6 @@
 """Auto-fix service for namespace violations.
 
-Orchestrates NS rule fixes, MRO migration, refactor service passes,
+Orchestrates NS rule fixes, FLEXT migration, refactor service passes,
 namespace enforcement, and lazy init propagation for each project.
 
 Rule implementations live in ``_utilities_codegen_fixer_rules``.

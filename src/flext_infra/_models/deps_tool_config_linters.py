@@ -222,7 +222,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             m.Field(
                 alias="disabled-error-codes",
                 description=(
-                    "Mypy error codes mapped to their tested facade-MRO rationale."
+                    "Mypy error codes mapped to their tested facade-FLEXT rationale."
                 ),
             ),
         ]

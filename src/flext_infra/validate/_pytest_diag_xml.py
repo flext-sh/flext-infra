@@ -1,7 +1,7 @@
 """JUnit-XML diagnostics parsing for the pytest-diag extractor (§3.1 split).
 
 JUnit-XML parsing cluster for pytest diagnostics, composed
-into ``FlextInfraPytestDiagExtractor`` via MRO.
+into ``FlextInfraPytestDiagExtractor`` via FLEXT.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

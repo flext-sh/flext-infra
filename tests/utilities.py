@@ -15,7 +15,9 @@ from flext_infra.codegen.consolidator import FlextInfraCodegenConsolidator
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
-from flext_infra.refactor.mro_import_rewriter import FlextInfraRefactorMROImportRewriter
+from flext_infra.refactor.flext_import_rewriter import (
+    FlextInfraRefactorFLEXTImportRewriter,
+)
 from flext_tests import FlextTestsUtilities, tm
 from tests import c, m, p, t
 
@@ -1238,8 +1240,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
-        def build_mro_import_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
-            """Provide the typed test helper `build_mro_import_workspace`."""
+        def build_flext_import_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
+            """Provide the typed test helper `build_flext_import_workspace`."""
             workspace_root = tmp_path
             project_root = workspace_root / "flext-demo"
             package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "demo_pkg"
@@ -1271,18 +1273,21 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "value = DEMO_VALUE\n",
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
+            TestsFlextInfraUtilities.Tests.declare_workspace_projects(
+                workspace_root, ("flext-demo",)
+            )
             return (workspace_root, constants_path, consumer_path)
 
         @staticmethod
-        def create_mro_scan_report(constants_path: Path) -> m.Infra.MROScanReport:
-            """Create a typed MRO scan report fixture."""
-            return m.Infra.MROScanReport(
+        def create_flext_scan_report(constants_path: Path) -> m.Infra.FLEXTScanReport:
+            """Create a typed FLEXT scan report fixture."""
+            return m.Infra.FLEXTScanReport(
                 file=str(constants_path),
                 module="demo_pkg.constants",
                 constants_class="DemoConstants",
                 facade_alias="c",
                 candidates=(
-                    m.Infra.MROSymbolCandidate(
+                    m.Infra.FLEXTSymbolCandidate(
                         symbol="DEMO_VALUE",
                         line=3,
                         kind="constant",
@@ -1293,22 +1298,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def migrate_workspace_mro_imports(
+        def migrate_workspace_flext_imports(
             *, workspace_root: Path, constants_path: Path, apply: bool
         ) -> tuple[
-            t.SequenceOf[m.Infra.MROFileMigration],
-            t.SequenceOf[m.Infra.MRORewriteResult],
+            t.SequenceOf[m.Infra.FLEXTFileMigration],
+            t.SequenceOf[m.Infra.FLEXTRewriteResult],
             t.StrSequence,
         ]:
-            """Provide the typed test helper `migrate_workspace_mro_imports`."""
+            """Provide the typed test helper `migrate_workspace_flext_imports`."""
             result: tuple[
-                t.SequenceOf[m.Infra.MROFileMigration],
-                t.SequenceOf[m.Infra.MRORewriteResult],
+                t.SequenceOf[m.Infra.FLEXTFileMigration],
+                t.SequenceOf[m.Infra.FLEXTRewriteResult],
                 t.StrSequence,
-            ] = FlextInfraRefactorMROImportRewriter.migrate_workspace(
+            ] = FlextInfraRefactorFLEXTImportRewriter.migrate_workspace(
                 workspace_root=workspace_root,
                 scan_results=[
-                    TestsFlextInfraUtilities.Tests.create_mro_scan_report(
+                    TestsFlextInfraUtilities.Tests.create_flext_scan_report(
                         constants_path
                     )
                 ],

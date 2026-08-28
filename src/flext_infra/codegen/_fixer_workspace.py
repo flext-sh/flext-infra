@@ -28,6 +28,8 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
     def _fix_project(self, project: p.Infra.ProjectInfo) -> m.Infra.AutoFixResult:
         """Auto-fix namespace violations in a single project."""
         project_path = project.path
+        if not (project_path / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            return self._empty_result(project_path.name)
         project_layout = u.Infra.layout(project_path)
         if project_layout is None or not project_layout.class_stem:
             return self._empty_result(project_path.name)
@@ -42,7 +44,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
-        self._run_mro_migration(ctx, project_path)
+        self._run_flext_migration(ctx, project_path)
         self._run_refactor_service(ctx, project_path)
         self._run_namespace_enforcement(ctx, project_path)
         self._run_lazy_init_regeneration(ctx, project_path)

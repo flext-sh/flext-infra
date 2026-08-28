@@ -35,7 +35,7 @@ class TestsFlextInfraRefactorInfraRefactorService:
                 "    fix_action: reorder_methods\n"
                 "  - id: custom-rule-d2\n"
                 "    enabled: true\n"
-                "    fix_action: migrate_to_class_mro\n"
+                "    fix_action: migrate_to_class_flext\n"
                 "  - id: custom-rule-e\n"
                 "    enabled: true\n"
                 "    fix_action: ensure_future_annotations\n"
@@ -71,7 +71,7 @@ class TestsFlextInfraRefactorInfraRefactorService:
                 c.Infra.RefactorRuleKind.LEGACY_REMOVAL,
                 c.Infra.RefactorRuleKind.IMPORT_MODERNIZER,
                 c.Infra.RefactorRuleKind.CLASS_RECONSTRUCTOR,
-                c.Infra.RefactorRuleKind.MRO_CLASS_MIGRATION,
+                c.Infra.RefactorRuleKind.FLEXT_CLASS_MIGRATION,
                 c.Infra.RefactorRuleKind.FUTURE_ANNOTATIONS,
                 c.Infra.RefactorRuleKind.SYMBOL_PROPAGATION,
                 c.Infra.RefactorRuleKind.SIGNATURE_PROPAGATION,

@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from .deferred_self_reference_detector import (
         FlextInfraDeferredSelfReferenceDetector,
     )
+    from .flext_completeness_detector import FlextInfraFLEXTCompletenessDetector
+    from .flext_shape_detector import FlextInfraFLEXTShapeDetector
     from .future_annotations_detector import FlextInfraFutureAnnotationsDetector
     from .import_alias_detector import FlextInfraImportAliasDetector
     from .inline_import_detector import FlextInfraInlineImportDetector
@@ -24,8 +26,6 @@ if TYPE_CHECKING:
     from .loose_test_function_detector import FlextInfraLooseTestFunctionDetector
     from .manual_protocol_detector import FlextInfraManualProtocolDetector
     from .manual_typing_alias_detector import FlextInfraManualTypingAliasDetector
-    from .mro_completeness_detector import FlextInfraMROCompletenessDetector
-    from .mro_shape_detector import FlextInfraMROShapeDetector
     from .namespace_source_detector import FlextInfraNamespaceSourceDetector
     from .private_import_bypass_detector import FlextInfraPrivateImportBypassDetector
     from .runtime_alias_detector import FlextInfraRuntimeAliasDetector
@@ -35,14 +35,14 @@ __all__: tuple[str, ...] = (
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraCyclicImportDetector",
     "FlextInfraDeferredSelfReferenceDetector",
+    "FlextInfraFLEXTCompletenessDetector",
+    "FlextInfraFLEXTShapeDetector",
     "FlextInfraFutureAnnotationsDetector",
     "FlextInfraImportAliasDetector",
     "FlextInfraInlineImportDetector",
     "FlextInfraInternalImportDetector",
     "FlextInfraLooseObjectDetector",
     "FlextInfraLooseTestFunctionDetector",
-    "FlextInfraMROCompletenessDetector",
-    "FlextInfraMROShapeDetector",
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraNamespaceSourceDetector",
@@ -60,6 +60,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".deferred_self_reference_detector": (
                 "FlextInfraDeferredSelfReferenceDetector",
             ),
+            ".flext_completeness_detector": ("FlextInfraFLEXTCompletenessDetector",),
+            ".flext_shape_detector": ("FlextInfraFLEXTShapeDetector",),
             ".future_annotations_detector": ("FlextInfraFutureAnnotationsDetector",),
             ".import_alias_detector": ("FlextInfraImportAliasDetector",),
             ".inline_import_detector": ("FlextInfraInlineImportDetector",),
@@ -68,8 +70,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".loose_test_function_detector": ("FlextInfraLooseTestFunctionDetector",),
             ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
             ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
-            ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
-            ".mro_shape_detector": ("FlextInfraMROShapeDetector",),
             ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
             ".private_import_bypass_detector": (
                 "FlextInfraPrivateImportBypassDetector",

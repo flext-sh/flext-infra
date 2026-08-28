@@ -26,20 +26,20 @@ if TYPE_CHECKING:
     from .test_infra_refactor_cli_models_workflow import (
         TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
     )
+    from .test_infra_refactor_flext_completeness import (
+        TestsFlextInfraRefactorInfraRefactorFlextCompleteness,
+    )
+    from .test_infra_refactor_flext_shape import (
+        TestsFlextInfraRefactorInfraRefactorFlextShape,
+    )
     from .test_infra_refactor_import_modernizer import (
         TestsFlextInfraRefactorInfraRefactorImportModernizer,
     )
     from .test_infra_refactor_legacy_and_annotations import (
         TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations,
     )
-    from .test_infra_refactor_migrate_to_class_mro import (
-        TestsFlextInfraRefactorInfraRefactorMigrateToClassMro,
-    )
-    from .test_infra_refactor_mro_completeness import (
-        TestsFlextInfraRefactorInfraRefactorMroCompleteness,
-    )
-    from .test_infra_refactor_mro_shape import (
-        TestsFlextInfraRefactorInfraRefactorMroShape,
+    from .test_infra_refactor_migrate_to_class_flext import (
+        TestsFlextInfraRefactorInfraRefactorMigrateToClassFlext,
     )
     from .test_infra_refactor_namespace_aliases import (
         TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
@@ -78,11 +78,11 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
     "TestsFlextInfraRefactorInfraRefactorClassPlacement",
     "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
+    "TestsFlextInfraRefactorInfraRefactorFlextCompleteness",
+    "TestsFlextInfraRefactorInfraRefactorFlextShape",
     "TestsFlextInfraRefactorInfraRefactorImportModernizer",
     "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
-    "TestsFlextInfraRefactorInfraRefactorMigrateToClassMro",
-    "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
-    "TestsFlextInfraRefactorInfraRefactorMroShape",
+    "TestsFlextInfraRefactorInfraRefactorMigrateToClassFlext",
     "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
     "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
     "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
@@ -128,20 +128,20 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_refactor_cli_models_workflow": (
                 "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
             ),
+            ".test_infra_refactor_flext_completeness": (
+                "TestsFlextInfraRefactorInfraRefactorFlextCompleteness",
+            ),
+            ".test_infra_refactor_flext_shape": (
+                "TestsFlextInfraRefactorInfraRefactorFlextShape",
+            ),
             ".test_infra_refactor_import_modernizer": (
                 "TestsFlextInfraRefactorInfraRefactorImportModernizer",
             ),
             ".test_infra_refactor_legacy_and_annotations": (
                 "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
             ),
-            ".test_infra_refactor_migrate_to_class_mro": (
-                "TestsFlextInfraRefactorInfraRefactorMigrateToClassMro",
-            ),
-            ".test_infra_refactor_mro_completeness": (
-                "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
-            ),
-            ".test_infra_refactor_mro_shape": (
-                "TestsFlextInfraRefactorInfraRefactorMroShape",
+            ".test_infra_refactor_migrate_to_class_flext": (
+                "TestsFlextInfraRefactorInfraRefactorMigrateToClassFlext",
             ),
             ".test_infra_refactor_namespace_aliases": (
                 "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",

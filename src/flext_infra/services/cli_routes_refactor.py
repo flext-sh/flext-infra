@@ -11,8 +11,8 @@ from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_infra.refactor.migrate_to_class_mro import (
-    FlextInfraRefactorMigrateToClassMRO,
+from flext_infra.refactor.migrate_to_class_flext import (
+    FlextInfraRefactorMigrateToClassFLEXT,
 )
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
@@ -46,12 +46,14 @@ class RefactorRoutes(CliRouteBase):
             handler=FlextInfraApplyRenames.execute_command,
         ),
         m.Cli.ResultCommandRoute(
-            name="migrate-mro",
-            help_text="Migrate loose declarations into MRO facade classes",
-            model_cls=m.Infra.RefactorMigrateMroInput,
-            handler=lambda params: FlextInfraRefactorMigrateToClassMRO.execute_command(
-                params
-            ).map(CliRouteBase.as_route_value),
+            name="migrate-flext",
+            help_text="Migrate loose declarations into FLEXT facade classes",
+            model_cls=m.Infra.RefactorMigrateFlextInput,
+            handler=lambda params: (
+                FlextInfraRefactorMigrateToClassFLEXT.execute_command(params).map(
+                    CliRouteBase.as_route_value
+                )
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",

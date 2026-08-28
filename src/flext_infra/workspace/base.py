@@ -1,4 +1,4 @@
-"""MRO base for workspace services that use FlextInfraBaseMkGenerator."""
+"""FLEXT base for workspace services that use FlextInfraBaseMkGenerator."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ class FlextInfraWorkspaceGeneratorBase(m.ArbitraryTypesModel):
     """Pydantic mixin exposing the generator field to workspace services.
 
     Extends ``m.ArbitraryTypesModel`` (same Pydantic root as ``FlextService``/
-    ``s``) so ``generator`` is visible through MRO to both Pydantic's runtime
+    ``s``) so ``generator`` is visible through FLEXT to both Pydantic's runtime
     metaclass and static type checkers (pyrefly/pyright).
     """
 

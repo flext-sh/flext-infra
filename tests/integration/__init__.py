@@ -29,7 +29,9 @@ if TYPE_CHECKING:
     from .test_refactor_nesting_workspace import (
         TestsFlextInfraIntegrationRefactorNestingWorkspace,
     )
-    from .test_refactor_policy_mro import TestsFlextInfraIntegrationRefactorPolicyMro
+    from .test_refactor_policy_flext import (
+        TestsFlextInfraIntegrationRefactorPolicyFlext,
+    )
 __all__: tuple[str, ...] = (
     "TestsFlextInfraIntegrationDocsServeE2e",
     "TestsFlextInfraIntegrationInfraIntegration",
@@ -38,7 +40,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraIntegrationRefactorNestingPerformance",
     "TestsFlextInfraIntegrationRefactorNestingProject",
     "TestsFlextInfraIntegrationRefactorNestingWorkspace",
-    "TestsFlextInfraIntegrationRefactorPolicyMro",
+    "TestsFlextInfraIntegrationRefactorPolicyFlext",
     "c",
     "d",
     "e",
@@ -77,8 +79,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_refactor_nesting_workspace": (
                 "TestsFlextInfraIntegrationRefactorNestingWorkspace",
             ),
-            ".test_refactor_policy_mro": (
-                "TestsFlextInfraIntegrationRefactorPolicyMro",
+            ".test_refactor_policy_flext": (
+                "TestsFlextInfraIntegrationRefactorPolicyFlext",
             ),
             "flext_tests": (
                 "c",

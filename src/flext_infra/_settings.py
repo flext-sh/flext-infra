@@ -1,6 +1,6 @@
 """Runtime settings for flext-infra — namespaced under ``settings.Infra``.
 
-Layer-0 style: universal fields via MRO; all project fields in the ``Infra``
+Layer-0 style: universal fields via FLEXT; all project fields in the ``Infra``
 namespace group with simple scalar types (env-settable).
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.

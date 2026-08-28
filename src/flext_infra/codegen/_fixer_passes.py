@@ -7,8 +7,8 @@ from pathlib import Path
 from flext_infra import c, m, u
 from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.refactor.migrate_to_class_mro import (
-    FlextInfraRefactorMigrateToClassMRO,
+from flext_infra.refactor.migrate_to_class_flext import (
+    FlextInfraRefactorMigrateToClassFLEXT,
 )
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 
@@ -19,13 +19,13 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     """Private pipeline passes for codegen fixer composition."""
 
     @staticmethod
-    def _run_mro_migration(ctx: m.Infra.FixContext, project_path: Path) -> None:
-        """Run the MRO migrator and accumulate fixed/skipped violations."""
-        report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path).run(
+    def _run_flext_migration(ctx: m.Infra.FixContext, project_path: Path) -> None:
+        """Run the FLEXT migrator and accumulate fixed/skipped violations."""
+        report = FlextInfraRefactorMigrateToClassFLEXT(workspace_root=project_path).run(
             target="all", apply=True, gates=(c.Infra.LINT,)
         )
         _log.info(
-            "mro_migration_complete",
+            "flext_migration_complete",
             project=project_path.name,
             migrations=len(report.migrations),
         )
@@ -36,11 +36,11 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx.violations_fixed.extend(
             m.Infra.CensusViolation(
                 module=migration.module,
-                rule="MRO",
+                rule="FLEXT",
                 line=1,
                 message=(
                     f"migrated {', '.join(migration.moved_symbols) or 'symbols'}"
-                    " into facade MRO"
+                    " into facade FLEXT"
                 ),
                 fixable=True,
             )
@@ -49,7 +49,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx.violations_fixed.extend(
             m.Infra.CensusViolation(
                 module=rewrite.file,
-                rule="MRO-REWRITE",
+                rule="FLEXT-REWRITE",
                 line=1,
                 message=f"rewrote {rewrite.replacements} consumer references",
                 fixable=True,
@@ -59,7 +59,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx.violations_skipped.extend(
             m.Infra.CensusViolation(
                 module=project_path.name,
-                rule="MRO",
+                rule="FLEXT",
                 line=0,
                 message=error,
                 fixable=False,

@@ -10,12 +10,12 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRefactorCensus:
-    """Census and MRO models for refactor workflows."""
+    """Census and FLEXT models for refactor workflows."""
 
-    # -- MRO Generic Models ----------------------------------------------------
+    # -- FLEXT Generic Models ----------------------------------------------------
 
-    class MROFamilyTarget(m.ArbitraryTypesModel):
-        """Parametrized target for an MRO family scan or operations."""
+    class FLEXTFamilyTarget(m.ArbitraryTypesModel):
+        """Parametrized target for an FLEXT family scan or operations."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 

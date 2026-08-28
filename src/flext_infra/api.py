@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
-    """Thin public MRO facade over infra services."""
+    """Thin public FLEXT facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
 
