@@ -129,6 +129,7 @@ class FlextInfraConstantsMake:
     ORCHESTRATOR_REMOVE_ENV_KEYS: Final[t.StrSequence] = (
         "GNUMAKEFLAGS",
         "MAKEFLAGS",
+        "MAKEFILES",
         "MAKELEVEL",
         "MAKEOVERRIDES",
         "MISE_DIR",
