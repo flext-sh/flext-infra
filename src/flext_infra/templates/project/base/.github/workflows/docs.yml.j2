@@ -4,8 +4,9 @@ name: Docs
 "on":
   push:
     branches:
-      - main
-      - {{ repository_branch }}
+{%- for branch in ci_trigger_branches %}
+      - {{ branch }}
+{%- endfor %}
     paths:
       - "docs/**"
       - "mkdocs.yml"

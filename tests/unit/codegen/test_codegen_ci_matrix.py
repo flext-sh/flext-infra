@@ -407,6 +407,18 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="branches: [dev]")
         tm.that(content, lacks="{% if make_profile")
 
+    def test_docs_workflow_covers_every_blocking_ci_branch(
+        self, tmp_path: Path
+    ) -> None:
+        """Docs validation follows the same governed branch lanes as CI."""
+        root = self._render_project(tmp_path / "external")
+        content = (root / ".github" / "workflows" / "docs.yml").read_text(
+            encoding="utf-8"
+        )
+
+        for branch in ("dev", "develop", "0.12.0-dev", "main"):
+            tm.that(content, has=f"      - {branch}")
+
     def test_ci_matrix_check_uses_ci_token_and_never_runs_test(
         self, tmp_path: Path
     ) -> None:
