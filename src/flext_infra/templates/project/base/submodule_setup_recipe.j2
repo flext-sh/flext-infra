@@ -22,12 +22,24 @@
 	@set -eu; \
 	root="{{ project_root }}"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	git_config_keys() { \
+		repository="$$1"; \
+		pattern="$$2"; \
+		if output=$$(git -C "$$repository" config -f .gitmodules --name-only --get-regexp "$$pattern"); then \
+			printf '%s\n' "$$output"; \
+			return 0; \
+		else \
+			status=$$?; \
+		fi; \
+		if [ "$$status" -eq 1 ]; then return 0; fi; \
+		return "$$status"; \
+	}; \
 	profile="$(MAKE_PROFILE)"; \
 	if [ "$$profile" = "workspace" ]; then \
 		managed="$(MANAGED_GITLINKS)"; \
 	else \
 		managed=""; \
-		keys=$$(git -C "$$root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.flext-managed$$' || :); \
+		keys=$$(git_config_keys "$$root" '^submodule\..*\.flext-managed$$'); \
 		for key in $$keys; do \
 			value=$$(git -C "$$root" config -f .gitmodules --get "$$key"); \
 			if [ "$$value" = "true" ]; then \
@@ -52,13 +64,18 @@
 			printf 'ERROR: %s: could not attach HEAD to %s without moving the tree\n' "$$child_root" "$$branch" >&2; \
 			exit 1; \
 		}; \
-		git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch" >/dev/null 2>&1 || :; \
+		if git -C "$$child_root" show-ref --verify "refs/remotes/origin/$$branch" >/dev/null; then \
+			git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch"; \
+		else \
+			status=$$?; \
+			if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
+		fi; \
 	}; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
 		child_root="$$superproject/$$child_path"; \
-		keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+		keys=$$(git_config_keys "$$superproject" '^submodule\..*\.path$$'); \
 		section=""; \
 		for key in $$keys; do \
 			declared=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
@@ -167,7 +184,7 @@
 			exit 1; \
 		fi; \
 		if [ -f "$$child_root/.gitmodules" ]; then \
-			nested_keys=$$(git -C "$$child_root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+			nested_keys=$$(git_config_keys "$$child_root" '^submodule\..*\.path$$'); \
 			for nested_key in $$nested_keys; do \
 				nested_path=$$(git -C "$$child_root" config -f .gitmodules --get "$$nested_key"); \
 				validate_submodule "$$child_root" "$$nested_path"; \

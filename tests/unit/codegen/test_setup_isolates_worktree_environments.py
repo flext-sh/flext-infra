@@ -31,18 +31,15 @@ def _recipe(name: str) -> str:
 def test_provisioning_replaces_only_a_foreign_environment_symlink() -> None:
     recipe = _recipe("SETUP_ENVIRONMENT_RECIPE")
     assert '[ -L "$(RUNTIME_VENV)" ]' in recipe
-    assert 'rm -f "$(RUNTIME_VENV)"' in recipe
+    assert 'rm "$(RUNTIME_VENV)"' in recipe
     assert '[ ! -x "$(RUNTIME_PYTHON)" ]' in recipe
 
 
-def test_delegated_runtime_sanitizes_recursive_make_state() -> None:
-    member_branch = (
-        _template_text()
-        .split('if [ "$(RUNTIME_ROOT)" = "$(PROJECT_ROOT)" ]; then', 1)[1]
-        .split("\n\n", 1)[0]
-    )
-    for key in ("MAKEFILES", "GNUMAKEFLAGS", "MAKEFLAGS", "PYTHONPATH"):
-        assert f"-u {key}" in member_branch
+def test_each_checkout_owns_its_project_local_runtime() -> None:
+    template = _template_text()
+    assert "RUNTIME_ROOT := $(PROJECT_ROOT)" in template
+    assert "BORROW_RUNTIME_VENV_RECIPE" not in template
+    assert 'if [ "$(RUNTIME_ROOT)" = "$(PROJECT_ROOT)" ]' not in template
 
 
 def test_uv_run_prefers_project_src() -> None:

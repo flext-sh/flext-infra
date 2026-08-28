@@ -35,6 +35,10 @@ class TestGitHookConformance:
     def _standalone_workspace(root: Path) -> m.Infra.WorkspaceSpec:
         """Load the smallest repository-local topology needed by conform."""
         test_u.Tests.write_project_beads_config(root, "flext-demo")
+        (root / c.Infra.PYPROJECT_FILENAME).write_text(
+            '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
+            encoding="utf-8",
+        )
         return tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
     @staticmethod
@@ -70,10 +74,9 @@ class TestGitHookConformance:
     ) -> None:
         """Operator law 2026-08-24: disabled stage gates demand no shims.
 
-        Conform on this branch never installs git-hook shims (the generated
-        install-git-hooks.sh script owns provisioning), and with both gates
-        off the rendered config declares no stages, so an absent shim is not
-        drift. The check may still report unrelated managed-file drift; it
+        Conform never installs git-hook shims. With both gates off the rendered
+        config declares no stages, so an absent shim is not drift. The check
+        may still report unrelated managed-file drift; it
         must never mention hook installation.
         """
         root = infra_git_repo
@@ -86,7 +89,7 @@ class TestGitHookConformance:
             tm.that(result.error or "", lacks="git hook is not installed")
 
     def test_apply_does_not_install_hook_shims(self, infra_git_repo: Path) -> None:
-        """Apply materializes files only; hook provisioning is script-owned."""
+        """Apply materializes files only and never provisions hook shims."""
         root = infra_git_repo
         workspace = self._standalone_workspace(root)
         hooks_dir = root / ".git" / "hooks"
@@ -230,6 +233,52 @@ class TestGitHookConformance:
 
         retired = {plan.path for plan in tm.ok(planned) if plan.absent}
         tm.that(hook_config in retired, eq=False)
+
+    def test_declared_retired_projection_is_planned_absent_by_identity(
+        self, tmp_path: Path
+    ) -> None:
+        """Retire only a file carrying every marker declared by its old owner."""
+        specs = tuple(
+            item
+            for item in config.Infra.codegen.retired_projections
+            if item.path.name == "check-beads-policy.sh"
+        )
+        tm.that(len(specs), eq=1)
+        (spec,) = specs
+        target = tmp_path / spec.path
+        target.parent.mkdir(parents=True)
+        target.write_text("\n".join(spec.markers), encoding="utf-8")
+
+        planned = tm.ok(
+            FlextInfraCodegenConform.retired_projection_plans(
+                tmp_path, c.Infra.MakeProfile.STANDALONE
+            )
+        )
+
+        absent = tuple(plan for plan in planned if plan.path == target and plan.absent)
+        tm.that(len(absent), eq=1)
+
+    def test_retired_projection_identity_mismatch_fails_without_deletion(
+        self, tmp_path: Path
+    ) -> None:
+        """A foreign file at a retired path blocks mutation and remains intact."""
+        specs = tuple(
+            item
+            for item in config.Infra.codegen.retired_projections
+            if item.path.name == "install-git-hooks.sh"
+        )
+        tm.that(len(specs), eq=1)
+        (spec,) = specs
+        target = tmp_path / spec.path
+        target.parent.mkdir(parents=True)
+        target.write_text("foreign owner\n", encoding="utf-8")
+
+        result = FlextInfraCodegenConform.retired_projection_plans(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+
+        tm.fail(result, has="retired projection identity mismatch")
+        tm.that(target.read_text(encoding="utf-8"), eq="foreign owner\n")
 
 
 __all__: list[str] = ["TestGitHookConformance"]

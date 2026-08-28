@@ -1045,16 +1045,7 @@ Infra:
       - path: .github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
         owner: codegen
         policy: full
-      - path: .github/scripts/check-beads-policy.sh
-        owner: codegen
-        policy: full
       - path: .github/scripts/check-cqrs-compliance.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/flext-law-loop.sh
-        owner: codegen
-        policy: full
-      - path: .github/scripts/install-git-hooks.sh
         owner: codegen
         policy: full
       - path: tests/fixtures/ci/docker/alpine.Dockerfile
@@ -1146,6 +1137,22 @@ Infra:
           - tool.pytest.ini_options
           - tool.uv
           - tool.ruff.lint.per-file-ignores
+
+    # Transitional, exact retirement owner. A path is removed only when every
+    # marker matches the obsolete generated surface; an unknown collision fails.
+    retired_projections:
+      - path: .github/scripts/check-beads-policy.sh
+        markers:
+          - 'role_json="$(bd config get beads.role --json)"'
+          - 'bd hooks list --json'
+      - path: .github/scripts/flext-law-loop.sh
+        markers:
+          - 'flext-law-loop.sh — recurring strict-FLEXT rule enforcer.'
+          - 'FIXER_SPECS=('
+      - path: .github/scripts/install-git-hooks.sh
+        markers:
+          - 'install-git-hooks.sh — Install the Beads git hooks'
+          - 'bd hooks install --chain'
 
     # Automated semantic versioning, owned by the market tool rather than by a
     # local implementation. python-semantic-release reads Conventional Commits,
@@ -1679,23 +1686,8 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
-        - source: base/.github/scripts/check-beads-policy.sh.j2
-          destination: .github/scripts/check-beads-policy.sh
-          profiles: [workspace]
-          delegate: render
-          overwrite: false
         - source: base/.github/scripts/check-cqrs-compliance.sh.j2
           destination: .github/scripts/check-cqrs-compliance.sh
-          profiles: [workspace]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/flext-law-loop.sh.j2
-          destination: .github/scripts/flext-law-loop.sh
-          profiles: [workspace]
-          delegate: render
-          overwrite: false
-        - source: base/.github/scripts/install-git-hooks.sh.j2
-          destination: .github/scripts/install-git-hooks.sh
           profiles: [workspace]
           delegate: render
           overwrite: false

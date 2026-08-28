@@ -1393,6 +1393,27 @@ class FlextInfraConfigModels:
             ),
         ] = ()
 
+    class RetiredProjectionSpec(_ConfigContract):
+        """One obsolete generated file removable only by exact identity markers."""
+
+        path: Annotated[Path, m.Field(description="Repository-relative retired path")]
+        markers: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Required legacy identity markers"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_path(self) -> Self:
+            """Reject broad or escaping retirement targets at config load."""
+            if (
+                self.path == Path()
+                or self.path.is_absolute()
+                or ".." in self.path.parts
+            ):
+                msg = "retired projection path must be repository-relative and exact"
+                raise ValueError(msg)
+            return self
+
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""
 
@@ -2683,6 +2704,10 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
             m.Field(description="Files owned by conform"),
         ]
+        retired_projections: Annotated[
+            tuple[FlextInfraConfigModels.RetiredProjectionSpec, ...],
+            m.Field(description="Obsolete generated files awaiting exact retirement"),
+        ] = ()
         scaffold: Annotated[
             FlextInfraConfigModels.ScaffoldSpec,
             m.Field(description="Typed new-project scaffold policy"),

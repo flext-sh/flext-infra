@@ -380,6 +380,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             files.extend(governed.value)
+            if contract.complete_governed:
+                retired = self.retired_projection_plans(
+                    repository_root, target.make_profile
+                )
+                if retired.failure:
+                    return r[m.Infra.CodegenPlan].fail(
+                        retired.error
+                        or (
+                            f"stage=plan position={repository_index}/"
+                            f"{total_repositories} repository={repository.name}: "
+                            "retired projection planning failed"
+                        )
+                    )
+                files.extend(retired.value)
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -2282,6 +2296,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """
         codegen = config.Infra.codegen
         planned: list[m.Infra.CodegenFilePlan] = []
+        for retired in codegen.retired_projections:
+            path = root / retired.path
+            if not path.exists() and not path.is_symlink():
+                continue
+            if not path.is_file() or path.is_symlink():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"retired projection is not a regular file: {retired.path}"
+                )
+            current = u.Cli.files_read_text(path)
+            if current.failure:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    current.error or f"retired projection read failed: {retired.path}"
+                )
+            missing_markers = tuple(
+                marker for marker in retired.markers if marker not in current.value
+            )
+            if missing_markers:
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"retired projection identity mismatch: {retired.path}"
+                )
+            planned.append(cls._absent_file_plan(path, current.value))
         for entry in codegen.templates.entries:
             if profile in entry.profiles or "{" in entry.destination:
                 continue

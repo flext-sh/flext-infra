@@ -84,15 +84,21 @@ jobs:
           set -eu
           # Structured reports only — same allowlist as Upload reports (no raw
           # pytest/tool logs: those may carry connection strings / env secrets).
-          while IFS= read -r -d '' f; do
-            echo "::group::$f"
-            tail -n 200 "$f"
-            echo "::endgroup::"
-          done < <(
-            find .reports apps \
+          report_roots=()
+          for candidate in .reports apps; do
+            if [ -e "$candidate" ]; then report_roots+=("$candidate"); fi
+          done
+          {% raw %}if [ "${#report_roots[@]}" -gt 0 ]; then{% endraw %}
+            report_list="$(mktemp "${RUNNER_TEMP:?}/flext-ci-reports.XXXXXX")"
+            find "${report_roots[@]}" \
               \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
-              -type f -print0 2>/dev/null || true
-          )
+              -type f -print0 >"$report_list"
+            while IFS= read -r -d '' f; do
+              echo "::group::$f"
+              tail -n 200 "$f"
+              echo "::endgroup::"
+            done <"$report_list"
+          fi
       - name: Upload reports on failure
         if: {% raw %}${{ failure() }}{% endraw %}
         uses: {{ github_actions["upload-artifact"].repository }}@{{ github_actions["upload-artifact"].sha }}  # {{ github_actions["upload-artifact"].version }}

@@ -292,7 +292,8 @@ _bootstrap_setup_tools:
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	}; \
-	current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1 || true); \
+	version_output=$$("$$mise" --version); \
+	current=$$(printf '%s\n' "$$version_output" | cut -d ' ' -f 1); \
 	[ "$$current" = "$$mise_version" ] || { \
 		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
 			"$$mise_version" "$${current:-<missing>}" >&2; \
@@ -304,7 +305,7 @@ _bootstrap_setup_tools:
 	}; \
 	"$$mise" trust "$$project_root/.mise.toml"; \
 	"$$mise" -C "$$project_root" install --locked --yes; \
-	uv_actual=$$("$$mise" -C "$$project_root" exec -- uv --version 2>/dev/null | sed 's/uv //' | cut -d ' ' -f 1); \
+	uv_actual=$$("$$mise" -C "$$project_root" exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
 	case "$$uv_actual" in \
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
@@ -331,37 +332,21 @@ endif
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Subprojects and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
-# Provisioning is a probe-then-repair pair, declared once and shared by every
-# profile so the two branches below can never drift apart. `uv sync --check`
-# reports drift without touching the tree; only a non-zero exit escalates to a
-# real `uv sync`. Creating a missing venv is provisioning, so it is allowed;
+# Provisioning calls the owning `uv sync` operation directly. A failed check is
+# never reinterpreted as permission to repair, so the command's original cause
+# remains visible. Creating a missing venv is provisioning, so it is allowed;
 # clearing a present one is destruction, so it never happens.
-# A symlinked RUNTIME_VENV is a BORROWED environment: a linked worktree (a
-# lane checkout) shares the primary checkout's environment so the two never
-# diverge. Syncing it would rewrite the editable pointers the owner and every
-# sibling lane resolve through, so the borrower provisions nothing and the owner
-# stays the only writer.
+# A symlinked RUNTIME_VENV belongs to another checkout. Remove only that link,
+# then provision this checkout's own environment; no worktree may share a
+# writable venv with its primary checkout or a sibling lane.
 SETUP_ENVIRONMENT_RECIPE = set -eu; \
 	if [ -L "$(RUNTIME_VENV)" ]; then \
-		printf 'setup: borrowed environment %s is owned by another checkout\n' "$(RUNTIME_VENV)"; \
-	else \
-		if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
-			$(UV) venv "$(RUNTIME_VENV)"; \
-		fi; \
-		if ! $(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)" --check >/dev/null 2>&1; then \
-			$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
-		fi; \
-	fi
-
-# A delegated runtime lives in another checkout, so this project has no local
-# environment of its own. Generated tooling still addresses the environment by
-# its project-local name (`$${workspaceFolder}/.venv`), which must never be
-# rewritten into a cross-project relative hop: the link makes that name resolve.
-# Linking is provisioning, so a real local environment is never replaced.
-BORROW_RUNTIME_VENV_RECIPE = set -eu; \
-	if [ ! -e "$(PROJECT_VENV)" ] || [ -L "$(PROJECT_VENV)" ]; then \
-		ln -sfn "$(RUNTIME_VENV)" "$(PROJECT_VENV)"; \
-	fi
+		rm "$(RUNTIME_VENV)"; \
+	fi; \
+	if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
+		$(UV) venv "$(RUNTIME_VENV)"; \
+	fi; \
+	$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
@@ -378,10 +363,9 @@ WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_P
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
 
-# A borrowed RUNTIME_VENV keeps the primary editable install. Clearing
-# PYTHONPATH would make `make test` in a linked worktree execute that primary
-# tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
-# always wins over the shared editable (terminus T4 / path-purity).
+# Prefer PROJECT_ROOT/src so the Makefile owner always wins over any stale
+# editable metadata inside its checkout-local environment (terminus T4 /
+# path-purity).
 UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
@@ -391,9 +375,8 @@ PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT
 # no local venv -- RUNTIME_VENV is RUNTIME_ROOT/.venv -- so every checkout that
 # provisions a shared environment must describe the same contents. A subproject
 # syncing without --all-packages treats the siblings already installed there as
-# surplus and uninstalls them, undoing the root's provisioning and leaving
-# `uv sync --check` permanently divergent. A standalone project owns its venv
-# alone and has no workspace packages to include.
+# surplus and uninstalls them, undoing the root's provisioning. A standalone
+# project owns its venv alone and has no workspace packages to include.
 SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
 UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups
 
@@ -608,12 +591,24 @@ _builtin_setup_submodules:
 	@set -eu; \
 	root="$(PROJECT_ROOT)"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
+	git_config_keys() { \
+		repository="$$1"; \
+		pattern="$$2"; \
+		if output=$$(git -C "$$repository" config -f .gitmodules --name-only --get-regexp "$$pattern"); then \
+			printf '%s\n' "$$output"; \
+			return 0; \
+		else \
+			status=$$?; \
+		fi; \
+		if [ "$$status" -eq 1 ]; then return 0; fi; \
+		return "$$status"; \
+	}; \
 	profile="$(MAKE_PROFILE)"; \
 	if [ "$$profile" = "workspace" ]; then \
 		managed="$(MANAGED_GITLINKS)"; \
 	else \
 		managed=""; \
-		keys=$$(git -C "$$root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.flext-managed$$' || :); \
+		keys=$$(git_config_keys "$$root" '^submodule\..*\.flext-managed$$'); \
 		for key in $$keys; do \
 			value=$$(git -C "$$root" config -f .gitmodules --get "$$key"); \
 			if [ "$$value" = "true" ]; then \
@@ -638,13 +633,18 @@ _builtin_setup_submodules:
 			printf 'ERROR: %s: could not attach HEAD to %s without moving the tree\n' "$$child_root" "$$branch" >&2; \
 			exit 1; \
 		}; \
-		git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch" >/dev/null 2>&1 || :; \
+		if git -C "$$child_root" show-ref --verify "refs/remotes/origin/$$branch" >/dev/null; then \
+			git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch"; \
+		else \
+			status=$$?; \
+			if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
+		fi; \
 	}; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
 		child_root="$$superproject/$$child_path"; \
-		keys=$$(git -C "$$superproject" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+		keys=$$(git_config_keys "$$superproject" '^submodule\..*\.path$$'); \
 		section=""; \
 		for key in $$keys; do \
 			declared=$$(git -C "$$superproject" config -f .gitmodules --get "$$key"); \
@@ -753,7 +753,7 @@ _builtin_setup_submodules:
 			exit 1; \
 		fi; \
 		if [ -f "$$child_root/.gitmodules" ]; then \
-			nested_keys=$$(git -C "$$child_root" config -f .gitmodules --name-only --get-regexp '^submodule\..*\.path$$' || :); \
+			nested_keys=$$(git_config_keys "$$child_root" '^submodule\..*\.path$$'); \
 			for nested_key in $$nested_keys; do \
 				nested_path=$$(git -C "$$child_root" config -f .gitmodules --get "$$nested_key"); \
 				validate_submodule "$$child_root" "$$nested_path"; \
@@ -775,10 +775,8 @@ _builtin_require_environment:
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
 # It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
 # is the single public conformance/generation surface.
-# Every verb invokes setup, so it must be cheap when the tooling already
-# matches the lock and must repair it when it does not. `uv sync --check` is
-# that probe: it compares the live venv against the resolved lock and exits
-# non-zero on any drift, so it can never report a broken environment as good.
+# Every verb invokes setup, so the owning `uv sync` operation converges the
+# checkout-local environment directly and exposes its original error on failure.
 # The venv is disposable and is rebuilt whenever it is missing; it is never
 # cleared while present, because a concurrent lane may be running against it.
 _builtin_setup_environment: _builtin_setup_submodules
