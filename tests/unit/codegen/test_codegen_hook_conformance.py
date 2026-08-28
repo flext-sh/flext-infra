@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import yaml
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -136,6 +138,73 @@ class TestGitHookConformance:
 
         tm.that(rendered.count("bash -eu -o pipefail -c"), eq=expected)
         tm.that(rendered, lacks=".local")
+        tm.that(rendered, lacks="fail-open")
+        tm.that(rendered, lacks="2>/dev/null")
+        tm.that(rendered, lacks="guard || exit 0")
+        tm.that(rendered, has='gh pr list --head "$branch"')
+
+    def test_pre_push_preserves_gh_failure_status(self, tmp_path: Path) -> None:
+        """A failed draft-state query blocks the push before Make can run."""
+        make = config.Infra.codegen.make.model_copy(update={"pre_push": True})
+        rendered = tm.ok(
+            u.Cli.template_render(
+                _HOOK_TEMPLATE,
+                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+            )
+        )
+        document = yaml.safe_load(rendered)
+        assert isinstance(document, dict)
+        repositories = document.get("repos")
+        assert isinstance(repositories, list)
+        assert len(repositories) == 1
+        (repository,) = repositories
+        assert isinstance(repository, dict)
+        hooks = repository.get("hooks")
+        assert isinstance(hooks, list)
+        selected = tuple(
+            hook
+            for hook in hooks
+            if isinstance(hook, dict) and hook.get("id") == "flext-pre-push-gen"
+        )
+        tm.that(len(selected), eq=1)
+        (hook,) = selected
+        entry = hook.get("entry")
+        assert isinstance(entry, str)
+
+        fake_bin = tmp_path / "fake-bin"
+        fake_bin.mkdir()
+        fake_git = fake_bin / "git"
+        fake_git.write_text(
+            "#!/bin/sh\n"
+            'if [ "$1" = "rev-parse" ] && [ "$2" = "--show-toplevel" ]; then pwd; exit 0; fi\n'
+            'if [ "$1" = "branch" ] && [ "$2" = "--show-current" ]; then echo feature/test; exit 0; fi\n'
+            'if [ "$1" = "rev-parse" ] && [ "$2" = "--local-env-vars" ]; then exit 0; fi\n'
+            "exit 43\n",
+            encoding="utf-8",
+        )
+        fake_gh = fake_bin / "gh"
+        fake_gh.write_text("#!/bin/sh\nexit 42\n", encoding="utf-8")
+        fake_make = fake_bin / "make"
+        fake_make.write_text(
+            '#!/bin/sh\nprintf "called\\n" >"$MAKE_MARKER"\n', encoding="utf-8"
+        )
+        for executable in (fake_git, fake_gh, fake_make):
+            executable.chmod(0o755)
+        marker = tmp_path / "make-called"
+
+        output = tm.ok(
+            u.Cli.run_raw(
+                ["bash", "-c", entry],
+                cwd=tmp_path,
+                env={
+                    "MAKE_MARKER": str(marker),
+                    "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
+                },
+            )
+        )
+
+        tm.that(output.exit_code, eq=42)
+        tm.that(marker.exists(), eq=False)
 
     def test_check_and_apply_never_overwrite_foreign_hook_shims(
         self, infra_git_repo: Path
