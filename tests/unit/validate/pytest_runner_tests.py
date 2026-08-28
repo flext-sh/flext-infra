@@ -54,6 +54,7 @@ class TestsFlextInfraPytestRunner:
         file: str | None = None,
         match: str | None = None,
         what: str | None = None,
+        fail_fast: bool = False,
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -65,6 +66,7 @@ class TestsFlextInfraPytestRunner:
             what=what,
             target="tests",
             reports=".reports/tests",
+            fail_fast=fail_fast,
         )
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
@@ -168,6 +170,19 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(report_dir)
 
         tm.that(command, has="--benchmark-disable")
+
+    def test_fail_fast_full_run_uses_one_process_and_stops_after_first_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """Prevent already-running xdist workers from reporting later failures."""
+        runner = self._runner(tmp_path, fail_fast=True)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+
+        command = runner.build_command(report_dir)
+
+        tm.that(command, has=["-x", "-n", "0"])
+        tm.that(command, lacks="--dist")
+        tm.that(command, lacks="--benchmark-disable")
 
     def test_focused_run_keeps_benchmarks_enabled(self, tmp_path: Path) -> None:
         """A focused run is single-process, so benchmarks stay measurable."""

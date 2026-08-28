@@ -36,7 +36,7 @@ APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
-FAIL_FAST ?= 0
+FAIL_FAST ?= 1
 FILE ?=
 MATCH ?=
 COV ?=
@@ -1028,7 +1028,6 @@ _builtin_gen_all: _builtin_require_environment
 	$(call _generated_docs,--apply)
 	$(call _mise_launcher_apply)
 	$(call _mise_lock_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
 

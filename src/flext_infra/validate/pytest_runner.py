@@ -224,7 +224,7 @@ class FlextInfraPytestRunner(s[int]):
         coverage_args = self._coverage_argv(report_dir, focused=focused)
         parallel_args = (
             ("-n", "0")
-            if focused
+            if focused or self.fail_fast
             else (
                 "-n",
                 str(pytest.parallel_workers),
