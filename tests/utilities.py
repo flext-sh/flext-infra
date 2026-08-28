@@ -519,11 +519,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def write_standalone_workspace_manifest(
-            project_dir: Path,
-            name: str,
-            *,
-            upstream: str = "flext_core",
-            inherited_facets: t.StrSequence = (),
+            project_dir: Path, name: str, *, upstream: str = "flext_core"
         ) -> Path:
             """Write a local standalone workspace manifest for codegen conform."""
             config_dir = project_dir / "config"
@@ -564,7 +560,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     "  author_name: FLEXT Team\n"
                     "  author_email: team@flext.sh\n"
                     f"  upstream: {upstream}\n"
-                    f"  inherited_facets: {list(inherited_facets)!r}\n"
                     f"  homepage: https://github.com/flext-sh/{name}\n"
                     f"  documentation: https://github.com/flext-sh/{name}\n"
                     "  workspace_root_rel: .\n"

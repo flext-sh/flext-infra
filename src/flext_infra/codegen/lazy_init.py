@@ -15,7 +15,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import c, config, u
+from flext_infra import c, u
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -75,7 +75,6 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             "lazy-init: starting "
             f"({'check' if check_only else 'apply'}) for {self.workspace_root}"
         )
-        lazy_init = config.Infra.tooling.lazy_init
         with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
             workspace_index = rope.workspace_index
             resolved_workspace_root = self.workspace_root.resolve()
@@ -174,9 +173,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     "(aborted before codegen)"
                 )
                 return len(duplicates)
-            planner = FlextInfraCodegenLazyInitPlanner(
-                rope_workspace=rope, lazy_init=lazy_init
-            )
+            planner = FlextInfraCodegenLazyInitPlanner(rope_workspace=rope)
             u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
             total, ok, errors, _dir_exports = self._generate_all_inits(
                 package_dirs,

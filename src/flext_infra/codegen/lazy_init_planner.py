@@ -36,10 +36,6 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
         p.Infra.RopeWorkspaceDsl,
         m.Field(description="Shared Rope workspace DSL reused by the planner"),
     ]
-    lazy_init: m.Infra.LazyInitConfig = m.Field(
-        description="Validated lazy-init policy document"
-    )
-
     _module_exports_cache: dict[
         tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
     ] = u.PrivateAttr(default_factory=dict)
@@ -142,7 +138,13 @@ class FlextInfraCodegenLazyInitPlanner(
             and context.pkg_dir.name == c.Infra.DIR_TESTS
             and context.surface == c.Infra.DIR_TESTS
         )
-        is_facade_root = is_public_project_root or is_test_facade_root
+        is_wrapper_facade_root = (
+            context.current_pkg == context.surface
+            and context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        )
+        is_facade_root = (
+            is_public_project_root or is_test_facade_root or is_wrapper_facade_root
+        )
         export_names = {*lazy_map, *eager_dunders}
         if is_public_project_root:
             package_alias = u.Infra.package_alias(package_name=context.current_pkg)

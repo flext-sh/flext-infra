@@ -63,8 +63,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             case c.Infra.CodegenConformSurface.MAKEFILE:
                 return m.Infra.CodegenConformSurfaceContract(
-                    destinations=frozenset({c.Infra.MAKEFILE_FILENAME}),
-                    pyproject=False,
+                    destinations=frozenset({c.Infra.MAKEFILE_FILENAME}), pyproject=False
                 )
             case _:
                 msg = f"Unsupported codegen conform surface: {surface}"
@@ -206,9 +205,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         root = request.root.expanduser().resolve()
         workspace = self.initial_workspace
         if workspace is None:
-            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                root
-            )
+            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
             if workspace_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
                     workspace_result.error or "repository metadata load failed"
@@ -330,10 +327,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             files.extend(governed.value)
             environments.append(
-                self._uv_environment_plan(
-                    root=repository_root,
-                    config=config_spec,
-                )
+                self._uv_environment_plan(root=repository_root, config=config_spec)
             )
             if self.initial_workspace is None:
                 ancestry_result = self._branch_ancestry_plan(target)
@@ -670,8 +664,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             preserved = self._repository_owned_workflow_plan(root, destination)
             if preserved.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    preserved.error
-                    or f"workflow provenance read failed: {destination}"
+                    preserved.error or f"workflow provenance read failed: {destination}"
                 )
             if preserved.value:
                 planned.extend(preserved.value)
@@ -957,9 +950,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 and managed.path.as_posix() not in contract.destinations
             ):
                 continue
-            if (
-                managed.policy in {"delegated", "manual"}
-                or managed.path == Path(c.Infra.PYPROJECT_FILENAME)
+            if managed.policy in {"delegated", "manual"} or managed.path == Path(
+                c.Infra.PYPROJECT_FILENAME
             ):
                 continue
             entries = tuple(
@@ -1008,9 +1000,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             if managed.policy == "create-only":
                 continue
-            preserved = self._repository_owned_workflow_plan(
-                root, entry.destination
-            )
+            preserved = self._repository_owned_workflow_plan(root, entry.destination)
             if preserved.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     preserved.error
@@ -1714,9 +1704,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _uv_environment_plan(
-        *,
-        root: Path,
-        config: m.Infra.CodegenConfigSpec,
+        *, root: Path, config: m.Infra.CodegenConfigSpec
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe this repository's exact setup without topology fanout."""
         return m.Infra.UvEnvironmentPlan(

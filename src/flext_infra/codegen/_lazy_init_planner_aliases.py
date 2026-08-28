@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 class FlextInfraCodegenLazyInitPlannerAliasesMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
         _parent_package_cache: dict[str, t.StrSequence]
 
         def _source_package_name(self, pkg_dir: Path, inherited_key: str) -> str: ...
@@ -57,11 +56,10 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
         surface: str,
     ) -> None:
         """Inject inherited and local aliases into the lazy map."""
-        is_test_runtime_alias_surface = c.Infra.DIR_TESTS in {
-            current_pkg,
-            pkg_dir.name,
-            surface,
-        }
+        is_wrapper_root = (
+            current_pkg == surface and surface in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        )
+        is_test_runtime_alias_surface = is_wrapper_root and surface == c.Infra.DIR_TESTS
         local_parent_packages = self._local_parent_packages(pkg_dir)
         local_import_alias_targets = self._local_import_alias_targets(pkg_dir)
         if (
@@ -71,10 +69,11 @@ class FlextInfraCodegenLazyInitPlannerAliasesMixin:
             and not local_import_alias_targets
         ):
             return
+        source_package = self._source_package_name(pkg_dir, surface)
         inherited_packages = self._resolve_transitive_parent_packages((
+            *((source_package,) if source_package != current_pkg else ()),
             *self._parent_packages(pkg_dir),
             *local_parent_packages,
-            self._source_package_name(pkg_dir, surface),
         ))
         runtime_alias_names: list[str] = []
         if is_test_runtime_alias_surface:

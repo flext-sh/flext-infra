@@ -27,8 +27,6 @@ if TYPE_CHECKING:
     from . import transformers as transformers
     from . import validate as validate
     from . import workspace as workspace
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .check.tests_workspace_check import (
         test_workspace_check_main_returns_error_without_projects,
     )
@@ -63,7 +61,7 @@ if TYPE_CHECKING:
     from .test_infra_constants_extra import TestsFlextInfraInfraConstantsExtra
     from .test_infra_git_identity_submodules import TestInfraGitIdentitySubmodules
     from .test_infra_main import TestsFlextInfraInfraMain
-    from .test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli, main
+    from .test_infra_maintenance_cli import TestsFlextInfraInfraMaintenanceCli
     from .test_infra_maintenance_init import TestsFlextInfraInfraMaintenanceInit
     from .test_infra_maintenance_main import TestsFlextInfraInfraMaintenanceMain
     from .test_infra_maintenance_python_version import (
@@ -159,30 +157,22 @@ __all__: tuple[str, ...] = (
     "WorktreeFixture",
     "_utilities",
     "basemk",
-    "c",
     "check",
     "codegen",
     "codemod",
     "container",
-    "d",
     "deps",
     "deptry_report_payload",
     "detectors",
     "discovery",
     "docs",
-    "e",
     "github",
-    "h",
     "io",
-    "m",
-    "main",
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
     "orchestrator",
     "owned_provider",
-    "p",
-    "r",
     "real_docs_project",
     "real_git_repo",
     "real_makefile_project",
@@ -192,24 +182,15 @@ __all__: tuple[str, ...] = (
     "refactor",
     "release",
     "rope_workspace",
-    "s",
     "services_resource",
-    "t",
-    "td",
     "test_service_base_generic_alias_mro_is_permitted",
     "test_version_diag",
     "test_version_full_import",
     "test_workspace_check_main_returns_error_without_projects",
-    "tf",
-    "tk",
-    "tm",
     "tool_config_document",
     "transformers",
-    "tv",
-    "u",
     "validate",
     "workspace",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -263,10 +244,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_constants_extra": ("TestsFlextInfraInfraConstantsExtra",),
             ".test_infra_git_identity_submodules": ("TestInfraGitIdentitySubmodules",),
             ".test_infra_main": ("TestsFlextInfraInfraMain",),
-            ".test_infra_maintenance_cli": (
-                "TestsFlextInfraInfraMaintenanceCli",
-                "main",
-            ),
+            ".test_infra_maintenance_cli": ("TestsFlextInfraInfraMaintenanceCli",),
             ".test_infra_maintenance_init": ("TestsFlextInfraInfraMaintenanceInit",),
             ".test_infra_maintenance_main": ("TestsFlextInfraInfraMaintenanceMain",),
             ".test_infra_maintenance_python_version": (
@@ -322,24 +300,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace": ("workspace",),
             ".workspace.worktree_fixture": ("WorktreeFixture",),
             ".workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

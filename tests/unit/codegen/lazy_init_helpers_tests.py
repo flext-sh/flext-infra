@@ -107,10 +107,10 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         tm.that(self._generated_init(package_root), lacks="FlextDemoInternal")
 
-    def test_root_regeneration_preserves_declared_abi_only(
+    def test_root_regeneration_derives_abi_from_module_owners(
         self, tmp_path: Path
     ) -> None:
-        """Keep module-local public helpers outside the package-root ABI."""
+        """Derive the root ABI from explicit module contracts, not its projection."""
         workspace_root, package_root = self._workspace(tmp_path)
         package_root.joinpath(c.Infra.INIT_PY).write_text(
             '__all__: tuple[str, ...] = ("FlextDemoConstants", "FlextDemoLazy", "c")\n',
@@ -143,10 +143,20 @@ class TestsFlextInfraLazyInitHelpers:
         has_all, exports = u.Tests.extract_lazy_init_exports(generated)
 
         tm.that(has_all, eq=True)
-        tm.that(exports, eq=("FlextDemoConstants", "FlextDemoLazy", "c"))
-        tm.that(generated, lacks="FlextDemoConstantsEnforcement")
-        tm.that(generated, lacks="FlextDemoLazyAttribute")
-        tm.that(generated, lacks="lazy_attribute")
+        tm.that(
+            exports,
+            eq=(
+                "FlextDemoConstants",
+                "FlextDemoConstantsEnforcement",
+                "FlextDemoLazy",
+                "FlextDemoLazyAttribute",
+                "c",
+                "lazy_attribute",
+            ),
+        )
+        tm.that(generated, has="FlextDemoConstantsEnforcement")
+        tm.that(generated, has="FlextDemoLazyAttribute")
+        tm.that(generated, has="lazy_attribute")
 
     def test_root_regeneration_prunes_contract_name_without_owner(
         self, tmp_path: Path
@@ -325,11 +335,10 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, has="FlextDemoService")
-        tm.that(exports_content, has='"BLUE"')
-        tm.that(exports_content, has="FlextDemoServicesModels")
+        tm.that(exports_content, lacks="FlextDemoService")
+        tm.that(exports_content, lacks='"BLUE"')
+        tm.that(exports_content, lacks="FlextDemoServicesModels")
         tm.that(exports_content, lacks='"main"')
-        tm.that(exports_content, has='"m"')
 
     def test_generated_constants_owner_never_widens_parent_map(
         self, tmp_path: Path
@@ -386,6 +395,46 @@ class TestsFlextInfraLazyInitHelpers:
         check_service = u.Tests.create_lazy_init_service(workspace_root)
         tm.that(check_service.generate_inits(check_only=True), eq=0)
         tm.that(check_service.modified_files, empty=True)
+
+    def test_wrapper_roots_inherit_project_aliases_and_keep_local_overrides(
+        self, tmp_path: Path
+    ) -> None:
+        """Tests, scripts, and examples inherit the project-root namespace."""
+        workspace_root, package_root = self._workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextDemoModels", alias="m"
+        )
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "result.py", class_name="FlextDemoResult", alias="r"
+        )
+        wrapper_roots: list[Path] = []
+        for surface in ("tests", "scripts", "examples"):
+            wrapper_root = workspace_root / surface
+            wrapper_root.mkdir()
+            wrapper_root.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.Cli.ENCODING_DEFAULT
+            )
+            class_stem = surface.capitalize()
+            u.Tests.write_lazy_init_namespace_module(
+                wrapper_root / "models.py", class_name=f"{class_stem}Models", alias="m"
+            )
+            child_root = wrapper_root / "nested"
+            child_root.mkdir()
+            child_root.joinpath(c.Infra.INIT_PY).write_text(
+                "", encoding=c.Cli.ENCODING_DEFAULT
+            )
+            child_root.joinpath("leak.py").write_text(
+                'class NestedLeak:\n    pass\n\n__all__ = ("NestedLeak",)\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+            wrapper_roots.append(wrapper_root)
+
+        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        for wrapper_root in wrapper_roots:
+            generated = self._generated_init(wrapper_root)
+            tm.that(generated, has='"flext_demo": ("r",)')
+            tm.that(generated, has='".models": (')
+            tm.that(generated, lacks="NestedLeak")
 
     def test_root_aliases_follow_transitive_parent_exports_from_source(
         self, tmp_path: Path
@@ -470,7 +519,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has='"flext_cli": (')
         tm.that(exports_content, has='".constants": (')
 
-    def test_legacy_workspace_manifest_cannot_widen_root_exports(
+    def test_legacy_workspace_manifest_cannot_narrow_base_aliases(
         self, tmp_path: Path
     ) -> None:
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -489,19 +538,9 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
         exports = self._generated_exports(package_root)
-        tm.that(exports, lacks='"flext_cli": (\n        "r",')
-        tm.that(generated, lacks='    "r",')
+        tm.that(exports, has='"flext_cli": (')
+        tm.that(generated, has='    "r",')
         tm.that(generated, has='    "c",')
-
-        u.Tests.write_standalone_workspace_manifest(
-            workspace_root, "flext-demo", inherited_facets=("r",)
-        )
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        regenerated = self._generated_init(package_root)
-        regenerated_exports = self._generated_exports(package_root)
-        tm.that(regenerated_exports, lacks='"flext_cli": (\n        "r",')
-        tm.that(regenerated, lacks='    "r",')
-        tm.that(regenerated, has='    "c",')
 
     def test_generated_parent_initializer_is_not_an_alias_owner(
         self, tmp_path: Path
@@ -605,10 +644,8 @@ class TestsFlextInfraLazyInitHelpers:
         has_all, public_exports = u.Tests.extract_lazy_init_exports(generated)
 
         tm.that(has_all, eq=True)
-        for alias_name in ("c", "m", "p", "s", "t", "u"):
+        for alias_name in ("c", "d", "e", "h", "m", "p", "r", "s", "t", "u", "x"):
             tm.that(public_exports, has=alias_name)
-        for upstream_alias in ("d", "e", "h", "r", "x"):
-            tm.that(public_exports, lacks=upstream_alias)
 
     def test_root_keeps_declared_public_git_and_work_services(
         self, tmp_path: Path
@@ -699,7 +736,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         exports_content = self._generated_exports(package_root)
 
-        tm.that(exports_content, has="FlextDemoHttpTransport")
+        tm.that(exports_content, lacks="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
 
     def test_duplicate_public_export_resolved_by_canonical_scorer(

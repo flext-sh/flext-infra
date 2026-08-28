@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 class FlextInfraCodegenLazyInitPlannerCollisionMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
         _collision_count: int
 
         def _module_file(self, module_path: str) -> Path | None: ...

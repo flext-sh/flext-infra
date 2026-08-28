@@ -13,9 +13,9 @@ if TYPE_CHECKING:
     from . import integration as integration
     from . import refactor as refactor
     from . import unit as unit
-    from flext_tests import FlextTestsConstants
+    from flext_infra import d, e, h, r, x
+    from flext_tests import td, tf, tk, tm, tv
     from re import re
-    from typing import ClassVar, Final, TYPE_CHECKING
 
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
     from .conftest import (
@@ -39,45 +39,18 @@ if TYPE_CHECKING:
     from .models import TestsFlextInfraModels, TestsFlextInfraModels as m
     from .protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
     from .typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
-    from .unit.check.tests_workspace_check import (
-        test_workspace_check_main_returns_error_without_projects,
-    )
-    from .unit.fixtures import (
-        deptry_report_payload,
-        models_resource,
-        modernizer_workspace,
-        modernizer_workspace_with_projects,
-        real_docs_project,
-        real_makefile_project,
-        real_python_package,
-        real_toml_project,
-        real_workspace,
-        rope_workspace,
-        services_resource,
-        tool_config_document,
-    )
-    from .unit.fixtures_git import real_git_repo
-    from .unit.runner_service import RealSubprocessRunner
-    from .unit.workspace.worktree_fixture import WorktreeFixture
-    from .unit.workspace_factory import TestsFlextInfraWorkspaceFactory
     from .utilities import TestsFlextInfraUtilities, TestsFlextInfraUtilities as u
 __all__: tuple[str, ...] = (
-    "TYPE_CHECKING",
-    "ClassVar",
-    "Final",
-    "FlextTestsConstants",
-    "MappingProxyType",
-    "RealSubprocessRunner",
     "TestsFlextInfraConstants",
     "TestsFlextInfraModels",
     "TestsFlextInfraProtocols",
     "TestsFlextInfraServiceBase",
     "TestsFlextInfraTypes",
     "TestsFlextInfraUtilities",
-    "TestsFlextInfraWorkspaceFactory",
-    "WorktreeFixture",
     "c",
-    "deptry_report_payload",
+    "d",
+    "e",
+    "h",
     "infra_git",
     "infra_git_repo",
     "infra_io",
@@ -92,29 +65,23 @@ __all__: tuple[str, ...] = (
     "infra_toml",
     "integration",
     "m",
-    "models_resource",
-    "modernizer_workspace",
-    "modernizer_workspace_with_projects",
     "p",
     "pytest_ignore_collect",
     "pytest_plugins",
+    "r",
     "re",
-    "real_docs_project",
-    "real_git_repo",
-    "real_makefile_project",
-    "real_python_package",
-    "real_toml_project",
-    "real_workspace",
     "refactor",
     "rope_project",
-    "rope_workspace",
     "s",
-    "services_resource",
     "t",
-    "test_workspace_check_main_returns_error_without_projects",
-    "tool_config_document",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
     "u",
     "unit",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -145,32 +112,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor": ("refactor",),
             ".typings": ("TestsFlextInfraTypes", "t"),
             ".unit": ("unit",),
-            ".unit.check.tests_workspace_check": (
-                "test_workspace_check_main_returns_error_without_projects",
-            ),
-            ".unit.fixtures": (
-                "deptry_report_payload",
-                "models_resource",
-                "modernizer_workspace",
-                "modernizer_workspace_with_projects",
-                "real_docs_project",
-                "real_makefile_project",
-                "real_python_package",
-                "real_toml_project",
-                "real_workspace",
-                "rope_workspace",
-                "services_resource",
-                "tool_config_document",
-            ),
-            ".unit.fixtures_git": ("real_git_repo",),
-            ".unit.runner_service": ("RealSubprocessRunner",),
-            ".unit.workspace.worktree_fixture": ("WorktreeFixture",),
-            ".unit.workspace_factory": ("TestsFlextInfraWorkspaceFactory",),
             ".utilities": ("TestsFlextInfraUtilities", "u"),
-            "flext_tests": ("FlextTestsConstants",),
+            "flext_infra": ("d", "e", "h", "r", "x"),
+            "flext_tests": ("td", "tf", "tk", "tm", "tv"),
             "re": ("re",),
-            "types": ("MappingProxyType",),
-            "typing": ("ClassVar", "Final", "TYPE_CHECKING"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

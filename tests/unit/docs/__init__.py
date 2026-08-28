@@ -10,8 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .auditor_budgets_tests import TestLoadAuditBudgets
     from .auditor_cli_tests import (
         test_auditor_main_help_exits_zero,
@@ -167,19 +165,9 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraDocServer",
     "auditor",
     "builder",
-    "c",
-    "d",
-    "e",
-    "h",
     "is_external",
-    "m",
     "normalize_link",
-    "p",
-    "r",
-    "s",
     "should_skip_target",
-    "t",
-    "td",
     "test_anchorize_and_build_toc_are_public_helpers",
     "test_anchorize_keeps_underscores_like_python_markdown",
     "test_anchorize_normalizes_headings",
@@ -265,12 +253,6 @@ __all__: tuple[str, ...] = (
     "test_write_markdown_fails_for_non_directory_parent",
     "test_write_markdown_preserves_empty_lines",
     "test_write_markdown_writes_exact_content",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -413,24 +395,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_validate_workspace_apply_writes_project_todo",
                 "test_validate_workspace_fails_before_generated_files_exist",
                 "test_validate_workspace_passes_after_generate_apply",
-            ),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

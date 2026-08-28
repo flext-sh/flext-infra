@@ -10,8 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .test_detector_owns_no_project_registry import (
         TestsDetectorOwnsNoProjectRegistry,
     )
@@ -44,26 +42,10 @@ __all__: tuple[str, ...] = (
     "TestsWorkspaceManifestV2Contract",
     "TestsWorkspaceRootMakeContract",
     "WorktreeFixture",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
     "test_project_scope_uses_declared_name_inside_worktree_lane",
     "test_toc_is_inserted_after_h1_preceded_by_html_comment",
     "test_toc_without_h1_injects_documentation_heading",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
     "workspace_main",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -91,24 +73,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),
             ".test_workspace_root_make_contract": ("TestsWorkspaceRootMakeContract",),
             ".worktree_fixture": ("WorktreeFixture",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

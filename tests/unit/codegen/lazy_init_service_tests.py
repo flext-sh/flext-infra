@@ -99,9 +99,10 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(selected_generated, lacks="FlextTestsUnrelatedModels")
         tm.that(unrelated_init.read_bytes(), eq=unrelated_before)
 
-    def test_root_aggregates_declared_module_and_subpackage_publics(
+    def test_root_keeps_subpackage_publics_behind_its_facade(
         self, tmp_path: Path
     ) -> None:
+        """Publish a child facade without copying its declarations into root."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         package_root.joinpath("runner.py").write_text(
             'class FlextTestsLibraryRunner:\n    """Root runner."""\n\n'
@@ -131,7 +132,8 @@ class TestsFlextInfraCodegenLazyInitService:
 
         tm.that(result.success, eq=True)
         tm.that(generated_root, contains="FlextTestsLibraryRunner")
-        tm.that(generated_root, contains="FlextTestsDbtServiceBase")
+        tm.that(generated_root, contains='"services"')
+        tm.that(generated_root, lacks="FlextTestsDbtServiceBase")
         tm.that(generated_services, contains="FlextTestsDbtServiceBase")
 
     def test_target_plans_private_children_without_writing_them(

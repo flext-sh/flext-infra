@@ -497,9 +497,6 @@ class FlextInfraModelsDepsToolSettings(
             description="App overrides"
         )
 
-    class LazyInitConfig(m.ArbitraryTypesModel):
-        """Declarative policy for ``__init__.py`` lazy export generation."""
-
     class ToolConfigDocument(m.ArbitraryTypesModel):
         """Root schema for canonical ``config/tooling.yaml`` policy data."""
 
@@ -509,9 +506,6 @@ class FlextInfraModelsDepsToolSettings(
         project_type_overrides: FlextInfraModelsDepsToolSettings.ProjectTypeOverridesConfig = m.Field(
             alias="project-type-overrides",
             description="Per-project-type configuration overrides.",
-        )
-        lazy_init: FlextInfraModelsDepsToolSettings.LazyInitConfig = m.Field(
-            alias="lazy-init", description="Declarative lazy-init generation policy."
         )
 
     class ToolingScalarSetting(m.ArbitraryTypesModel):

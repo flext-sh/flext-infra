@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 class FlextInfraCodegenLazyInitPlannerExportsMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
-        lazy_init: m.Infra.LazyInitConfig
         _module_exports_cache: dict[
             tuple[str, bool, bool, bool, bool, bool], t.LazyAliasMap
         ]
@@ -116,7 +115,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 py_file,
                 convention.module_name,
                 export_options=m.Infra.ExportOptions(
-                    allow_main=True,
+                    allow_main=context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS,
                     allow_assignments=True,
                     allow_functions=True,
                     require_explicit_all=require_explicit_all,

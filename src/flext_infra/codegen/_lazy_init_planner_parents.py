@@ -105,18 +105,8 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
     ) -> str:
         """Return the package that owns the given alias in the inheritance chain."""
         candidate_packages: t.StrSequence = tuple(
-            name for name in package_names if name
+            name for name in package_names if name and name != current_pkg
         )
-        canonical_target = (
-            c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
-            if use_test_runtime_aliases
-            else None
-        )
-        if canonical_target is not None:
-            # mro-j47u (codex): TEST_RUNTIME_ALIAS_TARGETS is a StrPair mapping.
-            canonical_package: str = canonical_target[0]
-            if canonical_package != current_pkg:
-                return canonical_package
         for package_name in candidate_packages:
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"
@@ -127,6 +117,15 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 and alias_name in u.Infra.installed_package_exports(package_name)
             ):
                 return f"{package_name}"
+        canonical_target = (
+            c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
+            if use_test_runtime_aliases
+            else None
+        )
+        if canonical_target is not None:
+            canonical_package: str = canonical_target[0]
+            if canonical_package != current_pkg:
+                return canonical_package
         return ""
 
     def _package_name_from_target(self, target: str) -> str:

@@ -10,8 +10,6 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
-
     from .test_bootstrap_refname_safety import TestsBootstrapRefnameSafety
     from .test_builtin_handlers_derive_from_ssot import (
         test_every_invoked_handler_is_declared_in_the_ssot,
@@ -33,25 +31,9 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraBasemkMakeContract",
     "TestsFlextInfraBasemkRenderer",
     "basemk_main",
-    "c",
-    "d",
-    "e",
-    "h",
-    "m",
-    "p",
-    "r",
-    "s",
-    "t",
-    "td",
     "test_every_invoked_handler_is_declared_in_the_ssot",
     "test_every_routed_handler_is_defined",
     "test_routing_declares_one_allowed_whats_per_verb",
-    "tf",
-    "tk",
-    "tm",
-    "tv",
-    "u",
-    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -69,24 +51,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_main": ("TestsFlextInfraBasemkMain", "basemk_main"),
             ".test_make_contract": ("TestsFlextInfraBasemkMakeContract",),
             ".test_renderer": ("TestsFlextInfraBasemkRenderer",),
-            "flext_tests": (
-                "c",
-                "d",
-                "e",
-                "h",
-                "m",
-                "p",
-                "r",
-                "s",
-                "t",
-                "td",
-                "tf",
-                "tk",
-                "tm",
-                "tv",
-                "u",
-                "x",
-            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

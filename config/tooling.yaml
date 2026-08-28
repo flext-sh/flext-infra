@@ -655,8 +655,6 @@ Infra:
           reportMissingTypeStubs: "none"
       app:
         pyright: {}
-    lazy-init: {}
-
 # Project-local managed-artifact additions for flext-infra itself.
 #
 # `Infra.tooling` above is the FLEET policy every generated project inherits.

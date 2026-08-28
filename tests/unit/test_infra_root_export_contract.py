@@ -28,13 +28,17 @@ class TestsFlextInfraRootExportContract:
             # config/settings SSOT singletons
             "config",
             "settings",
-            # project-owned facade aliases; upstream runtime primitives are
-            # imported from their defining package, never re-exported here.
+            # project facades plus all unit aliases inherited from base projects
             "c",
             "t",
             "p",
             "m",
             "u",
+            "r",
+            "e",
+            "x",
+            "h",
+            "d",
             "s",
             # public API + CLI entry points
             "FlextInfra",

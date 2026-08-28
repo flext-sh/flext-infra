@@ -859,6 +859,7 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.MakeDocsSpec,
             m.Field(description="Public documentation lifecycle policy"),
         ]
+
         @u.model_validator(mode="after")
         def _validate_verbs(self) -> Self:
             """Validate declared public verbs against workflow and contract.
@@ -1550,21 +1551,6 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
-        inherited_facets: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                default=(),
-                description=(
-                    "Upstream facets re-exported by the project root. The lazy-init "
-                    "public-root planner reads this to decide which upstream "
-                    "namespace names the generated root __init__ may re-export: a "
-                    "facet is inherited when declared here or actually imported "
-                    "from source. Without the field the planner cannot honour a "
-                    "manifest declaration and re-exports only what source imports "
-                    "prove -- which silently drops manifest-declared facets."
-                ),
-            ),
-        ] = ()
         homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
@@ -1712,16 +1698,6 @@ class FlextInfraConfigModels:
         upstream: Annotated[
             t.NonEmptyStr, m.Field(description="Upstream FLEXT facade module")
         ]
-        inherited_facets: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                default=(),
-                description=(
-                    "Upstream facets re-exported by the project root; see the "
-                    "RepositoryRef namesake for the lazy-init contract."
-                ),
-            ),
-        ] = ()
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Project description")
         ]
