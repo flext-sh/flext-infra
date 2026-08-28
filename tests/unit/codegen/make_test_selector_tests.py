@@ -115,14 +115,59 @@ class TestsMakeTestSelector:
         selected_makefile.write_text(
             tm.ok(u.Cli.files_read_text(Path("Makefile"))), encoding="utf-8"
         )
-        invocation_log = engine_root / "bootstrap-args.log"
+        uv_log = engine_root / "uv-args.log"
+        runtime_log = engine_root / "runtime-args.log"
         test_u.Tests.write_executable(
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
         )
         uv = caller_root / "bin" / "uv"
         test_u.Tests.write_executable(
-            uv, f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n'
+            uv,
+            (
+                "#!/bin/sh\n"
+                f'printf \'%s\\n\' "$*" >> "{uv_log}"\n'
+                'if [ "$1" = "--version" ]; then printf \'uv 0.12.0\\n\'; exit 0; fi\n'
+                'if [ "$1" = "venv" ]; then\n'
+                '  mkdir -p "$2/bin"\n'
+                '  cat > "$2/bin/python" <<\'PYTHON\'\n'
+                "#!/bin/sh\n"
+                f'printf \'%s\\n\' "$*" >> "{runtime_log}"\n'
+                "exit 0\n"
+                "PYTHON\n"
+                '  chmod +x "$2/bin/python"\n'
+                "fi\n"
+                "exit 0\n"
+            ),
         )
+        mise = engine_root / "bin" / "mise"
+        test_u.Tests.write_executable(
+            mise,
+            (
+                "#!/bin/sh\n"
+                'if [ "$1" = "--version" ]; then printf \'2026.8.14\\n\'; exit 0; fi\n'
+                'case "$*" in *"exec -- uv --version"*) '
+                "printf 'uv 0.12.0\\n'; exit 0 ;; esac\n"
+                'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
+                'if [ "$#" -gt 0 ]; then shift; exec "$@"; fi\n'
+                "exit 0\n"
+            ),
+        )
+        (engine_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
+        (engine_root / ".mise.toml").write_text("[tools]\n", encoding="utf-8")
+
+        setup = tm.ok(
+            test_u.Tests.run_isolated_make(
+                [
+                    "--no-print-directory",
+                    "-f",
+                    str(selected_makefile),
+                    "setup",
+                    f"UV={uv}",
+                ],
+                cwd=caller_root,
+            )
+        )
+        tm.that(setup.exit_code, eq=0, msg=setup.stdout + setup.stderr)
 
         executed = tm.ok(
             test_u.Tests.run_isolated_make(
@@ -140,10 +185,15 @@ class TestsMakeTestSelector:
 
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
-            invocation_log.read_text(encoding="utf-8"),
+            uv_log.read_text(encoding="utf-8"),
             has=[
-                f"run --project {engine_root}",
-                f"--with-editable {engine_root}",
+                f"venv {engine_root / '.venv'}",
+                f"sync --project {engine_root}",
+            ],
+        )
+        tm.that(
+            runtime_log.read_text(encoding="utf-8"),
+            has=[
                 "-m flext_infra codegen conform",
                 f"--root {engine_root}",
                 "--scope self",
