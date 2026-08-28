@@ -1205,7 +1205,7 @@ Infra:
           # every project owning src/, so the tool it shells out to must be a
           # declared dev dependency of every generated project.
           - bandit>=1.8
-          - flext-tests
+          - flext-tests @ git+https://github.com/flext-sh/flext-tests.git
           # Floors let uv select the newest compatible tools; no upper cap or
           # exact tool version is imposed by generated project metadata.
           - mypy>=2.3.0

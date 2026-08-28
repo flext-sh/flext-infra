@@ -84,6 +84,39 @@ class FlextInfraUtilitiesRepository:
             )
         return r[m.Infra.ProviderSpec].ok(matches[0])
 
+    @classmethod
+    def remote_repository_ref(
+        cls,
+        distribution: str,
+        *,
+        url: str,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve an explicit remote to one canonical repository reference."""
+        from flext_infra.utilities import u
+
+        identity = u.Infra.git_remote_identity(url)
+        parts = tuple(part for part in identity.split("/") if part)
+        match parts:
+            case (_owner, repository):
+                pass
+            case _:
+                return r[m.Infra.RepositoryRef].fail(
+                    "repository remote has no valid project identity"
+                )
+        if repository.casefold() != distribution.casefold():
+            return r[m.Infra.RepositoryRef].fail(
+                f"repository identity does not match distribution: {distribution}"
+            )
+        provider = cls.remote_provider(url, providers)
+        if provider.failure:
+            return r[m.Infra.RepositoryRef].fail(
+                provider.error or "repository provider resolution failed"
+            )
+        return r[m.Infra.RepositoryRef].ok(
+            cls.derived_repository_ref(distribution, provider=provider.value)
+        )
+
     @staticmethod
     def resolve_integration_branch(
         workspace: m.Infra.WorkspaceSpec, provider: m.Infra.ProviderSpec

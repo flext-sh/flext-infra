@@ -17,6 +17,15 @@ _PROVIDER_SPEC = tm.ok(
 )
 
 
+def _provider(name: str) -> m.Infra.ProviderSpec:
+    matches = tuple(
+        provider for provider in config.Infra.codegen.providers if provider.name == name
+    )
+    tm.that(len(matches), eq=1)
+    (provider,) = matches
+    return provider
+
+
 def _repository(
     distribution: str, *, role: c.Infra.RepositoryRole, path: str
 ) -> m.Infra.RepositoryRef:
@@ -117,6 +126,89 @@ workspace = true
             document["project"]["dependencies"],
             eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
         )
+
+    def test_standalone_rejects_bare_internal_dependency_absent_from_topology(
+        self,
+    ) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        result = u.Infra.pyproject_dependencies_conform(
+            '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
+            providers=config.Infra.codegen.providers,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        tm.fail(result, has="internal dependency has no declared repository source")
+
+    def test_standalone_resolves_explicit_https_internal_dependency(self) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        provider = _provider("datacosmos-br")
+        requirement = (
+            "flext-core @ "
+            f"git+{provider.base_url.rstrip('/')}/flext-core.git@stale-branch"
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            f'[project]\nname = "external-consumer"\ndependencies = ["{requirement}"]\n',
+            providers=config.Infra.codegen.providers,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        expected = (
+            f"flext-core @ git+{provider.base_url.rstrip('/')}/"
+            f"flext-core.git@{provider.branch}"
+        )
+        tm.that(
+            document["project"]["dependencies"],
+            eq=[expected],
+        )
+
+    def test_standalone_resolves_explicit_ssh_internal_dependency(self) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        provider = _provider("datacosmos-br")
+        requirement = (
+            "flext-core @ git+ssh://git@github.com/"
+            f"{provider.organization}/flext-core.git@stale-branch"
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            f'[project]\nname = "external-consumer"\ndependencies = ["{requirement}"]\n',
+            providers=config.Infra.codegen.providers,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        document = tomllib.loads(tm.ok(result))
+        expected = (
+            f"flext-core @ git+{provider.base_url.rstrip('/')}/"
+            f"flext-core.git@{provider.branch}"
+        )
+        tm.that(
+            document["project"]["dependencies"],
+            eq=[expected],
+        )
+
+    def test_standalone_rejects_explicit_internal_dependency_identity_mismatch(
+        self,
+    ) -> None:
+        workspace = _workspace().model_copy(update={"subprojects": ()})
+        provider = _PROVIDER_SPEC
+        raw_url = (
+            "git+ssh://git@github.com/"
+            f"{provider.organization}/different-project.git@{provider.branch}"
+        )
+        result = u.Infra.pyproject_dependencies_conform(
+            (
+                '[project]\nname = "external-consumer"\n'
+                f'dependencies = ["flext-core @ {raw_url}"]\n'
+            ),
+            providers=config.Infra.codegen.providers,
+            workspace=workspace,
+            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+        )
+
+        error = tm.fail(result, has="repository identity does not match distribution")
+        tm.that(error, lacks=raw_url)
 
     def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
         workspace = _workspace()

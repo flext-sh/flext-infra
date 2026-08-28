@@ -303,6 +303,12 @@ class FlextInfraUtilitiesPyprojectConform:
         if head_match is None:
             return r[str].fail(f"invalid internal requirement: {requirement}")
         head = head_match.group("head").strip()
+        requirement_tail = requirement_part[head_match.end() :].strip()
+        direct_url = (
+            requirement_tail.removeprefix("@").strip()
+            if requirement_tail.startswith("@")
+            else None
+        )
         marker_text = marker.strip()
         if dependency_name in attached:
             if "@" in requirement_part:
@@ -314,7 +320,10 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"{head}; {marker_text}" if separator and marker_text else head
             )
         reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories, providers=providers
+            dependency_name,
+            direct_url=direct_url,
+            repositories=repositories,
+            providers=providers,
         )
         if reference_result.failure:
             return r[str].fail(
@@ -341,27 +350,36 @@ class FlextInfraUtilitiesPyprojectConform:
     def _repository_reference(
         distribution: str,
         *,
+        direct_url: str | None,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         providers: t.SequenceOf[m.Infra.ProviderSpec],
     ) -> p.Result[p.Infra.RepositoryRef]:
-        """Return one unambiguous reference for a distribution.
-
-        A distribution the workspace does not declare is still resolvable: its
-        canonical source is the provider contract plus its own name. That is
-        derived from generic policy, never from a catalog of projects that
-        flext-infra is forbidden to own.
-        """
+        """Return the declared or explicit reference for one distribution."""
         matches = tuple(
             repository
             for repository in repositories
             if repository.distribution == distribution
         )
         if not matches:
-            return r.ok(
-                FlextInfraUtilitiesRepository.derived_repository_ref(
-                    distribution, provider=providers[0]
+            if direct_url is None:
+                return r.fail(
+                    "internal dependency has no declared repository source: "
+                    f"{distribution}"
                 )
+            remote = FlextInfraUtilitiesPyprojectConform._git_remote_url(direct_url)
+            if remote.failure:
+                return r.fail(
+                    remote.error or "internal dependency Git source is invalid"
+                )
+            resolved = FlextInfraUtilitiesRepository.remote_repository_ref(
+                distribution,
+                url=remote.value,
+                providers=providers,
             )
+            if resolved.failure:
+                return r.fail(resolved.error or "repository resolution failed")
+            reference: p.Infra.RepositoryRef = resolved.value
+            return r.ok(reference)
         reference = matches[0]
         if any(
             item.url != reference.url or item.provider != reference.provider
@@ -371,6 +389,24 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"repository catalog conflicts for distribution: {distribution}"
             )
         return r.ok(reference)
+
+    @staticmethod
+    def _git_remote_url(direct_url: str) -> p.Result[str]:
+        """Remove the PEP 508 VCS prefix and revision without hiding failures."""
+        if not direct_url.startswith("git+"):
+            return r[str].fail("internal dependency direct source must use Git")
+        remote_with_revision = direct_url.removeprefix("git+")
+        revision_separator = remote_with_revision.rfind(".git@")
+        remote = (
+            remote_with_revision[: revision_separator + len(".git")]
+            if revision_separator >= 0
+            else remote_with_revision
+        )
+        if not remote.endswith(".git"):
+            return r[str].fail(
+                "internal dependency Git source must end with .git"
+            )
+        return r[str].ok(remote)
 
     @staticmethod
     def _git_requirement_url(url: str) -> p.Result[str]:
@@ -705,7 +741,10 @@ class FlextInfraUtilitiesPyprojectConform:
         candidates = (workspace.repository, *workspace.subprojects)
         for distribution in dict.fromkeys(item.distribution for item in candidates):
             reference_result = cls._repository_reference(
-                distribution, repositories=candidates, providers=providers
+                distribution,
+                direct_url=None,
+                repositories=candidates,
+                providers=providers,
             )
             if reference_result.failure:
                 return r.fail(reference_result.error or "repository resolution failed")
