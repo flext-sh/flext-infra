@@ -107,7 +107,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 and not any(part.startswith("_") for part in context.pkg_dir.parts)
                 and not py_file.stem.startswith("_")
                 and (
-                    u.Infra.matches_root_namespace_file(py_file.name)
+                    u.Infra.is_public_python_module_file(py_file.name)
                     or policy.expected_alias is not None
                     or "." in context.current_pkg
                 )
@@ -125,7 +125,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             if (
                 policy.expected_alias
                 and u.Infra.matches_project_namespace_package(context.current_pkg)
-                and u.Infra.matches_root_namespace_file(py_file.name)
+                and u.Infra.is_public_python_module_file(py_file.name)
             ):
                 targets.setdefault(
                     policy.expected_alias,

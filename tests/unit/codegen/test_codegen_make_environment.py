@@ -10,7 +10,7 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import WorktreeFixture, u as test_u
 
 pytestmark = pytest.mark.slow
 
@@ -27,6 +27,15 @@ class TestsCodegenMakeEnvironment:
             "fixture-project", role=role
         ).model_copy(update={"editable": True})
         project_root = tmp_path / profile.value / "fixture-project"
+        WorktreeFixture.write_python_project(project_root, repository.distribution)
+        beads = test_u.Tests.beads_project(repository.distribution)
+        test_u.Tests.write_beads_project(
+            project_root,
+            workspace=beads.workspace,
+            database=beads.database,
+            issue_prefix=beads.issue_prefix,
+        )
+        test_u.Tests.initialize_git_repo(project_root, origin_url=repository.url)
         workspace_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
         local_subprojects = (
@@ -36,7 +45,7 @@ class TestsCodegenMakeEnvironment:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="fixture-project",
-            beads=test_u.Tests.beads_project("fixture-project"),
+            beads=beads,
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
             subprojects=local_subprojects,
@@ -56,11 +65,31 @@ class TestsCodegenMakeEnvironment:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        project_root.mkdir(parents=True)
         tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
         return project_root, workspace_root
+
+    @staticmethod
+    def _write_mise_setup_fixture(project_root: Path) -> None:
+        toolchain = config.Infra.codegen.toolchain
+        test_u.Tests.write_executable(
+            project_root / "bin" / "mise",
+            (
+                "#!/bin/sh\n"
+                'if [ "$1" = "--version" ]; then\n'
+                f"  printf '%s\\n' '{toolchain.mise_version}'\n"
+                "  exit 0\n"
+                "fi\n"
+                'case "$*" in\n'
+                f"  *'exec -- uv --version'*) printf '%s\\n' 'uv {toolchain.uv_version}.0'; exit 0 ;;\n"
+                "esac\n"
+                'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
+                'if [ "$#" -gt 0 ]; then shift; exec "$@"; fi\n'
+                "exit 0\n"
+            ),
+        )
+        (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
@@ -131,6 +160,7 @@ class TestsCodegenMakeEnvironment:
     ) -> None:
         """Setup creates the venv and syncs dependencies before any runtime use."""
         project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        self._write_mise_setup_fixture(project_root)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -211,6 +241,9 @@ class TestsCodegenMakeEnvironment:
                 f"command -v uv > '{tool_log}'\n"
                 f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),
+        )
+        test_u.Tests.write_executable(
+            provisioned_bin / "uv", f"#!/bin/sh\nexec '{runtime_python}'\n"
         )
         active_env = {
             "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",

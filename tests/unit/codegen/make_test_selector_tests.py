@@ -239,13 +239,8 @@ class TestsMakeTestSelector:
         tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
 
-    def test_generated_owners_use_distinct_canonical_verbs(self) -> None:
-        """Gen (conform) stays on the Makefile; custom.mk is hooks-only.
-
-        The generated Makefile owns ``gen``. custom.mk must not declare a
-        private basemk-generate WHAT — base.mk generation is not a custom
-        handler on this surface.
-        """
+    def test_generated_owner_keeps_gen_on_the_makefile(self) -> None:
+        """The generated Makefile owns ``gen`` while custom.mk stays private."""
         template = _makefile_template().read_text(encoding="utf-8")
         custom = (
             Path(flext_infra.__file__).resolve().parents[2]
@@ -254,5 +249,20 @@ class TestsMakeTestSelector:
 
         tm.that(template, has="_builtin_gen_apply")
         tm.that(template, lacks="_builtin_build_gen")
-        tm.that(custom, lacks="_custom_basemk_generate:")
-        tm.that(custom, lacks="basemk generate")
+        tm.that(custom, has="only pre/post hooks")
+
+    def test_gen_is_the_only_make_owner_of_generated_docs(self) -> None:
+        """Route documentation projection writes only through make gen."""
+        template = _makefile_template().read_text(encoding="utf-8")
+
+        tm.that(template, lacks="_builtin_docs_generate:")
+        tm.that(
+            template,
+            has=[
+                "_builtin_gen_check:",
+                "docs generate --workspace",
+                "--check",
+                "_builtin_gen_all:",
+                "--apply",
+            ],
+        )

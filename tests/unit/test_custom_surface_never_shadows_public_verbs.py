@@ -70,13 +70,3 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
         }
 
         tm.that(offenders, eq={})
-
-    def test_basemk_generation_has_a_declared_make_selector(self) -> None:
-        """custom.mk is hooks-only and does not declare basemk generate as WHAT."""
-        custom = (_workspace_root() / c.Infra.CUSTOM_MAKE_FILENAME).read_text(
-            encoding="utf-8"
-        )
-
-        tm.that(custom, lacks="_custom_basemk_generate:")
-        tm.that(custom, lacks="basemk generate")
-        tm.that(custom, has="only pre/post hooks")

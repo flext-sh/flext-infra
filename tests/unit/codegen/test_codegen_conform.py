@@ -1157,6 +1157,37 @@ class TestCodegenConform:
         )
 
     @pytest.mark.slow
+    def test_scaffold_make_fails_when_custom_handler_scan_fails(
+        self, infra_git_repo: Path
+    ) -> None:
+        """A parse-time custom target scan exposes stderr and blocks Make."""
+        root = infra_git_repo
+        workspace = _standalone_workspace(root)
+        _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "custom.mk", "_custom_check_probe:\n\t@true\n"
+            )
+        )
+        fake_bin = root / "fake-bin"
+        u.Tests.write_executable(
+            fake_bin / "sed",
+            "#!/bin/sh\nprintf 'injected sed failure\\n' >&2\nexit 42\n",
+        )
+
+        output = tm.ok(
+            u.Cli.run_raw(
+                ["make", "-C", str(root), "help"],
+                env={"PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "WHAT"),
+            )
+        )
+
+        tm.that(output.exit_code, eq=2)
+        tm.that(output.stderr, has="injected sed failure")
+        tm.that(output.stderr, has="Failed to inspect custom Make handlers")
+
+    @pytest.mark.slow
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         self, infra_git_repo: Path
     ) -> None:
@@ -1344,7 +1375,8 @@ class TestScriptDispatchMakefile:
         )
         body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
         tm.that("_custom_$(1)_$$what" in body, eq=True)
-        tm.that("custom_rc" in body, eq=True)
+        tm.that("custom_present" in body, eq=True)
+        tm.that('$(SELF_MAKE) -q "$$custom"' in body, eq=False)
         tm.that('$(SELF_MAKE) "$$custom"' in body, eq=True)
         recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
         broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]

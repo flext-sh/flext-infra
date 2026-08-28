@@ -4,12 +4,6 @@
 
 .PHONY: _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
 
-# _custom_basemk_generate was removed: `basemk` is not a declared public verb,
-# so the handler was unreachable through _dispatch AND rejected by the custom
-# handler policy, which blocked `codegen conform` outright. base.mk generation
-# is reached through the flext-infra CLI directly. Asserted by
-# test_custom_surface_never_shadows_public_verbs.
-
 _custom_run_cprofile-test:
 	@set -eu; \
 	file="$(strip $(FILE))"; \

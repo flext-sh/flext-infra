@@ -71,20 +71,11 @@ class TestsCodegenBeadsProjection:
         tm.that(metadata["database"], eq="dolt")
         tm.that(metadata["backend"], eq="dolt")
         tm.that(metadata["dolt_database"], eq="project_database")
-        tm.that(metadata["dolt_mode"], eq="server")
-        tm.that(metadata["dolt_server_host"], eq=beads.endpoint.host)
-        tm.that(metadata["dolt_server_port"], eq=beads.endpoint.port)
-        tm.that(
-            set(metadata),
-            eq={
-                "database",
-                "backend",
-                "dolt_mode",
-                "dolt_database",
-                "dolt_server_host",
-                "dolt_server_port",
-            },
-        )
+        tm.that(set(metadata), eq={"database", "backend", "dolt_database"})
+        forbidden = ("host", "port", "user", "mode", "shared-server")
+        for value in forbidden:
+            tm.that(value in rendered_config, eq=False)
+            tm.that(value in rendered_metadata, eq=False)
         tm.that(hasattr(plan, "beads"), eq=False)
 
     def test_projection_preserves_the_manual_identity_input(
