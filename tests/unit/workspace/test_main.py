@@ -68,10 +68,11 @@ def _write_orchestratable_workspace(
         if capture_fail_fast
         else "\t@true\n"
     )
-    (member_root / "Makefile").write_text(f"check:\n{check_recipe}", encoding="utf-8")
+    (member_root / "base.mk").write_text(f"check:\n{check_recipe}", encoding="utf-8")
+    (member_root / "Makefile").write_text("include base.mk\n", encoding="utf-8")
 
     # Commit the member so the detector sees a real HEAD/gitlink pair.
-    u.Tests.commit_git_changes(member_root, "fixture: standalone Makefile")
+    u.Tests.commit_git_changes(member_root, "fixture: base.mk and Makefile")
 
     # Stub a managed Python so the generated Makefile can invoke flext_infra.
     # It must delegate to the interpreter running these tests: flext_infra reads

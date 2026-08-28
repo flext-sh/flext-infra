@@ -1,10 +1,11 @@
-"""Codegen, check, and dependency CLI route ownership."""
+"""Codegen, check, basemk, and dependency CLI route ownership."""
 
 from __future__ import annotations
 
 from typing import ClassVar
 
 from flext_infra import c, m
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
 from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_infra.codegen.census import FlextInfraCodegenCensus
 from flext_infra.codegen.conform import FlextInfraCodegenConform
@@ -28,9 +29,20 @@ from flext_infra.services.cli_route_base import CliRouteBase
 
 
 class CodegenRoutes(CliRouteBase):
-    """Own check, codegen, and dependency command routes."""
+    """Own basemk, check, codegen, and dependency command routes."""
 
     codegen_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
+        c.Infra.CLI_GROUP_BASEMK: (
+            m.Cli.ResultCommandRoute(
+                name="generate",
+                help_text="Generate base.mk content from the canonical template",
+                model_cls=FlextInfraBaseMkGenerator,
+                handler=lambda params: params.execute().map(
+                    lambda content: True if params.output is not None else content
+                ),
+                success_message="base.mk generation complete",
+            ),
+        ),
         c.Infra.CLI_GROUP_CHECK: (
             m.Cli.ResultCommandRoute(
                 name=c.Infra.VERB_RUN,

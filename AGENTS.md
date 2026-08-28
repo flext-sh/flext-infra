@@ -1,9 +1,9 @@
 # AGENTS.md — flext-infra
 
-This repository is a standalone authority. Never climb to a parent checkout or
-fetch remote instructions, build files, roots, environments, or runtimes.
-Provider governance may add a minimal prelude, but this repository owns the
-package-specific body below.
+> **Parent workspace law** lives in [`../AGENTS.md`](../AGENTS.md) — read it first.
+> Universal engineering core: `~/.agents/UNIVERSAL_CORE.md`. Composition: global skills + parent/root `AGENTS.md` + this scope delta. Do not re-embed universal law.
+>
+> **Standalone / independent mode:** when `../AGENTS.md` does not resolve, pin the parent raw `AGENTS.md` URL to the same branch/release as this package (never `main`).
 
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-BEGIN -->
 **Package:** `flext_infra` · ~82k src LOC · deps: `flext-cli`, `flext-core`
@@ -19,7 +19,7 @@ src/flext_infra/
 ├── api.py cli.py __main__.py iteration.py
 ├── codegen/ detectors/ fixers/ transformers/ rules/ schemas/ templates/
 ├── config/ deps/ gates/ check/ validate/ docs/ github/ maintenance/
-├── release/ workspace/ services/ _enforcement/
+├── release/ workspace/ services/ _enforcement/ basemk/
 ├── constants.py typings.py protocols.py models.py utilities.py
 └── _constants/ _typings/ _protocols/ _models/ _utilities/
 ```
@@ -48,5 +48,8 @@ src/flext_infra/
 make check PROJECT=flext-infra
 make test  PROJECT=flext-infra
 make build WHAT=artifacts
+gt sling <bead> flext
+gt hook status
+gt done
 ```
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-END -->

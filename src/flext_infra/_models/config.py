@@ -14,7 +14,6 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
-from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
@@ -374,7 +373,7 @@ class FlextInfraConfigModels:
                     raise ValueError(msg)
             return self
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def python_required_version(self) -> str:
             """PEP 440 requirement spanning the configured Python minor line."""
@@ -382,13 +381,13 @@ class FlextInfraConfigModels:
             next_minor = int(minor) + 1
             return f">={self.python_version},<{major}.{next_minor}"
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
             return self.python_version
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def uv_exclude_newer(self) -> str:
             """Render the shared dependency cooldown in uv duration syntax."""
@@ -403,23 +402,6 @@ class FlextInfraConfigModels:
         ]
         base_url: Annotated[t.NonEmptyStr, m.Field(description="GitHub HTTPS base URL")]
         branch: Annotated[t.NonEmptyStr, m.Field(description="Provider branch")]
-
-    class RepositorySourceSpec(_ConfigContract):
-        """Portable repository identity derived through one declared provider."""
-
-        distribution: Annotated[
-            t.NonEmptyStr, m.Field(description="Repository distribution name")
-        ]
-        provider: Annotated[
-            t.NonEmptyStr, m.Field(description="Provider key owning URL and branch")
-        ]
-
-        @m.computed_field
-        @property
-        def internal_distribution_prefix(self) -> str:
-            """Derive the internal distribution namespace from the owner name."""
-            namespace, _, _ = self.distribution.partition("-")
-            return f"{namespace}-"
 
     class BranchPolicySpec(_ConfigContract):
         """Global ancestry policy shared by every governed provider."""
@@ -847,7 +829,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def check_gates(self) -> tuple[str, ...]:
             """Gates run under the CI token, as the strict complement.
@@ -987,16 +969,6 @@ class FlextInfraConfigModels:
     class MakeDocsSpec(_ConfigContract):
         """Generated Makefile docs verb lifecycle and audit policy."""
 
-        api_modules: Annotated[
-            Mapping[t.NonEmptyStr, tuple[t.NonEmptyStr, ...]],
-            m.Field(
-                min_length=1,
-                description=(
-                    "Public API modules generated per distribution; absent "
-                    "distributions own no module pages"
-                ),
-            ),
-        ]
         mutable_actions: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(min_length=1, description="Docs actions guarded by APPLY=Y"),
@@ -1024,29 +996,6 @@ class FlextInfraConfigModels:
                 description="Governed org/repo/branch map for cross-repo doc URLs",
             ),
         ] = ()
-
-        @u.model_validator(mode="after")
-        def _validate_api_modules(self) -> Self:
-            """Reject duplicate or non-importable API module declarations."""
-            for distribution, modules in self.api_modules.items():
-                if not modules:
-                    msg = f"docs api_modules must not be empty: {distribution}"
-                    raise ValueError(msg)
-                if len(set(modules)) != len(modules):
-                    msg = f"docs api_modules must be unique: {distribution}"
-                    raise ValueError(msg)
-                invalid = next(
-                    (
-                        module
-                        for module in modules
-                        if not all(part.isidentifier() for part in module.split("."))
-                    ),
-                    None,
-                )
-                if invalid is not None:
-                    msg = f"docs api module is not importable: {invalid}"
-                    raise ValueError(msg)
-            return self
 
     class TestmonCacheSpec(_ConfigContract):
         """Adaptive pytest-testmon GitHub Actions cache policy."""
@@ -1214,7 +1163,7 @@ class FlextInfraConfigModels:
         custom_handler_profile_overrides: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=lambda: MappingProxyType({}),
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
@@ -1324,7 +1273,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def handler_whats(self) -> Mapping[str, tuple[str, ...]]:
             """Canonical public verb-to-handler matrix consumed by every renderer.
@@ -1351,7 +1300,7 @@ class FlextInfraConfigModels:
                 )
             return whats
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def check_gates_allowed(self) -> tuple[str, ...]:
             """Canonical generated Make check-gate vocabulary.
@@ -1367,7 +1316,7 @@ class FlextInfraConfigModels:
                 *self.project_check_gates,
             )
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def check_gates_default(self) -> tuple[str, ...]:
             """Canonical generated Make default check gates.
@@ -1380,7 +1329,7 @@ class FlextInfraConfigModels:
                 *self.project_check_gates,
             )
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def check_gates_fixable(self) -> tuple[str, ...]:
             """Gates ``make fix APPLY=Y`` can actually repair.
@@ -1391,7 +1340,7 @@ class FlextInfraConfigModels:
             """
             return FlextInfraConstantsMake.PROJECT_CHECK_GATES_FIXABLE_VALUES
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def custom_handler_policies(
             self,
@@ -1450,27 +1399,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
-
-    class RetiredProjectionSpec(_ConfigContract):
-        """One obsolete generated file removable only by exact identity markers."""
-
-        path: Annotated[Path, m.Field(description="Repository-relative retired path")]
-        markers: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Required legacy identity markers"),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_path(self) -> Self:
-            """Reject broad or escaping retirement targets at config load."""
-            if (
-                self.path == Path()
-                or self.path.is_absolute()
-                or ".." in self.path.parts
-            ):
-                msg = "retired projection path must be repository-relative and exact"
-                raise ValueError(msg)
-            return self
 
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""
@@ -2019,7 +1947,7 @@ class FlextInfraConfigModels:
                 t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
             ],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=lambda: MappingProxyType({}),
                 description="Per-distribution deviations from the shared contract",
             ),
         ]
@@ -2265,7 +2193,7 @@ class FlextInfraConfigModels:
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def repository_env_prefix(self) -> str:
             """Settings environment prefix derived from the distribution name."""
@@ -2552,7 +2480,7 @@ class FlextInfraConfigModels:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=lambda: MappingProxyType({}),
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
@@ -2562,7 +2490,7 @@ class FlextInfraConfigModels:
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModels.CiPrivateSubmodulesSpec],
             m.Field(
-                default_factory=immutable_empty_mapping,
+                default_factory=lambda: MappingProxyType({}),
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
@@ -2585,10 +2513,6 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
         ] = ()
-        infra_repository: Annotated[
-            FlextInfraConfigModels.RepositorySourceSpec,
-            m.Field(description="Canonical infrastructure repository identity"),
-        ]
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
@@ -2629,7 +2553,7 @@ class FlextInfraConfigModels:
             ),
         ]
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def vscode_files_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.exclude`` entries from the artifact SSOT."""
@@ -2639,7 +2563,7 @@ class FlextInfraConfigModels:
                 if artifact.vscode_exclude
             }
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def vscode_watcher_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.watcherExclude`` entries from the SSOT."""
@@ -2649,13 +2573,13 @@ class FlextInfraConfigModels:
                 if artifact.watch_exclude
             }
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def vscode_search_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``search.exclude`` entries from the artifact SSOT."""
             return dict(self.vscode_files_exclude_map)
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def source_scan_ignored(self) -> tuple[str, ...]:
             """Derived ``source_scan.ignored_resources`` names from the SSOT."""
@@ -2671,7 +2595,7 @@ class FlextInfraConfigModels:
         # (file globs, secrets, editor/OS noise). Per-project exception fields
         # (extra_ignored / allowed dirs) land in their typed owner;
         # this projection is the seam they will extend.
-        @m.computed_field
+        @m.computed_field()
         @property
         def gitignore_sections(
             self,
@@ -2748,7 +2672,7 @@ class FlextInfraConfigModels:
                 )
             return tuple(sections)
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def gitignore_artifact_patterns(self) -> tuple[str, ...]:
             """Derived ``.gitignore`` artifact patterns from the SSOT (stable order)."""
@@ -2762,10 +2686,6 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
             m.Field(description="Files owned by conform"),
         ]
-        retired_projections: Annotated[
-            tuple[FlextInfraConfigModels.RetiredProjectionSpec, ...],
-            m.Field(description="Obsolete generated files awaiting exact retirement"),
-        ] = ()
         scaffold: Annotated[
             FlextInfraConfigModels.ScaffoldSpec,
             m.Field(description="Typed new-project scaffold policy"),
@@ -3030,11 +2950,25 @@ class FlextInfraConfigModels:
             m.Field(description="Environment files created, updated, or removed"),
         ] = ()
 
-        @m.computed_field
+        @m.computed_field()
         @property
         def changed(self) -> bool:
             """Whether the sync altered any environment file."""
             return bool(self.changed_files)
+
+    class BaseMkRenderRequest(_ConfigContract):
+        """Validated public request for one base.mk render."""
+
+        project_name: Annotated[
+            t.NonEmptyStr, m.Field(description="Project name written into base.mk")
+        ]
+
+    class BaseMkRenderResult(_ConfigContract):
+        """Rendered base.mk content for one project."""
+
+        content: Annotated[
+            t.NonEmptyStr, m.Field(description="Fully rendered base.mk document")
+        ]
 
     class CodegenConformSurfaceContract(m.Value):
         """Typed ownership contract for one requested conformance surface."""

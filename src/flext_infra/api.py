@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import t
+from flext_infra import m, t
 from flext_infra.base import s
+from flext_infra.basemk.generator import FlextInfraBaseMkGenerator
+from flext_infra.basemk.renderer import FlextInfraBaseMkTemplateRenderer
 from flext_infra.services._workspace.environment import (
     FlextInfraWorkspaceEnvironmentMixin,
 )
@@ -33,6 +35,21 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
             self.workspace_root if workspace_root is None else workspace_root
         )
         return FlextInfraRopeWorkspace.open_workspace(resolved_root)
+
+    def generate_basemk(
+        self, request: m.Infra.BaseMkRenderRequest
+    ) -> p.Result[m.Infra.BaseMkRenderResult]:
+        """Render canonical base.mk content directly from the facade."""
+        result_type = m.Infra.BaseMkRenderResult
+        settings = FlextInfraBaseMkTemplateRenderer.default_config().model_copy(
+            update={"project_name": request.project_name}
+        )
+        rendered = FlextInfraBaseMkGenerator(
+            project_name=request.project_name
+        ).generate_basemk(settings)
+        if rendered.failure:
+            return r[result_type].fail(rendered.error or "base.mk render failed")
+        return r[result_type].ok(result_type(content=rendered.value))
 
     @override
     def execute(self) -> p.Result[t.JsonDict]:

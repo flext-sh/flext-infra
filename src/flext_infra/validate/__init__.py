@@ -10,6 +10,7 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from .basemk_validator import FlextInfraBaseMkValidator
     from .cprofile_report import FlextInfraCProfileReport
     from .fresh_import import FlextInfraValidateFreshImport
     from .gate_contract import FlextInfraGateContractValidator
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
     from .testmon_db import FlextInfraTestmonCacheState, FlextInfraTestmonDbInspector
     from .tier_whitelist import FlextInfraValidateTierWhitelist
 __all__: tuple[str, ...] = (
+    "FlextInfraBaseMkValidator",
     "FlextInfraCProfileReport",
     "FlextInfraGateContractChecksMixin",
     "FlextInfraGateContractContentMixin",
@@ -70,6 +72,7 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            ".basemk_validator": ("FlextInfraBaseMkValidator",),
             ".cprofile_report": ("FlextInfraCProfileReport",),
             ".fresh_import": ("FlextInfraValidateFreshImport",),
             ".gate_contract": ("FlextInfraGateContractValidator",),

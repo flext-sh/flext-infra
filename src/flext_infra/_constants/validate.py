@@ -138,6 +138,7 @@ class FlextInfraConstantsSharedInfra:
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
     MAKEFILE_FILENAME: Final[str] = "Makefile"
+    BASE_MK: Final[str] = "base.mk"
     GITMODULES: Final[str] = ".gitmodules"
     # Why: conform .gitmodules merge classifies sections via these patterns;
     # they belong beside GITMODULES on c.Infra, not as leaf re.compile copies.

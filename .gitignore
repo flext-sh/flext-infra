@@ -212,6 +212,9 @@ secrets.yml
 .devcontainer/.env
 .github/*.rej
 
+# --- codegen conform: tracked owner inputs ---
+!base.mk
+
 # FINAL BEADS TRACKING POLICY
 !.beads/
 .beads/*
@@ -239,6 +242,7 @@ legado/
 .bin/
 .tools/
 __pycache__/
+base.mk
 !.pre-commit-config.yaml
 
 # Derived build and tool artifacts
@@ -294,6 +298,8 @@ CLAUDE.local.md
 !.github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md
 !.github/scripts/
 !.github/scripts/check-cqrs-compliance.sh
+!.github/scripts/flext-law-loop.sh
+!.github/scripts/install-git-hooks.sh
 !tests/fixtures/
 !tests/fixtures/ci/
 !tests/fixtures/ci/docker/

@@ -41,6 +41,7 @@ class FlextInfraConstantsMake:
 
     # --- Canonical make contract constants (was: class Make) ---
 
+    CLI_GROUP_BASEMK: Final[str] = "basemk"
     CLI_GROUP_CHECK: Final[str] = "check"
     CLI_GROUP_CODEGEN: Final[str] = "codegen"
     CLI_GROUP_DEPS: Final[str] = "deps"

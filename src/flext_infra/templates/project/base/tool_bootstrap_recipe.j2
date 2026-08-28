@@ -11,8 +11,7 @@
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	}; \
-	version_output=$$("$$mise" --version); \
-	current=$$(printf '%s\n' "$$version_output" | cut -d ' ' -f 1); \
+	if ! current=$$("$$mise" --version 2>/dev/null | cut -d ' ' -f 1); then current=; fi; \
 	[ "$$current" = "$$mise_version" ] || { \
 		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
 			"$$mise_version" "$${current:-<missing>}" >&2; \
@@ -24,7 +23,7 @@
 	}; \
 	"$$mise" trust "$$project_root/.mise.toml"; \
 	"$$mise" -C "$$project_root" install --locked --yes; \
-	uv_actual=$$("$$mise" -C "$$project_root" exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
+	uv_actual=$$("$$mise" -C "$$project_root" exec -- uv --version 2>/dev/null | sed 's/uv //' | cut -d ' ' -f 1); \
 	case "$$uv_actual" in \
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \

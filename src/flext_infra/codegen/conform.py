@@ -380,20 +380,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             files.extend(governed.value)
-            if contract.complete_governed:
-                retired = self.retired_projection_plans(
-                    repository_root, target.make_profile
-                )
-                if retired.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        retired.error
-                        or (
-                            f"stage=plan position={repository_index}/"
-                            f"{total_repositories} repository={repository.name}: "
-                            "retired projection planning failed"
-                        )
-                    )
-                files.extend(retired.value)
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -956,7 +942,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
-            codegen=codegen,
+            providers=codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
             toolchain=codegen.toolchain,
@@ -1042,7 +1028,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
-                codegen=codegen,
+                providers=codegen.providers,
                 workspace=workspace,
                 workspace_mode=workspace_mode,
             )
@@ -1087,7 +1073,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
-            codegen=codegen,
+            providers=codegen.providers,
             workspace=workspace,
             workspace_mode=workspace_mode,
             toolchain=codegen.toolchain,
@@ -1336,30 +1322,33 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _infra_repository(
-        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
+        workspace: m.Infra.WorkspaceSpec,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Resolve the repository that owns the infrastructure CLI.
 
         The owner is read from the live workspace topology when that topology
         declares it. A standalone consumer legitimately declares no
-        infrastructure subproject, so the reference is then derived from the
-        typed source and provider contracts. Either way nothing is read from a
-        generated pyproject or looked up in a project catalog.
+        flext-infra subproject, so the reference is then derived from the provider
+        contract. Either way nothing is looked up in a project catalog, which
+        flext-infra is forbidden to own.
         """
-        source = codegen.infra_repository
         matches = tuple(
             item
             for item in (workspace.repository, *workspace.subprojects)
-            if item.distribution == source.distribution
+            if item.distribution == config.Infra.name
         )
         if len(matches) > 1:
             return r[m.Infra.RepositoryRef].fail(
                 "workspace topology declares more than one "
-                f"{source.distribution} checkout"
+                f"{config.Infra.name} checkout"
             )
         if matches:
             return r[m.Infra.RepositoryRef].ok(matches[0])
-        return u.Infra.configured_repository_ref(source.distribution, codegen=codegen)
+        return r[m.Infra.RepositoryRef].ok(
+            u.Infra.derived_repository_ref(
+                config.Infra.name, provider=config.Infra.codegen.providers[0]
+            )
+        )
 
     @staticmethod
     def _repository_provider(
@@ -1540,7 +1529,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
-            infra_repository = self._infra_repository(workspace, codegen)
+            infra_repository = self._infra_repository(workspace)
             if infra_repository.failure:
                 return r[p.Model].fail(
                     infra_repository.error
@@ -1638,9 +1627,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        infra_repository = FlextInfraCodegenConform._infra_repository(
-            workspace, codegen
-        )
+        infra_repository = FlextInfraCodegenConform._infra_repository(workspace)
         if infra_repository.failure:
             return r[m.Infra.MakeRenderContext].fail(
                 infra_repository.error
@@ -2329,27 +2316,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """
         codegen = config.Infra.codegen
         planned: list[m.Infra.CodegenFilePlan] = []
-        for retired in codegen.retired_projections:
-            path = root / retired.path
-            if not path.exists() and not path.is_symlink():
-                continue
-            if not path.is_file() or path.is_symlink():
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"retired projection is not a regular file: {retired.path}"
-                )
-            current = u.Cli.files_read_text(path)
-            if current.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    current.error or f"retired projection read failed: {retired.path}"
-                )
-            missing_markers = tuple(
-                marker for marker in retired.markers if marker not in current.value
-            )
-            if missing_markers:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    f"retired projection identity mismatch: {retired.path}"
-                )
-            planned.append(cls._absent_file_plan(path, current.value))
         for entry in codegen.templates.entries:
             if profile in entry.profiles or "{" in entry.destination:
                 continue

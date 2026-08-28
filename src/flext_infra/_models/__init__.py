@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from . import _git as _git
     from ._git.identity import FlextInfraModelsGitIdentity
     from .base import FlextInfraModelsBase
+    from .basemk import FlextInfraModelsBasemk
     from .census import FlextInfraModelsCensus
     from .check import FlextInfraModelsCheck
     from .codegen import FlextInfraModelsCodegen
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "FlextInfraConfigModels",
     "FlextInfraModelsBase",
+    "FlextInfraModelsBasemk",
     "FlextInfraModelsCensus",
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
@@ -99,6 +101,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git": ("_git",),
             "._git.identity": ("FlextInfraModelsGitIdentity",),
             ".base": ("FlextInfraModelsBase",),
+            ".basemk": ("FlextInfraModelsBasemk",),
             ".census": ("FlextInfraModelsCensus",),
             ".check": ("FlextInfraModelsCheck",),
             ".codegen": ("FlextInfraModelsCodegen",),

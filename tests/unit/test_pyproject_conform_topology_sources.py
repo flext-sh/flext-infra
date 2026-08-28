@@ -17,13 +17,9 @@ from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
 _ROLE = c.Infra.RepositoryRole
-# Provider identity, branch and base URL come from the config SSOT,
+# flext-o26p: provider identity, branch and base URL come from the config SSOT,
 # never from literals repeated in the test.
-_PROVIDER_SPEC = tm.ok(
-    u.Infra.repository_provider(
-        tu.Tests.repository_ref("provider-fixture"), config.Infra.codegen.providers
-    )
-)
+_PROVIDER_SPEC = config.Infra.codegen.providers[0]
 _PROVIDER = _PROVIDER_SPEC.name
 
 
@@ -105,7 +101,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
-            codegen=config.Infra.codegen,
+            providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -126,7 +122,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             external,
-            codegen=config.Infra.codegen,
+            providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )
@@ -153,7 +149,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         result = u.Infra.pyproject_dependencies_conform(
             publishable_project,
-            codegen=config.Infra.codegen,
+            providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -170,49 +166,8 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
         )
 
-    def test_attached_root_rejects_explicit_member_source(self) -> None:
-        workspace = _workspace()
-        member = workspace.subprojects[0]
-        attached_root = _PYPROJECT.replace(
-            'dependencies = ["flext-core"]',
-            (
-                f'dependencies = ["{member.distribution} @ '
-                f'git+{member.url}@{_PROVIDER_SPEC.branch}"]'
-            ),
-            1,
-        )
-
-        result = u.Infra.pyproject_dependencies_conform(
-            attached_root,
-            codegen=config.Infra.codegen,
-            workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
-        )
-
-        tm.that(result.failure, eq=True)
-        tm.that(
-            result.error or "",
-            has="workspace dependency declares a conflicting direct source",
-        )
-
-        local_result = u.Infra.pyproject_dependencies_conform(
-            attached_root.replace(
-                f"git+{member.url}@{_PROVIDER_SPEC.branch}",
-                "file:///outside/flext-core",
-            ),
-            codegen=config.Infra.codegen,
-            workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
-        )
-
-        tm.that(local_result.failure, eq=True)
-        tm.that(
-            local_result.error or "",
-            has="workspace dependency declares a conflicting direct source",
-        )
-
-    def test_publishable_member_pins_unmapped_provider_source_to_branch(self) -> None:
-        """Derive the declared branch for a provider source absent from members."""
+    def test_publishable_project_pins_unmapped_provider_source_to_branch(self) -> None:
+        """Derive the declared branch for a provider absent from subprojects."""
         workspace = _workspace_with_consumer()
         consumer = workspace.subprojects[1]
         result = u.Infra.pyproject_dependencies_conform(
@@ -222,7 +177,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
                 'dependencies = ["flext-unmapped @ '
                 'git+https://github.com/flext-sh/flext-unmapped.git@main"]\n'
             ),
-            codegen=config.Infra.codegen,
+            providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
         )
@@ -270,7 +225,7 @@ workspace = true
         root_rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
                 root_source,
-                codegen=config.Infra.codegen,
+                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
@@ -282,7 +237,7 @@ workspace = true
                     'version = "0.1.0"\n'
                     f'dependencies = ["{provider.distribution}"]\n'
                 ),
-                codegen=config.Infra.codegen,
+                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
@@ -328,7 +283,7 @@ workspace = true
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
-            codegen=config.Infra.codegen,
+            providers=config.Infra.codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
         )

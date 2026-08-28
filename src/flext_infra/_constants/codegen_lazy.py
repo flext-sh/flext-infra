@@ -121,7 +121,7 @@ class FlextInfraConstantsCodegenLazy:
         "tools",
     })
     "Module segments recognized as local inferred imports in lazy-load chain."
-    PUBLIC_ROOT_MODULE_EXPORTS: Final[frozenset[str]] = frozenset()
+    PUBLIC_ROOT_MODULE_EXPORTS: Final[frozenset[str]] = frozenset({"basemk"})
     "Internal child packages exported at the root as module objects only."
     INFRA_ONLY_EXPORTS: Final[frozenset[str]] = frozenset({
         "cleanup_submodule_namespace",

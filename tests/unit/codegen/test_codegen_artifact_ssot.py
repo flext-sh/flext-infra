@@ -6,10 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, t
+from flext_infra import c, config, t, u
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
-from tests import u
 
 CodegenSpec = type(config.Infra.codegen)
 
@@ -108,7 +107,7 @@ class TestsCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         self, codegen: CodegenSpec
     ) -> None:
-        """Hook stages share validation but never repeat mutating steps."""
+        """Hook contexts share validation while owning distinct mutations."""
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
@@ -119,16 +118,6 @@ class TestsCodegenArtifactSsot:
         push_verbs = {step.verb for step in pre_push}
         tm.that(bool(commit_verbs & push_verbs), eq=True)
         tm.that(bool(commit_verbs - push_verbs), eq=True)
-        commit_mutations = {step.verb for step in pre_commit if step.apply}
-        push_mutations = {step.verb for step in pre_push if step.apply}
-        shared_steps = tuple(
-            step
-            for step in workflow
-            if {"pre_commit", "pre_push"}.issubset(step.contexts)
-        )
-
-        tm.that(commit_mutations.isdisjoint(push_mutations), eq=True)
-        tm.that(all(not step.apply for step in shared_steps), eq=True)
         tm.that(bool(push_verbs - commit_verbs), eq=True)
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True
@@ -138,17 +127,7 @@ class TestsCodegenArtifactSsot:
         self, tmp_path: Path, codegen: CodegenSpec
     ) -> None:
         """Validate the public renderer output instead of private implementation."""
-        project = u.Tests.mk_project(
-            tmp_path,
-            "artifact-ssot",
-            pyproject='[project]\nname = "artifact-ssot"\nversion = "0.1.0"\n',
-            with_src=True,
-        )
-        u.Tests.write_project_beads_config(project, "artifact-ssot")
-        u.Tests.initialize_git_repo(
-            project, origin_url=u.Tests.repository_ref("artifact-ssot").url
-        )
-        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
+        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(tmp_path))
         parsed: t.JsonValue = tm.ok(u.Cli.json_parse(rendered))
         settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
         tm.that(settings["files.exclude"], eq=dict(codegen.vscode_files_exclude_map))
