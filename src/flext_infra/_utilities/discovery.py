@@ -258,21 +258,25 @@ class FlextInfraUtilitiesDiscovery(
 
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
-        """Resolve the public package ``__init__.py`` within a project or workspace."""
+        """Resolve a package anywhere inside the selected Rope scan root."""
         package_parts = Path(*package_name.split("."))
-        project_dir = package_name.split(".", maxsplit=1)[0].replace("_", "-")
+        resolved_root = workspace_root.resolve()
+        project_roots = {
+            resolved_root,
+            *(
+                path.parent.resolve()
+                for path in resolved_root.rglob(c.Infra.PYPROJECT_FILENAME)
+                if not any(
+                    part.startswith(".") or part in c.Infra.PYPROJECT_SKIP_DIRS
+                    for part in path.relative_to(resolved_root).parts[:-1]
+                )
+            ),
+        }
         candidates = (
-            workspace_root / c.Infra.DEFAULT_SRC_DIR / package_parts / c.Infra.INIT_PY,
-            workspace_root
-            / project_dir
-            / c.Infra.DEFAULT_SRC_DIR
-            / package_parts
-            / c.Infra.INIT_PY,
-            workspace_root.parent
-            / project_dir
-            / c.Infra.DEFAULT_SRC_DIR
-            / package_parts
-            / c.Infra.INIT_PY,
+            *(
+                project_root / c.Infra.DEFAULT_SRC_DIR / package_parts / c.Infra.INIT_PY
+                for project_root in sorted(project_roots)
+            ),
         )
         for candidate in candidates:
             if candidate.is_file():
@@ -291,49 +295,16 @@ class FlextInfraUtilitiesDiscovery(
             ordered.append(package_name)
         return tuple(ordered)
 
-    @staticmethod
-    def _sibling_project_roots(project_root: Path) -> tuple[Path, ...]:
-        """Sibling project roots."""
-        parent = project_root.parent
-        if not parent.is_dir():
-            return ()
-        return tuple(
-            child
-            for child in parent.iterdir()
-            if child != project_root
-            and child.is_dir()
-            and (child / c.Infra.DEFAULT_SRC_DIR).is_dir()
-            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
-        )
-
-    @staticmethod
-    def _child_project_roots(workspace_root: Path) -> tuple[Path, ...]:
-        """Child project roots."""
-        if not workspace_root.is_dir():
-            return ()
-        return tuple(
-            child
-            for child in workspace_root.iterdir()
-            if child.is_dir()
-            and not child.name.startswith(".")
-            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
-        )
-
     @classmethod
     def rope_workspace_root(cls, workspace_root: Path) -> Path:
-        """Return the canonical root for a shared Rope project."""
+        """Return the execution-context root for one conditional Rope scan."""
         resolved_root = workspace_root.resolve()
-        has_project_marker = any(
-            candidate.is_file()
-            for candidate in (
-                resolved_root / c.Infra.PYPROJECT_FILENAME,
-                resolved_root / c.Infra.MAKEFILE_FILENAME,
-            )
+        execution_dir = (
+            resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
-        if not has_project_marker and cls.namespace_scan_dirs(resolved_root):
-            return resolved_root
-        if cls._child_project_roots(resolved_root):
-            return resolved_root
+        for candidate in (execution_dir, *execution_dir.parents):
+            if (candidate / c.Infra.GITMODULES).is_file():
+                return candidate.resolve()
         project_root = cls.project_root(resolved_root)
         if project_root is not None:
             return project_root
@@ -351,15 +322,12 @@ class FlextInfraUtilitiesDiscovery(
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
-        # NOTE (multi-agent, mro-wkii.17): explicit project paths are a hard
-        # write-scope boundary; sibling workspaces remain discovery-only otherwise.
+        # Explicit project paths are a hard write-scope boundary. Without one,
+        # discovery is strictly local to the repository supplied by the caller.
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
-            else [
-                workspace_root.resolve(),
-                *cls.discover_external_workspace_roots(workspace_root),
-            ]
+            else [workspace_root.resolve()]
         )
         all_files: list[Path] = []
         for scan_root in scan_roots:
@@ -472,7 +440,7 @@ class FlextInfraUtilitiesDiscovery(
         if not parent_packages:
             return {}
         transitive_parent_packages = cls.resolve_transitive_parent_packages(
-            project_root.parent, parent_packages
+            cls.rope_workspace_root(project_root), parent_packages
         )
         allowed_sources = frozenset(
             package.split(".", maxsplit=1)[0]

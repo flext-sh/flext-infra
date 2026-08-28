@@ -11,6 +11,9 @@ this rollout.
 - Integration branch: `0.12.0-dev`
 - Active branch: `fix/beads-optout-preserve-state-20260827`
 - Static projection target: Beads `1.2.2`, `127.0.0.1:3307`
+- Rope scope: conditional on execution context; any call below a repository
+  carrying `.gitmodules` scans that entire workspace, independent of submodule
+  declaration membership; a standalone call remains repository-local
 - Independent approval: PENDING
 - Integrated-SHA verification: PENDING
 
@@ -26,6 +29,7 @@ this rollout.
 | 2026-08-28T08:07:38-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `15cec463e514ec50af9b1813c2716ca224d3cc84` | Residual canonical distribution pin lane preserved by a two-parent merge and pushed to `origin` |
 | 2026-08-28T08:19:35-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `a06217d0885d68d29134f972b017fce8834d92d7` | Topology-local, one-pass-idempotent generation fixes pushed to `origin` |
 | 2026-08-28T08:27:37-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `b08c6ffb3c52ae77d9c1a77ea5b69a7646cf1eb7` | Static projections, launchers, 75-entry Mise lock, and owner-driven report/cache cleanup pushed to `origin` |
+| 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `fc498bad217ef8f12dbb0def079c10837dc26b78` | Repository-local topology fixture convergence pushed to `origin` |
 
 ## Validation log
 
@@ -49,6 +53,19 @@ this rollout.
 | 2026-08-28 | worktree | Real `.gitmodules` test fixture consumer | PASS: 2 tests | Test topology helper declares only repository-local Git entries |
 | 2026-08-28 | worktree | Manifestless existing-repository contract | PASS: 2 tests | Required typed `config/beads.yaml` replaces the removed standalone helper |
 | 2026-08-28 | worktree | Documentation scope with repository-local topology | PASS: 5 selected tests | Shared fixtures now carry local identities and own `.gitmodules`; root/child scope selection converges |
+| 2026-08-28T08:55:36-03:00 | worktree | `make test WHAT=all FILE=tests/unit/test_infra_rope_service.py` from `flext-infra` | EXPECTED RED: 19 passed, 1 failed | Proved an internal project call incorrectly stayed local before the production owner changed |
+| 2026-08-28T08:56:34-03:00 | worktree | `make test WHAT=all FILE=tests/unit/test_infra_rope_service.py` from `flext-infra` | PASS: 20 tests | Workspace-root, internal-project, and internal-package calls all index the full workspace, including an undeclared internal project; standalone remains local |
+| 2026-08-28T08:57:13-03:00 | worktree | `make fmt WHAT=apply APPLY=Y` from `flext-infra` | PASS: 1 file reformatted, 887 unchanged | Formatted the current source/test slice through the canonical Make owner |
+| 2026-08-28T08:57:50-03:00 | worktree | `make test WHAT=all FILE=tests/unit/discovery/test_infra_discovery_edge_cases.py` from `flext-infra` | PASS: 4 selected, 2 impact-deselected | Repository-local generic pyproject discovery stays isolated from parent and sibling trees |
+
+## Unresolved boundaries
+
+- Canonical tracking remains suspended by current operator instruction. No
+  tracker, daemon, database, lifecycle, or endpoint command is permitted; the
+  phase remains OPEN and evidence is recorded in this ledger plus Git/GitHub.
+- The checked-out FLEXT command router still names three superseded home-level
+  skill paths. Current installed owners were used for this slice; repairing that
+  generated governance projection is not yet part of this checkpoint.
 
 ## GitHub lifecycle
 

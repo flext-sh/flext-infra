@@ -33,6 +33,24 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         tm.ok(result)
         tm.that(result.value, eq=[])
 
+    def test_standalone_pyproject_scan_never_reads_parent_or_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        service = u.Infra()
+        child = tmp_path / "child"
+        sibling = tmp_path / "sibling"
+        child.mkdir()
+        sibling.mkdir()
+        own_pyproject = child / "pyproject.toml"
+        own_pyproject.touch()
+        (tmp_path / "pyproject.toml").touch()
+        (sibling / "pyproject.toml").touch()
+
+        result = service.find_all_pyproject_files(child)
+
+        tm.ok(result)
+        tm.that(tuple(result.value), eq=(own_pyproject,))
+
     def test_find_all_pyproject_files_with_permission_error(
         self, tmp_path: Path
     ) -> None:

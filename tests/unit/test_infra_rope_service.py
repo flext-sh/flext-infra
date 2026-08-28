@@ -91,36 +91,72 @@ class TestsFlextInfraInfraRopeService:
                 eq=True,
             )
 
-    def test_open_workspace_keeps_project_scope_with_sibling_projects(
+    def test_open_workspace_indexes_every_project_from_any_internal_call(
         self, tmp_path: Path
     ) -> None:
-        """Project-root and package-root calls stay scoped to the containing project."""
+        """A workspace-context Rope call indexes declared and undeclared projects."""
         monorepo_root = tmp_path / "repo"
         monorepo_root.mkdir()
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             monorepo_root, project_name="flext-infra", package_name="flext_infra"
         )
-        u.Tests.create_lazy_init_workspace(
+        sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
             monorepo_root, project_name="flext-demo", package_name="flext_demo"
+        )
+        u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra",))
+        module_path = package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
+        )
+        sibling_module_path = sibling_package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            sibling_module_path,
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
+
+        for call_root in (monorepo_root, workspace_root, package_root):
+            with flext_infra.infra.rope_workspace(call_root) as rope:
+                tm.that(rope.rope_workspace_root, eq=monorepo_root.resolve())
+                tm.that(
+                    {entry.project_root for entry in rope.modules()},
+                    eq={workspace_root.resolve(), sibling_root.resolve()},
+                )
+                tm.that(rope.module(module_path), none=False)
+                tm.that(rope.module(sibling_module_path), none=False)
+
+    def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
+        """Without a workspace context, sibling projects remain outside Rope."""
+        projects_root = tmp_path / "projects"
+        projects_root.mkdir()
+        project_root, package_root = u.Tests.create_lazy_init_workspace(
+            projects_root, project_name="flext-infra", package_name="flext_infra"
+        )
+        sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
+            projects_root, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
         )
-
-        with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            tm.that(rope.rope_workspace_root, eq=workspace_root.resolve())
-            tm.that(
-                {entry.project_root for entry in rope.modules()},
-                eq={workspace_root.resolve()},
-            )
+        sibling_module_path = sibling_package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            sibling_module_path,
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
 
         with flext_infra.infra.rope_workspace(package_root) as rope:
-            tm.that(rope.rope_workspace_root, eq=workspace_root.resolve())
+            tm.that(rope.rope_workspace_root, eq=project_root.resolve())
             tm.that(
                 {entry.project_root for entry in rope.modules()},
-                eq={workspace_root.resolve()},
+                eq={project_root.resolve()},
             )
+            tm.that(rope.module(module_path), none=False)
+            tm.that(rope.module(sibling_module_path), none=True)
+            tm.that(sibling_root in rope.rope_workspace_root.parents, eq=False)
 
     def test_workspace_exports_fixture_functions_when_requested(
         self, tmp_path: Path
