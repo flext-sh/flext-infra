@@ -105,9 +105,22 @@ Infra:
         version: "1.2.2"
         prerelease: false
         minimum_release_age: null
-        endpoint:
-          host: 127.0.0.1
-          port: 3307
+        endpoint_origin: inherited_city
+        endpoint_status: verified
+        required_custom_types:
+          - molecule
+          - convoy
+          - message
+          - event
+          - gate
+          - merge-request
+          - agent
+          - role
+          - rig
+          - session
+          - spec
+          - convergence
+          - step
 
     # Why (ai-hub-qwoc): the ast-grep project contract for every governed
     # repository. A provider manifest may declare sgconfig.yml as a required
@@ -1729,7 +1742,7 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Static repository-local storage, database, and endpoint projection.
+        # Static repository-local storage and database projection.
         - source: base/beads-metadata.json.j2
           destination: .beads/metadata.json
           profiles: [workspace, standalone]

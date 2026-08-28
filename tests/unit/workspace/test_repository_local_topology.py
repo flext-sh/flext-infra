@@ -19,7 +19,7 @@ class TestsRepositoryLocalTopology:
     def test_loads_typed_beads_identity_from_the_repository_itself(
         self, tmp_path: Path
     ) -> None:
-        """Parse all four required fields once into the public typed model."""
+        """Parse required identity and project extensions into one typed model."""
         root = tmp_path / "project"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -27,6 +27,7 @@ class TestsRepositoryLocalTopology:
             workspace="fixture-workspace",
             database="fixture-database",
             issue_prefix="fixture-prefix",
+            custom_issue_types=("incident",),
         )
 
         beads = tm.ok(FlextInfraWorkspaceDetector.load_beads_spec(root))
@@ -40,6 +41,7 @@ class TestsRepositoryLocalTopology:
                 "workspace": "fixture-workspace",
                 "database": "fixture-database",
                 "issue_prefix": "fixture-prefix",
+                "custom_issue_types": ["incident"],
             },
         )
         tm.that(workspace.beads, eq=beads)
@@ -79,6 +81,11 @@ class TestsRepositoryLocalTopology:
             pytest.param("workspace", "", id="empty-workspace"),
             pytest.param("database", ["not", "a", "scalar"], id="database-list"),
             pytest.param("issue_prefix", None, id="null-prefix"),
+            pytest.param(
+                "custom_issue_types",
+                ["incident", "incident"],
+                id="duplicate-custom-type",
+            ),
         ],
     )
     def test_beads_identity_rejects_malformed_values(
@@ -98,6 +105,7 @@ class TestsRepositoryLocalTopology:
             "workspace": "fixture-workspace",
             "database": "fixture-database",
             "issue_prefix": "fixture-prefix",
+            "custom_issue_types": [],
         }
         payload[field] = invalid_value
         tm.ok(u.Cli.yaml_dump(root / "config" / "beads.yaml", payload))

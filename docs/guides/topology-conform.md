@@ -6,8 +6,9 @@ Each governed repository has exactly two local inputs:
 
 - `.gitmodules` is the read-only authority for its direct topology. Its presence
   selects the `workspace` profile; its absence selects `standalone`.
-- `config/beads.yaml` is the mandatory typed Beads identity with exactly
-  `version: 1`, `workspace`, `database`, and `issue_prefix`.
+- `config/beads.yaml` is the mandatory typed Beads identity with `version: 1`,
+  `workspace`, `database`, `issue_prefix`, and the optional
+  `custom_issue_types` owned by that repository.
 
 Neither input is inferred from a parent checkout, a primary worktree,
 `pyproject.toml`, a directory name, or another repository. A linked worktree
@@ -38,9 +39,11 @@ the requested checkout. `subprojects` and `all` are valid only from a workspace
 whose own `.gitmodules` declares governed direct subprojects.
 
 The generated `.beads/config.yaml` and `.beads/metadata.json` are projections of
-the selected repository's local Beads identity plus the fleet-owned external
-Dolt connection policy. Generation never starts, stops, initializes, probes, or
-mutates Dolt.
+the selected repository's local Beads identity plus the fleet-owned Gas City
+contract. Rigs declare `inherited_city` and never copy a city host or port;
+Gas City owns endpoint resolution and its compatibility mirror. The custom-type
+projection preserves project extensions first and appends the required Gas City
+baseline. Generation never starts, stops, initializes, probes, or mutates Dolt.
 
 The generated Makefile preserves the same boundary: workspace orchestration may
 fan out to direct local subprojects, while standalone repositories and linked

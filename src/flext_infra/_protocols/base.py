@@ -102,26 +102,22 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class BeadsEndpointSpec(Protocol):
-        """Static endpoint consumed by generated Beads projections."""
-
-        @property
-        def host(self) -> str:
-            """Beads server host."""
-            ...
-
-        @property
-        def port(self) -> int:
-            """Beads server TCP port."""
-            ...
-
-    @runtime_checkable
     class BeadsToolSpec(ProtectedMiseToolSpec, Protocol):
-        """Canonical Beads distribution and endpoint identity."""
+        """Canonical Beads distribution and Gas City projection contract."""
 
         @property
-        def endpoint(self) -> FlextInfraProtocolsBase.BeadsEndpointSpec:
-            """Required static server endpoint."""
+        def endpoint_origin(self) -> str:
+            """Gas City-owned endpoint inheritance mode."""
+            ...
+
+        @property
+        def endpoint_status(self) -> str:
+            """Canonical inherited endpoint status."""
+            ...
+
+        @property
+        def required_custom_types(self) -> t.StrSequence:
+            """Immutable custom bead types required by Gas City."""
             ...
 
     @runtime_checkable
@@ -219,6 +215,11 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def issue_prefix(self) -> str:
             """Repository-owned issue prefix."""
+            ...
+
+        @property
+        def custom_issue_types(self) -> t.StrSequence:
+            """Repository-owned types beyond the Gas City baseline."""
             ...
 
     class WorkspaceSpec(Protocol):

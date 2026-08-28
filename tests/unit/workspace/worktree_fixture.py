@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c
+from flext_infra import c, t
 from flext_tests import tm
 from tests import u
 
@@ -80,21 +80,25 @@ class WorktreeFixture:
 
     @staticmethod
     def write_beads_project(
-        root: Path, *, workspace: str, database: str, issue_prefix: str
+        root: Path,
+        *,
+        workspace: str,
+        database: str,
+        issue_prefix: str,
+        custom_issue_types: tuple[str, ...] = (),
     ) -> Path:
         """Write one repository-local Beads identity input."""
         path = root / "config" / "beads.yaml"
-        tm.ok(
-            u.Cli.yaml_dump(
-                path,
-                {
-                    "version": 1,
-                    "workspace": workspace,
-                    "database": database,
-                    "issue_prefix": issue_prefix,
-                },
-            )
-        )
+        payload: dict[str, t.JsonValue] = {
+            "version": 1,
+            "workspace": workspace,
+            "database": database,
+            "issue_prefix": issue_prefix,
+        }
+        if custom_issue_types:
+            custom_types: list[t.JsonValue] = [*custom_issue_types]
+            payload["custom_issue_types"] = custom_types
+        tm.ok(u.Cli.yaml_dump(path, payload))
         return path
 
     @classmethod
@@ -106,11 +110,16 @@ class WorktreeFixture:
         workspace: str,
         database: str,
         issue_prefix: str,
+        custom_issue_types: tuple[str, ...] = (),
     ) -> Path:
         """Create one self-identifying governed project with a real Git origin."""
         pyproject = cls.write_python_project(root, distribution)
         cls.write_beads_project(
-            root, workspace=workspace, database=database, issue_prefix=issue_prefix
+            root,
+            workspace=workspace,
+            database=database,
+            issue_prefix=issue_prefix,
+            custom_issue_types=custom_issue_types,
         )
         u.Tests.initialize_git_repo(
             root, origin_url=cls.governed_repository_url(distribution)

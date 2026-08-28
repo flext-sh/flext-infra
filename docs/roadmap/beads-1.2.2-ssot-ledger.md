@@ -10,7 +10,8 @@ this rollout.
 - Phase: OPEN
 - Integration branch: `0.12.0-dev`
 - Active branch: `fix/beads-1.2.2-ssot-cutover-20260828`
-- Static projection target: Beads `1.2.2`, `127.0.0.1:3307`
+- Static projection target: Beads `1.2.2` with Gas City-owned
+  `inherited_city` endpoint resolution
 - Rope scope: conditional on execution context; any call below a repository
   carrying `.gitmodules` scans that entire workspace, independent of submodule
   declaration membership; a standalone call remains repository-local
@@ -157,6 +158,12 @@ this rollout.
 | 2026-08-28T14:28:02-03:00 | `407e3b7f3` plus lazy-init projection | Two independent `make gen WHAT=apply APPLY=Y`, explicit `make gen WHAT=check`, `make gen WHAT=init APPLY=Y`, formatting and full static check | PASS: both conform applications changed 0; lazy-init apply/check scanned 51 owned directories with 0 errors/warnings; all seven static stages passed | Rope opened the containing workspace at `/home/marlonsc/gt/flext/mayor/rig` and indexed 402 package directories/3,617 modules from the subproject invocation; regenerated test exports removed the final stale `constants_module` instrumentation |
 | 2026-08-28T14:31:57-03:00 | `7aef45fa0` | Complete `COV=Y make test` without testmon, random seed `939482768` | PASS: 2,387 tests in 180.27s; 80.23% coverage against 45% minimum | Zero failures, errors, warnings, skips, worker crashes, or `MemoryError`; the complete randomized order proves the public-alias and generated-Make repairs together without retry, scope reduction, or fallback |
 | 2026-08-28T15:05:00-03:00 | Pyrefly release-policy correction | Operator correction after PR #412 CI | ACTIVE: Pyrefly 1.2.0 diagnostics are mandatory product work; analyzer incompatibility, cap, downgrade, suppression, or disabled diagnostics are not accepted without prior operator discussion and reproducible evidence | Remove the suppression schema from the flext-infra SSOT, regenerate every projection, then correct every diagnostic in flext-core before integration |
+| 2026-08-28T16:34:35-03:00 | `62cff85a4` | `CI=N make check` | PASS: Pyrefly and Mypy reported 0 errors locally on the published PR tip | The stale remote failure remains blocking until a new commit triggers clean-checkout CI |
+| 2026-08-28T16:39:32-03:00 | Gas City projection worktree | `make gen WHAT=apply APPLY=Y`; `make gen WHAT=check` | PASS: exactly `.beads/config.yaml` and `.beads/metadata.json` changed; conformance reached fixed point and Mise validation passed | Flext no longer owns a host or port; generated rigs use `inherited_city`, `verified`, canonical operational flags, current-first custom types, and database-only metadata |
+| 2026-08-28T16:40:00-03:00 | Gas City projection worktree | First focused test invocation | RED before collection: `PYTEST_ARGS` is forbidden by the canonical Make boundary | Reissued each selected file through the declared `FILE=` selector; no direct pytest fallback was used |
+| 2026-08-28T16:42:12-03:00 | Gas City projection worktree | Two full static-gate invocations | RED: Mypy first rejected an inferred `dict[str, object]`; after that repair Pyrefly rejected invariant `list[str]` at the `JsonValue` boundary | Materialized the fixture payload as `dict[str, JsonValue]` and its extension as `list[JsonValue]`, without cast, ignore, or suppression |
+| 2026-08-28T16:42:43-03:00 | Gas City projection worktree | `make check WHAT=all` | PASS: lint, smells, Markdown, Pyrefly, Mypy, security, and Pyright reported 0 errors | Typed source, tests, documentation, and generated projections are statically green |
+| 2026-08-28T16:44:17-03:00 | Gas City projection worktree | Focused `FILE=` gates followed by canonical incremental `make test` | PASS: projection and topology files passed; Testmon then selected 383 affected tests and all 383 passed | Runtime generation, fixed point, failure contracts, workspace consumers, and static projections are green together |
 
 ## Unresolved boundaries
 

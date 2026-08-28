@@ -91,26 +91,32 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-    class BeadsEndpointSpec(_ConfigContract):
-        """Static network endpoint projected into Beads configuration."""
+    class BeadsToolSpec(ProtectedMiseToolSpec):
+        """Canonical Beads distribution and Gas City projection contract."""
 
-        host: Annotated[t.NonEmptyStr, m.Field(description="Beads server host")]
-        port: Annotated[
-            int,
+        endpoint_origin: Annotated[
+            Literal["inherited_city"],
+            m.Field(description="Gas City-owned endpoint inheritance mode"),
+        ]
+        endpoint_status: Annotated[
+            Literal["verified"],
+            m.Field(description="Canonical status for a managed-city inherited rig"),
+        ]
+        required_custom_types: Annotated[
+            tuple[t.NonEmptyStr, ...],
             m.Field(
-                ge=1,
-                le=65535,
-                description="Beads server TCP port declared by deployment",
+                min_length=1,
+                description="Immutable custom bead types required by Gas City",
             ),
         ]
 
-    class BeadsToolSpec(ProtectedMiseToolSpec):
-        """Canonical Beads distribution and endpoint identity."""
-
-        endpoint: Annotated[
-            FlextInfraConfigModels.BeadsEndpointSpec,
-            m.Field(description="Required static Beads server endpoint"),
-        ]
+        @u.model_validator(mode="after")
+        def _validate_required_custom_types(self) -> Self:
+            """Reject ambiguous duplicate type declarations at the owner."""
+            if len(set(self.required_custom_types)) != len(self.required_custom_types):
+                msg = "beads required_custom_types must be unique"
+                raise ValueError(msg)
+            return self
 
     class MiseLockPlatformSpec(_ConfigContract):
         """Immutable download metadata for one tool platform."""
@@ -1638,6 +1644,20 @@ class FlextInfraConfigModels:
         issue_prefix: Annotated[
             t.NonEmptyStr, m.Field(description="Repository-owned issue prefix")
         ]
+        custom_issue_types: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description="Repository-owned custom types beyond the Gas City baseline"
+            ),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_custom_issue_types(self) -> Self:
+            """Reject duplicate project extensions before projection."""
+            if len(set(self.custom_issue_types)) != len(self.custom_issue_types):
+                msg = "beads custom_issue_types must be unique"
+                raise ValueError(msg)
+            return self
 
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""
@@ -1846,29 +1866,28 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Issue prefix from local config/beads.yaml"),
         ]
-        database: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Dolt database from local config/beads.yaml"),
+        endpoint_origin: Annotated[
+            Literal["inherited_city"],
+            m.Field(description="Gas City endpoint ownership projection"),
         ]
-        endpoint: Annotated[
-            FlextInfraConfigModels.BeadsEndpointSpec,
-            m.Field(description="Static endpoint from config/codegen.yaml"),
+        endpoint_status: Annotated[
+            Literal["verified"],
+            m.Field(description="Gas City inherited endpoint status"),
+        ]
+        custom_issue_types: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Current-first custom type union"),
         ]
 
     class BeadsMetadataRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
-        The generated marker contains only portable storage, database identity,
-        and the static endpoint declared by the codegen SSOT.
+        The generated marker contains only portable storage and database identity.
         """
 
         database: Annotated[
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
-        ]
-        endpoint: Annotated[
-            FlextInfraConfigModels.BeadsEndpointSpec,
-            m.Field(description="Static endpoint from config/codegen.yaml"),
         ]
 
     class GitignoreRenderSpec(_ConfigContract):
