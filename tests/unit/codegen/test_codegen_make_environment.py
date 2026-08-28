@@ -238,7 +238,16 @@ class TestsCodegenMakeEnvironment:
         )
         (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
         tool_bin = tmp_path / "managed-tools" / "bin"
-        mise = test_u.Tests.write_mise_stub(tool_bin / "mise")
+        real_mise = test_u.Tests.write_mise_stub(tool_bin / "mise-real")
+        mise_env_log = tmp_path / "mise-env.log"
+        mise = tool_bin / "mise"
+        test_u.Tests.write_executable(
+            mise,
+            "#!/bin/sh\n"
+            f"printf '%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
+            f"\"$MISE_CONFIG_DIR\" >> '{mise_env_log}'\n"
+            f"exec '{real_mise}' \"$@\"\n",
+        )
         uv = tool_bin / "uv"
         test_u.Tests.write_executable(
             uv,
@@ -252,7 +261,14 @@ class TestsCodegenMakeEnvironment:
             "fi\n"
             "exit 0\n",
         )
-        env = {"PATH": f"{tool_bin}:{os.environ['PATH']}"}
+        hostile_global_config = tmp_path / "hostile-global-config.toml"
+        hostile_global_config.write_text(
+            '[tools]\n"github:foreign/tool" = "1.0.0"\n', encoding="utf-8"
+        )
+        env = {
+            "MISE_GLOBAL_CONFIG_FILE": str(hostile_global_config),
+            "PATH": f"{tool_bin}:{os.environ['PATH']}",
+        }
 
         process = tm.ok(
             u.Cli.run_raw(
@@ -266,6 +282,13 @@ class TestsCodegenMakeEnvironment:
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         tm.that(mise.is_file(), eq=True)
         tm.that((project_root / ".venv" / "bin" / "python").is_file(), eq=True)
+        tm.that(
+            any(
+                "/.test-tmp/mise-setup." in value and value.endswith("/config")
+                for value in mise_env_log.read_text(encoding="utf-8").splitlines()
+            ),
+            eq=True,
+        )
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
