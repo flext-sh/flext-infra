@@ -47,6 +47,11 @@ this rollout.
 | 2026-08-28T11:19:28-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `ec7f3ad6bc7190764436203b1f933b7841416796` | Setup consumers use the shared static Mise lock fixture; all 16 submodule setup cases and both real Make topologies passed before push |
 | 2026-08-28T11:29:00-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `eba211f52146e4d137629472b11f7c657c937edc` | Removed a fake public setup action, swallowed bootstrap failure, duplicated Make owner test, and copied default description; 19 net lines removed and checkpoint pushed |
 | 2026-08-28T11:34:43-03:00 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `ca6972adcd794e0b8ee8c921c9c330a8111f0768` | Standalone lock ownership and conditional Rope workspace fixture aligned with repository-local topology; six net lines removed and checkpoint pushed |
+| 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `eefd777d6` | Incremental suite convergence and its remaining defects recorded and pushed |
+| 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `c2165b61a` | Green static and byte-idempotent generation evidence recorded and pushed |
+| 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `d1126b35c` | Stale generated contract copies removed from tests; 21 net lines removed and checkpoint pushed |
+| 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `0ad635785` | Complete green test and coverage evidence recorded and pushed |
+| 2026-08-28 | `flext-infra` | `fix/beads-optout-preserve-state-20260827` | `be442f8f8` | Residual active policy vocabulary removed from comments and checkpoint pushed |
 
 ## Validation log
 
@@ -111,6 +116,10 @@ this rollout.
 | 2026-08-28 | `c2165b61a` | First complete `COV=Y make test` without testmon | FAIL: 14 failed, 2,374 passed in 116.75s | Ten failures shared one fixture that rewrote unchanged manual inputs; four copied expectations lagged their typed/generated owners; no PR opened while RED |
 | 2026-08-28 | `d1126b35c` | Focused owner/consumer regressions through public `make test MATCH=...` | PASS: managed-conflict bootstrap, external Make owner, composed aliases, repository-local identity, and all 9 workspace Make contracts | Removed 21 net lines of stale copied tests and avoided invoking the mutable Mise-lock pipeline in a read-only owner test |
 | 2026-08-28 | `d1126b35c` | Complete `COV=Y make test` without testmon, random seed `64059993` | PASS: 2,386 tests in 117.67s; 80.22% coverage against 45% minimum | Zero test failures, errors, skips, or warnings reported; full collection includes generated consumers, integration tests, Rope, topology, setup, and canonical-alias behavior |
+| 2026-08-28T12:02:09-03:00 | `be442f8f8` | Full `make check` | PASS: all seven static stages; 0 errors and 0 skips | The final published source/documentation checkpoint is clean across lint, smells, Markdown, Pyrefly, Mypy, security, and Pyright |
+| 2026-08-28T12:04:35-03:00 | `be442f8f8` | Two consecutive `make gen WHAT=apply APPLY=Y`, then `make gen WHAT=check` | PASS: both applies changed 0 projections; all fixed-point and 12-tool/75-entry static Mise comparisons passed | Final projections are byte-stable; artifacts were downloaded only for checksum/provenance and no Beads executable or service was invoked |
+| 2026-08-28T12:05:10-03:00 | `be442f8f8` | Complete `COV=Y make test` without testmon, random seed `2659627366` | ENVIRONMENTAL RED: 597 passed before an xdist worker raised `MemoryError` while pytest formatted an exception | No functional failure was reported; preserve the RED, verify the named case in isolation, then repeat the complete official gate without changing code |
+| 2026-08-28T12:06:37-03:00 | `be442f8f8` | `make test FILE=tests/unit/codegen/test_codegen_ci_matrix.py MATCH=fedora_dockerfile_installs_libatomic_only_for_fedora` | PASS: 1 selected, 20 deselected | The xdist crash item passes through the public Make boundary; the transient worker failure remains recorded rather than hidden |
 
 ## Unresolved boundaries
 
