@@ -97,12 +97,19 @@ MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
 SETUP_MISE_VERSION := 2026.8.14
+ifeq ($(GEN_INIT_ONLY),Y)
+SYSTEM_MISE :=
+SYSTEM_MISE_VERSION :=
+else
+SYSTEM_MISE := $(shell command -v mise 2>/dev/null)
+SYSTEM_MISE_VERSION := $(if $(strip $(SYSTEM_MISE)),$(shell "$(SYSTEM_MISE)" --version 2>/dev/null | cut -d ' ' -f 1),)
+endif
 ifeq ($(OS),Windows_NT)
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
-SETUP_MISE := $(TRACKED_MISE)
+SETUP_MISE ?= $(if $(wildcard $(TRACKED_MISE)),$(TRACKED_MISE),$(if $(filter $(SETUP_MISE_VERSION),$(SYSTEM_MISE_VERSION)),$(SYSTEM_MISE),$(TRACKED_MISE)))
 MISE_LOCK_PLATFORMS := linux-x64,linux-arm64,linux-x64-musl,linux-arm64-musl,macos-x64,macos-arm64,windows-x64
 MISE_LOCK_PROJECTS := .
 override export FLEXT_PYTEST_TARGET_RAW := tests

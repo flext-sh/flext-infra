@@ -84,8 +84,7 @@ class FlextInfraModelsRefactorGrep:
             description="Simple symbol names targeted by the migration",
         )
         keyword_renames: t.StrMapping = m.Field(
-            default_factory=ImmutableEmptyMapping,
-            description="Keyword rename mapping",
+            default_factory=ImmutableEmptyMapping, description="Keyword rename mapping"
         )
         remove_keywords: t.StrSequence = m.Field(
             default_factory=tuple,
@@ -104,8 +103,7 @@ class FlextInfraModelsRefactorGrep:
 
         module: Annotated[str, m.Field(description="Module path to modernize")] = ""
         symbol_mapping: t.StrMapping = m.Field(
-            default_factory=ImmutableEmptyMapping,
-            description="Symbol-to-alias mapping",
+            default_factory=ImmutableEmptyMapping, description="Symbol-to-alias mapping"
         )
 
     class AccessorMigrationRule(m.ContractModel):
