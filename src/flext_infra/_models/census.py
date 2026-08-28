@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
+from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -253,7 +253,7 @@ class FlextInfraModelsCensus:
             ] = 0
             objects_by_kind: Annotated[
                 t.IntMapping, m.Field(description="Object count per kind")
-            ] = m.Field(default_factory=lambda: MappingProxyType({}))
+            ] = m.Field(default_factory=immutable_empty_mapping)
             violations: tuple[FlextInfraModelsCensus.Census.Violation, ...] = m.Field(
                 default_factory=tuple, description="Detected violations"
             )

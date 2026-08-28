@@ -7,11 +7,11 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import t
+from flext_infra._models._defaults import immutable_empty_mapping
 
 
 class FlextInfraModelsTransformers:
@@ -60,7 +60,7 @@ class FlextInfraModelsTransformers:
         alias_to_module: Annotated[
             t.StrMapping,
             m.Field(description="Alias names mapped to their source modules"),
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=immutable_empty_mapping)
         category_a: Annotated[
             frozenset[str],
             m.Field(description="Top-level aliases that are informational only"),
@@ -80,7 +80,7 @@ class FlextInfraModelsTransformers:
             ),
         ] = m.Field(default_factory=frozenset)
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def has_violations(self) -> bool:
             """True if any imports need redirecting or moving."""

@@ -450,12 +450,17 @@ class FlextInfraUtilitiesDocsGenerate:
     @staticmethod
     def docs_sanitize_internal_anchor_links(content: str) -> str:
         """Replace local markdown links with plain text while preserving externals."""
-        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(
-            lambda match: (
+
+        def sanitize_link(match: t.Infra.RegexMatch) -> str:
+            target = match.group(2)
+            return (
                 match.group(0)
-                if match.group(2).startswith(("http://", "https://", "#", "mailto:"))
+                if target.startswith(("http://", "https://", "#", "mailto:"))
                 else match.group(1)
-            ),
+            )
+
+        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(
+            sanitize_link,
             content,
         )
         return sanitized

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from collections import defaultdict
 from collections.abc import MutableMapping
 from pathlib import Path
@@ -142,7 +143,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             return
         package_dirs = [
             entry
-            for entry in sorted(src_dir.iterdir(), key=lambda item: item.name)
+            for entry in sorted(src_dir.iterdir(), key=operator.attrgetter("name"))
             if entry.is_dir() and (entry / c.Infra.INIT_PY).is_file()
         ]
         layout = FlextInfraUtilitiesCodegenNamespace.layout(project_root)

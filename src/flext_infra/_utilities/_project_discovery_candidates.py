@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -15,8 +16,6 @@ from flext_infra._utilities._project_discovery_shape import (
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import t
 
 
@@ -53,7 +52,7 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
             roots.append(resolved_workspace_root)
         if configured_projects:
             candidate_entries: t.SequenceOf[Path] = sorted(
-                configured_entries, key=lambda item: item.as_posix()
+                configured_entries, key=Path.as_posix
             )
             roots.extend([
                 entry.resolve()

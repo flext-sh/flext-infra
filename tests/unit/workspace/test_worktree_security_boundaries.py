@@ -41,10 +41,16 @@ def test_false_branch_format_report_fails_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repository = _repository(tmp_path)
+
+    def reject_branch(
+        _request: m.Infra.GitBranchRequest,
+    ) -> p.Result[m.Infra.GitBoolReport]:
+        return r.ok(m.Infra.GitBoolReport(value=False))
+
     monkeypatch.setattr(
         u.Infra,
         "git_check_branch_format",
-        lambda _request: r.ok(m.Infra.GitBoolReport(value=False)),
+        reject_branch,
     )
 
     result = _add(repository, "feature/rejected")

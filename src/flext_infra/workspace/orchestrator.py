@@ -115,7 +115,11 @@ class FlextInfraOrchestratorService(
         )
         if not candidates:
             return r.fail(f"no selected project owns file: {path_prefix}")
-        owner = max(candidates, key=lambda project: len(project.path.resolve().parts))
+
+        def project_path_depth(project: m.Infra.ProjectInfo) -> int:
+            return len(project.path.resolve().parts)
+
+        owner = max(candidates, key=project_path_depth)
         relative_prefix = resolved_file.relative_to(owner.path.resolve()).as_posix()
         relative_file = (
             f"{relative_prefix}::{node_suffix}" if separator else relative_prefix

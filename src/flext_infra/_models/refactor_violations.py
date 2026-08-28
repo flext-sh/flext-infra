@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import t
+from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -81,7 +81,7 @@ class FlextInfraModelsRefactorViolations:
             description="Namespace targets blocked by the policy.",
         )
         validation_requirements: t.MappingKV[str, t.StrSequence] = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=immutable_empty_mapping,
             description="Validation requirements by stage.",
         )
         enable_class_nesting: Annotated[
@@ -155,14 +155,14 @@ class FlextInfraModelsRefactorViolations:
             t.NonNegativeInt, m.Field(description="Total violations")
         ]
         confidence_counts: t.IntMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=immutable_empty_mapping,
             description="Confidence histogram",
         )
         violations: tuple[
             FlextInfraModelsRefactorViolations.ClassNestingViolation, ...
         ] = m.Field(default_factory=tuple, description="Violation details")
         per_file_counts: t.IntMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=immutable_empty_mapping,
             description="Violation counts per file",
         )
 
@@ -190,7 +190,7 @@ class FlextInfraModelsRefactorViolations:
         """Aggregated helper-function classification payload."""
 
         totals: t.IntMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}), description="Category totals"
+            default_factory=immutable_empty_mapping, description="Category totals"
         )
         suggestions: tuple[
             FlextInfraModelsRefactorViolations.HelperClassification, ...
@@ -208,7 +208,7 @@ class FlextInfraModelsRefactorViolations:
             default_factory=tuple, description="Helper classifications from one file"
         )
         totals: t.IntMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=immutable_empty_mapping,
             description="Category totals for file helpers",
         )
         manual_review: tuple[
@@ -225,7 +225,7 @@ class FlextInfraModelsRefactorViolations:
             t.NonNegativeInt, m.Field(description="Total violations in file")
         ]
         counts: t.IntMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=immutable_empty_mapping,
             description="Per-pattern counts",
         )
 
@@ -233,11 +233,11 @@ class FlextInfraModelsRefactorViolations:
         """Full violation analysis report for refactor diagnostics."""
 
         totals: t.IntMapping = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=immutable_empty_mapping,
             description="Aggregate counts by pattern",
         )
         files: t.MappingKV[str, t.IntMapping] = m.Field(
-            default_factory=lambda: MappingProxyType({}),
+            default_factory=immutable_empty_mapping,
             description="Per-file per-pattern counts",
         )
         top_files: tuple[

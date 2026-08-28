@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import c, t
+from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -100,10 +100,10 @@ class FlextInfraModelsWorkspace:
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
         payload: Annotated[
             t.JsonMapping, m.Field(description="Parsed pyproject payload")
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=immutable_empty_mapping)
         docs_meta: Annotated[
             t.JsonMapping, m.Field(description="Parsed tool.flext.docs payload")
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=immutable_empty_mapping)
         project_name: Annotated[str, m.Field(description="Declared project name")] = ""
         package_name: Annotated[str, m.Field(description="Primary package name")] = ""
         dependency_names: Annotated[

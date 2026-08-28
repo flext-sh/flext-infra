@@ -14,6 +14,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
+from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
@@ -373,7 +374,7 @@ class FlextInfraConfigModels:
                     raise ValueError(msg)
             return self
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def python_required_version(self) -> str:
             """PEP 440 requirement spanning the configured Python minor line."""
@@ -381,13 +382,13 @@ class FlextInfraConfigModels:
             next_minor = int(minor) + 1
             return f">={self.python_version},<{major}.{next_minor}"
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
             return self.python_version
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def uv_exclude_newer(self) -> str:
             """Render the shared dependency cooldown in uv duration syntax."""
@@ -413,7 +414,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Provider key owning URL and branch")
         ]
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def internal_distribution_prefix(self) -> str:
             """Derive the internal distribution namespace from the owner name."""
@@ -846,7 +847,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def check_gates(self) -> tuple[str, ...]:
             """Gates run under the CI token, as the strict complement.
@@ -1213,7 +1214,7 @@ class FlextInfraConfigModels:
         custom_handler_profile_overrides: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=immutable_empty_mapping,
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
@@ -1323,7 +1324,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def handler_whats(self) -> Mapping[str, tuple[str, ...]]:
             """Canonical public verb-to-handler matrix consumed by every renderer.
@@ -1350,7 +1351,7 @@ class FlextInfraConfigModels:
                 )
             return whats
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def check_gates_allowed(self) -> tuple[str, ...]:
             """Canonical generated Make check-gate vocabulary.
@@ -1366,7 +1367,7 @@ class FlextInfraConfigModels:
                 *self.project_check_gates,
             )
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def check_gates_default(self) -> tuple[str, ...]:
             """Canonical generated Make default check gates.
@@ -1379,7 +1380,7 @@ class FlextInfraConfigModels:
                 *self.project_check_gates,
             )
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def check_gates_fixable(self) -> tuple[str, ...]:
             """Gates ``make fix APPLY=Y`` can actually repair.
@@ -1390,7 +1391,7 @@ class FlextInfraConfigModels:
             """
             return FlextInfraConstantsMake.PROJECT_CHECK_GATES_FIXABLE_VALUES
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def custom_handler_policies(
             self,
@@ -2018,7 +2019,7 @@ class FlextInfraConfigModels:
                 t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
             ],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=immutable_empty_mapping,
                 description="Per-distribution deviations from the shared contract",
             ),
         ]
@@ -2264,7 +2265,7 @@ class FlextInfraConfigModels:
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def repository_env_prefix(self) -> str:
             """Settings environment prefix derived from the distribution name."""
@@ -2551,7 +2552,7 @@ class FlextInfraConfigModels:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
@@ -2561,7 +2562,7 @@ class FlextInfraConfigModels:
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModels.CiPrivateSubmodulesSpec],
             m.Field(
-                default_factory=lambda: MappingProxyType({}),
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
@@ -2628,7 +2629,7 @@ class FlextInfraConfigModels:
             ),
         ]
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def vscode_files_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.exclude`` entries from the artifact SSOT."""
@@ -2638,7 +2639,7 @@ class FlextInfraConfigModels:
                 if artifact.vscode_exclude
             }
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def vscode_watcher_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.watcherExclude`` entries from the SSOT."""
@@ -2648,13 +2649,13 @@ class FlextInfraConfigModels:
                 if artifact.watch_exclude
             }
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def vscode_search_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``search.exclude`` entries from the artifact SSOT."""
             return dict(self.vscode_files_exclude_map)
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def source_scan_ignored(self) -> tuple[str, ...]:
             """Derived ``source_scan.ignored_resources`` names from the SSOT."""
@@ -2670,7 +2671,7 @@ class FlextInfraConfigModels:
         # (file globs, secrets, editor/OS noise). Per-project exception fields
         # (extra_ignored / allowed dirs) land in their typed owner;
         # this projection is the seam they will extend.
-        @m.computed_field()
+        @m.computed_field
         @property
         def gitignore_sections(
             self,
@@ -2747,7 +2748,7 @@ class FlextInfraConfigModels:
                 )
             return tuple(sections)
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def gitignore_artifact_patterns(self) -> tuple[str, ...]:
             """Derived ``.gitignore`` artifact patterns from the SSOT (stable order)."""
@@ -3029,7 +3030,7 @@ class FlextInfraConfigModels:
             m.Field(description="Environment files created, updated, or removed"),
         ] = ()
 
-        @m.computed_field()
+        @m.computed_field
         @property
         def changed(self) -> bool:
             """Whether the sync altered any environment file."""

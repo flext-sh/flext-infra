@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from pathlib import Path
 
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -96,7 +97,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return tuple(
             sorted(
                 python_paths | wrapper_paths | stub_paths,
-                key=lambda path: path.as_posix(),
+                key=Path.as_posix,
             )
         )
 
@@ -207,7 +208,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             dir_modules = tuple(
                 sorted(
                     modules_by_dir.get(package_dir, ()),
-                    key=lambda entry: entry.file_path.name,
+                    key=operator.attrgetter("file_path.name"),
                 )
             )
             init_path = (package_dir / c.Infra.INIT_PY).resolve()

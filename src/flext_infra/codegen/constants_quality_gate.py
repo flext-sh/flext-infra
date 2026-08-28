@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 import shutil
 import sys
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -318,7 +319,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                     )
                     for report in census_report.projects
                 ),
-                key=lambda entry: entry.project,
+                key=operator.attrgetter("project"),
             )
         ]
 

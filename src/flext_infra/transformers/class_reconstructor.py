@@ -80,6 +80,12 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         method_chunks = self._collect_method_chunks(class_obj=class_obj, lines=lines)
         if len(method_chunks) < c.Infra.MIN_METHODS_FOR_REORDER:
             return []
+
+        def method_sort_key(
+            item: tuple[m.Infra.MethodInfo, int, int, str],
+        ) -> tuple[int, int, str]:
+            return u.Infra.build_method_sort_key(item[0], self._order_config)
+
         source = "".join(lines)
         edits: list[tuple[int, int, str]] = []
         for block in self._contiguous_method_blocks(
@@ -87,12 +93,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         ):
             if len(block) < c.Infra.MIN_METHODS_FOR_REORDER:
                 continue
-            sorted_chunks = sorted(
-                block,
-                key=lambda item: u.Infra.build_method_sort_key(
-                    item[0], self._order_config
-                ),
-            )
+            sorted_chunks = sorted(block, key=method_sort_key)
             if [item[0].name for item in block] == [
                 item[0].name for item in sorted_chunks
             ]:

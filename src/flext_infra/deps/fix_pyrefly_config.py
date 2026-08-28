@@ -19,7 +19,7 @@ logger = u.fetch_logger(__name__)
 class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
-    _workspace_root: Path = u.PrivateAttr()
+    _workspace_root: Path
 
     def __init__(
         self, workspace_root: Path | None = None, *, workspace: Path | None = None

@@ -412,7 +412,7 @@ python-interpreter-path = "../.venv/bin/python"
             u.Infra.pyproject_conform(
                 '[project]\nname = "external-consumer"\n'
                 'version = "0.0.1"\ndependencies = []\n',
-                providers=config.Infra.codegen.providers,
+                codegen=config.Infra.codegen,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,

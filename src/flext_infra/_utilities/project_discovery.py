@@ -54,15 +54,14 @@ class FlextInfraUtilitiesProjectDiscovery(
             return candidates
         configured_order = {name: idx for idx, name in enumerate(configured_projects)}
         ordered: list[Path] = []
+
+        def configured_key(candidate: Path) -> tuple[int, str]:
+            relative = candidate.relative_to(resolved_workspace_root).as_posix()
+            return configured_order.get(relative, len(configured_projects)), candidate.name
+
         non_root_candidates = sorted(
             (c for c in candidates if c != resolved_workspace_root),
-            key=lambda candidate: (
-                configured_order.get(
-                    candidate.relative_to(resolved_workspace_root).as_posix(),
-                    len(configured_projects),
-                ),
-                candidate.name,
-            ),
+            key=configured_key,
         )
         ordered.extend(non_root_candidates)
         return ordered

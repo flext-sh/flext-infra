@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import operator
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
 
@@ -133,7 +134,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
 
         normalized_updates = {
             path.resolve(): content
-            for path, content in sorted(updates.items(), key=lambda item: str(item[0]))
+            for path, content in sorted(updates.items(), key=operator.itemgetter(0))
         }
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditPreview._preview_write_baselines(

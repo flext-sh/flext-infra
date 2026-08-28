@@ -103,7 +103,7 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             item
             for item in sorted(
                 items,
-                key=lambda item: (item[1] or item[0], item[0] != (item[1] or item[0])),
+                key=FlextInfraCodegenGenerationTypeCheckingMixin._import_item_sort_key,
             )
             if not FlextInfraCodegenGenerationTypeCheckingMixin._should_skip_type_checking_module_export(
                 mod, item[0], item[1], root_name
@@ -170,15 +170,18 @@ class FlextInfraCodegenGenerationTypeCheckingMixin(
             not FlextInfraCodegenGenerationTypeCheckingMixin._has_flext_types(collapsed)
         ):
             lines.append("    from flext_core import FlextTypes")
+
+        def type_checking_module_key(mod: str) -> t.StrPair:
+            owner = FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
+                mod, collapsed[mod]
+            )
+            return FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
+                owner
+            )
+
         sorted_mods = sorted(
             collapsed,
-            key=lambda mod: (
-                FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_key(
-                    FlextInfraCodegenGenerationTypeCheckingMixin._type_checking_sort_owner(
-                        mod, collapsed[mod]
-                    )
-                )
-            ),
+            key=type_checking_module_key,
         )
         previous_is_relative: bool | None = False if include_flext_types else None
         for mod in sorted_mods:
