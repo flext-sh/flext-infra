@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class FlextInfraProjectClassifier(
     FlextInfraProjectClassifierDepsMixin, FlextInfraProjectClassifierFamilyMixin
 ):
-    """Classify a project by kind and discover MRO family chains."""
+    """Classify a project by kind and discover FLEXT family chains."""
 
     def __init__(
         self, project_root: Path, *, pyproject_payload: t.JsonMapping | None = None

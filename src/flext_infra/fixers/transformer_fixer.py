@@ -23,7 +23,6 @@ from flext_infra.transformers.hardcoded_version import (
 from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
 )
-from flext_infra.transformers.mro_remover import FlextInfraRefactorMRORemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
 from flext_infra.transformers.project_alias_migrator import (
@@ -61,7 +60,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
         "import_modernizer": FlextInfraRefactorImportModernizer,
-        "mro_remover": FlextInfraRefactorMRORemover,
         "open_encoding": FlextInfraRefactorOpenEncoding,
         "pattern": FlextInfraRefactorPatternTransformer,
         "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,
@@ -311,7 +309,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 for k, v in u.Cli.json_as_mapping(
                     params.get("symbols_to_replace")
                 ).items()
-                # mro-i6nq.10: Mapping keys are already typed as strings.
+                # flext-i6nq.10: Mapping keys are already typed as strings.
                 if isinstance(v, (str, int, float))
             }
             runtime_aliases = {

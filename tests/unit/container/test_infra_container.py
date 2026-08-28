@@ -1,6 +1,6 @@
-"""Tests for flext_infra service importability and u.Infra MRO pattern.
+"""Tests for flext_infra service importability and u.Infra FLEXT pattern.
 
-Tests verify that all FlextInfra services are accessible via u.Infra MRO
+Tests verify that all FlextInfra services are accessible via u.Infra FLEXT
 and that the current output namespace works correctly.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
@@ -42,7 +42,7 @@ class TestsFlextInfraContainerInfraContainer:
         tm.that(callable(container.resolve), eq=True)
 
     def test_io_methods_available(self) -> None:
-        """Verify IO methods are accessible via u.Infra MRO."""
+        """Verify IO methods are accessible via u.Infra FLEXT."""
         tm.that(callable(u.Cli.json_write), eq=True)
 
     def test_cli_runtime_methods_available(self) -> None:
@@ -53,12 +53,12 @@ class TestsFlextInfraContainerInfraContainer:
         tm.that(callable(u.Cli.run_to_file), eq=True)
 
     def test_discovery_methods_available(self) -> None:
-        """Verify discovery methods are accessible via u.Infra MRO."""
+        """Verify discovery methods are accessible via u.Infra FLEXT."""
         tm.that(callable(u.Infra.discover_projects), eq=True)
         tm.that(callable(u.Infra.discover_project_roots), eq=True)
 
     def test_output_methods_available(self) -> None:
-        """Verify output methods are accessible via u.Infra MRO."""
+        """Verify output methods are accessible via u.Infra FLEXT."""
         tm.that(callable(u.Cli.status), eq=True)
         tm.that(callable(u.Cli.summary), eq=True)
         tm.that(callable(u.Cli.error), eq=True)
@@ -68,27 +68,27 @@ class TestsFlextInfraContainerInfraContainer:
         tm.that(callable(u.Cli.progress), eq=True)
 
     def test_path_methods_available(self) -> None:
-        """Verify path methods are accessible via u.Infra MRO."""
+        """Verify path methods are accessible via u.Infra FLEXT."""
         tm.that(callable(u.Infra.rope_workspace_root), eq=True)
 
     def test_template_methods_available(self) -> None:
-        """Verify template constants are accessible via c.Infra MRO."""
+        """Verify template constants are accessible via c.Infra FLEXT."""
         tm.that(c.Infra.TOC_START, is_=str)
         tm.that(c.Infra.TOC_END, is_=str)
         tm.that(c.Infra.GENERATED_HEADER, is_=str)
 
     def test_versioning_methods_available(self) -> None:
-        """Verify versioning methods are accessible via u.Infra MRO."""
+        """Verify versioning methods are accessible via u.Infra FLEXT."""
         tm.that(callable(u.Infra.parse_semver), eq=True)
         tm.that(callable(u.Infra.bump_version), eq=True)
 
     def test_toml_methods_available(self) -> None:
-        """Verify TOML methods are accessible via u.Infra MRO."""
+        """Verify TOML methods are accessible via u.Infra FLEXT."""
         tm.that(callable(u.Cli.toml_ensure_table), eq=True)
         tm.that(callable(u.Cli.toml_table_path), eq=True)
 
     def test_patterns_available(self) -> None:
-        """Verify pattern constants are accessible via u.Infra MRO."""
+        """Verify pattern constants are accessible via u.Infra FLEXT."""
         tm.that(callable(u.Cli.matches), eq=True)
 
     def test_container_has_service_method(self) -> None:

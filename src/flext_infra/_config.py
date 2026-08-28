@@ -15,9 +15,9 @@ from flext_infra._models.config import FlextInfraConfigModels
 class _FlextInfraConfig(FlextCliConfig):
     """Declarative flext-infra config loaded and validated once."""
 
-    # NOTE (multi-agent, mro-wkii.9 + mro-wkii.17 / agent: codex): direct
+    # NOTE (multi-agent, flext-wkii.9 + flext-wkii.17 / agent: codex): direct
     # config.Infra is the only codegen information surface; no accessor method.
-    # NOTE (mro-sltx): CONFIG_DIR stays the relative default so
+    # NOTE (flext-sltx): CONFIG_DIR stays the relative default so
     # flext-core FlextConfig._config_dir() resolves the packaged flext_infra/config
     # in a wheel install AND the repo-root config/ in an editable source checkout.
     # An absolute parents[2] value broke every git-dep/wheel consumer (config poison).

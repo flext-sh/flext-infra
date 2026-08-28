@@ -41,7 +41,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
         else:
             expected_search = [c.Infra.DEFAULT_SRC_DIR]
             expected_includes = [f"{c.Infra.DEFAULT_SRC_DIR}/**/*.py*"]
-        # mro-j47u (codex): keep pre-write Pyrefly scope identical to the first
+        # flext-j47u (codex): keep pre-write Pyrefly scope identical to the first
         # post-write discovery without fabricating directories on disk.
         if declared_python_dirs_are_complete:
             declared_import_roots = (
@@ -63,20 +63,14 @@ class FlextInfraEnsurePyreflyConfigPhase:
                 merged_search.discard(pyrefly_rules.path_rules.source_dir)
             merged_search.difference_update(declared_import_roots)
             expected_search = [*declared_import_roots, *sorted(merged_search)]
-            # NOTE (multi-agent, mro-wkii.17.9.2.1): analysis roots belong in
+            # NOTE (multi-agent, flext-wkii.17.9.2.1): analysis roots belong in
             # project-includes; only import roots belong in search-path.
             expected_includes = tuple(
                 f"{directory}/**/*.py*" for directory in declared_python_dirs
             )
-        error_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
-            *(
-                (error_rule, "error")
-                for error_rule in self._tool_config.tools.pyrefly.strict_errors
-            ),
-            *(
-                (error_rule, False)
-                for error_rule in self._tool_config.tools.pyrefly.disabled_errors
-            ),
+        error_values: t.SequenceOf[tuple[str, t.JsonValue]] = tuple(
+            (error_rule, "error")
+            for error_rule in self._tool_config.tools.pyrefly.strict_errors
         )
         phase_builder = (
             m.Infra.Deps.Toml.PhaseConfig
@@ -89,10 +83,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             # Interpreter discovery resolves PEP 660 editable sibling packages.
             .deprecated("site-package-path")
             .deprecated("skip-interpreter-query")
-            .value(
-                c.Infra.IGNORE_ERRORS_IN_GENERATED,
-                pyrefly_rules.ignore_errors_in_generated_code,
-            )
+            .deprecated("ignore-errors-in-generated-code")
             # sort=False: search-path order is semantic (see comment above);
             # the default sort=True would silently re-alphabetize "." before
             # "src" here at TOML-emit time even after ordering it correctly.
@@ -121,8 +112,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
 
     def _configured_error_keys(self) -> frozenset[str]:
         """Return pyrefly error keys governed by the canonical tool config."""
-        pyrefly_rules = self._tool_config.tools.pyrefly
-        return frozenset((*pyrefly_rules.strict_errors, *pyrefly_rules.disabled_errors))
+        return frozenset(self._tool_config.tools.pyrefly.strict_errors)
 
     def apply(
         self,

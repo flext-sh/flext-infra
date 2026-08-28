@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class FlextInfraCodegenConsolidatorStepsMixin:
     """Value-map build + per-file scan/match/apply for constants consolidation.
 
-    Composed into FlextInfraCodegenConsolidator via MRO; self-contained (no
+    Composed into FlextInfraCodegenConsolidator via FLEXT; self-contained (no
     facade state), so the facade's ``execute`` orchestrator only sequences
     these workers across selected projects.
     """
@@ -85,14 +85,14 @@ class FlextInfraCodegenConsolidatorStepsMixin:
     @staticmethod
     def _match_assignments(
         symbols: t.SequenceOf[m.Infra.SymbolInfo],
-        # mro-j47u (codex): use the canonical scalar sequence alias directly.
+        # flext-j47u (codex): use the canonical scalar sequence alias directly.
         source_lines: t.StrSequence,
         value_to_ref: t.StrMapping,
     ) -> t.SequenceOf[tuple[m.Infra.SymbolInfo, str, str]]:
         """Match assignments."""
         matches: t.MutableSequenceOf[tuple[m.Infra.SymbolInfo, str, str]] = []
         for symbol in symbols:
-            # mro-j47u (codex): widen the validated constrained int for indexing.
+            # flext-j47u (codex): widen the validated constrained int for indexing.
             line_number: int = symbol.line
             if line_number < 1 or line_number > len(source_lines):
                 continue

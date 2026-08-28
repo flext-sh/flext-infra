@@ -8,15 +8,14 @@ distribution in the environment the project runs against, never through a
 filesystem hop out of the project root: a generated surface that encodes
 ``../<sibling>/src`` describes one host layout, so it is wrong in any checkout
 whose siblings sit elsewhere and it makes one generator emit different content
-per clone (mro-c6di).
+per clone (flext-c6di).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, override
 
-from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
@@ -39,6 +38,20 @@ class FlextInfraExtraPathsManager(
             description="Analyzer roots the active codegen plan materializes",
         ),
     ] = ()
+
+    _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
+
+    @override
+    def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
+        """Initialize workspace metadata after validation."""
+        self._workspace_project_names = set(
+            u.Infra.workspace_project_paths(self.workspace_root)
+        )
+
+    @property
+    def workspace_project_names(self) -> t.StrSequence:
+        """Managed workspace project names backing dependency resolution."""
+        return tuple(sorted(self._workspace_project_names))
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -78,9 +91,9 @@ class FlextInfraExtraPathsManager(
         """Compute pyrefly search paths for a project.
 
         Only roots inside ``project_dir`` are emitted. Path dependencies and uv
-        workspace members are importable through their installed distributions,
+        workspace projects are importable through their installed distributions,
         so they need no search-path entry and must never be described by a path
-        that leaves the project (mro-c6di).
+        that leaves the project (flext-c6di).
         """
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         source_root = rules.source_dir
@@ -118,14 +131,15 @@ class FlextInfraExtraPathsManager(
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        # mro-j47u (codex): never reread an on-disk Pyright table while its
+        # flext-j47u (codex): never reread an on-disk Pyright table while its
         # in-memory payload is being conformed; include only real production roots.
+        discovered_python_roots = set(u.Infra.discover_python_dirs(project_dir))
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
                 tuple(
                     directory
                     for directory in rules.env_dirs
-                    if (project_dir / directory).is_dir()
+                    if directory in discovered_python_roots
                     or directory in self.generated_python_roots
                 )
             )

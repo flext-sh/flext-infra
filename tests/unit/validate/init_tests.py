@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import flext_infra.validate as core_module
 import pytest
+from flext_infra.validate import FlextInfraInventoryService
 from flext_tests import tm
 
 # Why: the symbol must be absent for the test to mean anything, so it
@@ -38,6 +39,10 @@ class TestCoreModuleInit:
             "FlextInfraTextPatternScanner",
         ):
             tm.that(core_module.__all__, has=implementation)
+
+    def test_core_lazy_imports_work(self) -> None:
+        """Test that lazy imports resolve to real classes."""
+        tm.that(FlextInfraInventoryService, none=False)
 
 
 __all__: t.StrSequence = []

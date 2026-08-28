@@ -287,7 +287,7 @@ def test_public_contract_resolves_imported_lazy_import_map(tmp_path: Path) -> No
     tm.that(u.Infra.docstring_issues(tmp_path, contract), eq=[])
 
 
-def test_docstring_issues_accepts_direct_part_mro_docstring(tmp_path: Path) -> None:
+def test_docstring_issues_accepts_direct_part_flext_docstring(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
     _write(
         tmp_path / "pyproject.toml",

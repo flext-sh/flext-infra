@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
@@ -11,6 +12,7 @@ from flext_cli import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
@@ -79,28 +81,50 @@ class FlextInfraUtilitiesDocsScope:
     def resolve_projects(
         workspace_root: Path, names: t.StrSequence
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
-        """Resolve selectors against the repository explicitly supplied."""
+        """Resolve project names through repository-local topology only."""
         discover_result = FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
         if discover_result.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 discover_result.error or "discovery failed"
             )
         projects = list(discover_result.value)
-        if not names:
-            return r[t.SequenceOf[mw.ProjectInfo]].ok(projects)
-        if not projects:
-            return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                f"unknown projects: {', '.join(sorted(names))}"
+        resolved_workspace_root = workspace_root.resolve()
+        if all(
+            project.path.resolve() != resolved_workspace_root for project in projects
+        ):
+            root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
+                resolved_workspace_root,
+                workspace_subprojects=FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(
+                    resolved_workspace_root
+                ),
             )
-        project = projects[0]
-        allowed = frozenset((".", project.name, project.path.name))
-        missing = [name for name in names if name not in allowed]
+            if root_project is not None:
+                projects.append(root_project)
+        if not names:
+            return r[t.SequenceOf[mw.ProjectInfo]].ok(
+                sorted(projects, key=operator.attrgetter("name"))
+            )
+        by_name: dict[str, mw.ProjectInfo] = {}
+        for project in projects:
+            by_name.setdefault(project.name, project)
+            by_name.setdefault(project.path.name, project)
+            project_path = project.path.resolve()
+            if project_path == resolved_workspace_root:
+                by_name.setdefault(".", project)
+            elif project_path.is_relative_to(resolved_workspace_root):
+                by_name.setdefault(
+                    project_path.relative_to(resolved_workspace_root).as_posix(),
+                    project,
+                )
+        missing = [name for name in names if name not in by_name]
         if missing:
             missing_text = ", ".join(sorted(missing))
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 f"unknown projects: {missing_text}"
             )
-        return r[t.SequenceOf[mw.ProjectInfo]].ok((project,))
+        return r[t.SequenceOf[mw.ProjectInfo]].ok(
+            sorted((by_name[name] for name in names), key=operator.attrgetter("name"))
+        )
 
     @staticmethod
     def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:
@@ -108,8 +132,22 @@ class FlextInfraUtilitiesDocsScope:
         return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
     @staticmethod
-    def _project_info_for_entry(entry: Path) -> mw.ProjectInfo | None:
+    def _workspace_subproject_path_set(workspace_root: Path) -> frozenset[Path]:
+        """Return resolved subprojects declared by this root's ``.gitmodules``."""
+        resolved_root = workspace_root.resolve()
+        return frozenset(
+            (resolved_root / path).resolve()
+            for path in FlextInfraUtilitiesPyproject.workspace_project_paths(
+                resolved_root
+            )
+        )
+
+    @staticmethod
+    def _project_info_for_entry(
+        entry: Path, *, workspace_subprojects: frozenset[Path]
+    ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
+        entry = entry.resolve()
         pyproject = entry / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
@@ -126,14 +164,26 @@ class FlextInfraUtilitiesDocsScope:
         ):
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
+        is_workspace_subproject = entry in workspace_subprojects
         enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
         has_src = (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
         has_tests = (entry / c.Infra.DIR_TESTS).is_dir()
         has_deps = bool(project_section.get("dependencies"))
-        if not has_src and not has_tests and not has_deps:
+        if (
+            not is_workspace_subproject
+            and not has_src
+            and not has_tests
+            and not has_deps
+        ):
             return None
+        if is_workspace_subproject:
+            workspace_role = c.Infra.WorkspaceProjectRole.SUBPROJECT
+        elif (entry / c.Infra.GITMODULES).is_file():
+            workspace_role = c.Infra.WorkspaceProjectRole.WORKSPACE_ROOT
+        else:
+            workspace_role = c.Infra.WorkspaceProjectRole.STANDALONE
         project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
             path=entry,
             name=project_state.project_name,
@@ -146,6 +196,7 @@ class FlextInfraUtilitiesDocsScope:
                 )
             ),
             package_name=project_state.package_name,
+            workspace_role=workspace_role,
         )
         return project_info
 
@@ -281,22 +332,40 @@ class FlextInfraUtilitiesDocsScope:
     def discover_projects(
         workspace_root: Path,
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
-        """Discover the repository explicitly supplied to the docs scope."""
+        """Discover the root or projects declared by its own ``.gitmodules``."""
         if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 f"discovery failed: invalid workspace root {workspace_root}"
             )
-        project_root = workspace_root.resolve()
-        if project_root.name in FlextInfraUtilitiesDocsScope.excluded_roots(
-            project_root
-        ):
-            return r[t.SequenceOf[mw.ProjectInfo]].ok(())
-        project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
-            project_root
+        excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
+        workspace_subprojects = (
+            FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(workspace_root)
         )
-        if project_info is None:
-            return r[t.SequenceOf[mw.ProjectInfo]].ok(())
-        return r[t.SequenceOf[mw.ProjectInfo]].ok((project_info,))
+        project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
+            workspace_root
+        )
+        root_project: mw.ProjectInfo | None = None
+        projects: list[mw.ProjectInfo] = []
+        for project_root in project_roots:
+            if project_root.name == "cmd" or project_root.name in excluded:
+                continue
+            if (
+                project_root == workspace_root.resolve()
+                and not (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
+            ):
+                continue
+            project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
+                project_root, workspace_subprojects=workspace_subprojects
+            )
+            if project_info is None:
+                continue
+            if project_root == workspace_root.resolve():
+                root_project = project_info
+                continue
+            projects.append(project_info)
+        if not projects and root_project is not None:
+            return r[t.SequenceOf[mw.ProjectInfo]].ok([root_project])
+        return r[t.SequenceOf[mw.ProjectInfo]].ok(projects)
 
     @staticmethod
     def required_project_files() -> t.StrSequence:

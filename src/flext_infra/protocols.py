@@ -25,7 +25,7 @@ class FlextInfraProtocols(p):
     """Structural contracts for flext-infra utilities and services.
 
     All parent protocols (Result, Config, DI, Service, etc.) are inherited
-    transparently from ``FlextProtocols`` via MRO. Infra-specific utility
+    transparently from ``FlextProtocols`` via FLEXT. Infra-specific utility
     protocols live as nested classes below.
     """
 

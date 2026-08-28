@@ -7,9 +7,6 @@ from pathlib import Path
 from flext_infra import c, m, u
 from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.refactor.migrate_to_class_mro import (
-    FlextInfraRefactorMigrateToClassMRO,
-)
 from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 
 _log = u.fetch_logger(__name__)
@@ -17,55 +14,6 @@ _log = u.fetch_logger(__name__)
 
 class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     """Private pipeline passes for codegen fixer composition."""
-
-    @staticmethod
-    def _run_mro_migration(ctx: m.Infra.FixContext, project_path: Path) -> None:
-        """Run the MRO migrator and accumulate fixed/skipped violations."""
-        report = FlextInfraRefactorMigrateToClassMRO(workspace_root=project_path).run(
-            target="all", apply=True, gates=(c.Infra.LINT,)
-        )
-        _log.info(
-            "mro_migration_complete",
-            project=project_path.name,
-            migrations=len(report.migrations),
-        )
-        ctx.files_modified |= {
-            *(migration.file for migration in report.migrations),
-            *(rewrite.file for rewrite in report.rewrites),
-        }
-        ctx.violations_fixed.extend(
-            m.Infra.CensusViolation(
-                module=migration.module,
-                rule="MRO",
-                line=1,
-                message=(
-                    f"migrated {', '.join(migration.moved_symbols) or 'symbols'}"
-                    " into facade MRO"
-                ),
-                fixable=True,
-            )
-            for migration in report.migrations
-        )
-        ctx.violations_fixed.extend(
-            m.Infra.CensusViolation(
-                module=rewrite.file,
-                rule="MRO-REWRITE",
-                line=1,
-                message=f"rewrote {rewrite.replacements} consumer references",
-                fixable=True,
-            )
-            for rewrite in report.rewrites
-        )
-        ctx.violations_skipped.extend(
-            m.Infra.CensusViolation(
-                module=project_path.name,
-                rule="MRO",
-                line=0,
-                message=error,
-                fixable=False,
-            )
-            for error in report.errors
-        )
 
     @staticmethod
     def _run_namespace_enforcement(ctx: m.Infra.FixContext, project_path: Path) -> None:

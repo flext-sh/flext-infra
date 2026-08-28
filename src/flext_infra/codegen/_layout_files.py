@@ -1,4 +1,4 @@
-"""Filesystem and Git primitives for the layout engine apply path (mro-0wuz).
+"""Filesystem and Git primitives for the layout engine apply path (flext-0wuz).
 
 Archive-not-delete law: nothing is ever destroyed; collisions and duplicates
 move content into ``<archive_root>/<project>/``. Git checkouts use ``git mv``
@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import config, m, p, t, u
+from flext_infra import config, m, p, r, t, u
+from flext_infra._utilities._sort_keys import path_depth
 
 
 class FlextInfraCodegenLayoutFilesMixin:
@@ -152,7 +152,7 @@ class FlextInfraCodegenLayoutFilesMixin:
         """Remove directories left empty by a merge, deepest first."""
         dirs = sorted(
             (path for path in root.rglob("*") if path.is_dir()),
-            key=lambda path: len(path.parts),
+            key=path_depth,
             reverse=True,
         )
         for path in (*dirs, root):

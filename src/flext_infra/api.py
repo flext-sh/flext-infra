@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
-    """Thin public MRO facade over infra services."""
+    """Thin public FLEXT facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"
 
@@ -27,7 +27,7 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
         self, workspace_root: Path | None = None
     ) -> p.Infra.RopeWorkspaceDsl:
         """Open the public Rope workspace DSL directly from the facade."""
-        # NOTE (multi-agent, mro-wkii.17.24): Rope reads its source policy
+        # NOTE (multi-agent, flext-wkii.17.24): Rope reads its source policy
         # directly from config.Infra at the service boundary.
         resolved_root = (
             self.workspace_root if workspace_root is None else workspace_root

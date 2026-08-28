@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import operator
 from pathlib import Path
 
 from flext_core import r
@@ -145,7 +146,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
         if total_errors > 0:
             u.Cli.info("Errors by project:")
             for project in sorted(
-                results, key=lambda item: item.total_errors, reverse=True
+                results, key=operator.attrgetter("total_errors"), reverse=True
             ):
                 if project.total_errors == 0:
                     continue

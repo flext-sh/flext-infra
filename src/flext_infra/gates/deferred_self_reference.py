@@ -9,7 +9,7 @@ cannot name what it depends on while its own class body executes:
 * a field annotated with its own owner cannot be instantiated while that
   owner is still incomplete.
 
-The canonical repair is diamond-MRO composition: hoist the referenced model
+The canonical repair is diamond-FLEXT composition: hoist the referenced model
 into its own namespace class, inherit that namespace, and reference the model
 as a resolved base-class attribute.
 """

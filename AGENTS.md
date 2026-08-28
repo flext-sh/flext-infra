@@ -1,7 +1,9 @@
 # AGENTS.md — flext-infra
 
-This file is the complete repository-local execution contract. It works in a
-standalone checkout and does not require a parent workspace or a user-home file.
+This repository is a standalone authority. Never climb to a parent checkout or
+fetch remote instructions, build files, roots, environments, or runtimes.
+Provider governance may add a minimal prelude, but this repository owns the
+package-specific body below.
 
 <!-- AIHUB-AGENTS-SCOPE-LOCAL-BEGIN -->
 **Package:** `flext_infra` · ~82k src LOC · deps: `flext-cli`, `flext-core`

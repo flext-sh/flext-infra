@@ -78,11 +78,8 @@ if TYPE_CHECKING:
     from .github import FlextInfraUtilitiesGithub
     from .github_pr import FlextInfraUtilitiesGithubPr
     from .log_parser import FlextInfraUtilitiesLogParser
-    from .mro_scan import FlextInfraUtilitiesRefactorMroScan
-    from .mro_scan_catalog import FlextInfraUtilitiesMroScanCatalog
-    from .mro_scan_source import FlextInfraUtilitiesMroScanSource
     from .namespace import FlextInfraUtilitiesCodegenNamespace
-    from .namespace_analysis import FlextInfraUtilitiesRefactorNamespaceMro
+    from .namespace_analysis import FlextInfraUtilitiesRefactorNamespaceFlext
     from .namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
@@ -113,7 +110,6 @@ if TYPE_CHECKING:
     from .rope_imports import FlextInfraUtilitiesRopeImports
     from .rope_inventory import FlextInfraUtilitiesRopeInventory
     from .rope_module_patch import FlextInfraUtilitiesRopeModulePatch
-    from .rope_mro_transform import FlextInfraUtilitiesRopeMroTransform
     from .rope_runtime import FlextInfraUtilitiesRopeRuntime
     from .rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
     from .rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
@@ -177,8 +173,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGithubPrSingleMixin",
     "FlextInfraUtilitiesGithubSyncMixin",
     "FlextInfraUtilitiesLogParser",
-    "FlextInfraUtilitiesMroScanCatalog",
-    "FlextInfraUtilitiesMroScanSource",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesProcess",
     "FlextInfraUtilitiesProjectDiscovery",
@@ -195,11 +189,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorDiscovery",
-    "FlextInfraUtilitiesRefactorMroScan",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
+    "FlextInfraUtilitiesRefactorNamespaceFlext",
     "FlextInfraUtilitiesRefactorNamespaceMoves",
-    "FlextInfraUtilitiesRefactorNamespaceMro",
     "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
@@ -216,7 +209,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeInventory",
     "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
-    "FlextInfraUtilitiesRopeMroTransform",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
     "FlextInfraUtilitiesRopeRuntimeBase",
@@ -322,11 +314,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".github": ("FlextInfraUtilitiesGithub",),
             ".github_pr": ("FlextInfraUtilitiesGithubPr",),
             ".log_parser": ("FlextInfraUtilitiesLogParser",),
-            ".mro_scan": ("FlextInfraUtilitiesRefactorMroScan",),
-            ".mro_scan_catalog": ("FlextInfraUtilitiesMroScanCatalog",),
-            ".mro_scan_source": ("FlextInfraUtilitiesMroScanSource",),
             ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
-            ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceMro",),
+            ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceFlext",),
             ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
@@ -359,7 +348,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_imports": ("FlextInfraUtilitiesRopeImports",),
             ".rope_inventory": ("FlextInfraUtilitiesRopeInventory",),
             ".rope_module_patch": ("FlextInfraUtilitiesRopeModulePatch",),
-            ".rope_mro_transform": ("FlextInfraUtilitiesRopeMroTransform",),
             ".rope_runtime": ("FlextInfraUtilitiesRopeRuntime",),
             ".rope_runtime_base": ("FlextInfraUtilitiesRopeRuntimeBase",),
             ".rope_runtime_modules": ("FlextInfraUtilitiesRopeRuntimeModules",),

@@ -11,7 +11,6 @@ import pytest
 from flext_core import r
 from flext_infra import c, config, u
 from flext_infra.validate.pytest_runner import FlextInfraPytestRunner
-from flext_infra.validate.testmon_db import FlextInfraTestmonDbInvalidator
 from flext_tests import tm
 
 if TYPE_CHECKING:
@@ -55,6 +54,7 @@ class TestsFlextInfraPytestRunner:
         file: str | None = None,
         match: str | None = None,
         what: str | None = None,
+        fail_fast: bool = False,
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -66,6 +66,7 @@ class TestsFlextInfraPytestRunner:
             what=what,
             target="tests",
             reports=".reports/tests",
+            fail_fast=fail_fast,
         )
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
@@ -75,16 +76,57 @@ class TestsFlextInfraPytestRunner:
         test_file.parent.mkdir(parents=True)
         test_file.write_text("", encoding="utf-8")
         nodeid = "tests/sample % test.py::TestsSample::test exact"
-        runner = self._runner(tmp_path, file=nodeid, match="exact")
+        runner = self._runner(tmp_path, file=nodeid, match="exact and not slow")
         report_dir = tmp_path / ".reports" / "tests" / "run"
 
         command = runner.build_command(report_dir)
 
-        tm.that(command, has=[nodeid, "-k", "exact", "-n", "0"])
-        tm.that(command, has=["--testmon", "--testmon-forceselect", "--no-cov"])
-        tm.that(command, lacks="--testmon-noselect")
+        tm.that(command, has=[nodeid, "-k", "exact and not slow", "-n", "0"])
+        tm.that(command, has="--no-cov")
+        tm.that(command, lacks="--testmon")
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
+
+    def test_green_child_with_zero_executed_tests_fails_loudly(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        test_file = tmp_path / "tests" / "sample_test.py"
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text("", encoding="utf-8")
+        runner = self._runner(tmp_path, file="tests/sample_test.py")
+
+        def fake_run_to_file(
+            cmd: t.StrSequence,
+            output_file: t.Cli.TextPath,
+            cwd: t.Cli.TextPath | None = None,
+            timeout: int | None = None,
+            env: t.StrMapping | None = None,
+            remove_env_keys: t.StrSequence = (),
+            input_data: str | bytes | None = None,
+            *,
+            live: bool = False,
+            deadline: p.Cli.ProcessDeadline | None = None,
+        ) -> p.Result[int]:
+            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
+            log_path = Path(output_file)
+            report_dir = log_path.parent
+            log_path.write_text("1 deselected in 0.01s\n", encoding="utf-8")
+            (report_dir / "junit.xml").write_text(
+                (
+                    '<?xml version="1.0"?>'
+                    '<testsuites><testsuite tests="0" failures="0" errors="0" '
+                    'skipped="0" time="0.01"/></testsuites>'
+                ),
+                encoding="utf-8",
+            )
+            _dump_real_profile(report_dir / "pytest.pstats")
+            return r[int].ok(0)
+
+        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+
+        result = runner.execute()
+
+        tm.fail(result, has="pytest completed without executing tests")
 
     def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
         runner = self._runner(tmp_path)
@@ -128,6 +170,19 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(report_dir)
 
         tm.that(command, has="--benchmark-disable")
+
+    def test_fail_fast_full_run_uses_one_process_and_stops_after_first_failure(
+        self, tmp_path: Path
+    ) -> None:
+        """Prevent already-running xdist workers from reporting later failures."""
+        runner = self._runner(tmp_path, fail_fast=True)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+
+        command = runner.build_command(report_dir)
+
+        tm.that(command, has=["-x", "-n", "0"])
+        tm.that(command, lacks="--dist")
+        tm.that(command, lacks="--benchmark-disable")
 
     def test_focused_run_keeps_benchmarks_enabled(self, tmp_path: Path) -> None:
         """A focused run is single-process, so benchmarks stay measurable."""
@@ -339,11 +394,6 @@ class TestsFlextInfraPytestRunner:
             return r[int].ok(0)
 
         monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
-        monkeypatch.setattr(
-            FlextInfraTestmonDbInvalidator,
-            "execute",
-            lambda _self: r[tuple[str, ...]].ok(("tests/sample_test.py::test_ok",)),
-        )
 
         exit_code: int = tm.ok(runner.execute())
         latest = (
@@ -357,24 +407,6 @@ class TestsFlextInfraPytestRunner:
 
         tm.that(exit_code, eq=0)
         tm.that(summary, has="coverage=not-generated")
-
-    def test_focused_invalidation_failure_precedes_report_side_effects(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        test_file = tmp_path / "tests" / "sample_test.py"
-        test_file.parent.mkdir(parents=True)
-        test_file.write_text("", encoding="utf-8")
-        runner = self._runner(tmp_path, file="tests/sample_test.py")
-        monkeypatch.setattr(
-            FlextInfraTestmonDbInvalidator,
-            "execute",
-            lambda _self: r[tuple[str, ...]].fail("focused selector exceeds limit"),
-        )
-
-        result = runner.execute()
-
-        tm.fail(result, has="focused selector exceeds limit")
-        tm.that((tmp_path / ".reports").exists(), eq=False)
 
     def test_timeout_preserves_exit_124_without_partial_artifacts(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -458,53 +490,14 @@ class TestsFlextInfraPytestRunner:
         tm.that(exit_code, eq=1)
         tm.that(summary, has=["failed=1", "exit=1", "state=COMPLETED"])
 
-    def test_zero_collected_tests_preserves_pytest_exit_five(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        runner = self._runner(tmp_path)
-
-        def fake_run_to_file(*args: object, **kwargs: object) -> p.Result[int]:
-            del kwargs
-            output_file = args[1]
-            assert isinstance(output_file, (str, Path))
-            report_dir = Path(output_file).parent
-            Path(output_file).write_text("no tests ran in 0.01s\n", encoding="utf-8")
-            (report_dir / "junit.xml").write_text(
-                '<?xml version="1.0"?><testsuites><testsuite tests="0"/></testsuites>',
-                encoding="utf-8",
-            )
-            _dump_real_profile(report_dir / "pytest.pstats")
-            return r[int].ok(0)
-
-        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
-
-        exit_code = tm.ok(runner.execute())
-        summary_path = next((tmp_path / ".reports" / "tests").glob("*/summary.txt"))
-        summary = summary_path.read_text(encoding="utf-8")
-
-        tm.that(exit_code, eq=c.Infra.PYTEST_NO_TESTS_EXIT_CODE)
-        tm.that(summary, has=["tests=0", "exit=5"])
-
-    def test_local_incremental_argv_keeps_testmon_selection(
+    def test_local_full_argv_keeps_testmon_without_coverage(
         self, tmp_path: Path
     ) -> None:
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
-        tm.that(command, lacks="--testmon-noselect")
         tm.that(command, lacks="--cov-report")
         tm.that(any(arg == "--cov" for arg in command), eq=False)
-
-    def test_explicit_full_argv_refreshes_testmon_without_deselection(
-        self, tmp_path: Path
-    ) -> None:
-        runner = self._runner(tmp_path, what="full")
-        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--no-cov"])
-        tm.that(
-            command,
-            lacks=["--testmon-forceselect", "--testmon-noselect", "--cov-report"],
-        )
 
     def test_cov_y_disables_testmon_and_enables_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -529,26 +522,24 @@ class TestsFlextInfraPytestRunner:
         with pytest.raises(ValueError, match="COV=Y forbids FILE=/MATCH="):
             runner.build_command(tmp_path / ".reports" / "tests" / "run")
 
-    def test_ci_y_executes_tests_and_refreshes_testmon(
+    def test_ci_y_disables_coverage_keeps_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--testmon-forceselect", "--no-cov"])
-        tm.that(command, lacks="--testmon-noselect")
+        tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
         tm.that(command, has=["-m", "not docker and not remote"])
 
-    def test_ci_full_keeps_the_complete_marker_scope(
+    def test_ci_y_forbids_pytest_execute(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        """flext-v4p5: make test under CI=Y must fail loud, not run the suite."""
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
-        runner = self._runner(tmp_path, what="full")
-        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
-        tm.that(command, has=["--testmon", "--no-cov"])
-        tm.that(command, lacks=["--testmon-forceselect", "--testmon-noselect"])
-        tm.that(command, lacks="not docker and not remote")
+        runner = self._runner(tmp_path, what="all")
+        result = runner.execute()
+        tm.fail(result, has="forbidden under CI=Y")
 
     def test_ci_true_keeps_default_testmon_without_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -558,14 +549,13 @@ class TestsFlextInfraPytestRunner:
         runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
-        tm.that(command, lacks="--testmon-noselect")
         tm.that(command, lacks="not docker and not remote")
 
     def test_local_full_argv_keeps_docker_remote_markers_selected(
         self, tmp_path: Path
     ) -> None:
         """Without CI=Y the runner must not deselect docker/remote suites."""
-        runner = self._runner(tmp_path, what="full")
+        runner = self._runner(tmp_path, what="all")
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, lacks="not docker and not remote")
 
@@ -586,3 +576,29 @@ class TestsFlextInfraPytestRunner:
         exit_code: int = tm.ok(runner.execute())
         tm.that(exit_code, eq=0)
         tm.that(called, eq=[])
+
+    def test_cache_clear_requires_apply(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv(config.Infra.codegen.make.apply_variable, raising=False)
+        runner = self._runner(tmp_path, what="cache-clear")
+        result = runner.execute()
+        tm.that(result.failure, eq=True)
+        tm.that(result.error or "", has="cache-clear requires")
+
+    def test_cache_clear_removes_db(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        db = tmp_path / ".testmondata"
+        wal = tmp_path / ".testmondata-wal"
+        db.write_bytes(b"db")
+        wal.write_bytes(b"wal")
+        monkeypatch.setenv(
+            config.Infra.codegen.make.apply_variable,
+            config.Infra.codegen.make.apply_value,
+        )
+        runner = self._runner(tmp_path, what="cache-clear")
+        exit_code: int = tm.ok(runner.execute())
+        tm.that(exit_code, eq=0)
+        tm.that(db.exists(), eq=False)
+        tm.that(wal.exists(), eq=False)

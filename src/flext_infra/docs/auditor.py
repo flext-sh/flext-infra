@@ -29,13 +29,13 @@ class FlextInfraDocAuditor(
         bool, m.Field(alias="strict", description="Strict audit mode")
     ] = False
 
-    # kimi-docs mro-3o9s: seletor de checks via CLI como --checks (flag --check é o
+    # kimi-docs flext-3o9s: seletor de checks via CLI como --checks (flag --check é o
     # alias bool de check_only na base); default "all" = comportamento anterior.
     checks: Annotated[
         str, m.Field(description="Comma-separated audit checks (default: all)")
     ] = "all"
 
-    # kimi-docs mro-3o9s: threshold de cobertura de docstrings via CLI
+    # kimi-docs flext-3o9s: threshold de cobertura de docstrings via CLI
     # (--docstring-min); None = desativado. Substitui o interrogate paralelo.
     docstring_min: Annotated[
         float | None,

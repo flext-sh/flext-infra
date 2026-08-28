@@ -1,4 +1,4 @@
-"""Gitignore ownership for the layout engine apply path (mro-0wuz).
+"""Gitignore ownership for the layout engine apply path (flext-0wuz).
 
 Codegen-managed projects converge through the canonical conform render (one
 owner, one template); unmanaged or external projects receive idempotent
@@ -12,8 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_core import r
-from flext_infra import c, config, p, t, u
+from flext_infra import c, config, p, r, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -25,16 +24,17 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         self, project_dir: Path, patterns: t.StrSequence
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Ensure gitignore patterns via the canonical render or appending."""
-        if self._is_managed(project_dir):
-            return self._apply_gitignore_managed(project_dir)
+        profile = self._managed_profile(project_dir)
+        if profile is not None:
+            return self._apply_gitignore_managed(project_dir, profile)
         return self._apply_gitignore_append(project_dir, patterns)
 
     def _apply_gitignore_managed(
-        self, project_dir: Path
+        self, project_dir: Path, profile: c.Infra.MakeProfile
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Write the canonical rendered gitignore for a governed project."""
         rendered = FlextInfraCodegenConform.render_project_gitignore(
-            config.Infra.codegen, project_name=project_dir.name
+            config.Infra.codegen, profile=profile, project_name=project_dir.name
         )
         if rendered.failure:
             return r[t.Infra.LayoutStatus].fail(
@@ -94,10 +94,22 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         return r[t.Infra.LayoutStatus].ok("applied")
 
     @staticmethod
-    def _is_managed(project_dir: Path) -> bool:
-        """Return whether the project declares the managed FLEXT contract."""
-        target = FlextInfraWorkspaceDetector.conform_target(project_dir)
-        return target.success
+    def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
+        """Make profile when the project is governed by a workspace."""
+        workspace_root = FlextInfraWorkspaceDetector.resolve_workspace_root(project_dir)
+        if workspace_root.failure:
+            return None
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            workspace_root.value
+        )
+        if workspace.failure:
+            return None
+        target = FlextInfraWorkspaceDetector.conform_target(
+            project_dir, workspace.value
+        )
+        if target.failure:
+            return None
+        return target.value.make_profile
 
 
 __all__: list[str] = ["FlextInfraCodegenLayoutGitignoreMixin"]

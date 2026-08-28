@@ -18,7 +18,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.MARKDOWN
     gate_name: ClassVar[str] = "Markdown"
-    # mro-38p39: the linter flags MD009/MD012 and friends with its own `[*]`
+    # flext-38p39: the linter flags MD009/MD012 and friends with its own `[*]`
     # auto-fixable marker, so `make check` blocked on findings that no canonical
     # verb could repair -- `make fmt APPLY=Y` covers Python only and `make fix
     # APPLY=Y` skipped this gate, both exiting 0. The tool supports `--fix`, so
@@ -36,12 +36,11 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         ]
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
-        """Resolve the nearest repository-owned markdown settings."""
-        for candidate_dir in (project_dir, *project_dir.parents):
-            config_path = candidate_dir / ".markdownlint.json"
-            if config_path.is_file():
-                return ["--config", str(config_path.resolve())]
-        return []
+        """Resolve only the repository-local markdown settings owner."""
+        config_path = project_dir / ".markdownlint.json"
+        if not config_path.is_file():
+            return []
+        return ["--config", str(config_path.resolve())]
 
     @override
     def _get_check_dirs(

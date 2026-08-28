@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_tests import tm
 from tests import u
@@ -28,6 +30,7 @@ def _project_info(
     )
 
 
+@pytest.mark.slow
 def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
     external_project = tmp_path / "external-project"
     external_project.mkdir()
@@ -39,7 +42,7 @@ def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
     (pkg / "typings.py").write_text("pass\n")
     (pkg / "constants.py").write_text("pass\n")
     (pkg / "base.py").write_text("import typing\nT = typing.TypeVar('T')\n")
-    u.Tests.create_codegen_project(
+    managed_project = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
         pkg_name="test_proj",
@@ -49,6 +52,7 @@ def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
             '__all__: list[str] = ["TestProjBase", "T"]\n'
         },
     )
+    u.Tests.declare_workspace_projects(tmp_path, (managed_project.name,))
     fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
     results = fixer.fix_workspace()
     project_names = [res.project for res in results]

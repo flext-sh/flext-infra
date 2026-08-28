@@ -327,7 +327,9 @@ class FlextInfraConstantsSourceCode:
     "Regex: ``from <module> import (`` capturing the module name."
 
     @staticmethod
-    def compile_mro_import_rewrite(module_name: str, old_symbol: str) -> t.RegexPattern:
+    def compile_flext_import_rewrite(
+        module_name: str, old_symbol: str
+    ) -> t.RegexPattern:
         r"""Compile ``(from <module> import )(\b<old>\b)`` — captures both groups."""
         return re.compile(
             rf"(from\s+{re.escape(module_name)}\s+import\s+)"
@@ -335,7 +337,7 @@ class FlextInfraConstantsSourceCode:
         )
 
     @staticmethod
-    def compile_mro_facade_alias_import(
+    def compile_flext_facade_alias_import(
         module_name: str, facade_alias: str
     ) -> t.RegexPattern:
         r"""Compile ``^from <module> import <facade> as (alias)$`` (MULTILINE) capturing the alias."""
@@ -346,13 +348,13 @@ class FlextInfraConstantsSourceCode:
         )
 
     @staticmethod
-    def compile_mro_alias_reference(alias_name: str) -> t.RegexPattern:
+    def compile_flext_alias_reference(alias_name: str) -> t.RegexPattern:
         r"""Compile a bare ``<alias>`` reference (excludes attribute suffixes and import binders)."""
         return re.compile(rf"(?<![.\w])(?<!from )(?<!import ){re.escape(alias_name)}\b")
 
     @staticmethod
-    def compile_mro_bare_qualify(old_symbol: str) -> t.RegexPattern:
-        """Compile bare-symbol qualification pattern for MRO propagator (excludes def/class/import/dot/assign/call)."""
+    def compile_flext_bare_qualify(old_symbol: str) -> t.RegexPattern:
+        """Compile bare-symbol qualification pattern for FLEXT propagator (excludes def/class/import/dot/assign/call)."""
         escaped = re.escape(old_symbol)
         return re.compile(
             rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
@@ -361,7 +363,9 @@ class FlextInfraConstantsSourceCode:
         )
 
     @staticmethod
-    def compile_mro_prefixed_annotation(prefix: str, old_symbol: str) -> t.RegexPattern:
+    def compile_flext_prefixed_annotation(
+        prefix: str, old_symbol: str
+    ) -> t.RegexPattern:
         r"""Compile ``(<prefix>[ \t]*)\b<old>\b`` for annotation-prefixed qualification."""
         escaped_prefix = re.escape(prefix)
         return re.compile(rf"({escaped_prefix}[ \t]*)\b{re.escape(old_symbol)}\b")
@@ -545,7 +549,7 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: pytest block-end markers (summary/warnings/timing)."
 
-    # mro-r3r8: analyzers cover production; pytest owns executable test validation.
+    # flext-r3r8: analyzers cover production; pytest owns executable test validation.
     CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = ("src",)
     "Productive Python root passed positionally to subproject analyzers."
 

@@ -23,7 +23,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         m.Field(description="Optional Rope project root; defaults to workspace_root"),
     ] = None
 
-    _rope_workspace_root: Path = u.PrivateAttr()
+    _rope_workspace_root: Path
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
         default_factory=lambda: None
     )
@@ -72,7 +72,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         cls, workspace_root: Path, *, rope_workspace_root: Path | None = None
     ) -> Self:
         """Create one ready-to-use Rope workspace session."""
-        # NOTE (multi-agent, mro-wkii.17.24): scan policy is owned only by the
+        # NOTE (multi-agent, flext-wkii.17.24): scan policy is owned only by the
         # validated config singleton, never copied into a session.
         workspace = cls(
             workspace_root=workspace_root,
@@ -195,11 +195,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self, *, project_names: t.StrSequence | None = None
     ) -> t.SequenceOf[m.Infra.RopeModuleIndexEntry]:
         """Return sorted module entries, optionally filtered by project names."""
+
+        def module_path(entry: m.Infra.RopeModuleIndexEntry) -> str:
+            return entry.file_path.as_posix()
+
         modules = tuple(
-            sorted(
-                self.workspace_index.modules_by_path.values(),
-                key=lambda entry: entry.file_path.as_posix(),
-            )
+            sorted(self.workspace_index.modules_by_path.values(), key=module_path)
         )
         if not project_names:
             return modules

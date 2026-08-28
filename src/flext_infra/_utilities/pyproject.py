@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, t
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -218,6 +219,22 @@ class FlextInfraUtilitiesPyproject:
         return FlextInfraUtilitiesPyproject.package_name_from_payload(
             project_root, payload, docs_meta
         )
+
+    @staticmethod
+    @cache
+    def workspace_project_paths(workspace_root: Path) -> t.StrSequence:
+        """Return project paths declared by this directory's own ``.gitmodules``.
+
+        A missing file denotes a standalone project and therefore an empty
+        sequence. A malformed declaration is an invalid workspace contract and
+        remains a loud error; no pyproject table or parent directory is used as
+        an alternate topology source.
+        """
+        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(workspace_root)
+        if declared.failure:
+            msg = declared.error or f"invalid workspace topology: {workspace_root}"
+            raise ValueError(msg)
+        return tuple(path.as_posix() for path in declared.value)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPyproject"]

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import MappingProxyType
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-from flext_infra import t
+from flext_infra import c, t
+from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -18,6 +18,30 @@ class FlextInfraModelsWorkspace:
     - ``ArbitraryTypesModel`` for mutable discovery payloads.
     - ``ContractModel`` reserved for immutable workspace settings contracts.
     """
+
+    class WorkspaceEnvironmentRequest(m.ContractModel):
+        """Read-only request for validating the active workspace environment."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        workspace_root: Annotated[
+            Path, m.Field(alias="workspace", description="Workspace root path")
+        ]
+
+    class FlextBindingRequest(m.ContractModel):
+        """Session request binding one consumer onto a flext worktree."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+
+        workspace_root: Annotated[
+            Path, m.Field(alias="workspace", description="Consumer project root")
+        ]
+        flext_root: Annotated[
+            Path, m.Field(description="Flext worktree supplying the packages")
+        ]
+        python: Annotated[
+            Path, m.Field(description="Interpreter of the environment to rebind")
+        ]
 
     class DirectUrlDirectoryInfo(m.ContractModel):
         """PEP 610 directory metadata for one installed distribution."""
@@ -56,6 +80,10 @@ class FlextInfraModelsWorkspace:
         package_name: Annotated[
             str, m.Field(description="Primary Python package name")
         ] = ""
+        workspace_role: Annotated[
+            c.Infra.WorkspaceProjectRole,
+            m.Field(description="Repository-local topology role"),
+        ] = c.Infra.WorkspaceProjectRole.STANDALONE
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.
@@ -72,10 +100,10 @@ class FlextInfraModelsWorkspace:
         pyproject_path: Annotated[Path, m.Field(description="Resolved pyproject path")]
         payload: Annotated[
             t.JsonMapping, m.Field(description="Parsed pyproject payload")
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         docs_meta: Annotated[
             t.JsonMapping, m.Field(description="Parsed tool.flext.docs payload")
-        ] = m.Field(default_factory=lambda: MappingProxyType({}))
+        ] = m.Field(default_factory=ImmutableEmptyMapping)
         project_name: Annotated[str, m.Field(description="Declared project name")] = ""
         package_name: Annotated[str, m.Field(description="Primary package name")] = ""
         dependency_names: Annotated[

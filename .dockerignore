@@ -7,6 +7,10 @@
 !README.md
 !uv.lock
 !.mise.toml
+!mise.lock
+!bin/
+!bin/mise
+!bin/mise.cmd
 !.python-version
 !.default-python-packages
 !config/

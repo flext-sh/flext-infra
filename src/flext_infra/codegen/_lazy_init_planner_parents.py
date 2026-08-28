@@ -50,8 +50,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
         )
         declared_packages = tuple(
             package_name
-            for alias_name, target in state.declared_imports.items()
-            if alias_name in c.Infra.PUBLIC_ROOT_ALIAS_ORDER
+            for target in state.declared_imports.values()
             if (package_name := self._package_name_from_target(target))
             and package_name != current_pkg
         )
@@ -68,14 +67,13 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 module_file, current_pkg, seen
             )
         )
-        # mro-j47u (codex): Rope state is the sole parent fact source; the old
+        # flext-j47u (codex): Rope state is the sole parent fact source; the old
         # stdlib-AST fallback duplicated this exact import/class walk.
         parents: list[str] = []
         for package_name in (*base_packages, *declared_packages, *same_package_parents):
             if (
                 package_name
                 and package_name != current_pkg
-                and not package_name.startswith(f"{current_pkg}.")
                 and package_name not in parents
             ):
                 parents.append(package_name)
@@ -107,8 +105,18 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
     ) -> str:
         """Return the package that owns the given alias in the inheritance chain."""
         candidate_packages: t.StrSequence = tuple(
-            name for name in package_names if name and name != current_pkg
+            name for name in package_names if name
         )
+        canonical_target = (
+            c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
+            if use_test_runtime_aliases
+            else None
+        )
+        if canonical_target is not None:
+            # flext-j47u (codex): TEST_RUNTIME_ALIAS_TARGETS is a StrPair mapping.
+            canonical_package: str = canonical_target[0]
+            if canonical_package != current_pkg:
+                return canonical_package
         for package_name in candidate_packages:
             if alias_name in self._export_names_for_package(package_name):
                 return f"{package_name}"
@@ -119,15 +127,6 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
                 and alias_name in u.Infra.installed_package_exports(package_name)
             ):
                 return f"{package_name}"
-        canonical_target = (
-            c.Infra.TEST_RUNTIME_ALIAS_TARGETS.get(alias_name)
-            if use_test_runtime_aliases
-            else None
-        )
-        if canonical_target is not None:
-            canonical_package: str = canonical_target[0]
-            if canonical_package != current_pkg:
-                return canonical_package
         return ""
 
     def _package_name_from_target(self, target: str) -> str:
@@ -148,7 +147,7 @@ class FlextInfraCodegenLazyInitPlannerParentsMixin:
             and sibling_package_root.joinpath(c.Infra.INIT_PY).is_file()
         ):
             return parts[0]
-        # Why (mro-27a9e.1, multi-agent): project-scoped Rope indexes omit
+        # Why (flext-27a9e.1, multi-agent): project-scoped Rope indexes omit
         # installed parents; u.Infra owns environment package discovery.
         if u.Infra.package_importable(parts[0]):
             return parts[0]

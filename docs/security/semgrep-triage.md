@@ -2,7 +2,7 @@
 
 Gerado do dump da plataforma Semgrep (deployment `datacosmos`, 2026-08-06).
 
-Bead: `mro-p57t.12`
+Bead: `flext-p57t.12`
 
 ## Resumo
 
@@ -129,7 +129,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
        39              return
 >>>    40          module = import_module(cls._default_post_hook_module)
        41          owner = getattr(module, cls._default_post_hook_owner)
-       42          cls.register_rope_post_hook(cast("p.Infra.RopePostHook", owner.run_as_hook))
+       42          retired_dynamic_hook_registration()
        43          cls._default_post_hooks_registered = True
        44  
 ```

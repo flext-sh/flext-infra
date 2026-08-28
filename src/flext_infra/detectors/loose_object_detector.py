@@ -154,7 +154,7 @@ class FlextInfraLooseObjectDetector:
     def _allows_private_base_module_classes(
         cls, *, file_path: Path, class_symbols: t.SequenceOf[m.Infra.SymbolInfo]
     ) -> bool:
-        """Return whether a private ``_base.py`` module satisfies MRO contracts."""
+        """Return whether a private ``_base.py`` module satisfies FLEXT contracts."""
         if file_path.name != c.Infra.NAMESPACE_PRIVATE_BASE_MODULE:
             return False
         if not class_symbols:

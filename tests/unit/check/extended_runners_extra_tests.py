@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core import r
-from flext_infra import c
+import pytest
+
+from flext_infra import c, r
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
@@ -107,6 +108,18 @@ class TestExtendedRunnerExtras:
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)
+
+    def test_bandit_uses_workspace_interpreter_with_sanitized_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Prove the gate cannot bind a host or mise-provided executable."""
+        _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        monkeypatch.setenv("PATH", "/usr/bin:/bin")
+
+        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(result.issues, eq=())
 
     def test_bandit_handles_invalid_json(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)

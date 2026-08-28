@@ -2,7 +2,7 @@
 
 Both defects share one root cause: a nested model that cannot name what it
 depends on while its own class body executes. The canonical repair is
-diamond-MRO composition, so the detector must fire on the deferral and stay
+diamond-FLEXT composition, so the detector must fire on the deferral and stay
 silent once the model is composed through inherited namespaces.
 """
 
@@ -58,7 +58,7 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
         )
         tm.that(self._codes(tmp_path, source), eq=(_DEFERRED,))
 
-    def test_diamond_mro_composition_is_accepted(self, tmp_path: Path) -> None:
+    def test_diamond_flext_composition_is_accepted(self, tmp_path: Path) -> None:
         """The canonical repair resolves the model eagerly, so it must be clean."""
         source = (
             "class Base:\n"
@@ -114,7 +114,7 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
         )
         tm.that(self._codes(tmp_path, source), eq=())
 
-    def test_report_names_the_mro_repair(self, tmp_path: Path) -> None:
+    def test_report_names_the_flext_repair(self, tmp_path: Path) -> None:
         """The finding must tell the author how to fix it, not just that it failed."""
         project = tmp_path / "demo-project"
         package_dir = project / "src" / "demo_project"
@@ -139,5 +139,5 @@ class TestsFlextInfraDeferredSelfReferenceDetector:
                 )
             )
         tm.that(len(issues), eq=1)
-        tm.that(issues[0].message, has="MRO")
+        tm.that(issues[0].message, has="FLEXT")
         tm.that(issues[0].line, eq=5)

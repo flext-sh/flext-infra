@@ -8,7 +8,7 @@ repos:
       # with the invoking environment, so a caller that already exported
       # CI={{ make.ci.value }} would otherwise reach the pre-push steps and
       # revoke exactly the gates a push must not skip (9b604d43: lint, format,
-      # pyrefly; mro-v4p5: pytest). Declaring the token closes that carrier.
+      # pyrefly; flext-v4p5: pytest). Declaring the token closes that carrier.
       # pre-commit is the fast mutation pass and runs the CI gate set
       # (CI={{ make.ci.value }}). pre-push is the local blocking gate and runs
       # the full set with CI={{ make.ci.local_value }}, the local arm of the same
@@ -21,7 +21,7 @@ repos:
       # reads the member's temporary index and reports governed gitlinks missing.
       # WHAT/MAKEFLAGS/APPLY are cleared in the same prefix so caller selectors
       # and write intent cannot leak into an independently declared hook step.
-      # A step declaring gates_skip (mro-ucxgl) narrows CHECK_GATES for the hook
+      # A step declaring gates_skip (flext-ucxgl) narrows CHECK_GATES for the hook
       # context only: local `make check` and the `docs` verb keep the full set.
       # Stage gates (operator law 2026-08-24): each stage renders only when its
       # config gate (make.pre_commit / make.pre_push) is enabled. Disabled by
@@ -32,7 +32,7 @@ repos:
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'scope() { if [ -f "$(git rev-parse --show-toplevel)/.gitmodules" ]; then echo "workspace type (.gitmodules): hook gates are self-scope only; member hooks and push CI own member gates"; return 1; fi; return 0; }; scope || exit 0; unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
+          bash -eu -o pipefail -c 'scope() { local root; root=$(git rev-parse --show-toplevel); if [ -f "$root/.gitmodules" ]; then echo "workspace type (.gitmodules): hook gates are self-scope only; member hooks and push CI own member gates"; return 10; fi; return 0; }; if scope; then :; else status=$?; if [ "$status" -eq 10 ]; then exit 0; fi; exit "$status"; fi; git_env=$(git rev-parse --local-env-vars); unset $git_env; unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-commit]
@@ -44,7 +44,7 @@ repos:
         name: make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
         language: system
         entry: >-
-          bash -eu -o pipefail -c 'scope() { if [ -f "$(git rev-parse --show-toplevel)/.gitmodules" ]; then echo "workspace type (.gitmodules): hook gates are self-scope only; member hooks and push CI own member gates"; return 1; fi; return 0; }; scope || exit 0; guard() { local branch=$(git branch --show-current); {% for pattern in make.work_in_progress.branch_patterns %}if [[ "$branch" =~ {{ pattern }} ]]; then echo "WIP branch $branch: skipping pre-push gate"; return 1; fi; {% endfor %}{% if make.work_in_progress.draft_pr %}if command -v gh >/dev/null 2>&1; then local draft=$(gh pr view --json isDraft --jq ".isDraft" 2>/dev/null); if [ -z "$draft" ]; then echo "PR state unresolvable: skipping pre-push gate (fail-open)"; return 1; fi; if [ "$draft" = "true" ]; then echo "DRAFT PR: skipping pre-push gate"; return 1; fi; else echo "gh unavailable: skipping pre-push gate (fail-open)"; return 1; fi; {% endif %}return 0; }; guard || exit 0; unset $(git rev-parse --local-env-vars); unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.local_value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
+          bash -eu -o pipefail -c 'scope() { local root; root=$(git rev-parse --show-toplevel); if [ -f "$root/.gitmodules" ]; then echo "workspace type (.gitmodules): hook gates are self-scope only; member hooks and push CI own member gates"; return 10; fi; return 0; }; guard() { local branch pr_states state status count=0 draft=; branch=$(git branch --show-current); if [ -z "$branch" ]; then echo "ERROR: pre-push gate requires an attached branch" >&2; return 2; fi; {% for pattern in make.work_in_progress.branch_patterns %}if [[ "$branch" =~ {{ pattern }} ]]; then echo "WIP branch $branch: explicitly skipping pre-push gate"; return 10; fi; {% endfor %}{% if make.work_in_progress.draft_pr %}if command -v gh >/dev/null; then :; else echo "ERROR: gh is required to resolve draft PR state" >&2; return 127; fi; if pr_states=$(gh pr list --head "$branch" --state open --limit 2 --json isDraft --jq ".[].isDraft"); then :; else status=$?; return "$status"; fi; while IFS= read -r state; do if [ -n "$state" ]; then count=$((count + 1)); draft="$state"; fi; done <<< "$pr_states"; if [ "$count" -gt 1 ]; then echo "ERROR: multiple open PRs resolve to the current branch" >&2; return 2; fi; if [ "$count" -eq 0 ]; then return 0; fi; if [ "$draft" = "true" ]; then echo "DRAFT PR: explicitly skipping pre-push gate"; return 10; fi; if [ "$draft" != "false" ]; then echo "ERROR: invalid draft PR state" >&2; return 2; fi; {% endif %}return 0; }; if scope; then :; else status=$?; if [ "$status" -eq 10 ]; then exit 0; fi; exit "$status"; fi; if guard; then :; else status=$?; if [ "$status" -eq 10 ]; then exit 0; fi; exit "$status"; fi; git_env=$(git rev-parse --local-env-vars); unset $git_env; unset WHAT MAKEFLAGS {{ make.apply_variable }}; {{ make.ci.variable }}={{ make.ci.local_value }} {% if step.gates_skip %}CHECK_GATES={% for gate in make.check_gates_default if gate not in step.gates_skip %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %} {% endif %}make {{ step.verb }}{% if step.what %} WHAT={{ step.what }}{% endif %}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}'
         pass_filenames: false
         always_run: true
         stages: [pre-push]

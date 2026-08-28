@@ -15,6 +15,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 # semantic_identity mixin, which owns the identical Repo contract.
 # BaseIndexEntry and parse_qsl were missing for the same reason.
 from git import (
+    BadName,
     BaseIndexEntry,
     GitCommandError,
     GitCommandNotFound,
@@ -264,7 +265,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         try:
             repo = cls._repo(request.repo_root)
             oid = repo.commit(request.commitish).hexsha
-        except GitCommandError as exc:
+        except (BadName, GitCommandError) as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitOidReport].fail(f"cannot resolve commitish: {exc}")
@@ -310,10 +311,10 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
     def git_merge_no_edit(
         cls, request: m.Infra.GitCommitishRequest
     ) -> p.Result[m.Infra.GitTextReport]:
-        """Merge ``commitish`` into HEAD with ``--no-edit``."""
+        """Merge ``commitish`` into HEAD with an explicit merge commit."""
         try:
             repo = cls._repo(request.repo_root)
-            text = repo.git.merge("--no-edit", request.commitish)
+            text = repo.git.merge("--no-ff", "--no-edit", request.commitish)
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc))
         except (OSError, ValueError) as exc:

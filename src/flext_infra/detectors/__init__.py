@@ -24,8 +24,6 @@ if TYPE_CHECKING:
     from .loose_test_function_detector import FlextInfraLooseTestFunctionDetector
     from .manual_protocol_detector import FlextInfraManualProtocolDetector
     from .manual_typing_alias_detector import FlextInfraManualTypingAliasDetector
-    from .mro_completeness_detector import FlextInfraMROCompletenessDetector
-    from .mro_shape_detector import FlextInfraMROShapeDetector
     from .namespace_source_detector import FlextInfraNamespaceSourceDetector
     from .private_import_bypass_detector import FlextInfraPrivateImportBypassDetector
     from .runtime_alias_detector import FlextInfraRuntimeAliasDetector
@@ -41,8 +39,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraInternalImportDetector",
     "FlextInfraLooseObjectDetector",
     "FlextInfraLooseTestFunctionDetector",
-    "FlextInfraMROCompletenessDetector",
-    "FlextInfraMROShapeDetector",
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraNamespaceSourceDetector",
@@ -68,8 +64,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".loose_test_function_detector": ("FlextInfraLooseTestFunctionDetector",),
             ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
             ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
-            ".mro_completeness_detector": ("FlextInfraMROCompletenessDetector",),
-            ".mro_shape_detector": ("FlextInfraMROShapeDetector",),
             ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),
             ".private_import_bypass_detector": (
                 "FlextInfraPrivateImportBypassDetector",

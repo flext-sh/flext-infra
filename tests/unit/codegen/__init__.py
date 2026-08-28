@@ -10,6 +10,8 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .lazy_init_bootstrap_package_tests import (
         TestsFlextInfraLazyInitBootstrapPackage,
     )
@@ -39,30 +41,39 @@ if TYPE_CHECKING:
         TestsCodegenArtifactSsot,
         codegen,
     )
+    from .test_codegen_beads_projection import TestsCodegenBeadsProjection
     from .test_codegen_conform_progress import TestsFlextInfraCodegenConformProgress
     from .test_codegen_hook_conformance import TestGitHookConformance
+    from .test_codegen_linked_worktree_manifest import TestCodegenLinkedWorktreeTopology
     from .test_codegen_make_environment import TestsCodegenMakeEnvironment
+    from .test_codegen_pyproject_conform import TestsFlextInfraCodegenPyprojectConform
+    from .test_codegen_uv_exclude_newer_overlay import TestCodegenUvExcludeNewerOverlay
     from .test_managed_conflicts import TestsFlextInfraCodegenManagedConflicts
     from .test_managed_maintenance_headers import (
         TestsFlextInfraManagedMaintenanceHeaders,
     )
     from .test_review_mro_vw2w_template_contracts import TestsReviewTemplateContracts
     from .test_vscode_owner_merge import TestsVscodeOwnerMerge
+    from .test_workspace_root_setup_submodules import TestsWorkspaceRootSetupSubmodules
 __all__: tuple[str, ...] = (
     "CodegenSpec",
     "TestAllDirectoriesScanned",
     "TestCheckOnlyMode",
+    "TestCodegenLinkedWorktreeTopology",
+    "TestCodegenUvExcludeNewerOverlay",
     "TestEdgeCases",
     "TestExcludedDirectories",
     "TestGeneratedClassNamingConvention",
     "TestGeneratedFilesAreValidPython",
     "TestGitHookConformance",
     "TestsCodegenArtifactSsot",
+    "TestsCodegenBeadsProjection",
     "TestsCodegenMakeEnvironment",
     "TestsFlextInfraCodegenConformProgress",
     "TestsFlextInfraCodegenGeneration",
     "TestsFlextInfraCodegenLazyInitService",
     "TestsFlextInfraCodegenManagedConflicts",
+    "TestsFlextInfraCodegenPyprojectConform",
     "TestsFlextInfraLazyInitBootstrapPackage",
     "TestsFlextInfraLazyInitCleanup",
     "TestsFlextInfraLazyInitFixtureSettingsCollision",
@@ -74,7 +85,24 @@ __all__: tuple[str, ...] = (
     "TestsMakeTestSelector",
     "TestsReviewTemplateContracts",
     "TestsVscodeOwnerMerge",
+    "TestsWorkspaceRootSetupSubmodules",
+    "c",
     "codegen",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -109,11 +137,21 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsCodegenArtifactSsot",
                 "codegen",
             ),
+            ".test_codegen_beads_projection": ("TestsCodegenBeadsProjection",),
             ".test_codegen_conform_progress": (
                 "TestsFlextInfraCodegenConformProgress",
             ),
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
+            ".test_codegen_linked_worktree_manifest": (
+                "TestCodegenLinkedWorktreeTopology",
+            ),
             ".test_codegen_make_environment": ("TestsCodegenMakeEnvironment",),
+            ".test_codegen_pyproject_conform": (
+                "TestsFlextInfraCodegenPyprojectConform",
+            ),
+            ".test_codegen_uv_exclude_newer_overlay": (
+                "TestCodegenUvExcludeNewerOverlay",
+            ),
             ".test_managed_conflicts": ("TestsFlextInfraCodegenManagedConflicts",),
             ".test_managed_maintenance_headers": (
                 "TestsFlextInfraManagedMaintenanceHeaders",
@@ -122,6 +160,27 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsReviewTemplateContracts",
             ),
             ".test_vscode_owner_merge": ("TestsVscodeOwnerMerge",),
+            ".test_workspace_root_setup_submodules": (
+                "TestsWorkspaceRootSetupSubmodules",
+            ),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

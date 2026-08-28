@@ -22,7 +22,6 @@ from flext_infra.detectors.compatibility_alias_detector import (
 from flext_infra.detectors.loose_test_function_detector import (
     FlextInfraLooseTestFunctionDetector,
 )
-from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
 
 if TYPE_CHECKING:
     from flext_core._models.enforcement import FlextModelsEnforcement as me
@@ -50,10 +49,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
         "foreign_canonical_alias_violations",
         "loose_test_function_violations",
     })
-    _BEARTYPE_PREDICATES: ClassVar[frozenset[str]] = frozenset({
-        "classvar_constant",
-        "mro_shape",
-    })
+    _BEARTYPE_PREDICATES: ClassVar[frozenset[str]] = frozenset({"classvar_constant"})
 
     @classmethod
     def supports(cls, rule: me.EnforcementRuleSpec) -> bool:
@@ -91,8 +87,6 @@ class FlextInfraRefactorDeclarativeEnforcement:
             predicate_value = getattr(predicate_kind, "value", predicate_kind)
             if predicate_value == "classvar_constant":
                 return cls._detect_classvar_constants(ctx, rule_id=rule_id)
-            if predicate_value == "mro_shape":
-                return cls._detect_mro_shape(ctx, rule_id=rule_id)
         violation_field = getattr(source, "violation_field", "")
         predicate_kind = getattr(source, "predicate_kind", "")
         msg = (
@@ -195,43 +189,6 @@ class FlextInfraRefactorDeclarativeEnforcement:
             raise RuntimeError(msg) from exc
         return tuple(
             cls._probe(Path(v.file), line=v.line, rule_id=rule_id, object_name=v.name)
-            for v in violations
-        )
-
-    @classmethod
-    def _detect_mro_shape(
-        cls, ctx: m.Infra.DetectorContext, *, rule_id: str
-    ) -> t.SequenceOf[p.AttributeProbe]:
-        """Delegate MRO-shape detection to the canonical rope scanner."""
-        try:
-            violations = FlextInfraMROShapeDetector.detect_file(ctx)
-        except RuntimeError as exc:
-            detail = str(exc)
-            if "could not parse" in detail or "Cannot resolve" in detail:
-                # The file is not part of the rope project (e.g. out-of-tree
-                # init/settings modules). Treat as no violation for the fixer.
-                return ()
-            msg = (
-                f"declarative enforcement {ctx.file_path} failed: "
-                f"mro_shape detector failed: {type(exc).__name__}: {exc}"
-            )
-            raise RuntimeError(msg) from exc
-        except c.EXC_BROAD_RUNTIME as exc:
-            msg = (
-                f"declarative enforcement {ctx.file_path} failed: "
-                f"mro_shape detector failed: {type(exc).__name__}: {exc}"
-            )
-            raise RuntimeError(msg) from exc
-        return tuple(
-            cls._probe(
-                Path(v.file),
-                line=v.line,
-                rule_id=rule_id,
-                class_name=v.class_name,
-                first_base=v.first_base,
-                expected_base=v.expected_base,
-                detail=v.detail,
-            )
             for v in violations
         )
 

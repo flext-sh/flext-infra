@@ -16,7 +16,11 @@ class FlextInfraUtilitiesRepository:
 
     @staticmethod
     def derived_repository_ref(
-        distribution: str, *, provider: m.Infra.ProviderSpec
+        distribution: str,
+        *,
+        provider: m.Infra.ProviderSpec,
+        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.STANDALONE,
+        checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.SUBMODULE,
     ) -> m.Infra.RepositoryRef:
         """Derive one repository reference from generic provider policy.
 
@@ -30,7 +34,34 @@ class FlextInfraUtilitiesRepository:
             distribution=distribution,
             url=f"{provider.base_url.rstrip('/')}/{distribution}.git",
             path=Path(distribution),
+            role=role,
             provider=provider.name,
+            checkout=checkout,
+            codegen=c.Infra.CodegenKind.CONFORM,
+            package=True,
+            editable=True,
+            read_only=False,
+        )
+
+    @classmethod
+    def configured_repository_ref(
+        cls, distribution: str, *, codegen: m.Infra.CodegenConfigSpec
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Derive one repository from the unique provider selected by config."""
+        source = codegen.infra_repository
+        matches = tuple(
+            provider
+            for provider in codegen.providers
+            if provider.name == source.provider
+        )
+        if len(matches) != 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "configured repository provider must resolve exactly once: "
+                f"{source.provider}"
+            )
+        (provider,) = matches
+        return r[m.Infra.RepositoryRef].ok(
+            cls.derived_repository_ref(distribution, provider=provider)
         )
 
     @staticmethod
@@ -46,6 +77,66 @@ class FlextInfraUtilitiesRepository:
                 f"repository provider must resolve exactly once: {repository.provider}"
             )
         return r[m.Infra.ProviderSpec].ok(matches[0])
+
+    @staticmethod
+    def remote_provider(
+        url: str, providers: t.SequenceOf[m.Infra.ProviderSpec]
+    ) -> p.Result[m.Infra.ProviderSpec]:
+        """Resolve one remote identity to exactly one configured provider."""
+        from flext_infra.utilities import u
+
+        identity = u.Infra.git_remote_identity(url)
+        parts = tuple(part for part in identity.split("/") if part)
+        match parts:
+            case (owner, _repository):
+                pass
+            case _:
+                return r[m.Infra.ProviderSpec].fail(
+                    "repository remote has no valid owner identity"
+                )
+        matches = tuple(
+            provider
+            for provider in providers
+            if provider.organization.casefold() == owner.casefold()
+        )
+        if len(matches) != 1:
+            return r[m.Infra.ProviderSpec].fail(
+                f"repository owner must resolve exactly once: {owner}"
+            )
+        return r[m.Infra.ProviderSpec].ok(matches[0])
+
+    @classmethod
+    def remote_repository_ref(
+        cls,
+        distribution: str,
+        *,
+        url: str,
+        providers: t.SequenceOf[m.Infra.ProviderSpec],
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve an explicit remote to one canonical repository reference."""
+        from flext_infra.utilities import u
+
+        identity = u.Infra.git_remote_identity(url)
+        parts = tuple(part for part in identity.split("/") if part)
+        match parts:
+            case (_owner, repository):
+                pass
+            case _:
+                return r[m.Infra.RepositoryRef].fail(
+                    "repository remote has no valid project identity"
+                )
+        if repository.casefold() != distribution.casefold():
+            return r[m.Infra.RepositoryRef].fail(
+                f"repository identity does not match distribution: {distribution}"
+            )
+        provider = cls.remote_provider(url, providers)
+        if provider.failure:
+            return r[m.Infra.RepositoryRef].fail(
+                provider.error or "repository provider resolution failed"
+            )
+        return r[m.Infra.RepositoryRef].ok(
+            cls.derived_repository_ref(distribution, provider=provider.value)
+        )
 
     @staticmethod
     def resolve_integration_branch(
@@ -110,12 +201,22 @@ class FlextInfraUtilitiesRepository:
 
     @staticmethod
     def repository_conform_target(
-        repository_root: Path,
+        repository_root: Path, workspace: m.Infra.WorkspaceSpec | None = None
     ) -> p.Result[m.Infra.RepositoryConformTarget]:
         """Return typed effective policy inferred from live repository topology."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-        return FlextInfraWorkspaceDetector.conform_target(repository_root)
+        resolved_workspace = workspace
+        if resolved_workspace is None:
+            loaded = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
+            if loaded.failure:
+                return r[m.Infra.RepositoryConformTarget].fail(
+                    loaded.error or "workspace topology load failed"
+                )
+            resolved_workspace = loaded.value
+        return FlextInfraWorkspaceDetector.conform_target(
+            repository_root, resolved_workspace
+        )
 
 
 __all__: tuple[str, ...] = ("FlextInfraUtilitiesRepository",)

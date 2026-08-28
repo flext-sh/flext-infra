@@ -10,6 +10,8 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .enforcement_fixer_orchestrator_tests import TestsEnforcementFixerOrchestrator
     from .extended_cli_entry_tests import TestWorkspaceCheckCLI
     from .extended_config_fixer_errors_tests import TestConfigFixerPublicBehavior
@@ -68,9 +70,25 @@ __all__: tuple[str, ...] = (
     "TestWorkspaceCheckerResolveGates",
     "TestsEnforcementFixerOrchestrator",
     "TestsExtendedProjectRunners",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
     "test_check_main_executes_real_cli",
     "test_fix_pyrefly_config_main_executes_real_cli_help",
     "test_workspace_check_main_returns_error_without_projects",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -115,6 +133,24 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_workspace_check_main_returns_error_without_projects",
             ),
             ".workspace_tests": ("TestFlextInfraWorkspaceChecker",),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

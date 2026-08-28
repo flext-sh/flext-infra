@@ -1,4 +1,4 @@
-{%- set public_exports = [class_stem, class_stem ~ "Constants", class_stem ~ "Models", class_stem ~ "Protocols", class_stem ~ "Service", class_stem ~ "Types", class_stem ~ "Utilities", "c", "config", "m", "p", alias, "s", "settings", "t", "u"] -%}
+{%- set public_exports = [class_stem, class_stem ~ "Constants", class_stem ~ "Models", class_stem ~ "Protocols", class_stem ~ "Service", class_stem ~ "Types", class_stem ~ "Utilities", "c", "config", "m", "p", alias, "s", "settings", "t", "u"] + inherited_facets -%}
 {%- set public_export_rows = '    "' ~ (public_exports | sort(case_sensitive=true) | join('",\n    "')) ~ '",' -%}
 {%- macro facade_import(module_name, export_name, export_alias) -%}
 {%- set compact = "    from " ~ package_name ~ "." ~ module_name ~ " import " ~ export_name ~ " as " ~ export_name ~ ", " ~ export_alias ~ " as " ~ export_alias -%}
@@ -23,7 +23,11 @@ from typing import TYPE_CHECKING
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    # NOTE (multi-agent, mro-j47u): all public objects stay lazy at runtime.
+    # NOTE (multi-agent, flext-j47u): all public objects stay lazy at runtime.
+{% for facet in inherited_facets %}
+    from {{ upstream }} import {{ facet }} as {{ facet }}
+{% endfor %}
+
     from {{ package_name }}._config import config as config
     from {{ package_name }}._settings import settings as settings
 {{ facade_import("api", class_stem, alias) }}
@@ -51,6 +55,9 @@ _LAZY_IMPORTS = MappingProxyType(
             "._settings": ("settings",),
             ".typings": ("{{ class_stem }}Types", "t"),
             ".utilities": ("{{ class_stem }}Utilities", "u"),
+{% if inherited_facets %}
+            "{{ upstream }}": ({% for facet in inherited_facets %}"{{ facet }}", {% endfor %}),
+{% endif %}
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

@@ -10,6 +10,8 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .docs_serve_e2e_tests import TestsFlextInfraIntegrationDocsServeE2e
     from .test_infra_integration import TestsFlextInfraIntegrationInfraIntegration
     from .test_refactor_nesting_file import (
@@ -27,7 +29,6 @@ if TYPE_CHECKING:
     from .test_refactor_nesting_workspace import (
         TestsFlextInfraIntegrationRefactorNestingWorkspace,
     )
-    from .test_refactor_policy_mro import TestsFlextInfraIntegrationRefactorPolicyMro
 __all__: tuple[str, ...] = (
     "TestsFlextInfraIntegrationDocsServeE2e",
     "TestsFlextInfraIntegrationInfraIntegration",
@@ -36,7 +37,22 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraIntegrationRefactorNestingPerformance",
     "TestsFlextInfraIntegrationRefactorNestingProject",
     "TestsFlextInfraIntegrationRefactorNestingWorkspace",
-    "TestsFlextInfraIntegrationRefactorPolicyMro",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -59,8 +75,23 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_refactor_nesting_workspace": (
                 "TestsFlextInfraIntegrationRefactorNestingWorkspace",
             ),
-            ".test_refactor_policy_mro": (
-                "TestsFlextInfraIntegrationRefactorPolicyMro",
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

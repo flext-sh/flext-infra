@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         prepare_managed_conflicts,
     )
     from .managed_conflicts_core import ManagedConflictError, recover_managed_toml
+    from .mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .pipeline import FlextInfraCodegenPipeline
     from .project_new import FlextInfraCodegenProjectNew
     from .py_typed import FlextInfraCodegenPyTyped
@@ -40,6 +41,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenManagedConflicts",
+    "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenProjectNew",
     "FlextInfraCodegenPyTyped",
@@ -70,6 +72,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "prepare_managed_conflicts",
             ),
             ".managed_conflicts_core": ("ManagedConflictError", "recover_managed_toml"),
+            ".mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".pipeline": ("FlextInfraCodegenPipeline",),
             ".project_new": ("FlextInfraCodegenProjectNew",),
             ".py_typed": ("FlextInfraCodegenPyTyped",),

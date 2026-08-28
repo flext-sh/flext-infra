@@ -1,4 +1,4 @@
-"""Tests for the MRO service-base alias."""
+"""Tests for the FLEXT service-base alias."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from flext_tests import tm
 from tests import u
 
 
-def test_service_base_generic_alias_mro_is_permitted() -> None:
-    """Generic service-root bases must not trigger facade MRO enforcement."""
+def test_service_base_generic_alias_flext_is_permitted() -> None:
+    """Generic service-root bases must not trigger facade FLEXT enforcement."""
     infra_report = u.check(FlextInfraServiceBase)
     cli_report = u.check(cli_service_base)
 

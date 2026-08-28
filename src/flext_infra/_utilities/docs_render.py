@@ -144,7 +144,7 @@ class FlextInfraUtilitiesDocsRender:
         ``docs/<section>/README.md`` pages that generated index pages link to
         (producing nav 404s). The rooted ``/README.md`` excludes only the
         docs-dir root README (the project README mirror), preserving nested
-        section READMEs. [mro-3o9s nav404 fix]
+        section READMEs. [flext-3o9s nav404 fix]
         """
         patterns = list(
             dict.fromkeys([
@@ -218,7 +218,7 @@ class FlextInfraUtilitiesDocsRender:
         return [
             "## Collection Rules",
             "",
-            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent MRO chain, Scope bootstrap, skill loading, zero-debt baseline,",
+            f"Read [`/flext/AGENTS.md`]({agents_link}) §9 — Agent Execution Pre-requisites — for the canonical pre-change checklist (parent FLEXT chain, Scope bootstrap, skill loading, zero-debt baseline,",
             "slot registry verification).",
         ]
 
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesDocsRender:
     def _quality_gates_lines(*, link_prefix: str) -> t.SequenceOf[str]:
         """Return a thin pointer to the canonical Quality Gates surface.
 
-        Why: mro-4p0t — flext-quality-gates skill path does not exist; route to
+        Why: flext-4p0t — flext-quality-gates skill path does not exist; route to
         make-check and AGENTS.md Make contract instead.
         """
         agents_link = FlextInfraUtilitiesDocsRender._resolve_governance_link(
@@ -359,7 +359,7 @@ class FlextInfraUtilitiesDocsRender:
             "",
             "## Integration Points",
             "",
-            "- Parent MRO chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The MRO cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.",
+            "- Parent FLEXT chain: read this project's `pyproject.toml` `dependencies` array filtered by `flext-*`. The FLEXT cascade is encoded in the inheritance lists of the facade classes listed under Module Map above.",
             f"- Public extensions exposed by this project: {FlextInfraUtilitiesDocsRender._preview(facades)}.",
             "- Library abstraction boundaries: see AGENTS.md §2.7.",
             "",
@@ -479,13 +479,13 @@ class FlextInfraUtilitiesDocsRender:
         """Return the managed mkdocs.yml for a project scope.
 
         Renders the canonical ``mkdocs_project.yml.j2`` template through the
-        flext-cli facade; theme, plugins, and validation macros live in the
-        template, not Python.
+        flext-cli facade shared with the workspace variant; theme, plugins,
+        and validation macros live in the template, not Python.
         """
         _ = modules
         data = contract
 
-        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): preserve one
+        # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): preserve one
         # typed context across the sole public template-rendering boundary.
         context = m.Infra.MkdocsProjectRenderContext(
             site_title=str(data.get("site_title", "")).strip() or scope.name,
@@ -593,7 +593,7 @@ class FlextInfraUtilitiesDocsRender:
         """
         data = contract
 
-        # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): preserve one
+        # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): preserve one
         # typed context across the sole public template-rendering boundary.
         context = m.Infra.MkdocsRenderContext(
             site_title=str(data.get("site_title", "")).strip() or "FLEXT Workspace",

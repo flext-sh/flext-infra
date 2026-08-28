@@ -10,6 +10,7 @@ from flext_infra.refactor.loader import FlextInfraRefactorRuleLoader
 from flext_infra.refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
 from flext_infra.refactor.orchestrator import FlextInfraRefactorOrchestrator
 from flext_tests import tm
+from tests import u
 
 if TYPE_CHECKING:
     from tests import t
@@ -227,6 +228,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         )
         sample_path = package_root / "sample.py"
         sample_path.write_text(source, encoding="utf-8")
+        u.Tests.declare_workspace_projects(workspace_root, (project_root.name,))
         return sample_path
 
     def test_modernize_run_dry_run_reports_planned_modification(

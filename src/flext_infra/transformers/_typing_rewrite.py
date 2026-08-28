@@ -13,7 +13,7 @@ class FlextInfraRefactorTypingUnifierRewriteMixin:
 
     Composed into FlextInfraRefactorTypingUnifier via inheritance; the facade's
     ``_canonicalize_annotation_builtins`` resolves ``_rewrite_annotation_text``
-    through MRO. Pure syntactic rewriting over text fragments (no facade state).
+    through FLEXT. Pure syntactic rewriting over text fragments (no facade state).
     """
 
     _CONTAINER_REWRITES: ClassVar[t.StrPairTuple] = (

@@ -13,7 +13,7 @@ from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
 class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
     """Declaration-only models for Git facade and FlextInfraGitService.
 
-    Composed via MRO with FlextInfraModelsGitIdentity (GitIdentityReport).
+    Composed via FLEXT with FlextInfraModelsGitIdentity (GitIdentityReport).
     """
 
     class GitRepoRequest(m.ContractModel):

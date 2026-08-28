@@ -55,9 +55,9 @@ class FlextInfraTypesBase:
     type InfraValue = t.JsonValue
     "Canonical infrastructure payload contract from flext-cli JSON typing."
     type FacadeFamily = str
-    "Facade family identifier for MRO chain resolution."
+    "Facade family identifier for FLEXT chain resolution."
     type ExpectedBase = type | str
-    "Expected MRO base: a class or its qualified name."
+    "Expected FLEXT base: a class or its qualified name."
     type PolicyContext = t.MappingKV[str, t.JsonMapping]
     "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None

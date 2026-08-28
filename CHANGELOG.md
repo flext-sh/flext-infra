@@ -8,4 +8,4 @@ This file is managed by `make docs WHAT=generate APPLY=Y`.
 
 ## Unreleased
 
-- E2E make-work disposable proof (bead mro-4gh1).
+- E2E make-work disposable proof (bead flext-4gh1).

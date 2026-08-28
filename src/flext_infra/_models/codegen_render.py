@@ -11,7 +11,7 @@ from flext_infra import t
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
 
-    # NOTE (multi-agent, mro-wkii.17 / agent: uv_overlay_owner): keep the
+    # NOTE (multi-agent, flext-wkii.17 / agent: uv_overlay_owner): keep the
     # module-skeleton template boundary model-backed and immutable.
     class ModuleSkeletonRenderContext(m.ContractModel):
         """Validated context for one generated module skeleton."""
@@ -25,7 +25,7 @@ class FlextInfraModelsCodegenRender:
         base_import_block: str = m.Field(description="Rendered base import block.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
 
-    # NOTE (multi-agent, mro-p4s3.2 / agent: uv_overlay_owner): the docs
+    # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): the docs
     # renderer sends one immutable model directly to the flext-cli boundary.
     class MkdocsRenderContext(m.ContractModel):
         """Validated common context for a generated MkDocs configuration."""

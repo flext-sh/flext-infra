@@ -91,36 +91,85 @@ class TestsFlextInfraInfraRopeService:
                 eq=True,
             )
 
-    def test_open_workspace_keeps_project_scope_with_sibling_projects(
+    def test_open_workspace_indexes_every_project_from_any_internal_call(
         self, tmp_path: Path
     ) -> None:
-        """Project-root and package-root calls stay scoped to the containing project."""
+        """A workspace-context Rope call indexes declared and undeclared projects."""
         monorepo_root = tmp_path / "repo"
         monorepo_root.mkdir()
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             monorepo_root, project_name="flext-infra", package_name="flext_infra"
         )
-        u.Tests.create_lazy_init_workspace(
+        sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
             monorepo_root, project_name="flext-demo", package_name="flext_demo"
+        )
+        u.Tests.declare_workspace_projects(monorepo_root, ("flext-infra",))
+        module_path = package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
+        )
+        sibling_module_path = sibling_package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            sibling_module_path,
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
+
+        for call_root in (monorepo_root, workspace_root, package_root):
+            with flext_infra.infra.rope_workspace(call_root) as rope:
+                tm.that(rope.rope_workspace_root, eq=monorepo_root.resolve())
+                tm.that(
+                    {entry.project_root for entry in rope.modules()},
+                    eq={workspace_root.resolve(), sibling_root.resolve()},
+                )
+                tm.that(rope.module(module_path), none=False)
+                tm.that(rope.module(sibling_module_path), none=False)
+
+    def test_open_standalone_keeps_local_project_scope(self, tmp_path: Path) -> None:
+        """Without a workspace context, sibling projects remain outside Rope."""
+        projects_root = tmp_path / "projects"
+        projects_root.mkdir()
+        project_root, package_root = u.Tests.create_lazy_init_workspace(
+            projects_root, project_name="flext-infra", package_name="flext_infra"
+        )
+        sibling_root, sibling_package_root = u.Tests.create_lazy_init_workspace(
+            projects_root, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "models.py"
         u.Tests.write_lazy_init_namespace_module(
             module_path, class_name="FlextInfraModels", alias="m", docstring="Models."
         )
-
-        with flext_infra.infra.rope_workspace(workspace_root) as rope:
-            tm.that(rope.rope_workspace_root, eq=workspace_root.resolve())
-            tm.that(
-                {entry.project_root for entry in rope.modules()},
-                eq={workspace_root.resolve()},
-            )
+        sibling_module_path = sibling_package_root / "models.py"
+        u.Tests.write_lazy_init_namespace_module(
+            sibling_module_path,
+            class_name="FlextDemoModels",
+            alias="m",
+            docstring="Models.",
+        )
 
         with flext_infra.infra.rope_workspace(package_root) as rope:
-            tm.that(rope.rope_workspace_root, eq=workspace_root.resolve())
+            tm.that(rope.rope_workspace_root, eq=project_root.resolve())
             tm.that(
                 {entry.project_root for entry in rope.modules()},
-                eq={workspace_root.resolve()},
+                eq={project_root.resolve()},
             )
+            tm.that(rope.module(module_path), none=False)
+            tm.that(rope.module(sibling_module_path), none=True)
+            tm.that(sibling_root in rope.rope_workspace_root.parents, eq=False)
+
+    def test_unowned_ancestor_src_does_not_expand_rope_scope(
+        self, tmp_path: Path
+    ) -> None:
+        """Ignore an ancestor source directory that owns no repository."""
+        unowned_parent = tmp_path / "unowned"
+        scratch = unowned_parent / "scratch"
+        (unowned_parent / c.Infra.DEFAULT_SRC_DIR).mkdir(parents=True)
+        scratch.mkdir()
+
+        with flext_infra.infra.rope_workspace(scratch) as rope:
+            tm.that(rope.rope_workspace_root, eq=scratch.resolve())
+            tm.that(rope.modules(), eq=())
 
     def test_workspace_exports_fixture_functions_when_requested(
         self, tmp_path: Path
@@ -227,7 +276,6 @@ class TestsFlextInfraInfraRopeService:
             tm.that(
                 objects.get(("FlextDemoModels.build.nested", "function")), none=False
             )
-            tm.that(objects["FlextDemoModels", "class"].is_facade_member, eq=True)
 
     def test_workspace_dsl_reload_refreshes_cached_objects(
         self, tmp_path: Path
@@ -522,10 +570,10 @@ class TestsFlextInfraInfraRopeService:
         tm.that(candidate.runtime_references_count, eq=0)
         tm.that(candidate.script_references_count, eq=0)
 
-    def test_workspace_dsl_skips_reference_scan_for_facade_members(
+    def test_workspace_dsl_does_not_classify_legacy_root_facade(
         self, tmp_path: Path
     ) -> None:
-        """Governed facade members expose zero production references."""
+        """Legacy root facade declarations are ordinary objects."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
@@ -546,10 +594,8 @@ class TestsFlextInfraInfraRopeService:
                 for item in rope.objects(module_path, include_local_scopes=False)
             }
 
-        tm.that(objects["FlextDemoModels"].is_facade_member, eq=True)
-        tm.that(objects["FlextDemoModels"].references_count, eq=0)
-        tm.that(objects["m"].is_facade_member, eq=True)
-        tm.that(objects["m"].references_count, eq=0)
+        tm.that(objects["FlextDemoModels"].is_facade_member, eq=False)
+        tm.that(objects["m"].is_facade_member, eq=False)
 
     def test_workspace_dsl_skips_reference_scan_for_private_names(
         self, tmp_path: Path

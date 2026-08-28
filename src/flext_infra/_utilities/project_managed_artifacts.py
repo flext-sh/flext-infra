@@ -2,14 +2,40 @@
 
 from __future__ import annotations
 
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, m, p, u
+from flext_infra import c, config, m, p, t, u
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts:
     """Single owner for ``ManagedArtifacts`` across ``config/*.yaml`` files."""
+
+    @staticmethod
+    def validate_mise_tool_selectors(
+        selectors: t.StrSequence, *, source: Path
+    ) -> p.Result[bool]:
+        """Reject alternate distributions of fleet-owned tool identities."""
+        toolchain = config.Infra.codegen.toolchain
+        protected_tools = tuple(
+            (owner, getattr(toolchain, owner))
+            for owner in toolchain.protected_mise_tools
+        )
+        for selector in selectors:
+            for owner, tool in protected_tools:
+                if not any(
+                    fnmatchcase(selector, pattern) for pattern in tool.selector_patterns
+                ):
+                    continue
+                if selector == tool.selector:
+                    break
+                return r[bool].fail(
+                    "project Mise selector declares an alternate distribution "
+                    f"for fleet identity {owner!r}: {selector!r} in "
+                    f"{source}; canonical selector is {tool.selector!r}"
+                )
+        return r[bool].ok(True)
 
     @staticmethod
     def load(project_dir: Path) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
@@ -77,6 +103,15 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         local_tools = resolved.value.artifacts.Mise.tools
         if not local_tools:
             return r[str].ok(rendered)
+        for selector in local_tools:
+            selector_validation = cls.validate_mise_tool_selectors(
+                (selector,), source=resolved.value.mise_tool_sources[selector]
+            )
+            if selector_validation.failure:
+                return r[str].fail(
+                    selector_validation.error
+                    or "project Mise identity validation failed"
+                )
         doc = u.Cli.toml_parse_text(rendered)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")

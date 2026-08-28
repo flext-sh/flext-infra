@@ -158,6 +158,23 @@ class TestBanditAndMarkdownGates:
 
         tm.that(runner.commands[0], has=["--config", str(local_config.resolve())])
 
+    def test_markdown_never_inherits_parent_config(self, tmp_path: Path) -> None:
+        """A standalone project's gate never crosses its repository boundary."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-local-owner")
+        parent_config = tmp_path / ".markdownlint.json"
+        parent_config.write_text('{"MD013": true}', encoding="utf-8")
+        local_config = project_dir / ".markdownlint.json"
+        local_config.write_text('{"MD013": false}', encoding="utf-8")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has=str(local_config.resolve()))
+        tm.that(runner.commands[0], lacks=str(parent_config.resolve()))
+
     def test_markdown_uses_uv_managed_tool_with_sanitized_path(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -240,7 +257,7 @@ class TestBanditAndMarkdownGates:
     def test_markdown_fix_applies_the_auto_fixable_rules(self, tmp_path: Path) -> None:
         """`make fix APPLY=Y` repairs the markdown findings that check blocks on.
 
-        mro-38p39: the markdown gate reports MD009/MD012 with the linter's own
+        flext-38p39: the markdown gate reports MD009/MD012 with the linter's own
         `[*]` auto-fixable marker, but declared can_fix=False. So `make check`
         blocked on ten findings while `make fmt APPLY=Y` and `make fix APPLY=Y`
         both exited 0 without repairing any of them -- the canonical sequence

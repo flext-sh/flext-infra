@@ -153,6 +153,10 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
+    BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
+    BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
+    BEADS_OVERRIDE_RELPATH: Final[str] = "config/beads.yaml"
+    "Generated project-owned Beads configuration paths."
     GITIGNORE_DERIVED_SECTION_NAME: Final[str] = "Derived build and tool artifacts"
     "Heading of the trailing .gitignore section holding derived artifacts."
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
@@ -177,6 +181,7 @@ class FlextInfraConstantsSharedInfra:
     GIT_ORIGIN: Final[str] = "origin"
     GIT_MAIN: Final[str] = "main"
     GIT_HEAD: Final[str] = "HEAD"
+    GIT_MERGE_HEAD: Final[str] = "MERGE_HEAD"
 
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: Final[str] = "flext-core"

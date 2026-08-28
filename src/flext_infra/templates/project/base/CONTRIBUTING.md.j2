@@ -40,14 +40,6 @@ Use conventional commit messages:
 - `refactor:` — code restructuring, no behavior change
 - `chore:` — tooling, dependencies, maintenance
 
-### Lane Lifecycle
-
-```bash
-gt sling <id> flext
-gt hook status
-gt done
-```
-
 ## Testing
 
 - Test public facades only — no mocks, no internal-method assertions.
@@ -66,7 +58,7 @@ All quality gates run through canonical `make` verbs:
 ```bash
 make check   # ruff + pyrefly + mypy + pyright
 make fmt     # format
-make val     # extra validation
+make test    # project test suite
 ```
 
 - **Ruff** — lint + format (enforced via `make check`)

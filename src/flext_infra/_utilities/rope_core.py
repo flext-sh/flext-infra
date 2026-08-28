@@ -40,7 +40,7 @@ class FlextInfraUtilitiesRopeCore(
             for project_root in discovered_roots
             if project_root.resolve().is_relative_to(resolved_root)
         )
-        # NOTE (multi-agent, mro-wkii.17.24): Rope consumes the same validated
+        # NOTE (multi-agent, flext-wkii.17.24): Rope consumes the same validated
         # production roots and exclusions as every source scanner.
         source_folders = sorted({
             str(scan_path.relative_to(resolved_root))
@@ -62,7 +62,7 @@ class FlextInfraUtilitiesRopeCore(
                 str(resolved_root),
                 ropefolder="",
                 save_objectdb=False,
-                # NOTE (mro-jnm1.1 / mro-jnm1.4): ignore names derive from the
+                # NOTE (flext-jnm1.1 / flext-jnm1.4): ignore names derive from the
                 # codegen artifact SSOT (single source, no per-consumer copies).
                 ignored_resources=sorted(config.Infra.codegen.source_scan_ignored),
                 source_folders=source_folders,

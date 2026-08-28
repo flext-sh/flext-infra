@@ -24,8 +24,6 @@ class FlextInfraClassPlacementDetector:
         ctx: m.Infra.DetectorContext,
     ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
         """Detect classes and class-level constants outside canonical families."""
-        if u.Infra.matches_root_namespace_file(ctx.file_path.name):
-            return []
         res = u.Infra.fetch_python_resource(
             ctx.rope_project, ctx.file_path, skip_protected=True, skip_settings=True
         )
@@ -215,12 +213,29 @@ class FlextInfraClassPlacementDetector:
     def _public_classes(
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[m.Infra.ClassInfo]:
-        """Return all public top-level classes in a resource."""
-        return tuple(
-            ci
-            for ci in u.Infra.get_class_info(rope_project, resource)
-            if not ci.name.startswith("_")
-        )
+        """Return public top-level classes from the current Rope AST."""
+        try:
+            tree = FlextInfraUtilitiesRopeCore.get_pymodule(
+                rope_project, resource
+            ).get_ast()
+        except u.Infra.rope_runtime_errors():
+            return ()
+        classes: list[m.Infra.ClassInfo] = []
+        for node in getattr(tree, "body", ()) or ():
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "ClassDef":
+                continue
+            name = getattr(node, "name", "")
+            if not isinstance(name, str) or not name or name.startswith("_"):
+                continue
+            line = getattr(node, "lineno", 1)
+            classes.append(
+                m.Infra.ClassInfo(
+                    name=name,
+                    line=line if isinstance(line, int) and line > 0 else 1,
+                    bases=(),
+                )
+            )
+        return tuple(classes)
 
     @staticmethod
     def _class_body_nodes(tree: object, *, class_name: str) -> t.SequenceOf[object]:

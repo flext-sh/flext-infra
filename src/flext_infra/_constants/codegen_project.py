@@ -23,7 +23,7 @@ from typing import Final
 class FlextInfraConstantsCodegenProject:
     """Manifest + naming constants for project creation (flat in ``c.Infra.*``)."""
 
-    # NOTE (multi-agent, mro-wkii.17 / agent: codex): these enums define the
+    # These enums define the
     # one public conform contract shared by new and existing repositories. The
     # declarative values live in config/codegen.yaml; constants only type the
     # closed vocabulary used by models and CLI dispatch.
@@ -33,7 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        MEMBERS = "members"
+        SUBPROJECTS = "subprojects"
         ALL = "all"
 
     @unique
@@ -42,7 +42,6 @@ class FlextInfraConstantsCodegenProject:
 
         ALL = "all"
         DEPENDENCIES = "dependencies"
-        GITMODULES = "gitmodules"
         MAKEFILE = "makefile"
         PYPROJECT = "pyproject"
 
@@ -54,20 +53,71 @@ class FlextInfraConstantsCodegenProject:
         APPLY = "apply"
 
     @unique
+    class MakeProfile(StrEnum):
+        """Generated Makefile profile for one repository."""
+
+        WORKSPACE = "workspace"
+        STANDALONE = "standalone"
+
+    @unique
+    class RepositoryRole(StrEnum):
+        """Repository role proven by its own topology input."""
+
+        WORKSPACE = "workspace"
+        STANDALONE = "standalone"
+        EXCLUDED = "excluded"
+
+    @unique
+    class RepositoryState(StrEnum):
+        """Lifecycle state used by repository selection."""
+
+        ACTIVE = "active"
+        EXCLUDED = "excluded"
+
+    @unique
+    class CheckoutKind(StrEnum):
+        """Physical checkout topology for one repository."""
+
+        ROOT = "root"
+        SUBMODULE = "submodule"
+        INDEPENDENT = "independent"
+
+    @unique
+    class CodegenKind(StrEnum):
+        """Code-generation policy applied to one repository."""
+
+        CONFORM = "conform"
+        PYTHON = "python"
+        NONE = "none"
+
+    @unique
+    class RepositoryClassification(StrEnum):
+        """Governance ownership classification for one repository."""
+
+        MANAGED = "managed"
+        EXTERNAL_FORK = "external-fork"
+        EXTERNAL_VENDOR_REFERENCE = "external-vendor-reference"
+
+    @unique
     class ProjectKind(StrEnum):
         """New-project kind; drives deps, Makefile mode, and registration."""
 
         INTERNAL = "internal"
         EXTERNAL = "external"
 
+    BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
+    BEADS_CONFIG_VERSION: Final = 1
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
+    CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
+    CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."
 
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
-    # delegate: "render" (CLI engine) today; lazy_init/version_file later.
-    # One base catalog serves every repository; topology never selects policy.
+    # delegate: "render" (CLI engine) today.
+    # One base catalog serves both profiles;
+    # workspace topology is read only from each repository's own .gitmodules.
 
 
 __all__: list[str] = ["FlextInfraConstantsCodegenProject"]

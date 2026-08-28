@@ -1,4 +1,4 @@
-"""Census structural rule scanners (compatibility + MRO) — extracted concern."""
+"""Census structural rule scanners — extracted concern."""
 
 from __future__ import annotations
 
@@ -12,10 +12,6 @@ from flext_infra.detectors.compatibility_alias_detector import (
     FlextInfraCompatibilityAliasDetector,
 )
 from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportDetector
-from flext_infra.detectors.mro_completeness_detector import (
-    FlextInfraMROCompletenessDetector,
-)
-from flext_infra.detectors.mro_shape_detector import FlextInfraMROShapeDetector
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
@@ -30,10 +26,10 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorCensusRulesStructMixin:
-    """Compatibility-alias + MRO-completeness rule scanners for one module.
+    """Compatibility and structural rule scanners for one module.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
-    detector-context + violation/fix builders from sibling mixins via MRO.
+    detector-context + violation/fix builders from sibling mixins via FLEXT.
     """
 
     if TYPE_CHECKING:
@@ -232,120 +228,6 @@ class FlextInfraRefactorCensusRulesStructMixin:
                     files_changed=1,
                     applied=self._fix_key(
                         file_path, detector_violation.alias_name, action
-                    )
-                    in applied,
-                )
-            )
-        return violations, fixes
-
-    def _rule_mro_completeness(
-        self,
-        rope: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
-        *,
-        project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
-        applied: frozenset[str],
-        selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
-        """Detect + plan fixes for MRO-completeness violations."""
-        parse_failures: list[m.Infra.ParseFailureViolation] = []
-        mro_ctx = self._detector_context(
-            rope, file_path, parse_failures=parse_failures, convention=convention
-        )
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
-        for detector_violation in FlextInfraMROCompletenessDetector.detect_file(
-            mro_ctx
-        ):
-            matched = (
-                self._named_object(objects, detector_violation.facade_class)
-                if objects is not None
-                else None
-            )
-            object_kind = matched.kind if matched is not None else "class"
-            if selected_kinds and object_kind not in selected_kinds:
-                continue
-            symbol = symbol_index.get(detector_violation.facade_class)
-            action = "rewrite_mro_completeness"
-            violations.append(
-                self._raw_violation(
-                    project=project_name,
-                    object_name=detector_violation.facade_class,
-                    object_kind=object_kind,
-                    kind="mro_completeness",
-                    file_path=file_path,
-                    line=(
-                        matched.line
-                        if matched is not None
-                        else symbol[1]
-                        if symbol is not None
-                        else detector_violation.line
-                    ),
-                    description=detector_violation.suggestion,
-                    fixable=True,
-                    fix_action=action,
-                )
-            )
-            fixes.append(
-                m.Infra.Census.Fix(
-                    object_name=detector_violation.facade_class,
-                    action=action,
-                    source_file=str(file_path),
-                    files_changed=1,
-                    applied=self._fix_key(
-                        file_path, detector_violation.facade_class, action
-                    )
-                    in applied,
-                )
-            )
-        return violations, fixes
-
-    def _rule_mro_shape(
-        self,
-        rope: p.Infra.RopeWorkspaceDsl,
-        file_path: Path,
-        *,
-        project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
-        applied: frozenset[str],
-        selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
-        convention: m.Infra.RopeModuleConvention,
-    ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
-        """Detect + plan fixes for MRO-shape violations (manual-only)."""
-        _ = objects, symbol_index
-        ctx = self._detector_context(rope, file_path, convention=convention)
-        violations: list[m.Infra.Census.Violation] = []
-        fixes: list[m.Infra.Census.Fix] = []
-        for detector_violation in FlextInfraMROShapeDetector.detect_file(ctx):
-            object_kind = "class"
-            if selected_kinds and object_kind not in selected_kinds:
-                continue
-            action = detector_violation.fix_action
-            violations.append(
-                self._raw_violation(
-                    project=project_name,
-                    object_name=detector_violation.class_name,
-                    object_kind=object_kind,
-                    kind="mro_shape",
-                    file_path=file_path,
-                    line=detector_violation.line,
-                    description=detector_violation.detail,
-                    fixable=detector_violation.fixable,
-                    fix_action=action,
-                )
-            )
-            fixes.append(
-                m.Infra.Census.Fix(
-                    object_name=detector_violation.class_name,
-                    action=action,
-                    source_file=str(file_path),
-                    files_changed=1,
-                    applied=self._fix_key(
-                        file_path, detector_violation.class_name, action
                     )
                     in applied,
                 )

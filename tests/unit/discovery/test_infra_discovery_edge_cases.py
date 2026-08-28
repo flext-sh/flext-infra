@@ -11,20 +11,20 @@ from tests import u
 class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
     """Edge-case tests for project discovery."""
 
-    def test_discover_projects_includes_non_git_flext_projects(
+    def test_standalone_never_discovers_undeclared_child_projects(
         self, tmp_path: Path
     ) -> None:
         service = u.Infra()
         workspace_root = tmp_path
-        (workspace_root / "pyproject.toml").write_text(
+        non_git_dir = workspace_root / "non_git_project"
+        non_git_dir.mkdir()
+        (non_git_dir / "pyproject.toml").write_text(
             "[project]\nname='non_git_project'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
         result = service.discover_projects(workspace_root)
         tm.ok(result)
-        tm.that(len(result.value), eq=1)
-        tm.that(result.value[0].name, eq="non_git_project")
-        tm.that(result.value[0].path, eq=workspace_root.resolve())
+        tm.that(result.value, empty=True)
 
     def test_find_all_pyproject_files_with_nonexistent_path(self) -> None:
         service = u.Infra()
@@ -32,6 +32,24 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         result = service.find_all_pyproject_files(nonexistent)
         tm.ok(result)
         tm.that(result.value, eq=[])
+
+    def test_standalone_pyproject_scan_never_reads_parent_or_sibling(
+        self, tmp_path: Path
+    ) -> None:
+        service = u.Infra()
+        child = tmp_path / "child"
+        sibling = tmp_path / "sibling"
+        child.mkdir()
+        sibling.mkdir()
+        own_pyproject = child / "pyproject.toml"
+        own_pyproject.touch()
+        (tmp_path / "pyproject.toml").touch()
+        (sibling / "pyproject.toml").touch()
+
+        result = service.find_all_pyproject_files(child)
+
+        tm.ok(result)
+        tm.that(tuple(result.value), eq=(own_pyproject,))
 
     def test_find_all_pyproject_files_with_permission_error(
         self, tmp_path: Path

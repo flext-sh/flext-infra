@@ -9,13 +9,13 @@
 #
 # The right target VARIES per repo/namespace, so this rule is detection-only
 # (safety protocol rung 2). A human/agent must confirm the real base with
-# `python -c "print(type(settings.<Ns>).__mro__)"` before rewriting by hand.
+# `python -c "print(type(settings.<Ns>).__flext__)"` before rewriting by hand.
 id: settings-namespace-base-drift
 language: python
 severity: warning
 message: >-
   isinstance(..., m.SettingsValue) may be stale in flext 0.12 — the settings
-  namespace can now be a raw pydantic BaseModel. VERIFY the real MRO before
+  namespace can now be a raw pydantic BaseModel. VERIFY the real FLEXT before
   rewriting; prefer `hasattr(x, "model_dump")` or the confirmed base. Detection
   only — do NOT auto-fix. See flext-codemod-astgrep SKILL.md safety protocol.
 ignores:

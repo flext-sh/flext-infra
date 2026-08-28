@@ -26,6 +26,7 @@ from flext_infra.deps.phases.ensure_pytest import FlextInfraEnsurePytestConfigPh
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
 from flext_infra.deps.phases.ensure_vulture import FlextInfraEnsureVultureConfigPhase
 from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhase
+from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -38,7 +39,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     """Read, classify, and process one parsed pyproject document state."""
 
     if TYPE_CHECKING:
-        # Members provided by sibling mixins / the facade at runtime via MRO.
+        # Members provided by the composed dependency modernizer.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
 
         @property
@@ -64,6 +65,13 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             *,
             preferred_first: t.StrSequence | None = None,
         ) -> None: ...
+
+    def _classify_project(
+        self, project_dir: Path, *, payload: t.JsonMapping | None = None
+    ) -> p.Result[str]:
+        """Classify project kind for pyright/coverage settings selection."""
+        classifier = FlextInfraProjectClassifier(project_dir, pyproject_payload=payload)
+        return r[str].ok(classifier.classify().project_kind)
 
     def _read_document_state(
         self, path: Path
@@ -128,7 +136,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         original_rendered = state.original_rendered
         payload = state.payload
         is_root = path.parent.resolve() == self.root.resolve()
-        # mro-j47u (codex): scaffold (pre-write) contexts have no on-disk project
+        # Scaffold (pre-write) contexts have no on-disk project
         # root yet. Derive pyright/pyrefly configuration from declared roots only;
         # disk discovery converges on the first post-write conformance pass.
         project_root_exists = path.is_file()
@@ -139,7 +147,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         effective_paths_manager = paths_manager if project_root_exists else None
         resolved_project_kind: str = project_kind or "core"
-        # mro-j47u (codex): declared roots are explicit facts during atomic
+        if project_kind is None and not is_root:
+            kind_result = self._classify_project(path.parent, payload=payload)
+            if kind_result.success:
+                resolved_project_kind = kind_result.value
+        # Declared roots are topology facts only during atomic
         # creation; normal modernization still derives productive roots on disk.
         # Why (flext-6itas.4): restored after merge 0d4d07b33 dropped this gate
         # while ensure_pyrefly.py kept requiring it (declared_python_dirs_are_complete
@@ -167,7 +179,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload
             )
         )
-        # mro-j47u (codex): Pyrefly derives its include globs from the canonical
+        # Pyrefly derives its include globs from the canonical
         # Pyright roots, so resolve Pyright first and converge in one pass.
         changes.extend(
             FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
@@ -218,7 +230,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
                 payload, path=path, is_root=is_root
             )
         )
-        # mro-j47u: existing projects consume the same Vulture SSOT as scaffolds.
+        # Existing projects consume the same Vulture SSOT as scaffolds.
         changes.extend(
             FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
                 payload

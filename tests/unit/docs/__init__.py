@@ -10,6 +10,8 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .auditor_budgets_tests import TestLoadAuditBudgets
     from .auditor_cli_tests import (
         test_auditor_main_help_exits_zero,
@@ -29,7 +31,7 @@ if TYPE_CHECKING:
     )
     from .auditor_scope_tests import TestAuditorForbiddenTerms, TestAuditorScope
     from .auditor_stale_symbols_tests import (
-        test_docstring_issues_accepts_direct_part_mro_docstring,
+        test_docstring_issues_accepts_direct_part_flext_docstring,
         test_generated_api_reference_accepts_live_public_symbol,
         test_generated_api_reference_reports_missing_public_symbol,
         test_manual_docs_report_live_symbol_mentions,
@@ -47,7 +49,7 @@ if TYPE_CHECKING:
     )
     from .builder_scope_tests import (
         test_build_missing_settings_failure_has_empty_site_dir,
-        test_build_returns_repository_report,
+        test_build_returns_root_and_selected_project_reports,
         test_build_uses_custom_output_dir,
     )
     from .builder_tests import TestBuilderCore, builder
@@ -75,6 +77,7 @@ if TYPE_CHECKING:
         test_update_toc_replaces_existing_block,
     )
     from .generator_tests import (
+        test_configured_api_modules_own_generated_module_pages,
         test_docs_policy_declares_cross_project_relative_link_pattern,
         test_generate_apply_writes_summary_and_report,
         test_generate_dry_run_reports_real_drift,
@@ -97,7 +100,7 @@ if TYPE_CHECKING:
         test_fixer_execute_applies_link_and_toc_updates,
         test_fixer_execute_fails_on_unapplied_drift,
         test_generate_fix_cycle_is_byte_identical_on_second_run,
-        test_generator_execute_writes_repository_report,
+        test_generator_execute_writes_reports_for_root_and_selected_project,
         test_validator_execute_fails_before_generation_and_succeeds_after,
     )
     from .main_entry_tests import TestsDocsCli
@@ -113,11 +116,11 @@ if TYPE_CHECKING:
     from .server_tests import TestsFlextInfraDocServer
     from .shared_iter_tests import TestIterMarkdownFiles
     from .shared_tests import (
-        test_build_scopes_preserves_declared_workspace_root_and_members,
-        test_build_scopes_preserves_declared_workspace_without_materialized_members,
+        test_build_scopes_preserves_declared_workspace_root_and_projects,
         test_build_scopes_preserves_disabled_root_policy,
         test_build_scopes_preserves_discovered_package_name,
         test_build_scopes_returns_root_and_selected_projects,
+        test_build_scopes_skips_declared_workspace_without_materialized_projects,
         test_build_scopes_skips_missing_projects,
         test_build_scopes_treats_non_flext_project_as_its_own_root,
         test_build_scopes_uses_custom_output_dir,
@@ -165,9 +168,19 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraDocServer",
     "auditor",
     "builder",
+    "c",
+    "d",
+    "e",
+    "h",
     "is_external",
+    "m",
     "normalize_link",
+    "p",
+    "r",
+    "s",
     "should_skip_target",
+    "t",
+    "td",
     "test_anchorize_and_build_toc_are_public_helpers",
     "test_anchorize_keeps_underscores_like_python_markdown",
     "test_anchorize_normalizes_headings",
@@ -176,12 +189,12 @@ __all__: tuple[str, ...] = (
     "test_auditor_main_strict_failure_returns_one",
     "test_auditor_main_writes_reports_for_selected_project",
     "test_build_missing_settings_failure_has_empty_site_dir",
-    "test_build_returns_repository_report",
-    "test_build_scopes_preserves_declared_workspace_root_and_members",
-    "test_build_scopes_preserves_declared_workspace_without_materialized_members",
+    "test_build_returns_root_and_selected_project_reports",
+    "test_build_scopes_preserves_declared_workspace_root_and_projects",
     "test_build_scopes_preserves_disabled_root_policy",
     "test_build_scopes_preserves_discovered_package_name",
     "test_build_scopes_returns_root_and_selected_projects",
+    "test_build_scopes_skips_declared_workspace_without_materialized_projects",
     "test_build_scopes_skips_missing_projects",
     "test_build_scopes_treats_non_flext_project_as_its_own_root",
     "test_build_scopes_uses_custom_output_dir",
@@ -191,6 +204,7 @@ __all__: tuple[str, ...] = (
     "test_build_uses_custom_output_dir",
     "test_builder_execute_fails_when_mkdocs_is_missing",
     "test_builder_execute_fails_with_invalid_mkdocs_config",
+    "test_configured_api_modules_own_generated_module_pages",
     "test_doc_scope_creation",
     "test_doc_scope_requires_name",
     "test_docs_cli_validate_apply_passes_after_generate_apply",
@@ -206,7 +220,7 @@ __all__: tuple[str, ...] = (
     "test_docs_update_toc_still_invents_h1_for_headingless_stub",
     "test_docs_write_todo_writes_only_for_project_scopes",
     "test_docstring_issues_accept_assignment_docstrings",
-    "test_docstring_issues_accepts_direct_part_mro_docstring",
+    "test_docstring_issues_accepts_direct_part_flext_docstring",
     "test_fix_apply_updates_docs_file_and_writes_reports",
     "test_fix_check_apply_check_converges",
     "test_fix_item_model_tracks_link_and_toc_counts",
@@ -231,7 +245,7 @@ __all__: tuple[str, ...] = (
     "test_generated_mkdocstrings_directive_preserves_indented_options",
     "test_generated_non_markdown_preserves_exact_content",
     "test_generated_prose_wraps_without_reformatting_directive_blocks",
-    "test_generator_execute_writes_repository_report",
+    "test_generator_execute_writes_reports_for_root_and_selected_project",
     "test_governed_api_survives_generation_and_curated_paths_are_unowned",
     "test_guides_index_links_only_guides_that_exist",
     "test_guides_index_omits_links_when_no_guide_exists",
@@ -253,6 +267,12 @@ __all__: tuple[str, ...] = (
     "test_write_markdown_fails_for_non_directory_parent",
     "test_write_markdown_preserves_empty_lines",
     "test_write_markdown_writes_exact_content",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -277,7 +297,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".auditor_scope_tests": ("TestAuditorForbiddenTerms", "TestAuditorScope"),
             ".auditor_stale_symbols_tests": (
-                "test_docstring_issues_accepts_direct_part_mro_docstring",
+                "test_docstring_issues_accepts_direct_part_flext_docstring",
                 "test_generated_api_reference_accepts_live_public_symbol",
                 "test_generated_api_reference_reports_missing_public_symbol",
                 "test_manual_docs_report_live_symbol_mentions",
@@ -295,7 +315,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".builder_scope_tests": (
                 "test_build_missing_settings_failure_has_empty_site_dir",
-                "test_build_returns_repository_report",
+                "test_build_returns_root_and_selected_project_reports",
                 "test_build_uses_custom_output_dir",
             ),
             ".builder_tests": ("TestBuilderCore", "builder"),
@@ -323,6 +343,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_update_toc_replaces_existing_block",
             ),
             ".generator_tests": (
+                "test_configured_api_modules_own_generated_module_pages",
                 "test_docs_policy_declares_cross_project_relative_link_pattern",
                 "test_generate_apply_writes_summary_and_report",
                 "test_generate_dry_run_reports_real_drift",
@@ -345,7 +366,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_fixer_execute_applies_link_and_toc_updates",
                 "test_fixer_execute_fails_on_unapplied_drift",
                 "test_generate_fix_cycle_is_byte_identical_on_second_run",
-                "test_generator_execute_writes_repository_report",
+                "test_generator_execute_writes_reports_for_root_and_selected_project",
                 "test_validator_execute_fails_before_generation_and_succeeds_after",
             ),
             ".main_entry_tests": ("TestsDocsCli",),
@@ -361,11 +382,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".server_tests": ("TestsFlextInfraDocServer",),
             ".shared_iter_tests": ("TestIterMarkdownFiles",),
             ".shared_tests": (
-                "test_build_scopes_preserves_declared_workspace_root_and_members",
-                "test_build_scopes_preserves_declared_workspace_without_materialized_members",
+                "test_build_scopes_preserves_declared_workspace_root_and_projects",
                 "test_build_scopes_preserves_disabled_root_policy",
                 "test_build_scopes_preserves_discovered_package_name",
                 "test_build_scopes_returns_root_and_selected_projects",
+                "test_build_scopes_skips_declared_workspace_without_materialized_projects",
                 "test_build_scopes_skips_missing_projects",
                 "test_build_scopes_treats_non_flext_project_as_its_own_root",
                 "test_build_scopes_uses_custom_output_dir",
@@ -395,6 +416,24 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_validate_workspace_apply_writes_project_todo",
                 "test_validate_workspace_fails_before_generated_files_exist",
                 "test_validate_workspace_passes_after_generate_apply",
+            ),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
             ),
         }),
         alias_groups=MappingProxyType({}),

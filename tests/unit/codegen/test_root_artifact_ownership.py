@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
 from tests import c, m, p, t, u
@@ -16,45 +15,15 @@ from tests import c, m, p, t, u
 class TestsRootArtifactOwnership:
     """Prove codegen config is the sole root-artifact ownership catalog."""
 
-    def test_markdown_config_templates_are_declared_once(self) -> None:
-        entries = {
-            item.destination: item
+    def test_envrc_template_covers_every_repository_profile(self) -> None:
+        """Every generated repository owns the same direnv activation contract."""
+        entry = next(
+            item
             for item in config.Infra.codegen.templates.entries
-            if item.destination in {".markdownlint.json", ".markdownlintignore"}
-        }
-
-        tm.that(set(entries), eq={".markdownlint.json", ".markdownlintignore"})
-        tm.that(config.Infra.tooling.tools.markdown.exclude, has=".serena/**")
-
-    # Why (suite budget): a full standalone conform apply writes the whole
-    # 53-file scaffold and re-plans the fixed point; the per-case wall only
-    # holds on an idle CPU.
-    @pytest.mark.slow
-    def test_standalone_conform_projects_markdown_policy(
-        self, infra_git_repo: Path
-    ) -> None:
-        root = infra_git_repo
-        package_root = root / "src" / "flext_demo"
-        tm.ok(u.Cli.ensure_dir(package_root))
-        tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "pyproject.toml",
-                '[project]\nname = "flext-demo"\nversion = "0.1.0"\n',
-            )
-        )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        request = m.Infra.CodegenConformRequest(
-            root=root,
-            what=c.Infra.CodegenConformSurface.ALL,
-            mode=c.Infra.CodegenConformMode.APPLY,
+            if item.destination == c.Infra.ENVRC_FILENAME
         )
 
-        tm.ok(FlextInfraCodegenConform.execute_request(request, workspace))
-
-        tm.that((root / ".markdownlint.json").is_file(), eq=True)
-        ignore = (root / ".markdownlintignore").read_text(encoding="utf-8")
-        tm.that(ignore, has=".serena/**")
+        tm.that(set(entry.profiles), eq=set(c.Infra.MakeProfile))
 
     def test_governed_artifacts_have_one_explicit_policy(self) -> None:
         configured = config.Infra.codegen.managed_files
@@ -138,6 +107,7 @@ class TestsRootArtifactOwnership:
 
     def test_conform_uses_one_fixed_point_plan(self, infra_git_repo: Path) -> None:
         root = infra_git_repo
+        u.Tests.write_project_beads_config(root, "flext-demo")
         package_root = root / "src" / "flext_demo"
         tm.ok(u.Cli.ensure_dir(package_root))
         tm.ok(u.Cli.atomic_write_text_file(package_root / "__init__.py", ""))
@@ -153,15 +123,14 @@ class TestsRootArtifactOwnership:
                 ),
             )
         )
-        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(FlextInfraCodegenConform.execute_request(request, workspace))
-        manual = {"NOTES.local": b"manual project note\n"}
-        (root / "NOTES.local").write_bytes(manual["NOTES.local"])
+        tm.ok(FlextInfraCodegenConform.execute_request(request))
+        manual = {"custom.mk": b"# manual project extension\n"}
+        (root / "custom.mk").write_bytes(manual["custom.mk"])
         configured_policy = next(
             item.policy
             for item in config.Infra.codegen.managed_files
@@ -175,9 +144,7 @@ class TestsRootArtifactOwnership:
             )
         )
 
-        first = FlextInfraCodegenConform.execute_request(
-            request, initial_workspace=workspace
-        )
+        first = FlextInfraCodegenConform.execute_request(request)
         result = tm.ok(first)
         governed = tuple(file for file in result.plan.files if file.policy is not None)
         tm.that(tuple(file.path for file in governed), eq=(root / "Makefile",))
@@ -203,8 +170,8 @@ class TestsAncestryNetworkBoundary:
     ) -> None:
         """Refreshing the baseline from origin runs under a declared timeout.
 
-        mro-38p39: the ancestry plan shells `git fetch origin` whenever a remote
-        is configured, and it passed no timeout. A slow or unreachable remote
+        The ancestry plan shells `git fetch origin` whenever a remote is
+        configured. Without a timeout, a slow or unreachable remote
         therefore blocked conform for as long as git waited -- measured at 7.44s
         cumulative in one unit test whose fixture pointed origin at a real
         GitHub URL, the single largest cost in the suite. Every other bounded
@@ -213,6 +180,7 @@ class TestsAncestryNetworkBoundary:
         """
         root = infra_git_repo
         dist = u.Tests.repository_ref(config.Infra.name).distribution
+        u.Tests.write_project_beads_config(root, dist)
         tm.ok(
             u.Cli.atomic_write_text_file(
                 root / "pyproject.toml",

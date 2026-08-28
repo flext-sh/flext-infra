@@ -1,6 +1,6 @@
 """Tests that the uv lockfile is committable wherever it is the resolution SSOT.
 
-``uv.lock`` pins the exact resolved dependency graph. A uv *workspace member*
+``uv.lock`` pins the exact resolved dependency graph. A UV workspace project
 does not own one -- resolution happens once at the workspace root -- but the
 root itself, and any standalone distribution, must commit theirs or every
 checkout re-resolves and the build stops being reproducible.

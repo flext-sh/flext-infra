@@ -10,6 +10,8 @@ from types import MappingProxyType
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
+    from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
+
     from .test_apply_renames_cli import TestsFlextInfraApplyRenamesCli
     from .test_declarative_enforcement import (
         TestsFlextInfraRefactorDeclarativeEnforcement,
@@ -29,15 +31,6 @@ if TYPE_CHECKING:
     )
     from .test_infra_refactor_legacy_and_annotations import (
         TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations,
-    )
-    from .test_infra_refactor_migrate_to_class_mro import (
-        TestsFlextInfraRefactorInfraRefactorMigrateToClassMro,
-    )
-    from .test_infra_refactor_mro_completeness import (
-        TestsFlextInfraRefactorInfraRefactorMroCompleteness,
-    )
-    from .test_infra_refactor_mro_shape import (
-        TestsFlextInfraRefactorInfraRefactorMroShape,
     )
     from .test_infra_refactor_namespace_aliases import (
         TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
@@ -78,9 +71,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
     "TestsFlextInfraRefactorInfraRefactorImportModernizer",
     "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
-    "TestsFlextInfraRefactorInfraRefactorMigrateToClassMro",
-    "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
-    "TestsFlextInfraRefactorInfraRefactorMroShape",
     "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
     "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
     "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
@@ -91,6 +81,22 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRefactorInfraRefactorService",
     "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
     "TestsFlextInfraRefactorMainCli",
+    "c",
+    "d",
+    "e",
+    "h",
+    "m",
+    "p",
+    "r",
+    "s",
+    "t",
+    "td",
+    "tf",
+    "tk",
+    "tm",
+    "tv",
+    "u",
+    "x",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -115,15 +121,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_infra_refactor_legacy_and_annotations": (
                 "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
-            ),
-            ".test_infra_refactor_migrate_to_class_mro": (
-                "TestsFlextInfraRefactorInfraRefactorMigrateToClassMro",
-            ),
-            ".test_infra_refactor_mro_completeness": (
-                "TestsFlextInfraRefactorInfraRefactorMroCompleteness",
-            ),
-            ".test_infra_refactor_mro_shape": (
-                "TestsFlextInfraRefactorInfraRefactorMroShape",
             ),
             ".test_infra_refactor_namespace_aliases": (
                 "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
@@ -155,6 +152,24 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
             ),
             ".test_main_cli": ("TestsFlextInfraRefactorMainCli",),
+            "flext_tests": (
+                "c",
+                "d",
+                "e",
+                "h",
+                "m",
+                "p",
+                "r",
+                "s",
+                "t",
+                "td",
+                "tf",
+                "tk",
+                "tm",
+                "tv",
+                "u",
+                "x",
+            ),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

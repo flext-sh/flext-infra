@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import ast
+import operator
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
@@ -1048,7 +1049,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         )
                     )
                     continue
-                governed_classes.sort(key=lambda ci: ci.line)
+                governed_classes.sort(key=operator.attrgetter("line"))
                 extras = governed_classes[1:]
                 moved_any = False
                 for extra_ci in extras:

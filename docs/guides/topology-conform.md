@@ -1,74 +1,50 @@
-# Topology and Conform Contract
+# Repository-local topology and conformance
 
-<!-- TOC START -->
-- [Effective topology](#effective-topology)
-- [Full refactor workflow](#full-refactor-workflow)
-- [Synchronization and setup](#synchronization-and-setup)
-- [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
-<!-- TOC END -->
+## Authorities
 
-`flext-infra codegen conform` is the sole owner of repository conformance.
-Consumers use the public `u.Infra` accessors and never import workspace detector
-implementations directly.
+Each governed repository has exactly two local inputs:
 
-## Effective topology
+- `.gitmodules` is the read-only authority for its direct topology. Its presence
+  selects the `workspace` profile; its absence selects `standalone`.
+- `config/beads.yaml` is the mandatory typed Beads identity with `version: 1`,
+  `workspace`, `database`, `issue_prefix`, and the optional
+  `custom_issue_types` owned by that repository.
 
-- Effective Make profiles are only `workspace-root` and `standalone`.
-- A repository is a workspace root only when its live `.gitmodules`, its
-  `WorkspaceSpec.members`, and each member's provider URL and
-  `ProviderSpec.branch` agree exactly for at least one mutable first-party member.
-- An attached governed member retains `WORKSPACE_MEMBER`/`SUBMODULE` relationship
-  metadata but owns a standalone Makefile, `.mise.toml`, `.envrc`, `.venv`, lock,
-  CI surface, and project runtime.
-- A development lane owns a real lane-local `.venv`. START invokes `make setup`
-  from the lane, with the lane as both project and runtime root; it never links to
-  or mutates another checkout's environment.
-- Generated `.envrc` files derive `PROJECT_ROOT` from the nearest
-  `pyproject.toml` through direnv's documented `find_up` stdlib function. They
-  do not depend on undocumented `DIRENV_*` variables, so strict evaluation is
-  valid both at a repository root and under `direnv exec` from a subdirectory.
-- External and fork Git links are observed from live Git metadata. Conform
-  preserves their `.gitmodules` blocks but never initializes, updates, checks
-  out, lints, type-checks, provisions, or otherwise manages them.
-- `ProviderSpec.branch` is the only integration-baseline owner. Every governed
-  local branch, `origin/*` branch, and registered worktree must descend from it;
-  only the exact configured technical patterns are excluded.
+Neither input is inferred from a parent checkout, a primary worktree,
+`pyproject.toml`, a directory name, or another repository. A linked worktree
+loads both files from that lane and every generated write remains in that lane.
 
-Public accessors:
+## Validation boundary
 
-- `u.Infra.workspace_spec_load(repository_root: Path) -> Result[m.Infra.WorkspaceSpec]`
-- `u.Infra.repository_conform_target(repository_root: Path,`
-  `workspace: m.Infra.WorkspaceSpec | None = None)`
-  `-> Result[m.Infra.RepositoryConformTarget]`
-- `u.Infra.repository_provider(repository, providers) -> Result[m.Infra.ProviderSpec]`
-- `u.Infra.repository_baseline_branch(repository, providers) -> Result[str]`
+Conformance validates the complete selected topology before planning writes. A
+workspace validates each direct governed path declared by its own `.gitmodules`:
 
-## Full refactor workflow
+- the checkout exists and remains below the workspace root;
+- its origin matches the URL declared by `.gitmodules`;
+- its branch follows the configured provider contract;
+- its own `config/beads.yaml` exists and validates.
 
-1. Add the new typed canonical owner and expose it through `m.Infra`, `p.Infra`,
-   or `u.Infra` as appropriate.
-2. Use ast-grep plus repository-wide search to enumerate every consumer,
-   generated projection, template, fixture, and executable snippet.
-3. Migrate all consumers atomically, then delete the old owner and its routes,
-   templates, models, protocols, and tests. Old and new paths never coexist.
-4. Exercise the real runtime contract before encoding confirmation in tests.
-5. Run canonical Make tests, global lint/format/static gates, changed-scope
-   Pyright/Mypy, generated-surface regeneration, and an idempotence pass.
+Subprojects keep independent Beads identities. A workspace never copies its
+identity into a subproject and never overwrites a subproject's source config.
+External provider URLs remain read-only dependency paths.
 
-## Synchronization and setup
+Missing, malformed, duplicate, escaping, or mismatched inputs fail before any
+file write. Conformance does not generate, merge, reorder, fan out, or overwrite
+`.gitmodules` or `config/beads.yaml` in an existing repository.
 
-The operator updates the current root through the repository's GitFlow before
-starting conform; conform never guesses a merge or mutates root history.
-Generated root setup handles only governed member paths: it fetches the
-provider-owned branch and performs `git pull --ff-only` before validating the
-recorded gitlink ancestry. Divergence fails closed with the exact command, exit
-status, and stderr.
+## Selection and projections
 
-Conform does not own tracker runtime, ledger routing, hooks, or tracker policy.
-The flext-infra checkout retains only its repository-owned tracker metadata and
-its project-owned Mise binary pin; generated consumers inherit neither.
+`codegen conform` accepts `self`, `subprojects`, and `all`. `self` always means
+the requested checkout. `subprojects` and `all` are valid only from a workspace
+whose own `.gitmodules` declares governed direct subprojects.
 
-## MCP / CRG identity (out of scope for conform)
+The generated `.beads/config.yaml` and `.beads/metadata.json` are projections of
+the selected repository's local Beads identity plus the fleet-owned Gas City
+contract. Rigs declare `inherited_city` and never copy a city host or port;
+Gas City owns endpoint resolution and its compatibility mirror. The custom-type
+projection preserves project extensions first and appends the required Gas City
+baseline. Generation never starts, stops, initializes, probes, or mutates Dolt.
 
-Tracker and MCP/CRG identity are outside conform. The generator neither reads
-nor writes those runtime stores.
+The generated Makefile preserves the same boundary: workspace orchestration may
+fan out to direct local subprojects, while standalone repositories and linked
+worktrees own their runtime, environment, and writes locally.
