@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from .test_declarative_enforcement import (
         TestsFlextInfraRefactorDeclarativeEnforcement,
         TestsFlextInfraRefactorDeclarativeEnforcementInCensus,
-        constants_module,
     )
     from .test_infra_refactor_class_and_propagation import (
         TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
@@ -83,7 +82,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
     "TestsFlextInfraRefactorMainCli",
     "c",
-    "constants_module",
     "d",
     "e",
     "h",
@@ -108,7 +106,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_declarative_enforcement": (
                 "TestsFlextInfraRefactorDeclarativeEnforcement",
                 "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
-                "constants_module",
             ),
             ".test_infra_refactor_class_and_propagation": (
                 "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
