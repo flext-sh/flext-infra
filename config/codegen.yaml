@@ -190,6 +190,16 @@ Infra:
         organization: datacosmos-br
         base_url: https://github.com/datacosmos-br
         branch: develop
+      # Personal-account consumer organization: standalone repositories whose
+      # canonical remote is the operator's own account. `invest` and `mcb`
+      # already declare `provider: marlonsc` in their config/workspace.yaml, so
+      # conform must be able to resolve it. Their integration line is `develop`;
+      # a repository that integrates elsewhere overrides it in its own
+      # `integration` block, as `invest` does with `dev`.
+      - name: marlonsc
+        organization: marlonsc
+        base_url: https://github.com/marlonsc
+        branch: develop
     branch_policy:
       technical_branch_patterns:
         - __dolt_remote_info__
