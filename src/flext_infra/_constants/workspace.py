@@ -49,14 +49,6 @@ class FlextInfraConstantsWorkspace:
         RELEASE = "release"
 
     @unique
-    class WorkLaneRole(StrEnum):
-        """Topology role one registered lane holds inside an epic program."""
-
-        PLAIN = "plain"
-        EPIC = "epic"
-        CHILD = "child"
-
-    @unique
     class WorkProvisioningState(StrEnum):
         """Lifecycle state persisted for one work-lane reservation."""
 
@@ -90,20 +82,6 @@ class FlextInfraConstantsWorkspace:
 
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
-
-    EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
-        ".ai-hub",
-        "algar-*",
-        "gruponos-*",
-    )
-    "Sibling directory patterns for FLEXT-managed external workspaces."
-
-    PERSISTENT_STATE_ARTIFACT_NAMES: Final[frozenset[str]] = frozenset({
-        ".code-review-graph",
-        ".codegraph",
-        ".serena",
-    })
-    "Persistent-state artifact basenames owned only by the workspace root."
 
     # NOTE (mro-jnm1.2): the .gitignore body is derived from the artifact SSOT
     # (config/codegen.yaml artifacts -> CodegenConfigSpec.gitignore_sections)

@@ -203,43 +203,8 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                 return provider
         return None
 
-    @staticmethod
-    def resolve_topology_roots(
-        repository_root: Path,
-    ) -> p.Result[tuple[Path, Path, Path]]:
-        """Resolve the repository-local render, identity, and topology roots.
-
-        A containing superproject is not an authority for this repository. All
-        three roots therefore stay local to the checkout supplied by the
-        consumer, including a linked worktree.
-        """
-        resolved_root = repository_root.expanduser().resolve()
-        return r[tuple[Path, Path, Path]].ok((
-            resolved_root,
-            resolved_root,
-            resolved_root,
-        ))
-
     @classmethod
-    def resolve_workspace_root(cls, repository_root: Path) -> p.Result[Path]:
-        """Resolve the repository's own topology root."""
-        topology = cls.resolve_topology_roots(repository_root)
-        if topology.failure:
-            return r[Path].fail(
-                topology.error or "unable to resolve workspace topology"
-            )
-        return r[Path].ok(topology.value[2])
-
-    @classmethod
-    def analysis_exclusion_paths(
-        cls, repository_root: Path
-    ) -> p.Result[tuple[Path, ...]]:
-        """Return the repository-local analyzer policy projection."""
-        del cls, repository_root
-        return r[tuple[Path, ...]].ok(())
-
-    @classmethod
-    def _unattached_mode(cls, repository_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
+    def _repository_mode(cls, repository_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
         """Classify the repository by its own `.gitmodules` presence."""
         return r[c.Infra.WorkspaceMode].ok(
             c.Infra.WorkspaceMode.WORKSPACE
@@ -252,12 +217,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
         cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.RepositoryConformTarget]:
         """Derive the sole conformance target from live Git and typed identity."""
-        topology_result = cls.resolve_topology_roots(repository_root)
-        if topology_result.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                topology_result.error or "unable to resolve governing root"
-            )
-        resolved_root, _identity_root, _governing_root = topology_result.value
+        resolved_root = repository_root.expanduser().resolve()
         workspace_result = cls.load_workspace_spec(
             resolved_root, project_metadata=project_metadata
         )
@@ -324,7 +284,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             resolved_project_root = project_root.resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[c.Infra.WorkspaceMode].fail_op("Workspace detection", exc)
-        return self._unattached_mode(resolved_project_root)
+        return self._repository_mode(resolved_project_root)
 
     @override
     def execute(self) -> p.Result[c.Infra.WorkspaceMode]:

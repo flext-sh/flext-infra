@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
     from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
@@ -212,26 +211,10 @@ class FlextInfraEnsurePyrightConfigPhase:
         venv_path = "." if is_root else ".."
         return {c.Infra.VENV_PATH: venv_path, "venv": rules.venv_name}
 
-    def _expected_excludes(
-        self, project_root: Path | None, analysis_exclusions: t.StrSequence
-    ) -> t.StrSequence:
+    def _expected_excludes(self, analysis_exclusions: t.StrSequence) -> t.StrSequence:
         """Return the complete config-owned Pyright exclude list."""
         rules = self._tool_config.tools.pyright.path_rules
-        workspace_excludes: t.StrSequence = ()
-        if project_root is not None:
-            excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(
-                project_root
-            )
-            if excluded.failure:
-                raise ValueError(
-                    excluded.error or "workspace analysis scope is unavailable"
-                )
-            workspace_excludes = tuple(path.as_posix() for path in excluded.value)
-        return sorted({
-            *rules.default_excludes,
-            *workspace_excludes,
-            *analysis_exclusions,
-        })
+        return sorted({*rules.default_excludes, *analysis_exclusions})
 
     def _existing_paths(
         self, base_dir: Path | None, configured_paths: t.StrSequence
@@ -299,7 +282,7 @@ class FlextInfraEnsurePyrightConfigPhase:
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the managed pyright phase for one project context."""
         project_root = workspace_root if is_root else project_dir
-        expected_excludes = self._expected_excludes(project_root, analysis_exclusions)
+        expected_excludes = self._expected_excludes(analysis_exclusions)
         expected_ignores = self._expected_ignores(
             is_root=is_root, workspace_root=workspace_root, project_dir=project_dir
         )

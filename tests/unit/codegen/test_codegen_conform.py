@@ -246,7 +246,7 @@ class TestCodegenConform:
         ("kind", "name"),
         [
             (c.Infra.ProjectKind.EXTERNAL, "flext-demo"),
-            (c.Infra.ProjectKind.INTERNAL, "flext-member"),
+            (c.Infra.ProjectKind.INTERNAL, "flext-internal-demo"),
         ],
     )
     def test_new_project_is_complete_and_idempotent(

@@ -9,7 +9,6 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra.deps.toml_phase import FlextInfraTomlPhaseService
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
 class FlextInfraEnsureRuffConfigPhase:
@@ -18,28 +17,6 @@ class FlextInfraEnsureRuffConfigPhase:
     def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
         """Store tool configuration used to build canonical Ruff settings."""
         self._tool_config = tool_config
-
-    @staticmethod
-    def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
-        """Discover child project packages when generating workspace root settings."""
-        if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
-            return ()
-        return ()
-
-    @staticmethod
-    def _workspace_exclusion_globs(project_dir: Path) -> t.StrSequence:
-        """Return immutable repository and explicit exclusion path globs.
-
-        Content-only repositories are foreign, read-only trees and therefore
-        never enter Ruff. Explicit ``exclusions`` extend that same typed scope
-        for non-repository paths without duplicating repository declarations.
-        """
-        if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
-            return ()
-        paths = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
-        if paths.failure:
-            raise ValueError(paths.error or "workspace analysis scope is unavailable")
-        return sorted(path.as_posix() for path in paths.value)
 
     @staticmethod
     def _remove_stale_lint_section(doc: t.Cli.TomlDocument) -> t.StrSequence:
@@ -114,11 +91,7 @@ class FlextInfraEnsureRuffConfigPhase:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         effective_src = sorted(ruff_cfg.src)
-        effective_exclude = sorted({
-            *ruff_cfg.exclude,
-            *self._workspace_exclusion_globs(path.parent),
-            *analysis_exclusions,
-        })
+        effective_exclude = sorted({*ruff_cfg.exclude, *analysis_exclusions})
         # NOTE(mro-p68a.5, agent codex): models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
         effective_ignore = tuple(
@@ -128,7 +101,6 @@ class FlextInfraEnsureRuffConfigPhase:
             *config.Infra.tooling.tools.deptry.known_first_party,
             *u.Infra.discover_first_party_namespaces(path.parent),
             *workspace_namespaces,
-            *self._workspace_project_namespaces(path.parent),
         })
         lint_nested_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
             ("select", u.normalize_to_json_value(sorted(ruff_cfg.lint.select))),

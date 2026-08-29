@@ -34,17 +34,17 @@ def workspace_main(argv: list[str] | None = None) -> int:
 class TestsFlextInfraWorkspaceMain:
     """Behavior contract for test_main."""
 
-    def test_unattached_child_does_not_infer_workspace_from_ancestor(
+    def test_nested_project_does_not_infer_topology_from_ancestor(
         self, tmp_path: Path
     ) -> None:
         workspace_root = tmp_path / "workspace"
         workspace_root.mkdir()
         (workspace_root / ".gitmodules").write_text("", encoding="utf-8")
-        member_root = workspace_root / "child"
-        _write_project(member_root, "demo-project")
+        nested_root = workspace_root / "child"
+        _write_project(nested_root, "demo-project")
 
         result = FlextInfraWorkspaceDetector(
-            workspace_root=member_root, apply_changes=False
+            workspace_root=nested_root, apply_changes=False
         ).execute()
 
         tm.ok(result)
@@ -55,10 +55,10 @@ class TestsFlextInfraWorkspaceMain:
     ) -> None:
         workspace_root = tmp_path / "workspace"
         workspace_root.mkdir()
-        member_root = workspace_root / "child"
-        _write_project(member_root, "demo-project")
+        nested_root = workspace_root / "child"
+        _write_project(nested_root, "demo-project")
 
-        tm.that(workspace_main(["detect", "--workspace", str(member_root)]), eq=0)
+        tm.that(workspace_main(["detect", "--workspace", str(nested_root)]), eq=0)
 
     def test_workspace_main_detect_runs_public_command(self, tmp_path: Path) -> None:
         """``workspace detect`` runs as a public CLI command."""
