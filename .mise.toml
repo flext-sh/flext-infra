@@ -15,15 +15,12 @@ locked = true
 
 # === SECTION: tools (managed) ===
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
-#         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
-#          gitleaks_version, tokei_version, qlty_version, beads.selector, beads.version)
+#         (taplo_version, ast_grep_version, gitleaks_version, tokei_version,
+#          qlty_version, beads.selector, beads.version)
 [tools]
 python = "3.13"
 uv = "0.12"
 # Native toolchain (single source: Infra.codegen.toolchain in codegen.yaml).
-kubectl = "1.32"
-helm = "3.19"
-kind = "0.31"
 taplo = "0.10"
 ast-grep = "0.45"
 gitleaks = "8.30"

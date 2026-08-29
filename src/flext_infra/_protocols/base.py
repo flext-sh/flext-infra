@@ -237,21 +237,6 @@ class FlextInfraProtocolsBase(Protocol):
         # for the policy rather than the uv key it renders into.
 
         @property
-        def kubectl_version(self) -> str:
-            """Exact kubectl version."""
-            ...
-
-        @property
-        def helm_version(self) -> str:
-            """Exact Helm version."""
-            ...
-
-        @property
-        def kind_version(self) -> str:
-            """Exact kind version."""
-            ...
-
-        @property
         def environment_path_prepends(self) -> t.SequenceOf[str]:
             """Extra directories prepended to PATH by shell activation."""
             ...

@@ -41,6 +41,17 @@ def _sync(root: Path) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
 class TestsMiseDistributionPolicy:
     """Reject alternate owners and converge canonical pins through the facade."""
 
+    def test_base_mise_contains_only_runtime_owned_tools(self, tmp_path: Path) -> None:
+        root = _workspace(tmp_path / "project")
+
+        result = _sync(root)
+
+        tm.ok(result)
+        tools = tomllib.loads((root / ".mise.toml").read_text(encoding="utf-8"))[
+            "tools"
+        ]
+        tm.that(tools, lacks=["kubectl", "helm", "kind"])
+
     def test_managed_artifacts_reject_alternate_distribution(
         self, tmp_path: Path
     ) -> None:
