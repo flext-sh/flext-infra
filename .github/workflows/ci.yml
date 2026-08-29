@@ -7,8 +7,7 @@
 name: CI
 
 # === SECTION: triggers (managed) ===
-# Source: operator CI policy — integration push/PR = blocking CI only;
-# main push/PR (non-draft) = blocking CI; draft and other branches = none.
+# Source: operator CI policy — integration/main push and PR = blocking CI.
 "on":
   push:
     branches:
@@ -34,7 +33,6 @@ jobs:
     # Only the checkout job needs repository contents.
     permissions:
       contents: read
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -52,7 +50,7 @@ jobs:
           version: 2026.8.14
       - name: Restore testmon cache
         id: testmon-restore
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: |
             .testmondata
@@ -62,23 +60,28 @@ jobs:
             testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-
 
       - name: setup (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        # CI invokes only each verb's read-only default; mutation intent belongs
+        # to local hook contexts and is never projected into this workflow.
         run: CI=Y make setup
 
       - name: gen (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
-        run: CI=Y make gen WHAT=apply APPLY=Y
+        # CI invokes only each verb's read-only default; mutation intent belongs
+        # to local hook contexts and is never projected into this workflow.
+        run: CI=Y make gen
 
       - name: fmt (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
-        run: CI=Y make fmt WHAT=apply APPLY=Y
+        # CI invokes only each verb's read-only default; mutation intent belongs
+        # to local hook contexts and is never projected into this workflow.
+        run: CI=Y make fmt
 
       - name: fix (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
-        run: CI=Y make fix WHAT=apply APPLY=Y
+        # CI invokes only each verb's read-only default; mutation intent belongs
+        # to local hook contexts and is never projected into this workflow.
+        run: CI=Y make fix
 
       - name: check (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        # CI invokes only each verb's read-only default; mutation intent belongs
+        # to local hook contexts and is never projected into this workflow.
         run: CI=Y make check
 
       # Why (aihub-v01jg): CI=Y runs ONE HALF of the gate set
@@ -92,6 +95,16 @@ jobs:
       # hole rather than trusting everyone to run the other half by hand.
       - name: check complement (blocking)
         run: CI=N make check
+
+      - name: test (blocking)
+        # CI invokes only each verb's read-only default; mutation intent belongs
+        # to local hook contexts and is never projected into this workflow.
+        run: CI=Y make test WHAT=full
+
+      - name: Verify repository remained unchanged
+        run: |
+          git diff --check
+          git diff --exit-code
 
       - name: Dump reports on failure
         if: ${{ failure() }}
@@ -147,7 +160,7 @@ jobs:
         run: |
           set -eu
           case "$BASE_REF" in
-            dev|develop|0.12.0-dev)
+            develop|0.12.0-dev)
               ;;
             *)
               echo "Merge guard passed for $HEAD_REF -> $BASE_REF"

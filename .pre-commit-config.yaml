@@ -16,9 +16,8 @@ repos:
       # narrows CHECK_GATES, so N keeps every gate and the
       # complete pytest+coverage run.
       # Every hook step owns a shell because Git exports repository-local state,
-      # including GIT_INDEX_FILE during pre-commit. A member hook that delegates
-      # setup to its workspace root must clear those variables first or the root
-      # reads the member's temporary index and reports governed gitlinks missing.
+      # including GIT_INDEX_FILE during pre-commit. Clear those variables before
+      # the repository-local Make command reads its own worktree and index.
       # WHAT/MAKEFLAGS/APPLY are cleared in the same prefix so caller selectors
       # and write intent cannot leak into an independently declared hook step.
       # A step declaring gates_skip (flext-ucxgl) narrows CHECK_GATES for the hook
