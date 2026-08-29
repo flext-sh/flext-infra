@@ -15,13 +15,12 @@ _TEMPLATES = (
     / "base"
 )
 _MAKEFILE = _TEMPLATES / "Makefile.j2"
-_RELEASE = _TEMPLATES / ".github" / "workflows" / "release.yml.j2"
 _CI = _TEMPLATES / ".github" / "workflows" / "ci.yml.j2"
 _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
 
 
 class TestsReviewTemplateContracts:
-    """Lock the SSOT fixes for bootstrap pin, PROJECT selection, TestPyPI order."""
+    """Lock repository-neutral workflow and bootstrap contracts."""
 
     def test_makefile_bootstrap_uses_declared_remote_revision(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
@@ -43,17 +42,6 @@ class TestsReviewTemplateContracts:
         """Gas Town is the sole lane lifecycle owner."""
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(text, lacks=["_builtin_work_", "make work", "work start"])
-
-    def test_release_verifies_core_gitlink_after_setup(self) -> None:
-        text = _RELEASE.read_text(encoding="utf-8")
-        job = text.split("testpypi:", 1)[1]
-        boot = job.index("Boot workspace")
-        verify = job.index("Verify immutable flext-core gitlink")
-        root_verify = job.index("Verify immutable canary root")
-        tm.that(root_verify < boot, eq=True)
-        tm.that(boot < verify, eq=True)
-        pre = job[:boot]
-        tm.that(pre, lacks="git -C flext-core rev-parse HEAD")
 
     def test_ci_upload_excludes_raw_report_logs(self) -> None:
         text = _CI.read_text(encoding="utf-8")

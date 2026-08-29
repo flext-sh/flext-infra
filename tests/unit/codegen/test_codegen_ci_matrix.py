@@ -59,6 +59,16 @@ class TestCodegenCiMatrix:
                 msg=workflow.name,
             )
 
+    def test_release_workflow_contains_no_cross_project_canary(
+        self, tmp_path: Path
+    ) -> None:
+        """A generated release acts only on its own repository."""
+        root = self._render_project(tmp_path / "external")
+        release = (root / ".github" / "workflows" / "release.yml").read_text(
+            encoding="utf-8"
+        )
+        tm.that(release, lacks=["testpypi:", "flext-core", "PROJECT=flext-core"])
+
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")
