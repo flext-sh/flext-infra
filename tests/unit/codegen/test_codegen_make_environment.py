@@ -245,7 +245,7 @@ class TestsCodegenMakeEnvironment:
             mise,
             "#!/bin/sh\n"
             f"printf '%s|%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
-            f"\"$MISE_CONFIG_DIR\" \"$MISE_CEILING_PATHS\" >> '{mise_env_log}'\n"
+            f'"$MISE_CONFIG_DIR" "$MISE_CEILING_PATHS" >> \'{mise_env_log}\'\n'
             f"exec '{real_mise}' \"$@\"\n",
         )
         uv = tool_bin / "uv"

@@ -403,6 +403,10 @@ class TestsCodegenCatalogExtensions:
             mise["tools"][config.Infra.codegen.toolchain.beads.selector]["version"],
             eq=config.Infra.codegen.toolchain.beads.version,
         )
+        tm.that(
+            mise["tools"]["kubeconform"],
+            eq=config.Infra.codegen.toolchain.kubeconform_version,
+        )
         pyproject = tomllib.loads(
             next(
                 file.rendered

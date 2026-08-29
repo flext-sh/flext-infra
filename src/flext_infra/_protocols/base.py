@@ -409,6 +409,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def kubeconform_version(self) -> str:
+            """Compatible kubeconform minor line."""
+            ...
+
+        @property
         def qlty_version(self) -> str:
             """Exact qlty code-smell scanner version."""
             ...

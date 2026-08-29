@@ -210,18 +210,14 @@ class TestsRepositoryLocalTopology:
         )
         tm.ok(
             u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "--quiet", "-m", "attach member"],
-                cwd=parent,
+                [c.Infra.GIT, "commit", "--quiet", "-m", "attach member"], cwd=parent
             )
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
         tm.that(workspace.repository.path, eq=Path())
-        tm.that(
-            workspace.repository.checkout,
-            eq=c.Infra.CheckoutKind.SUBMODULE,
-        )
+        tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
 
     def test_workspace_preserves_distinct_subproject_identities(
         self, tmp_path: Path
@@ -292,9 +288,7 @@ class TestsRepositoryLocalTopology:
             service_root,
             origin_url=WorktreeFixture.governed_repository_url(service_project),
         )
-        WorktreeFixture.write_gitmodules(
-            root, (python_project, service_project)
-        )
+        WorktreeFixture.write_gitmodules(root, (python_project, service_project))
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 

@@ -109,10 +109,7 @@ def test_gen_has_one_codegen_owner() -> None:
     assert "CODEGEN_PROJECT_ARGS" not in text
 
     bodies = _recipe_bodies()
-    expected_modes = {
-        "_builtin_gen_check": ("check",),
-        "_builtin_gen_all": ("apply",),
-    }
+    expected_modes = {"_builtin_gen_check": ("check",), "_builtin_gen_all": ("apply",)}
     for target, modes in expected_modes.items():
         conform_lines = [line for line in bodies[target] if "codegen conform" in line]
         assert len(conform_lines) == len(modes)

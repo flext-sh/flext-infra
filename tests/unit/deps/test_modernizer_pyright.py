@@ -40,9 +40,7 @@ class TestsFlextInfraDepsModernizerPyright:
         (member / "pyproject.toml").write_text(
             "[project]\nname='member'\n", encoding="utf-8"
         )
-        (member_source / "__init__.py").write_text(
-            "VALUE = 1\n", encoding="utf-8"
-        )
+        (member_source / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
 
         tm.that(infra_u.Infra.discover_python_dirs(tmp_path), eq=["src"])
 
@@ -135,7 +133,7 @@ class TestsFlextInfraDepsModernizerPyright:
                     "root": rules.source_dir,
                     "reportPrivateUsage": rules.source_report_private_usage,
                     "extraPaths": [rules.source_dir],
-                },
+                }
             ],
         )
 
