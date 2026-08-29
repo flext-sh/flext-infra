@@ -127,6 +127,35 @@ class TestsCodegenArtifactSsot:
             eq=False,
         )
 
+    def test_generated_prompts_reference_only_current_flext_skill_owner(self) -> None:
+        """Keep generated prompts on the central FLEXT capability identity."""
+        templates_root = (
+            Path(__file__).resolve().parents[3]
+            / "src/flext_infra/templates/project/base"
+        )
+        prompt_paths = (
+            templates_root
+            / ".github/prompts/flext-aggressive-scale-refactor.prompt.md.j2",
+            templates_root
+            / ".github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2",
+        )
+        extinct = (
+            "flext-law",
+            "flext-context-routing",
+            "flext-python-architecture",
+            "flext-agent-strict-rules",
+            "flext-flext-namespace-rules",
+            "flext-import-rules",
+            "flext-constants-discipline",
+            "flext-strict-typing",
+            "flext-patterns",
+        )
+        for prompt_path in prompt_paths:
+            content = prompt_path.read_text(encoding="utf-8")
+            tm.that(content, has=".agents/skills/flext-development/SKILL.md")
+            for identity in extinct:
+                tm.that(content, lacks=identity)
+
     def test_makefile_has_one_owner_for_every_declared_profile(
         self, codegen: CodegenSpec
     ) -> None:

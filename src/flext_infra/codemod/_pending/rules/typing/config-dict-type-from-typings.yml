@@ -54,4 +54,4 @@ fix: "model_config: ClassVar[t.ConfigDict] = $VAL"
 message: >-
   model_config type must be the typings alias t.ConfigDict, not p.ConfigDict
   (protocols has no ConfigDict -> import crash) nor m.ConfigDict (a model is
-  never a type; flext-law §3.2). Construction value m.ConfigDict(...) is kept.
+  never a type). Construction value m.ConfigDict(...) is kept.

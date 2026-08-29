@@ -2,7 +2,7 @@
 
 These lock the current behavior of every ``LooseObjectViolation.kind`` the
 detector emits BEFORE the rope-structure boundary conversion, so the migration
-is proven to preserve domain behavior (flext-law: no domain regression).
+is proven to preserve the FLEXT domain invariant against regression.
 """
 
 from __future__ import annotations

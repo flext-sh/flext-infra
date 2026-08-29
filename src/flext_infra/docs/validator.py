@@ -52,10 +52,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
                 "adr_skill_check_failed", error=required_result.error or ""
             )
             return (1, [])
-        required_skills = required_result.value or [
-            "flext-law",
-            "flext-context-routing",
-        ]
+        required_skills = required_result.value or ["flext-development"]
         skills_root = workspace_root / ".agents/skills"
         missing: list[str] = []
         for skill_name in required_skills:
