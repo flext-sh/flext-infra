@@ -14,6 +14,42 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def test_collocated_root_project_keeps_root_generated_tree_without_member_fanout(
+    tmp_path: Path,
+) -> None:
+    """Keep PROJECT=. from pruning root output or generating member output."""
+    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
+    package = workspace / "src/workspace"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text(
+        '"""Workspace fixture package."""\n', encoding="utf-8"
+    )
+    request = m.Infra.DocsGenerateRequest(
+        workspace_root=workspace, projects=["."], apply=True
+    )
+    generator = FlextInfraDocGenerator()
+
+    first = generator.generate(request)
+
+    tm.ok(first)
+    tm.that([report.scope for report in first.value], eq=["root", "workspace"])
+    tm.that(first.value[1].reason, eq="root-owner")
+    tm.that((workspace / "docs/projects/generated/catalog.md").exists(), eq=True)
+    tm.that((workspace / "docs/api-reference/generated/flext-a.md").exists(), eq=False)
+    tm.that(
+        (workspace / "docs/api-reference/generated/public-api.md").exists(), eq=False
+    )
+
+    fixed_point = generator.generate(request.model_copy(update={"apply": False}))
+
+    tm.ok(fixed_point)
+    tm.that([report.changed_files for report in fixed_point.value], eq=[0, 0])
+    report = (workspace / ".reports/docs/generate-report.md").read_text(
+        encoding="utf-8"
+    )
+    tm.that(report, has="Scope: root")
+
+
 def test_governed_api_survives_generation_and_curated_paths_are_unowned(
     tmp_path: Path,
 ) -> None:

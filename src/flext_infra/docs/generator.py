@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import m, u
+from flext_infra import c, m, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
@@ -45,11 +45,29 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         self, scope: m.Infra.DocScope, *, request: m.Infra.DocsGenerateRequest
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope via the docs generator utilities and log the result."""
-        report: m.Infra.DocsPhaseReport = u.Infra.docs_generate_scope(
-            scope,
-            apply=request.apply,
-            workspace_root=request.workspace_root,
-            projects=request.projects,
+        workspace_root = request.workspace_root.resolve()
+        selected_projects = u.Infra.normalize_sequence_values(request.projects) or ()
+        collocated_root_project = (
+            "." in selected_projects
+            and scope.name != c.Infra.RK_ROOT
+            and scope.path.resolve() == workspace_root
+        )
+        report: m.Infra.DocsPhaseReport = (
+            m.Infra.DocsPhaseReport(
+                phase="generate",
+                scope=scope.name,
+                source="root-generated-ssot",
+                result=c.Infra.ResultStatus.OK,
+                reason="root-owner",
+                passed=True,
+            )
+            if collocated_root_project
+            else u.Infra.docs_generate_scope(
+                scope,
+                apply=request.apply,
+                workspace_root=request.workspace_root,
+                projects=request.projects,
+            )
         )
         self.logger.info(
             "docs_generate_scope_completed",
