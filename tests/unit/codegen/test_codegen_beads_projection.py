@@ -17,20 +17,13 @@ class TestsCodegenBeadsProjection:
     """Keep codegen on its declarative projection boundary."""
 
     @staticmethod
-    def _project(
-        root: Path,
-        *,
-        database: str,
-        issue_prefix: str,
-        custom_issue_types: tuple[str, ...] = (),
-    ) -> Path:
+    def _project(root: Path, *, database: str, issue_prefix: str) -> Path:
         WorktreeFixture.initialize_governed_project(
             root,
             "fixture-project",
             workspace="fixture-workspace",
             database=database,
             issue_prefix=issue_prefix,
-            custom_issue_types=custom_issue_types,
         )
         return root
 
@@ -61,7 +54,6 @@ class TestsCodegenBeadsProjection:
             tmp_path / "project",
             database="project_database",
             issue_prefix="project-prefix",
-            custom_issue_types=("incident",),
         )
 
         plan = self._plan(root)
@@ -70,23 +62,29 @@ class TestsCodegenBeadsProjection:
 
         if rendered_config is None or rendered_metadata is None:
             pytest.fail("local identity must produce both Beads projections")
-        beads = config.Infra.codegen.toolchain.beads
         tm.that(rendered_config, has='issue-prefix: "project-prefix"')
-        tm.that(rendered_config, has='issue_prefix: "project-prefix"')
-        tm.that(rendered_config, has=f"gc.endpoint_origin: {beads.endpoint_origin}")
-        tm.that(rendered_config, has=f"gc.endpoint_status: {beads.endpoint_status}")
-        tm.that(
-            rendered_config,
-            has="types.custom: " + ",".join(("incident", *beads.required_custom_types)),
-        )
-        tm.that("dolt.host" in rendered_config, eq=False)
-        tm.that("dolt.port" in rendered_config, eq=False)
+        tm.that(rendered_config, has='prefix: "project_database"')
+        beads = config.Infra.codegen.toolchain.beads
+        tm.that(rendered_config, has=f"host: {beads.endpoint.host}")
+        tm.that(rendered_config, has=f"port: {beads.endpoint.port}")
         metadata = json.loads(rendered_metadata)
         tm.that(metadata["database"], eq="dolt")
         tm.that(metadata["backend"], eq="dolt")
         tm.that(metadata["dolt_database"], eq="project_database")
         tm.that(metadata["dolt_mode"], eq="server")
-        tm.that(set(metadata), eq={"database", "backend", "dolt_mode", "dolt_database"})
+        tm.that(metadata["dolt_server_host"], eq=beads.endpoint.host)
+        tm.that(metadata["dolt_server_port"], eq=beads.endpoint.port)
+        tm.that(
+            set(metadata),
+            eq={
+                "database",
+                "backend",
+                "dolt_mode",
+                "dolt_database",
+                "dolt_server_host",
+                "dolt_server_port",
+            },
+        )
         tm.that(hasattr(plan, "beads"), eq=False)
 
     def test_projection_preserves_the_manual_identity_input(
@@ -123,7 +121,4 @@ class TestsCodegenBeadsProjection:
         tm.that("reported_version" in tool_fields, eq=False)
         tm.that("checksum" in tool_fields, eq=False)
         tm.that("expected_schema" in tool_fields, eq=False)
-        tm.that("endpoint" in tool_fields, eq=False)
-        tm.that("endpoint_origin" in tool_fields, eq=True)
-        tm.that("endpoint_status" in tool_fields, eq=True)
-        tm.that("required_custom_types" in tool_fields, eq=True)
+        tm.that("endpoint" in tool_fields, eq=True)

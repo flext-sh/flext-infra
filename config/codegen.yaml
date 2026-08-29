@@ -56,7 +56,6 @@ Infra:
       ast_grep_version: "0.45"
       gitleaks_version: "8.30"
       tokei_version: "14.0"
-      kubeconform_version: "0.8"
       # qlty (hq-36xk): same missing-owner defect as uv_version above.
       qlty_version: "0.642"
       # Exact bootstrap release: lockfile URL/checksum/provenance support used
@@ -106,22 +105,9 @@ Infra:
         version: "1.2.2"
         prerelease: false
         minimum_release_age: null
-        endpoint_origin: inherited_city
-        endpoint_status: verified
-        required_custom_types:
-          - molecule
-          - convoy
-          - message
-          - event
-          - gate
-          - merge-request
-          - agent
-          - role
-          - rig
-          - session
-          - spec
-          - convergence
-          - step
+        endpoint:
+          host: 127.0.0.1
+          port: 3307
 
     # Why (ai-hub-qwoc): the ast-grep project contract for every governed
     # repository. A provider manifest may declare sgconfig.yml as a required
@@ -339,7 +325,8 @@ Infra:
         local_check_gates: [pyrefly, mypy]
       # Why (operator law 2026-08-24): git-hook stages are disabled by default;
       # the workflow below still declares stage membership so re-enabling is a
-      # one-key change, case by case.
+      # one-key change, case by case. CI owns read-only setup, generation drift,
+      # and checks; it never renders an apply/fmt/fix invocation.
       pre_commit: false
       pre_push: false
       workflow:
@@ -347,9 +334,9 @@ Infra:
         # gates as CI: mypy pyright security markdown smells). This bans
         # broken code from ever being committed. pre-push adds gen+test.
         - { verb: setup, apply: false, contexts: [local, ci] }
-        - { verb: gen, apply: true, contexts: [local, ci, pre_push] }
-        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
+        - { verb: gen, apply: true, contexts: [local, pre_push] }
+        - { verb: fmt, apply: true, contexts: [local, pre_commit] }
+        - { verb: fix, apply: true, contexts: [local, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
         # CI must not execute pytest. Local + pre-push keep make test.
         - { verb: test, apply: false, contexts: [local, pre_push] }
@@ -383,15 +370,6 @@ Infra:
           - "*.pstats"
       docs:
         api_modules:
-          ai-hub:
-            - api
-            - base
-            - cli
-            - constants
-            - models
-            - protocols
-            - typings
-            - utilities
           flext-infra:
             - api
             - base
@@ -1138,9 +1116,6 @@ Infra:
       - path: .python-version
         owner: codegen
         policy: full
-      - path: .shellcheckrc
-        owner: codegen
-        policy: full
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
@@ -1165,22 +1140,6 @@ Infra:
         # undeclared made absorbing an integration base that still carried the
         # previous lint projection unresolvable through the canonical surface.
         conflict_sections: [tool.pytest.ini_options, tool.uv, tool.ruff.lint.per-file-ignores]
-
-    # Transitional, exact retirement owner. A path is removed only when every
-    # marker matches the obsolete generated surface; an unknown collision fails.
-    retired_projections:
-      - path: .github/scripts/check-beads-policy.sh
-        markers:
-          - 'role_json="$(bd config get beads.role --json)"'
-          - 'bd hooks list --json'
-      - path: .github/scripts/flext-law-loop.sh
-        markers:
-          - 'flext-law-loop.sh — recurring strict-FLEXT rule enforcer.'
-          - 'FIXER_SPECS=('
-      - path: .github/scripts/install-git-hooks.sh
-        markers:
-          - 'install-git-hooks.sh — Install the Beads git hooks'
-          - 'bd hooks install --chain'
 
     # Automated semantic versioning, owned by the market tool rather than by a
     # local implementation. python-semantic-release reads Conventional Commits,
@@ -1241,21 +1200,6 @@ Infra:
           # declared dev dependency of every generated project.
           - bandit>=1.8
           - flext-tests
-          # Every governed project receives the managed MkDocs configuration
-          # below. Its theme, handlers and plugins are direct runtime consumers,
-          # so the generated project must own those distributions instead of
-          # borrowing them transitively from a workspace member.
-          - mkdocs>=1.6.1
-          - mkdocs-autorefs>=1.4.4
-          - mkdocs-exclude>=1.0.2
-          - mkdocs-git-revision-date-localized-plugin>=1.5.3
-          - mkdocs-material>=9.7.7
-          - mkdocs-mermaid2-plugin>=1.2.3
-          - mkdocs-minify-plugin>=0.8.0
-          - mkdocs-redirects>=1.2.3
-          - mkdocs-section-index>=0.3.12
-          - mkdocstrings>=1.0.6
-          - mkdocstrings-python>=2.0.5
           # Floors let uv select released tools without a cap or downgrade path.
           # Every diagnostic from the resolved release remains blocking.
           - mypy>=2.3.0
@@ -1331,6 +1275,9 @@ Infra:
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
             - "!.claude/settings.local.json"
+            - "!.agents/"
+            - "!.agents/**"
+            - ".agents/skills/*/report.json"
         - name: "Dispatcher-based command surface (Make SSOT)"
           profiles: [workspace]
           patterns:
@@ -1367,7 +1314,6 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!.mise.toml"
-            - "!mise.lock"
             - "!.default-python-packages"
             - "!.python-version"
         - name: "Docker configuration"
@@ -1427,6 +1373,23 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
+        # Only the workspace root owns agent skills as real versioned files.
+        # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
+        # provider surfaces as real local files via generate-workspace-config
+        # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
+        # repo-server refuse the repository, so subprojects must not track them.
+        - name: "BLOCK: Agent surface outside the workspace root"
+          profiles: [standalone]
+          patterns:
+            - ".agents/"
+        - name: "WHITELIST: Agent skills owned by the workspace root"
+          profiles: [workspace]
+          patterns:
+            - "!.agents/skills/"
+            - "!.agents/skills/**"
+        - name: "Skill scan reports (transient, regenerated by skill_validate.py)"
+          patterns:
+            - ".agents/skills/*/report.json"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
@@ -1438,60 +1401,6 @@ Infra:
             - ".cursor/"
             - ".copilot/"
             - ".codeium/"
-        # agentsctl is the sole publisher of these physical project-local
-        # surfaces. The authorization and every provider-native destination
-        # are versioned in both workspace roots and standalone members; only
-        # transient evaluation reports stay local.
-        - name: "TRACK: agentsctl-governed project projections"
-          profiles: [workspace, standalone]
-          patterns:
-            - "!.agents/"
-            - "!.agents/projection.json"
-            - "!.agents/.hooks.json.agents-governance.json"
-            - "!.agents/hooks.json"
-            - "!.agents/aihub-hooks/"
-            - "!.agents/aihub-hooks/**"
-            - "!.agents/skills/"
-            - "!.agents/skills/**"
-            - ".agents/skills/*/report.json"
-            - "!.claude/"
-            - "!.claude/.settings.json.agents-governance.json"
-            - "!.claude/settings.json"
-            - "!.claude/aihub-hooks/"
-            - "!.claude/aihub-hooks/**"
-            - "!.claude/agents/"
-            - "!.claude/agents/**"
-            - "!.claude/commands/"
-            - "!.claude/commands/**"
-            - "!.claude/rules/"
-            - "!.claude/rules/**"
-            - "!.claude/skills/"
-            - "!.claude/skills/**"
-            - "!.codex/"
-            - "!.codex/**"
-            - "!.cursor/"
-            - "!.cursor/.hooks.json.agents-governance.json"
-            - "!.cursor/hooks.json"
-            - "!.cursor/aihub-hooks/"
-            - "!.cursor/aihub-hooks/**"
-            - "!.cursor/commands/"
-            - "!.cursor/commands/**"
-            - "!.cursor/rules/"
-            - "!.cursor/rules/**"
-            - "!.cursor/skills/"
-            - "!.cursor/skills/**"
-            - "!.gemini/"
-            - "!.gemini/**"
-            - "!.github/agents/"
-            - "!.github/agents/**"
-            - "!.github/hooks/"
-            - "!.github/hooks/**"
-            - "!.github/instructions/"
-            - "!.github/instructions/**"
-            - "!.github/skills/"
-            - "!.github/skills/**"
-            - "!.opencode/"
-            - "!.opencode/**"
         - name: "Oracle dump files"
           patterns:
             - "**/*.dmp"
@@ -1704,11 +1613,7 @@ Infra:
             - ".venv"
             - ".venv/"
             - ".bin/"
-            - ".runtime/"
             - ".tools/"
-            - "bin/*"
-            - "!bin/mise"
-            - "!bin/mise.cmd"
             - "__pycache__/"
             - "!.pre-commit-config.yaml"
     templates:
@@ -1777,13 +1682,6 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Shell analysis configuration is repository-local and physical. A
-        # cross-checkout symlink changes behavior with external state.
-        - source: base/.shellcheckrc.j2
-          destination: .shellcheckrc
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
         # required surface. Without a generator it was hand-written in one
         # repository and absent in another, so provider discovery failed closed
@@ -1816,7 +1714,7 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Static repository-local storage and database projection.
+        # Static repository-local storage, database, and endpoint projection.
         - source: base/beads-metadata.json.j2
           destination: .beads/metadata.json
           profiles: [workspace, standalone]

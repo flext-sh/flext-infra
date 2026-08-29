@@ -107,12 +107,16 @@ class TestCodegenCiMatrix:
         )
 
         tm.that(workflow, has="run: CI=Y make setup")
+        tm.that(workflow, has="run: CI=Y make gen WHAT=check")
         tm.that(workflow, has="run: CI=Y make check")
         tm.that(workflow, lacks="run: CI=Y make test")
         tm.that(workflow, lacks="run: make test")
-        tm.that(workflow, has="run: CI=Y make gen WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make fmt WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make fix WHAT=apply APPLY=Y")
+        tm.that(workflow, lacks="WHAT=apply")
+        tm.that(workflow, lacks="APPLY=Y")
+        tm.that(
+            workflow.index("run: CI=Y make setup"),
+            lt=workflow.index("run: CI=Y make gen WHAT=check"),
+        )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]

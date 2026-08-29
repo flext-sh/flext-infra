@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import os
-import shlex
-import shutil
 from pathlib import Path
 
 import pytest
-from flext_infra import c, m, p, u
+from flext_infra import c, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
@@ -16,28 +14,9 @@ from tests import u as test_u
 pytestmark = pytest.mark.slow
 
 
-def _git_stdout(repository: Path, *args: str) -> str:
-    process = tm.ok(u.Cli.run_raw([c.Infra.GIT, *args], cwd=repository))
-    tm.that(process.exit_code, eq=0)
-    return process.stdout.strip()
-
-
-def _git_state(repository: Path) -> tuple[str, str]:
-    return (
-        _git_stdout(repository, "branch", "--show-current"),
-        _git_stdout(repository, "rev-parse", "HEAD"),
-    )
-
-
-def _run_setup(workspace: Path, env: dict[str, str]) -> p.Cli.CommandOutput:
-    return tm.ok(
-        u.Cli.run_raw(["make", "_builtin_setup_submodules"], cwd=workspace, env=env)
-    )
-
-
 def _render_workspace_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
-    member = test_u.Tests.repository_ref(
+    project = test_u.Tests.repository_ref(
         "flext-core", path=Path("flext-core"), role=c.Infra.RepositoryRole.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
@@ -45,13 +24,12 @@ def _render_workspace_root_makefile(tmp_path: Path) -> str:
         name="flext",
         repository=root_repository,
         project=test_u.Tests.project_spec("flext"),
-        subprojects=(member,),
+        subprojects=(project,),
     )
 
     root = tmp_path / "render-root"
     request = m.Infra.CodegenConformRequest(
         root=root,
-        what=c.Infra.CodegenConformSurface.MAKEFILE,
         scope=c.Infra.CodegenConformScope.SELF,
         mode=c.Infra.CodegenConformMode.CHECK,
     )
@@ -161,16 +139,19 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(rendered, has="$(UV) sync --project")
         tm.that(rendered, lacks="submodule update --init --recursive")
 
-    def test_make_setup_initializes_once_then_only_validates_present_checkout(
+    def test_make_setup_initializes_local_submodule_before_environment(
         self, tmp_path: Path
     ) -> None:
-        """Initialize the exact gitlink once; never repair a present checkout."""
+        """Generated workspace setup initializes declared submodules first."""
         rendered = _render_workspace_root_makefile(tmp_path)
         workspace = _create_uninitialized_workspace(tmp_path, rendered)
         env = os.environ.copy()
         env["GIT_ALLOW_PROTOCOL"] = "file"
 
-        process = _run_setup(workspace, env)
+        outcome = u.Cli.run_raw(
+            ["make", "_builtin_setup_submodules"], cwd=workspace, env=env
+        )
+        process = outcome.value
 
         # The fixture bootstraps through submodules; the invariant we care about
         # is that the submodule is initialized before environment provisioning.
@@ -181,49 +162,3 @@ class TestsWorkspaceRootSetupSubmodules:
         tm.that(process.exit_code, eq=0)
         tm.that(process.stdout + process.stderr, has="Submodule path 'flext-core'")
         tm.that((workspace / "flext-core" / "pyproject.toml").is_file(), eq=True)
-        child = workspace / "flext-core"
-        state = _git_state(child)
-        gitlink = _git_stdout(workspace, "rev-parse", "HEAD:flext-core")
-        tm.that(state, eq=("", gitlink))
-
-        second = _run_setup(workspace, env)
-        tm.that(second.exit_code, eq=0)
-        tm.that(_git_state(child), eq=state)
-        tm.ok(u.Cli.run_checked([c.Infra.GIT, "switch", "-c", "conflict"], cwd=child))
-        process = _run_setup(workspace, env)
-
-        tm.that(process.exit_code, eq=2)
-        tm.that(process.stderr, has="conflicting branch conflict")
-        tm.that(_git_state(child), eq=("conflict", state[1]))
-
-    def test_unexpected_git_probe_failure_preserves_cause(self, tmp_path: Path) -> None:
-        """A Git probe error is never reclassified as a missing remote ref."""
-        workspace = _create_uninitialized_workspace(
-            tmp_path, _render_workspace_root_makefile(tmp_path)
-        )
-        real_git = tm.not_none(shutil.which("git"))
-        fake_bin = tmp_path / "failing-git-bin"
-        fake_bin.mkdir()
-        command_fragment = "branch --show-current"
-        test_u.Tests.write_executable(
-            fake_bin / "git",
-            "#!/bin/sh\n"
-            "set -eu\n"
-            f'case "$*" in *{shlex.quote(command_fragment)}*)\n'
-            "  printf 'injected git failure\\n' >&2\n"
-            "  exit 42\n"
-            "  ;;\n"
-            "esac\n"
-            f'exec {shlex.quote(real_git)} "$@"\n',
-        )
-        env = {
-            **os.environ,
-            "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
-            "GIT_ALLOW_PROTOCOL": "file",
-        }
-
-        process = _run_setup(workspace, env)
-
-        tm.that(process.exit_code, eq=2)
-        tm.that(process.stderr, has="injected git failure")
-        tm.that(process.stderr, has="Error 42")

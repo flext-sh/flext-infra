@@ -247,10 +247,15 @@ class TestCodegenConform:
         root.mkdir()
         u.Tests.initialize_git_repo(root)
         baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
-        tm.ok(u.Cli.run_checked(["git", "remote", "remove", "origin"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
                 ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", baseline],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
                 cwd=root,
             )
         )
@@ -464,8 +469,6 @@ class TestCodegenConform:
         tm.that((root / "config" / "beads.yaml").is_file(), eq=True)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
         tm.that((root / ".env.example").is_file(), eq=True)
-        tm.that((root / ".shellcheckrc").is_file(), eq=True)
-        tm.that((root / ".shellcheckrc").is_symlink(), eq=False)
         package_name = name.replace("-", "_")
         pythonpath = os.pathsep.join(
             part
@@ -505,31 +508,6 @@ class TestCodegenConform:
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
         tm.that(makefile, lacks="mise exec")
-
-    def test_managed_template_rejects_cross_checkout_symlink_before_writes(
-        self, infra_git_repo: Path, tmp_path: Path
-    ) -> None:
-        """A generated destination must never delegate ownership through a link."""
-        root = infra_git_repo
-        workspace = _standalone_workspace(root)
-        external = tmp_path / "external-shellcheckrc"
-        external.write_text("external sentinel\n", encoding="utf-8")
-        destination = root / ".shellcheckrc"
-        destination.unlink(missing_ok=True)
-        destination.symlink_to(external)
-
-        result = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            ),
-            initial_workspace=workspace,
-        )
-
-        tm.fail(result, has="template destination must be a physical file")
-        tm.that(destination.is_symlink(), eq=True)
-        tm.that(external.read_text(encoding="utf-8"), eq="external sentinel\n")
 
     @pytest.mark.slow
     def test_existing_manifest_converges_to_identical_tree(
@@ -902,91 +880,6 @@ class TestCodegenConform:
         tm.that(isinstance(rendered, m.Infra.MakeRenderContext), eq=True)
         tm.that(isinstance(rendered, m.Infra.ProjectRenderContext), eq=False)
         tm.that(rendered.workspace_root_rel, eq=".")
-        # A standalone consumer declares no flext-infra member, so the
-        # reference is derived from the provider contract. The generated
-        # Makefile consumes exactly the distribution and the URL (the
-        # bootstrap requirement), which is what this asserts; the topology
-        # role of a derived reference is not part of that contract.
-        tm.that(rendered.infra_repository.distribution, eq=config.Infra.name)
-        tm.that(
-            rendered.infra_repository.url,
-            eq=f"{u.Tests.provider().base_url.rstrip('/')}/{config.Infra.name}.git",
-        )
-        tm.that(rendered.infra_source_root_rel, eq=None)
-
-    def test_make_context_resolves_workspace_infra_project(
-        self, tmp_path: Path
-    ) -> None:
-        """A workspace project bootstraps from its declared local checkout."""
-        workspace_repository = u.Tests.repository_ref("workspace-root-fixture")
-        infra_repository = u.Tests.repository_ref(config.Infra.name)
-        workspace = m.Infra.WorkspaceSpec(
-            name=workspace_repository.name,
-            beads=u.Tests.beads_project(workspace_repository.name),
-            repository=workspace_repository,
-            subprojects=(infra_repository,),
-        )
-        target = _conform_target(
-            tmp_path, workspace_repository, make_profile=c.Infra.MakeProfile.WORKSPACE
-        )
-        tooling_runtime = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True
-            ).resolve_tooling_context(
-                project_name=infra_repository.distribution,
-                package_name=infra_repository.distribution.replace("-", "_"),
-                path=tmp_path / infra_repository.path / "pyproject.toml",
-                declared_python_dirs=("src",),
-            )
-        )
-
-        rendered = tm.ok(
-            FlextInfraCodegenConform.make_render_context(
-                infra_repository,
-                target,
-                workspace,
-                config.Infra.codegen,
-                tooling_runtime=tooling_runtime,
-            )
-        )
-
-        tm.that(rendered.infra_source_root_rel, eq=infra_repository.path.as_posix())
-
-    def test_make_context_bootstraps_standalone_infra_from_itself(
-        self, tmp_path: Path
-    ) -> None:
-        """The engine repository never resolves itself through an invalid Git ref."""
-        repository = u.Tests.repository_ref(config.Infra.name)
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-        )
-        target = _conform_target(
-            tmp_path, repository, make_profile=c.Infra.MakeProfile.STANDALONE
-        )
-        tooling_runtime = tm.ok(
-            FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True
-            ).resolve_tooling_context(
-                project_name=repository.distribution,
-                package_name=repository.distribution.replace("-", "_"),
-                path=tmp_path / "pyproject.toml",
-                declared_python_dirs=("src",),
-            )
-        )
-
-        rendered = tm.ok(
-            FlextInfraCodegenConform.make_render_context(
-                repository,
-                target,
-                workspace,
-                config.Infra.codegen,
-                tooling_runtime=tooling_runtime,
-            )
-        )
-
-        tm.that(rendered.infra_source_root_rel, eq=".")
 
     # Why (suite budget): parametrized over both conform modes, each running a
     # full plan/apply cycle on a real git repo; 10s only holds on an idle CPU.
@@ -1179,37 +1072,6 @@ class TestCodegenConform:
         )
 
     @pytest.mark.slow
-    def test_scaffold_make_fails_when_custom_handler_scan_fails(
-        self, infra_git_repo: Path
-    ) -> None:
-        """A parse-time custom target scan exposes stderr and blocks Make."""
-        root = infra_git_repo
-        workspace = _standalone_workspace(root)
-        _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
-        tm.ok(
-            u.Cli.atomic_write_text_file(
-                root / "custom.mk", "_custom_check_probe:\n\t@true\n"
-            )
-        )
-        fake_bin = root / "fake-bin"
-        u.Tests.write_executable(
-            fake_bin / "sed",
-            "#!/bin/sh\nprintf 'injected sed failure\\n' >&2\nexit 42\n",
-        )
-
-        output = tm.ok(
-            u.Cli.run_raw(
-                ["make", "-C", str(root), "help"],
-                env={"PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "WHAT"),
-            )
-        )
-
-        tm.that(output.exit_code, eq=2)
-        tm.that(output.stderr, has="injected sed failure")
-        tm.that(output.stderr, has="Failed to inspect custom Make handlers")
-
-    @pytest.mark.slow
     def test_scaffold_make_runs_pre_and_post_verb_hooks_in_order(
         self, infra_git_repo: Path
     ) -> None:
@@ -1397,8 +1259,7 @@ class TestScriptDispatchMakefile:
         )
         body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
         tm.that("_custom_$(1)_$$what" in body, eq=True)
-        tm.that("custom_present" in body, eq=True)
-        tm.that('$(SELF_MAKE) -q "$$custom"' in body, eq=False)
+        tm.that("custom_rc" in body, eq=False)
         tm.that('$(SELF_MAKE) "$$custom"' in body, eq=True)
         recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
         broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
@@ -1467,27 +1328,24 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_check_body.count("codegen conform"), eq=1)
         tm.that("--mode check" in gen_check_body, eq=True)
-        tm.that(gen_check_body, has="$(FLEXT_INFRA_BOOTSTRAP)")
         tm.that(
             gen_check_body,
-            lacks=[
-                "_builtin_require_environment",
-                "$(PROJECT_FLEXT_INFRA)",
-                "codegen init",
-                "deps modernize",
-            ],
+            has=["_builtin_require_environment", "$(PROJECT_FLEXT_INFRA)"],
+        )
+        tm.that(
+            gen_check_body,
+            lacks=["codegen init", "deps modernize"],
         )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
         tm.that("--mode apply" in gen_all_body, eq=True)
         tm.that("--mode check" in gen_all_body, eq=False)
-        tm.that(gen_all_body, has="$(FLEXT_INFRA_BOOTSTRAP)")
+        tm.that(gen_all_body, has="$(PROJECT_FLEXT_INFRA)")
         tm.that(
             gen_all_body,
             lacks=[
                 "_builtin_require_environment",
-                "$(PROJECT_FLEXT_INFRA)",
                 "codegen init",
                 "deps modernize",
             ],

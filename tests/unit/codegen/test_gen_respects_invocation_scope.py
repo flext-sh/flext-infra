@@ -100,23 +100,19 @@ def test_recipe_bodies_are_actually_parsed() -> None:
 
 
 def test_gen_has_one_codegen_owner() -> None:
-    """The gen recipe delegates each mode once to the conform owner.
-
-    Apply verifies its own fixed point inside the conform transaction, so a
-    second external check invocation would duplicate ownership.
-    """
+    """Each gen recipe delegates its mode to one conform owner."""
     text = _template_text()
     assert "CODEGEN_PROJECT_ARGS" not in text
 
     bodies = _recipe_bodies()
-    expected_modes = {"_builtin_gen_check": ("check",), "_builtin_gen_all": ("apply",)}
-    for target, modes in expected_modes.items():
+    expected_modes = {
+        "_builtin_gen_check": "check",
+        "_builtin_gen_all": "apply",
+    }
+    for target, mode in expected_modes.items():
         conform_lines = [line for line in bodies[target] if "codegen conform" in line]
-        assert len(conform_lines) == len(modes)
-        assert all(
-            f"--mode {mode}" in line
-            for line, mode in zip(conform_lines, modes, strict=True)
-        )
+        assert len(conform_lines) == 1
+        assert f"--mode {mode}" in conform_lines[0]
         assert all('--root "$(PROJECT_ROOT)"' in line for line in conform_lines)
         assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
         assert all("deps modernize" not in line for line in bodies[target])

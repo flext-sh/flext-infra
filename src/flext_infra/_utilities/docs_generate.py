@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from flext_cli import u
@@ -451,18 +452,16 @@ class FlextInfraUtilitiesDocsGenerate:
     def docs_sanitize_internal_anchor_links(content: str) -> str:
         """Replace local markdown links with plain text while preserving externals."""
 
-        def sanitize_link(match: t.Infra.RegexMatch) -> str:
-            whole_match: str = match.group(0)
-            label: str = match.group(1)
-            target: str = match.group(2)
+        def sanitize_link(match: re.Match[str]) -> str:
+            target = match.group(2)
             return (
-                whole_match
+                match.group(0)
                 if target.startswith(("http://", "https://", "#", "mailto:"))
-                else label
+                else match.group(1)
             )
 
-        sanitized: str = c.Infra.MARKDOWN_LINK_RE.sub(sanitize_link, content)
-        return sanitized
+        pattern: re.Pattern[str] = c.Infra.MARKDOWN_LINK_RE
+        return re.sub(pattern, sanitize_link, content)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGenerate"]
