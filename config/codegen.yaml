@@ -1352,6 +1352,7 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!.mise.toml"
+            - "!mise.lock"
             - "!.default-python-packages"
             - "!.python-version"
         - name: "Docker configuration"
