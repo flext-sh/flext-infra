@@ -160,6 +160,15 @@ Infra:
             submodule: cosmos-gitops
             path: apps/cosmos-gitops
             ssh_url: git@github.com:datacosmos-br/cosmos-gitops.git
+      invest:
+        paths:
+          - neptor
+        deploy_keys:
+          - secret: NEPTOR_DEPLOY_KEY
+            host_alias: github-neptor
+            submodule: neptor
+            path: neptor
+            ssh_url: git@github-neptor:marlonsc/neptor.git
 
     github_actions:
       checkout:
