@@ -1,5 +1,21 @@
 # Triagem Semgrep — flext-sh/flext-infra
 
+<!-- TOC START -->
+- [Resumo](#resumo)
+- [Como usar](#como-usar)
+- [Findings](#findings)
+  - [1 · 🟠 HIGH · conf low · `python.lang.compatibility.python37.python37-compatibility-importlib2`](#1-high-conf-low-pythonlangcompatibilitypython37python37-compatibility-importlib2)
+  - [2 · 🟠 HIGH · conf medium · `trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal`](#2-high-conf-medium-trailofbitspythontarfile-extractall-traversaltarfile-extractall-traversal)
+  - [3 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#3-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
+  - [4 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#4-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
+  - [5 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#5-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
+  - [6 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#6-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [7 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#7-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [8 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#8-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [9 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#9-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+  - [10 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`](#10-medium-conf-low-pythonlangsecurityauditnon-literal-importnon-literal-import)
+<!-- TOC END -->
+
 Gerado do dump da plataforma Semgrep (deployment `datacosmos`, 2026-08-06).
 
 Bead: `flext-p57t.12`
@@ -29,7 +45,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 > Found 'importlib.resources', which is a module only available on Python 3.7+. This does not work in lower versions, and therefore is not backwards compatible. Use importlib_resources instead for older Python versions.
 
 ```python
-        1  """Discover ast-grep rules from installed FLEXT packages in cascade order."""  # ruff:ignore[implicit-namespace-package]
+1  """Discover ast-grep rules from installed FLEXT packages in cascade order."""  # ruff:ignore[implicit-namespace-package]
         2  
         3  from __future__ import annotations
         4  
@@ -39,7 +55,6 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
         8  
         9  # Cascade order: last wins on rule ID conflict. The local project is appended
 ```
-
 **Decisão**:
 
 ### 2 · 🟠 HIGH · conf medium · `trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal`
@@ -48,7 +63,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 > Possible path traversal through `tarfile.open($PATH).extractall()` if the source tar is controlled by an attacker
 
 ```python
-      207                  archive_result.error or "git archive failed"
+207                  archive_result.error or "git archive failed"
       208              )
       209          try:
       210              stage_path.mkdir(parents=True, exist_ok=False)
@@ -58,7 +73,6 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
       214              return r[m.Infra.SourceSnapshot].fail_op(
       215                  "extract committed release source", exc
 ```
-
 **Decisão**:
 
 ### 3 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`
@@ -123,7 +137,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
 ```python
-       36      def _ensure_default_post_hooks_registered(cls) -> None:
+36      def _ensure_default_post_hooks_registered(cls) -> None:
        37          """Load and register built-in rope post-hooks once."""
        38          if cls._default_post_hooks_registered:
        39              return
@@ -131,9 +145,8 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
        41          owner = getattr(module, cls._default_post_hook_owner)
        42          retired_dynamic_hook_registration()
        43          cls._default_post_hooks_registered = True
-       44  
+       44
 ```
-
 **Decisão**:
 
 ### 7 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`
@@ -142,7 +155,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
 ```python
-       13      """Resolve Rope runtime attributes without importing Rope in leaf modules."""
+13      """Resolve Rope runtime attributes without importing Rope in leaf modules."""
        14  
        15      @classmethod
        16      def _module(cls, module_name: str) -> ModuleType:
@@ -152,7 +165,6 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
        20      def runtime_type(cls, module_name: str, attribute: str) -> type[p.AttributeProbe]:
        21          candidate: type[p.AttributeProbe] | p.AttributeProbe = getattr(
 ```
-
 **Decisão**:
 
 ### 8 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`
@@ -161,7 +173,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
 ```python
-       89          owner = _GROUP_OWNERS.get(group)
+89          owner = _GROUP_OWNERS.get(group)
        90          if owner is None:
        91              return ()
        92          module_path, class_name, attr_name = owner
@@ -171,7 +183,6 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
        96              owner_class, attr_name
        97          )
 ```
-
 **Decisão**:
 
 ### 9 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`
@@ -180,7 +191,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
 ```python
-       65      @classmethod
+65      @classmethod
        66      def _walk_modules(cls, package_name: str) -> t.SequenceOf[str]:
        67          """Return all importable module names under ``package_name``."""
        68          try:
@@ -190,7 +201,6 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
        72          prefix = package.__name__ + "."
        73          modules: list[str] = [package.__name__]
 ```
-
 **Decisão**:
 
 ### 10 · 🟡 MEDIUM · conf low · `python.lang.security.audit.non-literal-import.non-literal-import`
@@ -199,7 +209,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
 ```python
-       82  
+82  
        83      def _check_module(self, module_name: str) -> t.SequenceOf[m.Infra.ValidationReport]:
        84          """Import one module and run runtime enforcement on its local classes."""
        85          try:
@@ -209,5 +219,4 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
        89                  m.Infra.ValidationReport(
        90                      passed=False,
 ```
-
 **Decisão**:
