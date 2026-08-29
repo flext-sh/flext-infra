@@ -41,6 +41,9 @@ jobs:
     timeout-minutes: 60
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
+      # The credential helper installed below reads the token from the
+      # environment of every later step, so it is a job-level value.
+      GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
     steps:
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
@@ -53,8 +56,6 @@ jobs:
       # actions/checkout deliberately does not persist credentials, so install
       # the runner's scoped token through the GitHub CLI's Git credential owner.
       - name: Configure GitHub authentication
-        env:
-          GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
         run: gh auth setup-git
 
       - name: Install mise toolchain

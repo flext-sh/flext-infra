@@ -127,6 +127,14 @@ class TestCodegenCiMatrix:
 
         tm.that(workflow, has="- name: Configure GitHub authentication")
         tm.that(workflow, has="GH_TOKEN: ${{ github.token }}")
+        # The gh credential helper reads GH_TOKEN from the environment of the
+        # step that runs git, so the token must be declared on the job, before
+        # any step, not only on the setup-git step.
+        tm.that(
+            workflow.index("GH_TOKEN: ${{ github.token }}")
+            < workflow.index("    steps:"),
+            eq=True,
+        )
         tm.that(workflow, has="run: gh auth setup-git")
         tm.that(
             workflow.index("run: gh auth setup-git")
@@ -188,8 +196,7 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
         marker = (
-            "fetch-depth: 0\n\n"
-            "      # Codegen refreshes the declared provider baseline"
+            "fetch-depth: 0\n\n      # Codegen refreshes the declared provider baseline"
         )
         tm.that(workflow, has=marker)
         tm.that(
