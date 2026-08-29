@@ -412,16 +412,25 @@ class TestCodegenCiMatrix:
             tm.that(workflow_plan.rendered, eq=content)
             tm.that(workflow_plan.reason, has="repository-owned workflow")
 
-    def test_makefile_normalizes_windows_runtime_paths(self, tmp_path: Path) -> None:
-        """Generated POSIX Make resolves Windows uv and virtualenv executables."""
+    def test_makefile_uses_native_path_separators_without_parse_shells(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated Make sanitizes native paths without spawning at parse time."""
         root = self._render_project(tmp_path / "external")
         content = (root / "Makefile").read_text(encoding="utf-8")
         project = tm.ok(u.read_project_metadata(root)).project
         tm.that(content, has="ifeq ($(OS),Windows_NT)")
-        tm.that(content, has='cygpath --path "$(CALLER_PATH)"')
+        tm.that(content, lacks=["$(shell", "cygpath"])
         tm.that(content, has="RUNTIME_BIN := $(RUNTIME_VENV)/Scripts")
         tm.that(content, has="RUNTIME_PYTHON := $(RUNTIME_BIN)/python.exe")
-        tm.that(content, has="override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)")
+        tm.that(content, has="CALLER_PATH_SEPARATOR := ;")
+        tm.that(
+            content,
+            has=(
+                "override PATH := $(RUNTIME_BIN)$(CALLER_PATH_SEPARATOR)"
+                "$(SANITIZED_CALLER_PATH)"
+            ),
+        )
         tm.that(content, has="_builtin_help_usage:\n\t@printf")
         tm.that(content, has=f"'{project.name}' '';")
 

@@ -34,6 +34,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Make one fixture path read-only."""
             path.chmod(0o444)
 
+        @staticmethod
+        def make_surfaces(root: Path) -> tuple[Path, ...]:
+            """Return the generated Make owner and every template projection."""
+            templates = root / c.Infra.DEFAULT_SRC_DIR / "flext_infra" / "templates"
+            projections = tuple(
+                path
+                for path in templates.rglob("*.j2")
+                if path.name == "Makefile.j2" or path.name.endswith(".mk.j2")
+            )
+            return (root / c.Infra.MAKEFILE_FILENAME, *sorted(projections))
+
         class DeptrySelector:
             """Protocol-compatible selector backed by a real Result."""
 

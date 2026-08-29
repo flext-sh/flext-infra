@@ -22,25 +22,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
-from flext_infra import c
 from flext_tests import tm
+from tests import u as test_u
 
 
 def _workspace_root() -> Path:
     """Return the workspace root that owns this checkout."""
     return Path(__file__).resolve().parents[2]
-
-
-def _make_surfaces() -> tuple[Path, ...]:
-    """Return every Make surface plus the templates that generate them.
-
-    The shipped ``.mk.j2`` templates are in scope because they own generated
-    Makefiles and are where defects must be corrected.
-    """
-    root = _workspace_root()
-    templates = Path(flext_infra.__file__).resolve().parent / "templates"
-    return (root / c.Infra.MAKEFILE_FILENAME, *sorted(templates.rglob("*.mk.j2")))
 
 
 def _silencing_lines(surface: Path) -> tuple[str, ...]:
@@ -59,7 +47,7 @@ class TestsFlextInfraMakeSurfaceNeverSilencesFailures:
         """No Make recipe swallows a failure with `|| true`."""
         offenders = {
             surface.name: lines
-            for surface in _make_surfaces()
+            for surface in test_u.Tests.make_surfaces(_workspace_root())
             if (lines := _silencing_lines(surface))
         }
 
