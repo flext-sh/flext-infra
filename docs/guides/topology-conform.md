@@ -1,5 +1,12 @@
 # Repository-local topology and conformance
 
+<!-- TOC START -->
+- [Authorities](#authorities)
+- [Validation boundary](#validation-boundary)
+- [Selection and projections](#selection-and-projections)
+- [uv project boundaries](#uv-project-boundaries)
+<!-- TOC END -->
+
 ## Authorities
 
 Each governed repository has exactly two local inputs:

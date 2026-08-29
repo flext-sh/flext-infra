@@ -161,9 +161,7 @@ class TestsCodegenArtifactSsot:
     ) -> None:
         """Keep the immutable tool lock available to clean CI checkouts."""
         rendered = FlextInfraCodegenConform.render_project_gitignore(
-            codegen,
-            profile=c.Infra.MakeProfile.WORKSPACE,
-            project_name="cosmos-main",
+            codegen, profile=c.Infra.MakeProfile.WORKSPACE, project_name="cosmos-main"
         )
 
         tm.ok(rendered)

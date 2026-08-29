@@ -188,8 +188,7 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
         marker = (
-            "fetch-depth: 0\n\n"
-            "      # Codegen refreshes the declared provider baseline"
+            "fetch-depth: 0\n\n      # Codegen refreshes the declared provider baseline"
         )
         tm.that(workflow, has=marker)
         tm.that(
