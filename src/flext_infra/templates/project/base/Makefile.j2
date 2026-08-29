@@ -24,6 +24,7 @@ WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
 WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
+WORKSPACE_ROOT_PACKAGE := {% if workspace_root_package %}Y{% else %}N{% endif %}
 MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
@@ -292,16 +293,26 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-# A workspace root owns no local gate implementation: its verbs fan out to the
-# declared subprojects. Selecting the root (PROJECT=.) would make it orchestrate
-# itself forever; map `.` to WORKSPACE_SUBPROJECTS instead of failing closed mid-CI.
-DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS){% if make_profile != "workspace" %} .{% endif %}
 {% if make_profile == "workspace" %}
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
+{% if workspace_root_package %}
+# A publishing workspace root runs its own gates locally and sends only member
+# paths to the orchestrator. FILE narrows root-owned tests before orchestration.
+WORKSPACE_FILE_MEMBER := $(firstword $(foreach project,$(WORKSPACE_SUBPROJECTS),$(if $(filter $(project)/%,$(FILE)),$(project))))
+DEFAULT_PROJECTS := $(if $(strip $(FILE)),$(if $(WORKSPACE_FILE_MEMBER),$(WORKSPACE_SUBPROJECTS),.),. $(WORKSPACE_SUBPROJECTS))
+SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 {% else %}
+# A non-publishing workspace root owns no local gate implementation. Selecting
+# `.` maps to members so it can never orchestrate itself recursively.
+DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS)
+SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
+{% endif %}
+{% else %}
+DEFAULT_PROJECTS := .
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 {% endif %}
-WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
+SELECTED_ROOT_PROJECT := $(filter .,$(SELECTED_PROJECTS))
+SELECTED_SUBPROJECTS := $(filter-out .,$(SELECTED_PROJECTS))
+WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_SUBPROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
 WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
@@ -532,7 +543,12 @@ _builtin_deps_upgrade: _builtin_require_environment
 
 {% if make_profile == "workspace" %}
 _builtin_build_artifacts:
-	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then $(UV) build --project "$(PROJECT_ROOT)"; fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 
 # Read-only by contract in every profile: mutation belongs to `make fix
 # APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. Under
@@ -566,38 +582,86 @@ _builtin_check_all: _builtin_require_environment
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
 		exit 2; \
 	fi; \
-	$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) --make-arg "CHECK_GATES=$$gates" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then \
+		$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .; \
+	fi; \
+{% endif %}
+	if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) --make-arg "CHECK_GATES=$$gates" $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 
 {% for gate in make.check_gates_allowed %}
 _builtin_check_{{ gate }}: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) --make-arg "CHECK_GATES={{ gate }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then \
+		$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "{{ gate }}" --projects .; \
+	fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb check $(WORKSPACE_PROJECT_ARGS) --make-arg "CHECK_GATES={{ gate }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 {% endfor %}
 
 _builtin_test_all: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then \
+		$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry; \
+	fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 
 {% for what in make.handler_whats["test"] if what != "all" %}
 _builtin_test_{{ what }}: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) --what {{ what }} $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then \
+		$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry; \
+	fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb test $(WORKSPACE_PROJECT_ARGS) --what {{ what }} $(WORKSPACE_TEST_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 {% endfor %}
 
 _builtin_fmt_check: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then $(UV_RUN) ruff format --check $(RUFF_PATHS); fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 
 _builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then $(UV_RUN) ruff format $(RUFF_PATHS); fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 
 _builtin_fmt_apply: _builtin_fmt_all
 
 # Read-only fixed-point after `make fix APPLY=Y` (strips APPLY and
 # re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
 _builtin_fix_check: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then $(UV_RUN) ruff check $(RUFF_PATHS); fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
-	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+{% if workspace_root_package %}
+	@if [ -n "$(SELECTED_ROOT_PROJECT)" ]; then $(UV_RUN) ruff check --fix $(RUFF_PATHS); fi
+{% endif %}
+	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
+		$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
+	fi
 
 _builtin_fix_apply: _builtin_fix_all
 {% else %}

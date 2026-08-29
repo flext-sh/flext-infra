@@ -203,14 +203,7 @@ class TestsWorkspaceRootMakeContract:
     def test_generated_make_forwards_root_file_with_member_selection(
         self, tmp_path: Path
     ) -> None:
-        """Forward a root-owned test FILE selector with the member fan-out.
-
-        A workspace root owns no local gate implementation: Make never emits a
-        ``--projects .`` lane (selecting the root maps to its subprojects).
-        Which project owns the file is decided by the orchestrator
-        (_select_file_owner) at runtime, not by this Make recipe, so this
-        boundary asserts forwarding rather than owner filtering.
-        """
+        """Run a root-owned test locally without recursively orchestrating root."""
         workspace_root, project_names = _write_workspace(tmp_path)
         selected = "tests/unit/test_provider_contract.py"
 
@@ -229,20 +222,15 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        for project_name in project_names:
-            tm.that(output, has=f"--projects {project_name}")
-        tm.that(output, lacks="--projects .")
+        tm.that(output, has="python -m flext_infra._pytest_entry")
         tm.that(output, has="--file")
+        for project_name in project_names:
+            tm.that(output, lacks=f"--projects {project_name}")
 
     def test_generated_make_default_test_fans_out_to_every_member(
         self, tmp_path: Path
     ) -> None:
-        """Default test selection is every declared member, never the root.
-
-        A workspace root owns no local gate implementation, so the default
-        fan-out is the declared subprojects; selecting ``.`` would orchestrate the
-        root against itself forever and is mapped away by the template.
-        """
+        """Default test covers the publishing root and every declared member."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
@@ -254,9 +242,29 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="python -m flext_infra._pytest_entry")
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
-        tm.that(output, lacks="--projects .")
+
+    def test_generated_make_default_check_covers_publishing_root(
+        self, tmp_path: Path
+    ) -> None:
+        """Default check validates root sources before orchestrating members."""
+        workspace_root, project_names = _write_workspace(tmp_path)
+
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
+                ["-C", str(workspace_root), "--dry-run", "_builtin_check_all"],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has='check run --workspace "')
+        tm.that(output, has="--projects .")
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
 
     def test_workspace_root_setup_owns_environment_and_uses_venv_directory(
         self, tmp_path: Path

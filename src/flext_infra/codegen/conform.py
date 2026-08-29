@@ -1591,6 +1591,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace_subprojects=tuple(
                         item.path.as_posix() for item in workspace.subprojects
                     ),
+                    workspace_root_package=repository.package,
                     workspace_repositories=subprojects,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=FlextInfraCodegenConform._link_mode(
@@ -1728,6 +1729,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
                 ),
+                workspace_root_package=repository.package,
                 workspace_repositories=subprojects,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,

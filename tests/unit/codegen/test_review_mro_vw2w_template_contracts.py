@@ -45,7 +45,7 @@ class TestsReviewTemplateContracts:
         tm.that(upgrade, has="$(if $(strip $(DEPENDENCY)),,--rewrite-constraints)")
 
     def test_makefile_explicit_root_selection_is_preserved(self) -> None:
-        """PROJECT=. expands to members for workspace-root; selects root for other profiles."""
+        """Publishing roots stay local; non-publishing roots expand to members."""
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(
             text,
