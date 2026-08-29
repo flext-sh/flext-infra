@@ -57,6 +57,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         ruff_ignores: dict[str, set[str]] = {}
         mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: dict[str, Path] = {}
+        gitignore_patterns: list[str] = []
         fleet_platforms = frozenset(config.Infra.codegen.toolchain.mise_lock_platforms)
         for document in loaded.value.values():
             managed = document.data.get("ManagedArtifacts")
@@ -68,6 +69,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             artifacts = project_config.ManagedArtifacts
             for pattern, rules in artifacts.Ruff.per_file_ignores.items():
                 ruff_ignores.setdefault(pattern, set()).update(rules)
+            for pattern in artifacts.Gitignore.patterns:
+                if pattern not in gitignore_patterns:
+                    gitignore_patterns.append(pattern)
             if document.source_path is None:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail(
                     "project configuration document has no source path"
@@ -80,7 +84,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                         "duplicate project Mise selector "
                         f"{selector!r}: {previous} and {source}"
                     )
-                unknown = sorted(set(tool.platforms) - fleet_platforms)
+                unknown = sorted(set(tool.platforms or ()) - fleet_platforms)
                 if unknown:
                     return r[m.Infra.ProjectManagedArtifactsResolution].fail(
                         f"project Mise selector {selector!r} in {source} declares "
@@ -96,6 +100,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 }
             ),
             Mise=m.Infra.ProjectMiseConfig(tools=dict(sorted(mise_tools.items()))),
+            Gitignore=m.Infra.ProjectGitignoreConfig(
+                patterns=tuple(gitignore_patterns)
+            ),
         )
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(
             m.Infra.ProjectManagedArtifactsResolution(
@@ -147,10 +154,13 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 resolved.error or "project artifact load failed"
             )
         fleet_platforms = frozenset(config.Infra.codegen.toolchain.mise_lock_platforms)
+        # Absent platforms: the tool locks on every fleet platform. A declared
+        # tuple (possibly empty, for backends without per-platform assets)
+        # records exactly the platforms the lock may carry.
         exclusions = {
             selector: fleet_platforms - frozenset(tool.platforms)
             for selector, tool in resolved.value.artifacts.Mise.tools.items()
-            if tool.platforms
+            if tool.platforms is not None
         }
         return r[t.MappingKV[str, frozenset[str]]].ok(exclusions)
 

@@ -76,6 +76,23 @@ class TestsProjectMiseTools:
 
         assert tm.ok(exclusions) == {}
 
+    def test_empty_platform_list_declares_no_lock_platforms(
+        self, tmp_path: Path
+    ) -> None:
+        root = _project(
+            tmp_path / "project",
+            "ManagedArtifacts:\n"
+            "  Mise:\n"
+            "    tools:\n"
+            '      "npm:example-tool":\n'
+            '        version: "1.2.3"\n'
+            "        platforms: []\n",
+        )
+
+        exclusions = u.Infra.lock_platform_exclusions(root)
+
+        assert tm.ok(exclusions) == {"npm:example-tool": frozenset(_fleet_platforms())}
+
     def test_platform_outside_fleet_is_rejected(self, tmp_path: Path) -> None:
         root = _project(
             tmp_path / "project",

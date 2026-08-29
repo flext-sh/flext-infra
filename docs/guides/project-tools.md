@@ -3,6 +3,7 @@
 <!-- TOC START -->
 - [Where each binary comes from](#where-each-binary-comes-from)
 - [Declaring a tool](#declaring-a-tool)
+- [Declaring ignore patterns](#declaring-ignore-patterns)
 - [Landing a declaration](#landing-a-declaration)
 <!-- TOC END -->
 
@@ -38,15 +39,38 @@ ManagedArtifacts:
 ```
 
 - `version` is exact. `latest` and ranges are rejected by the lock validator.
-- `platforms` is optional. Empty means the tool publishes assets for every
+- `platforms` is optional. Absent means the tool publishes assets for every
   fleet lock platform. A subset records, in the project that owns the tool, the
   platforms its backend cannot lock; the lock validator then expects exactly
-  that subset. Names must belong to the fleet `mise_lock_platforms`.
+  that subset. An explicit empty list (`platforms: []`) declares a backend with
+  no per-platform assets — `npm:`, `pipx:`, `cargo:` — so the lock carries no
+  platform entry for it. Names must belong to the fleet `mise_lock_platforms`.
 - One selector is declared once across all `config/*.yaml` files; a duplicate
   fails the load.
 - A selector that collides with a fleet tool fails; an alternate distribution
   of a protected fleet identity (another owner's `beads`, for example) fails
   with the canonical selector named.
+
+## Declaring ignore patterns
+
+The fleet scaffold renders every `.gitignore`; it cannot know a repository's
+local caches or generated runtime state. Those patterns live next to the tools,
+under `ManagedArtifacts.Gitignore.patterns`, and are appended in declaration
+order as one project-owned section of the generated file:
+
+```yaml
+# config/managed-artifacts.yaml
+ManagedArtifacts:
+  Gitignore:
+    patterns:
+      - .dmypy/
+      - mcp/generated/*
+      - "!mcp/generated/.gitkeep"
+```
+
+Patterns declared in several `config/*.yaml` files compose without duplicates;
+an empty pattern fails the load. The generated file is still a projection:
+edit the declaration, never `.gitignore`.
 
 ## Landing a declaration
 

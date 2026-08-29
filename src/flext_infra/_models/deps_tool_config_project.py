@@ -50,15 +50,17 @@ class FlextInfraModelsDepsToolConfigProjectMise(
             m.Field(description="Exact version written to the generated .mise.toml."),
         ]
         platforms: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            tuple[t.NonEmptyStr, ...] | None,
             m.Field(
                 description=(
-                    "Fleet lock platforms this tool publishes assets for. Empty means "
-                    "every fleet platform; a subset records, in the project that owns "
-                    "the tool, the platforms its backend cannot lock."
+                    "Fleet lock platforms this tool publishes assets for. Absent "
+                    "means every fleet platform; a subset records, in the project "
+                    "that owns the tool, the platforms its backend cannot lock; an "
+                    "explicit empty list declares a backend with no per-platform "
+                    "assets (npm, pipx, cargo), so the lock carries none."
                 )
             ),
-        ] = ()
+        ] = None
 
     class ProjectMiseConfig(m.ArbitraryTypesModel):
         """Exact project-owned Mise selectors and their tool declarations."""
@@ -71,8 +73,27 @@ class FlextInfraModelsDepsToolConfigProjectMise(
         ]
 
 
-class FlextInfraModelsDepsToolConfigProjectArtifacts(
+class FlextInfraModelsDepsToolConfigProjectGitignore(
     FlextInfraModelsDepsToolConfigProjectMise
+):
+    """Project-local ignore patterns appended to the generated ``.gitignore``."""
+
+    class ProjectGitignoreConfig(m.ArbitraryTypesModel):
+        """Repository-owned ignore patterns the fleet scaffold cannot know."""
+
+        patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Ignore patterns appended, in declaration order, as one "
+                    "project-owned section of the generated .gitignore."
+                )
+            ),
+        ] = ()
+
+
+class FlextInfraModelsDepsToolConfigProjectArtifacts(
+    FlextInfraModelsDepsToolConfigProjectGitignore
 ):
     """Managed-artifact layer; ``ProjectRuffConfig`` is an inherited attribute."""
 
@@ -93,6 +114,14 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
                 FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseConfig(
                     tools=MappingProxyType({})
                 )
+            )
+        )
+        Gitignore: Annotated[
+            FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignoreConfig,
+            m.Field(description="Ignore patterns owned by the current project."),
+        ] = m.Field(
+            default_factory=(
+                FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignoreConfig
             )
         )
 
