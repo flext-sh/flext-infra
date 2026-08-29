@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, t
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
 from tests import u
@@ -88,6 +89,43 @@ class TestsCodegenArtifactSsot:
             if pattern not in emitted and pattern not in governed
         )
         tm.that(unaccounted, eq=())
+
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+    )
+    def test_gitignore_tracks_agentsctl_project_projections(
+        self, codegen: CodegenSpec, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Version authorization and provider surfaces for every repository role."""
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen, profile=profile, project_name=None
+            )
+        )
+        tracked = (
+            ".agents/projection.json",
+            ".agents/aihub-hooks/antigravity-preinvocation.py",
+            ".agents/skills/flext-development/SKILL.md",
+            ".claude/settings.json",
+            ".claude/skills/flext-development/SKILL.md",
+            ".codex/hooks.json",
+            ".cursor/hooks.json",
+            ".gemini/settings.json",
+            ".github/skills/flext-development/SKILL.md",
+            ".opencode/skills/flext-development/SKILL.md",
+        )
+        for relative_path in tracked:
+            tm.that(
+                u.Tests.is_tracked_under(rendered, relative_path),
+                eq=True,
+                msg=f"{profile.value}: {relative_path} must be trackable",
+            )
+        tm.that(
+            u.Tests.is_tracked_under(
+                rendered, ".agents/skills/flext-development/report.json"
+            ),
+            eq=False,
+        )
 
     def test_makefile_has_one_owner_for_every_declared_profile(
         self, codegen: CodegenSpec
