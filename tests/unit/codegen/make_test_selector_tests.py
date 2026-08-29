@@ -103,7 +103,7 @@ class TestsMakeTestSelector:
             )
         )
 
-        tm.that(executed.exit_code, eq=0)
+        tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(invocation_log.exists(), eq=False)
 
     def test_external_makefile_owns_the_runtime_engine(self, tmp_path: Path) -> None:
@@ -119,7 +119,7 @@ class TestsMakeTestSelector:
         invocation_log = engine_root / "python-args.log"
         test_u.Tests.write_executable(
             engine_root / ".venv" / "bin" / "python",
-            f'#!/bin/sh\nprintf "%s\\n" "$*" > "{invocation_log}"\n',
+            f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{invocation_log}"\n',
         )
         test_u.Tests.write_executable(
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
@@ -134,8 +134,7 @@ class TestsMakeTestSelector:
                     "-f",
                     str(selected_makefile),
                     "gen",
-                    "WHAT=all",
-                    "APPLY=Y",
+                    "WHAT=check",
                     f"UV={uv}",
                 ],
                 cwd=caller_root,
@@ -149,7 +148,7 @@ class TestsMakeTestSelector:
                 "-m flext_infra codegen conform",
                 f"--root {engine_root}",
                 "--scope self",
-                "--mode apply",
+                "--mode check",
             ],
         )
 
@@ -228,3 +227,19 @@ class TestsMakeTestSelector:
 
         tm.that(template, has="_builtin_gen_apply")
         tm.that(template, lacks="_builtin_build_gen")
+
+    def test_gen_is_the_only_make_owner_of_generated_docs(self) -> None:
+        """Route documentation projection writes only through make gen."""
+        template = _makefile_template().read_text(encoding="utf-8")
+
+        tm.that(template, lacks="_builtin_docs_generate:")
+        tm.that(
+            template,
+            has=[
+                "_builtin_gen_check:",
+                "docs generate --workspace",
+                "--check",
+                "_builtin_gen_all:",
+                "--apply",
+            ],
+        )

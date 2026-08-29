@@ -29,14 +29,18 @@
 	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
 	global_config="$$scratch/global-config.toml"; \
 	config_dir="$$scratch/config"; \
+	config_ceiling=$$(dirname "$$project_root"); \
 	mkdir -p "$$config_dir"; \
 	: > "$$global_config"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		MISE_CEILING_PATHS="$$config_ceiling" \
 		"$$mise" trust "$$project_root/.mise.toml"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		MISE_CEILING_PATHS="$$config_ceiling" \
 		"$$mise" -C "$$project_root" install --locked --yes; \
 	uv_actual=$$(MISE_CONFIG_DIR="$$config_dir" \
 		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+		MISE_CEILING_PATHS="$$config_ceiling" \
 		"$$mise" -C "$$project_root" \
 		exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
 	case "$$uv_actual" in \
