@@ -134,11 +134,6 @@ class FlextInfraPytestRunner(s[int]):
 
     _CACHE_WHATS: frozenset[str] = frozenset({"cache-status", "cache-checkpoint"})
 
-    def _ci_disables_coverage(self) -> bool:
-        """True when Make CI token is exact make.ci.value (CI=Y)."""
-        raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
-        return raw == config.Infra.codegen.make.ci.value
-
     def _cov_enabled(self) -> bool:
         """True when Make COV token requests a full coverage run (COV=Y)."""
         return self._environment_flag(c.Infra.PYTEST_ENV_COV)
@@ -152,7 +147,9 @@ class FlextInfraPytestRunner(s[int]):
         """True when WHAT selects a testmon DB maintenance handler."""
         return self.what in self._CACHE_WHATS
 
-    def _require_junit(self, junit_file: Path, pytest_log: Path) -> p.Result[bool]:
+    def _require_junit(
+        self, junit_file: Path, pytest_log: Path, *, allow_empty: bool
+    ) -> p.Result[bool]:
         """Require a non-empty parseable JUnit document after a green run."""
         if not junit_file.is_file() or junit_file.stat().st_size == 0:
             return r[bool].fail(
@@ -181,6 +178,8 @@ class FlextInfraPytestRunner(s[int]):
             testcase for testcase in testcases if testcase.find("skipped") is None
         )
         if not executed:
+            if allow_empty:
+                return r[bool].ok(True)
             return r[bool].fail(
                 self._artifact_failure_detail(
                     "pytest completed without executing tests", pytest_log
@@ -252,12 +251,6 @@ class FlextInfraPytestRunner(s[int]):
                 "--benchmark-disable",
             )
         )
-        # CI=Y deselects docker and remote suites entirely. Fixture-level
-        # skips in flext-tests remain as a second fail-closed boundary for
-        # unmarked tests that still call FlextTestsDocker.
-        ci_marker_args = (
-            ("-m", "not docker and not remote") if self._ci_disables_coverage() else ()
-        )
         optional_args = (
             *(("-k", self.match) if self.match is not None else ()),
             *(("-x",) if self.fail_fast else ()),
@@ -281,7 +274,6 @@ class FlextInfraPytestRunner(s[int]):
             f"--junitxml={report_dir / 'junit.xml'}",
             *coverage_args,
             *parallel_args,
-            *ci_marker_args,
             *optional_args,
         )
 
@@ -348,14 +340,6 @@ class FlextInfraPytestRunner(s[int]):
         """Execute pytest, profile it, and preserve reports under one deadline."""
         if self._is_cache_maintenance():
             return self._execute_cache_maintenance()
-        # Why (flext-v4p5): CI workflows must not run pytest. Fail loud if invoked
-        # under CI=Y so regenerated jobs cannot reintroduce make test silently.
-        if self._ci_disables_coverage():
-            return r[int].fail(
-                "make test is forbidden under CI=Y (flext-v4p5); "
-                "CI workflows must not execute pytest — run make test locally "
-                "without CI=Y"
-            )
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
         command = self.build_command(report_dir)
@@ -452,8 +436,39 @@ class FlextInfraPytestRunner(s[int]):
         ).unwrap()
         pytest_log = report_dir / "pytest.log"
         coverage_enabled = self._cov_enabled()
+        testmon_cache_hit = False
+        if exit_code == 0 and not coverage_enabled:
+            inspector = FlextInfraTestmonDbInspector(
+                workspace_root=self.root,
+                db_path=self._testmon_db_path(),
+                pre_run_digest=pre_run_digest,
+                run_succeeded=not timed_out,
+                mode="test",
+            )
+            state_result = inspector.execute()
+            if state_result.failure:
+                return r[int].fail(state_result.error or "testmon db inspection failed")
+            state = state_result.value
+            u.Cli.atomic_write_text_file(
+                report_dir / "testmon-cache-state.txt",
+                (
+                    f"seed_needed={state.seed_needed}\n"
+                    f"restored_accepted={state.restored_accepted}\n"
+                    f"changed={state.changed}\n"
+                    f"saveable={state.saveable}\n"
+                    f"reason={state.reason}\n"
+                ),
+            ).unwrap()
+            testmon_cache_hit = (
+                self.file is None
+                and self.match is None
+                and pre_run_digest is not None
+                and state.restored_accepted
+            )
         if exit_code == 0:
-            junit_ok = self._require_junit(junit_file, pytest_log)
+            junit_ok = self._require_junit(
+                junit_file, pytest_log, allow_empty=testmon_cache_hit
+            )
             if junit_ok.failure:
                 return r[int].fail(junit_ok.error or "junit validation failed")
         if (
@@ -478,29 +493,6 @@ class FlextInfraPytestRunner(s[int]):
                     pytest_log,
                 )
             )
-        if exit_code == 0 and not coverage_enabled:
-            timed_out_or_signal = timed_out
-            inspector = FlextInfraTestmonDbInspector(
-                workspace_root=self.root,
-                db_path=self._testmon_db_path(),
-                pre_run_digest=pre_run_digest,
-                run_succeeded=not timed_out_or_signal,
-                mode="test",
-            )
-            state_result = inspector.execute()
-            if state_result.failure:
-                return r[int].fail(state_result.error or "testmon db inspection failed")
-            state = state_result.value
-            u.Cli.atomic_write_text_file(
-                report_dir / "testmon-cache-state.txt",
-                (
-                    f"seed_needed={state.seed_needed}\n"
-                    f"restored_accepted={state.restored_accepted}\n"
-                    f"changed={state.changed}\n"
-                    f"saveable={state.saveable}\n"
-                    f"reason={state.reason}\n"
-                ),
-            ).unwrap()
         sys.stderr.write(
             f"Reports: {report_dir} (latest: {self.root / self.reports / 'latest.txt'})\n"
         )

@@ -21,7 +21,9 @@ class TestsInfraGithub:
         )
 
         result = u.Infra.sync_github_workflows(
-            m.Infra.GithubWorkflowSyncRequest(workspace=str(workspace))
+            m.Infra.GithubWorkflowSyncRequest(
+                workspace=str(workspace), projects=("flext-a", "flext-b")
+            )
         )
 
         tm.ok(result)
@@ -53,7 +55,10 @@ class TestsInfraGithub:
 
         result = u.Infra.sync_github_workflows(
             m.Infra.GithubWorkflowSyncRequest(
-                workspace=str(workspace), apply=True, report=str(report_path)
+                workspace=str(workspace),
+                projects=("flext-a", "flext-b"),
+                apply=True,
+                report=str(report_path),
             )
         )
 
@@ -80,7 +85,7 @@ class TestsInfraGithub:
 
         result = u.Infra.sync_github_workflows(
             m.Infra.GithubWorkflowSyncRequest(
-                workspace=str(workspace), apply=True, prune=True
+                workspace=str(workspace), projects=("flext-a",), apply=True, prune=True
             )
         )
 
@@ -88,6 +93,18 @@ class TestsInfraGithub:
         report = result.unwrap()
         tm.that(report.summary, eq={"create": 1, "prune": 1})
         tm.that(extra_workflow.exists(), eq=False)
+
+    def test_sync_requires_explicit_project_locators(self, tmp_path: Path) -> None:
+        """Never turn a missing project selection into a successful no-op."""
+        workspace = u.Tests.create_github_workspace(
+            tmp_path, project_names=("flext-a",)
+        )
+
+        result = u.Infra.sync_github_workflows(
+            m.Infra.GithubWorkflowSyncRequest(workspace=str(workspace))
+        )
+
+        tm.fail(result, has="requires at least one explicit project locator")
 
     def test_lint_writes_report(self, tmp_path: Path) -> None:
         """Write a lint report and expose the real actionlint availability."""

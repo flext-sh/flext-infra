@@ -91,10 +91,10 @@ class TestsFlextInfraDepsModernizerCoverage:
 
         tm.that(second_changes, empty=True)
 
-    def test_explicit_platform_root_and_inferred_member_app_are_idempotent(
+    def test_explicit_platform_and_default_core_are_idempotent(
         self, tmp_path: Path
     ) -> None:
-        """Keep topology-owned roots distinct from dependency-classified members."""
+        """Use only the explicit kind; dependency names never classify topology."""
         thresholds = config.Infra.tooling.tools.coverage.fail_under
         root_path = tmp_path / "pyproject.toml"
         root_source = '[project]\nname = "arbitrary-root"\n'
@@ -129,4 +129,4 @@ dependencies = ["flext-core", "flext-cli", "flext-ldap"]
         tm.that(root_second, eq=root_first)
         tm.that(member_second, eq=member_first)
         tm.that(root_report["fail_under"], eq=thresholds.platform)
-        tm.that(member_report["fail_under"], eq=thresholds.app)
+        tm.that(member_report["fail_under"], eq=thresholds.core)

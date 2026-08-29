@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import marshal
+import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,6 +37,29 @@ def _dump_real_profile(path: Path) -> None:
     callers: dict[tuple[str, int, str], tuple[int, int, float, float]] = {}
     stats = {("tests/sample_test.py", 1, "test_ok"): (1, 1, 0.001, 0.001, callers)}
     path.write_bytes(marshal.dumps(stats))
+
+
+def _stub_zero_test_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Install the single green-zero child fixture used by selection contracts."""
+
+    def fake_run_to_file(*args: object, **kwargs: object) -> p.Result[int]:
+        del kwargs
+        output_file = args[1]
+        assert isinstance(output_file, (str, Path))
+        report_dir = Path(output_file).parent
+        Path(output_file).write_text("0 selected in 0.01s\n", encoding="utf-8")
+        (report_dir / "junit.xml").write_text(
+            (
+                '<?xml version="1.0"?>'
+                '<testsuites><testsuite tests="0" failures="0" errors="0" '
+                'skipped="0" time="0.01"/></testsuites>'
+            ),
+            encoding="utf-8",
+        )
+        _dump_real_profile(report_dir / "pytest.pstats")
+        return r[int].ok(0)
+
+    monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
 
 
 class TestsFlextInfraPytestRunner:
@@ -87,46 +111,43 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
-    def test_green_child_with_zero_executed_tests_fails_loudly(
+    def test_focused_green_child_with_zero_executed_tests_fails_loudly(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         test_file = tmp_path / "tests" / "sample_test.py"
         test_file.parent.mkdir(parents=True)
         test_file.write_text("", encoding="utf-8")
         runner = self._runner(tmp_path, file="tests/sample_test.py")
-
-        def fake_run_to_file(
-            cmd: t.StrSequence,
-            output_file: t.Cli.TextPath,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            live: bool = False,
-            deadline: p.Cli.ProcessDeadline | None = None,
-        ) -> p.Result[int]:
-            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
-            log_path = Path(output_file)
-            report_dir = log_path.parent
-            log_path.write_text("1 deselected in 0.01s\n", encoding="utf-8")
-            (report_dir / "junit.xml").write_text(
-                (
-                    '<?xml version="1.0"?>'
-                    '<testsuites><testsuite tests="0" failures="0" errors="0" '
-                    'skipped="0" time="0.01"/></testsuites>'
-                ),
-                encoding="utf-8",
-            )
-            _dump_real_profile(report_dir / "pytest.pstats")
-            return r[int].ok(0)
-
-        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
+        _stub_zero_test_run(monkeypatch)
 
         result = runner.execute()
 
         tm.fail(result, has="pytest completed without executing tests")
+
+    def test_unfiltered_testmon_cache_hit_accepts_zero_executed_tests(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        db = tmp_path / ".testmondata"
+        connection = sqlite3.connect(db)
+        connection.execute("CREATE TABLE meta (key TEXT PRIMARY KEY)")
+        connection.execute("INSERT INTO meta VALUES ('seeded')")
+        connection.commit()
+        connection.close()
+        runner = self._runner(tmp_path, what="full")
+        _stub_zero_test_run(monkeypatch)
+
+        exit_code: int = tm.ok(runner.execute())
+
+        tm.that(exit_code, eq=0)
+        latest = (
+            (tmp_path / ".reports" / "tests" / "latest.txt")
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+        cache_state = (
+            tmp_path / ".reports" / "tests" / latest / "testmon-cache-state.txt"
+        ).read_text(encoding="utf-8")
+        tm.that(cache_state, has=["restored_accepted=True", "reason=unchanged"])
 
     def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
         runner = self._runner(tmp_path)
@@ -522,7 +543,7 @@ class TestsFlextInfraPytestRunner:
         with pytest.raises(ValueError, match="COV=Y forbids FILE=/MATCH="):
             runner.build_command(tmp_path / ".reports" / "tests" / "run")
 
-    def test_ci_y_disables_coverage_keeps_testmon(
+    def test_ci_y_keeps_unfiltered_testmon(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
@@ -530,16 +551,7 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
-        tm.that(command, has=["-m", "not docker and not remote"])
-
-    def test_ci_y_forbids_pytest_execute(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """flext-v4p5: make test under CI=Y must fail loud, not run the suite."""
-        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
-        runner = self._runner(tmp_path, what="all")
-        result = runner.execute()
-        tm.fail(result, has="forbidden under CI=Y")
+        tm.that("not docker and not remote" not in command, eq=True)
 
     def test_ci_true_keeps_default_testmon_without_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

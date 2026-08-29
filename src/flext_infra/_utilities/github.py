@@ -91,6 +91,10 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 projects_result.error or "project discovery failed"
             )
+        if not projects_result.value:
+            return r[m.Infra.GithubWorkflowSyncReport].fail(
+                "github workflow sync requires at least one explicit project locator"
+            )
         all_operations: t.MutableSequenceOf[m.Infra.GithubWorkflowSyncOperation] = []
         for project in projects_result.value:
             ctx = m.Infra.GithubWorkflowSyncContext(
@@ -102,8 +106,11 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
                 request=request,
             )
             ops_result = cls._github_sync_project(ctx)
-            if ops_result.success:
-                all_operations.extend(ops_result.value)
+            if ops_result.failure:
+                return r[m.Infra.GithubWorkflowSyncReport].fail(
+                    ops_result.error or f"workflow sync failed for {project.name}"
+                )
+            all_operations.extend(ops_result.value)
         report = m.Infra.GithubWorkflowSyncReport.from_operations(
             apply=request.apply, operations=all_operations
         )

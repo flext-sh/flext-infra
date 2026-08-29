@@ -82,11 +82,12 @@ class TestCodegenCiMatrix:
 
         tm.that(workflow, has="run: CI=Y make setup")
         tm.that(workflow, has="run: CI=Y make check")
-        tm.that(workflow, lacks="run: CI=Y make test")
-        tm.that(workflow, lacks="run: make test")
-        tm.that(workflow, has="run: CI=Y make gen WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make fmt WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make fix WHAT=apply APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make test WHAT=full")
+        tm.that(workflow, has="run: CI=Y make gen")
+        tm.that(workflow, has="run: CI=Y make fmt")
+        tm.that(workflow, has="run: CI=Y make fix")
+        tm.that(workflow, lacks="APPLY=Y")
+        tm.that(workflow, has=["git diff --check", "git diff --exit-code"])
 
     def test_rendered_pre_commit_respects_configured_stage_gates(
         self, tmp_path: Path
@@ -262,7 +263,7 @@ class TestCodegenCiMatrix:
         integrations = tuple(dict.fromkeys((branch, "main")))
         for integration in integrations:
             tm.that(blocking, has=f"      - {integration}")
-        tm.that(blocking, has="draft == false")
+        tm.that(blocking, lacks="draft == false")
         tm.that(blocking, has="ready_for_review")
         triggers = matrix.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
