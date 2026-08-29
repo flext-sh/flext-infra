@@ -50,7 +50,7 @@ class TestsMiseDistributionPolicy:
         tools = tomllib.loads((root / ".mise.toml").read_text(encoding="utf-8"))[
             "tools"
         ]
-        tm.that(tools, lacks=["kubectl", "helm", "kind"])
+        tm.that(tools, lacks=["kubectl", "helm", "kind", "kubeconform"])
 
     def test_managed_artifacts_reject_alternate_distribution(
         self, tmp_path: Path
