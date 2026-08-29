@@ -280,6 +280,9 @@ class FlextInfraConfigModels:
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
         ]
+        kubeconform_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
+        ]
         go_version: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -2404,6 +2407,9 @@ class FlextInfraConfigModels:
         ]
         tokei_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        ]
+        kubeconform_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
         ]
         go_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Go runtime version")

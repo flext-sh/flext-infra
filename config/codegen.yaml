@@ -56,6 +56,7 @@ Infra:
       ast_grep_version: "0.45"
       gitleaks_version: "8.30"
       tokei_version: "14.0"
+      kubeconform_version: "0.8"
       # qlty (hq-36xk): same missing-owner defect as uv_version above.
       qlty_version: "0.642"
       # Exact bootstrap release: lockfile URL/checksum/provenance support used

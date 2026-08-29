@@ -25,6 +25,25 @@ def _assert_runtime_owned_virtualenv(pyright: t.JsonMapping) -> None:
 class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
+    def test_python_discovery_ignores_member_only_container(
+        self, tmp_path: Path
+    ) -> None:
+        """A directory containing only nested projects is not a root source tree."""
+        from flext_infra import u as infra_u
+
+        root_source = tmp_path / "src"
+        root_source.mkdir()
+        (root_source / "root.py").write_text("VALUE = 1\n", encoding="utf-8")
+        member = tmp_path / "apps" / "member"
+        member_source = member / "src" / "member"
+        member_source.mkdir(parents=True)
+        (member / "pyproject.toml").write_text(
+            "[project]\nname='member'\n", encoding="utf-8"
+        )
+        (member_source / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
+
+        tm.that(infra_u.Infra.discover_python_dirs(tmp_path), eq=["src"])
+
     def test_root_config_sets_expected_execution_environments(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
