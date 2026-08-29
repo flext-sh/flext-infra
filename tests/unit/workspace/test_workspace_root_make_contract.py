@@ -266,6 +266,19 @@ class TestsWorkspaceRootMakeContract:
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
 
+        generated_makefile = (workspace_root / "Makefile").read_text(encoding="utf-8")
+        check_recipe = generated_makefile.split(
+            "_builtin_check_all: _builtin_require_environment", 1
+        )[1].split("_builtin_check_lint:", 1)[0]
+        tm.that(
+            check_recipe,
+            has=(
+                "\tfi; \\\n"
+                '\tif [ "$(WORKSPACE_ROOT_PACKAGE)" = "Y" ] && '
+                '[ -n "$(SELECTED_ROOT_PROJECT)" ]; then \\\n'
+            ),
+        )
+
     def test_workspace_root_setup_owns_environment_and_uses_venv_directory(
         self, tmp_path: Path
     ) -> None:
