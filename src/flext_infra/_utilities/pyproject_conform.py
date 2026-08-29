@@ -622,25 +622,9 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
-                return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
-                return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         existing_constraints = u.Cli.toml_as_string_list(
@@ -707,23 +691,20 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        # Only a repository that declares members owns a uv workspace. An
-        # empty marker on a standalone project makes the same committed
-        # revision render differently when cloned alone versus attached as a
-        # submodule, and uv rejects that marker as a nested workspace.
+        # Every repository owns its uv discovery boundary. A standalone
+        # checkout declares an empty member list so the same committed
+        # revision cannot be absorbed by an unrelated workspace in a parent
+        # directory; a real workspace root projects its governed members.
+        # `members = []` is intentional data, unlike a header-only empty table.
         members = (
             tuple(member.path.as_posix() for member in workspace.subprojects)
             if workspace_root
             else ()
         )
         workspace_table = u.Cli.toml_table_child(uv, "workspace")
-        owns_workspace = workspace_root
-        if owns_workspace:
-            if workspace_table is None:
-                workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(workspace_table, "members", members)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "workspace")
+        if workspace_table is None:
+            workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
+        u.Cli.toml_sync_value(workspace_table, "members", list(members))
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None and workspace_root:
             sources = u.Cli.toml_ensure_table(uv, "sources")

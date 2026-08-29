@@ -112,7 +112,7 @@ workspace = true
             eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
         )
 
-    def test_submodule_checkout_removes_empty_uv_workspace_owner(self) -> None:
+    def test_submodule_checkout_owns_empty_uv_workspace_boundary(self) -> None:
         repository = _repository(
             "workspace-member", role=c.Infra.RepositoryRole.STANDALONE, path="."
         )
@@ -132,9 +132,9 @@ name = "workspace-member"
 
         document = tomllib.loads(tm.ok(result))
         uv = document.get("tool", {}).get("uv", {})
-        tm.that("workspace" not in uv, eq=True)
+        tm.that(uv["workspace"]["members"], eq=[])
 
-    def test_standalone_root_removes_empty_uv_workspace_owner(self) -> None:
+    def test_standalone_root_owns_empty_uv_workspace_boundary(self) -> None:
         repository = _repository(
             "standalone-root", role=c.Infra.RepositoryRole.STANDALONE, path="."
         ).model_copy(update={"checkout": c.Infra.CheckoutKind.ROOT})
@@ -154,8 +154,94 @@ link-mode = "copy"
         )
 
         document = tomllib.loads(tm.ok(result))
-        tm.that("workspace" not in document["tool"]["uv"], eq=True)
+        tm.that(document["tool"]["uv"]["workspace"]["members"], eq=[])
         tm.that(document["tool"]["uv"]["link-mode"], eq="copy")
+
+    def test_standalone_boundary_prevents_parent_workspace_adoption(
+        self, tmp_path: Path
+    ) -> None:
+        """Real uv keeps recursive member lock, environment, and dist local."""
+        parent = tmp_path / "parent"
+        child = parent / "child"
+        sibling = parent / "sibling"
+        package = child / "src" / "child"
+        package.mkdir(parents=True)
+        sibling.mkdir()
+        (package / "__init__.py").write_text('"""Fixture."""\n', encoding="utf-8")
+        (sibling / "pyproject.toml").write_text(
+            '[project]\nname = "sibling"\nversion = "0.0.0"\n', encoding="utf-8"
+        )
+        (parent / "pyproject.toml").write_text(
+            '[project]\nname = "parent"\nversion = "0.0.0"\n'
+            '\n[tool.uv.workspace]\nmembers = ["child", "sibling"]\n',
+            encoding="utf-8",
+        )
+        parent_lock = parent / "uv.lock"
+        parent_lock.write_text("parent lock sentinel\n", encoding="utf-8")
+        parent_dist = parent / "dist"
+        parent_dist.mkdir()
+        parent_artifact = parent_dist / "parent-sentinel.whl"
+        parent_artifact.write_text("parent artifact sentinel\n", encoding="utf-8")
+        uv_version = config.Infra.codegen.toolchain.uv_version
+        uv_major, uv_minor = (int(part) for part in uv_version.split("."))
+        uv_build_ceiling = f"{uv_major}.{uv_minor + 1}"
+        workspace = _workspace().model_copy(
+            update={
+                "repository": _repository(
+                    "child", role=c.Infra.RepositoryRole.STANDALONE, path="."
+                ),
+                "subprojects": (),
+            }
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                '[project]\nname = "child"\nversion = "0.0.0"\n'
+                'requires-python = ">=3.13"\n'
+                f'\n[build-system]\nrequires = ["uv_build>={uv_version},'
+                f'<{uv_build_ceiling}"]\n'
+                'build-backend = "uv_build"\n',
+                codegen=config.Infra.codegen,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            )
+        )
+        (child / "pyproject.toml").write_text(rendered, encoding="utf-8")
+
+        workspace_result = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "workspace", "dir", "--project", str(child)], cwd=child
+            )
+        )
+        lock_result = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "lock", "--offline", "--project", str(child)], cwd=child
+            )
+        )
+        sync_result = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "sync", "--offline", "--project", str(child)],
+                cwd=child,
+                env={"UV_PROJECT_ENVIRONMENT": str(child / ".venv")},
+            )
+        )
+        build_result = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "build", "--offline", "--project", str(child)], cwd=child
+            )
+        )
+
+        for result in (workspace_result, lock_result, sync_result, build_result):
+            output = result.stdout + result.stderr
+            tm.that(result.exit_code, eq=0, msg=output)
+            tm.that(output.lower(), lacks="nested workspace")
+        tm.that(workspace_result.stdout.strip(), eq=str(child))
+        tm.that((child / "uv.lock").is_file(), eq=True)
+        tm.that(tuple((child / "dist").glob("child-*")), len=2)
+        tm.that(parent_lock.read_text(encoding="utf-8"), eq="parent lock sentinel\n")
+        tm.that(
+            parent_artifact.read_text(encoding="utf-8"), eq="parent artifact sentinel\n"
+        )
+        tm.that(tuple(parent_dist.iterdir()), eq=(parent_artifact,))
 
     def test_standalone_derives_bare_internal_dependency_from_config_authority(
         self,
