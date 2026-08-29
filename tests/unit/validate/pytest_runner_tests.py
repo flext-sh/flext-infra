@@ -62,6 +62,36 @@ def _stub_zero_test_run(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
 
 
+def _seed_testmon_execution(root: Path, test_name: str) -> None:
+    """Seed the official execution tables for one runner-boundary contract."""
+    test_file = root / test_name.partition("::")[0]
+    test_file.parent.mkdir(parents=True, exist_ok=True)
+    test_file.write_text("", encoding="utf-8")
+    connection = sqlite3.connect(root / ".testmondata")
+    connection.executescript(
+        """
+        CREATE TABLE test_execution (
+            id INTEGER PRIMARY KEY,
+            environment_id INTEGER,
+            test_name TEXT,
+            duration FLOAT,
+            failed BIT,
+            forced BIT
+        );
+        CREATE TABLE test_execution_file_fp (
+            test_execution_id INTEGER,
+            fingerprint_id INTEGER
+        );
+        """
+    )
+    connection.execute(
+        "INSERT INTO test_execution VALUES (1, 1, ?, 0.01, 0, 0)", (test_name,)
+    )
+    connection.execute("INSERT INTO test_execution_file_fp VALUES (1, 1)")
+    connection.commit()
+    connection.close()
+
+
 class TestsFlextInfraPytestRunner:
     @pytest.fixture(autouse=True)
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -124,30 +154,16 @@ class TestsFlextInfraPytestRunner:
 
         tm.fail(result, has="pytest completed without executing tests")
 
-    def test_unfiltered_testmon_cache_hit_accepts_zero_executed_tests(
+    def test_unfiltered_testmon_cache_hit_rejects_zero_executed_tests(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        db = tmp_path / ".testmondata"
-        connection = sqlite3.connect(db)
-        connection.execute("CREATE TABLE meta (key TEXT PRIMARY KEY)")
-        connection.execute("INSERT INTO meta VALUES ('seeded')")
-        connection.commit()
-        connection.close()
+        _seed_testmon_execution(tmp_path, "tests/unit/test_fast.py::test_fast")
         runner = self._runner(tmp_path, what="full")
         _stub_zero_test_run(monkeypatch)
 
-        exit_code: int = tm.ok(runner.execute())
+        result = runner.execute()
 
-        tm.that(exit_code, eq=0)
-        latest = (
-            (tmp_path / ".reports" / "tests" / "latest.txt")
-            .read_text(encoding="utf-8")
-            .strip()
-        )
-        cache_state = (
-            tmp_path / ".reports" / "tests" / latest / "testmon-cache-state.txt"
-        ).read_text(encoding="utf-8")
-        tm.that(cache_state, has=["restored_accepted=True", "reason=unchanged"])
+        tm.fail(result, has="pytest completed without executing tests")
 
     def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
         runner = self._runner(tmp_path)

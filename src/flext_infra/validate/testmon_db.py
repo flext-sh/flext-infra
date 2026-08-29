@@ -31,7 +31,7 @@ class FlextInfraTestmonCacheState(m.Value):
 
 
 class FlextInfraTestmonDbInvalidator(s[tuple[str, ...]]):
-    """Invalidate only an exact bounded selector in an existing testmon DB."""
+    """Invalidate a bounded test selection in an existing testmon DB."""
 
     db_path: Annotated[Path, m.Field(description="Absolute .testmondata path.")]
     file: Annotated[
@@ -43,17 +43,17 @@ class FlextInfraTestmonDbInvalidator(s[tuple[str, ...]]):
         m.Field(default=None, description="Validated literal pytest keyword."),
     ] = None
     max_tests: Annotated[
-        int, m.Field(gt=0, le=32, description="Maximum rows removable in one request.")
+        int, m.Field(gt=0, le=32, description="Maximum tests removable in one request.")
     ]
 
     @u.model_validator(mode="after")
     def _validate_request(self) -> Self:
-        """Require an absolute DB and at least one exact selector."""
+        """Require an absolute DB and a single-test unfiltered budget."""
         if not self.db_path.is_absolute():
             msg = "testmon db_path must be absolute"
             raise ValueError(msg)
-        if self.file is None and self.match is None:
-            msg = "focused testmon invalidation requires FILE or MATCH"
+        if self.file is None and self.match is None and self.max_tests != 1:
+            msg = "unfiltered testmon invalidation requires max_tests=1"
             raise ValueError(msg)
         return self
 
@@ -93,29 +93,43 @@ class FlextInfraTestmonDbInvalidator(s[tuple[str, ...]]):
         required_tables = {"test_execution", "test_execution_file_fp"}
         if not required_tables.issubset(tables):
             return r[tuple[str, ...]].fail(
-                "testmon focused invalidation schema missing"
+                "testmon bounded invalidation schema missing"
             )
-        if not {"id", "test_name"}.issubset(
+        if not {"id", "test_name", "duration"}.issubset(
             self._columns(connection, "test_execution")
         ) or "test_execution_id" not in self._columns(
             connection, "test_execution_file_fp"
         ):
             return r[tuple[str, ...]].fail(
-                "testmon focused invalidation columns missing"
+                "testmon bounded invalidation columns missing"
             )
-        rows = tuple(
+        cached_rows = tuple(
             (int(row[0]), str(row[1]))
             for row in connection.execute(
-                "SELECT id, test_name FROM test_execution ORDER BY id"
+                "SELECT id, test_name FROM test_execution "
+                "ORDER BY duration, test_name, id"
             ).fetchall()
-            if self._selected(str(row[1]))
         )
+        if self.file is None and self.match is None:
+            rows = tuple(
+                row for row in cached_rows if self._cached_test_file_exists(row[1])
+            )[:1]
+            if not rows:
+                return r[tuple[str, ...]].fail(
+                    "testmon cache contains no test from an existing file"
+                )
+            with connection:
+                connection.execute(
+                    "UPDATE test_execution SET failed = 1 WHERE id = ?", (rows[0][0],)
+                )
+            return r[tuple[str, ...]].ok((rows[0][1],))
+        rows = tuple(row for row in cached_rows if self._selected(row[1]))
         names = tuple(sorted({name for _, name in rows}))
         if not rows:
             return r[tuple[str, ...]].ok(())
         if len(rows) > self.max_tests or len(names) > self.max_tests:
             return r[tuple[str, ...]].fail(
-                "focused selector exceeds testmon invalidation limit: "
+                "selector exceeds testmon invalidation limit: "
                 f"rows={len(rows)} tests={len(names)} max={self.max_tests}"
             )
         row_ids = tuple(row_id for row_id, _ in rows)
@@ -130,13 +144,24 @@ class FlextInfraTestmonDbInvalidator(s[tuple[str, ...]]):
             )
         return r[tuple[str, ...]].ok(names)
 
+    def _cached_test_file_exists(self, test_name: str) -> bool:
+        """Return whether one cached node belongs to a current workspace file."""
+        relative = Path(test_name.partition("::")[0])
+        if relative.is_absolute() or ".." in relative.parts:
+            return False
+        root: Path = Path(self.root)
+        candidate: Path = root / relative
+        return candidate.is_file() and candidate.resolve().is_relative_to(
+            root.resolve()
+        )
+
     @override
     def execute(self) -> p.Result[tuple[str, ...]]:
-        """Invalidate one bounded selector without replacing or unlinking the DB."""
+        """Invalidate one bounded selection without replacing or unlinking the DB."""
         path = self.db_path
         if path.is_symlink() or not path.is_file() or path.stat().st_size == 0:
             return r[tuple[str, ...]].fail(
-                "focused selector requires an existing physical testmon DB"
+                "bounded invalidation requires an existing physical testmon DB"
             )
         try:
             connection = sqlite3.connect(f"file:{path}?mode=rw", uri=True)
@@ -146,7 +171,7 @@ class FlextInfraTestmonDbInvalidator(s[tuple[str, ...]]):
             return self._invalidate(connection)
         except sqlite3.Error as exc:
             return r[tuple[str, ...]].fail(
-                f"testmon focused invalidation failed: {exc}"
+                f"testmon bounded invalidation failed: {exc}"
             )
         finally:
             connection.close()

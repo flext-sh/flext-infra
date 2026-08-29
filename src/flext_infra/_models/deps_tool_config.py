@@ -107,6 +107,18 @@ class FlextInfraModelsDepsToolSettings(
                 ),
             ),
         ]
+        testmon_unfiltered_max_tests: Annotated[
+            int,
+            m.Field(
+                alias="testmon-unfiltered-max-tests",
+                ge=1,
+                le=1,
+                description=(
+                    "Exact cached-test budget invalidated before an unfiltered "
+                    "Testmon run so a green invocation always executes a test."
+                ),
+            ),
+        ]
         enforcement_plugin: Annotated[
             t.NonEmptyStr,
             m.Field(

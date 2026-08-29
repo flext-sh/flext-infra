@@ -56,8 +56,52 @@ def _cached_names(db: Path) -> tuple[str, ...]:
     return names
 
 
+def _failed_names(db: Path) -> tuple[str, ...]:
+    """Read the exact cached cases Testmon will force into the next run."""
+    connection = sqlite3.connect(db)
+    names = tuple(
+        str(row[0])
+        for row in connection.execute(
+            "SELECT test_name FROM test_execution WHERE failed = 1 ORDER BY test_name"
+        ).fetchall()
+    )
+    connection.close()
+    return names
+
+
 class TestsFlextInfraTestmonDbInvalidator:
-    """Prove focused invalidation is exact, bounded, and in-place."""
+    """Prove Testmon invalidation is exact, bounded, and in-place."""
+
+    def test_unfiltered_request_deletes_only_fastest_existing_test(
+        self, tmp_path: Path
+    ) -> None:
+        db = tmp_path / ".testmondata"
+        fastest = "tests/unit/test_fast.py::test_fast"
+        slower = "tests/unit/test_slow.py::test_slow"
+        for relative_path in ("tests/unit/test_fast.py", "tests/unit/test_slow.py"):
+            path = tmp_path / relative_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("", encoding="utf-8")
+        _create_testmon_db(db, (slower, fastest))
+        connection = sqlite3.connect(db)
+        connection.execute(
+            "UPDATE test_execution SET duration = 0.2 WHERE test_name = ?", (slower,)
+        )
+        connection.execute(
+            "UPDATE test_execution SET duration = 0.01 WHERE test_name = ?", (fastest,)
+        )
+        connection.commit()
+        connection.close()
+
+        invalidated = tm.ok(
+            FlextInfraTestmonDbInvalidator(
+                workspace_root=tmp_path, db_path=db, max_tests=1
+            ).execute()
+        )
+
+        tm.that(invalidated, eq=(fastest,))
+        tm.that(_cached_names(db), eq=(slower, fastest))
+        tm.that(_failed_names(db), eq=(fastest,))
 
     def test_exact_file_deletes_only_matching_rows_without_replacing_db(
         self, tmp_path: Path

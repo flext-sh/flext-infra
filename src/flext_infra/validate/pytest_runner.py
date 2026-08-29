@@ -147,9 +147,7 @@ class FlextInfraPytestRunner(s[int]):
         """True when WHAT selects a testmon DB maintenance handler."""
         return self.what in self._CACHE_WHATS
 
-    def _require_junit(
-        self, junit_file: Path, pytest_log: Path, *, allow_empty: bool
-    ) -> p.Result[bool]:
+    def _require_junit(self, junit_file: Path, pytest_log: Path) -> p.Result[bool]:
         """Require a non-empty parseable JUnit document after a green run."""
         if not junit_file.is_file() or junit_file.stat().st_size == 0:
             return r[bool].fail(
@@ -178,8 +176,6 @@ class FlextInfraPytestRunner(s[int]):
             testcase for testcase in testcases if testcase.find("skipped") is None
         )
         if not executed:
-            if allow_empty:
-                return r[bool].ok(True)
             return r[bool].fail(
                 self._artifact_failure_detail(
                     "pytest completed without executing tests", pytest_log
@@ -213,19 +209,25 @@ class FlextInfraPytestRunner(s[int]):
             return ("--testmon", "--testmon-forceselect", "--no-cov")
         return ("--testmon", "--no-cov")
 
-    def _invalidate_focused_cache(self) -> p.Result[tuple[str, ...]]:
-        """Invalidate only rows selected by one bounded FILE/MATCH request."""
-        if self.file is None and self.match is None:
+    def _invalidate_testmon_cache(self) -> p.Result[tuple[str, ...]]:
+        """Invalidate one bounded focused request or one unfiltered canary."""
+        if self._cov_enabled():
             return r[tuple[str, ...]].ok(())
         db = self._testmon_db_path()
         if not db.exists() and not db.is_symlink():
             return r[tuple[str, ...]].ok(())
+        focused = self.file is not None or self.match is not None
+        max_tests = (
+            config.Infra.tooling.tools.pytest.testmon_focused_max_tests
+            if focused
+            else config.Infra.tooling.tools.pytest.testmon_unfiltered_max_tests
+        )
         return FlextInfraTestmonDbInvalidator(
             workspace_root=self.root,
             db_path=db,
             file=self.file,
             match=self.match,
-            max_tests=config.Infra.tooling.tools.pytest.testmon_focused_max_tests,
+            max_tests=max_tests,
         ).execute()
 
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
@@ -343,15 +345,15 @@ class FlextInfraPytestRunner(s[int]):
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
         command = self.build_command(report_dir)
-        invalidated_result = self._invalidate_focused_cache()
+        invalidated_result = self._invalidate_testmon_cache()
         if invalidated_result.failure:
             return r[int].fail(
-                invalidated_result.error or "focused testmon invalidation failed"
+                invalidated_result.error or "bounded testmon invalidation failed"
             )
         invalidated = invalidated_result.value
         if invalidated:
             sys.stderr.write(
-                "testmon focused invalidation: " + ", ".join(invalidated) + "\n"
+                "testmon bounded invalidation: " + ", ".join(invalidated) + "\n"
             )
         pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
             self._testmon_db_path()
@@ -436,7 +438,6 @@ class FlextInfraPytestRunner(s[int]):
         ).unwrap()
         pytest_log = report_dir / "pytest.log"
         coverage_enabled = self._cov_enabled()
-        testmon_cache_hit = False
         if exit_code == 0 and not coverage_enabled:
             inspector = FlextInfraTestmonDbInspector(
                 workspace_root=self.root,
@@ -459,16 +460,8 @@ class FlextInfraPytestRunner(s[int]):
                     f"reason={state.reason}\n"
                 ),
             ).unwrap()
-            testmon_cache_hit = (
-                self.file is None
-                and self.match is None
-                and pre_run_digest is not None
-                and state.restored_accepted
-            )
         if exit_code == 0:
-            junit_ok = self._require_junit(
-                junit_file, pytest_log, allow_empty=testmon_cache_hit
-            )
+            junit_ok = self._require_junit(junit_file, pytest_log)
             if junit_ok.failure:
                 return r[int].fail(junit_ok.error or "junit validation failed")
         if (
