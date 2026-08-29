@@ -14,10 +14,10 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from flext_infra._models.layout import FlextInfraModelsLayout
 
@@ -91,6 +91,19 @@ class FlextInfraConfigModels:
                 )
                 raise ValueError(msg)
             return self
+
+    class BeadsEndpointSpec(_ConfigContract):
+        """Static network endpoint projected into Beads configuration."""
+
+        host: Annotated[t.NonEmptyStr, m.Field(description="Beads server host")]
+        port: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=65535,
+                description="Beads server TCP port declared by deployment",
+            ),
+        ]
 
     class BeadsToolSpec(ProtectedMiseToolSpec):
         """Canonical Beads distribution and Gas City projection contract."""
@@ -1204,7 +1217,7 @@ class FlextInfraConfigModels:
         custom_handler_profile_overrides: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
             m.Field(
-                default_factory=ImmutableEmptyMapping,
+                default_factory=immutable_empty_mapping,
                 description="Per-profile overrides of the custom handler policy",
             ),
         ]
@@ -1440,27 +1453,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
-
-    class RetiredProjectionSpec(_ConfigContract):
-        """One obsolete generated file removable only by exact identity markers."""
-
-        path: Annotated[Path, m.Field(description="Repository-relative retired path")]
-        markers: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Required legacy identity markers"),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_path(self) -> Self:
-            """Reject broad or escaping retirement targets at config load."""
-            if (
-                self.path == Path()
-                or self.path.is_absolute()
-                or ".." in self.path.parts
-            ):
-                msg = "retired projection path must be repository-relative and exact"
-                raise ValueError(msg)
-            return self
 
     class TemplateEntrySpec(_ConfigContract):
         """One scaffold-only template mapping consumed by ``codegen new``."""
@@ -1792,25 +1784,6 @@ class FlextInfraConfigModels:
         """Field-only render input for an existing repository Makefile."""
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
-        infra_repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(
-                description="Canonical bootstrap source for the infrastructure CLI"
-            ),
-        ]
-        infra_repository_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider-owned infrastructure baseline branch"),
-        ]
-        infra_source_root_rel: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Repository-relative local infrastructure source, or None "
-                    "when bootstrap must use the configured Git source"
-                )
-            ),
-        ] = None
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -1821,9 +1794,6 @@ class FlextInfraConfigModels:
         workspace_subprojects: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace subproject paths")
         ] = ()
-        workspace_root_package: Annotated[
-            bool, m.Field(description="Workspace root publishes a Python package")
-        ] = False
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Repositories editable from the selected workspace"),
@@ -1935,8 +1905,8 @@ class FlextInfraConfigModels:
         ]
         custom_issue_types: Annotated[
             tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Current-first custom type union"),
-        ]
+            m.Field(description="Union of project and required custom bead types"),
+        ] = ()
 
     class BeadsMetadataRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
@@ -1959,9 +1929,6 @@ class FlextInfraConfigModels:
                 description="Canonical ignore sections applicable to one profile",
             ),
         ]
-
-    class StaticTextRenderSpec(_ConfigContract):
-        """Empty typed context for a variable-free governed text template."""
 
     class ReleaseAutomationOverrideSpec(_ConfigContract):
         """One distribution's deviation from the shared release contract."""
@@ -2028,7 +1995,7 @@ class FlextInfraConfigModels:
                 t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
             ],
             m.Field(
-                default_factory=ImmutableEmptyMapping,
+                default_factory=immutable_empty_mapping,
                 description="Per-distribution deviations from the shared contract",
             ),
         ]
@@ -2134,25 +2101,6 @@ class FlextInfraConfigModels:
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
-        infra_repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef,
-            m.Field(
-                description="Canonical bootstrap source for the infrastructure CLI"
-            ),
-        ]
-        infra_repository_branch: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider-owned infrastructure baseline branch"),
-        ]
-        infra_source_root_rel: Annotated[
-            str | None,
-            m.Field(
-                description=(
-                    "Repository-relative local infrastructure source, or None "
-                    "when bootstrap must use the configured Git source"
-                )
-            ),
-        ] = None
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -2233,9 +2181,6 @@ class FlextInfraConfigModels:
         workspace_subprojects: Annotated[
             tuple[str, ...], m.Field(description="Ordered workspace subproject paths")
         ] = ()
-        workspace_root_package: Annotated[
-            bool, m.Field(description="Workspace root publishes a Python package")
-        ] = False
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Ordered workspace subproject records"),
@@ -2567,7 +2512,7 @@ class FlextInfraConfigModels:
         checkout_submodules_overrides: Annotated[
             Mapping[str, str],
             m.Field(
-                default_factory=ImmutableEmptyMapping,
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
@@ -2577,7 +2522,7 @@ class FlextInfraConfigModels:
         ci_private_submodules: Annotated[
             Mapping[str, FlextInfraConfigModels.CiPrivateSubmodulesSpec],
             m.Field(
-                default_factory=ImmutableEmptyMapping,
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
@@ -2777,10 +2722,6 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
             m.Field(description="Files owned by conform"),
         ]
-        retired_projections: Annotated[
-            tuple[FlextInfraConfigModels.RetiredProjectionSpec, ...],
-            m.Field(description="Obsolete generated files awaiting exact retirement"),
-        ] = ()
         scaffold: Annotated[
             FlextInfraConfigModels.ScaffoldSpec,
             m.Field(description="Typed new-project scaffold policy"),

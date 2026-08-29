@@ -109,12 +109,24 @@ class FlextInfraUtilitiesRopeAnalysis:
         cached = FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE.get(cache_key)
         if cached is not None:
             return cached
-        pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        state = FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
-            rope_project=rope_project, resource=resource, pymodule=pymodule
-        )
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+            state = (
+                FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
+                    rope_project=rope_project, resource=resource, pymodule=pymodule
+                )
+            )
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
+            state = FlextInfraUtilitiesRopeAnalysis._empty_module_semantic_state()
         FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE[cache_key] = state
         return state
+
+    @staticmethod
+    def _empty_module_semantic_state() -> m.Infra.ModuleSemanticState:
+        """Return an empty semantic state."""
+        return m.Infra.ModuleSemanticState(
+            class_infos=(), declared_imports={}, semantic_imports={}
+        )
 
     @staticmethod
     def _module_semantic_state_from_pymodule(
