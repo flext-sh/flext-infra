@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import c, config, t
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
 from tests import u
@@ -88,6 +89,19 @@ class TestsCodegenArtifactSsot:
             if pattern not in emitted and pattern not in governed
         )
         tm.that(unaccounted, eq=())
+
+    def test_workspace_gitignore_tracks_generated_mise_lock(
+        self, codegen: CodegenSpec
+    ) -> None:
+        """Keep the immutable tool lock available to clean CI checkouts."""
+        rendered = FlextInfraCodegenConform.render_project_gitignore(
+            codegen,
+            profile=c.Infra.MakeProfile.WORKSPACE,
+            project_name="cosmos-main",
+        )
+
+        tm.ok(rendered)
+        tm.that(rendered.value, has="!mise.lock")
 
     def test_makefile_has_one_owner_for_every_declared_profile(
         self, codegen: CodegenSpec
