@@ -245,7 +245,9 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         )
 
         tm.ok(result)
-        modernized = result.value[0]
+        modernized = next(
+            item for item in result.value if item.file_path == sample_path.resolve()
+        )
         tm.that(modernized.modified, eq=True)
         tm.that(modernized.refactored_code, eq="value = 'new_value'\n")
         tm.that(sample_path.read_text(encoding="utf-8"), eq="value = 'old_value'\n")
