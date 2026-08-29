@@ -188,7 +188,7 @@ class TestBanditAndMarkdownGates:
 
     @pytest.mark.parametrize(
         "provider_root",
-        (".agents", ".claude", ".codex", ".cursor", ".gemini", ".github", ".opencode"),
+        [".agents", ".claude", ".codex", ".cursor", ".gemini", ".github", ".opencode"],
     )
     def test_markdown_excludes_agentsctl_provider_projections(
         self, tmp_path: Path, provider_root: str
