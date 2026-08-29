@@ -36,7 +36,7 @@ dependencies = [
   "mkdocstrings-python>=2.0.5",
   "pyrefly>=1.2.0",
   "rope>=1.14.0",
-  "ruff>=0.16.0",
+  "ruff>=0.16.5",
 ]
 description = "FLEXT Infrastructure Tooling - Build automation, code generation, and workspace management"
 keywords = ["automation", "codegen", "flext", "infrastructure", "tooling"]
@@ -605,6 +605,7 @@ cryptography = false
 django-stubs = "2026-08-13T00:00:00Z"
 mkdocstrings-python = "2026-08-18T00:00:00Z"
 mypy = "2026-08-15T03:04:00Z"
+ruff = "2026-08-28T00:00:00Z"
 types-setuptools = "2026-08-13T00:00:00Z"
 
 [tool.uv.workspace]
@@ -680,7 +681,7 @@ dev = [
   "pytest-xdist>=3.8.0",
   "pyupgrade>=3.21.2",
   "radon>=6.0.1",
-  "ruff>=0.15.12",
+  "ruff>=0.16.5",
   "rumdl>=0.2.45",
   "types-cachetools>=7.0.0.20260713",
   "types-cffi>=2.0.0.20260518",

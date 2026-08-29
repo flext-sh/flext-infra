@@ -28,7 +28,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Found 'importlib.resources', which is a module only available on Python 3.7+. This does not work in lower versions, and therefore is not backwards compatible. Use importlib_resources instead for older Python versions.
 
-```python
+```text
         1  """Discover ast-grep rules from installed FLEXT packages in cascade order."""  # ruff:ignore[implicit-namespace-package]
         2  
         3  from __future__ import annotations
@@ -47,7 +47,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Possible path traversal through `tarfile.open($PATH).extractall()` if the source tar is controlled by an attacker
 
-```python
+```text
       207                  archive_result.error or "git archive failed"
       208              )
       209          try:
@@ -122,7 +122,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
        36      def _ensure_default_post_hooks_registered(cls) -> None:
        37          """Load and register built-in rope post-hooks once."""
        38          if cls._default_post_hooks_registered:
@@ -141,7 +141,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
        13      """Resolve Rope runtime attributes without importing Rope in leaf modules."""
        14  
        15      @classmethod
@@ -160,7 +160,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
        89          owner = _GROUP_OWNERS.get(group)
        90          if owner is None:
        91              return ()
@@ -179,7 +179,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
        65      @classmethod
        66      def _walk_modules(cls, package_name: str) -> t.SequenceOf[str]:
        67          """Return all importable module names under ``package_name``."""
@@ -198,7 +198,7 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 
 > Untrusted user input in `importlib.import_module()` function allows an attacker to load arbitrary code. Avoid dynamic values in `importlib.import_module()` or use a whitelist to prevent running untrusted code.
 
-```python
+```text
        82  
        83      def _check_module(self, module_name: str) -> t.SequenceOf[m.Infra.ValidationReport]:
        84          """Import one module and run runtime enforcement on its local classes."""

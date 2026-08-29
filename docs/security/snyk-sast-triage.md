@@ -21,7 +21,7 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
 ### 1 · 🟡 MEDIUM · Arbitrary File Write via Archive Extraction (Tar Slip)
 **Local**: `src/flext_infra/release/_release_artifact_source.py:212` · **CWE**: -
 
-```python
+```text
       208              )
       209          try:
       210              stage_path.mkdir(parents=True, exist_ok=False)
@@ -38,7 +38,7 @@ Preencha **Decisão**: `corrigir` / `falso-positivo` (registrar em `.snyk`) / `r
 ### 2 · ⚪ LOW · Jinja auto-escape is set to false
 **Local**: `tests/unit/codegen/test_codegen_catalog_extensions.py:209` · **CWE**: -
 
-```python
+```text
       205              / "gitmodules.j2"
       206          )
       207          import jinja2
