@@ -164,6 +164,7 @@ _ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfo
 {% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
+CHECK_GATES_FIXABLE := {{ make.check_gates_fixable | join(",") }}
  DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
  # End SECTION: verb dispatch
 
@@ -641,6 +642,9 @@ _builtin_fix_check: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@if [ "$(WORKSPACE_ROOT_PACKAGE)" = "Y" ] && [ -n "$(SELECTED_ROOT_PROJECT)" ]; then $(UV_RUN) ruff check --fix $(RUFF_PATHS); fi
+	@if [ "$(WORKSPACE_ROOT_PACKAGE)" = "Y" ] && [ -n "$(SELECTED_ROOT_PROJECT)" ]; then \
+		$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$(CHECK_GATES_FIXABLE)" --projects . --fix; \
+	fi
 	@if [ -n "$(SELECTED_SUBPROJECTS)" ]; then \
 		$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast); \
 	fi
@@ -724,6 +728,7 @@ _builtin_fix_check: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$(CHECK_GATES_FIXABLE)" --projects . --fix
 
 _builtin_fix_apply: _builtin_fix_all
 {% endif %}

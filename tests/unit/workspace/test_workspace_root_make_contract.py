@@ -173,6 +173,33 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, lacks=f"--projects {project_names[1]}")
         tm.that(output, lacks="ruff check --fix")
 
+    def test_generated_make_routes_fixable_gates_through_checker(
+        self, tmp_path: Path
+    ) -> None:
+        """The public fix verb reaches every gate that advertises a fixer."""
+        workspace_root, _project_names = _write_workspace(tmp_path)
+
+        process: p.Cli.CommandOutput = tm.ok(
+            u.Tests.run_isolated_make(
+                [
+                    "-C",
+                    str(workspace_root),
+                    "--dry-run",
+                    "_builtin_fix_apply",
+                    "PROJECT=.",
+                    "APPLY=Y",
+                ],
+                cwd=workspace_root,
+            )
+        )
+        output = process.stdout + process.stderr
+
+        tm.that(process.exit_code, eq=0, msg=output)
+        tm.that(output, has="ruff check --fix")
+        tm.that(output, has="check run --workspace")
+        tm.that(output, has='--gates "markdown,smells"')
+        tm.that(output, has="--fix")
+
     def test_generated_make_routes_file_and_match_only_to_owning_project(
         self, tmp_path: Path
     ) -> None:
