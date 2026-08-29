@@ -1,8 +1,7 @@
 """Tests for canonical dependency source selection by topology role.
 
-The workspace root owns the local ``workspace = true`` overlay. Publishable
-projects retain their catalog Git provenance so the same package metadata works
-outside the workspace; uv applies the root overlay when resolving them locally.
+The composition root owns local path sources for dependencies it actually uses.
+Publishable projects retain catalog Git provenance and autonomous uv boundaries.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -88,19 +87,17 @@ name = "workspace"
 version = "0.1.0"
 dependencies = ["flext-core"]
 
-[dependency-groups]
-workspace = ["flext-core"]
-
 [tool.uv.workspace]
-members = ["flext-core"]
+members = []
 
 [tool.uv.sources.flext-core]
-workspace = true
+path = "flext-core"
+editable = true
 """
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
-    def test_workspace_root_never_gets_git_specifier(self) -> None:
+    def test_composition_root_never_gets_git_specifier(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(
@@ -111,10 +108,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
         rendered = tm.ok(result)
-        group = tu.Tests.toml_strings_at(rendered, "dependency-groups", "workspace")
+        document = tu.Tests.toml_table_at(rendered)
         runtime = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
 
-        tm.that(group, eq=("flext-core",))
+        tm.that(document.get("dependency-groups"), none=True)
         tm.that(runtime, eq=("flext-core",))
 
     def test_external_consumer_keeps_remote_branch_source(self) -> None:
@@ -239,17 +236,44 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
         )
 
-    def test_root_workspace_overlay_resolves_publishable_project_with_uv(
+    def test_root_path_composition_resolves_autonomous_projects_with_uv(
         self, tmp_path: Path
     ) -> None:
-        """Prove uv resolves project Git metadata through the root overlay."""
+        """Prove root and children keep separate locks and environments."""
         workspace = _workspace_with_consumer()
         provider, consumer = workspace.subprojects
         root = tmp_path / "workspace"
         provider_root = root / provider.path
         consumer_root = root / consumer.path
-        provider_root.mkdir(parents=True)
-        consumer_root.mkdir(parents=True)
+        uv_version = config.Infra.codegen.toolchain.uv_version
+        uv_major, uv_minor = (int(part) for part in uv_version.split("."))
+        uv_build_ceiling = f"{uv_major}.{uv_minor + 1}"
+
+        def standalone_project(project: m.Infra.RepositoryRef) -> str:
+            package = (
+                root / project.path / "src" / project.distribution.replace("-", "_")
+            )
+            package.mkdir(parents=True)
+            (package / "__init__.py").write_text(
+                '"""Autonomous path fixture."""\n', encoding="utf-8"
+            )
+            return tm.ok(
+                u.Infra.pyproject_dependencies_conform(
+                    (
+                        f'[project]\nname = "{project.distribution}"\n'
+                        'version = "0.1.0"\nrequires-python = ">=3.13"\n'
+                        f'\n[build-system]\nrequires = ["uv_build>={uv_version},'
+                        f'<{uv_build_ceiling}"]\n'
+                        'build-backend = "uv_build"\n'
+                    ),
+                    codegen=config.Infra.codegen,
+                    workspace=workspace,
+                    workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                )
+            )
+
+        provider_rendered = standalone_project(provider)
+        consumer_rendered = standalone_project(consumer)
         root_source = f"""[project]
 name = "{workspace.repository.distribution}"
 version = "0.1.0"
@@ -259,13 +283,15 @@ dependencies = ["{provider.distribution}", "{consumer.distribution}"]
 package = false
 
 [tool.uv.workspace]
-members = ["{provider.path.as_posix()}", "{consumer.path.as_posix()}"]
+members = []
 
 [tool.uv.sources.{provider.distribution}]
-workspace = true
+path = "{provider.path.as_posix()}"
+editable = true
 
 [tool.uv.sources.{consumer.distribution}]
-workspace = true
+path = "{consumer.path.as_posix()}"
+editable = true
 """
         root_rendered = tm.ok(
             u.Infra.pyproject_dependencies_conform(
@@ -275,28 +301,46 @@ workspace = true
                 workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
             )
         )
-        consumer_rendered = tm.ok(
-            u.Infra.pyproject_dependencies_conform(
-                (
-                    f'[project]\nname = "{consumer.distribution}"\n'
-                    'version = "0.1.0"\n'
-                    f'dependencies = ["{provider.distribution}"]\n'
-                ),
-                codegen=config.Infra.codegen,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
-            )
-        )
         (root / c.Infra.PYPROJECT_FILENAME).write_text(root_rendered, encoding="utf-8")
         (provider_root / c.Infra.PYPROJECT_FILENAME).write_text(
-            (f'[project]\nname = "{provider.distribution}"\nversion = "0.1.0"\n'),
-            encoding="utf-8",
+            provider_rendered, encoding="utf-8"
         )
         (consumer_root / c.Infra.PYPROJECT_FILENAME).write_text(
             consumer_rendered, encoding="utf-8"
         )
 
-        lock_result = tm.ok(
+        child_workspace = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "workspace", "dir", "--project", str(provider_root)],
+                cwd=provider_root,
+            )
+        )
+        child_lock = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "lock", "--offline", "--project", str(provider_root)],
+                cwd=provider_root,
+                env={"UV_CACHE_DIR": str(tmp_path / "uv-cache")},
+            )
+        )
+        child_sync = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "sync", "--offline", "--project", str(provider_root)],
+                cwd=provider_root,
+                env={
+                    "UV_CACHE_DIR": str(tmp_path / "uv-cache"),
+                    "UV_PROJECT_ENVIRONMENT": str(provider_root / ".venv"),
+                },
+            )
+        )
+        child_lock_content = (provider_root / c.Infra.UV_LOCK_FILENAME).read_text(
+            encoding="utf-8"
+        )
+        root_workspace = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "workspace", "dir", "--project", str(root)], cwd=root
+            )
+        )
+        root_lock = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.UV, "lock", "--offline", "--project", str(root)],
                 cwd=root,
@@ -311,9 +355,40 @@ workspace = true
                 ),
             )
         )
+        root_sync = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "sync", "--offline", "--project", str(root)],
+                cwd=root,
+                env={
+                    "UV_CACHE_DIR": str(tmp_path / "uv-cache"),
+                    "UV_PROJECT_ENVIRONMENT": str(root / ".venv"),
+                },
+            )
+        )
 
-        tm.that(lock_result.exit_code, eq=0)
+        for result in (
+            child_workspace,
+            child_lock,
+            child_sync,
+            root_workspace,
+            root_lock,
+            root_sync,
+        ):
+            output = result.stdout + result.stderr
+            tm.that(result.exit_code, eq=0, msg=output)
+            tm.that(output.lower(), lacks="nested workspace")
+        tm.that(child_workspace.stdout.strip(), eq=str(provider_root))
+        tm.that(root_workspace.stdout.strip(), eq=str(root))
+        tm.that((provider_root / ".venv").is_dir(), eq=True)
+        tm.that((root / ".venv").is_dir(), eq=True)
+        tm.that((consumer_root / ".venv").exists(), eq=False)
+        tm.that((consumer_root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
+        tm.that(
+            (provider_root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8"),
+            eq=child_lock_content,
+        )
         lock_content = (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
+        tm.that(lock_content, ne=child_lock_content)
         packages = tu.Tests.toml_tables_at(lock_content, "package")
         provider_packages = [
             package for package in packages if package["name"] == provider.distribution
@@ -322,6 +397,49 @@ workspace = true
         provider_source = tu.Tests.toml_mapping(provider_packages[0]["source"])
         tm.that(provider_source.get("editable"), eq=provider.path.as_posix())
         tm.that("git" in provider_source, eq=False)
+
+    def test_root_missing_declared_path_fails_loudly_with_uv(
+        self, tmp_path: Path
+    ) -> None:
+        """Prove a missing physical dependency cannot fall back to a registry."""
+        workspace = _workspace()
+        member = workspace.subprojects[0]
+        root = tmp_path / "workspace"
+        root.mkdir()
+        source = f"""[project]
+name = "{workspace.repository.distribution}"
+version = "0.1.0"
+dependencies = ["{member.distribution}"]
+
+[tool.uv.workspace]
+members = []
+
+[tool.uv.sources.{member.distribution}]
+path = "{member.path.as_posix()}"
+editable = true
+"""
+        rendered = tm.ok(
+            u.Infra.pyproject_dependencies_conform(
+                source,
+                codegen=config.Infra.codegen,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            )
+        )
+        (root / c.Infra.PYPROJECT_FILENAME).write_text(rendered, encoding="utf-8")
+
+        result = tm.ok(
+            u.Cli.run_raw(
+                [c.Infra.UV, "lock", "--offline", "--project", str(root)],
+                cwd=root,
+                env={"UV_CACHE_DIR": str(tmp_path / "uv-cache")},
+            )
+        )
+
+        output = result.stdout + result.stderr
+        tm.that(result.exit_code, ne=0)
+        tm.that(output, has=member.path.as_posix())
+        tm.that((root / c.Infra.UV_LOCK_FILENAME).exists(), eq=False)
 
     def test_standalone_replaces_workspace_source_with_git_requirement(self) -> None:
         workspace = _workspace()
@@ -341,4 +459,8 @@ workspace = true
             eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
         document = tu.Tests.toml_table_at(rendered)
-        tm.that("tool" in document, eq=False)
+        tool = tu.Tests.toml_mapping(document.get("tool"))
+        uv = tu.Tests.toml_mapping(tool.get("uv"))
+        boundary = tu.Tests.toml_mapping(uv.get("workspace"))
+        tm.that(boundary.get("members"), eq=[])
+        tm.that("sources" not in uv, eq=True)

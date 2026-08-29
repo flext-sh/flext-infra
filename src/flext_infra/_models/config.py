@@ -1960,6 +1960,9 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class StaticTextRenderSpec(_ConfigContract):
+        """Empty typed context for a variable-free governed text template."""
+
     class ReleaseAutomationOverrideSpec(_ConfigContract):
         """One distribution's deviation from the shared release contract."""
 

@@ -478,6 +478,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if relative in represented:
                 continue
             path = root / relative
+            if path.is_symlink():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"template destination must be a physical file: {path}"
+                )
             if path.exists() and not path.is_file():
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"governed artifact is not a regular file: {path}"
@@ -857,6 +861,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             seen_destinations.add(destination)
             path = root / relative
+            if path.is_symlink():
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                    f"template destination must be a physical file: {path}"
+                )
             if path.exists() and not path.is_file():
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"template destination is not a regular file: {path}"
@@ -1464,6 +1472,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
+        if destination == ".shellcheckrc":
+            return r[p.Model].ok(m.Infra.StaticTextRenderSpec())
         if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)

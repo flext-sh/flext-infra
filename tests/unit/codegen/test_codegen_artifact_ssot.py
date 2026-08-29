@@ -90,6 +90,72 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(unaccounted, eq=())
 
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+    )
+    def test_gitignore_tracks_agentsctl_project_projections(
+        self, codegen: CodegenSpec, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Version authorization and provider surfaces for every repository role."""
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen, profile=profile, project_name="fixture-project"
+            )
+        )
+        tracked = (
+            ".agents/projection.json",
+            ".agents/aihub-hooks/antigravity-preinvocation.py",
+            ".agents/skills/flext-development/SKILL.md",
+            ".claude/settings.json",
+            ".claude/skills/flext-development/SKILL.md",
+            ".codex/hooks.json",
+            ".cursor/hooks.json",
+            ".gemini/settings.json",
+            ".github/skills/flext-development/SKILL.md",
+            ".opencode/skills/flext-development/SKILL.md",
+        )
+        for relative_path in tracked:
+            tm.that(
+                u.Tests.is_tracked_under(rendered, relative_path),
+                eq=True,
+                msg=f"{profile.value}: {relative_path} must be trackable",
+            )
+        tm.that(
+            u.Tests.is_tracked_under(
+                rendered, ".agents/skills/flext-development/report.json"
+            ),
+            eq=False,
+        )
+
+    def test_generated_prompts_reference_only_current_flext_skill_owner(self) -> None:
+        """Keep generated prompts on the central FLEXT capability identity."""
+        templates_root = (
+            Path(__file__).resolve().parents[3]
+            / "src/flext_infra/templates/project/base"
+        )
+        prompt_paths = (
+            templates_root
+            / ".github/prompts/flext-aggressive-scale-refactor.prompt.md.j2",
+            templates_root
+            / ".github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2",
+        )
+        extinct = (
+            "flext-law",
+            "flext-context-routing",
+            "flext-python-architecture",
+            "flext-agent-strict-rules",
+            "flext-flext-namespace-rules",
+            "flext-import-rules",
+            "flext-constants-discipline",
+            "flext-strict-typing",
+            "flext-patterns",
+        )
+        for prompt_path in prompt_paths:
+            content = prompt_path.read_text(encoding="utf-8")
+            tm.that(content, has=".agents/skills/flext-development/SKILL.md")
+            for identity in extinct:
+                tm.that(content, lacks=identity)
+
     def test_workspace_gitignore_tracks_generated_mise_lock(
         self, codegen: CodegenSpec
     ) -> None:

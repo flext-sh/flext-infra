@@ -388,7 +388,7 @@ ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
 # Prefer PROJECT_ROOT/src so the Makefile owner always wins over any stale
 # editable metadata inside its checkout-local environment (terminus T4 /
 # path-purity).
-UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
@@ -934,93 +934,112 @@ _builtin_release_status: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" diff --quiet
 	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
 
-# Generation has one owner. Conform preserves the caller's scope and applies
-# the complete dependency/tooling projection before it verifies its fixed point.
-# Dependency upgrades remain a separate explicit verb because they rewrite lock
-# floors; gen must never run a second pyproject writer over conform's result.
-define _mise_launcher_apply
+# Generation stages every external/tool output before the first repository
+# write. A failed launcher or lock preflight therefore leaves conform outputs,
+# docs, launchers and lockfiles untouched; publication only consumes the fully
+# validated transaction directory.
+.PHONY: _builtin_gen_stage_mise _builtin_gen_publish_mise
+
+_builtin_gen_stage_mise:
 	@set -eu; \
-	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
-	mkdir -p "$$scratch_parent"; \
-	scratch=$$(mktemp -d "$$scratch_parent/mise-launcher.XXXXXX"); \
-	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
-	mkdir -p "$$scratch/data" "$$scratch/cache" "$$scratch/state" "$$scratch/tmp"; \
-	: > "$$scratch/global-config.toml"; \
-	if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-		XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-		"$(SETUP_MISE)" -C "$$scratch" generate install-script \
+	transaction="$(MISE_TRANSACTION_DIR)"; \
+	[ -n "$$transaction" ] && [ -d "$$transaction" ] || { \
+		printf 'ERROR: missing Mise transaction directory\n' >&2; exit 2; \
+	}; \
+	mkdir -p "$$transaction/launcher/data" "$$transaction/launcher/cache" \
+		"$$transaction/launcher/state" "$$transaction/launcher/tmp" \
+		"$$transaction/locks"; \
+	: > "$$transaction/launcher/global-config.toml"; \
+	if MISE_GLOBAL_CONFIG_FILE="$$transaction/launcher/global-config.toml" \
+		XDG_CACHE_HOME="$$transaction/launcher/cache" \
+		XDG_STATE_HOME="$$transaction/launcher/state" \
+		MISE_DATA_DIR="$$transaction/launcher/data" \
+		MISE_CACHE_DIR="$$transaction/launcher/cache" \
+		MISE_STATE_DIR="$$transaction/launcher/state" \
+		TMPDIR="$$transaction/launcher/tmp" \
+		MISE_CEILING_PATHS="$$transaction" \
+		MISE_TRUSTED_CONFIG_PATHS="$$transaction/launcher" \
+		"$(SETUP_MISE)" -C "$$transaction/launcher" generate install-script \
 		--version "$(SETUP_MISE_VERSION)" \
-		--write "$$scratch/mise" --windows \
-		>"$$scratch/generate.log" 2>&1; then \
-		cat "$$scratch/generate.log"; \
+		--write "$$transaction/launcher/mise" --windows \
+		>"$$transaction/launcher/generate.log" 2>&1; then \
+		cat "$$transaction/launcher/generate.log"; \
 	else \
-		status=$$?; cat "$$scratch/generate.log"; exit "$$status"; \
+		status=$$?; cat "$$transaction/launcher/generate.log"; exit "$$status"; \
 	fi; \
-	if grep -F 'mise WARN' "$$scratch/generate.log" >/dev/null; then \
+	if grep -F 'mise WARN' "$$transaction/launcher/generate.log" >/dev/null; then \
 		printf 'ERROR: Mise launcher generation emitted warnings\n' >&2; exit 2; \
 	fi; \
+	index=0; \
 	for project in $(MISE_LOCK_PROJECTS); do \
 		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
 		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
 		[ -f "$$project_root/.mise.toml" ] || { \
 			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
 		}; \
-		mkdir -p "$$project_root/bin"; \
-		shell_tmp="$$project_root/bin/.mise.new.$$$$"; \
-		windows_tmp="$$project_root/bin/.mise.cmd.new.$$$$"; \
-		cp "$$scratch/mise" "$$shell_tmp"; \
-		cp "$$scratch/mise.cmd" "$$windows_tmp"; \
-		chmod +x "$$shell_tmp"; \
-		mv -f "$$shell_tmp" "$$project_root/bin/mise"; \
-		mv -f "$$windows_tmp" "$$project_root/bin/mise.cmd"; \
-	done
-endef
-
-define _mise_lock_apply
-	@set -eu; \
-	for project in $(MISE_LOCK_PROJECTS); do \
-		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
-		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		[ -f "$$project_root/.mise.toml" ] || { \
-			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
-		}; \
-		scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
-		scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
-		trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
-		cp "$$project_root/.mise.toml" "$$scratch/.mise.toml"; \
-		locked_count=$$(grep -Fxc 'locked = true' "$$scratch/.mise.toml"); \
+		lock_root="$$transaction/locks/$$index"; \
+		mkdir -p "$$lock_root/data" "$$lock_root/cache" \
+			"$$lock_root/state" "$$lock_root/tmp"; \
+		cp "$$project_root/.mise.toml" "$$lock_root/.mise.toml"; \
+		locked_count=$$(grep -Fxc 'locked = true' "$$lock_root/.mise.toml"); \
 		[ "$$locked_count" -eq 1 ] || { \
 			printf 'ERROR: expected one locked tool_config setting in %s\n' "$$project_root/.mise.toml" >&2; exit 2; \
 		}; \
-		sed -i 's/^locked = true$$/locked = false/' "$$scratch/.mise.toml"; \
-		mkdir -p "$$scratch/data" "$$scratch/cache" \
-			"$$scratch/state" "$$scratch/tmp"; \
-		: > "$$scratch/global-config.toml"; \
-		if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-			XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-			MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-			"$(SETUP_MISE)" -C "$$scratch" lock \
-			--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
-			cat "$$scratch/lock.log"; \
+		sed -i 's/^locked = true$$/locked = false/' "$$lock_root/.mise.toml"; \
+		: > "$$lock_root/global-config.toml"; \
+		if MISE_GLOBAL_CONFIG_FILE="$$lock_root/global-config.toml" \
+			XDG_CACHE_HOME="$$lock_root/cache" XDG_STATE_HOME="$$lock_root/state" \
+			MISE_DATA_DIR="$$lock_root/data" MISE_CACHE_DIR="$$lock_root/cache" \
+			MISE_STATE_DIR="$$lock_root/state" TMPDIR="$$lock_root/tmp" \
+			MISE_CEILING_PATHS="$$transaction" MISE_TRUSTED_CONFIG_PATHS="$$lock_root" \
+			"$(SETUP_MISE)" -C "$$lock_root" lock \
+			--platform "$(MISE_LOCK_PLATFORMS)" >"$$lock_root/lock.log" 2>&1; then \
+			cat "$$lock_root/lock.log"; \
 		else \
-			status=$$?; cat "$$scratch/lock.log"; exit "$$status"; \
+			status=$$?; cat "$$lock_root/lock.log"; exit "$$status"; \
 		fi; \
-		if grep -F 'mise WARN' "$$scratch/lock.log" >/dev/null; then \
+		if grep -F 'mise WARN' "$$lock_root/lock.log" >/dev/null; then \
 			printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
 		fi; \
 		$(FLEXT_INFRA_BOOTSTRAP) codegen mise-artifacts \
-			--workspace "$$scratch" --apply; \
-		lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
-		cp "$$scratch/mise.lock" "$$lock_tmp"; \
-		mv -f "$$lock_tmp" "$$project_root/mise.lock"; \
-		rm -rf -- "$$scratch"; trap - EXIT HUP INT TERM; \
+			--workspace "$$lock_root" --apply; \
+		[ -f "$$lock_root/mise.lock" ] || { \
+			printf 'ERROR: staged Mise lock is missing for %s\n' "$$project_root" >&2; exit 2; \
+		}; \
+		index=$$((index + 1)); \
 	done
-endef
+
+_builtin_gen_publish_mise:
+	@set -eu; \
+	transaction="$(MISE_TRANSACTION_DIR)"; \
+	[ -f "$$transaction/launcher/mise" ] \
+		&& [ -f "$$transaction/launcher/mise.cmd" ] || { \
+		printf 'ERROR: staged Mise launchers are incomplete\n' >&2; exit 2; \
+	}; \
+	index=0; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		[ -f "$$transaction/locks/$$index/mise.lock" ] || { \
+			printf 'ERROR: staged Mise lock is missing for %s\n' "$$project" >&2; exit 2; \
+		}; \
+		index=$$((index + 1)); \
+	done; \
+	index=0; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		mkdir -p "$$project_root/bin"; \
+		shell_tmp="$$project_root/bin/.mise.new.$$$$"; \
+		windows_tmp="$$project_root/bin/.mise.cmd.new.$$$$"; \
+		lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
+		cp "$$transaction/launcher/mise" "$$shell_tmp"; \
+		cp "$$transaction/launcher/mise.cmd" "$$windows_tmp"; \
+		cp "$$transaction/locks/$$index/mise.lock" "$$lock_tmp"; \
+		chmod +x "$$shell_tmp"; \
+		mv -f "$$shell_tmp" "$$project_root/bin/mise"; \
+		mv -f "$$windows_tmp" "$$project_root/bin/mise.cmd"; \
+		mv -f "$$lock_tmp" "$$project_root/mise.lock"; \
+		index=$$((index + 1)); \
+	done
 
 define _mise_artifacts_check
 	@set -eu; \
@@ -1056,10 +1075,19 @@ _builtin_gen_init:
 
 _builtin_gen_all:
 	$(call _require_apply)
-	@$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	$(call _generated_docs,--apply)
-	$(call _mise_launcher_apply)
-	$(call _mise_lock_apply)
+	@set -eu; \
+	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
+	mkdir -p "$$scratch_parent"; \
+	transaction=$$(mktemp -d "$$scratch_parent/mise-transaction.XXXXXX"); \
+	trap 'rm -rf -- "$$transaction"' EXIT HUP INT TERM; \
+	$(SELF_MAKE) _builtin_gen_stage_mise \
+		MISE_TRANSACTION_DIR="$$transaction"; \
+	$(FLEXT_INFRA_BOOTSTRAP) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply; \
+	$(FLEXT_INFRA_BOOTSTRAP) docs generate --workspace "$(PROJECT_ROOT)" \
+		--output-dir "$(PROJECT_ROOT)/.reports/docs" \
+		--apply $(DOCS_PROJECT_ARGS); \
+	$(SELF_MAKE) _builtin_gen_publish_mise \
+		MISE_TRANSACTION_DIR="$$transaction"
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
 

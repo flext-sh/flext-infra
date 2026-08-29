@@ -1,0 +1,66 @@
+{
+  "config": "hooks.json",
+  "context": "project",
+  "entries": {
+    "aihub-governance": {
+      "PreInvocation": [
+        {
+          "command": "python3 /home/marlonsc/workspaces/agents-skill-sync/flext/flext-infra/.agents/aihub-hooks/antigravity-preinvocation.py",
+          "timeout": 10,
+          "type": "command"
+        }
+      ]
+    }
+  },
+  "events": {
+    "context_refresh": {
+      "clients": [
+        "local"
+      ],
+      "coverage": "equivalent",
+      "native": [
+        "PreInvocation"
+      ],
+      "status": "SUPPORTED"
+    },
+    "prompt_submit": {
+      "clients": [
+        "local"
+      ],
+      "coverage": "equivalent",
+      "native": [
+        "PreInvocation"
+      ],
+      "status": "SUPPORTED"
+    },
+    "session_start": {
+      "clients": [
+        "local"
+      ],
+      "coverage": "equivalent",
+      "native": [
+        "PreInvocation"
+      ],
+      "status": "SUPPORTED"
+    },
+    "subagent_start": {
+      "clients": [
+        "local"
+      ],
+      "coverage": "equivalent",
+      "native": [
+        "PreInvocation"
+      ],
+      "status": "SUPPORTED"
+    }
+  },
+  "managed": {
+    ".agents/aihub-hooks/antigravity-preinvocation.py": {
+      "digest": "6fb1e7ebecea90033afd41ce396a26377cc1a7a7660329625f6370fbed752ce2",
+      "mode": "0755"
+    }
+  },
+  "owner": "agents-governance",
+  "provider": "antigravity",
+  "version": 3
+}

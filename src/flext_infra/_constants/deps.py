@@ -32,6 +32,9 @@ class FlextInfraConstantsDeps:
         "vendor",
     })
     DEP_NAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*([A-Za-z0-9_.-]+)")
+    PYPROJECT_DOCUMENT_MAPPING_ERROR: Final[str] = (
+        "pyproject document is not a TOML mapping"
+    )
     PEP621_NAME_RE: Final[t.RegexPattern] = re.compile(r"^\s*(?P<name>[A-Za-z0-9_.-]+)")
     PEP621_REQUIREMENT_HEAD_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(?P<head>[A-Za-z0-9_.-]+(?:\[[^\]]+\])?)"

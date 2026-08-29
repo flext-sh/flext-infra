@@ -60,8 +60,6 @@ class FlextInfraUtilitiesPyprojectConform:
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
             required_dev_dependencies=required_dev_dependencies,
         )
         normalized = cls._normalize_requirements(
@@ -153,12 +151,7 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         if normalized.failure:
             return r[str].fail(normalized.error or "dependency normalization failed")
-        cls._sync_workspace_dependency_group(
-            source,
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-        )
+        cls._remove_legacy_workspace_dependency_group(source)
         sources_result = (
             r[bool].ok(True)
             if workspace_context_root
@@ -428,8 +421,6 @@ class FlextInfraUtilitiesPyprojectConform:
         document: t.Cli.TomlDocument,
         *,
         project_name: str,
-        workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
         required_dev_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and normalize declared groups."""
@@ -472,12 +463,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         else:
             u.Cli.toml_remove_key_if_present(groups, "codegen")
-        cls._sync_workspace_dependency_group(
-            document,
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-        )
+        cls._remove_legacy_workspace_dependency_group(document)
 
         if optional is not None:
             u.Cli.toml_remove_key_if_present(optional, str(c.Infra.DEV))
@@ -485,35 +471,12 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_remove_key_if_present(project, c.Infra.OPTIONAL_DEPENDENCIES)
 
     @classmethod
-    def _sync_workspace_dependency_group(
-        cls,
-        document: t.Cli.TomlDocument,
-        *,
-        project_name: str,
-        workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+    def _remove_legacy_workspace_dependency_group(
+        cls, document: t.Cli.TomlDocument
     ) -> None:
-        """Keep the generated workspace dependency group only at the root."""
-        workspace_root = cls._is_workspace_context_root(
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-        )
+        """Remove topology-wide selection; roots declare only real dependencies."""
         groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
         if groups is None:
-            if not workspace_root:
-                return
-            # The root dependency overlay is complete even when an older
-            # pyproject has no groups table yet.
-            groups = u.Cli.toml_ensure_table(document, c.Infra.DEPENDENCY_GROUPS)
-        if workspace_root:
-            u.Cli.toml_sync_string_list(
-                groups,
-                "workspace",
-                tuple(
-                    sorted(project.distribution for project in workspace.subprojects)
-                ),
-            )
             return
         u.Cli.toml_remove_key_if_present(groups, "workspace")
 
@@ -614,7 +577,7 @@ class FlextInfraUtilitiesPyprojectConform:
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
     ) -> p.Result[bool]:
-        """Keep managed uv sources only as the root local-workspace overlay."""
+        """Keep managed uv sources as autonomous or path-composed projects."""
         workspace_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
@@ -622,25 +585,9 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
-                return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
-                return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
         existing_constraints = u.Cli.toml_as_string_list(
@@ -707,23 +654,11 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        # Only a repository that declares members owns a uv workspace. An
-        # empty marker on a standalone project makes the same committed
-        # revision render differently when cloned alone versus attached as a
-        # submodule, and uv rejects that marker as a nested workspace.
-        members = (
-            tuple(member.path.as_posix() for member in workspace.subprojects)
-            if workspace_root
-            else ()
-        )
-        workspace_table = u.Cli.toml_table_child(uv, "workspace")
-        owns_workspace = workspace_root
-        if owns_workspace:
-            if workspace_table is None:
-                workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(workspace_table, "members", members)
-        else:
-            u.Cli.toml_remove_key_if_present(uv, "workspace")
+        # Every physical repository owns its uv discovery boundary. Even the
+        # composition root has no uv members: it consumes only declared local
+        # path dependencies, so child locks and environments remain autonomous.
+        # `members = []` is intentional data, unlike a header-only empty table.
+        u.Cli.toml_sync_mapping_table(uv, "workspace", {"members": []})
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None and workspace_root:
             sources = u.Cli.toml_ensure_table(uv, "sources")
@@ -731,19 +666,29 @@ class FlextInfraUtilitiesPyprojectConform:
             if not workspace_root and not tuple(uv):
                 u.Cli.toml_remove_key_if_present(tool, "uv")
             return r[bool].ok(True)
-        workspace_names = {member.distribution for member in workspace.subprojects}
+        expected_root_sources: dict[str, dict[str, t.JsonValue]] = {}
+        if workspace_root:
+            expected_result = cls._resolved_root_sources(
+                document=document, workspace=workspace, codegen=codegen
+            )
+            if expected_result.failure:
+                return r[bool].fail(
+                    expected_result.error or "root path source resolution failed"
+                )
+            expected_root_sources = expected_result.value
         for source_name in tuple(sources):
             # Preserve resolved
             # TOML tables in place so conformance cannot accumulate blank trivia.
-            if source_name.startswith(
-                codegen.infra_repository.internal_distribution_prefix
-            ) and (not workspace_root or source_name not in workspace_names):
+            if (
+                source_name.startswith(
+                    codegen.infra_repository.internal_distribution_prefix
+                )
+                and source_name not in expected_root_sources
+            ):
                 u.Cli.toml_remove_key_if_present(sources, source_name)
         if workspace_root:
-            for member in workspace.subprojects:
-                u.Cli.toml_sync_mapping_table(
-                    sources, member.distribution, {"workspace": True}
-                )
+            for source_name, source_payload in expected_root_sources.items():
+                u.Cli.toml_sync_mapping_table(sources, source_name, source_payload)
         elif not tuple(sources):
             u.Cli.toml_remove_key_if_present(uv, "sources")
         if not workspace_root and not tuple(uv):
@@ -752,19 +697,94 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @classmethod
     def _resolved_root_sources(
-        cls, *, workspace: p.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
+        cls,
+        *,
+        document: t.Cli.TomlDocument,
+        workspace: p.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[dict[str, dict[str, t.JsonValue]]]:
-        """Resolve the workspace source overlay from typed metadata."""
-        candidates = (workspace.repository, *workspace.subprojects)
-        for distribution in dict.fromkeys(item.distribution for item in candidates):
-            reference_result = cls._repository_reference(
-                distribution, direct_url=None, repositories=candidates, codegen=codegen
-            )
-            if reference_result.failure:
-                return r.fail(reference_result.error or "repository resolution failed")
+        """Resolve only root-declared internal dependencies to local paths."""
+        payload = u.Cli.toml_as_mapping(document)
+        if payload is None:
+            return r.fail(c.Infra.PYPROJECT_DOCUMENT_MAPPING_ERROR)
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            return r.fail("pyproject content must define [project]")
+        raw_values = cls._declared_requirements(
+            payload, project, excluded_dependency_group="workspace"
+        )
+        members = {member.distribution: member for member in workspace.subprojects}
+        names_result = cls._root_local_dependency_names(
+            raw_values,
+            member_names=frozenset(members),
+            internal_prefix=codegen.infra_repository.internal_distribution_prefix,
+        )
+        if names_result.failure:
+            return r.fail(names_result.error or "root path source resolution failed")
+        required_names = names_result.value
         return r.ok({
-            member.distribution: {"workspace": True} for member in workspace.subprojects
+            member.distribution: {
+                "path": member.path.as_posix(),
+                "editable": member.editable,
+            }
+            for member in workspace.subprojects
+            if member.distribution in required_names
         })
+
+    @staticmethod
+    def _declared_requirements(
+        payload: Mapping[str, t.JsonValue],
+        project: Mapping[str, t.JsonValue],
+        *,
+        excluded_dependency_group: str | None = None,
+    ) -> t.StrSequence:
+        """Collect dependency strings from every PEP 621 dependency surface."""
+        requirements: list[str] = []
+        for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
+            value = project.get(key)
+            values = value.values() if isinstance(value, Mapping) else (value,)
+            for declared in values:
+                requirements.extend(u.Cli.toml_as_string_list(declared))
+        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
+        if isinstance(groups, Mapping):
+            for group_name, declared in groups.items():
+                if group_name != excluded_dependency_group:
+                    requirements.extend(u.Cli.toml_as_string_list(declared))
+        return tuple(requirements)
+
+    @staticmethod
+    def _root_local_dependency_names(
+        requirements: t.StrSequence,
+        *,
+        member_names: frozenset[str],
+        internal_prefix: str,
+    ) -> p.Result[frozenset[str]]:
+        """Classify root requirements without registry fallback for local members."""
+        required: set[str] = set()
+        missing: set[str] = set()
+        for requirement in requirements:
+            dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if dependency_name is None or not dependency_name.startswith(
+                internal_prefix
+            ):
+                continue
+            has_direct_source = "@" in requirement.partition(";")[0]
+            if dependency_name not in member_names:
+                if not has_direct_source:
+                    missing.add(dependency_name)
+                continue
+            if has_direct_source:
+                return r.fail(
+                    "workspace dependency declares a conflicting direct source: "
+                    f"{dependency_name}"
+                )
+            required.add(dependency_name)
+        if missing:
+            return r.fail(
+                "root path dependency is not a declared subproject: "
+                + ", ".join(sorted(missing))
+            )
+        return r.ok(frozenset(required))
 
     @staticmethod
     def _validate_root_uv_sources(
@@ -773,10 +793,10 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         codegen: m.Infra.CodegenConfigSpec,
     ) -> p.Result[bool]:
-        """Validate the root overlay without rewriting out-of-order TOML tables."""
+        """Validate root path composition without rewriting TOML tables."""
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
-            return r[bool].fail("pyproject document is not a TOML mapping")
+            return r[bool].fail(c.Infra.PYPROJECT_DOCUMENT_MAPPING_ERROR)
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, Mapping):
             return r[bool].fail("root pyproject must define [tool]")
@@ -789,31 +809,37 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         uv_workspace = uv.get("workspace")
         if not isinstance(uv_workspace, Mapping):
-            return r[bool].fail("root pyproject must define [tool.uv.workspace]")
+            return r[bool].fail("root pyproject must define its uv boundary")
         try:
             members = t.Infra.STR_SEQ_ADAPTER.validate_python(
                 uv_workspace.get("members"), strict=True
             )
         except c.ValidationError as exc:
             return r[bool].fail_op("validate root uv workspace package entries", exc)
-        expected_members = tuple(
-            member.path.as_posix() for member in workspace.subprojects
-        )
-        if tuple(members) != expected_members:
+        if tuple(members):
             return r[bool].fail(
-                "root uv workspace package entries differ from workspace SSOT"
+                "root uv boundary must not adopt shared workspace members"
             )
         sources = uv.get("sources")
         if not isinstance(sources, Mapping):
             return r[bool].fail("root pyproject must define [tool.uv.sources]")
         resolved_result = FlextInfraUtilitiesPyprojectConform._resolved_root_sources(
-            workspace=workspace, codegen=codegen
+            document=document, workspace=workspace, codegen=codegen
         )
         if resolved_result.failure:
             return r[bool].fail(resolved_result.error or "repository resolution failed")
         expected_sources = resolved_result.value
-        if tuple(sources) != tuple(expected_sources):
-            return r[bool].fail("root uv workspace sources differ from workspace SSOT")
+        managed_source_names = tuple(
+            source_name
+            for source_name in sources
+            if source_name.startswith(
+                codegen.infra_repository.internal_distribution_prefix
+            )
+        )
+        if managed_source_names != tuple(expected_sources):
+            return r[bool].fail(
+                "root uv path sources differ from declared dependencies"
+            )
         for source_name, expected_source in expected_sources.items():
             source = sources.get(source_name)
             if (
@@ -822,7 +848,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 or dict(source) != expected_source
             ):
                 return r[bool].fail(
-                    f"root uv workspace sources differ from workspace SSOT: {source_name}"
+                    f"root uv path source differs from declared dependency: {source_name}"
                 )
         return r[bool].ok(True)
 
@@ -838,11 +864,10 @@ class FlextInfraUtilitiesPyprojectConform:
         """Require one internal dependency provenance for the active topology."""
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
-            return r[bool].fail("pyproject document is not a TOML mapping")
+            return r[bool].fail(c.Infra.PYPROJECT_DOCUMENT_MAPPING_ERROR)
         member_names = frozenset(
             member.distribution for member in workspace.subprojects
         )
-        raw_values: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return r[bool].fail("pyproject content must define [project]")
@@ -851,17 +876,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
-            value = project.get(key)
-            if isinstance(value, Mapping):
-                for group in value.values():
-                    raw_values.extend(u.Cli.toml_as_string_list(group))
-            else:
-                raw_values.extend(u.Cli.toml_as_string_list(value))
-        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
-        if isinstance(groups, Mapping):
-            for group in groups.values():
-                raw_values.extend(u.Cli.toml_as_string_list(group))
+        raw_values = cls._declared_requirements(payload, project)
         for requirement in raw_values:
             dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
             if dependency_name not in member_names:
