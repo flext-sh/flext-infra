@@ -181,13 +181,17 @@ class FlextInfraWorkspaceDetector(
         subprojects: list[m.Infra.RepositoryRef] = []
         external: list[Path] = []
         seen: set[Path] = set()
+        baseline = u.Infra.repository_baseline_branch(repository_root)
+        integration_branch = baseline.value if baseline.success else None
         for path in declared.value:
             if path in seen:
                 return result_type.fail(
                     f"duplicate .gitmodules path: {path.as_posix()}"
                 )
             seen.add(path)
-            loaded = cls._load_subproject(repository_root, path)
+            loaded = cls._load_subproject(
+                repository_root, path, integration_branch=integration_branch
+            )
             if loaded.failure:
                 return result_type.fail(loaded.error)
             if isinstance(loaded.value, Path):
@@ -198,9 +202,18 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def _load_subproject(
-        cls, repository_root: Path, path: Path
+        cls, repository_root: Path, path: Path, *, integration_branch: str | None = None
     ) -> p.Result[m.Infra.RepositoryRef | Path]:
-        """Load one governed Python entry or classify its non-Python checkout."""
+        """Load one entry, honoring the declared classification overlay.
+
+        A submodule whose ``.gitmodules`` section explicitly sets
+        ``flext-managed`` to anything other than ``true`` is a vendored or
+        fork checkout the workspace never governs: it classifies as an
+        external dependency without provider or branch policy validation,
+        the same contract lane provisioning already applies. Governed
+        subprojects must integrate on the provider line or on the
+        repository's published integration branch.
+        """
         result_type = r[m.Infra.RepositoryRef | Path]
         if path.is_absolute() or not path.parts or ".." in path.parts:
             return result_type.fail(f"invalid .gitmodules path: {path.as_posix()}")
@@ -208,12 +221,34 @@ class FlextInfraWorkspaceDetector(
         if contract.failure:
             return result_type.fail(contract.error)
         declared_url, declared_branch = contract.value
+        sections = u.Infra.git_submodule_sections(
+            m.Infra.GitRepoRequest(repo_root=repository_root)
+        )
+        if sections.failure:
+            return result_type.fail(
+                sections.error or "failed to classify submodule declarations"
+            )
+        section = sections.value.get(path.as_posix())
+        if section is not None:
+            managed = u.Infra.git_submodule_config_value(
+                m.Infra.GitSubmoduleConfigRequest(
+                    repo_root=repository_root, section=section, key="flext-managed"
+                )
+            )
+            if managed.failure:
+                return result_type.fail(
+                    managed.error or f"failed to classify gitlink: {path.as_posix()}"
+                )
+            if managed.value.text and managed.value.text.lower() != "true":
+                return result_type.ok(path)
         provider_result = cls._provider_for_url(declared_url)
         if provider_result.failure:
             return result_type.fail(provider_result.error)
         provider = provider_result.value
         if not u.Infra.gitmodule_branch_is_governed(
-            declared_branch, provider_branch=provider.branch
+            declared_branch,
+            provider_branch=provider.branch,
+            integration_branch=integration_branch,
         ):
             return result_type.fail(
                 "governed subproject branch differs from provider policy: "
