@@ -170,6 +170,22 @@ class TestBanditAndMarkdownGates:
         tm.that(runner.commands[0], has=str(local_config.resolve()))
         tm.that(runner.commands[0], lacks=str(parent_config.resolve()))
 
+    def test_markdown_excludes_operational_beads_storage(self, tmp_path: Path) -> None:
+        """Historical tracker records are not live documentation source."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-beads-boundary")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        beads_dir = project_dir / ".beads"
+        beads_dir.mkdir()
+        (beads_dir / "historical.md").write_text("broken", encoding="utf-8")
+        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has="README.md")
+        tm.that(runner.commands[0], lacks=".beads/historical.md")
+
     def test_markdown_uses_uv_managed_tool_with_sanitized_path(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import operator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -170,47 +169,6 @@ class FlextInfraEnsurePyrightConfigPhase:
                     rules=rules,
                 )
             )
-        discovered = u.Infra.discover_projects(workspace_root)
-        child_projects = (
-            sorted(
-                (
-                    project.path
-                    for project in discovered.value
-                    if (
-                        project.workspace_role
-                        == c.Infra.WorkspaceProjectRole.SUBPROJECT
-                    )
-                ),
-                key=operator.attrgetter("name"),
-            )
-            if discovered.success
-            else []
-        )
-        for child_project in child_projects:
-            relative_root = child_project.relative_to(workspace_root)
-            relative_project_root = relative_root.as_posix()
-            child_source_path = self._project_source_path(prefix=relative_project_root)
-            expected_envs.extend(
-                self._diagnostic_override_envs(
-                    project_dir=child_project,
-                    root_prefix=relative_root,
-                    source_path=child_source_path,
-                )
-            )
-            for env_dir in u.Infra.discover_python_dirs(child_project):
-                expected_envs.append(
-                    self._env_entry(
-                        env_dir=env_dir,
-                        root=(relative_root / env_dir).as_posix(),
-                        extra_paths=self._extra_paths_for_env(
-                            env_dir=env_dir,
-                            source_path=child_source_path,
-                            project_root=relative_project_root,
-                            source_dir=rules.source_dir,
-                        ),
-                        rules=rules,
-                    )
-                )
         return expected_envs
 
     def environment_payloads_for_dirs(
@@ -341,26 +299,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         workspace_root: Path | None,
         project_roots: t.StrSequence,
     ) -> t.StrSequence:
-        """Return the auto-discovered top-level Python roots that pyright should analyze."""
-        includes: t.MutableSequenceOf[str] = list(project_roots)
-        if not is_root or workspace_root is None:
-            return includes
-        discovered = u.Infra.discover_projects(workspace_root)
-        if discovered.failure:
-            return includes
-        child_projects = sorted(
-            (
-                project.path
-                for project in discovered.value
-                if (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
-            ),
-            key=operator.attrgetter("name"),
-        )
-        for child_project in child_projects:
-            relative_root = child_project.relative_to(workspace_root)
-            for env_dir in u.Infra.discover_python_dirs(child_project):
-                includes.append((relative_root / env_dir).as_posix())
-        return includes
+        """Return only Python roots owned by the selected project manifest."""
+        _ = is_root, workspace_root
+        return list(project_roots)
 
     def _expected_project_roots(
         self,

@@ -114,6 +114,9 @@ class TestsFlextInfraInfraConstantsCore:
         common = c.Infra.COMMON_EXCLUDED_DIRS
         tm.that(check_excluded.issuperset(common), eq=True)
 
+    def test_check_excluded_dirs_omit_operational_storage(self) -> None:
+        tm.that(c.Infra.CHECK_EXCLUDED_DIRS, has=".beads")
+
     def test_excluded_dirs_are_strings(self) -> None:
         tm.that(c.Infra.DOC_EXCLUDED_DIRS, is_=frozenset)
         tm.that(c.Infra.PYPROJECT_SKIP_DIRS, is_=frozenset)

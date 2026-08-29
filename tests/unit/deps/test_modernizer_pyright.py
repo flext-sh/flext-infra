@@ -28,7 +28,7 @@ class TestsFlextInfraDepsModernizerPyright:
     def test_root_config_sets_expected_execution_environments(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Render configured root and member analyzer environments."""
+        """Render only roots owned by the workspace repository itself."""
         pyright_rules = tool_config_document.tools.pyright
         rules = pyright_rules.path_rules
         _ = (tmp_path / "pyproject.toml").write_text(
@@ -40,10 +40,13 @@ class TestsFlextInfraDepsModernizerPyright:
         flext_core = tmp_path / "flext-core"
         flext_api = tmp_path / "flext-api"
         detached_project = tmp_path / "demo-migration-tool"
+        root_source = tmp_path / rules.source_dir / "workspace"
         (tmp_path / "vendor").mkdir(parents=True, exist_ok=True)
         flext_core.mkdir(parents=True, exist_ok=True)
         flext_api.mkdir(parents=True, exist_ok=True)
         detached_project.mkdir(parents=True, exist_ok=True)
+        root_source.mkdir(parents=True, exist_ok=True)
+        (root_source / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
         _ = (flext_core / "pyproject.toml").write_text(
             "[project]\nname='flext-core'\n", encoding="utf-8"
         )
@@ -100,11 +103,7 @@ class TestsFlextInfraDepsModernizerPyright:
             tm.that(pyright, lacks="ignore")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
-            eq=sorted([
-                f"flext-api/{rules.source_dir}",
-                f"flext-core/{rules.source_dir}",
-                f"flext-core/{rules.test_like_dirs[0]}",
-            ]),
+            eq=[rules.source_dir],
         )
         tm.that(
             u.Cli.toml_unwrap_item(pyright["executionEnvironments"]),
@@ -112,23 +111,9 @@ class TestsFlextInfraDepsModernizerPyright:
                 {
                     **pyright_rules.lazy_import_suppressions,
                     **pyright_rules.source_env_suppressions,
-                    "root": f"flext-api/{rules.source_dir}",
+                    "root": rules.source_dir,
                     "reportPrivateUsage": rules.source_report_private_usage,
-                    "extraPaths": [f"flext-api/{rules.source_dir}"],
-                },
-                {
-                    **pyright_rules.lazy_import_suppressions,
-                    **pyright_rules.source_env_suppressions,
-                    "root": f"flext-core/{rules.source_dir}",
-                    "reportPrivateUsage": rules.source_report_private_usage,
-                    "extraPaths": [f"flext-core/{rules.source_dir}"],
-                },
-                {
-                    **pyright_rules.lazy_import_suppressions,
-                    **pyright_rules.test_like_env_suppressions,
-                    "root": f"flext-core/{rules.test_like_dirs[0]}",
-                    "reportPrivateUsage": rules.test_like_report_private_usage,
-                    "extraPaths": ["flext-core", f"flext-core/{rules.source_dir}"],
+                    "extraPaths": [rules.source_dir],
                 },
             ],
         )
@@ -322,17 +307,10 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, lacks="include")
         tm.that(u.Cli.toml_unwrap_item(pyright["executionEnvironments"]), eq=[])
 
-    def test_workspace_root_declared_roots_do_not_override_fleet_discovery(
+    def test_workspace_root_never_adopts_member_analyzer_roots(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """Render the workspace fleet surface even when roots are declared.
-
-        A workspace root owns a real tree, so its analyzer surface is decided by
-        that tree's topology. Declared roots are the pre-write scaffold seed and
-        must never narrow a real root back to its own local directories, or the
-        root renders one shape from the fleet fan-out and another from inside
-        itself and no content is a fixed point (flext-dph2).
-        """
+        """Keep member projects under their own manifests and native gates."""
         rules = tool_config_document.tools.pyright.path_rules
         _ = (tmp_path / "pyproject.toml").write_text(
             "[project]\nname='workspace'\n\n"
@@ -370,13 +348,9 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(declared_pyright, is_=MutableMapping)
         if not isinstance(declared_pyright, MutableMapping):
             return
+        tm.that(declared_pyright, lacks="include")
         tm.that(
-            list(
-                u.Tests.toml_strings(
-                    u.Cli.toml_unwrap_item(declared_pyright["include"])
-                )
-            ),
-            has=f"flext-core/{rules.source_dir}",
+            u.Cli.toml_unwrap_item(declared_pyright["executionEnvironments"]), eq=[]
         )
 
     def test_expected_envs_cover_every_analyzer_python_root(

@@ -52,6 +52,7 @@ class FlextInfraConstantsSourceCode:
     "Directories to skip when scanning pyproject.toml files."
     CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".archive",
+        ".beads",
         "reports",
         ".agents",
     }
