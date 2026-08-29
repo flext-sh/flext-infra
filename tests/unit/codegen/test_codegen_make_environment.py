@@ -495,7 +495,11 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
-                env={"UV": str(uv), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
+                env={
+                    "PROJECT": config.Infra.name,
+                    "UV": str(uv),
+                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                },
                 remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
             )
         )

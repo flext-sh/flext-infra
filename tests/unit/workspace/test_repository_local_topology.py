@@ -447,6 +447,42 @@ class TestsRepositoryLocalTopology:
 
         tm.fail(result, has="governed subproject checkout is missing")
 
+    def test_uninitialized_gitlink_does_not_borrow_parent_origin(
+        self, tmp_path: Path
+    ) -> None:
+        """Classify an indexed but uninitialized checkout as an external dependency."""
+        root = tmp_path / "uninitialized-gitlink"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        child_path = Path("fixture-child")
+        WorktreeFixture.write_gitmodules(root, (child_path.as_posix(),))
+        recorded = tm.ok(
+            u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=root)
+        ).strip()
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "update-index",
+                    "--add",
+                    "--cacheinfo",
+                    f"160000,{recorded},{child_path.as_posix()}",
+                ],
+                cwd=root,
+            )
+        )
+        (root / child_path).mkdir()
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.external_dependency_paths, eq=(child_path,))
+
     def test_gitmodule_rejects_provider_branch_divergence(self, tmp_path: Path) -> None:
         """Reject a governed checkout declared on another integration line."""
         root = tmp_path / "branch-divergence"

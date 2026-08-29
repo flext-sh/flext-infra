@@ -46,6 +46,15 @@ MATCH ?=
 COV ?=
 PROJECT ?=
 PROJECTS ?=
+# Project selection is an invocation argument, not ambient process state. GNU
+# Make exports command-line variables to recipe subprocesses; without this
+# boundary, a nested generated Makefile adopts its caller's unrelated project.
+ifeq ($(filter command line override,$(origin PROJECT)),)
+override PROJECT :=
+endif
+ifeq ($(filter command line override,$(origin PROJECTS)),)
+override PROJECTS :=
+endif
 BASE ?=
 BRANCH ?=
 PYTEST_ARGS ?=

@@ -228,6 +228,15 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(
                 f"governed subproject checkout is missing: {path.as_posix()}"
             )
+        if not (subproject_root / c.Infra.GIT_DIR).exists():
+            gitlink = u.Infra.git_staged_gitlink_oid(
+                m.Infra.GitRefRequest(
+                    repo_root=repository_root, reference=path.as_posix()
+                )
+            )
+            if gitlink.failure:
+                return result_type.fail(gitlink.error)
+            return result_type.ok(path)
         origin = cls._repository_origin_url(
             subproject_root, path=path, declared_url=declared_url
         )
