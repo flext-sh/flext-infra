@@ -179,8 +179,8 @@ CHECK_GATES_FIXABLE := {{ make.check_gates_fixable | join(",") }}
 
 # === SECTION: lint/type paths (managed) ===
 # Source: template + computed (script_dispatch conditional)
-RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
-MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests{% if script_dispatch %} $(PROJECT_ROOT)/scripts{% endif %}
+RUFF_PATHS := $(strip $(foreach d,src tests{% if script_dispatch %} scripts{% endif %},$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
+MYPY_PATHS := $(strip $(foreach d,src tests{% if script_dispatch %} scripts{% endif %},$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))
 # End SECTION: lint/type paths
 
 # === SECTION: infra bootstrap (managed) ===
