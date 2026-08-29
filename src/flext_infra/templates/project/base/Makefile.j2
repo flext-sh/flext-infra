@@ -321,7 +321,7 @@ ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 # Prefer PROJECT_ROOT/src so the Makefile owner always wins over any stale
 # editable metadata inside its checkout-local environment (terminus T4 /
 # path-purity).
-UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := test -x "$(FLEXT_INFRA_PYTHON)" || { printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; }; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # Scaffold dev tools live in the validated optional dev

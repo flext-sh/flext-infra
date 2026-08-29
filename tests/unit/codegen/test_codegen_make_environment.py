@@ -391,6 +391,7 @@ class TestsCodegenMakeEnvironment:
         fixture_tool = "managed-tool"
         runtime_python = project_root / ".venv" / "bin" / "python"
         tool_log = tmp_path / "tools.log"
+        uv_environment_log = tmp_path / "uv-environment.log"
         for bin_root in (hostile_bin, provisioned_bin):
             test_u.Tests.write_executable(
                 bin_root / fixture_tool,
@@ -398,7 +399,12 @@ class TestsCodegenMakeEnvironment:
             )
         test_u.Tests.write_executable(hostile_bin / "uv", "#!/bin/sh\nexit 99\n")
         test_u.Tests.write_executable(
-            provisioned_bin / "uv", f"#!/bin/sh\nexec '{runtime_python}'\n"
+            provisioned_bin / "uv",
+            (
+                "#!/bin/sh\n"
+                f"printf '%s\\n' \"$UV_PROJECT_ENVIRONMENT\" > '{uv_environment_log}'\n"
+                f"exec '{runtime_python}'\n"
+            ),
         )
         test_u.Tests.write_executable(
             runtime_python,
@@ -407,9 +413,6 @@ class TestsCodegenMakeEnvironment:
                 f"command -v uv > '{tool_log}'\n"
                 f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),
-        )
-        test_u.Tests.write_executable(
-            provisioned_bin / "uv", f"#!/bin/sh\nexec '{runtime_python}'\n"
         )
         active_env = {
             "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
@@ -430,6 +433,10 @@ class TestsCodegenMakeEnvironment:
         tm.that(
             tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
         )
+        tm.that(
+            uv_environment_log.read_text(encoding="utf-8").strip(),
+            eq=str(project_root / ".venv"),
+        )
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
@@ -446,6 +453,7 @@ class TestsCodegenMakeEnvironment:
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
                 "-u UV_PROJECT_ENVIRONMENT "
+                'UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" '
                 'PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
