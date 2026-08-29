@@ -1561,12 +1561,14 @@ class TestScriptDispatchMakefile:
             ),
         )
         tm.that(
-            "RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(PROJECT_ROOT)/scripts"
+            "RUFF_PATHS := $(strip $(foreach d,src tests scripts,"
+            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
             in rendered,
             eq=True,
         )
         tm.that(
-            "MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests $(PROJECT_ROOT)/scripts"
+            "MYPY_PATHS := $(strip $(foreach d,src tests scripts,"
+            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
             in rendered,
             eq=True,
         )
@@ -1579,11 +1581,15 @@ class TestScriptDispatchMakefile:
             tmp_path, extra_verbs=(), script_dispatch=None
         )
         tm.that(
-            "RUFF_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests" in rendered,
+            "RUFF_PATHS := $(strip $(foreach d,src tests,"
+            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
+            in rendered,
             eq=True,
         )
         tm.that(
-            "MYPY_PATHS := $(PROJECT_ROOT)/src $(PROJECT_ROOT)/tests" in rendered,
+            "MYPY_PATHS := $(strip $(foreach d,src tests,"
+            "$(if $(wildcard $(PROJECT_ROOT)/$(d)/.),$(PROJECT_ROOT)/$(d),)))"
+            in rendered,
             eq=True,
         )
         tm.that("$(PROJECT_ROOT)/scripts" in rendered, eq=False)

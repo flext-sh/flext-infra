@@ -506,6 +506,88 @@ class TestsRepositoryLocalTopology:
 
         tm.fail(result, has="branch differs from provider policy")
 
+    def test_declared_unmanaged_gitlink_classifies_as_external_dependency(
+        self, tmp_path: Path
+    ) -> None:
+        """Honor the .gitmodules overlay: flext-managed=false is never governed."""
+        root = tmp_path / "overlay-external"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        (root / "external-fork").mkdir()
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "external-fork"]\n'
+            "\tpath = external-fork\n"
+            "\turl = https://github.com/foreign-owner/external-fork.git\n"
+            "\tbranch = master\n"
+            "\tflext-classification = external-fork\n"
+            "\tflext-managed = false\n",
+            encoding="utf-8",
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.external_dependency_paths, eq=(Path("external-fork"),))
+
+    def test_gitmodule_accepts_the_published_integration_branch(
+        self, tmp_path: Path
+    ) -> None:
+        """Accept a governed checkout declared on the published integration line."""
+        root = tmp_path / "integration-line"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
+        provider = u.Tests.provider()
+        baseline = tm.ok(u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "update-ref", "refs/remotes/origin/develop", baseline],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "update-ref",
+                    "-d",
+                    f"refs/remotes/origin/{provider.branch}",
+                ],
+                cwd=root,
+            )
+        )
+        child = root / "fixture-child"
+        WorktreeFixture.initialize_governed_project(
+            child,
+            "fixture-child",
+            workspace="fixture-child",
+            database="fixture_child",
+            issue_prefix="fixture-child",
+        )
+        (root / c.Infra.GITMODULES).write_text(
+            '[submodule "fixture-child"]\n'
+            "\tpath = fixture-child\n"
+            f"\turl = {WorktreeFixture.governed_repository_url('fixture-child')}\n"
+            "\tbranch = develop\n",
+            encoding="utf-8",
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(
+            [item.path.as_posix() for item in workspace.subprojects],
+            eq=["fixture-child"],
+        )
+
     def test_gitmodule_rejects_origin_url_divergence(self, tmp_path: Path) -> None:
         """Reject a checkout whose origin identity differs from its declaration."""
         root = tmp_path / "url-divergence"

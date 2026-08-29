@@ -6,7 +6,8 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 from flext_core import r
-from flext_infra import c, config, m, p, t, u
+from flext_cli import u
+from flext_infra import c, config, m, p, t
 
 
 class FlextInfraUtilitiesProjectManagedArtifacts:
@@ -38,7 +39,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return r[bool].ok(True)
 
     @staticmethod
-    def load(project_dir: Path) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
+    def load_project_managed_artifacts(
+        project_dir: Path,
+    ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Load every YAML and compose each artifact by its declared policy."""
         config_dir = project_dir / c.CONFIG_DIR_NAME
         empty = m.Infra.ProjectManagedArtifactsResolution(
@@ -52,8 +55,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 loaded.error or f"project config load failed: {config_dir}"
             )
         ruff_ignores: dict[str, set[str]] = {}
-        mise_tools: dict[str, str] = {}
+        mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: dict[str, Path] = {}
+        gitignore_patterns: list[str] = []
+        fleet_platforms = frozenset(config.Infra.codegen.toolchain.mise_lock_platforms)
         for document in loaded.value.values():
             managed = document.data.get("ManagedArtifacts")
             if not managed:
@@ -64,19 +69,28 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             artifacts = project_config.ManagedArtifacts
             for pattern, rules in artifacts.Ruff.per_file_ignores.items():
                 ruff_ignores.setdefault(pattern, set()).update(rules)
+            for pattern in artifacts.Gitignore.patterns:
+                if pattern not in gitignore_patterns:
+                    gitignore_patterns.append(pattern)
             if document.source_path is None:
                 return r[m.Infra.ProjectManagedArtifactsResolution].fail(
                     "project configuration document has no source path"
                 )
             source = Path(document.source_path)
-            for selector, version in artifacts.Mise.tools.items():
+            for selector, tool in artifacts.Mise.tools.items():
                 previous = mise_sources.get(selector)
                 if previous is not None:
                     return r[m.Infra.ProjectManagedArtifactsResolution].fail(
                         "duplicate project Mise selector "
                         f"{selector!r}: {previous} and {source}"
                     )
-                mise_tools[selector] = version
+                unknown = sorted(set(tool.platforms or ()) - fleet_platforms)
+                if unknown:
+                    return r[m.Infra.ProjectManagedArtifactsResolution].fail(
+                        f"project Mise selector {selector!r} in {source} declares "
+                        f"platforms outside the fleet lock platforms: {unknown}"
+                    )
+                mise_tools[selector] = tool
                 mise_sources[selector] = source
         artifacts = m.Infra.ProjectManagedArtifactsConfig(
             Ruff=m.Infra.ProjectRuffConfig(
@@ -86,6 +100,9 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 }
             ),
             Mise=m.Infra.ProjectMiseConfig(tools=dict(sorted(mise_tools.items()))),
+            Gitignore=m.Infra.ProjectGitignoreConfig(
+                patterns=tuple(gitignore_patterns)
+            ),
         )
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(
             m.Infra.ProjectManagedArtifactsResolution(
@@ -97,7 +114,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     @classmethod
     def compose_mise_toml(cls, project_dir: Path, rendered: str) -> p.Result[str]:
         """Add local tools through TOML types and reject global collisions."""
-        resolved = cls.load(project_dir)
+        resolved = cls.load_project_managed_artifacts(project_dir)
         if resolved.failure:
             return r[str].fail(resolved.error or "project artifact load failed")
         local_tools = resolved.value.artifacts.Mise.tools
@@ -116,15 +133,36 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
         tools = u.Cli.toml_ensure_table(doc, "tools")
-        for selector, version in local_tools.items():
+        for selector, tool in local_tools.items():
             if selector in tools:
                 source = resolved.value.mise_tool_sources[selector]
                 return r[str].fail(
                     "project Mise selector collides with fleet tool "
                     f"{selector!r}: global .mise.toml template and {source}"
                 )
-            tools[selector] = version
+            tools[selector] = tool.version
         return r[str].ok(u.Cli.toml_dumps(doc))
+
+    @classmethod
+    def lock_platform_exclusions(
+        cls, project_dir: Path
+    ) -> p.Result[t.MappingKV[str, frozenset[str]]]:
+        """Platforms each project-owned selector cannot lock, derived from its declaration."""
+        resolved = cls.load_project_managed_artifacts(project_dir)
+        if resolved.failure:
+            return r[t.MappingKV[str, frozenset[str]]].fail(
+                resolved.error or "project artifact load failed"
+            )
+        fleet_platforms = frozenset(config.Infra.codegen.toolchain.mise_lock_platforms)
+        # Absent platforms: the tool locks on every fleet platform. A declared
+        # tuple (possibly empty, for backends without per-platform assets)
+        # records exactly the platforms the lock may carry.
+        exclusions = {
+            selector: fleet_platforms - frozenset(tool.platforms)
+            for selector, tool in resolved.value.artifacts.Mise.tools.items()
+            if tool.platforms is not None
+        }
+        return r[t.MappingKV[str, frozenset[str]]].ok(exclusions)
 
 
 __all__: tuple[str, ...] = ("FlextInfraUtilitiesProjectManagedArtifacts",)

@@ -11,6 +11,9 @@ from urllib.parse import urlsplit
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -339,7 +342,10 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
 
     @staticmethod
     def _validate_lock(
-        lock: m.Infra.MiseLockSpec, *, configured_tools: t.StrMapping
+        lock: m.Infra.MiseLockSpec,
+        *,
+        configured_tools: t.StrMapping,
+        project_exclusions: t.MappingKV[str, frozenset[str]],
     ) -> p.Result[bool]:
         expected_tools = sorted(configured_tools)
         actual_tools = sorted(lock.tools)
@@ -361,7 +367,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[bool].fail(f"Mise lock backend drift for {selector}")
             excluded = frozenset(
                 toolchain.mise_lock_platform_exclusions.get(selector, ())
-            )
+            ) | project_exclusions.get(selector, frozenset())
             expected_platforms = declared_platforms - excluded
             actual_platforms = frozenset(entry.platforms)
             if actual_platforms != expected_platforms:
@@ -405,7 +411,18 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         launcher_result = self._validate_launchers(self.workspace_root)
         if launcher_result.failure:
             return launcher_result
-        return self._validate_lock(lock, configured_tools=tools_result.value)
+        exclusions = (
+            FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions(
+                self.workspace_root
+            )
+        )
+        if exclusions.failure:
+            return r[bool].fail(exclusions.error or "project Mise platforms invalid")
+        return self._validate_lock(
+            lock,
+            configured_tools=tools_result.value,
+            project_exclusions=exclusions.value,
+        )
 
 
 __all__: list[str] = ["FlextInfraCodegenMiseArtifacts"]
