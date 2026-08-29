@@ -210,8 +210,21 @@ class FlextInfraUtilitiesDiscovery(
             if subdir.is_dir()
             and not subdir.name.startswith(".")
             and subdir.name not in effective_skip
-            and any(subdir.rglob(c.Infra.EXT_PYTHON_GLOB))
+            and any(
+                cls._python_file_belongs_to_project(project_dir, source)
+                for source in subdir.rglob(c.Infra.EXT_PYTHON_GLOB)
+            )
         ]
+
+    @staticmethod
+    def _python_file_belongs_to_project(project_dir: Path, source: Path) -> bool:
+        """Return whether ``source`` is owned by ``project_dir``'s manifest."""
+        for parent in source.parents:
+            if parent == project_dir:
+                return True
+            if (parent / c.Infra.PYPROJECT_FILENAME).is_file():
+                return False
+        return False
 
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:

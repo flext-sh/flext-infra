@@ -124,6 +124,7 @@ _ALLOWED_WHATS_mod := check all apply
 
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
+CHECK_GATES_FIXABLE := markdown,smells
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
 
@@ -637,6 +638,7 @@ _builtin_fix_check: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$(CHECK_GATES_FIXABLE)" --projects . --fix
 
 _builtin_fix_apply: _builtin_fix_all
 

@@ -64,5 +64,21 @@ class TestsFlextInfraRootMakefileSingleOwner:
 
         tm.that(content, has="FLEXT_INFRA_BOOTSTRAP = $(PROJECT_FLEXT_INFRA)")
 
+    def test_fix_routes_declared_fixable_gates_through_checker(self) -> None:
+        """The local fix verb reaches every gate that advertises a fixer."""
+        makefile = Path(__file__).resolve().parents[2] / c.Infra.MAKEFILE_FILENAME
+        content = makefile.read_text(encoding="utf-8")
+        expected = ",".join(config.Infra.codegen.make.check_gates_fixable)
+
+        tm.that(content, has=f"CHECK_GATES_FIXABLE := {expected}")
+        tm.that(content, has="ruff check --fix $(RUFF_PATHS)")
+        tm.that(
+            content,
+            has=(
+                'check run --workspace "$(PROJECT_ROOT)" '
+                '--gates "$(CHECK_GATES_FIXABLE)" --projects . --fix'
+            ),
+        )
+
 
 __all__: tuple[str, ...] = ()

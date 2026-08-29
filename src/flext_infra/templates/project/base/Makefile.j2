@@ -112,6 +112,7 @@ BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
 {% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
+CHECK_GATES_FIXABLE := {{ make.check_gates_fixable | join(",") }}
  DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
  # End SECTION: verb dispatch
 
@@ -489,6 +490,7 @@ _builtin_fix_check: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$(CHECK_GATES_FIXABLE)" --projects . --fix
 
 _builtin_fix_apply: _builtin_fix_all
 
