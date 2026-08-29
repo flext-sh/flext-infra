@@ -704,7 +704,11 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_table = u.Cli.toml_table_child(uv, "workspace")
         if workspace_table is None:
             workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
-        u.Cli.toml_sync_value(workspace_table, "members", list(members))
+        u.Cli.toml_sync_value(
+            workspace_table,
+            "members",
+            list(t.Cli.JSON_LIST_ADAPTER.validate_python(list(members))),
+        )
         sources = u.Cli.toml_table_child(uv, "sources")
         if sources is None and workspace_root:
             sources = u.Cli.toml_ensure_table(uv, "sources")
