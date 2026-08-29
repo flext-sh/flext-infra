@@ -232,18 +232,33 @@ class TestsCodegenMakeEnvironment:
     def test_setup_bootstraps_before_the_tracked_mise_launcher_exists(
         self, tmp_path: Path
     ) -> None:
-        """Use the exact managed Mise version already available on ``PATH``."""
+        """Bootstrap locally without selecting tools from a parent umbrella."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        (project_root / ".mise.toml").write_text(
+            '[tools]\nuv = "0.12"\n', encoding="utf-8"
+        )
+        umbrella_config = project_root.parent / ".mise.toml"
+        umbrella_config.write_text(
+            '[tools]\n"github:gastownhall/beads" = "1.2.2"\n',
+            encoding="utf-8",
         )
         (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
         tool_bin = tmp_path / "managed-tools" / "bin"
         real_mise = test_u.Tests.write_mise_stub(tool_bin / "mise-real")
         mise_env_log = tmp_path / "mise-env.log"
+        beads_selection_log = tmp_path / "beads-selection.log"
+        expected_ceiling = project_root.parent
         mise = tool_bin / "mise"
         test_u.Tests.write_executable(
             mise,
             "#!/bin/sh\n"
+            f"if [ \"$1\" != '--version' ] && "
+            f"[ \"$MISE_CEILING_PATHS\" != '{expected_ceiling}' ]; then\n"
+            f"  printf '%s\\n' '{umbrella_config}' >> '{beads_selection_log}'\n"
+            "  exit 91\n"
+            "fi\n"
             f"printf '%s|%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
             f"\"$MISE_CONFIG_DIR\" \"$MISE_CEILING_PATHS\" >> '{mise_env_log}'\n"
             f"exec '{real_mise}' \"$@\"\n",
@@ -296,6 +311,7 @@ class TestsCodegenMakeEnvironment:
             if "/.test-tmp/mise-setup." in line
         }
         assert setup_ceilings == {str(project_root.parent)}
+        tm.that(beads_selection_log.exists(), eq=False)
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
