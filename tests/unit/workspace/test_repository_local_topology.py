@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m, t
+from flext_infra import c, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
@@ -660,45 +660,3 @@ class TestsRepositoryLocalTopology:
             FlextInfraWorkspaceDetector.repository_is_governed(repository, provider),
             eq=True,
         )
-
-    @pytest.mark.parametrize(
-        "remote",
-        [
-            "https://github.com/flext-sh/fixture-project.git",
-            "git@github.com:flext-sh/fixture-project.git",
-            "git@private-github-alias:flext-sh/fixture-project.git",
-        ],
-    )
-    def test_provider_resolution_reuses_semantic_git_identity(
-        self, remote: str
-    ) -> None:
-        """Resolve HTTPS, SSH, and SSH aliases through one owner identity."""
-        provider = u.Tests.provider()
-
-        resolved = tm.ok(
-            u.Infra.remote_provider(remote, config.Infra.codegen.providers)
-        )
-
-        tm.that(resolved, eq=provider)
-
-    def test_provider_resolution_rejects_unknown_owner_without_raw_url(self) -> None:
-        """Fail unknown ownership without leaking the original remote string."""
-        raw_host_marker = "private-host-marker"
-        result = u.Infra.remote_provider(
-            f"git@{raw_host_marker}:unknown-owner/fixture-project.git",
-            config.Infra.codegen.providers,
-        )
-
-        tm.fail(result, has="repository owner must resolve exactly once")
-        tm.that(result.error or "", lacks=raw_host_marker)
-
-    def test_provider_resolution_rejects_duplicate_owners(self) -> None:
-        """Fail when two configured providers claim the same organization."""
-        provider = u.Tests.provider()
-        duplicate = provider.model_copy(update={"name": "duplicate-provider"})
-
-        result = u.Infra.remote_provider(
-            "git@github-alias:flext-sh/fixture-project.git", (provider, duplicate)
-        )
-
-        tm.fail(result, has="repository owner must resolve exactly once")

@@ -296,8 +296,6 @@ workspace = true
             eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
         uv = tu.Tests.toml_table_at(rendered, "tool", "uv")
-        workspace_table = tu.Tests.toml_table_at(
-            rendered, "tool", "uv", "workspace"
-        )
+        workspace_table = tu.Tests.toml_table_at(rendered, "tool", "uv", "workspace")
         tm.that(workspace_table.get("members"), eq=[])
         tm.that("sources" in uv, eq=False)

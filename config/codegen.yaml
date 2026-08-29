@@ -56,6 +56,7 @@ Infra:
       ast_grep_version: "0.45"
       gitleaks_version: "8.30"
       tokei_version: "14.0"
+      kubeconform_version: "0.8"
       # qlty (hq-36xk): same missing-owner defect as uv_version above.
       qlty_version: "0.642"
       # Exact bootstrap release: lockfile URL/checksum/provenance support used
@@ -105,9 +106,22 @@ Infra:
         version: "1.2.2"
         prerelease: false
         minimum_release_age: null
-        endpoint:
-          host: 127.0.0.1
-          port: 3307
+        endpoint_origin: inherited_city
+        endpoint_status: verified
+        required_custom_types:
+          - molecule
+          - convoy
+          - message
+          - event
+          - gate
+          - merge-request
+          - agent
+          - role
+          - rig
+          - session
+          - spec
+          - convergence
+          - step
 
     # Why (ai-hub-qwoc): the ast-grep project contract for every governed
     # repository. A provider manifest may declare sgconfig.yml as a required

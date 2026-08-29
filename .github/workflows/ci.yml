@@ -78,17 +78,8 @@ jobs:
         # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make setup
 
-      - name: gen (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
-        run: CI=Y make gen WHAT=apply APPLY=Y
-
-      - name: fmt (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
-        run: CI=Y make fmt WHAT=apply APPLY=Y
-
-      - name: fix (blocking)
-        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
-        run: CI=Y make fix WHAT=apply APPLY=Y
+      - name: gen check (blocking)
+        run: CI=Y make gen WHAT=check
 
       - name: check (blocking)
         # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
@@ -112,15 +103,19 @@ jobs:
           set -eu
           # Structured reports only — same allowlist as Upload reports (no raw
           # pytest/tool logs: those may carry connection strings / env secrets).
-          while IFS= read -r -d '' f; do
-            echo "::group::$f"
-            tail -n 200 "$f"
-            echo "::endgroup::"
-          done < <(
-            find .reports apps \
-              \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
-              -type f -print0 2>/dev/null || true
-          )
+          for report_root in .reports apps; do
+            if [ -d "$report_root" ]; then
+              find "$report_root" \
+                \( -path '*/junit.xml' -o -path '*/coverage.xml' -o -path '*/coverage.json' \) \
+                -type f -exec sh -eu -c '
+                  for report_file do
+                    printf "::group::%s\n" "$report_file"
+                    tail -n 200 "$report_file"
+                    printf "::endgroup::\n"
+                  done
+                ' sh {} +
+            fi
+          done
       - name: Upload reports on failure
         if: ${{ failure() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2

@@ -1332,10 +1332,7 @@ class TestScriptDispatchMakefile:
             gen_check_body,
             has=["_builtin_require_environment", "$(PROJECT_FLEXT_INFRA)"],
         )
-        tm.that(
-            gen_check_body,
-            lacks=["codegen init", "deps modernize"],
-        )
+        tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
@@ -1344,11 +1341,7 @@ class TestScriptDispatchMakefile:
         tm.that(gen_all_body, has="$(PROJECT_FLEXT_INFRA)")
         tm.that(
             gen_all_body,
-            lacks=[
-                "_builtin_require_environment",
-                "codegen init",
-                "deps modernize",
-            ],
+            lacks=["_builtin_require_environment", "codegen init", "deps modernize"],
         )
         tm.that("_require_apply" in gen_all_body, eq=True)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]

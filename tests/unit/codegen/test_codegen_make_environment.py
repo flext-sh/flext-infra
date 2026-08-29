@@ -220,8 +220,7 @@ class TestsCodegenMakeEnvironment:
         mise_log = tmp_path / "mise.log"
         mise = tool_bin / "mise"
         test_u.Tests.write_executable(
-            mise,
-            f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{mise_log}'\nexit 0\n",
+            mise, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{mise_log}'\nexit 0\n"
         )
 
         process = tm.ok(

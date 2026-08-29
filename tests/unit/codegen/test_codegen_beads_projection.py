@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m
+from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 
@@ -64,16 +64,14 @@ class TestsCodegenBeadsProjection:
             pytest.fail("local identity must produce both Beads projections")
         tm.that(rendered_config, has='issue-prefix: "project-prefix"')
         tm.that(rendered_config, has='prefix: "project_database"')
-        beads = config.Infra.codegen.toolchain.beads
-        tm.that(rendered_config, has=f"host: {beads.endpoint.host}")
-        tm.that(rendered_config, has=f"port: {beads.endpoint.port}")
+        tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
+        tm.that(rendered_config, has="gc.endpoint_status: verified")
+        tm.that(rendered_config, has="types.custom:")
         metadata = json.loads(rendered_metadata)
         tm.that(metadata["database"], eq="dolt")
         tm.that(metadata["backend"], eq="dolt")
         tm.that(metadata["dolt_database"], eq="project_database")
         tm.that(metadata["dolt_mode"], eq="server")
-        tm.that(metadata["dolt_server_host"], eq=beads.endpoint.host)
-        tm.that(metadata["dolt_server_port"], eq=beads.endpoint.port)
         tm.that(
             set(metadata),
             eq={
