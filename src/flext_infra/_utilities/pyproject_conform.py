@@ -723,19 +723,26 @@ class FlextInfraUtilitiesPyprojectConform:
             for group_name, group in groups.items():
                 if group_name != "workspace":
                     raw_values.extend(u.Cli.toml_as_string_list(group))
-        required_names = frozenset(
-            dependency_name
-            for requirement in raw_values
-            if (
-                dependency_name := FlextInfraUtilitiesDependencies.dep_name(requirement)
-            )
-            is not None
-            and dependency_name.startswith(
-                codegen.infra_repository.internal_distribution_prefix
-            )
-        )
         members = {member.distribution: member for member in workspace.subprojects}
-        missing = tuple(sorted(required_names.difference(members)))
+        required_names: set[str] = set()
+        missing_names: set[str] = set()
+        for requirement in raw_values:
+            dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if dependency_name is None or not dependency_name.startswith(
+                codegen.infra_repository.internal_distribution_prefix
+            ):
+                continue
+            has_direct_source = "@" in requirement.partition(";")[0]
+            if dependency_name in members:
+                if has_direct_source:
+                    return r.fail(
+                        "workspace dependency declares a conflicting direct source: "
+                        f"{dependency_name}"
+                    )
+                required_names.add(dependency_name)
+            elif not has_direct_source:
+                missing_names.add(dependency_name)
+        missing = tuple(sorted(missing_names))
         if missing:
             return r.fail(
                 "root path dependency is not a declared subproject: "
