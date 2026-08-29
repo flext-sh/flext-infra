@@ -140,8 +140,10 @@ class TestsFlextInfraFacadeEnvironmentSync:
             "ManagedArtifacts:\n"
             "  Mise:\n"
             "    tools:\n"
-            '      node: "26"\n'
-            '      docker-compose: "5.5"\n',
+            "      node:\n"
+            '        version: "26"\n'
+            "      docker-compose:\n"
+            '        version: "5.5"\n',
             encoding="utf-8",
         )
 
@@ -166,7 +168,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         config_dir.mkdir()
         for filename, version in (("one.yaml", "20"), ("two.yaml", "22")):
             (config_dir / filename).write_text(
-                f'ManagedArtifacts:\n  Mise:\n    tools:\n      node: "{version}"\n',
+                f'ManagedArtifacts:\n  Mise:\n    tools:\n      node:\n        version: "{version}"\n',
                 encoding="utf-8",
             )
 
@@ -186,7 +188,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         config_dir = workspace / "config"
         config_dir.mkdir()
         (config_dir / "tooling.yaml").write_text(
-            'ManagedArtifacts:\n  Mise:\n    tools:\n      python: "3.14"\n',
+            'ManagedArtifacts:\n  Mise:\n    tools:\n      python:\n        version: "3.14"\n',
             encoding="utf-8",
         )
 

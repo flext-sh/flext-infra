@@ -527,6 +527,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     profile=profile,
                     project_name=root.name,
                     workspace=workspace,
+                    project_dir=root,
                 )
                 if rendered_gitignore.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -572,15 +573,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         profile: c.Infra.MakeProfile,
         project_name: str,
         workspace: m.Infra.WorkspaceSpec | None = None,
+        project_dir: Path | None = None,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` for one named project.
 
         Public seam consumed by the layout engine: per-project
-        layout ``gitignore_additions`` from the layout SSOT are appended as
-        one trailing derived section so conform and layout never diverge.
+        layout ``gitignore_additions`` from the layout SSOT and the
+        repository-owned ``ManagedArtifacts.Gitignore.patterns`` read from
+        ``project_dir`` are appended as trailing derived sections so conform
+        and layout never diverge.
         """
         return FlextInfraCodegenConform._render_gitignore(
-            codegen, profile=profile, project_name=project_name, workspace=workspace
+            codegen,
+            profile=profile,
+            project_name=project_name,
+            workspace=workspace,
+            project_dir=project_dir,
         )
 
     @staticmethod
@@ -590,6 +598,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         profile: c.Infra.MakeProfile,
         project_name: str | None = None,
         workspace: m.Infra.WorkspaceSpec | None = None,
+        project_dir: Path | None = None,
     ) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
@@ -654,6 +663,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     m.Infra.ScaffoldGitignoreSectionSpec(
                         name=c.Infra.GITIGNORE_LAYOUT_SECTION_NAME,
                         patterns=override.gitignore_additions,
+                    )
+                )
+        if project_dir is not None:
+            # The repository owns the ignore patterns the fleet scaffold cannot
+            # know (local caches, generated runtime state); they are declared in
+            # its own config/*.yaml and appended as one derived section.
+            resolved = FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
+                project_dir
+            )
+            if resolved.failure:
+                return r[str].fail(
+                    resolved.error or f"project artifact load failed: {project_dir}"
+                )
+            project_patterns = resolved.value.artifacts.Gitignore.patterns
+            if project_patterns:
+                sections.append(
+                    m.Infra.ScaffoldGitignoreSectionSpec(
+                        name=c.Infra.GITIGNORE_PROJECT_SECTION_NAME,
+                        patterns=project_patterns,
                     )
                 )
         context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))

@@ -6,9 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, t, u
+from flext_infra import c, config, t
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_tests import tm
+from tests import u
 
 CodegenSpec = type(config.Infra.codegen)
 
@@ -88,6 +90,83 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(unaccounted, eq=())
 
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+    )
+    def test_gitignore_tracks_agentsctl_project_projections(
+        self, codegen: CodegenSpec, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Version authorization and provider surfaces for every repository role."""
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                codegen, profile=profile, project_name="fixture-project"
+            )
+        )
+        tracked = (
+            ".agents/projection.json",
+            ".agents/aihub-hooks/antigravity-preinvocation.py",
+            ".agents/skills/flext-development/SKILL.md",
+            ".claude/settings.json",
+            ".claude/skills/flext-development/SKILL.md",
+            ".codex/hooks.json",
+            ".cursor/hooks.json",
+            ".gemini/settings.json",
+            ".github/skills/flext-development/SKILL.md",
+            ".opencode/skills/flext-development/SKILL.md",
+        )
+        for relative_path in tracked:
+            tm.that(
+                u.Tests.is_tracked_under(rendered, relative_path),
+                eq=True,
+                msg=f"{profile.value}: {relative_path} must be trackable",
+            )
+        tm.that(
+            u.Tests.is_tracked_under(
+                rendered, ".agents/skills/flext-development/report.json"
+            ),
+            eq=False,
+        )
+
+    def test_generated_prompts_reference_only_current_flext_skill_owner(self) -> None:
+        """Keep generated prompts on the central FLEXT capability identity."""
+        templates_root = (
+            Path(__file__).resolve().parents[3]
+            / "src/flext_infra/templates/project/base"
+        )
+        prompt_paths = (
+            templates_root
+            / ".github/prompts/flext-aggressive-scale-refactor.prompt.md.j2",
+            templates_root
+            / ".github/prompts/flext-strict-jsonvalue-session-continuation.prompt.md.j2",
+        )
+        extinct = (
+            "flext-law",
+            "flext-context-routing",
+            "flext-python-architecture",
+            "flext-agent-strict-rules",
+            "flext-flext-namespace-rules",
+            "flext-import-rules",
+            "flext-constants-discipline",
+            "flext-strict-typing",
+            "flext-patterns",
+        )
+        for prompt_path in prompt_paths:
+            content = prompt_path.read_text(encoding="utf-8")
+            tm.that(content, has=".agents/skills/flext-development/SKILL.md")
+            for identity in extinct:
+                tm.that(content, lacks=identity)
+
+    def test_workspace_gitignore_tracks_generated_mise_lock(
+        self, codegen: CodegenSpec
+    ) -> None:
+        """Keep the immutable tool lock available to clean CI checkouts."""
+        rendered = FlextInfraCodegenConform.render_project_gitignore(
+            codegen, profile=c.Infra.MakeProfile.WORKSPACE, project_name="cosmos-main"
+        )
+
+        tm.ok(rendered)
+        tm.that(rendered.value, has="!mise.lock")
+
     def test_makefile_has_one_owner_for_every_declared_profile(
         self, codegen: CodegenSpec
     ) -> None:
@@ -107,7 +186,7 @@ class TestsCodegenArtifactSsot:
     def test_hook_workflow_contexts_partition_mutation_and_validation(
         self, codegen: CodegenSpec
     ) -> None:
-        """Hook contexts share validation while owning distinct mutations."""
+        """Hook stages share validation but never repeat mutating steps."""
         workflow = codegen.make.workflow
         pre_commit = tuple(step for step in workflow if "pre_commit" in step.contexts)
         pre_push = tuple(step for step in workflow if "pre_push" in step.contexts)
@@ -118,6 +197,16 @@ class TestsCodegenArtifactSsot:
         push_verbs = {step.verb for step in pre_push}
         tm.that(bool(commit_verbs & push_verbs), eq=True)
         tm.that(bool(commit_verbs - push_verbs), eq=True)
+        commit_mutations = {step.verb for step in pre_commit if step.apply}
+        push_mutations = {step.verb for step in pre_push if step.apply}
+        shared_steps = tuple(
+            step
+            for step in workflow
+            if {"pre_commit", "pre_push"}.issubset(step.contexts)
+        )
+
+        tm.that(commit_mutations.isdisjoint(push_mutations), eq=True)
+        tm.that(all(not step.apply for step in shared_steps), eq=True)
         tm.that(bool(push_verbs - commit_verbs), eq=True)
         tm.that(
             push_verbs.issubset({verb.name for verb in codegen.make.verbs}), eq=True
@@ -127,7 +216,17 @@ class TestsCodegenArtifactSsot:
         self, tmp_path: Path, codegen: CodegenSpec
     ) -> None:
         """Validate the public renderer output instead of private implementation."""
-        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(tmp_path))
+        project = u.Tests.mk_project(
+            tmp_path,
+            "artifact-ssot",
+            pyproject='[project]\nname = "artifact-ssot"\nversion = "0.1.0"\n',
+            with_src=True,
+        )
+        u.Tests.write_project_beads_config(project, "artifact-ssot")
+        u.Tests.initialize_git_repo(
+            project, origin_url=u.Tests.repository_ref("artifact-ssot").url
+        )
+        rendered: str = tm.ok(FlextInfraCodegen.render_vscode_settings(project))
         parsed: t.JsonValue = tm.ok(u.Cli.json_parse(rendered))
         settings = t.Cli.JSON_MAPPING_ADAPTER.validate_python(parsed)
         tm.that(settings["files.exclude"], eq=dict(codegen.vscode_files_exclude_map))
