@@ -138,6 +138,23 @@ class TestGitHookConformance:
         tm.that(rendered.count("bash -eu -o pipefail -c"), eq=expected)
         tm.that(rendered, lacks=".local")
 
+    def test_repository_topology_never_controls_hook_execution(self) -> None:
+        """Hooks execute the same repository-local gates for every topology."""
+        make = config.Infra.codegen.make.model_copy(
+            update={"pre_commit": True, "pre_push": True}
+        )
+
+        rendered = tm.ok(
+            u.Cli.template_render(
+                _HOOK_TEMPLATE,
+                m.Infra.MakeWorkflowRenderSpec(dist="flext-demo", make=make),
+            )
+        )
+
+        tm.that(rendered, lacks=".gitmodules")
+        tm.that(rendered, lacks="scope()")
+        tm.that(rendered, lacks="member hooks")
+
     def test_check_and_apply_never_overwrite_foreign_hook_shims(
         self, infra_git_repo: Path
     ) -> None:

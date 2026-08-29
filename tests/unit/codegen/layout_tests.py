@@ -98,8 +98,7 @@ def test_apply_moves_archives_and_converges_idempotently(tmp_path: Path) -> None
 
 def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
     """Gitignore additions from the SSOT are appended once across applies."""
-    project = _build_loose_project(tmp_path, name="flext-cli")
-    (project / "settings.json").write_text("{}\n", encoding="utf-8")
+    project = _build_loose_project(tmp_path)
     engine = _engine(project, apply_changes=True)
 
     first = engine.execute()
@@ -108,15 +107,8 @@ def test_apply_adds_gitignore_entries_exactly_once(tmp_path: Path) -> None:
     tm.ok(second)
 
     gitignore = (project / c.Infra.GITIGNORE).read_text(encoding="utf-8")
-    # Why: count exact ENTRIES, never substrings. The SSOT also carries
-    # negations such as !.vscode/settings.json, so a substring count reports
-    # two occurrences for a file that was appended exactly once.
     entries = gitignore.splitlines()
-    tm.that(entries.count("settings.json"), eq=1)
     tm.that(entries.count(f"{_archive_root()}/"), eq=1)
-    tm.that(
-        (project / _archive_root() / project.name / "settings.json").is_file(), eq=True
-    )
 
 
 def test_apply_uses_git_mv_for_tracked_files(tmp_path: Path) -> None:
@@ -154,28 +146,6 @@ def test_apply_docs_collision_keeps_target_and_archives_source(tmp_path: Path) -
     tm.that((project / "guides").exists(), eq=False)
 
 
-def test_apply_override_move_then_archives_emptied_dir(tmp_path: Path) -> None:
-    """Override moves run before the emptied directory is archived."""
-    project = tmp_path / "flext-dbt-ldif"
-    profiles = project / "profiles"
-    package_dir = project / "src" / "flext_dbt_ldif"
-    package_dir.mkdir(parents=True)
-    (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    profiles.mkdir(parents=True)
-    (project / "pyproject.toml").write_text(
-        "[project]\nname='flext-dbt-ldif'\nversion='0.1.0'\n", encoding="utf-8"
-    )
-    (profiles / "profiles.yml").write_text("profile: 1\n", encoding="utf-8")
-    engine = _engine(project, apply_changes=True)
-
-    result = engine.execute()
-
-    tm.ok(result)
-    tm.that((project / "profiles.yml").is_file(), eq=True)
-    tm.that((project / "profiles").exists(), eq=False)
-    tm.that((project / _archive_root() / project.name / "profiles").is_dir(), eq=True)
-
-
 def test_gate_reports_violations_but_passes_on_warning(tmp_path: Path) -> None:
     """Gate posture follows the SSOT severity: warning reports, never fails."""
     project = _build_loose_project(tmp_path)
@@ -189,14 +159,11 @@ def test_gate_reports_violations_but_passes_on_warning(tmp_path: Path) -> None:
     tm.that(all(issue.severity == "WARNING" for issue in execution.issues), eq=True)
 
 
-def test_managed_gitignore_render_includes_layout_additions() -> None:
-    """The canonical gitignore render owns the layout SSOT additions."""
-    rendered = FlextInfraCodegenConform.render_project_gitignore(
-        config.Infra.codegen, project_name="flext-cli"
-    )
+def test_managed_gitignore_render_uses_generic_layout_policy() -> None:
+    """The canonical gitignore render owns the generic layout policy."""
+    rendered = FlextInfraCodegenConform.render_project_gitignore(config.Infra.codegen)
 
     tm.ok(rendered)
-    tm.that(rendered.value, has="settings.json")
     tm.that(rendered.value, has=f"{_archive_root()}/")
 
 
@@ -206,27 +173,6 @@ def _archive_root() -> str:
 
 
 __all__: t.StrSequence = []
-
-
-def test_keep_root_files_override(tmp_path: Path) -> None:
-    """Declared keep_root_files stay at root without review findings."""
-    project = tmp_path / "ai-hub"
-    package_dir = project / "src" / "ai_hub"
-    package_dir.mkdir(parents=True)
-    (package_dir / "__init__.py").write_text("", encoding="utf-8")
-    (project / "pyproject.toml").write_text(
-        "[project]\nname='ai-hub'\nversion='0.1.0'\n", encoding="utf-8"
-    )
-    (project / "README.md").write_text("# ai-hub\n", encoding="utf-8")
-    (project / "UNIVERSAL_CORE.md").write_text("core\n", encoding="utf-8")
-    (project / "ECOSYSTEM.md").write_text("eco\n", encoding="utf-8")
-    engine = _engine(project)
-
-    report = engine.check_project(project)
-
-    paths = {finding.path for finding in report.findings}
-    tm.that("UNIVERSAL_CORE.md" in paths, eq=False)
-    tm.that("ECOSYSTEM.md" in paths, eq=False)
 
 
 def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:

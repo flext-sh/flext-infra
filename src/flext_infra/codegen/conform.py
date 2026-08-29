@@ -68,7 +68,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     # NOTE (multi-agent, mro-wkii.17 / agent: codex): this is the only
     # orchestrator for Make/toolchain/source conformance. Rendering stays in
-    # flext-cli; Git-source TOML policy and attached detection are composed from
+    # flext-cli; Git-source TOML policy and topology detection are composed from
     # their separately owned u.Infra/workspace services.
     request: Annotated[
         m.Infra.CodegenConformRequest | None,
@@ -236,8 +236,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"declared repository checkout is missing: {repository_root}"
                 )
             target = current_target
-            # NOTE (multi-agent, mro-45r9): attached members consume the parent
-            # topology SSOT; a duplicate member-local manifest is never required.
             # mro-j47u (codex): existing repositories cannot reach the scaffold
             # catalog. Project creation is the only template-rendering lifecycle.
             if (
@@ -381,9 +379,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # CodegenConfigSpec.gitignore_sections used by `codegen new` —
                 # ONE render mechanism derived from the artifact SSOT.
                 # Per-project exception fields land with mro-jnm1.3.
-                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(
-                    codegen, project_name=root.name
-                )
+                rendered_gitignore = FlextInfraCodegenConform._render_gitignore(codegen)
                 if rendered_gitignore.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                         rendered_gitignore.error or f"gitignore render failed: {path}"
@@ -422,23 +418,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return Path(__file__).resolve().parent.parent
 
     @staticmethod
-    def render_project_gitignore(
-        codegen: m.Infra.CodegenConfigSpec, *, project_name: str
-    ) -> p.Result[str]:
-        """Render the canonical ``.gitignore`` for one named project.
-
-        Public seam consumed by the layout engine (mro-0wuz): per-project
-        layout ``gitignore_additions`` from the layout SSOT are appended as
-        one trailing derived section so conform and layout never diverge.
-        """
-        return FlextInfraCodegenConform._render_gitignore(
-            codegen, project_name=project_name
-        )
+    def render_project_gitignore(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
+        """Render the topology- and project-neutral canonical ``.gitignore``."""
+        return FlextInfraCodegenConform._render_gitignore(codegen)
 
     @staticmethod
-    def _render_gitignore(
-        codegen: m.Infra.CodegenConfigSpec, *, project_name: str | None = None
-    ) -> p.Result[str]:
+    def _render_gitignore(codegen: m.Infra.CodegenConfigSpec) -> p.Result[str]:
         """Render the canonical ``.gitignore`` body via the single template.
 
         NOTE (mro-jnm1.2): ``codegen new`` renders ``base/gitignore.j2`` with
@@ -463,17 +448,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             / "templates"
             / codegen.templates.root
         ).resolve()
-        sections = list(codegen.gitignore_sections)
-        if project_name is not None:
-            override = codegen.layout.project_overrides.get(project_name)
-            if override is not None and override.gitignore_additions:
-                sections.append(
-                    m.Infra.ScaffoldGitignoreSectionSpec(
-                        name=c.Infra.GITIGNORE_LAYOUT_SECTION_NAME,
-                        patterns=override.gitignore_additions,
-                    )
-                )
-        context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
+        context = m.Infra.GitignoreRenderSpec(
+            gitignore_sections=tuple(codegen.gitignore_sections)
+        )
         return u.Cli.template_render(templates_root / entry.source, context)
 
     @staticmethod
@@ -1085,18 +1062,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
         if destination == c.Infra.GITIGNORE:
-            sections = tuple(codegen.gitignore_sections)
-            overlay = codegen.layout.project_overrides.get(repository.distribution)
-            if overlay is not None and overlay.gitignore_additions:
-                sections = (
-                    *sections,
-                    m.Infra.ScaffoldGitignoreSectionSpec(
-                        name="Project-local exceptions (layout owner)",
-                        patterns=overlay.gitignore_additions,
-                    ),
-                )
             return r[p.Model].ok(
-                m.Infra.GitignoreRenderSpec(gitignore_sections=sections)
+                m.Infra.GitignoreRenderSpec(
+                    gitignore_sections=tuple(codegen.gitignore_sections)
+                )
             )
         if destination == "sgconfig.yml":
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every

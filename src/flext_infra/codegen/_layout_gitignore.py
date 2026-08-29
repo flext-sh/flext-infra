@@ -37,7 +37,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Write the canonical rendered gitignore for a governed project."""
         rendered = FlextInfraCodegenConform.render_project_gitignore(
-            config.Infra.codegen, project_name=project_dir.name
+            config.Infra.codegen
         )
         if rendered.failure:
             return r[t.Infra.LayoutStatus].fail(

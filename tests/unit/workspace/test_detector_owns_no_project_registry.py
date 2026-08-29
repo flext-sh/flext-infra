@@ -42,6 +42,11 @@ class TestsDetectorOwnsNoProjectRegistry:
             eq=False,
             msg="codegen config must not own a registry of served projects",
         )
+        tm.that(
+            "project_overrides" in type(config.Infra.codegen.layout).model_fields,
+            eq=False,
+            msg="layout policy must not select consumers by project name",
+        )
 
     def test_unknown_project_derives_its_own_identity(self, tmp_path: Path) -> None:
         """A repository absent from any catalog still derives from itself."""
@@ -95,3 +100,17 @@ class TestsDetectorOwnsNoProjectRegistry:
                 else c.Infra.WorkspaceMode.STANDALONE
             ),
         )
+
+    def test_legacy_flext_workspace_policy_is_rejected(self, tmp_path: Path) -> None:
+        """The managed declaration cannot carry retired topology policy."""
+        root = _standalone(tmp_path / "legacy-managed", name="legacy-managed")
+        pyproject = root / "pyproject.toml"
+        pyproject.write_text(
+            f"{pyproject.read_text(encoding='utf-8')}\n"
+            "[tool.flext.workspace]\nattached = true\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraWorkspaceDetector.conform_target(root)
+
+        tm.fail(result, has="[tool.flext].workspace")

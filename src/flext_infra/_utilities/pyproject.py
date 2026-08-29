@@ -166,6 +166,10 @@ class FlextInfraUtilitiesPyproject:
             return r[bool].ok(False)
         if not isinstance(flext, dict):
             return r[bool].fail(f"invalid [tool.flext] table: {pyproject}")
+        if "workspace" in flext:
+            return r[bool].fail(
+                f"retired [tool.flext].workspace policy is forbidden: {pyproject}"
+            )
         return r[bool].ok(True)
 
     @staticmethod

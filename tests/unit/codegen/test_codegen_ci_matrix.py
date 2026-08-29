@@ -44,6 +44,21 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
+    def test_generated_workflows_declare_managed_provenance(
+        self, tmp_path: Path
+    ) -> None:
+        """Every generated workflow opts into future owner regeneration."""
+        root = self._render_project(tmp_path / "external")
+        workflows = sorted((root / ".github" / "workflows").glob("*.yml"))
+
+        tm.that(len(workflows), gt=0)
+        for workflow in workflows:
+            tm.that(
+                workflow.read_text(encoding="utf-8"),
+                has=c.Infra.WORKFLOW_MANAGED_PROVENANCE,
+                msg=workflow.name,
+            )
+
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")

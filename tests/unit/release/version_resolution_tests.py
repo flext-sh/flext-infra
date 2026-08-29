@@ -19,7 +19,7 @@ class TestsFlextInfraReleaseVersionResolution:
 
         @staticmethod
         def test_explicit_version_updates_workspace_file(tmp_path: Path) -> None:
-            """Write an explicit release version to the workspace manifest."""
+            """Write an explicit release version to canonical project metadata."""
             workspace = u.Tests.create_release_workspace(tmp_path)
 
             result = u.Tests.run_release_main(

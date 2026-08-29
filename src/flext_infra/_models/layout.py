@@ -9,8 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from types import MappingProxyType
 from typing import Annotated, Literal
 
 from flext_cli import m
@@ -32,50 +30,6 @@ class _LayoutContract(m.ContractModel):
 
 class FlextInfraModelsLayout:
     """Field-only layout SSOT contracts and engine result models."""
-
-    class LayoutMoveSpec(_LayoutContract):
-        """One explicit per-project move override (nested source allowed)."""
-
-        source: Annotated[t.NonEmptyStr, m.Field(description="Project-relative source")]
-        target: Annotated[t.NonEmptyStr, m.Field(description="Project-relative target")]
-
-    class LayoutProjectOverrideSpec(_LayoutContract):
-        """Per-project layout deltas applied on top of the global rules."""
-
-        archive_names: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Extra project-specific archived root entries"),
-        ] = ()
-        gitignore_additions: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Patterns the project .gitignore must carry"),
-        ] = ()
-        moves: Annotated[
-            tuple[FlextInfraModelsLayout.LayoutMoveSpec, ...],
-            m.Field(description="Explicit nested source/target moves"),
-        ] = ()
-        archive_empty_dirs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Directories archived once emptied by moves"),
-        ] = ()
-        keep_root_files: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Extra root files allowed to remain at project root "
-                    "(strict allowlist exceptions declared only here)"
-                )
-            ),
-        ] = ()
-        ignore_globs: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(
-                description=(
-                    "Root entry name globs skipped entirely for this project "
-                    "(neither move nor review)"
-                )
-            ),
-        ] = ()
 
     class LayoutSpec(_LayoutContract):
         """Fully modeled content of the ``layout`` section of ``codegen.yaml``."""
@@ -154,10 +108,6 @@ class FlextInfraModelsLayout:
                 )
             ),
         ] = ()
-        project_overrides: Annotated[
-            Mapping[str, FlextInfraModelsLayout.LayoutProjectOverrideSpec],
-            m.Field(description="Per-project layout deltas keyed by project name"),
-        ] = MappingProxyType({})
 
     class LayoutFinding(_LayoutContract):
         """One planned or executed layout decision for a project entry."""

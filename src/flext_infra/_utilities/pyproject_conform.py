@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesPyprojectConform:
-    """Render root workspace and autonomous library metadata deterministically."""
+    """Render repository-local project metadata deterministically."""
 
     # NOTE (multi-agent, mro-wkii.17.9): this pure renderer replaces the
     # mutating deps path-sync command; codegen is the only public orchestrator.
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesPyprojectConform:
         uv_exclude_newer: str | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
-        """Return canonical TOML with autonomous dependencies and root workspace.
+        """Return canonical TOML with autonomous dependencies and tool policy.
 
         ``uv_exclude_newer`` is the per-project overlay over the fleet cooldown.
         The fleet default is a ROLLING window, which silently ages past a
@@ -131,9 +131,8 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
-        """Render internal requirements for root workspace or detached operation."""
+        """Render internal requirements from the declared provider contract."""
         available = (workspace.repository,)
-        attached: frozenset[str] = frozenset()
         project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
         normalized = cls._normalize_requirement_field(
             project,
@@ -141,7 +140,6 @@ class FlextInfraUtilitiesPyprojectConform:
             repositories=available,
             providers=providers,
             canonicalize_all=canonicalize_all,
-            attached=attached,
         )
         if normalized.failure:
             return normalized
@@ -159,7 +157,6 @@ class FlextInfraUtilitiesPyprojectConform:
                     repositories=available,
                     providers=providers,
                     canonicalize_all=canonicalize_all,
-                    attached=attached,
                 )
                 if group_result.failure:
                     return group_result
@@ -174,7 +171,6 @@ class FlextInfraUtilitiesPyprojectConform:
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         canonicalize_all: bool,
-        attached: frozenset[str],
     ) -> p.Result[bool]:
         """Normalize one dependency array and fail on model-less entries."""
         raw_value = u.Cli.toml_value(container, key)
@@ -188,7 +184,7 @@ class FlextInfraUtilitiesPyprojectConform:
         normalized_items: t.MutableSequenceOf[str] = []
         for item in items:
             normalized = cls._canonical_requirement(
-                item, repositories=repositories, providers=providers, attached=attached
+                item, repositories=repositories, providers=providers
             )
             if normalized.failure:
                 return r[bool].fail(
@@ -215,9 +211,8 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         repositories: t.SequenceOf[p.Infra.RepositoryRef],
         providers: t.SequenceOf[m.Infra.ProviderSpec],
-        attached: frozenset[str],
     ) -> p.Result[str]:
-        """Render one internal requirement from its manifest repository reference."""
+        """Render one internal requirement from its provider-owned reference."""
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
             return r[str].ok(requirement.strip())
@@ -227,15 +222,6 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].fail(f"invalid internal requirement: {requirement}")
         head = head_match.group("head").strip()
         marker_text = marker.strip()
-        if dependency_name in attached:
-            if "@" in requirement_part:
-                return r[str].fail(
-                    "attached workspace dependency declares direct source: "
-                    f"{dependency_name}"
-                )
-            return r[str].ok(
-                f"{head}; {marker_text}" if separator and marker_text else head
-            )
         reference_result = cls._repository_reference(
             dependency_name, repositories=repositories, providers=providers
         )
@@ -361,18 +347,7 @@ class FlextInfraUtilitiesPyprojectConform:
     def _sync_project_version(
         project: t.Cli.TomlTable, *, workspace: p.Infra.WorkspaceSpec
     ) -> p.Result[bool]:
-        """Project the manifest-declared release version onto ``[project]``.
-
-        Why (hq-36xk): ``config/workspace.yaml`` declares ``project.version`` and
-        the scaffold template renders it as ``version = "{{ version }}"``, but the
-        template carries ``overwrite: false``, so it only ever applies at scaffold
-        time. On an existing repository this conformance pass owned dependencies,
-        groups, typecheck paths and uv sources while ``[project].version`` was left
-        untouched — so the manifest and the package disagreed silently and a
-        release bump recorded in the SSOT never reached the artifact consumers
-        install. Two owners for one fact is the defect; the manifest is the SSOT,
-        so conformance projects it here.
-        """
+        """Keep the canonical PEP 621 version in the typed project projection."""
         mutated = u.Cli.toml_sync_value(
             project, c.Infra.VERSION, workspace.project.version
         )
@@ -382,20 +357,13 @@ class FlextInfraUtilitiesPyprojectConform:
     def _remove_legacy_tooling(document: t.Cli.TomlDocument) -> None:
         """Delete legacy packaging owners superseded by canonical conformance.
 
-        The ``[tool.flext]`` table is always preserved: it carries declared
-        project policy, including the ``workspace.attached`` marker consumed
-        by the topology detector (mro-z89e governance).
+        The ``[tool.flext]`` table is preserved as the project's explicit FLEXT
+        management declaration. Repository topology never reads this table.
         """
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
             return
         u.Cli.toml_remove_key_if_present(tool, c.Infra.POETRY)
-        # Remove obsolete workspace.attached marker from legacy pyprojects
-        flext = u.Cli.toml_table_child(tool, "flext")
-        if flext is not None:
-            workspace_tbl = u.Cli.toml_table_child(flext, "workspace")
-            if workspace_tbl is not None:
-                u.Cli.toml_remove_key_if_present(workspace_tbl, "attached")
 
     @staticmethod
     def _sync_typecheck_paths(document: t.Cli.TomlDocument) -> p.Result[bool]:

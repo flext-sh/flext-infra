@@ -31,11 +31,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
     def git_remote_identity(url: str) -> str:
         """Normalize remotes to owner/repo identity across HTTPS, SSH, and aliases.
 
-        CI deploy-key init rewrites private member ``origin`` to an SSH URL that
-        may use a Host alias (for example ``git@charts-github:org/repo.git``)
-        while the workspace manifest and ``.gitmodules`` keep HTTPS on
-        ``github.com``. Compare the repository path only so gen does not
-        false-fail after a successful private checkout.
+        A private checkout may rewrite ``origin`` to an SSH URL that uses a
+        Host alias while its declared Git URL uses HTTPS on ``github.com``.
+        Compare the repository path only so identity remains protocol-neutral.
         """
         value = url.strip().removesuffix(".git")
         remote_path = ""

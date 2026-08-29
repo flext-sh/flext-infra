@@ -61,9 +61,8 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
     ) -> p.Result[m.Infra.WorkspaceSpec]:
         """Derive the workspace spec from live Git and project metadata.
 
-        Topology comes from ``.gitmodules``; identity comes from
-        ``pyproject.toml``; ledger identity is derived from the project
-        name. The superseded ``config/workspace.yaml`` manifest is gone.
+        Topology comes from ``.gitmodules`` and identity comes from
+        ``pyproject.toml``.
         """
         return cls._derive_workspace_spec(
             repository_root, project_metadata=project_metadata

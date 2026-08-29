@@ -193,8 +193,8 @@ Infra:
         organization: flext-sh
         base_url: https://github.com/flext-sh
         branch: 0.12.0-dev
-      # External consumer organization: standalone repositories governed by
-      # conform through their own config/workspace.yaml. A linha de integracao
+      # External consumer organization: repositories governed through their
+      # own pyproject.toml and live Git facts. A linha de integracao
       # e 'develop', fixada pela ADR-134 do operador, que proibe 'dev' e
       # 'master' como sinonimos. Verificado na API do GitHub em 2026-08-03:
       # cosmos-main, cosmos-charts e cosmos-gitops tem default_branch=develop
@@ -798,157 +798,6 @@ Infra:
       # External reference corpora (same class as docs/references/**).
       reference_root_dirs:
         - external-docs
-      # Per-project overrides: extra archives (with the matching .gitignore
-      # additions), explicit nested moves, and empty-directory archives.
-      project_overrides:
-        flext-cli:
-          archive_names:
-            - settings.json
-          gitignore_additions:
-            - settings.json
-        flext-core:
-          archive_names:
-            - config.json
-        flext-tap-oracle-wms:
-          archive_names:
-            - config.json
-          gitignore_additions:
-            - config.json
-        flext-target-oracle-oic:
-          archive_names:
-            - config.json
-          gitignore_additions:
-            - config.json
-        flext-oracle-oic:
-          archive_names:
-            - config.json
-          gitignore_additions:
-            - config.json
-        flext-dbt-ldif:
-          moves:
-            - { source: profiles/profiles.yml, target: profiles.yml }
-          archive_empty_dirs:
-            - profiles
-        flext-dbt-oracle-wms:
-          moves:
-            - { source: models/reference.md, target: docs/reference.md }
-          archive_empty_dirs:
-            - models
-        # Consumer ecosystem root keep-lists (plan B): declared only via overrides.
-        ai-hub:
-          keep_root_files:
-            - UNIVERSAL_CORE.md
-            - ECOSYSTEM.md
-            - CATALOG.md
-            - config.yaml
-            - schema.json
-            - version.json
-            - surface-catalog.json
-            - crg-watch.toml
-            - env.example
-            - bootstrap.ps1
-            - init-setup.sh
-          ignore_globs:
-            - skills
-            - rules
-            - bin
-            - templates
-            - tools
-            - evals
-            - mcp
-            - openclaw
-            - opencode
-            - run
-            - ast-grep-rule-tests
-        cosmos-docgen:
-          keep_root_files:
-            - ECOSYSTEM.md
-            - Taskfile.yml
-            - dcdoc.config.yaml
-            - coverage.json
-          ignore_globs:
-            - skills
-            - templates
-            - layouts
-            - assets
-        cosmos-main:
-          keep_root_files:
-            - ECOSYSTEM.md
-            - SECURITY.md
-            - ONBOARDING.md
-            - LICENSE-3RD-PARTY.md
-            - LICENSE.quick-reference.md
-            - QODER.md
-            - mkdocs.yaml
-            - Makefile.check
-            - config.yaml
-            - cloud-init.sh
-            - pycodestyle.cfg
-            - pylintrc
-            - patch.diff
-          ignore_globs:
-            - cosmos
-            - apps
-            - package.json
-            - package-lock.json
-            - node_modules
-            - pnpm-lock.yaml
-            - yarn.lock
-            - tsconfig.json
-            - turbo.json
-            - bin
-            - build
-            - coordination
-            - cosmos_main.egg-info
-            - evals
-            - json
-            - mro
-            - platform-namespaces
-            - policy
-            - scratchpad
-            - site
-            - skills
-            - templates
-            - work
-        cosmos-charts:
-          keep_root_files:
-            - cosmos-release.lock
-            - release.lock.json
-            - pycodestyle.cfg
-          ignore_globs:
-            - build
-            - charts
-            - images
-        cosmos-gitops:
-          ignore_globs:
-            - build
-            - repo
-            - tenants
-        neptor:
-          keep_root_files:
-            - Taskfile.yml
-          ignore_globs:
-            - typings
-        vectorbt.pro:
-          ignore_globs:
-            - "*"
-        invest:
-          keep_root_files:
-            - BEADS_WORKFLOW.md
-            - GEMINI.md
-            - activate_workspace.sh
-            - poetry.toml
-            - workspace_config.py
-          ignore_globs:
-            - neptor
-            - mt5linux
-            - mt5docker
-            - vectorbt.pro
-            - ansible
-            - docker
-            - scripts
-            - typings
-            - external-docs
 
     managed_files:
       - path: .github/ci-template/ci.yml
@@ -1123,8 +972,7 @@ Infra:
           - vulture>=2.16
           - yamlfix>=1.19.1
         upstreams:
-          # NOTE: a workspace manifest may declare an upstream distribution;
-          # conformance must model that upstream relationship generically.
+          # Conformance models each declared upstream relationship generically.
           - upstream: flext_core
             runtime:
               - flext-core
@@ -1156,12 +1004,7 @@ Infra:
             - "/*"
             - "/*/"
             - "!/LICENSE"
-        # NOTE: governed member directories are NOT declared here. They are
-        # derived from the live workspace topology (`config/workspace.yaml`
-        # members) by conform._render_gitignore, so declaring a member in the
-        # manifest is the single source that makes it trackable. A hardcoded
-        # name glob here would be a second, silently-diverging source.
-        - name: "WHITELIST: Workspace Directories"
+        - name: "WHITELIST: Repository Directories"
           patterns:
             - "!docker/"
             - "!docs/"
@@ -1179,9 +1022,6 @@ Infra:
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
             - "!.claude/settings.local.json"
-            - "!.agents/"
-            - "!.agents/**"
-            - ".agents/skills/*/report.json"
         - name: "Dispatcher-based command surface (Make SSOT)"
           patterns:
             - "!scripts/"
@@ -1218,7 +1058,6 @@ Infra:
           patterns:
             - "!README.md"
             - "!AGENTS.md"
-            - "!AGENTS.md"
             - "!codex.md"
             - "!.markdownlint.json"
             - "!.markdownlintignore"
@@ -1250,27 +1089,9 @@ Infra:
             - "!.vscode/**"
             - "!.claude/**"
             - "!.claude-plugin/**"
-        # NOTE: member contents are emitted by the same derived section as the
-        # member directories themselves (see the note above), so both come from
-        # the live workspace topology and can never diverge from each other.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
-        # Only the workspace root owns agent skills as real versioned files.
-        # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
-        # provider surfaces as real local files via generate-workspace-config
-        # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
-        # repo-server refuse the repository, so members must not track them.
-        - name: "BLOCK: Agent surface outside the workspace root"
-          patterns:
-            - ".agents/"
-        - name: "WHITELIST: Agent skills owned by the workspace root"
-          patterns:
-            - "!.agents/skills/"
-            - "!.agents/skills/**"
-        - name: "Skill scan reports (transient, regenerated by skill_validate.py)"
-          patterns:
-            - ".agents/skills/*/report.json"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
@@ -1506,7 +1327,6 @@ Infra:
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
           destination: .github/workflows/ci-matrix.yml
-          # Workspace members are covered by the root matrix; do not duplicate.
           delegate: render
           overwrite: false
         - source: base/.github/workflows/ci.yml.j2

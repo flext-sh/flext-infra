@@ -5,8 +5,8 @@ It parses that explicitly JSONC document through the canonical string-aware
 normalizer, validates the resulting mapping, merges the config-driven canonical
 keys from ``config.Infra.codegen.vscode`` plus the artifact-derived exclude maps,
 and serializes the result with ``u.Cli.json_dumps``. Rendering is deliberately
-independent of repository topology so opening a root or subproject produces the
-same document. Planning, atomic writes, and fixed-point verification stay owned
+independent of repository topology so every checkout produces the same document.
+Planning, atomic writes, and fixed-point verification stay owned
 by ``FlextInfraCodegenConform``.
 """
 

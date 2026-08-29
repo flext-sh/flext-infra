@@ -2024,9 +2024,8 @@ class FlextInfraConfigModels:
             m.Field(description="New-project-only scaffold template manifest"),
         ]
         # Operator law: flext-infra owns generic conform policy only. The set
-        # of projects it serves is NOT its knowledge — each repository declares
-        # its own topology in config/workspace.yaml, and standalone checkouts
-        # are derived from their own metadata plus live Git.
+        # of projects it serves is NOT its knowledge. Each repository derives
+        # identity from its own metadata and topology from its own Git facts.
 
         @u.model_validator(mode="after")
         def _validate_github_artifact_ownership(self) -> Self:
