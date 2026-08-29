@@ -93,7 +93,6 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
                     )
                 )
             resolved_metadata = metadata.value
-        project_name = resolved_metadata.project.name
         origin = cls._git_origin_url(repository_root)
         if origin.failure:
             return r[m.Infra.WorkspaceSpec].fail(
@@ -104,6 +103,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             return r[m.Infra.WorkspaceSpec].fail(
                 f"repository origin has no declared provider: {origin.value}"
             )
+        project_name = resolved_metadata.project.name
         local_repository = m.Infra.RepositoryRef(
             name=project_name,
             distribution=project_name,
@@ -111,37 +111,44 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             path=Path(),
             provider=provider.name,
         )
-        # Derive canonical ProjectSpec from PEP 621 metadata (SSOT)
-        package_name = resolved_metadata.package_name or project_name.replace("-", "_")
-        class_stem = resolved_metadata.class_stem or u.derive_class_stem(project_name)
+        project_spec = cls._project_spec(resolved_metadata, origin.value, provider)
+        return r[m.Infra.WorkspaceSpec].ok(
+            m.Infra.WorkspaceSpec(repository=local_repository, project=project_spec)
+        )
+
+    @staticmethod
+    def _project_spec(
+        metadata: p.ProjectMetadata, origin: str, provider: m.Infra.ProviderSpec
+    ) -> m.Infra.ProjectSpec:
+        """Project the canonical metadata object into the codegen contract."""
+        project_name = metadata.project.name
+        package_name = metadata.package_name
+        class_stem = metadata.class_stem
         derived_ns = class_stem.removeprefix("Flext")
         project_namespace = derived_ns or class_stem
         alias = u.Infra.package_alias(package_name=package_name)
-        authors = tuple(resolved_metadata.project.authors)
+        authors = tuple(metadata.project.authors)
         first_author = authors[0] if authors else None
         author_name = first_author.name if first_author else "FLEXT Team"
         author_email = first_author.email if first_author else "team@flext.dev"
-        urls = resolved_metadata.project.urls
+        urls = metadata.project.urls
         homepage = (
-            urls.homepage
-            if urls and urls.homepage
-            else origin.value.removesuffix(".git")
+            urls.homepage if urls and urls.homepage else origin.removesuffix(".git")
         )
         documentation = urls.documentation if urls and urls.documentation else homepage
         description = (
-            resolved_metadata.project.description
+            metadata.project.description
             or f"{class_stem} — FLEXT typed integration package"
         )
-        version = resolved_metadata.project.version or "0.12.0.dev0"
-
-        # Determine upstream from dependencies
-        upstream = "flext_core"
-        for dep in resolved_metadata.project.dependencies:
-            if dep.startswith(("flext-cli", "flext_cli")):
-                upstream = "flext_cli"
-                break
-
-        project_spec = m.Infra.ProjectSpec(
+        upstream = (
+            "flext_cli"
+            if any(
+                dependency.startswith(("flext-cli", "flext_cli"))
+                for dependency in metadata.project.dependencies
+            )
+            else "flext_core"
+        )
+        return m.Infra.ProjectSpec(
             package_name=package_name,
             class_stem=class_stem,
             namespace=project_namespace,
@@ -150,7 +157,7 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             alias=alias,
             environment_prefix=f"{package_name.upper()}_",
             description=description,
-            version=version,
+            version=metadata.project.version,
             license="MIT",
             author_name=author_name,
             author_email=author_email,
@@ -160,10 +167,6 @@ class FlextInfraWorkspaceDetector(s[c.Infra.WorkspaceMode]):
             documentation=documentation
             or f"https://github.com/{provider.organization}/{project_name}",
             year=2026,
-        )
-
-        return r[m.Infra.WorkspaceSpec].ok(
-            m.Infra.WorkspaceSpec(repository=local_repository, project=project_spec)
         )
 
     @staticmethod

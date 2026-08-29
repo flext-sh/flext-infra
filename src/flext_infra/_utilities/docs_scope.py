@@ -92,20 +92,8 @@ class FlextInfraUtilitiesDocsScope:
         missing: list[str] = []
         seen_paths: set[Path] = set()
         for name in dict.fromkeys(names):
-            is_local_name = local_project is not None and name in {
-                ".",
-                local_project.name,
-                root.name,
-            }
-            locator = Path(name)
-            project_root = root if is_local_name else (root / locator).resolve()
-            if locator.is_absolute() or not project_root.is_relative_to(root):
-                missing.append(name)
-                continue
-            project = (
-                local_project
-                if project_root == root
-                else FlextInfraUtilitiesDocsScope._project_info_for_entry(project_root)
+            project = FlextInfraUtilitiesDocsScope._project_for_locator(
+                root, local_project, name
             )
             if project is None:
                 missing.append(name)
@@ -119,6 +107,22 @@ class FlextInfraUtilitiesDocsScope:
                 f"unknown project locators: {', '.join(sorted(missing))}"
             )
         return r[t.SequenceOf[mw.ProjectInfo]].ok(tuple(projects))
+
+    @staticmethod
+    def _project_for_locator(
+        root: Path, local_project: mw.ProjectInfo | None, name: str
+    ) -> mw.ProjectInfo | None:
+        """Resolve one explicit locator without leaving the supplied repository."""
+        locator = Path(name)
+        local_names = (
+            {".", local_project.name, root.name} if local_project is not None else set()
+        )
+        project_root = root if name in local_names else (root / locator).resolve()
+        if locator.is_absolute() or not project_root.is_relative_to(root):
+            return None
+        if project_root == root:
+            return local_project
+        return FlextInfraUtilitiesDocsScope._project_info_for_entry(project_root)
 
     @staticmethod
     def project_name_from_payload(entry: Path, payload: t.JsonMapping) -> str:

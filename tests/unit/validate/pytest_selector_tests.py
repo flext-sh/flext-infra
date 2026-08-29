@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c
+from flext_infra import c, config
 from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidator
 from flext_tests import tm
 
@@ -48,24 +48,11 @@ class TestsFlextInfraPytestSelectorValidator:
 
     def test_what_accepts_only_canonical_test_modes(self) -> None:
         workspace_root = Path.cwd()
-        validator = FlextInfraPytestSelectorValidator(
-            workspace_root=workspace_root, what="all"
-        )
-        tm.ok(validator.execute())
-        for what in ("cache-status", "cache-checkpoint"):
+        for what in config.Infra.codegen.make.handler_whats["test"]:
             tm.ok(
                 FlextInfraPytestSelectorValidator(
                     workspace_root=workspace_root, what=what
                 ).execute()
-            )
-        tm.ok(
-            FlextInfraPytestSelectorValidator(
-                workspace_root=workspace_root, what="profile", match="focused"
-            ).execute()
-        )
-        with pytest.raises(c.ValidationError, match="profile requires FILE or MATCH"):
-            FlextInfraPytestSelectorValidator(
-                workspace_root=workspace_root, what="profile"
             )
         with pytest.raises(c.ValidationError, match="what must be"):
             FlextInfraPytestSelectorValidator(

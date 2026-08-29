@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import config, m, u
 from flext_infra.base import s
 
 if TYPE_CHECKING:
@@ -57,15 +57,13 @@ class FlextInfraPytestSelectorValidator(s[bool]):
         for field_name, value in (("file", file), ("match", match), ("what", what)):
             if value is not None and any(character in value for character in "\0\r\n"):
                 return f"{field_name} must not contain control separators"
-        allowed = {None, "all", "full", "profile", "cache-status", "cache-checkpoint"}
-        if what not in allowed:
-            return "what must be: all, full, profile, cache-status, or cache-checkpoint"
+        allowed_whats = config.Infra.codegen.make.handler_whats["test"]
+        if what is not None and what not in allowed_whats:
+            return f"what must be: {', '.join(allowed_whats)}"
         if match is not None and (
             not match.isascii() or not match.replace("_", "").isalnum()
         ):
             return "match must be one literal pytest keyword"
-        if what == "profile" and file is None and match is None:
-            return "profile requires FILE or MATCH"
         if what in {"cache-status", "cache-checkpoint"} and (
             file is not None or match is not None
         ):

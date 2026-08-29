@@ -311,6 +311,9 @@ class FlextInfraEnsurePyrightConfigPhase:
         # discovery outright, including when the declared list is EMPTY -- a
         # project that genuinely has no Python root must render none, not fall
         # back to scanning a directory tree that does not exist yet.
+        generated_python_roots = (
+            paths_manager.generated_python_roots if paths_manager is not None else ()
+        )
         expected_includes = (
             declared_python_dirs
             if declared_python_dirs or declared_python_dirs_are_complete
@@ -318,11 +321,7 @@ class FlextInfraEnsurePyrightConfigPhase:
                 is_root=is_root,
                 workspace_root=workspace_root,
                 project_dir=project_dir,
-                generated_roots=(
-                    paths_manager.generated_python_roots
-                    if paths_manager is not None
-                    else ()
-                ),
+                generated_roots=generated_python_roots,
             )
         )
         stub_rules = self._tool_config.tools.pyright.path_rules

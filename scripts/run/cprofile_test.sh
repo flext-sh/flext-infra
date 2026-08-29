@@ -10,6 +10,7 @@ case "$FILE" in
     printf 'ERROR: FILE must be a repository-relative path\n' >&2
     exit 2
     ;;
+  *) ;;
 esac
 test_path=${FILE%%::*}
 if [ ! -f "$PROJECT_ROOT/$test_path" ]; then

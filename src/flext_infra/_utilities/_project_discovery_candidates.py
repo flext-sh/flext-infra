@@ -26,11 +26,13 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
         """Return the current repository when it has a valid project shape."""
         resolved_root = workspace_root.resolve()
         effective_scan_dirs = scan_dirs or frozenset()
-        if cls._looks_like_project(
-            resolved_root, effective_scan_dirs=effective_scan_dirs
-        ):
-            return (resolved_root,)
-        return ()
+        return (
+            [resolved_root]
+            if cls._looks_like_project(
+                resolved_root, effective_scan_dirs=effective_scan_dirs
+            )
+            else []
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProjectDiscoveryCandidatesMixin"]
