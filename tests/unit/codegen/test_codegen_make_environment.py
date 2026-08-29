@@ -312,6 +312,70 @@ class TestsCodegenMakeEnvironment:
         assert setup_ceilings == {str(project_root.parent)}
         tm.that(beads_selection_log.exists(), eq=False)
 
+    def test_gen_lock_failure_has_zero_repository_effect(self, tmp_path: Path) -> None:
+        """Fail lock staging before conform, docs, launcher, or lock publication."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        (project_root / ".mise.toml").write_text(
+            '[tool_config]\nlocked = true\n\n[tools]\nuv = "0.12"\n', encoding="utf-8"
+        )
+        (project_root / "mise.lock").write_text("# original lock\n", encoding="utf-8")
+        (project_root / ".gitignore").write_text(
+            "# original ignore\n", encoding="utf-8"
+        )
+        mise = tmp_path / "mise-fails-lock"
+        test_u.Tests.write_executable(
+            mise,
+            "#!/bin/sh\n"
+            'case "$*" in\n'
+            '  *"generate install-script"*)\n'
+            "    output=\n"
+            '    while [ "$#" -gt 0 ]; do\n'
+            '      if [ "$1" = "--write" ]; then shift; output="$1"; fi\n'
+            "      shift\n"
+            "    done\n"
+            "    printf '#!/bin/sh\\nexit 0\\n' > \"$output\"\n"
+            "    printf '@exit /b 0\\n' > \"$output.cmd\"\n"
+            "    exit 0\n"
+            "    ;;\n"
+            "  *\" lock \"*) printf 'fixture lock failure\\n' >&2; exit 86 ;;\n"
+            "esac\n"
+            "exit 0\n",
+        )
+        owned_paths = tuple(
+            project_root / relative
+            for relative in (".gitignore", "mise.lock", "bin/mise", "bin/mise.cmd")
+        )
+        before = {
+            path: path.read_bytes() if path.is_file() else None for path in owned_paths
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "_builtin_gen_all",
+                    "APPLY=Y",
+                    f"SETUP_MISE={mise}",
+                ],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(process.stdout + process.stderr, has="fixture lock failure")
+        after = {
+            path: path.read_bytes() if path.is_file() else None for path in owned_paths
+        }
+        tm.that(after, eq=before)
+        transaction_dirs = tuple(
+            (project_root / ".test-tmp").glob("mise-transaction.*")
+        )
+        tm.that(transaction_dirs, eq=())
+
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
     ) -> None:

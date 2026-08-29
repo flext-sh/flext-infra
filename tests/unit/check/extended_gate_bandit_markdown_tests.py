@@ -186,6 +186,43 @@ class TestBanditAndMarkdownGates:
         tm.that(runner.commands[0], has="README.md")
         tm.that(runner.commands[0], lacks=".beads/historical.md")
 
+    @pytest.mark.parametrize(
+        "provider_root",
+        (".agents", ".claude", ".codex", ".cursor", ".gemini", ".github", ".opencode"),
+    )
+    def test_markdown_excludes_agentsctl_provider_projections(
+        self, tmp_path: Path, provider_root: str
+    ) -> None:
+        """Provider-native projections are validated by agentsctl, not rumdl."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-agent-projection")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        projected = project_dir / provider_root / "skills" / "projected.md"
+        projected.parent.mkdir(parents=True)
+        projected.write_text("not project-owned markdown", encoding="utf-8")
+        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has="README.md")
+        tm.that(runner.commands[0], lacks=str(projected.relative_to(project_dir)))
+
+    def test_markdown_keeps_project_owned_github_markdown(self, tmp_path: Path) -> None:
+        """Shared GitHub roots retain non-provider Markdown in the native gate."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-github-project-owner")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        project_owned = project_dir / ".github" / "prompts" / "project.md"
+        project_owned.parent.mkdir(parents=True)
+        project_owned.write_text("project-owned markdown", encoding="utf-8")
+        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has=str(project_owned.relative_to(project_dir)))
+
     def test_markdown_uses_uv_managed_tool_with_sanitized_path(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

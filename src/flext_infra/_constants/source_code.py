@@ -52,11 +52,23 @@ class FlextInfraConstantsSourceCode:
     "Directories to skip when scanning pyproject.toml files."
     CHECK_EXCLUDED_DIRS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         ".archive",
+        ".claude",
+        ".codex",
+        ".cursor",
+        ".gemini",
+        ".opencode",
         ".beads",
         "reports",
         ".agents",
     }
     "Directories to exclude during quality checks."
+    GITHUB_AGENT_PROJECTION_DIRS: Final[frozenset[str]] = frozenset({
+        "agents",
+        "hooks",
+        "instructions",
+        "skills",
+    })
+    "GitHub provider directories owned by the agentsctl projection."
     ITERATION_EXCLUDED_PARTS: Final[frozenset[str]] = COMMON_EXCLUDED_DIRS | {
         "dist-packages",
         "site-packages",

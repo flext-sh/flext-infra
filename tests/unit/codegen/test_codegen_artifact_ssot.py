@@ -99,7 +99,7 @@ class TestsCodegenArtifactSsot:
         """Version authorization and provider surfaces for every repository role."""
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
-                codegen, profile=profile, project_name=None
+                codegen, profile=profile, project_name="fixture-project"
             )
         )
         tracked = (

@@ -29,11 +29,19 @@ class FlextInfraMarkdownGate(FlextInfraGate):
 
     def _collect_markdown_files(self, project_dir: Path) -> t.SequenceOf[Path]:
         """Collect markdown files."""
-        return [
-            path
-            for path in u.Infra.iter_matching_files(project_dir, includes=["*.md"])
-            if not any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in path.parts)
-        ]
+        markdown_files: list[Path] = []
+        for path in u.Infra.iter_matching_files(project_dir, includes=["*.md"]):
+            relative_parts = path.relative_to(project_dir).parts
+            if any(part in c.Infra.CHECK_EXCLUDED_DIRS for part in relative_parts):
+                continue
+            if (
+                len(relative_parts) > 1
+                and relative_parts[0] == ".github"
+                and relative_parts[1] in c.Infra.GITHUB_AGENT_PROJECTION_DIRS
+            ):
+                continue
+            markdown_files.append(path)
+        return markdown_files
 
     def _resolve_config_args(self, project_dir: Path) -> t.StrSequence:
         """Resolve only the repository-local markdown settings owner."""
