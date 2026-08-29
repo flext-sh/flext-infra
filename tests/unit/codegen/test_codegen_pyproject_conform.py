@@ -76,7 +76,7 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
-    def test_workspace_root_uses_workspace_provenance(self) -> None:
+    def test_composition_root_uses_only_declared_path_provenance(self) -> None:
         workspace = _workspace()
         result = u.Infra.pyproject_dependencies_conform(
             """[project]
@@ -84,10 +84,11 @@ name = "workspace"
 dependencies = ["flext-core"]
 
 [tool.uv.workspace]
-members = ["flext-core"]
+members = []
 
 [tool.uv.sources.flext-core]
-workspace = true
+path = "flext-core"
+editable = true
 """,
             codegen=config.Infra.codegen,
             workspace=workspace,
@@ -95,7 +96,63 @@ workspace = true
         )
         document = tomllib.loads(tm.ok(result))
         tm.that(document["project"]["dependencies"], eq=["flext-core"])
-        tm.that(document["dependency-groups"]["workspace"], eq=["flext-core"])
+        tm.that("workspace" not in document.get("dependency-groups", {}), eq=True)
+        tm.that(
+            document["tool"]["uv"]["sources"]["flext-core"],
+            eq={"path": "flext-core", "editable": True},
+        )
+
+    def test_full_conformance_drops_unused_gitlink_sources_and_preserves_foreign(
+        self,
+    ) -> None:
+        workspace = _workspace()
+        unused = _repository(
+            "flext-api", role=c.Infra.RepositoryRole.STANDALONE, path="flext-api"
+        )
+        workspace = workspace.model_copy(
+            update={"subprojects": (*workspace.subprojects, unused)}
+        )
+        rendered = tm.ok(
+            u.Infra.pyproject_conform(
+                """[project]
+name = "workspace"
+version = "0.1.0"
+dependencies = ["flext-core"]
+
+[dependency-groups]
+workspace = ["flext-core", "flext-api"]
+
+[tool.uv.workspace]
+members = ["flext-core", "flext-api"]
+
+[tool.uv.sources.flext-core]
+workspace = true
+
+[tool.uv.sources.flext-api]
+workspace = true
+
+[tool.uv.sources.acme-tool]
+git = "https://example.com/acme-tool.git"
+""",
+                codegen=config.Infra.codegen,
+                workspace=workspace,
+                workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=(),
+            )
+        )
+
+        document = tomllib.loads(rendered)
+        uv = document["tool"]["uv"]
+        tm.that(uv["workspace"]["members"], eq=[])
+        tm.that(
+            uv["sources"],
+            eq={
+                "flext-core": {"path": "flext-core", "editable": True},
+                "acme-tool": {"git": "https://example.com/acme-tool.git"},
+            },
+        )
+        tm.that("workspace" not in document.get("dependency-groups", {}), eq=True)
 
     def test_standalone_uses_catalog_git_provenance(self) -> None:
         workspace = _workspace()
@@ -169,11 +226,16 @@ link-mode = "copy"
         sibling.mkdir()
         (package / "__init__.py").write_text('"""Fixture."""\n', encoding="utf-8")
         (sibling / "pyproject.toml").write_text(
-            '[project]\nname = "sibling"\nversion = "0.0.0"\n', encoding="utf-8"
+            '[project]\nname = "sibling"\nversion = "0.0.0"\n'
+            "\n[tool.uv.workspace]\nmembers = []\n",
+            encoding="utf-8",
         )
         (parent / "pyproject.toml").write_text(
             '[project]\nname = "parent"\nversion = "0.0.0"\n'
-            '\n[tool.uv.workspace]\nmembers = ["child", "sibling"]\n',
+            'dependencies = ["child", "sibling"]\n'
+            "\n[tool.uv.workspace]\nmembers = []\n"
+            '\n[tool.uv.sources.child]\npath = "child"\neditable = true\n'
+            '\n[tool.uv.sources.sibling]\npath = "sibling"\neditable = true\n',
             encoding="utf-8",
         )
         parent_lock = parent / "uv.lock"
@@ -429,9 +491,10 @@ constraint-dependencies = ["uv>=0"]
                 '[project]\nname = "workspace"\n'
                 f'dependencies = ["{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"]\n'
                 "\n[tool.uv.workspace]\n"
-                'members = ["flext-core"]\n'
+                "members = []\n"
                 "\n[tool.uv.sources.flext-core]\n"
-                "workspace = true\n"
+                'path = "flext-core"\n'
+                "editable = true\n"
             ),
             codegen=config.Infra.codegen,
             workspace=workspace,

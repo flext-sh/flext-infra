@@ -48,3 +48,23 @@ baseline. Generation never starts, stops, initializes, probes, or mutates Dolt.
 The generated Makefile preserves the same boundary: workspace orchestration may
 fan out to direct local subprojects, while standalone repositories and linked
 worktrees own their runtime, environment, and writes locally.
+
+## uv project boundaries
+
+Physical repository ownership does not change when a checkout is mounted as a
+gitlink. Every generated `pyproject.toml` therefore declares
+`[tool.uv.workspace] members = []`: uv discovers that repository as its own
+project and writes its lock, environment, and distributions below that root.
+
+The composition root does not turn gitlinks into uv workspace members. It keeps
+the same empty boundary and projects a local `{ path = ..., editable = true }`
+source only for an internal dependency actually declared by the root project or
+one of its dependency groups. The obsolete `workspace` dependency group and
+topology-wide source list are removed. A present-but-unused gitlink produces no
+dependency or source entry.
+
+This layout is intentional: uv workspaces share one lock and environment and
+reject a member that owns another `[tool.uv.workspace]` table. Static path
+dependencies let the root resolve its real local dependencies without changing
+the child revision. A missing declared path fails resolution; conformance never
+falls back to a registry or Git source.
