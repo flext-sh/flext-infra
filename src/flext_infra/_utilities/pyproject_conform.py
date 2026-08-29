@@ -706,48 +706,22 @@ class FlextInfraUtilitiesPyprojectConform:
         """Resolve only root-declared internal dependencies to local paths."""
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
-            return r.fail("pyproject document is not a TOML mapping")
+            return r.fail(c.Infra.PYPROJECT_DOCUMENT_MAPPING_ERROR)
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return r.fail("pyproject content must define [project]")
-        raw_values: list[str] = []
-        for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
-            value = project.get(key)
-            if isinstance(value, Mapping):
-                for group in value.values():
-                    raw_values.extend(u.Cli.toml_as_string_list(group))
-            else:
-                raw_values.extend(u.Cli.toml_as_string_list(value))
-        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
-        if isinstance(groups, Mapping):
-            for group_name, group in groups.items():
-                if group_name != "workspace":
-                    raw_values.extend(u.Cli.toml_as_string_list(group))
+        raw_values = cls._declared_requirements(
+            payload, project, excluded_dependency_group="workspace"
+        )
         members = {member.distribution: member for member in workspace.subprojects}
-        required_names: set[str] = set()
-        missing_names: set[str] = set()
-        for requirement in raw_values:
-            dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
-            if dependency_name is None or not dependency_name.startswith(
-                codegen.infra_repository.internal_distribution_prefix
-            ):
-                continue
-            has_direct_source = "@" in requirement.partition(";")[0]
-            if dependency_name in members:
-                if has_direct_source:
-                    return r.fail(
-                        "workspace dependency declares a conflicting direct source: "
-                        f"{dependency_name}"
-                    )
-                required_names.add(dependency_name)
-            elif not has_direct_source:
-                missing_names.add(dependency_name)
-        missing = tuple(sorted(missing_names))
-        if missing:
-            return r.fail(
-                "root path dependency is not a declared subproject: "
-                + ", ".join(missing)
-            )
+        names_result = cls._root_local_dependency_names(
+            raw_values,
+            member_names=frozenset(members),
+            internal_prefix=codegen.infra_repository.internal_distribution_prefix,
+        )
+        if names_result.failure:
+            return r.fail(names_result.error or "root path source resolution failed")
+        required_names = names_result.value
         return r.ok({
             member.distribution: {
                 "path": member.path.as_posix(),
@@ -756,6 +730,61 @@ class FlextInfraUtilitiesPyprojectConform:
             for member in workspace.subprojects
             if member.distribution in required_names
         })
+
+    @staticmethod
+    def _declared_requirements(
+        payload: Mapping[str, t.JsonValue],
+        project: Mapping[str, t.JsonValue],
+        *,
+        excluded_dependency_group: str | None = None,
+    ) -> t.StrSequence:
+        """Collect dependency strings from every PEP 621 dependency surface."""
+        requirements: list[str] = []
+        for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
+            value = project.get(key)
+            values = value.values() if isinstance(value, Mapping) else (value,)
+            for declared in values:
+                requirements.extend(u.Cli.toml_as_string_list(declared))
+        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
+        if isinstance(groups, Mapping):
+            for group_name, declared in groups.items():
+                if group_name != excluded_dependency_group:
+                    requirements.extend(u.Cli.toml_as_string_list(declared))
+        return tuple(requirements)
+
+    @staticmethod
+    def _root_local_dependency_names(
+        requirements: t.StrSequence,
+        *,
+        member_names: frozenset[str],
+        internal_prefix: str,
+    ) -> p.Result[frozenset[str]]:
+        """Classify root requirements without registry fallback for local members."""
+        required: set[str] = set()
+        missing: set[str] = set()
+        for requirement in requirements:
+            dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
+            if dependency_name is None or not dependency_name.startswith(
+                internal_prefix
+            ):
+                continue
+            has_direct_source = "@" in requirement.partition(";")[0]
+            if dependency_name not in member_names:
+                if not has_direct_source:
+                    missing.add(dependency_name)
+                continue
+            if has_direct_source:
+                return r.fail(
+                    "workspace dependency declares a conflicting direct source: "
+                    f"{dependency_name}"
+                )
+            required.add(dependency_name)
+        if missing:
+            return r.fail(
+                "root path dependency is not a declared subproject: "
+                + ", ".join(sorted(missing))
+            )
+        return r.ok(frozenset(required))
 
     @staticmethod
     def _validate_root_uv_sources(
@@ -767,7 +796,7 @@ class FlextInfraUtilitiesPyprojectConform:
         """Validate root path composition without rewriting TOML tables."""
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
-            return r[bool].fail("pyproject document is not a TOML mapping")
+            return r[bool].fail(c.Infra.PYPROJECT_DOCUMENT_MAPPING_ERROR)
         tool = payload.get(c.Infra.TOOL)
         if not isinstance(tool, Mapping):
             return r[bool].fail("root pyproject must define [tool]")
@@ -835,11 +864,10 @@ class FlextInfraUtilitiesPyprojectConform:
         """Require one internal dependency provenance for the active topology."""
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
-            return r[bool].fail("pyproject document is not a TOML mapping")
+            return r[bool].fail(c.Infra.PYPROJECT_DOCUMENT_MAPPING_ERROR)
         member_names = frozenset(
             member.distribution for member in workspace.subprojects
         )
-        raw_values: list[str] = []
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return r[bool].fail("pyproject content must define [project]")
@@ -848,17 +876,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
-        for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
-            value = project.get(key)
-            if isinstance(value, Mapping):
-                for group in value.values():
-                    raw_values.extend(u.Cli.toml_as_string_list(group))
-            else:
-                raw_values.extend(u.Cli.toml_as_string_list(value))
-        groups = payload.get(c.Infra.DEPENDENCY_GROUPS)
-        if isinstance(groups, Mapping):
-            for group in groups.values():
-                raw_values.extend(u.Cli.toml_as_string_list(group))
+        raw_values = cls._declared_requirements(payload, project)
         for requirement in raw_values:
             dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
             if dependency_name not in member_names:
