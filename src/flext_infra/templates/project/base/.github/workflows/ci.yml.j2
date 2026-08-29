@@ -49,6 +49,14 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
+      # Codegen refreshes the declared provider baseline before comparison.
+      # actions/checkout deliberately does not persist credentials, so install
+      # the runner's scoped token through the GitHub CLI's Git credential owner.
+      - name: Configure GitHub authentication
+        env:
+          GH_TOKEN: {% raw %}${{ github.token }}{% endraw %}
+        run: gh auth setup-git
+
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:

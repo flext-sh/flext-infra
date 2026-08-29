@@ -1241,6 +1241,21 @@ Infra:
           # declared dev dependency of every generated project.
           - bandit>=1.8
           - flext-tests
+          # Every governed project receives the managed MkDocs configuration
+          # below. Its theme, handlers and plugins are direct runtime consumers,
+          # so the generated project must own those distributions instead of
+          # borrowing them transitively from a workspace member.
+          - mkdocs>=1.6.1
+          - mkdocs-autorefs>=1.4.4
+          - mkdocs-exclude>=1.0.2
+          - mkdocs-git-revision-date-localized-plugin>=1.5.3
+          - mkdocs-material>=9.7.7
+          - mkdocs-mermaid2-plugin>=1.2.3
+          - mkdocs-minify-plugin>=0.8.0
+          - mkdocs-redirects>=1.2.3
+          - mkdocs-section-index>=0.3.12
+          - mkdocstrings>=1.0.6
+          - mkdocstrings-python>=2.0.5
           # Floors let uv select released tools without a cap or downgrade path.
           # Every diagnostic from the resolved release remains blocking.
           - mypy>=2.3.0

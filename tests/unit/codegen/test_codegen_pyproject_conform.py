@@ -665,6 +665,28 @@ python-interpreter-path = "../.venv/bin/python"
         )
         tm.that(tomllib.loads(conformed)["project"]["version"], eq="0.0.1")
 
+    def test_managed_docs_plugins_are_direct_dev_dependencies(self) -> None:
+        """Managed MkDocs consumers never borrow plugin packages transitively."""
+        required_names = {
+            "mkdocs",
+            "mkdocs-autorefs",
+            "mkdocs-exclude",
+            "mkdocs-git-revision-date-localized-plugin",
+            "mkdocs-material",
+            "mkdocs-mermaid2-plugin",
+            "mkdocs-minify-plugin",
+            "mkdocs-redirects",
+            "mkdocs-section-index",
+            "mkdocstrings",
+            "mkdocstrings-python",
+        }
+        declared_names = {
+            u.Infra.dep_name(requirement)
+            for requirement in config.Infra.codegen.scaffold.project.dev
+        }
+
+        tm.that(required_names <= declared_names, eq=True)
+
     def test_ssot_required_dev_floor_replaces_stale_same_name_pin(self) -> None:
         """Toolchain required_dev floors win over older same-package member pins."""
         workspace = _workspace()

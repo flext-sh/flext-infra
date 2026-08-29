@@ -118,6 +118,22 @@ class TestCodegenCiMatrix:
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
         tm.that(ci_job, has="permissions:\n      contents: read")
 
+    def test_blocking_ci_configures_git_auth_through_gh(self, tmp_path: Path) -> None:
+        """Provider baseline fetches use the runner token through the gh owner."""
+        root = self._render_project(tmp_path / "external")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(workflow, has="- name: Configure GitHub authentication")
+        tm.that(workflow, has="GH_TOKEN: ${{ github.token }}")
+        tm.that(workflow, has="run: gh auth setup-git")
+        tm.that(
+            workflow.index("run: gh auth setup-git")
+            < workflow.index("run: CI=Y make gen WHAT=apply APPLY=Y"),
+            eq=True,
+        )
+
     def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
         """The generated staged hooks render the configured workflow partitions."""
         root = self._render_project(tmp_path / "external")
@@ -171,10 +187,17 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
+        marker = (
+            "fetch-depth: 0\n\n"
+            "      # Codegen refreshes the declared provider baseline"
+        )
         tm.that(workflow, has=marker)
         tm.that(
-            workflow, lacks="fetch-depth: 0\n\n\n      - name: Install mise toolchain"
+            workflow,
+            lacks=(
+                "fetch-depth: 0\n\n\n"
+                "      # Codegen refreshes the declared provider baseline"
+            ),
         )
         root2 = self._render_project(tmp_path / "member-again")
         workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
