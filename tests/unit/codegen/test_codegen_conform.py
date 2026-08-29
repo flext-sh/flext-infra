@@ -464,6 +464,8 @@ class TestCodegenConform:
         tm.that((root / "config" / "beads.yaml").is_file(), eq=True)
         tm.that((root / "pyproject.toml").is_file(), eq=True)
         tm.that((root / ".env.example").is_file(), eq=True)
+        tm.that((root / ".shellcheckrc").is_file(), eq=True)
+        tm.that((root / ".shellcheckrc").is_symlink(), eq=False)
         package_name = name.replace("-", "_")
         pythonpath = os.pathsep.join(
             part
@@ -503,6 +505,31 @@ class TestCodegenConform:
         tm.that(makefile, lacks="UV_VERSION")
         tm.that(makefile, lacks="uv@")
         tm.that(makefile, lacks="mise exec")
+
+    def test_managed_template_rejects_cross_checkout_symlink_before_writes(
+        self, infra_git_repo: Path, tmp_path: Path
+    ) -> None:
+        """A generated destination must never delegate ownership through a link."""
+        root = infra_git_repo
+        workspace = _standalone_workspace(root)
+        external = tmp_path / "external-shellcheckrc"
+        external.write_text("external sentinel\n", encoding="utf-8")
+        destination = root / ".shellcheckrc"
+        destination.unlink(missing_ok=True)
+        destination.symlink_to(external)
+
+        result = FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            ),
+            initial_workspace=workspace,
+        )
+
+        tm.fail(result, has="template destination must be a physical file")
+        tm.that(destination.is_symlink(), eq=True)
+        tm.that(external.read_text(encoding="utf-8"), eq="external sentinel\n")
 
     @pytest.mark.slow
     def test_existing_manifest_converges_to_identical_tree(

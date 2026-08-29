@@ -1137,6 +1137,9 @@ Infra:
       - path: .python-version
         owner: codegen
         policy: full
+      - path: .shellcheckrc
+        owner: codegen
+        policy: full
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
@@ -1754,6 +1757,13 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
+        # Shell analysis configuration is repository-local and physical. A
+        # cross-checkout symlink changes behavior with external state.
+        - source: base/.shellcheckrc.j2
+          destination: .shellcheckrc
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
