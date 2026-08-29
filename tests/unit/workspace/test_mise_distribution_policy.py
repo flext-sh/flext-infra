@@ -6,6 +6,8 @@ import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import yaml
+
 from flext_infra import config, infra, m
 from flext_tests import tm
 
@@ -40,6 +42,20 @@ def _sync(root: Path) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
 
 class TestsMiseDistributionPolicy:
     """Reject alternate owners and converge canonical pins through the facade."""
+
+    def test_repository_direnv_consumer_is_project_owned_and_projected(self) -> None:
+        """Project tooling owns the real direnv consumer installed by Mise."""
+        root = Path(__file__).resolve().parents[3]
+        payload = yaml.safe_load(
+            (root / "config/tooling.yaml").read_text(encoding="utf-8")
+        )
+        project_tools = payload["ManagedArtifacts"]["Mise"]["tools"]
+        projected_tools = tomllib.loads(
+            (root / ".mise.toml").read_text(encoding="utf-8")
+        )["tools"]
+        selector = "aqua:direnv/direnv"
+
+        tm.that(projected_tools[selector], eq=project_tools[selector])
 
     def test_base_mise_contains_only_runtime_owned_tools(self, tmp_path: Path) -> None:
         root = _workspace(tmp_path / "project")

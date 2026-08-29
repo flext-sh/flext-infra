@@ -28,6 +28,8 @@ tokei = "14.0"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
 "github:qltysh/qlty" = "0.642"
+"aqua:direnv/direnv" = "2.37.1"
+
 [tools."github:gastownhall/beads"]
 version = "1.2.2"
 prerelease = false

@@ -635,6 +635,10 @@ Infra:
 # A path that exists only here belongs in this block, never in the fleet policy:
 # declaring it there writes a dead exemption into every project's pyproject.toml.
 ManagedArtifacts:
+  Mise:
+    tools:
+      # Runtime consumer: the environment facade is exercised through direnv.
+      "aqua:direnv/direnv": "2.37.1"
   Ruff:
     per_file_ignores:
       # OPERATOR-AUTHORIZED 2026-08-08 (rope only, private-member-access only).
