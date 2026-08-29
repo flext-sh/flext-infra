@@ -40,8 +40,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     )
     u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
     u.Tests.git_bootstrap(
-        workspace_root,
-        ("config", "remote.origin.skipDefaultUpdate", "true"),
+        workspace_root, ("config", "remote.origin.skipDefaultUpdate", "true")
     )
     for project_name in project_names:
         project_root = workspace_root / project_name

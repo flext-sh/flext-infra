@@ -114,7 +114,7 @@ class TestsFlextInfraDepsModernizerPyright:
                     "root": rules.source_dir,
                     "reportPrivateUsage": rules.source_report_private_usage,
                     "extraPaths": [rules.source_dir],
-                },
+                }
             ],
         )
 

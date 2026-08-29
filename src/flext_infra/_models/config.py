@@ -1819,8 +1819,7 @@ class FlextInfraConfigModels:
             tuple[str, ...], m.Field(description="Declared workspace subproject paths")
         ] = ()
         workspace_root_package: Annotated[
-            bool,
-            m.Field(description="Workspace root publishes a Python package"),
+            bool, m.Field(description="Workspace root publishes a Python package")
         ] = False
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
@@ -2229,8 +2228,7 @@ class FlextInfraConfigModels:
             tuple[str, ...], m.Field(description="Ordered workspace subproject paths")
         ] = ()
         workspace_root_package: Annotated[
-            bool,
-            m.Field(description="Workspace root publishes a Python package"),
+            bool, m.Field(description="Workspace root publishes a Python package")
         ] = False
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],

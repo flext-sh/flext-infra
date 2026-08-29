@@ -1440,10 +1440,7 @@ class TestScriptDispatchMakefile:
         gen_check_body = rendered.split("_builtin_gen_check:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_check_body.count("codegen conform"), eq=1)
         tm.that("--mode check" in gen_check_body, eq=True)
-        tm.that(
-            gen_check_body,
-            has="$(FLEXT_INFRA_BOOTSTRAP)",
-        )
+        tm.that(gen_check_body, has="$(FLEXT_INFRA_BOOTSTRAP)")
         tm.that(
             gen_check_body,
             lacks=[

@@ -241,8 +241,7 @@ class TestsCodegenMakeEnvironment:
         )
         umbrella_config = project_root.parent / ".mise.toml"
         umbrella_config.write_text(
-            '[tools]\n"github:gastownhall/beads" = "1.2.2"\n',
-            encoding="utf-8",
+            '[tools]\n"github:gastownhall/beads" = "1.2.2"\n', encoding="utf-8"
         )
         (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
         tool_bin = tmp_path / "managed-tools" / "bin"
@@ -260,7 +259,7 @@ class TestsCodegenMakeEnvironment:
             "  exit 91\n"
             "fi\n"
             f"printf '%s|%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
-            f"\"$MISE_CONFIG_DIR\" \"$MISE_CEILING_PATHS\" >> '{mise_env_log}'\n"
+            f'"$MISE_CONFIG_DIR" "$MISE_CEILING_PATHS" >> \'{mise_env_log}\'\n'
             f"exec '{real_mise}' \"$@\"\n",
         )
         uv = tool_bin / "uv"
