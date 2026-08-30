@@ -178,9 +178,10 @@ class FlextInfraUtilitiesDocsScope:
             and not has_deps
         ):
             return None
-        if is_workspace_subproject:
-            workspace_role = c.Infra.WorkspaceProjectRole.SUBPROJECT
-        elif (entry / c.Infra.GITMODULES).is_file():
+        # Topology role is proven by the checkout itself. Declared-subproject
+        # is the aggregate's relationship to this path, not the repository's
+        # own workspace/standalone classification.
+        if (entry / c.Infra.GITMODULES).is_file():
             workspace_role = c.Infra.WorkspaceProjectRole.WORKSPACE
         else:
             workspace_role = c.Infra.WorkspaceProjectRole.STANDALONE
