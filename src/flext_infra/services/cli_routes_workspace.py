@@ -90,7 +90,7 @@ class WorkspaceRoutes(RefactorRoutes):
                     (
                         "sync-environment",
                         "Sync generated direnv/mise environment files",
-                        FlextInfraWorkspaceEnvironmentSync,
+                        m.Infra.WorkspaceEnvironmentSyncRequest,
                         CliRouteBase.result_handler(
                             FlextInfraWorkspaceEnvironmentSync.execute_request
                         ),

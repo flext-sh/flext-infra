@@ -16,10 +16,10 @@ source_env "{{ source }}"
 
 # === SECTION: canonical roots (managed) ===
 # strict_env does not export DIRENV_DIR; the cwd is already the envrc directory.
-{% set identity_ref = "${" ~ identity_var -%}
+{% set dollar_brace = "${" -%}
 checkout_root="$(pwd -P)"
-: "{{ identity_ref }}:?{{ identity_var }} must name the canonical Gas City checkout}"
-gas_city_root="$(cd "{{ identity_ref }}" && pwd -P)"
+: "{{ dollar_brace }}{{ identity_var }}:?{{ identity_var }} must name the canonical Gas City checkout}"
+gas_city_root="$(cd "{{ dollar_brace }}{{ identity_var }}}" && pwd -P)"
 {% for var in unset_vars -%}
 unset {{ var }}
 {% endfor -%}

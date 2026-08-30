@@ -42,6 +42,11 @@ class TestsBeadsEnvironmentSync:
             eq=True,
         )
         tm.that("BEADS_DOLT_SERVER_PORT" in content, eq=True)
+        tm.that(
+            "gas_city_root=\"$(cd \"${AGENTS_GAS_CITY_ROOT}\" && pwd -P)\""
+            in content,
+            eq=True,
+        )
         tm.that("dolt-state.json" in content, eq=True)
 
     def test_sync_without_allow_consumes_no_runner(self, tmp_path: Path) -> None:
