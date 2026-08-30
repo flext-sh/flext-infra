@@ -111,14 +111,9 @@ class FlextInfraWorkspaceDetector(
     @classmethod
     def _provider_for_url(cls, url: str) -> p.Result[m.Infra.ProviderSpec]:
         """Resolve one configured provider, failing closed without leaking the URL."""
-        parsed = urlparse(url)
-        for provider in config.Infra.codegen.providers:
-            provider_url = urlparse(provider.base_url)
-            if (
-                provider_url.scheme in {"https", "ssh"}
-                and parsed.netloc == provider_url.netloc
-            ):
-                return r[m.Infra.ProviderSpec].ok(provider)
+        declared = cls._declared_provider_for_url(url)
+        if declared is not None:
+            return r[m.Infra.ProviderSpec].ok(declared)
         return r[m.Infra.ProviderSpec].fail(
             "repository owner must resolve exactly once"
         )
