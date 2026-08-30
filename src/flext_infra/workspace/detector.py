@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraWorkspaceDetector(
-    FlextInfraWorkspaceGovernanceMixin, s[c.Infra.WorkspaceMode]
+    FlextInfraWorkspaceGovernanceMixin, s[c.Infra.MakeProfile]
 ):
     """Classify a repository only from files and Git facts inside that checkout."""
 
@@ -172,9 +172,9 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail(provider_result.error)
         provider = provider_result.value
         role = (
-            c.Infra.RepositoryRole.WORKSPACE
+            c.Infra.MakeProfile.WORKSPACE
             if (repository_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.RepositoryRole.STANDALONE
+            else c.Infra.MakeProfile.STANDALONE
         )
         project_name = metadata.value.project.name
         repository = m.Infra.RepositoryRef(
@@ -451,24 +451,24 @@ class FlextInfraWorkspaceDetector(
             cls.workspace_analysis_exclusion_paths(workspace.value)
         )
 
-    def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
+    def detect(self, project_root: Path) -> p.Result[c.Infra.MakeProfile]:
         """Classify solely by the requested repository's own ``.gitmodules``."""
         try:
             resolved_root = project_root.expanduser().resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[c.Infra.WorkspaceMode].fail_op("Workspace detection", exc)
+            return r[c.Infra.MakeProfile].fail_op("Workspace detection", exc)
         if not resolved_root.is_dir():
-            return r[c.Infra.WorkspaceMode].fail(
+            return r[c.Infra.MakeProfile].fail(
                 f"project root is not a directory: {resolved_root}"
             )
-        return r[c.Infra.WorkspaceMode].ok(
-            c.Infra.WorkspaceMode.WORKSPACE
+        return r[c.Infra.MakeProfile].ok(
+            c.Infra.MakeProfile.WORKSPACE
             if (resolved_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.WorkspaceMode.STANDALONE
+            else c.Infra.MakeProfile.STANDALONE
         )
 
     @override
-    def execute(self) -> p.Result[c.Infra.WorkspaceMode]:
+    def execute(self) -> p.Result[c.Infra.MakeProfile]:
         """Execute workspace detection for the configured root."""
         return self.detect(self.workspace_root)
 

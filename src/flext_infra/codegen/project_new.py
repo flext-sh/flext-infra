@@ -127,7 +127,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             provider=self.provider,
             url=repository_url,
             path=Path(),
-            role=c.Infra.RepositoryRole.STANDALONE,
+            role=c.Infra.MakeProfile.STANDALONE,
             state=c.Infra.RepositoryState.ACTIVE,
             checkout=c.Infra.CheckoutKind.INDEPENDENT,
             codegen=c.Infra.CodegenKind.CONFORM,
