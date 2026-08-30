@@ -30,14 +30,10 @@ class FlextInfraWorkspaceDetector(
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
 
     @staticmethod
-    def repository_is_governed(
-        repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
-    ) -> bool:
-        """Require provider key, host, and organization to agree exactly."""
-        if repository.provider != provider.name:
-            return False
+    def _provider_owns_url(provider: m.Infra.ProviderSpec, url: str) -> bool:
+        """Require scheme, host, and organization to agree exactly."""
         provider_url = urlparse(provider.base_url)
-        repository_url = urlparse(repository.url)
+        repository_url = urlparse(url)
         provider_path = provider_url.path.strip("/")
         repository_path = repository_url.path.strip("/")
         repository_name = repository_path.removeprefix(
@@ -56,6 +52,15 @@ class FlextInfraWorkspaceDetector(
             and bool(repository_name)
             and actual_path == canonical_path
         )
+
+    @staticmethod
+    def repository_is_governed(
+        repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
+    ) -> bool:
+        """Require the provider key and the owned canonical URL to agree."""
+        if repository.provider != provider.name:
+            return False
+        return FlextInfraWorkspaceDetector._provider_owns_url(provider, repository.url)
 
     @classmethod
     def load_beads_spec(
@@ -94,17 +99,11 @@ class FlextInfraWorkspaceDetector(
             )
         return r[str].ok(result.value.text.strip())
 
-    @staticmethod
-    def _declared_provider_for_url(url: str) -> m.Infra.ProviderSpec | None:
+    @classmethod
+    def _declared_provider_for_url(cls, url: str) -> m.Infra.ProviderSpec | None:
         """Return the exact configured provider owning ``url``."""
-        parsed = urlparse(url)
         for provider in config.Infra.codegen.providers:
-            provider_url = urlparse(provider.base_url)
-            if (
-                provider_url.scheme == parsed.scheme
-                and provider_url.netloc == parsed.netloc
-                and parsed.path.strip("/").startswith(f"{provider.organization}/")
-            ):
+            if cls._provider_owns_url(provider, url):
                 return provider
         return None
 
