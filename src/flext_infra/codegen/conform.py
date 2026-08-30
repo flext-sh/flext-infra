@@ -1224,6 +1224,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             path = (root / relative).resolve()
+            if (
+                entry.destination == c.Infra.BEADS_METADATA_RELPATH
+                and not path.is_file()
+            ):
+                # Why (flext-l2296 family): the ledger metadata is minted by
+                # Beads at first use, so a fresh clone legitimately lacks it.
+                # Planning an absent runtime artifact made the gen check gate
+                # fail on every clean checkout. When the file exists, the
+                # identity-preserving refresh below still applies.
+                continue
             try:
                 path.relative_to(root.resolve())
             except ValueError:
