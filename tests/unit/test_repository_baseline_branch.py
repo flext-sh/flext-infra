@@ -66,9 +66,7 @@ class TestsFlextInfraRepositoryBaselineBranch:
 
         tm.fail(resolved)
 
-    def test_declared_preference_orders_the_search(
-        self, infra_git_repo: Path
-    ) -> None:
+    def test_declared_preference_orders_the_search(self, infra_git_repo: Path) -> None:
         """A workspace names its own release line instead of a constant.
 
         The built-in ordering carries conventional names only, so a fleet that
