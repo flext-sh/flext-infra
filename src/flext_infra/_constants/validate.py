@@ -135,11 +135,7 @@ class FlextInfraConstantsSharedInfra:
     # workspace declares for itself — a fleet that integrates on a versioned
     # line names it there rather than asking for a constant here. Product- and
     # release-specific names do not belong in this tuple.
-    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = (
-        "develop",
-        "dev",
-        "main",
-    )
+    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = ("develop", "dev", "main")
 
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"

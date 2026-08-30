@@ -62,9 +62,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-                input_data: bytes | None = None,
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
             ) -> p.Result[p.Cli.CommandOutput]:
-                del cmd, cwd, timeout, env, remove_env_keys, input_data
+                del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
                 if self._result.failure:
                     return r[p.Cli.CommandOutput].fail(
                         self._result.error or "Command failed"
@@ -79,8 +81,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
             ) -> p.Result[p.Cli.CommandOutput]:
-                del cmd, cwd, timeout, env, remove_env_keys
+                del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
                 if self._result.failure:
                     return r[p.Cli.CommandOutput].fail(
                         self._result.error or "Command failed"
@@ -100,7 +105,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-                input_data: bytes | None = None,
+                input_data: str | bytes | None = None,
             ) -> p.Result[p.Cli.CommandBytesOutput]:
                 """Return the configured command payload with byte-exact streams."""
                 del cmd, cwd, timeout, env, remove_env_keys, input_data
@@ -126,8 +131,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
             ) -> p.Result[str]:
                 """Provide the typed test helper `capture`."""
+                del input_data
                 result = self.run(
                     cmd,
                     cwd=cwd,
@@ -147,8 +154,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
             ) -> p.Result[bool]:
                 """Provide the typed test helper `run_checked`."""
+                del input_data, capture
                 result = self.run(
                     cmd,
                     cwd=cwd,
@@ -159,6 +170,30 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if result.failure:
                     return r[bool].fail(result.error or "Command failed")
                 return r[bool].ok(True)
+
+            @override
+            def run_live(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+            ) -> p.Result[p.Cli.CommandOutput]:
+                """Provide the typed test helper `run_live`.
+
+                Live output is a property of the real process, not of a replayed
+                result, so this behaves exactly like the checked `run`.
+                """
+                return self.run(
+                    cmd,
+                    cwd=cwd,
+                    timeout=timeout,
+                    env=env,
+                    remove_env_keys=remove_env_keys,
+                    input_data=input_data,
+                )
 
             @override
             def run_to_file(
@@ -246,11 +281,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-                input_data: bytes | None = None,
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
             ) -> p.Result[p.Cli.CommandOutput]:
                 """Provide the typed test helper `run_raw`."""
                 self.commands.append(tuple(cmd))
-                del cmd, cwd, timeout, env, remove_env_keys, input_data
+                del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
                 result = self._next_result()
                 if result.failure:
                     return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
@@ -264,10 +301,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
             ) -> p.Result[p.Cli.CommandOutput]:
                 """Provide the typed test helper `run`."""
                 self.commands.append(tuple(cmd))
-                del cmd, cwd, timeout, env, remove_env_keys
+                del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
                 result = self._next_result()
                 if result.failure:
                     return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
@@ -286,7 +326,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 timeout: int | None = None,
                 env: t.StrMapping | None = None,
                 remove_env_keys: t.StrSequence = (),
-                input_data: bytes | None = None,
+                input_data: str | bytes | None = None,
             ) -> p.Result[p.Cli.CommandBytesOutput]:
                 """Replay one command result while preserving byte-exact streams."""
                 self.commands.append(tuple(cmd))
