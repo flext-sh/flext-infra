@@ -219,7 +219,7 @@ secrets.yml
 .worktrees/
 legado/
 
-# Beads ledger identity (workspace-root and standalone; see mro-9wv8)
+# Beads ledger identity (workspace and standalone; see mro-9wv8)
 !.beads/metadata.json
 
 # codegen module-standardizer reject artifacts (ADR-005 §9)

@@ -91,7 +91,7 @@ class TestsCodegenArtifactSsot:
         tm.that(unaccounted, eq=())
 
     @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.WORKSPACE_ROOT, c.Infra.MakeProfile.STANDALONE]
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
     def test_gitignore_tracks_agentsctl_project_projections(
         self, codegen: CodegenSpec, profile: c.Infra.MakeProfile
@@ -161,7 +161,7 @@ class TestsCodegenArtifactSsot:
     ) -> None:
         """Keep the immutable tool lock available to clean CI checkouts."""
         rendered = FlextInfraCodegenConform.render_project_gitignore(
-            codegen, profile=c.Infra.MakeProfile.WORKSPACE_ROOT, project_name="cosmos-main"
+            codegen, profile=c.Infra.MakeProfile.WORKSPACE, project_name="cosmos-main"
         )
 
         tm.ok(rendered)
@@ -178,7 +178,7 @@ class TestsCodegenArtifactSsot:
         )
         tm.that(entries, len=1)
         declared_profiles = {
-            c.Infra.MakeProfile.WORKSPACE_ROOT,
+            c.Infra.MakeProfile.WORKSPACE,
             c.Infra.MakeProfile.STANDALONE,
         }
         tm.that(set(entries[0].profiles), eq=declared_profiles)

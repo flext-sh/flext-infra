@@ -84,7 +84,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         rendered = tm.ok(
             FlextInfraCodegenConform.render_project_gitignore(
                 config.Infra.codegen,
-                profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
+                profile=c.Infra.MakeProfile.WORKSPACE,
                 project_name="probe-root",
                 workspace=workspace,
             )

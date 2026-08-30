@@ -716,7 +716,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="check/test runtime scope")
         ]
         discovery_scope: Annotated[
-            Literal["manifest", "none"],
+            Literal["gitmodules", "none"],
             m.Field(description="repository-local discovery authority"),
         ]
 

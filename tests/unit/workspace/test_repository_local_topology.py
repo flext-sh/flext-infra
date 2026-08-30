@@ -133,7 +133,7 @@ class TestsRepositoryLocalTopology:
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
 
         tm.that(mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE_ROOT)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE)
 
     def test_parent_gitmodules_never_classifies_or_governs_a_child(
         self, tmp_path: Path

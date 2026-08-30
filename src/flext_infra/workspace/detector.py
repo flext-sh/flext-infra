@@ -380,7 +380,7 @@ class FlextInfraWorkspaceDetector(
                 f"{canonical_project_name} != {workspace.repository.distribution}"
             )
         make_profile = (
-            c.Infra.MakeProfile.WORKSPACE_ROOT
+            c.Infra.MakeProfile.WORKSPACE
             if (resolved_root / c.Infra.GITMODULES).is_file()
             else c.Infra.MakeProfile.STANDALONE
         )

@@ -775,12 +775,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
             TestsFlextInfraUtilities.Tests.write_project_beads_config(
-                workspace, "workspace-root"
+                workspace, "workspace"
             )
             (workspace / "pyproject.toml").write_text(
                 (
                     "[project]\n"
-                    'name = "workspace-root"\n'
+                    'name = "workspace"\n'
                     'version = "0.1.0"\n'
                     'dependencies = ["flext-core>=0.1.0"]\n'
                 ),
@@ -1432,7 +1432,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
             by_mode: dict[c.Infra.WorkspaceMode, c.Infra.MakeProfile] = {
-                c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE_ROOT,
+                c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
                 c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
             }
             return by_mode[mode]

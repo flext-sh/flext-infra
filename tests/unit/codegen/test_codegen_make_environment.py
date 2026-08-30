@@ -91,7 +91,7 @@ class TestsCodegenMakeEnvironment:
         return project_root, workspace_root
 
     @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.WORKSPACE_ROOT, c.Infra.MakeProfile.STANDALONE]
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
     def test_generated_make_uses_profile_runtime_venv_under_hostile_env(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
@@ -152,7 +152,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
-        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE_ROOT]
+        "profile", [c.Infra.MakeProfile.STANDALONE, c.Infra.MakeProfile.WORKSPACE]
     )
     def test_setup_provisions_environment_before_project_runtime(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
@@ -205,7 +205,7 @@ class TestsCodegenMakeEnvironment:
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --project")
-        if profile == c.Infra.MakeProfile.WORKSPACE_ROOT:
+        if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
     def test_setup_fails_when_the_tracked_mise_launcher_is_missing(
