@@ -49,7 +49,7 @@ class TestCodegenUvExcludeNewerOverlay:
         return tm.ok(
             u.Infra.pyproject_conform(
                 cls.SOURCE,
-                codegen=config.Infra.codegen,
+                providers=config.Infra.codegen.providers,
                 workspace=workspace,
                 workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,

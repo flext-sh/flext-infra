@@ -178,8 +178,8 @@ class TestsCodegenSetupSubmodules:
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
         tm.ok(u.Cli.capture(["make", "setup"], cwd=project, env=environment))
 
-    def test_submodule_setup_uses_conditional_fetch(self) -> None:
-        """Generated setup skips fetch when cached origin refs already validate."""
+    def test_submodule_setup_never_fetches_or_recurses(self) -> None:
+        """Generated setup owns only direct local gitlink provisioning."""
         template = (
             Path(__file__).resolve().parents[3]
             / "src"
@@ -191,9 +191,9 @@ class TestsCodegenSetupSubmodules:
         )
         content = template.read_text(encoding="utf-8")
 
-        tm.that(content, has="need_fetch=1")
-        tm.that(content, has='if [ "$$need_fetch" -eq 1 ]')
-        tm.that(content, has='merge-base --is-ancestor "$$remote_ref" HEAD')
+        tm.that(content, lacks='git -C "$$child_root" fetch')
+        tm.that(content, lacks="ls-remote")
+        tm.that(content, lacks='validate_submodule "$$child_root"')
 
     def test_setup_is_repeatable_without_gitmodules(
         self, tmp_path: Path, generated_project_template: Path
