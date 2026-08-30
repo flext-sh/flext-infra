@@ -3,5 +3,5 @@ language: Python
 severity: error
 message: MakeProfile is workspace or standalone; workspace-root is extinct
 rule:
-  pattern: c.Infra.MakeProfile.WORKSPACE_ROOT
+  pattern: c.Infra.MakeProfile.WORKSPACE
 fix: c.Infra.MakeProfile.WORKSPACE

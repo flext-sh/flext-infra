@@ -797,9 +797,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Why (flext-6itas.4): a scaffold's declared roots are the complete
         # future topology only for a subproject/standalone target; a workspace
         # root aggregates subproject trees it has not declared here.
-        declared_python_dirs_are_complete = (
-            profile is not c.Infra.MakeProfile.WORKSPACE
-        )
+        declared_python_dirs_are_complete = profile is not c.Infra.MakeProfile.WORKSPACE
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
@@ -1556,6 +1554,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                 )
             )
+        if destination == "custom.mk":
+            # Existing repositories project custom routes from the same typed
+            # Make contract as Makefile; they do not require scaffold-only
+            # project metadata.
+            make_context = FlextInfraCodegenConform.make_render_context(
+                repository,
+                target,
+                workspace,
+                codegen,
+                tooling_runtime=tooling_runtime,
+            )
+            if make_context.failure:
+                return r[p.Model].fail(
+                    make_context.error or "custom Make render context failed"
+                )
+            return r[p.Model].ok(make_context.value)
         if project_context is not None:
             return r[p.Model].ok(project_context)
         context_result = self._project_render_context(
@@ -2176,9 +2190,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
         del workspace_root
-        workspace_environment = (
-            target.make_profile is c.Infra.MakeProfile.WORKSPACE
-        )
+        workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
         editable_repositories: tuple[m.Infra.RepositoryRef, ...] = ()

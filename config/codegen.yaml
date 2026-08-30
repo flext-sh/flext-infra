@@ -1136,8 +1136,8 @@ Infra:
         owner: codegen
         policy: merge
       - path: .gitmodules
-        owner: codegen
-        policy: merge
+        owner: workspace
+        policy: manual
       - path: .mise.toml
         owner: codegen
         policy: full
@@ -1821,13 +1821,6 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # NOTE(mro-wkii.17.11, agent codex): workspace topology owns git submodules;
-        # environment activation is owned by mise + the generated Makefile.
-        - source: base/gitmodules.j2
-          destination: .gitmodules
-          profiles: [workspace]
-          delegate: render
-          overwrite: true
         - source: base/Makefile.j2
           destination: Makefile
           # The generic conform engine is the single Makefile owner for every

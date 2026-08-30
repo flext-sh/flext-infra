@@ -175,8 +175,8 @@ class TestsWorkspaceRootMakeContract:
     def test_generated_make_routes_fixable_gates_through_checker(
         self, tmp_path: Path
     ) -> None:
-        """The public fix verb reaches every gate that advertises a fixer."""
-        workspace_root, _project_names = _write_workspace(tmp_path)
+        """The public fix verb fans out mutation authority to every member."""
+        workspace_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
@@ -194,10 +194,11 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="ruff check --fix")
-        tm.that(output, has="check run --workspace")
-        tm.that(output, has='--gates "markdown,smells"')
-        tm.that(output, has="--fix")
+        tm.that(output, has="workspace orchestrate")
+        tm.that(output, has="--verb fix")
+        tm.that(output, has='--make-arg "APPLY=Y"')
+        for project_name in project_names:
+            tm.that(output, has=f"--projects {project_name}")
 
     def test_generated_make_routes_file_and_match_only_to_owning_project(
         self, tmp_path: Path
@@ -226,10 +227,15 @@ class TestsWorkspaceRootMakeContract:
         tm.that(output, has="--file")
         tm.that(output, has="--match")
 
-    def test_generated_make_forwards_root_file_with_member_selection(
+    def test_generated_make_forwards_file_selection_through_orchestration(
         self, tmp_path: Path
     ) -> None:
-        """Run a root-owned test locally without recursively orchestrating root."""
+        """A FILE selection rides the orchestration to the declared members.
+
+        The workspace root owns no local gate implementation: its verbs fan
+        out to the subprojects, so a FILE selector is forwarded through
+        WORKSPACE_TEST_ARGS instead of being executed at the root.
+        """
         workspace_root, project_names = _write_workspace(tmp_path)
         selected = "tests/unit/test_provider_contract.py"
 
@@ -248,15 +254,14 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="python -m flext_infra._pytest_entry")
-        tm.that(output, has="--file")
+        tm.that(output, has='--file "${FLEXT_PYTEST_FILE_RAW}"')
         for project_name in project_names:
-            tm.that(output, lacks=f"--projects {project_name}")
+            tm.that(output, has=f"--projects {project_name}")
 
     def test_generated_make_default_test_fans_out_to_every_member(
         self, tmp_path: Path
     ) -> None:
-        """Default test covers the publishing root and every declared member."""
+        """Default test covers every declared member through orchestration."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
@@ -268,14 +273,15 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has="python -m flext_infra._pytest_entry")
+        tm.that(output, has="workspace orchestrate")
+        tm.that(output, has="--verb test")
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
 
-    def test_generated_make_default_check_covers_publishing_root(
+    def test_generated_make_default_check_fans_out_gates_to_members(
         self, tmp_path: Path
     ) -> None:
-        """Default check validates root sources before orchestrating members."""
+        """Default check is read-only and forwards gate selection to members."""
         workspace_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
@@ -287,8 +293,9 @@ class TestsWorkspaceRootMakeContract:
         output = process.stdout + process.stderr
 
         tm.that(process.exit_code, eq=0, msg=output)
-        tm.that(output, has='check run --workspace "')
-        tm.that(output, has="--projects .")
+        tm.that(output, has="workspace orchestrate")
+        tm.that(output, has="--verb check")
+        tm.that(output, has='--make-arg "CHECK_GATES=$gates"')
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
 
@@ -298,12 +305,9 @@ class TestsWorkspaceRootMakeContract:
         )[1].split("_builtin_check_lint:", 1)[0]
         tm.that(
             check_recipe,
-            has=(
-                "\tfi; \\\n"
-                '\tif [ "$(WORKSPACE_ROOT_PACKAGE)" = "Y" ] && '
-                '[ -n "$(SELECTED_ROOT_PROJECT)" ]; then \\\n'
-            ),
+            has="ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first",
         )
+        tm.that(check_recipe, has="ERROR: no check gates remain after CI=Y filtering")
 
     def test_workspace_root_setup_owns_environment_and_uses_venv_directory(
         self, tmp_path: Path
