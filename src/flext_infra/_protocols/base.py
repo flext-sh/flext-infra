@@ -344,6 +344,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def uv_environments(self) -> t.StrSequence:
+            """Marker expressions limiting the environments uv resolves."""
+            ...
+
+        @property
         def dependency_cooldown_days(self) -> int:
             """Supply-chain cooldown shared by dependency update tools."""
             ...
