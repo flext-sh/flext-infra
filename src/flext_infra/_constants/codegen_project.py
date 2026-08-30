@@ -54,7 +54,13 @@ class FlextInfraConstantsCodegenProject:
 
     @unique
     class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository."""
+        """Generated Makefile profile for one repository.
+
+        Topology is proven by the repository itself: a checkout that declares
+        ``.gitmodules`` is a workspace, and one that does not is standalone.
+        This mirrors ``WorkspaceMode``, which the detector returns, so the two
+        vocabularies cannot drift.
+        """
 
         WORKSPACE = "workspace"
         STANDALONE = "standalone"

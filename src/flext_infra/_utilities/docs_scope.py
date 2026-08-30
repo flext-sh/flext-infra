@@ -181,7 +181,7 @@ class FlextInfraUtilitiesDocsScope:
         if is_workspace_subproject:
             workspace_role = c.Infra.WorkspaceProjectRole.SUBPROJECT
         elif (entry / c.Infra.GITMODULES).is_file():
-            workspace_role = c.Infra.WorkspaceProjectRole.WORKSPACE_ROOT
+            workspace_role = c.Infra.WorkspaceProjectRole.WORKSPACE
         else:
             workspace_role = c.Infra.WorkspaceProjectRole.STANDALONE
         project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(

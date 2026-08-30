@@ -1,4 +1,4 @@
-"""Verify generated workspace-root Make behavior across orchestration seams."""
+"""Verify generated workspace Make behavior across orchestration seams."""
 
 from __future__ import annotations
 

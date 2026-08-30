@@ -797,7 +797,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Why (flext-6itas.4): a scaffold's declared roots are the complete
         # future topology only for a subproject/standalone target; a workspace
         # root aggregates subproject trees it has not declared here.
-        declared_python_dirs_are_complete = profile is not c.Infra.MakeProfile.WORKSPACE
+        declared_python_dirs_are_complete = (
+            profile is not c.Infra.MakeProfile.WORKSPACE
+        )
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
@@ -2174,7 +2176,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
         del workspace_root
-        workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
+        workspace_environment = (
+            target.make_profile is c.Infra.MakeProfile.WORKSPACE
+        )
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
         editable_repositories: tuple[m.Infra.RepositoryRef, ...] = ()

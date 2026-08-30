@@ -602,10 +602,6 @@ name = "flext-tests"
 
 [tool.uv.exclude-newer-package]
 cryptography = false
-django-stubs = "2026-08-13T00:00:00Z"
-mkdocstrings-python = "2026-08-18T00:00:00Z"
-mypy = "2026-08-15T03:04:00Z"
-types-setuptools = "2026-08-13T00:00:00Z"
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]
@@ -660,7 +656,7 @@ dev = [
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.1",
   "pylint>=4.0.6",
-  "pyrefly>=1.2.0",
+  "pyrefly>=1.1.1",
   "pyright>=1.1.411",
   "pytest>=9.0.3",
   "pytest-benchmark>=5.2.3",
