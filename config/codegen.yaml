@@ -1343,6 +1343,11 @@ Infra:
             # ignored: their embedded-mode file carries a per-machine
             # project_id UUID.
             - "!.beads/metadata.json"
+            # The canonical ledger identity (the [project] id). Conform reads
+            # it to render the identity-preserving metadata.json; untracked,
+            # every fresh clone rendered a metadata without the id and failed
+            # the gen check gate against the committed file.
+            - "!.beads/identity.toml"
         - name: "Python configuration"
           profiles: [workspace]
           patterns:
