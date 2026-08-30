@@ -881,10 +881,6 @@ _builtin_require_environment:
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
-else
-_builtin_setup_environment: _builtin_setup_submodules
-	@$(SETUP_ENVIRONMENT_RECIPE)
-endif
 # End SECTION: setup environment
 
 _builtin_deps_check: _builtin_require_environment
