@@ -173,9 +173,9 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail(provider_result.error)
         provider = provider_result.value
         role = (
-            c.Infra.RepositoryRole.WORKSPACE
+            c.Infra.WorkspaceMode.WORKSPACE
             if (repository_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.RepositoryRole.STANDALONE
+            else c.Infra.WorkspaceMode.STANDALONE
         )
         project_name = metadata.value.project.name
         repository = m.Infra.RepositoryRef(
@@ -183,7 +183,7 @@ class FlextInfraWorkspaceDetector(
             distribution=project_name,
             url=effective_url,
             path=path,
-            role=role,
+            workspace_mode=role,
             provider=provider.name,
             checkout=checkout,
             codegen=c.Infra.CodegenKind.CONFORM,
@@ -382,11 +382,14 @@ class FlextInfraWorkspaceDetector(
                 "project metadata and repository identity differ: "
                 f"{canonical_project_name} != {workspace.repository.distribution}"
             )
-        make_profile = (
-            c.Infra.MakeProfile.WORKSPACE
-            if (resolved_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.MakeProfile.STANDALONE
-        )
+        # `detect` is this class's own answer to the same question; deciding it
+        # a second time here is how the two vocabularies drifted apart before.
+        detected = cls().detect(resolved_root)
+        if detected.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                detected.error or "workspace detection failed"
+            )
+        make_profile = detected.value
         # The provider default is the fallback, never the answer: this
         # repository's own published integration branch decides. Line 206 of
         # this same file already derives it that way for submodule discovery;
