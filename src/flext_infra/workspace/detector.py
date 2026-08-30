@@ -110,21 +110,13 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def _provider_for_url(cls, url: str) -> p.Result[m.Infra.ProviderSpec]:
-        """Resolve one configured provider, failing closed without leaking the URL.
-
-        Every configured provider is hosted on the same forge, so the host alone
-        does not identify one: matching on it returned whichever provider came
-        first in the list, and `repository_is_governed` then rejected the
-        repository for belonging to a different organization than the one just
-        chosen for it. The organization is the discriminator, and
-        `_declared_provider_for_url` already applies it.
-        """
-        provider = cls._declared_provider_for_url(url)
-        if provider is None:
-            return r[m.Infra.ProviderSpec].fail(
-                "repository owner must resolve exactly once"
-            )
-        return r[m.Infra.ProviderSpec].ok(provider)
+        """Resolve one configured provider, failing closed without leaking the URL."""
+        declared = cls._declared_provider_for_url(url)
+        if declared is not None:
+            return r[m.Infra.ProviderSpec].ok(declared)
+        return r[m.Infra.ProviderSpec].fail(
+            "repository owner must resolve exactly once"
+        )
 
     @staticmethod
     def _gitmodule_contract(
