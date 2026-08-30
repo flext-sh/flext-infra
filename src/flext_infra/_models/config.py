@@ -251,7 +251,7 @@ class FlextInfraConfigModels:
                     "cannot express this, because the cutoff has to move to a "
                     "specific instant rather than be switched off, so the "
                     "override carries the timestamp."
-                )
+                ),
             ),
         ]
         kubectl_version: Annotated[
@@ -347,7 +347,7 @@ class FlextInfraConfigModels:
                 default_factory=immutable_empty_mapping,
                 description=(
                     "Explicit platforms a backend cannot represent in mise.lock"
-                )
+                ),
             ),
         ]
         beads: Annotated[
@@ -1845,7 +1845,8 @@ class FlextInfraConfigModels:
             t.StrMapping,
             m.Field(
                 default_factory=immutable_empty_mapping,
-                description="Per-package cooldown cutoffs as RFC 3339 timestamps"),
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
+            ),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -2172,7 +2173,8 @@ class FlextInfraConfigModels:
             t.StrMapping,
             m.Field(
                 default_factory=immutable_empty_mapping,
-                description="Per-package cooldown cutoffs as RFC 3339 timestamps"),
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
+            ),
         ]
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
@@ -2181,7 +2183,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
-                )
+                ),
             ),
         ]
         make_profile: Annotated[

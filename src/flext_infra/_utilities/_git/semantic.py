@@ -25,7 +25,7 @@ from git import (
 )
 
 from flext_core import r
-from flext_infra._utilities._git.repo import git_refresh_binary
+from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
 from flext_infra._utilities._git.worktree import FlextInfraUtilitiesGitWorktreeMixin
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -710,7 +710,7 @@ class FlextInfraUtilitiesGitSemanticMixin(FlextInfraUtilitiesGitWorktreeMixin):
         ``ok(False)`` when no repository owns the path (the expected
         non-error case), ``fail`` only on genuine probe errors.
         """
-        refreshed = git_refresh_binary()
+        refreshed = FlextInfraUtilitiesGitRepo.refresh_binary()
         if refreshed.failure:
             return r[m.Infra.GitBoolReport].fail(
                 refreshed.error or "git binary unavailable"

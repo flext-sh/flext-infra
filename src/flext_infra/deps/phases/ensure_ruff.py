@@ -33,7 +33,7 @@ class FlextInfraEnsureRuffConfigPhase:
             if (
                 project.package_name
                 and project.package_name.isidentifier()
-                and (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
+                and project.declared_subproject
             )
         })
 

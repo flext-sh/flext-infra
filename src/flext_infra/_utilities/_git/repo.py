@@ -78,9 +78,4 @@ class FlextInfraUtilitiesGitRepo:
         return opened.value
 
 
-def git_refresh_binary() -> p.Result[bool]:
-    """Refresh GitPython's binary path using the canonical repository helper."""
-    return FlextInfraUtilitiesGitRepo.refresh_binary()
-
-
-__all__: list[str] = ["FlextInfraUtilitiesGitRepo", "git_refresh_binary"]
+__all__: list[str] = ["FlextInfraUtilitiesGitRepo"]

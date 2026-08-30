@@ -17,12 +17,7 @@ if TYPE_CHECKING:
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._git.remote import redact_origin_remote
-    from ._git.repo import (
-        FlextInfraUtilitiesGitRepo,
-        git_open_repo,
-        git_refresh_binary,
-        git_repo,
-    )
+    from ._git.repo import FlextInfraUtilitiesGitRepo, git_open_repo, git_repo
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
     from ._git.semantic import FlextInfraUtilitiesGitSemanticMixin
     from ._git.semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
@@ -229,7 +224,6 @@ __all__: tuple[str, ...] = (
     "collect_silent_failure_findings",
     "collect_silent_failure_fixes",
     "git_open_repo",
-    "git_refresh_binary",
     "git_repo",
     "git_stdin",
     "redact_origin_remote",
@@ -244,12 +238,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._git": ("_git",),
             "._git.remote": ("redact_origin_remote",),
-            "._git.repo": (
-                "FlextInfraUtilitiesGitRepo",
-                "git_open_repo",
-                "git_refresh_binary",
-                "git_repo",
-            ),
+            "._git.repo": ("FlextInfraUtilitiesGitRepo", "git_open_repo", "git_repo"),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
             "._git.semantic": ("FlextInfraUtilitiesGitSemanticMixin",),
             "._git.semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),
