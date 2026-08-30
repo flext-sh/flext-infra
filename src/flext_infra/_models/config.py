@@ -241,6 +241,7 @@ class FlextInfraConfigModels:
         dependency_cooldown_overrides: Annotated[
             t.StrMapping,
             m.Field(
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Per-package cooldown cutoffs, mapping package name to an "
                     "RFC 3339 timestamp. The shared window is a single date for "
@@ -253,7 +254,7 @@ class FlextInfraConfigModels:
                     "override carries the timestamp."
                 )
             ),
-        ] = MappingProxyType({})
+        ]
         kubectl_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
         ]
@@ -344,11 +345,12 @@ class FlextInfraConfigModels:
                 ],
             ],
             m.Field(
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Explicit platforms a backend cannot represent in mise.lock"
                 )
             ),
-        ] = MappingProxyType({})
+        ]
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -1842,8 +1844,10 @@ class FlextInfraConfigModels:
         ] = ()
         dependency_cooldown_overrides: Annotated[
             t.StrMapping,
-            m.Field(description="Per-package cooldown cutoffs as RFC 3339 timestamps"),
-        ] = MappingProxyType({})
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps"),
+        ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -2167,17 +2171,20 @@ class FlextInfraConfigModels:
         ] = ()
         dependency_cooldown_overrides: Annotated[
             t.StrMapping,
-            m.Field(description="Per-package cooldown cutoffs as RFC 3339 timestamps"),
-        ] = MappingProxyType({})
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps"),
+        ]
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
+                default_factory=immutable_empty_mapping,
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
                 )
             ),
-        ] = MappingProxyType({})
+        ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
