@@ -13,7 +13,7 @@ _PROVIDER_SPEC = config.Infra.codegen.providers[0]
 
 
 def _repository(
-    distribution: str, *, role: c.Infra.RepositoryRole, path: str
+    distribution: str, *, role: c.Infra.MakeProfile, path: str
 ) -> m.Infra.RepositoryRef:
     provider = config.Infra.codegen.providers[0]
     return m.Infra.RepositoryRef(
@@ -25,12 +25,12 @@ def _repository(
         provider=provider.name,
         checkout=(
             c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE
+            if role is c.Infra.MakeProfile.WORKSPACE
             else c.Infra.CheckoutKind.SUBMODULE
         ),
         codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is not c.Infra.RepositoryRole.WORKSPACE,
-        editable=role is not c.Infra.RepositoryRole.WORKSPACE,
+        package=role is not c.Infra.MakeProfile.WORKSPACE,
+        editable=role is not c.Infra.MakeProfile.WORKSPACE,
         read_only=False,
     )
 
@@ -52,11 +52,11 @@ def _workspace() -> m.Infra.WorkspaceSpec:
         ),
         name="workspace",
         repository=_repository(
-            "workspace", role=c.Infra.RepositoryRole.WORKSPACE, path="."
+            "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
         ),
         subprojects=(
             _repository(
-                "flext-core", role=c.Infra.RepositoryRole.STANDALONE, path="flext-core"
+                "flext-core", role=c.Infra.MakeProfile.STANDALONE, path="flext-core"
             ),
         ),
     )
@@ -78,7 +78,7 @@ workspace = true
 """,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
         document = tomllib.loads(tm.ok(result))
         tm.that(document["project"]["dependencies"], eq=["flext-core"])
@@ -91,7 +91,7 @@ workspace = true
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
         document = tomllib.loads(tm.ok(result))
         tm.that(
@@ -113,7 +113,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
         )
         second = tm.ok(
@@ -121,7 +121,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
                 first,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
         )
 
@@ -144,7 +144,7 @@ constraint-dependencies = ["uv>=0"]
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
         )
 
@@ -162,7 +162,7 @@ constraint-dependencies = ["uv>=0"]
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
             workspace=invalid_workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
         tm.that(result.failure, eq=True)
 
@@ -180,7 +180,7 @@ constraint-dependencies = ["uv>=0"]
             ),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
         tm.fail(result, has="workspace dependency declares a conflicting direct source")
 
@@ -208,7 +208,7 @@ python-interpreter-path = "../.venv/bin/python"
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
                 required_dev_dependencies=required_dev,
             )
@@ -218,7 +218,7 @@ python-interpreter-path = "../.venv/bin/python"
                 first,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
                 required_dev_dependencies=required_dev,
             )
@@ -290,7 +290,7 @@ python-interpreter-path = "../.venv/bin/python"
                 'version = "0.0.1"\ndependencies = []\n',
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=project.dev,
             )
@@ -312,7 +312,7 @@ python-interpreter-path = "../.venv/bin/python"
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=project.dev,
             )
@@ -322,7 +322,7 @@ python-interpreter-path = "../.venv/bin/python"
                 first,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=project.dev,
             )
@@ -340,7 +340,7 @@ python-interpreter-path = "../.venv/bin/python"
                 'version = "0.0.1"\ndependencies = []\n',
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
             )
@@ -363,7 +363,7 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
                 required_dev_dependencies=("rumdl>=0.2.45",),
             )
@@ -390,7 +390,7 @@ dependencies = []
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
                 uv_exclude_dependencies=(exclusion,),

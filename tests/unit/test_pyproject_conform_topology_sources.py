@@ -16,7 +16,7 @@ from flext_infra import c, config, m, u
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
-_ROLE = c.Infra.RepositoryRole
+_ROLE = c.Infra.MakeProfile
 # flext-o26p: provider identity, branch and base URL come from the config SSOT,
 # never from literals repeated in the test.
 _PROVIDER_SPEC = config.Infra.codegen.providers[0]
@@ -26,7 +26,7 @@ _PROVIDER = _PROVIDER_SPEC.name
 def _repository(
     distribution: str,
     *,
-    role: c.Infra.RepositoryRole,
+    role: c.Infra.MakeProfile,
     path: str,
     checkout: c.Infra.CheckoutKind,
 ) -> m.Infra.RepositoryRef:
@@ -103,7 +103,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             _PYPROJECT,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
 
         rendered = tm.ok(result)
@@ -124,7 +124,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             external,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
 
         rendered = tm.ok(result)
@@ -151,7 +151,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             publishable_project,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
 
         rendered = tm.ok(result)
@@ -179,7 +179,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
 
         rendered = tm.ok(result)
@@ -227,7 +227,7 @@ workspace = true
                 root_source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+                workspace_mode=c.Infra.MakeProfile.WORKSPACE,
             )
         )
         consumer_rendered = tm.ok(
@@ -239,7 +239,7 @@ workspace = true
                 ),
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+                workspace_mode=c.Infra.MakeProfile.WORKSPACE,
             )
         )
         (root / c.Infra.PYPROJECT_FILENAME).write_text(root_rendered, encoding="utf-8")
@@ -285,7 +285,7 @@ workspace = true
             _PYPROJECT,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
 
         project = workspace.subprojects[0]

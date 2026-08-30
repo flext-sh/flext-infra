@@ -29,7 +29,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_link_mode: str | None = None,
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[str]:
         """Conform only internal requirements and their root workspace overlay."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -194,7 +194,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
@@ -390,7 +390,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         required_dev_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and normalize declared groups."""
@@ -452,7 +452,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> None:
         """Keep the generated workspace dependency group only at the root."""
         workspace_root = cls._is_workspace_context_root(
@@ -493,11 +493,11 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> bool:
         """Identify the root only when the active topology is a workspace."""
         return (
-            workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
+            workspace_mode is c.Infra.MakeProfile.WORKSPACE
             and cls._is_workspace_root(project_name=project_name, workspace=workspace)
         )
 
@@ -566,7 +566,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         link_mode: str | None = None,
         exclude_newer: str | None = None,
         exclude_newer_packages: t.StrSequence | None = None,
@@ -805,7 +805,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[bool]:
         """Require one internal dependency provenance for the active topology."""
         payload = u.Cli.toml_as_mapping(document)

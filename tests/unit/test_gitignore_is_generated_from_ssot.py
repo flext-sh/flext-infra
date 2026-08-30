@@ -75,7 +75,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
                 test_u.Tests.repository_ref(
                     Path(item).name,
                     path=Path(item),
-                    role=c.Infra.RepositoryRole.STANDALONE,
+                    role=c.Infra.MakeProfile.STANDALONE,
                 )
                 for item in projects
             ),
