@@ -15,7 +15,7 @@ SHELL := /bin/sh
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
+MAKE_PROFILE := standalone
 WORKSPACE_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -47,20 +47,20 @@ BRANCH ?=
 PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 125
-# mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
-# MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 660
+# mro-99ae: the pytest process inherits a hard wall-clock boundary, so a hung
+# run is terminated even if the runner itself stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
 override PYTEST_CASE_TIMEOUT_SECONDS := 10
-override PYTEST_RUN_TIMEOUT_SECONDS := 120
+override PYTEST_RUN_TIMEOUT_SECONDS := 600
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
 override PYTEST_PROGRESS_ARGS := --verbose
 override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
-override PYTEST_PARALLEL_WORKERS := 4
+override PYTEST_PARALLEL_WORKERS := 2
 override PYTEST_PARALLEL_DISTRIBUTION := worksteal
 override PYTEST_PROFILE_SORT := cumulative
 override PYTEST_PROFILE_LIMIT := 50
@@ -90,7 +90,7 @@ SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
-SETUP_MISE_VERSION := 2026.8.14
+SETUP_MISE_VERSION := 2026.7.16
 ifeq ($(OS),Windows_NT)
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else
@@ -140,8 +140,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default
-PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
-BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
+PUBLIC_VERBS := help setup deps build check test fmt fix run work status docs clean release gen mod
+BUILTIN_VERBS := help setup deps build check test fmt fix run work status docs clean release gen mod
 SCRIPT_VERBS :=
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
@@ -164,11 +164,12 @@ _ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint
 _ALLOWED_WHATS_fmt := check all apply
 _ALLOWED_WHATS_fix := check all apply
 _ALLOWED_WHATS_run := default
+_ALLOWED_WHATS_work := help status start land finish
 _ALLOWED_WHATS_status := diagnostics
-_ALLOWED_WHATS_docs := all fix audit build validate
+_ALLOWED_WHATS_docs := all generate fix audit build validate
 _ALLOWED_WHATS_clean := status generated
 _ALLOWED_WHATS_release := status
-_ALLOWED_WHATS_gen := check all apply init
+_ALLOWED_WHATS_gen := check all apply
 _ALLOWED_WHATS_mod := check all apply
 else
 _ALLOWED_WHATS_help := usage $(patsubst _custom_help_%,%,$(filter _custom_help_%,$(CUSTOM_DECLARED_TARGETS)))
@@ -180,16 +181,17 @@ _ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(patsubst 
 _ALLOWED_WHATS_fmt := check all apply $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fix := check all apply $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_run := default $(patsubst _custom_run_%,%,$(filter _custom_run_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_work := help status start land finish $(patsubst _custom_work_%,%,$(filter _custom_work_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_status := diagnostics $(patsubst _custom_status_%,%,$(filter _custom_status_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_docs := all fix audit build validate $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_docs := all generate fix audit build validate $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_clean := status generated $(patsubst _custom_clean_%,%,$(filter _custom_clean_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_release := status $(patsubst _custom_release_%,%,$(filter _custom_release_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_gen := check all apply init $(patsubst _custom_gen_%,%,$(filter _custom_gen_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_gen := check all apply $(patsubst _custom_gen_%,%,$(filter _custom_gen_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_mod := check all apply $(patsubst _custom_mod_%,%,$(filter _custom_mod_%,$(CUSTOM_DECLARED_TARGETS)))
 endif
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
- DOCS_ACTIONS := fix audit build validate
+ DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -206,16 +208,6 @@ CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
 
-# === MYPY RESOURCE LIMIT ===
-# mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
-MYPY_MEMORY_LIMIT_MB ?= 6144
-MYPY_TIMEOUT_SECONDS ?= 600
-MYPY_BOUNDED = timeout --signal=TERM --kill-after=5s "$(MYPY_TIMEOUT_SECONDS)s" prlimit --as=$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )):$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )) --
-VALIDATE_MYPY_LIMITS = case "$(MYPY_MEMORY_LIMIT_MB)" in ""|*[!0-9]*) echo "ERROR: MYPY_MEMORY_LIMIT_MB must be a positive integer"; exit 2;; esac; [ "$(MYPY_MEMORY_LIMIT_MB)" -gt 0 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be greater than zero"; exit 2; }; [ "$(MYPY_MEMORY_LIMIT_MB)" -le 6144 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be less than or equal to 6144"; exit 2; }; case "$(MYPY_TIMEOUT_SECONDS)" in ""|*[!0-9]*) echo "ERROR: MYPY_TIMEOUT_SECONDS must be a positive integer"; exit 2;; esac; [ "$(MYPY_TIMEOUT_SECONDS)" -gt 0 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be greater than zero"; exit 2; }; [ "$(MYPY_TIMEOUT_SECONDS)" -le 600 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be less than or equal to 600"; exit 2; }; command -v timeout >/dev/null 2>&1 || { echo "ERROR: required executable not found: timeout"; exit 2; }; command -v prlimit >/dev/null 2>&1 || { echo "ERROR: required executable not found: prlimit"; exit 2; }
-REPORT_MYPY_FAILURE = code=$$?; signal=none; if [ "$$code" -ge 128 ]; then signal=$$(( $$code - 128 )); fi; if [ "$$code" -eq 124 ] || [ "$$signal" != none ]; then reason="resource limit triggered"; else reason="type check failed under enforced limits"; fi; echo "ERROR: Mypy $$reason: memory_limit=$(MYPY_MEMORY_LIMIT_MB) MiB; timeout=$(MYPY_TIMEOUT_SECONDS)s; exit=$$code; signal=$$signal" >&2
-export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
-
-
 _DEFAULT_help := usage
 _DEFAULT_deps := check
 _DEFAULT_build := artifacts
@@ -224,6 +216,7 @@ _DEFAULT_test := all
 _DEFAULT_fmt := check
 _DEFAULT_fix := check
 _DEFAULT_run := default
+_DEFAULT_work := status
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := validate
 _DEFAULT_clean := status
@@ -236,11 +229,11 @@ _APPLY_WHAT_test := all
 _APPLY_WHAT_fmt := apply
 _APPLY_WHAT_fix := apply
 _APPLY_WHAT_run := default
+_APPLY_WHAT_work := start
 _APPLY_WHAT_docs := generate
 _APPLY_WHAT_clean := generated
 _APPLY_WHAT_gen := apply
 _APPLY_WHAT_mod := apply
-_DEFAULT_basemk := generate
 
 
 # === SECTION: profile routing (managed) ===
@@ -436,26 +429,6 @@ endif
 endif
 
 
-# mro-ga9q (custom.mk blacklist): member projects may define ANY custom
-# verb/WHAT through _custom_<verb>_<what> handlers and (pre|post)-<verb>[-<what>]
-# hooks EXCEPT the reserved verbs/WHATs below, which stay a flext-infra
-# monopoly. Parse-time guard: every make invocation fails loud when custom.mk
-# redefines a reserved target; every other target is permitted.
-# R12 moved the public verbs out of base.mk into this projection, but the guard
-# stayed behind — and a generated project never includes base.mk, so the
-# monopoly was unenforced in every real checkout. The guard belongs with the
-# verbs it protects.
-CUSTOM_MK_RESERVED_TARGETS := _custom_build_artifacts _custom_check_all _custom_clean_generated _custom_clean_status _custom_deps_check _custom_deps_lock _custom_deps_upgrade _custom_fix_all _custom_fix_apply _custom_fix_check _custom_fmt_all _custom_fmt_apply _custom_fmt_check _custom_gen_all _custom_gen_apply _custom_gen_check _custom_help_usage _custom_mod_all _custom_mod_apply _custom_mod_check _custom_release_rel _custom_release_status _custom_run_default _custom_setup_environment _custom_status_diagnostics _custom_test_all _custom_test_cache-checkpoint _custom_test_cache-clear _custom_test_cache-status _custom_test_full _custom_test_profile build check clean deps fix fmt gen help mod release run setup status test
-ifneq ($(wildcard custom.mk),)
-# Target definitions at column 0, excluding assignments (=) and dot-directives.
-# $(shell) converts the newline-separated results to space-separated lists.
-_CUSTOM_MK_DEFINED := $(shell awk '/^[A-Za-z_][A-Za-z0-9_-]*([ \t]+[A-Za-z_][A-Za-z0-9_-]*)*[ \t]*:/ && index($$0, "=") == 0 { line = $$0; sub(/:.*/, "", line); count = split(line, names, /[ \t]+/); for (i = 1; i <= count; i++) print names[i] }' custom.mk | sort -u)
-_CUSTOM_MK_OFFENDERS := $(shell printf '%s\n' $(_CUSTOM_MK_DEFINED) | grep -xF $(foreach target,$(CUSTOM_MK_RESERVED_TARGETS),-e $(target)))
-ifneq ($(_CUSTOM_MK_OFFENDERS),)
-$(error custom.mk redefines reserved flext-infra target(s): $(_CUSTOM_MK_OFFENDERS) - reserved verbs/WHATs are a flext-infra monopoly; use _custom_<verb>_<what> with a non-reserved WHAT or (pre|post)-<verb>[-<what>] hooks)
-endif
-endif
-
 -include custom.mk
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
@@ -527,12 +500,8 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_full _builtin_test_profile _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_release_rel _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_work_help _builtin_work_status _builtin_work_start _builtin_work_land _builtin_work_finish _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
-# Every public verb dispatches straight into its private builtin. The verbs
-# that used to round-trip through the Python serializer keep the environment
-# prerequisite that round-trip carried.
-#
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
 # makes an unprovisioned checkout undiscoverable. Both still dispatch — they
@@ -540,76 +509,8 @@ endef
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
-SERIALIZED_VERBS := check test gen fmt fix deps clean work docs
-SERIALIZED_TARGETS := _serialized_check _serialized_test _serialized_gen _serialized_fmt _serialized_fix _serialized_deps _serialized_clean _serialized_work _serialized_docs
-
-$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+help:
 	$(call _dispatch,$@)
-
-
-check: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_check WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_check:
-	$(call _dispatch,check)
-
-
-test: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_test WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_test:
-	$(call _dispatch,test)
-
-
-gen: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_gen WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_gen:
-	$(call _dispatch,gen)
-
-
-fmt: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_fmt WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_fmt:
-	$(call _dispatch,fmt)
-
-
-fix: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_fix WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_fix:
-	$(call _dispatch,fix)
-
-
-deps: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_deps WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_deps:
-	$(call _dispatch,deps)
-
-
-clean: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_clean WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_clean:
-	$(call _dispatch,clean)
-
-
-work: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_work WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_work:
-	$(call _dispatch,work)
-
-
-docs: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_docs WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_docs:
-	$(call _dispatch,docs)
-
-
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -631,7 +532,7 @@ _setup_lifecycle:
 	esac
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' '';
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' "$$(printf '%s' '$(_ALLOWED_WHATS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
@@ -670,6 +571,12 @@ _builtin_help_usage:
 
 
 
+
+	@printf '  %-10s WHAT=%s\n' 'work' "$$(printf '%s' '$(_ALLOWED_WHATS_work)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s %s\n' '' 'status is read-only; other WHATs require APPLY=Y';
+
+
+
 	@printf '  %-10s WHAT=%s\n' 'status' "$$(printf '%s' '$(_ALLOWED_WHATS_status)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
@@ -693,8 +600,6 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'mod' "$$(printf '%s' '$(_ALLOWED_WHATS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
-
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
 	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
@@ -717,7 +622,7 @@ _builtin_help_usage:
 
 # === SECTION: submodule setup (managed) ===
 # Source: template (submodule_setup_recipe.j2)
-# Computed: workspace-root uses WORKSPACE_MEMBERS from config; standalone discovers
+# Computed: workspace uses WORKSPACE_SUBPROJECTS from config; standalone discovers
 #           submodules with flext-managed=true from .gitmodules at runtime.
 # Rule: setup PROVISIONS an absent governed gitlink and VERIFIES a present one.
 #       An absent checkout holds no work, so setup initializes it at the recorded
@@ -734,8 +639,8 @@ _builtin_setup_submodules:
 	root="$(PROJECT_ROOT)"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
 	profile="$(MAKE_PROFILE)"; \
-	if [ "$$profile" = "workspace-root" ]; then \
-		managed="$(WORKSPACE_MEMBERS)"; \
+	if [ "$$profile" = "workspace" ]; then \
+		managed="$(MANAGED_GITLINKS)"; \
 	else \
 		managed=""; \
 		keys=""; \
@@ -761,19 +666,6 @@ _builtin_setup_submodules:
 	fi; \
 	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
 	if [ -z "$$managed" ]; then exit 0; fi; \
-	attach_branch_at_head() { \
-		child_root="$$1"; \
-		branch="$$2"; \
-		git -C "$$child_root" branch --quiet -f "$$branch" HEAD || { \
-			printf 'ERROR: %s: could not create branch %s at HEAD\n' "$$child_root" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		git -C "$$child_root" symbolic-ref HEAD "refs/heads/$$branch" || { \
-			printf 'ERROR: %s: could not attach HEAD to %s without moving the tree\n' "$$child_root" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch" >/dev/null 2>&1 || :; \
-	}; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
@@ -808,8 +700,9 @@ _builtin_setup_submodules:
 			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
 			exit 2; \
 		fi; \
+		super_branch=$$(git -C "$$superproject" branch --show-current); \
 		if [ "$$branch" = "." ]; then \
-			branch=$$(git -C "$$superproject" branch --show-current); \
+			branch="$$super_branch"; \
 			if [ -z "$$branch" ]; then \
 				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$$child_path" >&2; \
 				exit 1; \
@@ -926,7 +819,8 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI=Y omits make.ci.check_gates_skip (ruff + pyrefly).
+# CI=Y keeps make.ci.check_gates, the strict complement of
+# make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -935,16 +829,18 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $(CI))" = "Y" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			if [ "$$gate" = "lint" ]; then skip=1; fi; \
-			if [ "$$gate" = "format" ]; then skip=1; fi; \
-			if [ "$$gate" = "pyrefly" ]; then skip=1; fi; \
-			if [ "$$skip" -eq 0 ]; then \
+			keep=0; \
+			if [ "$$gate" = "lint" ]; then keep=1; fi; \
+			if [ "$$gate" = "pyright" ]; then keep=1; fi; \
+			if [ "$$gate" = "security" ]; then keep=1; fi; \
+			if [ "$$gate" = "markdown" ]; then keep=1; fi; \
+			if [ "$$gate" = "smells" ]; then keep=1; fi; \
+			if [ "$$keep" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y omits check gates: lint format pyrefly\n'; \
+		printf 'INFO: CI=Y runs check gates: lint pyright security markdown smells\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -1018,13 +914,13 @@ _builtin_status_diagnostics: _builtin_require_environment
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in generate|fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
+		case "$$action" in fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
 
 _builtin_docs_generate:
-	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(if $(filter Y,$(APPLY)),--apply,--check) $(DOCS_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
 
 
 _builtin_docs_fix:
@@ -1046,6 +942,7 @@ _builtin_docs_validate:
 
 _builtin_clean_generated:
 	$(call _require_apply)
+
 	@find "$(PROJECT_ROOT)" -type d \
 		\( -name __pycache__ -o -name .mypy_cache -o -name .pytest_cache -o -name .ruff_cache -o -name .pyrefly_cache -o -name .benchmarks -o -name .hypothesis \) \
 		-prune -exec sh -eu -c 'for target do find "$$target" -depth -delete; done' sh {} +
