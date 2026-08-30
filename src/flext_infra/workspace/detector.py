@@ -376,6 +376,22 @@ class FlextInfraWorkspaceDetector(
             if (resolved_root / c.Infra.GITMODULES).is_file()
             else c.Infra.MakeProfile.STANDALONE
         )
+        # The provider default is the fallback, never the answer: this
+        # repository's own published integration branch decides. Line 206 of
+        # this same file already derives it that way for submodule discovery;
+        # the conform target must not disagree with it.
+        baseline_result = u.Infra.repository_baseline_branch(
+            resolved_root,
+            fallback=provider.branch,
+            preference=(
+                config.Infra.codegen.branch_policy.integration_branch_preference
+            ),
+        )
+        if baseline_result.failure:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                baseline_result.error
+                or f"integration baseline resolution failed: {resolved_root}"
+            )
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,
@@ -383,7 +399,7 @@ class FlextInfraWorkspaceDetector(
                 make_profile=make_profile,
                 beads=workspace.beads,
                 canonical_project_name=canonical_project_name,
-                baseline_branch=provider.branch,
+                baseline_branch=baseline_result.value,
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
