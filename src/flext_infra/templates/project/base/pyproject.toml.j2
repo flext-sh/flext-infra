@@ -390,6 +390,14 @@ whitelines = {{ tooling.tools.yamlfix.whitelines }}
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
 exclude-newer = "{{ uv_exclude_newer }}"
+{% if workspace_mode == "standalone" %}
+# Self-rooted workspace: stops uv's parent-directory walk-up, so a checkout
+# nested under a repository that declares [tool.uv.workspace] resolves its
+# own dependencies from its own lock instead of being adopted as an editable
+# member of the enclosing workspace.
+[tool.uv.workspace]
+members = []
+{% endif %}
 {# A bare exemption renders `false` (waive the cooldown). An override renders a
    timestamp, for a floor published after the shared cutoff: uv then reports the
    requirement unsatisfiable and names this key as the remedy, so the cutoff has
