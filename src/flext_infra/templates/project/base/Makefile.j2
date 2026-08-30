@@ -444,6 +444,14 @@ define _run_for_selected_projects
 	done
 endef
 
+# Both lists derive from make.serialization.verbs: the verbs that own an
+# explicit serialized rule below, and the internal targets those rules run.
+# Without them the generic dispatch rule matched every verb, colliding with
+# each explicit rule ("overriding recipe for target") and leaving $(filter-out)
+# nothing to remove.
+SERIALIZED_VERBS :={% for verb in make.serialization.verbs %} {{ verb }}{% endfor %}
+SERIALIZED_TARGETS :={% for verb in make.serialization.verbs %} _serialized_{{ verb }}{% endfor %}
+
 .PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
 $(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
@@ -528,6 +536,7 @@ _builtin_require_environment:
 # Setup always reconciles directly from the lock. The venv is created when
 # missing and is never cleared while present, because a concurrent lane may be
 # running against it.
+ifeq ($(MAKE_PROFILE),workspace-root)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
