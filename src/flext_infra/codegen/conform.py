@@ -1559,11 +1559,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Make contract as Makefile; they do not require scaffold-only
             # project metadata.
             make_context = FlextInfraCodegenConform.make_render_context(
-                repository,
-                target,
-                workspace,
-                codegen,
-                tooling_runtime=tooling_runtime,
+                repository, target, workspace, codegen, tooling_runtime=tooling_runtime
             )
             if make_context.failure:
                 return r[p.Model].fail(
