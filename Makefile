@@ -48,8 +48,8 @@ PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_PROCESS_TIMEOUT_SECONDS ?= 660
-# mro-99ae: the pytest process inherits a hard wall-clock boundary so a hung
-# run is terminated even if the typed runner stalls.
+# mro-99ae: the pytest process inherits a hard wall-clock boundary, so a hung
+# run is terminated even if the runner itself stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
 override PYTEST_CASE_TIMEOUT_SECONDS := 10
@@ -140,8 +140,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default
-PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
-BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
+PUBLIC_VERBS := help setup deps build check test fmt fix run work status docs clean release gen mod
+BUILTIN_VERBS := help setup deps build check test fmt fix run work status docs clean release gen mod
 SCRIPT_VERBS :=
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
@@ -164,8 +164,9 @@ _ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint
 _ALLOWED_WHATS_fmt := check all apply
 _ALLOWED_WHATS_fix := check all apply
 _ALLOWED_WHATS_run := default
+_ALLOWED_WHATS_work := help status start land finish
 _ALLOWED_WHATS_status := diagnostics
-_ALLOWED_WHATS_docs := all fix audit build validate
+_ALLOWED_WHATS_docs := all generate fix audit build validate
 _ALLOWED_WHATS_clean := status generated
 _ALLOWED_WHATS_release := status
 _ALLOWED_WHATS_gen := check all apply init
@@ -180,8 +181,9 @@ _ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(patsubst 
 _ALLOWED_WHATS_fmt := check all apply $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fix := check all apply $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_run := default $(patsubst _custom_run_%,%,$(filter _custom_run_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_work := help status start land finish $(patsubst _custom_work_%,%,$(filter _custom_work_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_status := diagnostics $(patsubst _custom_status_%,%,$(filter _custom_status_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_docs := all fix audit build validate $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_docs := all generate fix audit build validate $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_clean := status generated $(patsubst _custom_clean_%,%,$(filter _custom_clean_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_release := status $(patsubst _custom_release_%,%,$(filter _custom_release_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_gen := check all apply init $(patsubst _custom_gen_%,%,$(filter _custom_gen_%,$(CUSTOM_DECLARED_TARGETS)))
@@ -189,7 +191,7 @@ _ALLOWED_WHATS_mod := check all apply $(patsubst _custom_mod_%,%,$(filter _custo
 endif
 CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
 CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
- DOCS_ACTIONS := fix audit build validate
+ DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -214,6 +216,7 @@ _DEFAULT_test := all
 _DEFAULT_fmt := check
 _DEFAULT_fix := check
 _DEFAULT_run := default
+_DEFAULT_work := status
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := validate
 _DEFAULT_clean := status
@@ -226,14 +229,16 @@ _APPLY_WHAT_test := all
 _APPLY_WHAT_fmt := apply
 _APPLY_WHAT_fix := apply
 _APPLY_WHAT_run := default
-_APPLY_WHAT_docs := fix
+_APPLY_WHAT_work := start
+_APPLY_WHAT_docs := generate
 _APPLY_WHAT_clean := generated
 _APPLY_WHAT_gen := apply
 _APPLY_WHAT_mod := apply
 
 
 # === SECTION: profile routing (managed) ===
-# Source: computed from .gitmodules (workspace) vs its absence (standalone).
+# Source: repository topology. workspace has .gitmodules; standalone does not.
+# Both own their runtime in PROJECT_ROOT.
 ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
@@ -489,14 +494,17 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_work_help _builtin_work_status _builtin_work_start _builtin_work_land _builtin_work_finish _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
+# `setup` builds the environment it would otherwise require. `help` documents
+# how to build it, so demanding an interpreter to print that documentation
+# makes an unprovisioned checkout undiscoverable. Both still dispatch — they
+# only drop the prerequisite.
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
 help:
 	$(call _dispatch,$@)
-
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -554,6 +562,12 @@ _builtin_help_usage:
 
 
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'run' "$$(printf '%s' '$(_ALLOWED_WHATS_run)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+
+
+
+
+	@printf '  %-10s WHAT=%s\n' 'work' "$$(printf '%s' '$(_ALLOWED_WHATS_work)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s %s\n' '' 'status is read-only; other WHATs require APPLY=Y';
 
 
 
@@ -799,7 +813,8 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI=Y omits make.ci.local_check_gates (ruff + pyrefly).
+# CI=Y keeps make.ci.check_gates, the strict complement of
+# make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -808,15 +823,18 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $(CI))" = "Y" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			if [ "$$gate" = "pyrefly" ]; then skip=1; fi; \
-			if [ "$$gate" = "mypy" ]; then skip=1; fi; \
-			if [ "$$skip" -eq 0 ]; then \
+			keep=0; \
+			if [ "$$gate" = "lint" ]; then keep=1; fi; \
+			if [ "$$gate" = "pyright" ]; then keep=1; fi; \
+			if [ "$$gate" = "security" ]; then keep=1; fi; \
+			if [ "$$gate" = "markdown" ]; then keep=1; fi; \
+			if [ "$$gate" = "smells" ]; then keep=1; fi; \
+			if [ "$$keep" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y omits check gates: pyrefly mypy\n'; \
+		printf 'INFO: CI=Y runs check gates: lint pyright security markdown smells\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -874,11 +892,9 @@ _builtin_fix_apply: _builtin_fix_all
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
-ATTACHED_MEMBER :=
-
 _builtin_status_diagnostics: _builtin_require_environment
-	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
+	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
+		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
@@ -892,6 +908,10 @@ _builtin_docs_all:
 		case "$$action" in fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
+
+
+_builtin_docs_generate:
+	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
 
 
 _builtin_docs_fix:
@@ -1069,17 +1089,28 @@ _builtin_gen_check: _builtin_require_environment
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
 
-_builtin_work_start:
+_builtin_gen_init:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
-_builtin_work_land:
+_builtin_gen_all:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	$(call _generated_docs,--apply)
 	$(call _mise_launcher_apply)
 	$(call _mise_lock_apply)
 	$(call _mise_artifacts_check)
+
+_builtin_gen_apply: _builtin_gen_all
+
+_builtin_work_start:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+
+_builtin_work_land:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation land --bead "$(BEAD)" --apply
 
 _builtin_work_finish:
 	$(call _require_apply)

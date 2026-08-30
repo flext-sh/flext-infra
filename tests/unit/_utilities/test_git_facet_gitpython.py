@@ -11,6 +11,11 @@ from flext_tests import tm
 from tests import u as test_u
 
 
+def _no_executable(_name: str) -> str | None:
+    """Stand in for ``shutil.which`` when the executable is absent."""
+    return None
+
+
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
@@ -151,12 +156,19 @@ class TestsFlextInfraGitFacet:
     ) -> None:
         """Missing git on PATH must Result.fail without raising."""
         monkeypatch.setattr(
-            "flext_infra._utilities._git.repo.shutil.which", lambda _name: None
+            "flext_infra._utilities._git.repo.shutil.which",
+            _no_executable,
         )
         result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure
         assert result.error is not None
         assert "git executable not found" in result.error
+
+    def test_refresh_binary_reports_the_resolved_executable(self) -> None:
+        """The public facet refreshes the Git binary it will then use."""
+        refreshed = u.Infra.refresh_binary()
+        tm.ok(refreshed)
+        tm.that(refreshed.value, eq=True)
 
     def test_remove_clean_worktree_preserves_primary_submodule_state(
         self, tmp_path: Path

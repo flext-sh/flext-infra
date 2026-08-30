@@ -1,7 +1,7 @@
 id: rename-workspace-make-profile
 language: Python
 severity: error
-message: the .gitmodules topology is named workspace, not workspace
+message: MakeProfile is workspace or standalone; workspace-root is extinct
 rule:
   pattern: c.Infra.MakeProfile.WORKSPACE
 fix: c.Infra.MakeProfile.WORKSPACE

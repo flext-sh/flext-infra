@@ -51,8 +51,8 @@ PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
-# mro-99ae: the pytest process inherits a hard wall-clock boundary so a hung
-# run is terminated even if the typed runner stalls.
+# mro-99ae: the pytest process inherits a hard wall-clock boundary, so a hung
+# run is terminated even if the runner itself stalls.
 PYTEST_BOUNDED = {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
 override PYTEST_CASE_TIMEOUT_SECONDS := {{ pytest.case_timeout_seconds }}
@@ -199,7 +199,8 @@ _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor %}
 
 # === SECTION: profile routing (managed) ===
-# Source: computed from .gitmodules (workspace) vs its absence (standalone).
+# Source: repository topology. workspace has .gitmodules; standalone does not.
+# Both own their runtime in PROJECT_ROOT.
 ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
@@ -438,12 +439,15 @@ endef
 
 .PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
+# `setup` builds the environment it would otherwise require. `help` documents
+# how to build it, so demanding an interpreter to print that documentation
+# makes an unprovisioned checkout undiscoverable. Both still dispatch — they
+# only drop the prerequisite.
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
 help:
 	$(call _dispatch,$@)
-
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -558,7 +562,7 @@ _builtin_build_artifacts:
 
 # Read-only by contract in every profile: mutation belongs to `make fix
 # APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
-# omits make.ci.local_check_gates before orchestrating members (same contract as
+# keeps make.ci.check_gates before orchestrating members (same contract as
 # standalone/member Makefiles and flext_infra check run).
 _builtin_check_all: _builtin_require_environment
 	@if [ -n "$(strip $(APPLYING))" ]; then \
@@ -571,16 +575,16 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.local_check_gates -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
+			keep=0; \
+			{% for allowed in make.ci.check_gates -%}
+			if [ "$$gate" = "{{ allowed }}" ]; then keep=1; fi; \
 			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
+			if [ "$$keep" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.local_check_gates %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for allowed in make.ci.check_gates %} {{ allowed }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
@@ -628,7 +632,8 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI={{ make.ci.value }} omits make.ci.local_check_gates (ruff + pyrefly).
+# CI={{ make.ci.value }} keeps make.ci.check_gates, the strict complement of
+# make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -637,16 +642,16 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			{% for skipped in make.ci.local_check_gates -%}
-			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
+			keep=0; \
+			{% for allowed in make.ci.check_gates -%}
+			if [ "$$gate" = "{{ allowed }}" ]; then keep=1; fi; \
 			{% endfor -%}
-			if [ "$$skip" -eq 0 ]; then \
+			if [ "$$keep" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.local_check_gates %} {{ skipped }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for allowed in make.ci.check_gates %} {{ allowed }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -698,11 +703,9 @@ _builtin_fix_apply: _builtin_fix_all
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
-ATTACHED_MEMBER :=
-
 _builtin_status_diagnostics: _builtin_require_environment
-	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
+	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
+		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
@@ -881,17 +884,28 @@ _builtin_gen_check: _builtin_require_environment
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
 
-_builtin_work_start:
+_builtin_gen_init:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
-_builtin_work_land:
+_builtin_gen_all:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	$(call _generated_docs,--apply)
 	$(call _mise_launcher_apply)
 	$(call _mise_lock_apply)
 	$(call _mise_artifacts_check)
+
+_builtin_gen_apply: _builtin_gen_all
+
+_builtin_work_start:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+
+_builtin_work_land:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation land --bead "$(BEAD)" --apply
 
 _builtin_work_finish:
 	$(call _require_apply)
