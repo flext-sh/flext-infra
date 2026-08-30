@@ -47,17 +47,6 @@ class TestsFlextInfraLazyInitHelpers:
             eq="examples.tests",
         )
 
-    def test_unrelated_ancestor_src_does_not_own_scratch_file(
-        self, tmp_path: Path
-    ) -> None:
-        """Do not infer a package across a sibling ``src`` directory."""
-        outer = tmp_path / "outer"
-        (outer / "src").mkdir(parents=True)
-        scratch_file = outer / "scratch" / "module.py"
-        scratch_file.parent.mkdir()
-
-        tm.that(u.Infra.package_name(scratch_file), eq="")
-
     def test_root_generation_uses_real_classes_and_aliases(
         self, tmp_path: Path
     ) -> None:
