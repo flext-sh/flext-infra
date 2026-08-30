@@ -111,7 +111,6 @@ class FlextInfraWorkspaceDetector(
     @classmethod
     def _provider_for_url(cls, url: str) -> p.Result[m.Infra.ProviderSpec]:
         """Resolve one configured provider, failing closed without leaking the URL."""
-        parsed_host_marker = url
         for provider in config.Infra.codegen.providers:
             provider_url = urlparse(provider.base_url)
             if (
