@@ -24,7 +24,7 @@ WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
 WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
-MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
+MANAGED_GITLINKS :={% if make_profile == workspace_profile %}$(WORKSPACE_SUBPROJECTS){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
@@ -101,7 +101,7 @@ TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
 override SETUP_MISE := $(TRACKED_MISE)
 MISE_LOCK_PLATFORMS := {{ mise_lock_platforms | join(",") }}
-MISE_LOCK_PROJECTS := .{% if make_profile == "workspace" %}{% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}{% endif %}
+MISE_LOCK_PROJECTS := .{% if make_profile == workspace_profile %}{% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}{% endif %}
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
 # make work targets a member checkout when PROJECT names a workspace member and
@@ -201,7 +201,7 @@ _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 # === SECTION: profile routing (managed) ===
 # Source: repository topology. workspace has .gitmodules; standalone does not.
 # Both own their runtime in PROJECT_ROOT.
-ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
+ifneq ($(filter $(MAKE_PROFILE),{% for profile in make_profiles %}{{ profile }}{% if not loop.last %} {% endif %}{% endfor %}),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
@@ -303,7 +303,7 @@ REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
 # declared subprojects. Selecting the root (PROJECT=.) would make it orchestrate
 # itself forever; map `.` to WORKSPACE_SUBPROJECTS instead of failing closed mid-CI.
 DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS){% if make_profile != "workspace" %} .{% endif %}
-{% if make_profile == "workspace" %}
+{% if make_profile == workspace_profile %}
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
 {% else %}
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
@@ -556,7 +556,7 @@ _builtin_deps_upgrade: _builtin_require_environment
 		--apply --rewrite-constraints --skip-check "$$@"
 	$(call _run_for_selected_projects,)
 
-{% if make_profile == "workspace" %}
+{% if make_profile == workspace_profile %}
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 

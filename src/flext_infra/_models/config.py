@@ -1804,6 +1804,21 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
+
+        @m.computed_field
+        @property
+        def make_profiles(self) -> tuple[str, ...]:
+            """Every accepted profile, so the template never spells them."""
+            return tuple(
+                profile.value
+                for profile in FlextInfraConstantsCodegenProject.MakeProfile
+            )
+
+        @m.computed_field
+        @property
+        def workspace_profile(self) -> str:
+            """The profile a checkout with ``.gitmodules`` resolves to."""
+            return FlextInfraConstantsCodegenProject.MakeProfile.WORKSPACE.value
         workspace_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
