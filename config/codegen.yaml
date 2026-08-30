@@ -1659,6 +1659,11 @@ Infra:
             - ".venv"
             - ".venv/"
             - ".bin/"
+            # Repo-root bin/: only the mise bootstrap pair is tracked; every
+            # other entry (venv shims, local symlinks) is machine-local.
+            - "/bin/*"
+            - "!/bin/mise"
+            - "!/bin/mise.cmd"
             - ".tools/"
             - "__pycache__/"
             - "base.mk"
