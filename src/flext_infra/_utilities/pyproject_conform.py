@@ -90,6 +90,7 @@ class FlextInfraUtilitiesPyprojectConform:
             exclude_newer_packages=toolchain.dependency_cooldown_exclusions,
             exclude_newer_overrides=toolchain.dependency_cooldown_overrides,
             exclude_dependencies=uv_exclude_dependencies,
+            uv_environments=toolchain.uv_environments,
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
@@ -572,6 +573,7 @@ class FlextInfraUtilitiesPyprojectConform:
         exclude_newer_overrides: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
+        uv_environments: t.StrSequence = (),
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         workspace_root = cls._is_workspace_context_root(
@@ -625,6 +627,15 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         if exclude_newer is not None:
             u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
+        # Environments come from the fleet toolchain SSOT: an empty declaration
+        # removes the key so uv resolves every environment, and a declared
+        # sequence skips the splits the fleet does not support (win32 resolves
+        # meltano's structlog cap against flext-core's floor and is
+        # unsatisfiable).
+        if uv_environments:
+            u.Cli.toml_sync_value(uv, "environments", list(uv_environments))
+        else:
+            u.Cli.toml_remove_key_if_present(uv, "environments")
         # Two shapes share this uv key. A bare exemption is `false` (waive the
         # cooldown entirely, for a reviewed security floor). An override is a
         # timestamp, needed when the shared cutoff predates a floor the project
