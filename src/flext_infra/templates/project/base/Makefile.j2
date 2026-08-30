@@ -1,6 +1,5 @@
 {% from "base_test_report_recipe.j2" import test_report_recipe -%}
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
-{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe -%}
 # @flext-managed: continuous
 # @flext-regenerate: make gen WHAT=apply APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
@@ -30,7 +29,7 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
 
 # === SECTION: user overrides (managed) ===
-# Source: template (canonical public invocation knobs)
+# Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 {{ make.apply_variable }} ?= {{ make.apply_absent_value }}
 # The seeded absent value means "not applying", so every guard compares against
@@ -51,7 +50,7 @@ PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
 PYTEST_PROCESS_TIMEOUT_SECONDS ?= {{ pytest_process_timeout_seconds }}
-# The pytest process inherits a hard wall-clock boundary, mirroring
+# mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
 # MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
 PYTEST_BOUNDED = {{ timeout_command }} --signal=TERM --kill-after={{ timeout_kill_after_seconds }}s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
@@ -79,21 +78,15 @@ override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 override export FLEXT_PYTEST_COV_RAW := $(value COV)
 WHAT ?=
-# The explicit lazy-init selector is a hermetic, target-local transformation.
-# Detect it before any parse-time topology probes so the public invocation and
-# its recursive builtin never consult Git, worktrees, remotes, or a parent
-# workspace merely to regenerate Python package initializers.
-GEN_INIT_ONLY := $(if $(and $(filter init,$(WHAT)),$(filter gen _builtin_gen_init,$(MAKECMDGOALS))),Y,)
-SETUP_BOOTSTRAP_ONLY := $(if $(filter setup _bootstrap_setup_tools,$(MAKECMDGOALS)),Y,)
 # End SECTION: user overrides
 
 # === SECTION: derived paths (managed) ===
 # Source: computed (git rev-parse, MAKEFILE_LIST, abspath)
 # Rule: PROJECT_ROOT is the checkout that OWNS this Makefile, never the caller's
-# CWD. Deriving it from `pwd -P` made a subproject validate whatever tree the
-# caller happened to stand in: `make -f <subproject>/Makefile` invoked from the
+# CWD. Deriving it from `pwd -P` made a member validate whatever tree the
+# caller happened to stand in: `make -f <member>/Makefile` invoked from the
 # superproject resolved RUFF_PATHS to the SUPERPROJECT's src/tests, so the
-# subproject linted files it does not even contain. With many shared worktrees that
+# member linted files it does not even contain. With many shared worktrees that
 # silently validates the wrong tree.
 SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
@@ -110,26 +103,45 @@ MISE_LOCK_PLATFORMS := {{ mise_lock_platforms | join(",") }}
 MISE_LOCK_PROJECTS := .{% if make_profile == "workspace" %}{% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}{% endif %}
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# === SECTION: WORKSPACE_ROOT isolation (managed) ===
-# Source: the checkout that owns this Makefile.
-# Rule: a linked worktree is its own writable lane. Parent, superproject and
-# primary-worktree discovery never redirect generated writes or runtime state.
-WORKSPACE_ROOT := $(PROJECT_ROOT)
-# End SECTION: WORKSPACE_ROOT isolation
-# A workspace lane is always registered at the workspace root. Other verbs may
-# select a subproject through PROJECT while workspace orchestration keeps the root
-# so one Git worktree owns the complete project matrix.
+# make work targets a member checkout when PROJECT names a workspace member and
+# WORKSPACE was not overridden on the command line. PROJECT alone used to keep
+# WORKSPACE at the workspace root, so finish looked up lanes in the wrong git
+# primary and failed with "worktree branch is not registered".
 ifeq ($(filter command line override,$(origin WORKSPACE)),)
 ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_SUBPROJECTS)),)
+ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
+override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
+endif
+endif
+endif
+# === SECTION: WORKSPACE_ROOT isolation (managed) ===
+# Source: computed (rule: derive from current checkout unless caller overrides)
+# Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
+# caller passed it on the command line or via an override origin. An inherited
+# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
+# must never redirect verbs to another working tree. The git queries therefore
+# run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
+# checkout's topology and redirect the verb to the wrong tree.
+ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
+WORKSPACE_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
+endif
+# End SECTION: WORKSPACE_ROOT isolation
+# A workspace lane is always registered at the workspace root. Other verbs may
+# select a member through PROJECT while workspace orchestration keeps the root
+# so one Git worktree owns the complete project matrix.
+ifneq ($(filter work,$(MAKECMDGOALS)),work)
+ifeq ($(filter command line override,$(origin WORKSPACE)),)
+ifneq ($(strip $(PROJECT)),)
+ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
 override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
+endif
 endif
 endif
 endif
 
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
-#        config:make.check_gates_default
+#        config:make.check_gates_default, config:make.serialization.verbs
 PUBLIC_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}{% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
 SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
@@ -171,6 +183,8 @@ CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
 
+{% include "base_mypy_limit.mk.j2" %}
+
 {% for verb in make.verbs if verb.name != "setup" -%}
 _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor -%}
@@ -186,12 +200,19 @@ _DEFAULT_{{ verb.name }} := {{ verb.default_what }}
 {% endfor %}
 
 # === SECTION: profile routing (managed) ===
-# Source: repository-local profile selected from its own .gitmodules.
-ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
+# Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
+# Rule: workspace-member delegates runtime to the principal (RUNTIME_ROOT is
+# the governing workspace root); workspace-root and standalone own their
+# runtime locally. An attached member is never promoted to a local runtime.
+ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
+ifeq ($(MAKE_PROFILE),workspace-member)
+RUNTIME_ROOT := $(WORKSPACE_ROOT)
+else
 RUNTIME_ROOT := $(PROJECT_ROOT)
+endif
 # End SECTION: profile routing
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
@@ -246,15 +267,15 @@ export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)
+ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
 else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
 
-# Workspace-root gate verbs fan out across declared subprojects through the generic
+# Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
-# from the constants SSOT, never hardcoded here). Subprojects and standalone projects
+# from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
 # Provisioning is declared once and shared by every profile. Creating a missing
 # venv is provisioning; clearing a present one is destruction, so it never happens.
@@ -309,9 +330,9 @@ PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
 # profile; a fresh project must create its lock before later check-mode locks.
-# Keyed on the environment's OWNER, not on the caller's profile. A subproject has
+# Keyed on the environment's OWNER, not on the caller's profile. A member has
 # no local venv -- RUNTIME_VENV is RUNTIME_ROOT/.venv -- so every checkout that
-# provisions a shared environment must describe the same contents. A subproject
+# provisions a shared environment must describe the same contents. A member
 # syncing without --all-packages treats the siblings already installed there as
 # surplus and uninstalls them, undoing the root's provisioning and leaving
 # `uv sync --check` permanently divergent. A standalone project owns its venv
@@ -331,9 +352,7 @@ endif
 _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
 {% endif %}
 
-ifneq ($(GEN_INIT_ONLY),Y)
 {{ makefile_custom_include }}
-endif
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
@@ -425,20 +444,20 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
+.PHONY: $(PUBLIC_VERBS) $(SERIALIZED_TARGETS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
-$(filter-out setup gen,$(PUBLIC_VERBS)):
+$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
 	$(call _dispatch,$@)
 
-# `gen init` deliberately bypasses generic lifecycle hooks. Hooks are allowed
-# to discover workspaces and operational state, which would violate the narrow
-# initializer contract before the canonical owner even starts.
-gen:
-ifeq ($(GEN_INIT_ONLY),Y)
-gen: _builtin_gen_init
-else
-	$(call _dispatch,$@)
-endif
+{% for verb in make.serialization.verbs %}
+{{ verb }}: _builtin_require_environment
+	@$(SELF_MAKE) _serialized_{{ verb }} {{ make.selector }}="$({{ make.selector }})" {{ make.apply_variable }}="$({{ make.apply_variable }})"
+
+_serialized_{{ verb }}:
+	$(call _dispatch,{{ verb }})
+
+{% endfor %}
+
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
@@ -463,14 +482,23 @@ _builtin_help_usage:
 {% for verb in make.verbs %}
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';
+{% elif verb.name == "work" %}
+{# The generic line appends APPLY=Y to every apply-guarded verb, which reads as
+   if the read-only default selector also demanded mutation authority. Only the
+   lane-mutating selectors call _require_apply, so work states that itself. #}
+	@printf '  %-10s WHAT=%s\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s %s\n' '' '{{ verb.default_what }} is read-only; other WHATs require APPLY=Y';
 {% else %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 {% endif %}
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endfor %}
-	@printf '  %-10s %s\n' 'PROJECT' 'subproject checkout when WORKSPACE unset';
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
+	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
+	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
+	@printf '  %-10s %s\n' 'KIND/NAME' 'GitFlow kind and slug for work start';
+	@printf '  %-10s %s\n' 'BASE' 'optional integration base override for work start';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -493,7 +521,7 @@ _builtin_require_environment:
 	fi
 
 # === SECTION: setup environment (managed) ===
-# Source: computed (MAKE_PROFILE routing) + operator contract
+# Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
 # Operator contract: setup PROVISIONS tooling only — mise, venv, dependencies.
 # It never generates, conforms, or mutates project code; `make gen` (APPLY=Y)
 # is the single public conformance/generation surface.
@@ -502,9 +530,11 @@ _builtin_require_environment:
 # running against it.
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
-{% if make_profile == "workspace" %}
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
-{% endif %}
+else
+_builtin_setup_environment: _builtin_setup_submodules
+	@$(SETUP_ENVIRONMENT_RECIPE)
+endif
 # End SECTION: setup environment
 
 _builtin_deps_check: _builtin_require_environment
@@ -531,19 +561,17 @@ _builtin_deps_upgrade: _builtin_require_environment
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
 	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
-		--apply $(if $(strip $(DEPENDENCY)),,--rewrite-constraints) --skip-check "$$@"
+		--apply --rewrite-constraints --skip-check "$$@"
 	$(call _run_for_selected_projects,)
 
-{% if make_profile == "workspace" %}
+{% if make_profile == "workspace-root" %}
 _builtin_build_artifacts:
 	@$(WORKSPACE_ORCHESTRATE) --verb build $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 # Read-only by contract in every profile: mutation belongs to `make fix
-# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. Under
-# CI={{ make.ci.value }} the run is narrowed to make.ci.check_gates -- the
-# strict complement of make.ci.local_check_gates, derived at the config owner
-# so the two contexts can never overlap nor leave a gate unowned (same
-# contract as standalone/subproject Makefiles and flext_infra check run).
+# APPLY=Y` / `make fmt APPLY=Y`, which run BEFORE check. CI={{ make.ci.value }}
+# omits make.ci.check_gates_skip before orchestrating members (same contract as
+# standalone/member Makefiles and flext_infra check run).
 _builtin_check_all: _builtin_require_environment
 	@if [ -n "$(strip $(APPLYING))" ]; then \
 		printf 'ERROR: check is read-only; use `make fix APPLY=Y` / `make fmt APPLY=Y` first\n' >&2; exit 2; \
@@ -555,16 +583,16 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			owned=0; \
-			{% for owned_gate in make.ci.check_gates -%}
-			if [ "$$gate" = "{{ owned_gate }}" ]; then owned=1; fi; \
+			skip=0; \
+			{% for skipped in make.ci.check_gates_skip -%}
+			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
 			{% endfor -%}
-			if [ "$$owned" -eq 1 ]; then \
+			if [ "$$skip" -eq 0 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for owned_gate in make.ci.check_gates %} {{ owned_gate }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
 	fi; \
 	if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after {{ make.ci.variable }}={{ make.ci.value }} filtering\n' >&2; \
@@ -594,7 +622,7 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-# Read-only fixed-point after `make fix APPLY=Y` (strips APPLY and
+# Read-only fixed-point after `make fix APPLY=Y` (serialize-make strips APPLY and
 # re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
 _builtin_fix_check: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
@@ -612,9 +640,7 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# Under CI={{ make.ci.value }} the run is narrowed to make.ci.check_gates --
-# the strict complement of make.ci.local_check_gates, derived at the config
-# owner so the two contexts can never overlap nor leave a gate unowned.
+# CI={{ make.ci.value }} omits make.ci.check_gates_skip (ruff + pyrefly).
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -623,16 +649,16 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $({{ make.ci.variable }}))" = "{{ make.ci.value }}" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			owned=0; \
-			{% for owned_gate in make.ci.check_gates -%}
-			if [ "$$gate" = "{{ owned_gate }}" ]; then owned=1; fi; \
+			skip=0; \
+			{% for skipped in make.ci.check_gates_skip -%}
+			if [ "$$gate" = "{{ skipped }}" ]; then skip=1; fi; \
 			{% endfor -%}
-			if [ "$$owned" -eq 1 ]; then \
+			if [ "$$skip" -eq 0 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} runs check gates:{% for owned_gate in make.ci.check_gates %} {{ owned_gate }}{% endfor %}\n'; \
+		printf 'INFO: {{ make.ci.variable }}={{ make.ci.value }} omits check gates:{% for skipped in make.ci.check_gates_skip %} {{ skipped }}{% endfor %}\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -644,11 +670,6 @@ _builtin_check_all: _builtin_require_environment
 		exit 2; \
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
-
-{% for gate in make.check_gates_allowed %}
-_builtin_check_{{ gate }}: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "{{ gate }}" --projects .
-{% endfor %}
 
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(
@@ -674,7 +695,7 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-# Read-only fixed-point after `make fix APPLY=Y` (strips APPLY and
+# Read-only fixed-point after `make fix APPLY=Y` (serialize-make strips APPLY and
 # re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
 _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check $(RUFF_PATHS)
@@ -689,9 +710,12 @@ _builtin_fix_apply: _builtin_fix_all
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
+# workspace-member Make files attach to the governing workspace root; report
+# the member path so status diagnostics stay meaningful after profile routing.
+ATTACHED_MEMBER := $(if $(filter workspace-member,$(MAKE_PROFILE)),$(PROJECT_ROOT),)
 _builtin_status_diagnostics: _builtin_require_environment
-	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
+	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
+		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
@@ -714,7 +738,6 @@ _builtin_docs_{{ action }}:
 
 _builtin_clean_generated:
 	$(call _require_apply)
-{% if make.clean.cache_dirs %}
 	@find "$(PROJECT_ROOT)" -type d \
 		\( {% for directory in make.clean.cache_dirs %}-name {{ directory }}{% if not loop.last %} -o {% endif %}{% endfor %} \) \
 		-prune -exec sh -eu -c 'for target do find "$$target" -depth -delete; done' sh {} +
@@ -870,12 +893,11 @@ _builtin_gen_check: _builtin_require_environment
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
 
-_builtin_gen_init:
+_builtin_work_start:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
 
-_builtin_gen_all:
+_builtin_work_land:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	$(call _generated_docs,--apply)
@@ -883,4 +905,27 @@ _builtin_gen_all:
 	$(call _mise_lock_apply)
 	$(call _mise_artifacts_check)
 
-_builtin_gen_apply: _builtin_gen_all
+_builtin_work_finish:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
+
+_builtin_work_help:
+	@printf "make work — lane lifecycle (git + beads + gh + worktree)\n"
+	@printf "\n"
+	@printf "USAGE:\n"
+	@printf "  make work WHAT=status                                 show lanes + primary\n"
+	@printf "  make work WHAT=start KIND=<k> NAME=<s> BEAD=<id> APPLY=Y\n"
+	@printf "  make work WHAT=land BEAD=<id> APPLY=Y                   push + open PR\n"
+	@printf "  make work WHAT=finish BEAD=<id> APPLY=Y                 remove lane post-merge\n"
+	@printf "\n"
+	@printf "KIND:  feature | bugfix | hotfix | release\n"
+	@printf "NAME:  kebab-case slug (e.g. add-auth-validator)\n"
+	@printf "BEAD:  beads issue id (e.g. ai-hub-xzio.3.1)\n"
+	@printf "BASE:  optional override (default: config/workspace.yaml integration.branch)\n"
+	@printf "\n"
+	@printf "EXAMPLES:\n"
+	@printf "  make work WHAT=start KIND=feature NAME=add-hook BEAD=ai-hub-abc1 APPLY=Y\n"
+	@printf "  make work WHAT=status BEAD=ai-hub-abc1\n"
+	@printf "  make work WHAT=land BEAD=ai-hub-abc1 APPLY=Y\n"
+	@printf "  # review + merge PR, then:\n"
+	@printf "  make work WHAT=finish BEAD=ai-hub-abc1 APPLY=Y\n"
