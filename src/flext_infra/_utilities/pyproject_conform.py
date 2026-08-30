@@ -666,15 +666,18 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        if workspace_root:
+        member_paths = tuple(
+            member.path.as_posix() for member in workspace.subprojects
+        )
+        # A uv workspace with no members is not an empty workspace, it is a
+        # declaration: uv reads the table's presence, not its contents, so an
+        # empty one makes this project a *nested* workspace and refuses to set
+        # up any parent that lists it as a member.
+        if workspace_root and member_paths:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
                 workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(
-                workspace_table,
-                "members",
-                tuple(member.path.as_posix() for member in workspace.subprojects),
-            )
+            u.Cli.toml_sync_string_list(workspace_table, "members", member_paths)
         else:
             u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
