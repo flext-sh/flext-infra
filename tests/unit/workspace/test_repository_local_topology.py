@@ -162,6 +162,42 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.subprojects, empty=True)
         tm.that(resolved, eq=child.resolve())
 
+    def test_conform_target_follows_the_published_integration_branch(
+        self, tmp_path: Path
+    ) -> None:
+        """Derive the target baseline from live Git, not the provider default."""
+        root = tmp_path / "published-integration"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-workspace",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+        provider = u.Tests.provider()
+        baseline = tm.ok(u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "update-ref",
+                    "-d",
+                    f"refs/remotes/origin/{provider.branch}",
+                ],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                [c.Infra.GIT, "update-ref", "refs/remotes/origin/dev", baseline],
+                cwd=root,
+            )
+        )
+
+        target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
+
+        tm.that(target.baseline_branch, eq="dev")
+
     def test_submodule_self_load_preserves_its_checkout_relationship(
         self, tmp_path: Path
     ) -> None:
