@@ -666,9 +666,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        member_paths = tuple(
-            member.path.as_posix() for member in workspace.subprojects
-        )
+        member_paths = tuple(member.path.as_posix() for member in workspace.subprojects)
         # A uv workspace with no members is not an empty workspace, it is a
         # declaration: uv reads the table's presence, not its contents, so an
         # empty one makes this project a *nested* workspace and refuses to set
