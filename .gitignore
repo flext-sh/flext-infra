@@ -233,6 +233,9 @@ legado/
 .venv
 .venv/
 .bin/
+/bin/*
+!/bin/mise
+!/bin/mise.cmd
 .tools/
 __pycache__/
 base.mk
