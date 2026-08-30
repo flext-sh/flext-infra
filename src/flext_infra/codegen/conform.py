@@ -895,6 +895,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
+            if (
+                destination == c.Infra.BEADS_METADATA_RELPATH
+                and not (root / destination).is_file()
+            ):
+                # Why (flext-l2296 family): the ledger metadata is minted by
+                # Beads at first use, so a fresh clone legitimately lacks it.
+                # Planning the absent runtime artifact failed the gen check
+                # gate on every clean checkout. When present, the render below
+                # stays identity-preserving.
+                continue
             artifact_context = self._artifact_render_context(
                 dist=context.dist,
                 repository=repository,
