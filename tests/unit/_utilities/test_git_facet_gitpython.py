@@ -156,8 +156,7 @@ class TestsFlextInfraGitFacet:
     ) -> None:
         """Missing git on PATH must Result.fail without raising."""
         monkeypatch.setattr(
-            "flext_infra._utilities._git.repo.shutil.which",
-            _no_executable,
+            "flext_infra._utilities._git.repo.shutil.which", _no_executable
         )
         result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure
