@@ -12,6 +12,11 @@ Infra:
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
       uv_link_mode: copy
+      # Supported resolution environments for the generated lock. Windows is
+      # not a supported deployment target: the win32 split resolves meltano's
+      # structlog<26 cap against flext-core's structlog>=26.1 floor and is
+      # unsatisfiable, so uv must skip that split instead of failing the lock.
+      uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT (CWE-829): projected to uv exclude-newer and
       # every Dependabot ecosystem so updates never raise floors that uv blocks.
       dependency_cooldown_days: 7

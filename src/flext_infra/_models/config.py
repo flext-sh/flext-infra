@@ -217,6 +217,15 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
+        uv_environments: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Marker expressions limiting the environments uv resolves "
+                    "for the generated lock. Empty resolves every environment."
+                ),
+            ),
+        ] = ()
         dependency_cooldown_days: Annotated[
             int,
             m.Field(
