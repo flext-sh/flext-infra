@@ -112,7 +112,7 @@ class TestsWorkspaceRootMakeContract:
         )
 
         tm.that(make_entries, len=1)
-        tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE)
+        tm.that(make_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE_ROOT)
 
     def test_generated_make_exposes_only_public_conform(self, tmp_path: Path) -> None:
         """Route the sole public conformance verb to the internal CLI.

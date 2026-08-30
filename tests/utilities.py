@@ -1431,10 +1431,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
             mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
-            return {
-                c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
+            by_mode: dict[c.Infra.WorkspaceMode, c.Infra.MakeProfile] = {
+                c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE_ROOT,
                 c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
-            }[mode]
+            }
+            return by_mode[mode]
 
         @staticmethod
         def ignore_patterns_for(root: Path) -> tuple[str, ...]:

@@ -231,7 +231,7 @@ class TestCodegenCiMatrix:
         )
         spec = m.Infra.GithubWorkflowRenderSpec(
             dist="cosmos-main",
-            make_profile=c.Infra.MakeProfile.WORKSPACE,
+            make_profile=c.Infra.MakeProfile.WORKSPACE_ROOT,
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
             python_version=codegen.toolchain.python_version,
