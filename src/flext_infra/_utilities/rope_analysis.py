@@ -109,12 +109,24 @@ class FlextInfraUtilitiesRopeAnalysis:
         cached = FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE.get(cache_key)
         if cached is not None:
             return cached
-        pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        state = FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
-            rope_project=rope_project, resource=resource, pymodule=pymodule
-        )
+        try:
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+            state = (
+                FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
+                    rope_project=rope_project, resource=resource, pymodule=pymodule
+                )
+            )
+        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
+            state = FlextInfraUtilitiesRopeAnalysis._empty_module_semantic_state()
         FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE[cache_key] = state
         return state
+
+    @staticmethod
+    def _empty_module_semantic_state() -> m.Infra.ModuleSemanticState:
+        """Return an empty semantic state."""
+        return m.Infra.ModuleSemanticState(
+            class_infos=(), declared_imports={}, semantic_imports={}
+        )
 
     @staticmethod
     def _module_semantic_state_from_pymodule(
@@ -653,7 +665,11 @@ class FlextInfraUtilitiesRopeAnalysis:
             doc = pymodule.get_doc() or ""
         except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
             return ""
-        return next((line.strip() for line in doc.splitlines() if line.strip()), "")
+        summary = next((line for line in doc.splitlines() if line.strip()), "")
+        # The summary is rendered verbatim into generated markdown, where runs
+        # of spaces are a lint failure nobody can hand-fix in a generated file.
+        # Collapsing them here keeps the summary faithful and renderable.
+        return " ".join(summary.split())
 
     @staticmethod
     def symbol_has_docstring_source(source: str, symbol_name: str) -> bool:

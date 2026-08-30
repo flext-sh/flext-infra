@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
+from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._models.deps_toml import FlextInfraModelsDepsToml
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
@@ -230,7 +230,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
 
         workspace: Annotated[str, m.Field(description="Workspace name")]
         projects: t.MappingKV[str, FlextInfraModelsDeps.ProjectRuntimeReport] = m.Field(
-            default_factory=ImmutableEmptyMapping, description="Per-project reports"
+            default_factory=immutable_empty_mapping, description="Per-project reports"
         )
         pip_check: FlextInfraModelsDeps.PipCheckReport | None = m.Field(
             None, description="Pip check report", validate_default=True

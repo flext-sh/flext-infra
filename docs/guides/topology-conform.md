@@ -1,8 +1,6 @@
 # Repository-local topology and conformance
 
-<<<<<<< HEAD
 ## Authorities
-=======
 <!-- TOC START -->
 - [Effective topology](#effective-topology)
 - [Scoped projection isolation](#scoped-projection-isolation)
@@ -10,7 +8,6 @@
 - [Synchronization and setup](#synchronization-and-setup)
 - [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
 <!-- TOC END -->
->>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
 
 Each governed repository has exactly two local inputs:
 
@@ -29,12 +26,6 @@ loads both files from that lane and every generated write remains in that lane.
 Conformance validates the complete selected topology before planning writes. A
 workspace validates each direct governed path declared by its own `.gitmodules`:
 
-<<<<<<< HEAD
-- the checkout exists and remains below the workspace root;
-- its origin matches the URL declared by `.gitmodules`;
-- its branch follows the configured provider contract;
-- its own `config/beads.yaml` exists and validates.
-=======
 ## Scoped projection isolation
 
 `codegen conform --what makefile --scope self` is a declaration-only
@@ -55,7 +46,6 @@ it validates live topology, Beads, environments, and ancestry in addition to
 planning every governed artifact.
 
 ## Full refactor workflow
->>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
 
 Subprojects keep independent Beads identities. A workspace never copies its
 identity into a subproject and never overwrites a subproject's source config.

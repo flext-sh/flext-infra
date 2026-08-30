@@ -66,6 +66,7 @@ class FlextInfraConstantsSourceCode:
         "agents",
         "hooks",
         "instructions",
+        "prompts",
         "skills",
     })
     "GitHub provider directories owned by the agentsctl projection."

@@ -129,11 +129,13 @@ class FlextInfraConstantsSharedInfra:
     # from live Git. A provider default is a fallback ordering, never the
     # answer: repositories under the same provider legitimately integrate on
     # different branches, so the published remote-tracking branch decides.
-    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = (
-        "0.12.0-dev",
-        "develop",
-        "dev",
-    )
+    #
+    # This is the built-in ordering of conventional names only. The governing
+    # value is `codegen.branch_policy.integration_branch_preference`, which a
+    # workspace declares for itself — a fleet that integrates on a versioned
+    # line names it there rather than asking for a constant here. Product- and
+    # release-specific names do not belong in this tuple.
+    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = ("develop", "dev", "main")
 
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"
@@ -162,6 +164,9 @@ class FlextInfraConstantsSharedInfra:
     GITIGNORE_MANAGED_SECTION_NAME: Final[str] = "Tracked managed artifacts"
     "Heading of the trailing .gitignore section that re-allows managed files."
     GITIGNORE_LAYOUT_SECTION_NAME: Final[str] = "Project layout exceptions"
+    GITIGNORE_PROJECT_SECTION_NAME: Final[str] = (
+        "Project ignore patterns (config/*.yaml ManagedArtifacts.Gitignore)"
+    )
     "Heading of the trailing .gitignore section holding layout-SSOT additions."
     MANAGED_FILE_POLICY_DELEGATED: Final[str] = "delegated"
     MANAGED_FILE_POLICY_FULL: Final[str] = "full"

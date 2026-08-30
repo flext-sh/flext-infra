@@ -187,12 +187,12 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
 
     Conformance reads this repository twice and both reads must agree. Detection
     only accepts a remote whose host and organization match the provider, while
-    baseline ancestry resolves the provider branch by fetching that same remote.
+    baseline ancestry resolves the already materialized provider tracking ref.
     Declaring the real upstream URL satisfies detection but grades the fixture
     against the live repository; declaring a local path fails detection outright.
     The fixture therefore declares the provider URL and rewrites it to a local
-    bare origin through Git's own ``url.<base>.insteadOf`` mechanism, so the two
-    reads observe one self-consistent topology without any network access.
+    bare origin through Git's own ``url.<base>.insteadOf`` mechanism. Fixture
+    setup materializes the tracking ref once; conformance itself stays offline.
     """
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)

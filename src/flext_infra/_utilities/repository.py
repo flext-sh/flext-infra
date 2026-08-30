@@ -45,7 +45,7 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def configured_repository_ref(
-        cls, distribution: str, *, codegen: m.Infra.CodegenConfigSpec
+        cls, *, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Derive one repository from the unique provider selected by config."""
         source = codegen.infra_repository
@@ -61,7 +61,7 @@ class FlextInfraUtilitiesRepository:
             )
         (provider,) = matches
         return r[m.Infra.RepositoryRef].ok(
-            cls.derived_repository_ref(distribution, provider=provider)
+            cls.derived_repository_ref(source.distribution, provider=provider)
         )
 
     @staticmethod
@@ -77,66 +77,6 @@ class FlextInfraUtilitiesRepository:
                 f"repository provider must resolve exactly once: {repository.provider}"
             )
         return r[m.Infra.ProviderSpec].ok(matches[0])
-
-    @staticmethod
-    def remote_provider(
-        url: str, providers: t.SequenceOf[m.Infra.ProviderSpec]
-    ) -> p.Result[m.Infra.ProviderSpec]:
-        """Resolve one remote identity to exactly one configured provider."""
-        from flext_infra.utilities import u
-
-        identity = u.Infra.git_remote_identity(url)
-        parts = tuple(part for part in identity.split("/") if part)
-        match parts:
-            case (owner, _repository):
-                pass
-            case _:
-                return r[m.Infra.ProviderSpec].fail(
-                    "repository remote has no valid owner identity"
-                )
-        matches = tuple(
-            provider
-            for provider in providers
-            if provider.organization.casefold() == owner.casefold()
-        )
-        if len(matches) != 1:
-            return r[m.Infra.ProviderSpec].fail(
-                f"repository owner must resolve exactly once: {owner}"
-            )
-        return r[m.Infra.ProviderSpec].ok(matches[0])
-
-    @classmethod
-    def remote_repository_ref(
-        cls,
-        distribution: str,
-        *,
-        url: str,
-        providers: t.SequenceOf[m.Infra.ProviderSpec],
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Resolve an explicit remote to one canonical repository reference."""
-        from flext_infra.utilities import u
-
-        identity = u.Infra.git_remote_identity(url)
-        parts = tuple(part for part in identity.split("/") if part)
-        match parts:
-            case (_owner, repository):
-                pass
-            case _:
-                return r[m.Infra.RepositoryRef].fail(
-                    "repository remote has no valid project identity"
-                )
-        if repository.casefold() != distribution.casefold():
-            return r[m.Infra.RepositoryRef].fail(
-                f"repository identity does not match distribution: {distribution}"
-            )
-        provider = cls.remote_provider(url, providers)
-        if provider.failure:
-            return r[m.Infra.RepositoryRef].fail(
-                provider.error or "repository provider resolution failed"
-            )
-        return r[m.Infra.RepositoryRef].ok(
-            cls.derived_repository_ref(distribution, provider=provider.value)
-        )
 
     @staticmethod
     def resolve_integration_branch(
@@ -163,7 +103,10 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def repository_baseline_branch(
-        cls, repository_root: Path, fallback: str | None = None
+        cls,
+        repository_root: Path,
+        fallback: str | None = None,
+        preference: tuple[str, ...] | None = None,
     ) -> p.Result[str]:
         """Return the integration baseline the repository actually publishes.
 
@@ -172,13 +115,19 @@ class FlextInfraUtilitiesRepository:
         baseline is therefore derived from live Git: the published
         remote-tracking integration branch wins.
 
+        ``preference`` is the ordered set of names to try, owned by
+        ``codegen.branch_policy.integration_branch_preference`` so a workspace
+        declares its own release line instead of asking for a constant in this
+        package. Omitting it uses the built-in conventional ordering.
+
         ``fallback`` carries the provider default for a repository that cannot
         have published anything yet (project creation). Without it, a checkout
         with no integration branch fails closed instead of guessing.
         """
         from flext_infra.utilities import u
 
-        for candidate in c.Infra.INTEGRATION_BRANCH_PREFERENCE:
+        candidates = preference or c.Infra.INTEGRATION_BRANCH_PREFERENCE
+        for candidate in candidates:
             reference = f"refs/remotes/origin/{candidate}"
             resolved = u.Infra.git_ref_exists(
                 m.Infra.GitRefRequest(repo_root=repository_root, reference=reference)
@@ -189,7 +138,7 @@ class FlextInfraUtilitiesRepository:
             return r[str].ok(fallback)
         return r[str].fail(
             "repository publishes no integration branch "
-            f"({', '.join(c.Infra.INTEGRATION_BRANCH_PREFERENCE)}): {repository_root}"
+            f"({', '.join(candidates)}): {repository_root}"
         )
 
     @staticmethod
