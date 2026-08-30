@@ -1654,6 +1654,11 @@ Infra:
           profiles: [workspace, standalone]
           patterns:
             - "!.beads/metadata.json"
+            # The canonical ledger identity: conform reads it to render the
+            # identity-preserving metadata.json on fresh checkouts. Without
+            # the exception the render loses the project id and the gen
+            # check gate drifts on every clean clone.
+            - "!.beads/identity.toml"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
           patterns:
             - "*.tpl.rej"
