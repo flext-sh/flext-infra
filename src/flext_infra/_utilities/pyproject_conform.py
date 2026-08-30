@@ -633,7 +633,11 @@ class FlextInfraUtilitiesPyprojectConform:
         # meltano's structlog cap against flext-core's floor and is
         # unsatisfiable).
         if uv_environments:
-            u.Cli.toml_sync_value(uv, "environments", list(uv_environments))
+            # Declared as list[JsonValue], not list[str]: `list` is invariant,
+            # so the narrower element type is not assignable to the writer's
+            # parameter even though every element is a valid JsonValue.
+            environments: list[t.JsonValue] = list(uv_environments)
+            u.Cli.toml_sync_value(uv, "environments", environments)
         else:
             u.Cli.toml_remove_key_if_present(uv, "environments")
         # Two shapes share this uv key. A bare exemption is `false` (waive the

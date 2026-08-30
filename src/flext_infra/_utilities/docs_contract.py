@@ -163,25 +163,33 @@ class FlextInfraUtilitiesDocsContract:
     def docs_write_if_needed(
         path: Path, content: str, *, apply: bool, overwrite: bool = True
     ) -> m.Infra.GeneratedFile:
-        """Write generated content only when needed and allowed."""
-        if path.exists() and not overwrite:
+        """Write generated content only when needed and allowed.
+
+        A file that does not exist cannot drift: creating it is the apply
+        run's job. Check mode flags only existing-but-stale content, so a
+        fresh clone passes without pre-seeding the ephemeral output
+        directory.
+        """
+        exists = path.exists()
+        if exists and not overwrite:
             return m.Infra.GeneratedFile(
                 path=path.as_posix(), changed=False, written=False
             )
-        current = (
-            path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if path.exists() else ""
-        )
+        current = path.read_text(encoding=c.Cli.ENCODING_DEFAULT) if exists else ""
         normalized = (
             FlextInfraUtilitiesDocsContract.docs_update_toc(content)[0]
             if path.suffix == ".md"
             else content
         )
-        changed = current != normalized
-        if changed and apply:
+        drift = exists and current != normalized
+        created = not exists
+        if apply and (drift or created):
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_text(normalized, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.GeneratedFile(
-            path=path.as_posix(), changed=changed, written=changed and apply
+            path=path.as_posix(),
+            changed=drift,
+            written=apply and (drift or created),
         )
 
 
