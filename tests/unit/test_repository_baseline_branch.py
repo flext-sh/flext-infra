@@ -66,5 +66,44 @@ class TestsFlextInfraRepositoryBaselineBranch:
 
         tm.fail(resolved)
 
+    def test_declared_preference_orders_the_search(
+        self, infra_git_repo: Path
+    ) -> None:
+        """A workspace names its own release line instead of a constant.
+
+        The built-in ordering carries conventional names only, so a fleet that
+        integrates on a versioned line has to be able to declare it. Without
+        that, the release name has to live inside this package — which is how
+        `0.12.0-dev` came to be hardcoded next to `develop` and `dev`.
+        """
+        seeded = test_u.Cli.capture(
+            ["git", "for-each-ref", "--format=%(refname)", "refs/remotes/origin"],
+            cwd=infra_git_repo,
+        )
+        tm.ok(seeded)
+        for reference in seeded.value.split():
+            tm.ok(
+                test_u.Cli.run_checked(
+                    ["git", "update-ref", "-d", reference], cwd=infra_git_repo
+                )
+            )
+        # Both are published, so only the declared order can decide between them.
+        self._seed_remote_branch(infra_git_repo, "dev")
+        self._seed_remote_branch(infra_git_repo, "9.9.9-dev")
+
+        declared = u.Infra.repository_baseline_branch(
+            infra_git_repo, preference=("9.9.9-dev", "develop", "dev")
+        )
+
+        tm.ok(declared)
+        tm.that(declared.value, eq="9.9.9-dev")
+
+        # And the built-in ordering, which cannot know that release name,
+        # resolves the conventional one instead.
+        builtin = u.Infra.repository_baseline_branch(infra_git_repo)
+
+        tm.ok(builtin)
+        tm.that(builtin.value, eq="dev")
+
 
 __all__: tuple[str, ...] = ()

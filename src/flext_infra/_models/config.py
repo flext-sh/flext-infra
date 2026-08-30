@@ -470,6 +470,21 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        integration_branch_preference: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE,
+                min_length=1,
+                description=(
+                    "Ordered names tried against live Git to derive one "
+                    "repository's integration baseline. A workspace that "
+                    "integrates on a versioned line declares it here, so a "
+                    "release name never has to be hardcoded in the package. "
+                    "The provider default stays the last-resort fallback, "
+                    "never the answer."
+                ),
+            ),
+        ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:

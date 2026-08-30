@@ -243,6 +243,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"{current_repository.provider}"
                 )
             (provider,) = providers
+            # The provider default is the fallback, never the answer: this
+            # repository's own published integration branch decides.
+            baseline_result = u.Infra.repository_baseline_branch(
+                root,
+                fallback=provider.branch,
+                preference=config_spec.branch_policy.integration_branch_preference,
+            )
+            if baseline_result.failure:
+                return r[m.Infra.CodegenPlan].fail(
+                    baseline_result.error
+                    or f"integration baseline resolution failed: {root}"
+                )
             current_make_profile = (
                 c.Infra.MakeProfile.WORKSPACE
                 if current_repository.role is c.Infra.RepositoryRole.WORKSPACE
@@ -254,7 +266,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 make_profile=current_make_profile,
                 beads=workspace.beads,
                 canonical_project_name=current_repository.distribution,
-                baseline_branch=provider.branch,
+                baseline_branch=baseline_result.value,
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
