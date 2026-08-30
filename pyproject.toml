@@ -591,6 +591,7 @@ in_place = true
 sort_first = ["build-system", "dependency-groups", "project", "tool"]
 
 [tool.uv]
+environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 exclude-newer = "7 days"
 link-mode = "copy"
 
