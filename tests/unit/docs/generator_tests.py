@@ -49,7 +49,7 @@ def test_generate_apply_writes_summary_and_report(tmp_path: Path) -> None:
 def test_collocated_workspace_project_keeps_root_aggregate_as_single_owner(
     tmp_path: Path,
 ) -> None:
-    """Keep PROJECT=. from pruning the workspace-root aggregate generated tree."""
+    """Keep PROJECT=. from pruning the workspace aggregate generated tree."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     package = workspace / "src/workspace"
     package.mkdir(parents=True)

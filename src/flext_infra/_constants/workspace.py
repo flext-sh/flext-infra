@@ -97,7 +97,7 @@ class FlextInfraConstantsWorkspace:
     class WorkspaceProjectRole(StrEnum):
         """Relationship of one discovered project to an aggregate workspace."""
 
-        WORKSPACE_ROOT = "workspace-root"
+        WORKSPACE = "workspace"
         SUBPROJECT = "subproject"
         STANDALONE = "standalone"
 
