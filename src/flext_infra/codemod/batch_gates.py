@@ -177,6 +177,38 @@ class FlextInfraModGateEngine:
             )
         )
 
+    @staticmethod
+    def _fixable_rule_ids(rule: Path) -> p.Result[frozenset[str]]:
+        fixable_ids: set[str] = set()
+        documents = rule.read_text(encoding="utf-8").split("\n---")
+        for document in documents:
+            if not any(
+                line.strip() and not line.lstrip().startswith(("#", "---"))
+                for line in document.splitlines()
+            ):
+                continue
+            parsed = u.Cli.yaml_parse(document)
+            if parsed.failure:
+                return r[frozenset[str]].fail(
+                    parsed.error or f"invalid ast-grep rule: {rule}"
+                )
+            if "fix" in parsed.value:
+                rule_id = parsed.value.get("id")
+                if isinstance(rule_id, str):
+                    fixable_ids.add(rule_id)
+        return r[frozenset[str]].ok(frozenset(fixable_ids))
+
+    @staticmethod
+    def _count_fixable_findings(stdout: str, fixable_ids: frozenset[str]) -> int:
+        findings = 0
+        for raw_line in stdout.splitlines():
+            parsed = u.Cli.json_parse(raw_line.strip())
+            if parsed.failure or not isinstance(parsed.value, Mapping):
+                continue
+            if parsed.value.get("ruleId") in fixable_ids:
+                findings += 1
+        return findings
+
     @classmethod
     def scan(
         cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool
