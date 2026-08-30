@@ -101,7 +101,7 @@ MISE_LOCK_PLATFORMS := linux-x64,linux-arm64,linux-x64-musl,linux-arm64-musl,mac
 MISE_LOCK_PROJECTS := .
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# make work targets a declared project when PROJECT names one and
+# make work targets a member checkout when PROJECT names a workspace member and
 # WORKSPACE was not overridden on the command line. PROJECT alone used to keep
 # WORKSPACE at the workspace root, so finish looked up lanes in the wrong git
 # primary and failed with "worktree branch is not registered".
