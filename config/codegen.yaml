@@ -94,6 +94,15 @@ Infra:
             submodule: cosmos-gitops
             path: apps/cosmos-gitops
             ssh_url: git@github.com:datacosmos-br/cosmos-gitops.git
+      invest:
+        paths:
+          - neptor
+        deploy_keys:
+          - secret: NEPTOR_DEPLOY_KEY
+            host_alias: github-neptor
+            submodule: neptor
+            path: neptor
+            ssh_url: git@github-neptor:marlonsc/neptor.git
 
     github_actions:
       checkout:
@@ -213,6 +222,18 @@ Infra:
         - main
         - 0.12.0-dev
         - 0.20.0-dev
+      # Ordered names tried against live Git to derive each repository's
+      # baseline. The FLEXT fleet integrates on 0.12.0-dev, which is a release
+      # name and therefore belongs here rather than inside the package: a
+      # constant shipped with flext-infra cannot know a consumer's release line.
+      # The conventional names follow so a governed repository outside this
+      # fleet — ai-hub publishes `dev` — still resolves without declaring
+      # anything.
+      integration_branch_preference:
+        - 0.12.0-dev
+        - develop
+        - dev
+        - main
     profiles:
       - name: workspace-root
         environment_scope: root
@@ -248,18 +269,43 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # Why: CI=Y check omits ruff (lint/format) and pyrefly. Local make check
-        # without CI=Y keeps the full default set. Blocking CI never runs make
-        # test (pytest); local/pre_push still own that verb.
-        check_gates_skip: [lint, format, pyrefly]
+        # local_value (hq-36xk): the local arm of the same ternary. Only the
+        # exact `value` disables coverage and narrows CHECK_GATES, so pre-push
+        # sets this instead to keep every gate and the complete pytest+coverage
+        # run. The templates consumed `make.ci.local_value` while no owner
+        # declared it, so no repository could render its pre-commit config.
+        local_value: N
+        # RULING 2 (rules, not a skip-list): local_check_gates is the ONLY
+        # declared set. CI=Y runs its strict complement, derived in
+        # MakeCiSpec.check_gates, so the two contexts can never overlap nor
+        # leave a gate unowned; an unset CI runs every allowed gate. `format`
+        # is not a check gate at all -- it mutates files, so it belongs to
+        # make fmt / make fix APPLY=Y only. This supersedes the earlier
+        # check_gates_skip list, which could drift out of sync with the set it
+        # was meant to complement.
+        # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
+        # full pytest+coverage; absent = testmon incremental.
+        #
+        # The set is the SLOW whole-program type checkers, matching
+        # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
+        # off the fast CI leg, and they are what CI=N exists to own. `lint` is
+        # not here -- ruff is cheap, so making CI skip it buys nothing and
+        # leaves the fast leg without a linter.
+        local_check_gates: [pyrefly, mypy]
+      # Why (operator law 2026-08-24): git-hook stages are disabled by default;
+      # the workflow below still declares stage membership so re-enabling is a
+      # one-key change, case by case. CI owns read-only setup, generation drift,
+      # and checks; it never renders an apply/fmt/fix invocation.
+      pre_commit: false
+      pre_push: false
       workflow:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
         # broken code from ever being committed. pre-push adds gen+test.
         - { verb: setup, apply: false, contexts: [local, ci] }
-        - { verb: gen, apply: true, contexts: [local, ci, pre_push] }
-        - { verb: fmt, apply: true, contexts: [local, ci, pre_commit] }
-        - { verb: fix, apply: true, contexts: [local, ci, pre_commit] }
+        - { verb: gen, apply: true, contexts: [local, pre_push] }
+        - { verb: fmt, apply: true, contexts: [local, pre_commit] }
+        - { verb: fix, apply: true, contexts: [local, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
         # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
         - { verb: test, apply: false, contexts: [local, pre_push] }
@@ -268,7 +314,20 @@ Infra:
         dependency_groups: all
         extras: all
       docs:
-        mutable_actions: [generate, fix]
+        api_modules:
+          flext-infra:
+            - api
+            - base
+            - base_selection
+            - cli
+            - constants
+            - git
+            - models
+            - protocols
+            - typings
+            - utilities
+            - worktree
+        mutable_actions: [fix]
         reports_dir: .reports/docs
         cross_project_relative_link_pattern: '^(?:\.\./)+flext-[a-z0-9-]+(?:/|$)'
         stale_github_organizations:
@@ -1071,6 +1130,48 @@ Infra:
       - path: pyproject.toml
         owner: codegen
         policy: merge
+        # Sections codegen renders, so a conflict in them is resolved by
+        # re-rendering instead of by hand. per-file-ignores renders from
+        # tooling.yaml exactly like the pytest and uv sections; leaving it
+        # undeclared made absorbing an integration base that still carried the
+        # previous lint projection unresolvable through the canonical surface.
+        conflict_sections: [tool.pytest.ini_options, tool.uv, tool.ruff.lint.per-file-ignores]
+
+    # Automated semantic versioning, owned by the market tool rather than by a
+    # local implementation. python-semantic-release reads Conventional Commits,
+    # decides major/minor/patch, writes the version, generates the changelog and
+    # creates the tag. We already had bump_version/parse_semver and a release
+    # orchestrator, but nothing DERIVED the bump: a human still passed
+    # `bump=minor` by hand, which is exactly the judgement call the commit
+    # history already encodes and the one a human gets wrong.
+    #
+    # Declared here so every generated pyproject carries the same contract and
+    # no project hand-rolls its own. Exceptions belong in `overrides` below,
+    # never in a project-local edit.
+    release:
+      tool: python-semantic-release
+      # `uv` is the runner: no separate install step, no global state.
+      runner: uv
+      # Commit parser and the branch that produces releases. FLEXT branch model:
+      # 0.12.0-dev is the integration branch, main is the produced release.
+      commit_parser: conventional
+      release_branch: 0.12.0-dev
+      # Where the version lives. Both are kept in step by the tool itself, so a
+      # tag can never disagree with the packaged metadata.
+      version_variables:
+        - src/{package}/version.py:__version__
+      version_toml:
+        - pyproject.toml:project.version
+      # Build through the canonical verb so a release artifact is produced the
+      # same way a local build is; a second build path is a second contract.
+      build_command: uv build
+      # Tag shape shared with the workspace release workflow.
+      tag_format: "v{version}"
+      # Changelog is generated, never hand-maintained.
+      changelog_file: CHANGELOG.md
+      # Per-distribution exceptions. A project lands here only when its release
+      # contract genuinely differs from the standard.
+      overrides: {}
 
     scaffold:
       build:
@@ -1095,8 +1196,8 @@ Infra:
           # declared dev dependency of every generated project.
           - bandit>=1.8
           - flext-tests
-          # Floors let uv select the newest compatible tools; no upper cap or
-          # exact tool version is imposed by generated project metadata.
+          # Floors let uv select released tools without a cap or downgrade path.
+          # Every diagnostic from the resolved release remains blocking.
           - mypy>=2.3.0
           - pyrefly>=1.1.1
           - pyright>=1.1.411
@@ -1168,10 +1269,6 @@ Infra:
             - "!.agents/"
             - "!.agents/**"
             - ".agents/skills/*/report.json"
-        - name: "Workspace topology manifest"
-          profiles: [workspace-root]
-          patterns:
-            - "!/config/workspace.yaml"
         - name: "Dispatcher-based command surface (Make SSOT)"
           profiles: [workspace-root]
           patterns:
@@ -1274,28 +1371,17 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
-        # mro-zmoc6: `uv sync` inside a member lane writes a member-local
-        # uv.lock. Only the workspace root resolves and tracks a lockfile
-        # (whitelisted in "Python configuration" above); for a member the
-        # file is a local build artifact of that shared resolution. Left
-        # undeclared it surfaced as untracked in every freshly created lane
-        # and made the retired Make lane lifecycle refuse a committed increment
-        # with "requires a clean lane worktree".
-        - name: "BLOCK: member-local lockfile (the workspace root owns uv.lock)"
-          profiles: [workspace-member]
-          patterns:
-            - "uv.lock"
         # Only the workspace root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config
         # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
-        # repo-server refuse the repository, so members must not track them.
+        # repo-server refuse the repository, so subprojects must not track them.
         - name: "BLOCK: Agent surface outside the workspace root"
-          profiles: [workspace-member, standalone]
+          profiles: [standalone]
           patterns:
             - ".agents/"
         - name: "WHITELIST: Agent skills owned by the workspace root"
-          profiles: [workspace-root]
+          profiles: [workspace]
           patterns:
             - "!.agents/skills/"
             - "!.agents/skills/**"
@@ -1609,7 +1695,7 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
-          profiles: [workspace-root, workspace-member, standalone]
+          profiles: [workspace, standalone]
           delegate: render
           overwrite: false
         # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
@@ -1645,9 +1731,7 @@ Infra:
           profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
-        # Ledger-resolution marker: bd binds a checkout to its Dolt database
-        # through this file and `bd init` never writes it, so a clone carrying
-        # only config.yaml fell back to the default "beads" database (mro-9wv8).
+        # Static repository-local storage, database, and endpoint projection.
         - source: base/beads-metadata.json.j2
           destination: .beads/metadata.json
           profiles: [workspace-root, workspace-member, standalone]

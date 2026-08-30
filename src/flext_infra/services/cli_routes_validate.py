@@ -44,7 +44,9 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name=route_name,
                 help_text=help_text,
                 model_cls=model_cls,
-                handler=model_cls.execute_command,
+                handler=ValidationCommandRoutes.result_handler(
+                    model_cls.execute_command
+                ),
                 success_message=success_message,
             )
             for route_name, help_text, model_cls, success_message in (
@@ -103,7 +105,9 @@ class ValidationRoutes(ValidationCommandRoutes):
                 name=c.Infra.PR,
                 help_text="Manage pull requests for a single project",
                 model_cls=m.Infra.GithubPullRequestRequest,
-                handler=u.Infra.run_github_pull_request,
+                handler=ValidationCommandRoutes.result_handler(
+                    u.Infra.run_github_pull_request
+                ),
             ),
             m.Cli.ResultCommandRoute(
                 name="pr-workspace",
