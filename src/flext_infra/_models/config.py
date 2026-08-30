@@ -251,7 +251,7 @@ class FlextInfraConfigModels:
                     "cannot express this, because the cutoff has to move to a "
                     "specific instant rather than be switched off, so the "
                     "override carries the timestamp."
-                )
+                ),
             ),
         ]
         kubectl_version: Annotated[
@@ -347,7 +347,7 @@ class FlextInfraConfigModels:
                 default_factory=immutable_empty_mapping,
                 description=(
                     "Explicit platforms a backend cannot represent in mise.lock"
-                )
+                ),
             ),
         ]
         beads: Annotated[
@@ -2183,7 +2183,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Effective Ruff exemptions: fleet policy composed with this "
                     "repository's own ManagedArtifacts overlay"
-                )
+                ),
             ),
         ]
         make_profile: Annotated[
