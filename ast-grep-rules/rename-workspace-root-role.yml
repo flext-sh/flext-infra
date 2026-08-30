@@ -1,7 +1,0 @@
-id: rename-workspace-role
-language: Python
-severity: error
-message: RepositoryRole is workspace or standalone; workspace-root is extinct
-rule:
-  pattern: c.Infra.RepositoryRole.WORKSPACE_ROOT
-fix: c.Infra.RepositoryRole.WORKSPACE

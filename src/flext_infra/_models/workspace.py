@@ -84,6 +84,10 @@ class FlextInfraModelsWorkspace:
             c.Infra.WorkspaceProjectRole,
             m.Field(description="Repository-local topology role"),
         ] = c.Infra.WorkspaceProjectRole.STANDALONE
+        declared_subproject: Annotated[
+            bool,
+            m.Field(description="Whether the aggregate workspace declares this path"),
+        ] = False
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
         """Centralized parsed pyproject state reused across discovery services.

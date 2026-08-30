@@ -72,11 +72,9 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.that(projects[0].has_src, eq=True)
         tm.that(projects[1].has_src, eq=False)
         tm.that(projects[1].has_tests, eq=False)
-        tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.SUBPROJECT)
-        tm.that(
-            (projects[1].workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT),
-            eq=True,
-        )
+        tm.that(projects[0].workspace_role, eq=c.Infra.WorkspaceProjectRole.STANDALONE)
+        tm.that(projects[0].declared_subproject, eq=True)
+        tm.that((projects[1].declared_subproject is True), eq=True)
 
     def test_discover_projects_empty_workspace(
         self, service: u.Infra, tmp_path: Path

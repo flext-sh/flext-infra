@@ -1554,6 +1554,22 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     ),
                 )
             )
+        if destination == "custom.mk":
+            # Existing repositories project custom routes from the same typed
+            # Make contract as Makefile; they do not require scaffold-only
+            # project metadata.
+            make_context = FlextInfraCodegenConform.make_render_context(
+                repository,
+                target,
+                workspace,
+                codegen,
+                tooling_runtime=tooling_runtime,
+            )
+            if make_context.failure:
+                return r[p.Model].fail(
+                    make_context.error or "custom Make render context failed"
+                )
+            return r[p.Model].ok(make_context.value)
         if project_context is not None:
             return r[p.Model].ok(project_context)
         context_result = self._project_render_context(

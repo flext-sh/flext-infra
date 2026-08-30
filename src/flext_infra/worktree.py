@@ -72,6 +72,8 @@ class FlextInfraWorktreeService(s[str]):
         for candidate in resolved_primary.parents:
             if (candidate / c.Infra.PYPROJECT_FILENAME).is_file():
                 outermost_project = candidate
+            if (candidate / ".git").exists():
+                break
         namespace_digest = u.Cli.sha256_content(str(resolved_primary))[
             : c.Infra.WORKTREE_NAMESPACE_DIGEST_LENGTH
         ]

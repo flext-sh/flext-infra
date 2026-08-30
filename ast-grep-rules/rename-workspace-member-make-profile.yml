@@ -1,7 +1,0 @@
-id: rename-workspace-member-make-profile
-language: Python
-severity: error
-message: MakeProfile is workspace or standalone; workspace-member is extinct
-rule:
-  pattern: c.Infra.MakeProfile.WORKSPACE_MEMBER
-fix: c.Infra.MakeProfile.WORKSPACE
