@@ -1381,7 +1381,7 @@ Infra:
           patterns:
             - ".agents/"
         - name: "WHITELIST: Agent skills owned by the workspace root"
-          profiles: [workspace]
+          profiles: [workspace-root]
           patterns:
             - "!.agents/skills/"
             - "!.agents/skills/**"
@@ -1695,7 +1695,7 @@ Infra:
           overwrite: false
         - source: base/gitignore.j2
           destination: .gitignore
-          profiles: [workspace, standalone]
+          profiles: [workspace-root, workspace-member, standalone]
           delegate: render
           overwrite: false
         # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a

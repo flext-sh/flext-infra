@@ -54,9 +54,17 @@ class FlextInfraConstantsCodegenProject:
 
     @unique
     class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository."""
+        """Generated Makefile profile for one repository.
 
-        WORKSPACE = "workspace"
+        A workspace root owns the members it declares; a member is owned by
+        one. The two are not interchangeable, which is why the single
+        ``workspace`` value they used to share was split: the generated
+        Makefile routes setup, submodule and environment handling differently
+        for the tree that owns the lock and the trees that consume it.
+        """
+
+        WORKSPACE_ROOT = "workspace-root"
+        WORKSPACE_MEMBER = "workspace-member"
         STANDALONE = "standalone"
 
     @unique

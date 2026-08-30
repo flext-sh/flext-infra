@@ -256,7 +256,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"integration baseline resolution failed: {root}"
                 )
             current_make_profile = (
-                c.Infra.MakeProfile.WORKSPACE
+                c.Infra.MakeProfile.WORKSPACE_ROOT
                 if current_repository.role is c.Infra.RepositoryRole.WORKSPACE
                 else c.Infra.MakeProfile.STANDALONE
             )
@@ -797,7 +797,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Why (flext-6itas.4): a scaffold's declared roots are the complete
         # future topology only for a subproject/standalone target; a workspace
         # root aggregates subproject trees it has not declared here.
-        declared_python_dirs_are_complete = profile is not c.Infra.MakeProfile.WORKSPACE
+        declared_python_dirs_are_complete = profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=project.package_name,
@@ -825,7 +825,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # Workspace root owns resolution for attached subprojects (uv reads
         # exclude-dependencies only from the workspace root). Subprojects still
         # receive their own routed excludes for standalone CI clones.
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT:
             uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
         else:
             uv_exclude_dependencies = tuple(
@@ -1041,13 +1041,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         workspace_mode = (
             c.Infra.WorkspaceMode.WORKSPACE
-            if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+            if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else c.Infra.WorkspaceMode.STANDALONE
         )
         # Workspace root owns resolution for attached subprojects (uv reads
         # exclude-dependencies only from the workspace root). Subprojects still
         # receive their own routed excludes for standalone CI clones.
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT:
             uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
         else:
             uv_exclude_dependencies = tuple(
@@ -1442,7 +1442,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace_repositories = (
                 tuple(workspace.subprojects)
-                if target.make_profile is c.Infra.MakeProfile.WORKSPACE
+                if target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
             # Why: ci.yml.j2 iterates this to build its push/pull_request branch
@@ -1497,7 +1497,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             profile = target.make_profile
             subprojects = (
                 tuple(workspace.subprojects)
-                if profile is c.Infra.MakeProfile.WORKSPACE
+                if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
                 else ()
             )
             gitlinks = self._managed_gitlinks(workspace, codegen)
@@ -1584,7 +1584,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         profile = target.make_profile
         subprojects = (
             tuple(workspace.subprojects)
-            if profile is c.Infra.MakeProfile.WORKSPACE
+            if profile is c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
         gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
@@ -1703,7 +1703,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     for entry in codegen.templates.entries
                 )
             )
-            if profile is not c.Infra.MakeProfile.WORKSPACE
+            if profile is not c.Infra.MakeProfile.WORKSPACE_ROOT
             else ()
         )
         # Emit only the .gitignore sections that apply to this profile: a
@@ -2174,7 +2174,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
         del workspace_root
-        workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
+        workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE_ROOT
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
         editable_repositories: tuple[m.Infra.RepositoryRef, ...] = ()
