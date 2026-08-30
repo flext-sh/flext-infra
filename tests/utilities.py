@@ -351,7 +351,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def repository_ref(
             name: str,
             *,
-            role: c.Infra.RepositoryRole | None = None,
+            role: c.Infra.MakeProfile | None = None,
             path: Path | None = None,
         ) -> m.Infra.RepositoryRef:
             """Build a repository reference from the provider contract.
@@ -369,9 +369,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             resolved_path = Path() if path is None else path
             is_subproject = bool(resolved_path.parts)
             resolved_role = role or (
-                c.Infra.RepositoryRole.STANDALONE
+                c.Infra.MakeProfile.STANDALONE
                 if is_subproject
-                else c.Infra.RepositoryRole.WORKSPACE
+                else c.Infra.MakeProfile.WORKSPACE
             )
             return m.Infra.RepositoryRef(
                 name=name,
@@ -1154,9 +1154,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             has_src: bool = True,
             project_class: str = "FlextTestProject",
             package_name: str = "test_project",
-            workspace_role: c.Infra.WorkspaceProjectRole = (
-                c.Infra.WorkspaceProjectRole.STANDALONE
-            ),
+            make_profile: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
+            is_workspace_subproject: bool = False,
         ) -> m.Infra.ProjectInfo:
             """Provide the typed test helper `create_project_info`."""
             return m.Infra.ProjectInfo(
@@ -1167,7 +1166,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 has_src=has_src,
                 project_class=project_class,
                 package_name=package_name,
-                workspace_role=workspace_role,
+                make_profile=make_profile,
+                is_workspace_subproject=is_workspace_subproject,
             )
 
         @staticmethod
@@ -1431,9 +1431,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
             mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
-            by_mode: dict[c.Infra.WorkspaceMode, c.Infra.MakeProfile] = {
-                c.Infra.WorkspaceMode.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
-                c.Infra.WorkspaceMode.STANDALONE: c.Infra.MakeProfile.STANDALONE,
+            by_mode: dict[c.Infra.MakeProfile, c.Infra.MakeProfile] = {
+                c.Infra.MakeProfile.WORKSPACE: c.Infra.MakeProfile.WORKSPACE,
+                c.Infra.MakeProfile.STANDALONE: c.Infra.MakeProfile.STANDALONE,
             }
             return by_mode[mode]
 

@@ -12,10 +12,10 @@ from tests import WorktreeFixture, u as test_u
 
 
 def _repository(
-    name: str, *, path: str, role: c.Infra.RepositoryRole
+    name: str, *, path: str, role: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryRef:
     reference = test_u.Tests.repository_ref(name, path=Path(path), role=role)
-    is_standalone = role is c.Infra.RepositoryRole.STANDALONE
+    is_standalone = role is c.Infra.MakeProfile.STANDALONE
     return reference.model_copy(
         update={"package": is_standalone, "editable": is_standalone}
     )
@@ -133,10 +133,10 @@ class TestsCodegenCatalogExtensions:
         self, tmp_path: Path
     ) -> None:
         root = _repository(
-            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE
+            "acme-platform", path=".", role=c.Infra.MakeProfile.WORKSPACE
         )
         member = _repository(
-            "acme-charts", path="acme-charts", role=c.Infra.RepositoryRole.STANDALONE
+            "acme-charts", path="acme-charts", role=c.Infra.MakeProfile.STANDALONE
         )
         workspace = m.Infra.WorkspaceSpec(
             name=root.name,

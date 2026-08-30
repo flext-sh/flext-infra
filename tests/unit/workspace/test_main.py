@@ -109,7 +109,7 @@ class TestsFlextInfraWorkspaceMain:
         ).execute()
 
         tm.ok(result)
-        tm.that(result.value, eq=c.Infra.WorkspaceMode.STANDALONE)
+        tm.that(result.value, eq=c.Infra.MakeProfile.STANDALONE)
 
     def test_orchestrate_workspace_rejects_unknown_verb(self) -> None:
         result = FlextInfraOrchestratorService(

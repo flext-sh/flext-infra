@@ -132,7 +132,7 @@ class TestsRepositoryLocalTopology:
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
 
-        tm.that(mode, eq=c.Infra.WorkspaceMode.WORKSPACE)
+        tm.that(mode, eq=c.Infra.MakeProfile.WORKSPACE)
         tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE)
 
     def test_parent_gitmodules_never_classifies_or_governs_a_child(
@@ -155,7 +155,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(child))
         resolved = tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(child))
 
-        tm.that(mode, eq=c.Infra.WorkspaceMode.STANDALONE)
+        tm.that(mode, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(workspace.repository.name, eq="child")
         tm.that(workspace.name, eq="child-workspace")
         tm.that(workspace.beads.workspace, eq="child-workspace")

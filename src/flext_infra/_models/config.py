@@ -1636,7 +1636,7 @@ class FlextInfraConfigModels:
             Path, m.Field(description="POSIX path relative to its workspace root")
         ]
         role: Annotated[
-            FlextInfraConstantsCodegenProject.RepositoryRole,
+            FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Repository role in the declared topology"),
         ]
         state: Annotated[

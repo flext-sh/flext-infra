@@ -178,12 +178,11 @@ class FlextInfraUtilitiesDocsScope:
             and not has_deps
         ):
             return None
-        if is_workspace_subproject:
-            workspace_role = c.Infra.WorkspaceProjectRole.SUBPROJECT
-        elif (entry / c.Infra.GITMODULES).is_file():
-            workspace_role = c.Infra.WorkspaceProjectRole.WORKSPACE
-        else:
-            workspace_role = c.Infra.WorkspaceProjectRole.STANDALONE
+        make_profile = (
+            c.Infra.MakeProfile.WORKSPACE
+            if (entry / c.Infra.GITMODULES).is_file()
+            else c.Infra.MakeProfile.STANDALONE
+        )
         project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
             path=entry,
             name=project_state.project_name,
@@ -196,7 +195,8 @@ class FlextInfraUtilitiesDocsScope:
                 )
             ),
             package_name=project_state.package_name,
-            workspace_role=workspace_role,
+            make_profile=make_profile,
+            is_workspace_subproject=is_workspace_subproject,
         )
         return project_info
 
