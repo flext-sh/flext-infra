@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 import re
+from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -1383,6 +1384,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
 
+    @staticmethod
+    def _beads_project_id(repository_root: Path) -> str | None:
+        """Return the checkout's own ledger identity, or None if unminted.
+
+        `.beads/identity.toml` is the canonical owner (`[project] id`); the
+        generated marker is its projection. An absent file is not a failure —
+        it means Beads has not minted an identity for this checkout yet.
+        """
+        identity = repository_root / ".beads" / "identity.toml"
+        if not identity.is_file():
+            return None
+        source = u.Cli.files_read_text(identity)
+        if source.failure:
+            return None
+        payload = u.Cli.toml_mapping_from_text(source.value)
+        if payload is None:
+            return None
+        project = payload.get("project")
+        if not isinstance(project, Mapping):
+            return None
+        value = project.get("id")
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
     def _artifact_render_context(
         self,
         *,
@@ -1431,8 +1455,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
+            # Why: this marker is regenerated on every `make gen`, but the
+            # ledger identity inside it is owned by the checkout, not by the
+            # fleet SSOT. Rendering without it stripped the key, and Beads then
+            # minted a NEW identity on next access — rig gmn lost
+            # 2b1a0582-… that way (commit 3e7ba1e). Read it back so a
+            # regeneration is identity-preserving.
             return r[p.Model].ok(
-                m.Infra.BeadsMetadataRenderSpec(database=target.beads.database)
+                m.Infra.BeadsMetadataRenderSpec(
+                    database=target.beads.database,
+                    project_id=self._beads_project_id(repository_root),
+                )
             )
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)

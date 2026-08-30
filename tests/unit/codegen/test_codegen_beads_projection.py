@@ -63,7 +63,10 @@ class TestsCodegenBeadsProjection:
         if rendered_config is None or rendered_metadata is None:
             pytest.fail("local identity must produce both Beads projections")
         tm.that(rendered_config, has='issue-prefix: "project-prefix"')
-        tm.that(rendered_config, has='prefix: "project_database"')
+        # The config projection carries the ISSUE prefix, not the database name;
+        # asserting a bare `prefix: <database>` kept this red against a template
+        # that is correct (see any governed .beads/config.yaml on disk).
+        tm.that(rendered_config, has='issue_prefix: "project-prefix"')
         tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
         tm.that(rendered_config, has="gc.endpoint_status: verified")
         tm.that(rendered_config, has="types.custom:")
@@ -72,18 +75,43 @@ class TestsCodegenBeadsProjection:
         tm.that(metadata["backend"], eq="dolt")
         tm.that(metadata["dolt_database"], eq="project_database")
         tm.that(metadata["dolt_mode"], eq="server")
+        # The city owns the endpoint and reallocates the port at runtime, so the
+        # marker carries no host and no port. `project_id` is absent here because
+        # this fixture has no .beads/identity.toml: Beads has not minted one yet.
         tm.that(
             set(metadata),
-            eq={
-                "database",
-                "backend",
-                "dolt_mode",
-                "dolt_database",
-                "dolt_server_host",
-                "dolt_server_port",
-            },
+            eq={"database", "backend", "dolt_mode", "dolt_database"},
         )
         tm.that(hasattr(plan, "beads"), eq=False)
+
+    def test_metadata_projection_preserves_a_minted_ledger_identity(
+        self, tmp_path: Path
+    ) -> None:
+        """Regenerating must not strip the checkout's own ledger identity.
+
+        Rendering the marker without `project_id` stripped the key on every
+        `make gen`, and Beads then minted a fresh identity on next access —
+        rig `gmn` lost 2b1a0582-… that way (commit 3e7ba1e).
+        """
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+        )
+        minted = "e9a551fc-a6f8-4e0e-a961-2505f49bc8a3"
+        identity = root / ".beads" / "identity.toml"
+        identity.parent.mkdir(parents=True, exist_ok=True)
+        identity.write_text(f'[project]\nid = "{minted}"\n')
+
+        rendered = self._rendered(self._plan(root), c.Infra.BEADS_METADATA_RELPATH)
+        if rendered is None:
+            pytest.fail("local identity must produce the Beads marker")
+        metadata = json.loads(rendered)
+        tm.that(metadata["project_id"], eq=minted)
+        tm.that(
+            set(metadata),
+            eq={"database", "backend", "dolt_mode", "dolt_database", "project_id"},
+        )
 
     def test_projection_preserves_the_manual_identity_input(
         self, tmp_path: Path
@@ -119,4 +147,9 @@ class TestsCodegenBeadsProjection:
         tm.that("reported_version" in tool_fields, eq=False)
         tm.that("checksum" in tool_fields, eq=False)
         tm.that("expected_schema" in tool_fields, eq=False)
-        tm.that("endpoint" in tool_fields, eq=True)
+        # The declarative endpoint projection survived, but caa162de0 split the
+        # single `endpoint` field into the origin/status pair. Asserting the
+        # retired name kept this test red against a model that is correct.
+        tm.that("endpoint" in tool_fields, eq=False)
+        tm.that("endpoint_origin" in tool_fields, eq=True)
+        tm.that("endpoint_status" in tool_fields, eq=True)
