@@ -20,14 +20,14 @@ from flext_tests import tm
 from tests import u as test_u
 
 
-def _workspace_root() -> Path:
-    """Return the workspace root that owns this checkout."""
+def _repository_root() -> Path:
+    """Return the repository root that owns this checkout."""
     return Path(flext_infra.__file__).resolve().parents[2]
 
 
 def _is_allowed_by_policy(relative_path: str) -> bool:
     """Return whether the shipped SSOT policy keeps *relative_path* trackable."""
-    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
     return test_u.Tests.is_tracked_under(rendered, relative_path)
 
 

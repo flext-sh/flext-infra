@@ -98,7 +98,7 @@ class TestSilentFailureValidator:
     def test_execute_reports_detected_issues(self, tmp_path: Path) -> None:
         project = _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace_root=project, project_filter="flext-infra"
+            repository_root=project, project_filter="flext-infra"
         ).execute()
 
         tm.fail(result, has="silent failure validation found 3 issue(s)")
@@ -109,7 +109,7 @@ class TestSilentFailureValidator:
     def test_execute_json_output_format_emits_full_report(self, tmp_path: Path) -> None:
         project = _create_silent_failure_project(tmp_path)
         result = FlextInfraSilentFailureValidator(
-            workspace_root=project, project_filter="flext-infra", output_format="json"
+            repository_root=project, project_filter="flext-infra", output_format="json"
         ).execute()
 
         tm.that(result.failure, eq=True)
@@ -139,7 +139,7 @@ class TestSilentFailureValidator:
             files={"utilities.py": source},
         )
         result = FlextInfraSilentFailureValidator(
-            workspace_root=project, project_filter="flext-infra"
+            repository_root=project, project_filter="flext-infra"
         ).execute()
 
         tm.fail(result, has=f"found {finding_count} issue(s)")

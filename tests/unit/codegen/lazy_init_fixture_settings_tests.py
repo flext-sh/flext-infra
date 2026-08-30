@@ -26,7 +26,7 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
         self, tmp_path: Path
     ) -> None:
         """The public root keeps direct singletons without private fixture exports."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         fixtures_dir = package_root / "_fixtures"
         fixtures_dir.mkdir()
         (fixtures_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
@@ -53,7 +53,7 @@ class TestsFlextInfraLazyInitFixtureSettingsCollision:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(repository_root)
 
         init_content = (package_root / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT

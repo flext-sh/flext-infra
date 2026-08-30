@@ -79,10 +79,10 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def update_changelog(
-        workspace_root: Path, version: str, tag: str, notes_path: Path
+        repository_root: Path, version: str, tag: str, notes_path: Path
     ) -> p.Result[bool]:
         """Update docs/changelog and docs/releases entries."""
-        docs = workspace_root / c.Infra.DIR_DOCS
+        docs = repository_root / c.Infra.DIR_DOCS
         changelog_path = docs / "CHANGELOG.md"
         latest_path = docs / "releases" / "latest.md"
         tagged_path = docs / "releases" / f"{tag}.md"

@@ -41,10 +41,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._result = result
 
             def resolve_projects(
-                self, workspace_root: Path, names: t.StrSequence
+                self, repository_root: Path, names: t.StrSequence
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
-                del workspace_root, names
+                del repository_root, names
                 return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
@@ -430,7 +430,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 ),
                 homepage=homepage,
                 documentation=homepage,
-                workspace_root_rel=".",
+                repository_root_rel=".",
                 year=2026,
             )
 
@@ -862,41 +862,41 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return workspace
 
         @staticmethod
-        def run_release_main(workspace_root: Path, *arguments: str) -> int:
+        def run_release_main(repository_root: Path, *arguments: str) -> int:
             """Run the public release CLI against one real test workspace."""
             return main([
                 "release",
                 "run",
                 "--workspace",
-                str(workspace_root),
+                str(repository_root),
                 *arguments,
             ])
 
         @staticmethod
-        def release_report_dir(workspace_root: Path, version: str) -> Path:
+        def release_report_dir(repository_root: Path, version: str) -> Path:
             """Return the public release report directory for one version."""
-            return workspace_root / ".reports" / "release" / f"v{version}"
+            return repository_root / ".reports" / "release" / f"v{version}"
 
         @staticmethod
         def release_build_log(
-            workspace_root: Path, version: str, project_name: str
+            repository_root: Path, version: str, project_name: str
         ) -> Path:
             """Return one release project's observable build log path."""
             return (
                 TestsFlextInfraUtilities.Tests.release_report_dir(
-                    workspace_root, version
+                    repository_root, version
                 )
                 / f"build-{project_name}.log"
             )
 
         @staticmethod
         def release_artifact_dir(
-            workspace_root: Path, version: str, project_name: str
+            repository_root: Path, version: str, project_name: str
         ) -> Path:
             """Return one release project's immutable artifact-set directory."""
             return (
                 TestsFlextInfraUtilities.Tests.release_report_dir(
-                    workspace_root, version
+                    repository_root, version
                 )
                 / "artifacts"
                 / project_name
@@ -1243,13 +1243,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             package_name: str = "flext_test_project",
         ) -> tuple[Path, Path]:
             """Provide the typed test helper `create_lazy_init_workspace`."""
-            workspace_root = tmp_path / project_name
-            package_root = workspace_root / c.Infra.DEFAULT_SRC_DIR / package_name
+            repository_root = tmp_path / project_name
+            package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
             package_root.mkdir(parents=True)
-            (workspace_root / "Makefile").write_text(
+            (repository_root / "Makefile").write_text(
                 "check:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
             )
-            (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
+            (repository_root / c.Infra.PYPROJECT_FILENAME).write_text(
                 (
                     f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
                     + TestsFlextInfraUtilities.Tests.ruff_per_file_ignores_toml()
@@ -1260,9 +1260,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "", encoding=c.Infra.ENCODING_DEFAULT
             )
             TestsFlextInfraUtilities.Tests.write_project_beads_config(
-                workspace_root, project_name
+                repository_root, project_name
             )
-            return (workspace_root, package_root)
+            return (repository_root, package_root)
 
         @staticmethod
         def write_lazy_init_namespace_module(
@@ -1295,16 +1295,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
+        def run_lazy_init(repository_root: Path, *, check_only: bool = False) -> int:
             """Provide the typed test helper `run_lazy_init`."""
             return FlextInfraCodegenLazyInit(
-                workspace_root=workspace_root
+                repository_root=repository_root
             ).generate_inits(check_only=check_only)
 
         @staticmethod
-        def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:
+        def create_lazy_init_service(
+            repository_root: Path,
+        ) -> FlextInfraCodegenLazyInit:
             """Provide the typed test helper `create_lazy_init_service`."""
-            return FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+            return FlextInfraCodegenLazyInit(repository_root=repository_root)
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
@@ -1324,22 +1326,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def consolidate_codegen(
-            *, workspace_root: Path, project: str | None = None, dry_run: bool = True
+            *, repository_root: Path, project: str | None = None, dry_run: bool = True
         ) -> p.Result[str]:
             """Provide the typed test helper `consolidate_codegen`."""
             service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
-                workspace_root=workspace_root, dry_run=dry_run, project_name=project
+                repository_root=repository_root, dry_run=dry_run, project_name=project
             )
             result: p.Result[str] = service.execute()
             return result
 
         @staticmethod
         def detect_command(
-            workspace_root: Path, **overrides: t.Infra.InfraValue
+            repository_root: Path, **overrides: t.Infra.InfraValue
         ) -> m.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
             validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
-                "workspace": str(workspace_root),
+                "workspace": str(repository_root),
                 **overrides,
             })
             return validated
@@ -1366,10 +1368,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 deptry_path.write_text("", encoding="utf-8")
             if runner is not None:
                 return FlextInfraRuntimeDevDependencyDetector(
-                    workspace_root=tmp_path, deps=deps, runner=runner
+                    repository_root=tmp_path, deps=deps, runner=runner
                 )
             return FlextInfraRuntimeDevDependencyDetector(
-                workspace_root=tmp_path, deps=deps
+                repository_root=tmp_path, deps=deps
             )
 
         @staticmethod
@@ -1501,17 +1503,17 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def create_gate_context(
-            workspace_root: Path, *, reports_dir: Path | None = None
+            repository_root: Path, *, reports_dir: Path | None = None
         ) -> m.Infra.GateContext:
             """Provide the typed test helper `create_gate_context`."""
             return m.Infra.GateContext(
-                workspace=workspace_root, reports_dir=reports_dir or workspace_root
+                workspace=repository_root, reports_dir=reports_dir or repository_root
             )
 
         @staticmethod
         def run_gate_check(
             gate_class: type[FlextInfraGate],
-            workspace_root: Path,
+            repository_root: Path,
             project_dir: Path,
             *,
             ctx: m.Infra.GateContext | None = None,
@@ -1519,12 +1521,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             runner: p.Cli.CommandRunner | None = None,
         ) -> m.Infra.GateExecution:
             """Provide the typed test helper `run_gate_check`."""
-            gate = gate_class(workspace_root, runner=runner)
+            gate = gate_class(repository_root, runner=runner)
             return gate.check(
                 project_dir,
                 ctx
                 or TestsFlextInfraUtilities.Tests.create_gate_context(
-                    workspace_root, reports_dir=reports_dir
+                    repository_root, reports_dir=reports_dir
                 ),
             )
 
@@ -1552,11 +1554,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             @override
             def discover_project_paths(
                 self,
-                workspace_root: Path,
+                repository_root: Path,
                 *,
                 projects_filter: t.StrSequence | None = None,
             ) -> p.Result[Sequence[Path]]:
-                del workspace_root, projects_filter
+                del repository_root, projects_filter
                 if self.discovery_failure is not None:
                     return r[Sequence[Path]].fail(self.discovery_failure)
                 return r[Sequence[Path]].ok(self.project_paths)

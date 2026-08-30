@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from tests import t
 
 
-def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
-    return ExtraPathsTestSupport.manager(workspace_root)
+def _manager(repository_root: Path | None = None) -> FlextInfraExtraPathsManager:
+    return ExtraPathsTestSupport.manager(repository_root)
 
 
 class TestsFlextInfraExtraPathsManager:

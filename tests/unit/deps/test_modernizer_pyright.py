@@ -95,7 +95,7 @@ class TestsFlextInfraDepsModernizerPyright:
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
-            doc, is_root=True, workspace_root=tmp_path
+            doc, is_root=True, repository_root=tmp_path
         )
 
         tool = u.Cli.toml_unwrap_item(doc["tool"])
@@ -271,7 +271,7 @@ class TestsFlextInfraDepsModernizerPyright:
 
         rendered = tm.ok(
             FlextInfraPyprojectModernizer(
-                workspace_root=project_dir, skip_check=True, skip_comments=True
+                repository_root=project_dir, skip_check=True, skip_comments=True
             ).conform_source(
                 source,
                 path=pyproject,
@@ -326,7 +326,7 @@ class TestsFlextInfraDepsModernizerPyright:
         tm.that(pyright, lacks="include")
         tm.that(u.Cli.toml_unwrap_item(pyright["executionEnvironments"]), eq=[])
 
-    def test_workspace_root_never_adopts_member_analyzer_roots(
+    def test_repository_root_never_adopts_member_analyzer_roots(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Keep member projects under their own manifests and native gates."""
@@ -350,11 +350,11 @@ class TestsFlextInfraDepsModernizerPyright:
         fleet_doc = u.Cli.toml_document()
         declared_doc = u.Cli.toml_document()
 
-        _ = phase.apply(fleet_doc, is_root=True, workspace_root=tmp_path)
+        _ = phase.apply(fleet_doc, is_root=True, repository_root=tmp_path)
         _ = phase.apply(
             declared_doc,
             is_root=True,
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             declared_python_dirs=(rules.source_dir,),
         )
 

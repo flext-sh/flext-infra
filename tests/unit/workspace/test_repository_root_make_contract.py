@@ -15,8 +15,8 @@ from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
-    workspace_root = tmp_path / "workspace"
-    workspace_root.mkdir()
+    repository_root = tmp_path / "workspace"
+    repository_root.mkdir()
     root_repository = u.Tests.repository_ref("fixture-workspace")
     subprojects = tuple(
         u.Tests.repository_ref(name, path=Path(name))
@@ -24,26 +24,26 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     )
     project_names = tuple(project.path.as_posix() for project in subprojects)
     root_package = (
-        workspace_root / "src" / root_repository.distribution.replace("-", "_")
+        repository_root / "src" / root_repository.distribution.replace("-", "_")
     )
     root_package.mkdir(parents=True)
     (root_package / "__init__.py").write_text("", encoding="utf-8")
-    (workspace_root / "pyproject.toml").write_text(
+    (repository_root / "pyproject.toml").write_text(
         f"[project]\nname = '{root_repository.distribution}'\nversion = '0.1.0'\n",
         encoding="utf-8",
     )
     u.Tests.write_beads_project(
-        workspace_root,
+        repository_root,
         workspace=root_repository.name,
         database=root_repository.name,
         issue_prefix=root_repository.name,
     )
-    u.Tests.initialize_git_repo(workspace_root, origin_url=root_repository.url)
+    u.Tests.initialize_git_repo(repository_root, origin_url=root_repository.url)
     u.Tests.git_bootstrap(
-        workspace_root, ("config", "remote.origin.skipDefaultUpdate", "true")
+        repository_root, ("config", "remote.origin.skipDefaultUpdate", "true")
     )
     for project_name in project_names:
-        project_root = workspace_root / project_name
+        project_root = repository_root / project_name
         WorktreeFixture.initialize_governed_project(
             project_root,
             project_name,
@@ -51,11 +51,11 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             database=f"{project_name}-database",
             issue_prefix=f"{project_name}-prefix",
         )
-    gitmodules_path = WorktreeFixture.write_gitmodules(workspace_root, project_names)
+    gitmodules_path = WorktreeFixture.write_gitmodules(repository_root, project_names)
     protected_paths = {
         gitmodules_path,
-        workspace_root / "config" / "beads.yaml",
-        *(workspace_root / name / "config" / "beads.yaml" for name in project_names),
+        repository_root / "config" / "beads.yaml",
+        *(repository_root / name / "config" / "beads.yaml" for name in project_names),
     }
     # These tests assert what the generated Makefile contains, so the public
     # planning surface provides the exact artifacts without writing the fixture.
@@ -63,7 +63,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     planned = tm.ok(
         FlextInfraCodegenConform().plan(
             m.Infra.CodegenConformRequest(
-                root=workspace_root,
+                root=repository_root,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
@@ -83,8 +83,8 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         planned_file.path.parent.mkdir(parents=True, exist_ok=True)
         planned_file.path.write_text(planned_file.rendered, encoding="utf-8")
     for project_name in project_names:
-        _write_child_makefile(workspace_root / project_name, exit_code=0)
-    return workspace_root, project_names
+        _write_child_makefile(repository_root / project_name, exit_code=0)
+    return repository_root, project_names
 
 
 def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
@@ -103,8 +103,8 @@ def _write_child_makefile(project_root: Path, *, exit_code: int) -> None:
     )
 
 
-class TestsWorkspaceRootMakeContract:
-    def test_workspace_root_make_template_is_owned_by_typed_config(self) -> None:
+class TestsRepositoryRootMakeContract:
+    def test_repository_root_make_template_is_owned_by_typed_config(self) -> None:
         make_entries = tuple(
             entry
             for entry in config.Infra.codegen.templates.entries
@@ -121,19 +121,20 @@ class TestsWorkspaceRootMakeContract:
         make.verbs and is `gen` today. The contract is that the declared verb
         reaches `codegen conform`, and that no second public entry point does.
         """
-        workspace_root, _ = _write_workspace(tmp_path)
+        repository_root, _ = _write_workspace(tmp_path)
         declared = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that(declared, has="gen")
 
         generated: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "gen", "WHAT=check"],
-                cwd=workspace_root,
+                ["-C", str(repository_root), "--dry-run", "gen", "WHAT=check"],
+                cwd=repository_root,
             )
         )
         retired: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "codegen"], cwd=workspace_root
+                ["-C", str(repository_root), "--dry-run", "codegen"],
+                cwd=repository_root,
             )
         )
         output = generated.stdout + generated.stderr
@@ -148,19 +149,19 @@ class TestsWorkspaceRootMakeContract:
     def test_generated_make_routes_fmt_apply_to_selected_project(
         self, tmp_path: Path
     ) -> None:
-        workspace_root, project_names = _write_workspace(tmp_path)
+        repository_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
                 [
                     "-C",
-                    str(workspace_root),
+                    str(repository_root),
                     "--dry-run",
                     "_builtin_fmt_apply",
                     f"PROJECT={project_names[0]}",
                     "APPLY=Y",
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         output = process.stdout + process.stderr
@@ -176,19 +177,19 @@ class TestsWorkspaceRootMakeContract:
         self, tmp_path: Path
     ) -> None:
         """The public fix verb reaches every gate that advertises a fixer."""
-        workspace_root, _project_names = _write_workspace(tmp_path)
+        repository_root, _project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
                 [
                     "-C",
-                    str(workspace_root),
+                    str(repository_root),
                     "--dry-run",
                     "_builtin_fix_apply",
                     "PROJECT=.",
                     "APPLY=Y",
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         output = process.stdout + process.stderr
@@ -202,7 +203,7 @@ class TestsWorkspaceRootMakeContract:
     def test_generated_make_routes_file_and_match_only_to_owning_project(
         self, tmp_path: Path
     ) -> None:
-        workspace_root, project_names = _write_workspace(tmp_path)
+        repository_root, project_names = _write_workspace(tmp_path)
         owner = project_names[0]
         selected = f"{owner}/tests/unit/test_selected.py"
 
@@ -210,13 +211,13 @@ class TestsWorkspaceRootMakeContract:
             u.Tests.run_isolated_make(
                 [
                     "-C",
-                    str(workspace_root),
+                    str(repository_root),
                     "--dry-run",
                     "_builtin_test_all",
                     f"FILE={selected}",
                     "MATCH=selected_case",
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         output = process.stdout + process.stderr
@@ -230,19 +231,19 @@ class TestsWorkspaceRootMakeContract:
         self, tmp_path: Path
     ) -> None:
         """Run a root-owned test locally without recursively orchestrating root."""
-        workspace_root, project_names = _write_workspace(tmp_path)
+        repository_root, project_names = _write_workspace(tmp_path)
         selected = "tests/unit/test_provider_contract.py"
 
         process: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
                 [
                     "-C",
-                    str(workspace_root),
+                    str(repository_root),
                     "--dry-run",
                     "_builtin_test_all",
                     f"FILE={selected}",
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         output = process.stdout + process.stderr
@@ -257,12 +258,12 @@ class TestsWorkspaceRootMakeContract:
         self, tmp_path: Path
     ) -> None:
         """Default test covers the publishing root and every declared member."""
-        workspace_root, project_names = _write_workspace(tmp_path)
+        repository_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "_builtin_test_all"],
-                cwd=workspace_root,
+                ["-C", str(repository_root), "--dry-run", "_builtin_test_all"],
+                cwd=repository_root,
             )
         )
         output = process.stdout + process.stderr
@@ -276,12 +277,12 @@ class TestsWorkspaceRootMakeContract:
         self, tmp_path: Path
     ) -> None:
         """Default check validates root sources before orchestrating members."""
-        workspace_root, project_names = _write_workspace(tmp_path)
+        repository_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
-                ["-C", str(workspace_root), "--dry-run", "_builtin_check_all"],
-                cwd=workspace_root,
+                ["-C", str(repository_root), "--dry-run", "_builtin_check_all"],
+                cwd=repository_root,
             )
         )
         output = process.stdout + process.stderr
@@ -292,7 +293,7 @@ class TestsWorkspaceRootMakeContract:
         for project_name in project_names:
             tm.that(output, has=f"--projects {project_name}")
 
-        generated_makefile = (workspace_root / "Makefile").read_text(encoding="utf-8")
+        generated_makefile = (repository_root / "Makefile").read_text(encoding="utf-8")
         check_recipe = generated_makefile.split(
             "_builtin_check_all: _builtin_require_environment", 1
         )[1].split("_builtin_check_lint:", 1)[0]
@@ -300,12 +301,12 @@ class TestsWorkspaceRootMakeContract:
             check_recipe,
             has=(
                 "\tfi; \\\n"
-                '\tif [ "$(WORKSPACE_ROOT_PACKAGE)" = "Y" ] && '
+                '\tif [ "$(REPOSITORY_ROOT_PACKAGE)" = "Y" ] && '
                 '[ -n "$(SELECTED_ROOT_PROJECT)" ]; then \\\n'
             ),
         )
 
-    def test_workspace_root_setup_owns_environment_and_uses_venv_directory(
+    def test_repository_root_setup_owns_environment_and_uses_venv_directory(
         self, tmp_path: Path
     ) -> None:
         """Setup provisions the root environment through the caller's uv.
@@ -318,7 +319,7 @@ class TestsWorkspaceRootMakeContract:
         test. A fake uv records the invocation, so the contract is observed
         without provisioning anything.
         """
-        workspace_root, _ = _write_workspace(tmp_path)
+        repository_root, _ = _write_workspace(tmp_path)
         setup_log = tmp_path / "setup.log"
         fake_bin = tmp_path / "fake" / "bin"
         fake_bin.mkdir(parents=True)
@@ -337,33 +338,33 @@ class TestsWorkspaceRootMakeContract:
             u.Tests.run_isolated_make(
                 [
                     "-C",
-                    str(workspace_root),
+                    str(repository_root),
                     "--dry-run",
                     "_builtin_setup_environment",
                     f"UV={fake_uv}",
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
 
         output = process.stdout + process.stderr
         tm.that(process.exit_code, eq=0, msg=output)
-        expected_environment = str(workspace_root / ".venv")
+        expected_environment = str(repository_root / ".venv")
         # The root owns its own environment: the venv lives beside it and the
-        # sync targets the workspace root, never an ambient caller project.
+        # sync targets the repository root, never an ambient caller project.
         tm.that(output, has=f'venv "{expected_environment}"')
-        tm.that(output, has=f'sync --project "{workspace_root}"')
+        tm.that(output, has=f'sync --project "{repository_root}"')
         tm.that(output, has=f'pip check --python "{expected_environment}"')
 
     def test_orchestrator_sanitizes_child_env_and_forwards_gates(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        workspace_root, project_names = _write_workspace(tmp_path)
+        repository_root, project_names = _write_workspace(tmp_path)
         for project_name in project_names:
-            _write_child_makefile(workspace_root / project_name, exit_code=0)
+            _write_child_makefile(repository_root / project_name, exit_code=0)
         hostile_root = tmp_path / "hostile-worktree"
         hostile_venv = hostile_root / ".venv"
-        monkeypatch.chdir(workspace_root)
+        monkeypatch.chdir(repository_root)
         monkeypatch.setenv("UV_PROJECT", str(hostile_root))
         monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(hostile_venv))
         monkeypatch.setenv("VIRTUAL_ENV", str(hostile_venv))
@@ -383,10 +384,10 @@ class TestsWorkspaceRootMakeContract:
     def test_orchestrator_fail_fast_preserves_child_exit_and_skips_remaining(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        workspace_root, project_names = _write_workspace(tmp_path)
-        _write_child_makefile(workspace_root / project_names[0], exit_code=23)
-        _write_child_makefile(workspace_root / project_names[1], exit_code=0)
-        monkeypatch.chdir(workspace_root)
+        repository_root, project_names = _write_workspace(tmp_path)
+        _write_child_makefile(repository_root / project_names[0], exit_code=23)
+        _write_child_makefile(repository_root / project_names[1], exit_code=0)
+        monkeypatch.chdir(repository_root)
 
         result = FlextInfraOrchestratorService(verb="test").orchestrate(
             project_names, "test", fail_fast=True
@@ -394,7 +395,7 @@ class TestsWorkspaceRootMakeContract:
 
         tm.fail(result, has="orchestration completed with failures: 1")
         first_log = (
-            workspace_root
+            repository_root
             / ".reports"
             / "workspace"
             / "test"

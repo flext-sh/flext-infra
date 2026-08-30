@@ -33,11 +33,11 @@ def _build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
 
 
 def _engine(
-    workspace_root: Path, *, apply_changes: bool = False
+    repository_root: Path, *, apply_changes: bool = False
 ) -> FlextInfraCodegenLayout:
-    """Build the layout service over one fixture workspace root."""
+    """Build the layout service over one fixture repository root."""
     return FlextInfraCodegenLayout(
-        workspace_root=workspace_root, apply_changes=apply_changes
+        repository_root=repository_root, apply_changes=apply_changes
     )
 
 

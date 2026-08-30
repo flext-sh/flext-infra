@@ -29,9 +29,9 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     kind: ClassVar[str] = "gate"
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used to instantiate gates."""
-        super().__init__(workspace_root)
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used to instantiate gates."""
+        super().__init__(repository_root)
 
     def _registry(self) -> FlextInfraGateRegistry:
         """Lazy import of the gate registry to avoid circular imports."""
@@ -71,7 +71,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
-        gate = gate_cls(self._workspace_root)
+        gate = gate_cls(self._repository_root)
         if not gate.can_fix:
             return m.Infra.ProjectFixResult(
                 project=project_dir.name,
@@ -102,7 +102,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             reports_dir = reports_dir_result.value
         gate_ctx = m.Infra.GateContext(
-            workspace=self._workspace_root,
+            workspace=self._repository_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=not ctx.apply,

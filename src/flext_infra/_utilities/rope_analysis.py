@@ -1443,8 +1443,8 @@ class FlextInfraUtilitiesRopeAnalysis:
             # settings SSOT, with cwd as last resort — both exist where CLI runs.
             # Path() coercion keeps this correct while settings migrates the
             # field from str to Path (both accepted).
-            workspace_root = settings.Infra.workspace_root
-            anchor = Path(workspace_root) if workspace_root else Path.cwd()
+            repository_root = settings.Infra.repository_root
+            anchor = Path(repository_root) if repository_root else Path.cwd()
             cached = FlextInfraUtilitiesRopeCore.init_rope_project(anchor)
             FlextInfraUtilitiesRopeAnalysis._parse_project = cached
         return cached

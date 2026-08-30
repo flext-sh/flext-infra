@@ -270,10 +270,10 @@ class FlextInfraUtilitiesDiscovery(
         return frozenset(path.parts[0] for path in excluded.value if path.parts)
 
     @staticmethod
-    def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
+    def package_init_path(repository_root: Path, package_name: str) -> Path | None:
         """Resolve a package anywhere inside the selected Rope scan root."""
         package_parts = Path(*package_name.split("."))
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         project_roots = {
             resolved_root,
             *(
@@ -309,9 +309,9 @@ class FlextInfraUtilitiesDiscovery(
         return tuple(ordered)
 
     @classmethod
-    def rope_workspace_root(cls, workspace_root: Path) -> Path:
+    def rope_repository_root(cls, repository_root: Path) -> Path:
         """Return the execution-context root for one conditional Rope scan."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
@@ -329,13 +329,13 @@ class FlextInfraUtilitiesDiscovery(
     @classmethod
     def find_all_pyproject_files(
         cls,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
         project_paths: t.SequenceOf[Path] | None = None,
     ) -> p.Result[t.SequenceOf[Path]]:
-        """Find all managed ``pyproject.toml`` files for one workspace root."""
-        if not workspace_root.exists() or not workspace_root.is_dir():
+        """Find all managed ``pyproject.toml`` files for one repository root."""
+        if not repository_root.exists() or not repository_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
         # Explicit project paths are a hard write-scope boundary. Without one,
@@ -343,7 +343,7 @@ class FlextInfraUtilitiesDiscovery(
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
-            else [workspace_root.resolve()]
+            else [repository_root.resolve()]
         )
         all_files: list[Path] = []
         for scan_root in scan_roots:
@@ -413,7 +413,7 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def resolve_transitive_parent_packages(
-        cls, workspace_root: Path, package_names: t.StrSequence
+        cls, repository_root: Path, package_names: t.StrSequence
     ) -> t.StrSequence:
         """Resolve parent packages transitively with ancestors ordered before children."""
         resolved: list[str] = []
@@ -424,7 +424,7 @@ class FlextInfraUtilitiesDiscovery(
             if not package_name or package_name in visited:
                 return
             visited.add(package_name)
-            init_path = cls.package_init_path(workspace_root, package_name)
+            init_path = cls.package_init_path(repository_root, package_name)
             if init_path is not None:
                 for parent_package in cls.resolve_parent_constants_flext(
                     init_path.parent, return_module=True
@@ -456,7 +456,7 @@ class FlextInfraUtilitiesDiscovery(
         if not parent_packages:
             return {}
         transitive_parent_packages = cls.resolve_transitive_parent_packages(
-            cls.rope_workspace_root(project_root), parent_packages
+            cls.rope_repository_root(project_root), parent_packages
         )
         allowed_sources = frozenset(
             package.split(".", maxsplit=1)[0]

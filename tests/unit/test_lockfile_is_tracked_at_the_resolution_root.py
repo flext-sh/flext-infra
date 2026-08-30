@@ -1,7 +1,7 @@
 """Tests that the uv lockfile is committable wherever it is the resolution SSOT.
 
 ``uv.lock`` pins the exact resolved dependency graph. A UV workspace project
-does not own one -- resolution happens once at the workspace root -- but the
+does not own one -- resolution happens once at the repository root -- but the
 root itself, and any standalone distribution, must commit theirs or every
 checkout re-resolves and the build stops being reproducible.
 
@@ -24,14 +24,14 @@ from flext_tests import tm
 from tests import u as test_u
 
 
-def _workspace_root() -> Path:
+def _repository_root() -> Path:
     """Return the repository root that owns the imported package."""
     return Path(flext_infra.__file__).resolve().parents[2]
 
 
 def _is_allowed_by_policy(relative_path: str) -> bool:
     """Return whether git would track *relative_path* under the SSOT policy."""
-    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
     return test_u.Tests.is_tracked_under(rendered, relative_path)
 
 

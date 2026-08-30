@@ -194,7 +194,7 @@ class FlextInfraModelsGithub:
             return self.request.prune
 
     class GithubPullRequestWorkspaceContext(
-        mm.WorkspaceRootPathMixin, m.ArbitraryTypesModel
+        mm.RepositoryRootPathMixin, m.ArbitraryTypesModel
     ):
         """Resolved context for workspace-wide pull-request execution."""
 

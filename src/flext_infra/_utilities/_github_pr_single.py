@@ -31,7 +31,7 @@ class FlextInfraUtilitiesGithubPrSingleMixin(FlextInfraUtilitiesGithubPrExecutio
         """Execute one pull-request command from the canonical single-repo payload."""
         result = cls._run_github_pull_request_for_repo(
             repo_root=params.repo_root_path,
-            workspace_root=params.repo_root_path,
+            repository_root=params.repo_root_path,
             request=params,
         )
         if result.success and result.value.exit_code != 0:
@@ -45,13 +45,15 @@ class FlextInfraUtilitiesGithubPrSingleMixin(FlextInfraUtilitiesGithubPrExecutio
         cls,
         *,
         repo_root: Path,
-        workspace_root: Path,
+        repository_root: Path,
         request: p.Infra.GithubPullRequestFields,
     ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
         """Execute one pull-request command for a single repository."""
-        display = workspace_root.name if repo_root == workspace_root else repo_root.name
+        display = (
+            repository_root.name if repo_root == repository_root else repo_root.name
+        )
         report_dir = (
-            workspace_root
+            repository_root
             / c.Infra.REPORTS_DIR_NAME
             / c.Infra.RK_WORKSPACE
             / c.Infra.PR

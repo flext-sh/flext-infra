@@ -45,21 +45,21 @@ class FlextInfraDocAuditor(
 
     def audit(
         self,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         projects: t.StrSequence | None = None,
         output_dir: Path | str | None = None,
         params: m.Infra.AuditScopeParams | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Audit root and governed project docs scopes."""
-        resolved_params = self._audit_params(workspace_root, params)
+        resolved_params = self._audit_params(repository_root, params)
         if resolved_params.failure:
             return r.fail(
                 resolved_params.error or "audit parameter resolution failed",
                 error_code=resolved_params.error_code,
             )
         return self.run_scoped_docs(
-            workspace_root,
+            repository_root,
             projects=projects,
             output_dir=output_dir,
             handler=lambda scope: self.audit_scope(scope, params=resolved_params.value),
@@ -106,7 +106,7 @@ class FlextInfraDocAuditor(
         return self._propagate_phase_outcome(
             "audit",
             self.audit(
-                workspace_root=self.workspace_root,
+                repository_root=self.repository_root,
                 projects=self.selected_projects,
                 output_dir=self.output_dir,
                 params=m.Infra.AuditScopeParams(
@@ -119,12 +119,12 @@ class FlextInfraDocAuditor(
         )
 
     def _audit_params(
-        self, workspace_root: Path, params: m.Infra.AuditScopeParams | None
+        self, repository_root: Path, params: m.Infra.AuditScopeParams | None
     ) -> p.Result[m.Infra.AuditScopeParams]:
         """Resolve runtime audit parameters and load default budgets when absent."""
         if params is not None and params.budgets is not None:
             return r[m.Infra.AuditScopeParams].ok(params)
-        budgets_result = self.load_audit_budgets(workspace_root)
+        budgets_result = self.load_audit_budgets(repository_root)
         if budgets_result.failure:
             return r[m.Infra.AuditScopeParams].fail(
                 budgets_result.error or "audit budget resolution failed",

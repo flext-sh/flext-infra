@@ -58,18 +58,18 @@ class TestLazyMapFreshnessValidatorCore:
         self, tmp_path: Path, v: FlextInfraValidateLazyMapFreshness
     ) -> None:
         """Freshness validation fails when generated lazy maps drift."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         init_path = package_root / "__init__.py"
         init_path.write_text(
             f"{init_path.read_text(encoding='utf-8')}\n# stale generated drift\n",
             encoding="utf-8",
         )
 
-        report: m.Infra.ValidationReport = tm.ok(v.build_report(workspace_root))
+        report: m.Infra.ValidationReport = tm.ok(v.build_report(repository_root))
 
         tm.that(report.passed, eq=False)
         tm.that(report.summary, has="stale")

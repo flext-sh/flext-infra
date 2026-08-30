@@ -6,7 +6,7 @@ project alone.
 
 The ``gen`` recipe broke that by mixing two criteria in the same body:
 ``codegen conform`` received ``PROJECT_ROOT`` while dependency stages received
-``WORKSPACE_ROOT``. A ``gen`` invoked inside one
+``REPOSITORY_ROOT``. A ``gen`` invoked inside one
 member therefore rewrote the ``pyproject.toml`` of every sibling -- measured as
 "INFO: Updated <sibling>/pyproject.toml" for ~30 repositories, leaving each one
 dirty without the caller ever touching it.
@@ -14,7 +14,7 @@ dirty without the caller ever touching it.
 The damage compounds: ``gen`` runs inside ``check``, and ``check`` runs in the
 pre-commit hook, so a single commit in any lane dirties every sibling.
 
-At the workspace root ``PROJECT_ROOT`` already *is* the workspace, so a single
+At the repository root ``PROJECT_ROOT`` already *is* the workspace, so a single
 root keeps the fan-out where it belongs and restricts it everywhere else. No
 new flag is needed -- one rule, applied consistently.
 """
@@ -66,21 +66,21 @@ def _mixed_scope_recipes() -> dict[str, list[str]]:
         writes = [
             line
             for line in lines
-            if "$(PROJECT_ROOT)" in line or "$(WORKSPACE_ROOT)" in line
+            if "$(PROJECT_ROOT)" in line or "$(REPOSITORY_ROOT)" in line
         ]
         if not writes:
             continue
         uses_project = any("$(PROJECT_ROOT)" in line for line in writes)
-        uses_workspace = any("$(WORKSPACE_ROOT)" in line for line in writes)
+        uses_workspace = any("$(REPOSITORY_ROOT)" in line for line in writes)
         if uses_project and uses_workspace:
             mixed[target] = writes
     return mixed
 
 
-def test_no_recipe_mixes_project_and_workspace_roots() -> None:
+def test_no_recipe_mixes_project_and_repository_roots() -> None:
     """One recipe never writes to two different roots.
 
-    A command that escalates to ``WORKSPACE_ROOT`` beside one scoped to
+    A command that escalates to ``REPOSITORY_ROOT`` beside one scoped to
     ``PROJECT_ROOT`` mutates siblings the caller never asked for.
     """
     mixed = _mixed_scope_recipes()
@@ -130,13 +130,13 @@ def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
     init_branch = public_init.split("else", 1)[0]
     assert "_builtin_gen_init" in init_branch
     assert "_dispatch" not in init_branch
-    assert "WORKSPACE_ROOT := $(PROJECT_ROOT)" in text
+    assert "REPOSITORY_ROOT := $(PROJECT_ROOT)" in text
     assert "INIT_FLEXT_INFRA" not in text
 
 
-def test_project_selector_resolves_members_from_workspace_root() -> None:
+def test_project_selector_resolves_members_from_repository_root() -> None:
     text = _template_text()
-    assert "override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)" in text
+    assert "override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)" in text
     assert "override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)" not in text
 
 

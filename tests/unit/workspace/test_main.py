@@ -35,34 +35,34 @@ def _write_project(project_root: Path, name: str) -> None:
     )
 
 
-def _write_workspace(workspace_root: Path) -> None:
-    workspace_root.mkdir(parents=True, exist_ok=True)
-    (workspace_root / "pyproject.toml").write_text(
+def _write_workspace(repository_root: Path) -> None:
+    repository_root.mkdir(parents=True, exist_ok=True)
+    (repository_root / "pyproject.toml").write_text(
         ('[project]\nname = "workspace"\nversion = "0.1.0"\n'), encoding="utf-8"
     )
-    u.Tests.write_project_beads_config(workspace_root, "workspace")
+    u.Tests.write_project_beads_config(repository_root, "workspace")
     u.Tests.initialize_git_repo(
-        workspace_root, origin_url=u.Tests.repository_ref("workspace").url
+        repository_root, origin_url=u.Tests.repository_ref("workspace").url
     )
-    _write_project(workspace_root / "demo-a", "demo-a")
-    WorktreeFixture.write_gitmodules(workspace_root, ("demo-a",))
+    _write_project(repository_root / "demo-a", "demo-a")
+    WorktreeFixture.write_gitmodules(repository_root, ("demo-a",))
 
 
 def _write_orchestratable_workspace(
-    workspace_root: Path, *, capture_fail_fast: bool = False
+    repository_root: Path, *, capture_fail_fast: bool = False
 ) -> Path:
     """Build a workspace whose single member has a trivial ``make check``."""
-    workspace_root.mkdir(parents=True, exist_ok=True)
-    (workspace_root / "pyproject.toml").write_text(
+    repository_root.mkdir(parents=True, exist_ok=True)
+    (repository_root / "pyproject.toml").write_text(
         ('[project]\nname = "workspace"\nversion = "0.1.0"\n'), encoding="utf-8"
     )
-    u.Tests.write_project_beads_config(workspace_root, "workspace")
+    u.Tests.write_project_beads_config(repository_root, "workspace")
     u.Tests.initialize_git_repo(
-        workspace_root, origin_url=u.Tests.repository_ref("workspace").url
+        repository_root, origin_url=u.Tests.repository_ref("workspace").url
     )
-    member_root = workspace_root / "demo"
+    member_root = repository_root / "demo"
     _write_project(member_root, "demo")
-    WorktreeFixture.write_gitmodules(workspace_root, ("demo",))
+    WorktreeFixture.write_gitmodules(repository_root, ("demo",))
     check_recipe = (
         '\t@echo "FAIL_FAST=$(FAIL_FAST)" > $(CAPTURE_PATH)\n'
         if capture_fail_fast
@@ -100,12 +100,12 @@ class TestsFlextInfraWorkspaceMain:
     def test_unattached_child_does_not_infer_workspace_from_ancestor(
         self, tmp_path: Path
     ) -> None:
-        workspace_root = tmp_path / "workspace"
-        _write_workspace(workspace_root)
-        member_root = workspace_root / "demo-a"
+        repository_root = tmp_path / "workspace"
+        _write_workspace(repository_root)
+        member_root = repository_root / "demo-a"
 
         result = FlextInfraWorkspaceDetector(
-            workspace_root=member_root, apply_changes=False
+            repository_root=member_root, apply_changes=False
         ).execute()
 
         tm.ok(result)
@@ -123,35 +123,35 @@ class TestsFlextInfraWorkspaceMain:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Orchestrate resolves members and runs the make verb to success."""
-        workspace_root = tmp_path / "workspace"
-        _write_orchestratable_workspace(workspace_root)
-        monkeypatch.chdir(workspace_root)
+        repository_root = tmp_path / "workspace"
+        _write_orchestratable_workspace(repository_root)
+        monkeypatch.chdir(repository_root)
 
         result = FlextInfraOrchestratorService(
             verb="check",
             selected_projects=["demo"],
-            workspace_root=workspace_root,
+            repository_root=repository_root,
             make_arg=[f"PROJECT_INFRA_PYTHONPATH={_INFRA_SRC}"],
         ).execute()
 
         tm.ok(result)
         tm.that(result.value, eq=True)
-        log_path = workspace_root / ".reports" / "workspace" / "check" / "demo.log"
+        log_path = repository_root / ".reports" / "workspace" / "check" / "demo.log"
         tm.that(log_path.is_file(), eq=True)
 
     def test_orchestrate_forwards_fail_fast_to_project_make(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Fail-fast intent reaches each project's make invocation."""
-        workspace_root = tmp_path / "workspace"
+        repository_root = tmp_path / "workspace"
         capture_path = tmp_path / "captured.txt"
-        _write_orchestratable_workspace(workspace_root, capture_fail_fast=True)
-        monkeypatch.chdir(workspace_root)
+        _write_orchestratable_workspace(repository_root, capture_fail_fast=True)
+        monkeypatch.chdir(repository_root)
 
         result = FlextInfraOrchestratorService(
             verb="check",
             selected_projects=["demo"],
-            workspace_root=workspace_root,
+            repository_root=repository_root,
             fail_fast=True,
             make_arg=[
                 f"PROJECT_INFRA_PYTHONPATH={_INFRA_SRC}",
@@ -163,12 +163,12 @@ class TestsFlextInfraWorkspaceMain:
         captured = capture_path.read_text(encoding="utf-8")
         tm.that(captured, has="FAIL_FAST=1")
 
-    def test_workspace_main_detect_accepts_explicit_workspace_root(
+    def test_workspace_main_detect_accepts_explicit_repository_root(
         self, tmp_path: Path
     ) -> None:
-        workspace_root = tmp_path / "workspace"
-        _write_workspace(workspace_root)
-        member_root = workspace_root / "demo-a"
+        repository_root = tmp_path / "workspace"
+        _write_workspace(repository_root)
+        member_root = repository_root / "demo-a"
 
         tm.that(workspace_main(["detect", "--workspace", str(member_root)]), eq=0)
 

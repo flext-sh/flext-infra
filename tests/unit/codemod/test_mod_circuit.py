@@ -154,7 +154,7 @@ class TestsFlextInfraModCircuitApply:
         head_before = _git(root, "rev-parse", "HEAD")
 
         result = FlextInfraCodemodBatchApply(
-            workspace_root=root, apply_changes=True
+            repository_root=root, apply_changes=True
         ).execute()
 
         tm.that(result.success, eq=True)
@@ -168,9 +168,9 @@ class TestsFlextInfraModCircuitApply:
         root = _repo(tmp_path, "value = dict()\n")
         _rule(root, pattern="value = dict()", fix=None)
 
-        check_result = FlextInfraCodemodBatchApply(workspace_root=root).execute()
+        check_result = FlextInfraCodemodBatchApply(repository_root=root).execute()
         apply_result = FlextInfraCodemodBatchApply(
-            workspace_root=root, apply_changes=True
+            repository_root=root, apply_changes=True
         ).execute()
 
         tm.that(check_result.success, eq=True)
@@ -182,7 +182,7 @@ class TestsFlextInfraModCircuitApply:
         root = _repo(tmp_path, "value = dict()\n")
         _rule(root, pattern="value = dict()", fix="value = dict()")
 
-        result = FlextInfraCodemodBatchApply(workspace_root=root).execute()
+        result = FlextInfraCodemodBatchApply(repository_root=root).execute()
 
         tm.that(result.success, eq=True)
 
@@ -190,7 +190,7 @@ class TestsFlextInfraModCircuitApply:
         root = _repo(tmp_path, "value = dict()\n")
         _rule(root, pattern="value = dict()", fix="value = {}")
 
-        result = FlextInfraCodemodBatchApply(workspace_root=root).execute()
+        result = FlextInfraCodemodBatchApply(repository_root=root).execute()
 
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="1 pending actionable ast-grep fix")
@@ -203,7 +203,7 @@ class TestsFlextInfraModCircuitApply:
             encoding="utf-8",
         )
 
-        result = FlextInfraCodemodBatchApply(workspace_root=root).execute()
+        result = FlextInfraCodemodBatchApply(repository_root=root).execute()
 
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="missing required id")
@@ -215,7 +215,7 @@ class TestsFlextInfraModCircuitApply:
         _rule(root, pattern="value = dict()", fix="import os\nvalue = {}")
 
         result = FlextInfraCodemodBatchApply(
-            workspace_root=root, apply_changes=True
+            repository_root=root, apply_changes=True
         ).execute()
 
         tm.that(result.failure, eq=True)
@@ -227,7 +227,7 @@ class TestsFlextInfraModCircuitApply:
         root = _repo(tmp_path, "value = dict()\n")
         _rule(root, pattern="value = dict()", fix="value = {}")
 
-        result = FlextInfraCodemodBatchApply(workspace_root=root).execute()
+        result = FlextInfraCodemodBatchApply(repository_root=root).execute()
 
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="pending actionable ast-grep fix")

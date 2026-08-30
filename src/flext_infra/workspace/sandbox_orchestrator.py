@@ -35,7 +35,9 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
 
     sandbox_root: Annotated[
         Path,
-        m.Field(description="Disposable sandbox workspace root (default: <root>-base)"),
+        m.Field(
+            description="Disposable sandbox repository root (default: <root>-base)"
+        ),
     ]
 
     @property
@@ -49,9 +51,9 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
             src=self.root.resolve(), dst=self._sandbox_path
         )
 
-    def _orchestrate_in(self, workspace_root: Path) -> p.Result[bool]:
+    def _orchestrate_in(self, repository_root: Path) -> p.Result[bool]:
         """Orchestrate in."""
-        clone = self.model_copy(update={"workspace_root": workspace_root})
+        clone = self.model_copy(update={"repository_root": repository_root})
         return FlextInfraOrchestratorService.execute(clone)
 
     def _rollback_sandbox(self) -> p.Result[bool]:

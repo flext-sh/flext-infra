@@ -25,7 +25,7 @@ class WorkspaceRoutes(RefactorRoutes):
     ) -> p.Result[t.Cli.ResultValue]:
         """Apply the typed binding request through its service owner."""
         return FlextInfraFlextBindingService.apply(
-            consumer_root=params.workspace_root,
+            consumer_root=params.repository_root,
             flext_root=params.flext_root,
             python=params.python,
         ).map(CliRouteBase.as_route_value)

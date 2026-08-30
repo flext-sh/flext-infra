@@ -24,17 +24,17 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
     """Own worktree roots operations."""
 
     @classmethod
-    def git_workspace_root(
+    def git_repository_root(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitRootReport]:
         """Resolve the superproject root or the repository's own top level."""
-        root = cls._git_workspace_root_path(request.repo_root)
+        root = cls._git_repository_root_path(request.repo_root)
         if root.failure:
             return r[m.Infra.GitRootReport].fail(
-                root.error or "failed to resolve workspace root"
+                root.error or "failed to resolve repository root"
             )
         return r[m.Infra.GitRootReport].ok(
-            m.Infra.GitRootReport(workspace_root=root.value)
+            m.Infra.GitRootReport(repository_root=root.value)
         )
 
     @classmethod
@@ -52,7 +52,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         )
 
     @classmethod
-    def _git_workspace_root_path(cls, repository_path: Path) -> p.Result[Path]:
+    def _git_repository_root_path(cls, repository_path: Path) -> p.Result[Path]:
         """Private Path-based workspace/superproject resolver."""
         try:
             repo = cls._repo(repository_path)
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 return r[Path].ok(repository_path.expanduser().resolve())
             return r[Path].fail("failed to resolve Git superproject")
         except (OSError, ValueError) as exc:
-            return r[Path].fail(f"failed to resolve workspace root: {exc}")
+            return r[Path].fail(f"failed to resolve repository root: {exc}")
         if superproject:
             return r[Path].ok(Path(superproject).resolve())
         try:

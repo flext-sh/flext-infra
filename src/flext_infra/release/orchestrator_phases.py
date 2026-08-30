@@ -122,13 +122,13 @@ class FlextInfraReleaseOrchestratorPhases(
 
     @classmethod
     def _snapshot_build_policy(
-        cls, workspace_root: Path, output_dir: Path
+        cls, repository_root: Path, output_dir: Path
     ) -> p.Result[m.Infra.BuildPolicy]:
         """Capture one immutable policy pair before the first project build."""
         policy_dir = output_dir / "policy"
         constraints_path = policy_dir / "build-constraints.txt"
         constraints_result = cls._snapshot_policy_file(
-            workspace_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
+            repository_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
             constraints_path,
             policy_root=policy_dir,
         )
@@ -138,7 +138,7 @@ class FlextInfraReleaseOrchestratorPhases(
             )
         gitleaks_path = policy_dir / "gitleaks-release.toml"
         gitleaks_result = cls._snapshot_policy_file(
-            workspace_root / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
+            repository_root / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
             gitleaks_path,
             policy_root=policy_dir,
         )
@@ -190,7 +190,7 @@ class FlextInfraReleaseOrchestratorPhases(
         """Build registry-safe member artifacts and write build-report.json."""
         output_dir = (
             u.Cli.resolve_report_dir(
-                ctx.workspace_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
+                ctx.repository_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
             )
             / f"v{ctx.version}"
         )
@@ -198,14 +198,14 @@ class FlextInfraReleaseOrchestratorPhases(
             output_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
             return r[bool].fail_op("report dir creation", exc)
-        targets_result = self._build_targets(ctx.workspace_root, ctx.project_names)
+        targets_result = self._build_targets(ctx.repository_root, ctx.project_names)
         if targets_result.failure:
             return r[bool].fail(
                 targets_result.error or "release build target resolution failed"
             )
         if not targets_result.value:
             return r[bool].fail("release build selected no publishable projects")
-        policy_result = self._snapshot_build_policy(ctx.workspace_root, output_dir)
+        policy_result = self._snapshot_build_policy(ctx.repository_root, output_dir)
         if policy_result.failure:
             return r[bool].fail(
                 policy_result.error or "release build policy snapshot failed"
@@ -230,7 +230,7 @@ class FlextInfraReleaseOrchestratorPhases(
         parse_result = u.Infra.parse_semver(target)
         if parse_result.failure:
             return r[bool].fail(parse_result.error or "invalid version")
-        files_result = self._version_files(ctx.workspace_root, ctx.project_names)
+        files_result = self._version_files(ctx.repository_root, ctx.project_names)
         if files_result.failure:
             return r[bool].fail(
                 files_result.error or "release version file resolution failed"
@@ -277,13 +277,13 @@ class FlextInfraReleaseOrchestratorPhases(
     # These methods are defined in the main orchestrator class and
     # is supplied by the composed release orchestrator.
     def _build_targets(
-        self, workspace_root: Path, project_names: t.StrSequence
+        self, repository_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
         """Build targets."""
         raise NotImplementedError
 
     def _version_files(
-        self, workspace_root: Path, project_names: t.StrSequence
+        self, repository_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[Path]]:
         """Version files."""
         raise NotImplementedError

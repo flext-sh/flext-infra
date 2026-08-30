@@ -26,14 +26,14 @@ from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
 
-def _workspace_root() -> Path:
-    """Return the workspace root that owns this checkout."""
+def _repository_root() -> Path:
+    """Return the repository root that owns this checkout."""
     return Path(__file__).resolve().parents[2]
 
 
 def _live_per_file_ignores() -> frozenset[str]:
     """Return the per-file-ignore globs the governed pyproject declares."""
-    content = (_workspace_root() / "pyproject.toml").read_text(encoding="utf-8")
+    content = (_repository_root() / "pyproject.toml").read_text(encoding="utf-8")
     ignores = tu.Tests.toml_table_at(
         content, "tool", "ruff", "lint", "per-file-ignores"
     )
@@ -54,7 +54,7 @@ def _ssot_per_file_ignores() -> frozenset[str]:
     fleet = frozenset(ruff.lint.per_file_ignores)
 
     project: set[str] = set()
-    for path in sorted((_workspace_root() / "config").glob("*.yaml")):
+    for path in sorted((_repository_root() / "config").glob("*.yaml")):
         payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         managed = payload.get("ManagedArtifacts") or {}
         project.update(managed.get("Ruff", {}).get("per_file_ignores", {}))

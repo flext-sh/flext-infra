@@ -362,7 +362,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             applied_one = False
             try:
                 FlextInfraRefactorClassvarConstantAutofix.apply(
-                    workspace_root=ctx.project_root,
+                    repository_root=ctx.project_root,
                     class_full_name=class_full_name,
                     constant_name=violation.name,
                     constants_module=constants_module,
@@ -495,7 +495,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
 
     def _regenerate_inits_via_codegen(self) -> None:
         """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
-        FlextInfraCodegenLazyInit(workspace_root=self.root).generate_inits(
+        FlextInfraCodegenLazyInit(repository_root=self.root).generate_inits(
             check_only=False
         )
 

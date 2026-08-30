@@ -47,7 +47,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         selected_projects: t.StrSequence = (
             self.project_names if self.project_names is not None else ()
         )
-        resolved = u.Infra.resolve_projects(self.workspace_root, selected_projects)
+        resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
             return r[m.Infra.AccessorMigrationReport].fail(
                 resolved.error or "project resolution failed"
@@ -68,7 +68,7 @@ class FlextInfraAccessorMigrationOrchestrator(
         lint_before_totals: dict[str, int] = {}
         lint_after_totals: dict[str, int] = {}
         new_lint_error_totals: dict[str, int] = {}
-        with u.Infra.open_project(self.workspace_root) as rope_project:
+        with u.Infra.open_project(self.repository_root) as rope_project:
             for py_file in iter_result.value:
                 read = u.Cli.files_read_text(py_file)
                 if read.failure:
@@ -106,7 +106,7 @@ class FlextInfraAccessorMigrationOrchestrator(
                 )
         return r[m.Infra.AccessorMigrationReport].ok(
             m.Infra.AccessorMigrationReport(
-                workspace=str(self.workspace_root),
+                workspace=str(self.repository_root),
                 dry_run=self.dry_run,
                 files_scanned=len(iter_result.value),
                 files_with_changes=files_with_changes,
@@ -126,7 +126,7 @@ class FlextInfraAccessorMigrationOrchestrator(
     ) -> p.Result[m.Infra.AccessorMigrationReport]:
         """Execute accessor migration from the validated command service."""
         result = cls(
-            workspace_root=params.workspace_path,
+            repository_root=params.workspace_path,
             selected_projects=params.projects,
             apply_changes=params.apply,
             fail_fast=params.fail_fast,

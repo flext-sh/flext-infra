@@ -28,7 +28,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
         self._commit_fixture(repository, "test: invalid project metadata")
 
         result = FlextInfraWorktreeService(
-            workspace_root=repository,
+            repository_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
             branch=branch,
             base="HEAD",
@@ -64,7 +64,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
 
         result = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
@@ -94,7 +94,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
 
         result = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
@@ -110,7 +110,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
         repository = self._repository(tmp_path)
 
         result = FlextInfraWorktreeService(
-            workspace_root=repository,
+            repository_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
             branch="feature/no-apply",
             base="HEAD",
@@ -123,7 +123,7 @@ class TestsWorktreeAddContract(WorktreeFixture):
         repository = self._repository(tmp_path)
 
         result = FlextInfraWorktreeService(
-            workspace_root=repository,
+            repository_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
             branch="feature/no-base",
             apply_changes=True,

@@ -120,12 +120,12 @@ class FlextInfraWorkspaceDetector(
 
     @staticmethod
     def _gitmodule_contract(
-        workspace_root: Path, subproject_path: Path
+        repository_root: Path, subproject_path: Path
     ) -> p.Result[tuple[str, str]]:
         """Read one exact URL/branch pair from the local ``.gitmodules``."""
         contract = u.Infra.gitmodule_contract(
             m.Infra.GitSubmoduleContractRequest(
-                repo_root=workspace_root, member_path=subproject_path.as_posix()
+                repo_root=repository_root, member_path=subproject_path.as_posix()
             )
         )
         if contract.failure:
@@ -279,7 +279,7 @@ class FlextInfraWorkspaceDetector(
         subproject_root = (repository_root / path).resolve()
         if not subproject_root.is_relative_to(repository_root):
             return result_type.fail(
-                f"subproject escapes workspace root: {path.as_posix()}"
+                f"subproject escapes repository root: {path.as_posix()}"
             )
         if not subproject_root.is_dir():
             return result_type.fail(
@@ -415,7 +415,7 @@ class FlextInfraWorkspaceDetector(
         )
 
     @staticmethod
-    def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
+    def resolve_repository_root(repository_root: Path) -> p.Result[Path]:
         """Return the requested checkout; parent and primary trees are irrelevant."""
         resolved_root = repository_root.expanduser().resolve()
         if not resolved_root.is_dir():
@@ -463,7 +463,7 @@ class FlextInfraWorkspaceDetector(
     @override
     def execute(self) -> p.Result[c.Infra.WorkspaceMode]:
         """Execute workspace detection for the configured root."""
-        return self.detect(self.workspace_root)
+        return self.detect(self.repository_root)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceDetector"]

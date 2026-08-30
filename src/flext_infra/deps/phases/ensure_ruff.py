@@ -21,7 +21,7 @@ class FlextInfraEnsureRuffConfigPhase:
 
     @staticmethod
     def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
-        """Discover child project packages when generating workspace root settings."""
+        """Discover child project packages when generating repository root settings."""
         if not (project_dir / c.Infra.PYPROJECT_FILENAME).is_file():
             return ()
         discovered = u.Infra.discover_projects(project_dir)

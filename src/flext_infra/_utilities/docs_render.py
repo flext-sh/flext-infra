@@ -586,7 +586,7 @@ class FlextInfraUtilitiesDocsRender:
     def docs_root_mkdocs(
         contract: t.JsonMapping, src_paths: t.SequenceOf[str] = ()
     ) -> str:
-        """Return the managed mkdocs.yml for the workspace root.
+        """Return the managed mkdocs.yml for the repository root.
 
         Renders the canonical ``mkdocs_root.yml.j2`` template through the
         flext-cli facade shared with the per-project variant.

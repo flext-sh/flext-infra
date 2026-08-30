@@ -52,7 +52,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         for package in packages:
             smoke_result = u.Cli.run_raw(
                 [sys.executable, "-c", f"import {package}"],
-                cwd=self.workspace_root,
+                cwd=self.repository_root,
                 env=env,
             )
             if smoke_result.failure:
@@ -84,8 +84,8 @@ class FlextInfraValidateFreshImport(s[bool]):
         """Return subprocess env that can import the selected workspace package."""
         inherited_env = u.Cli.process_env()
         import_roots = (
-            str(self.workspace_root),
-            str(self.workspace_root / c.Infra.DEFAULT_SRC_DIR),
+            str(self.repository_root),
+            str(self.repository_root / c.Infra.DEFAULT_SRC_DIR),
         )
         existing_pythonpath = inherited_env.get(c.Infra.ORCHESTRATOR_ENV_PYTHONPATH, "")
         pythonpath = c.Infra.ORCHESTRATOR_ENV_PATH_SEPARATOR.join(

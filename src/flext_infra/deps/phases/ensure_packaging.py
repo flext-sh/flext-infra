@@ -56,7 +56,7 @@ class FlextInfraEnsurePackagingPhase:
 
         Projects whose distribution name resolves to ``src/<name>`` build via
         hatchling default file selection and need no explicit targets (the
-        workspace root is the canonical case). Standalone projects whose
+        repository root is the canonical case). Standalone projects whose
         import package differs from the distribution name (for example a
         project shipping ``src/<other_name>``) must receive explicit bounded
         targets, or

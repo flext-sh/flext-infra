@@ -35,12 +35,12 @@ def _baseline_leaf_modules() -> tuple[str, ...]:
     )
     # Why (review #355): uv workspaces inject sibling sources (flext-core)
     # into sys.path at runtime, never through PYTHONPATH, so a bare src path
-    # dies on the flext_core import. Derive the workspace roots from THIS
+    # dies on the flext_core import. Derive the repository roots from THIS
     # file's location instead of inheriting a possibly-purged sys.path.
-    workspace_root = _PROJECT_SRC.parent.parent
+    repository_root = _PROJECT_SRC.parent.parent
     sibling_srcs = sorted(
         str(member / "src")
-        for member in workspace_root.iterdir()
+        for member in repository_root.iterdir()
         if (member / "src").is_dir() and (member / "pyproject.toml").is_file()
     )
     probe_env = dict(os.environ)

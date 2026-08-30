@@ -130,7 +130,7 @@ class FlextInfraTextPatternScanner(s[bool]):
     def execute(self) -> p.Result[bool]:
         """Execute the text-pattern scan CLI flow."""
         result = self.scan(
-            self.workspace_root,
+            self.repository_root,
             self.pattern,
             includes=self.include,
             excludes=self.exclude,

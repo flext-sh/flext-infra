@@ -96,14 +96,14 @@ class FlextInfraOrchestratorService(
         return self._make_args(file=self.file)
 
     def _select_file_owner(
-        self, projects: t.SequenceOf[m.Infra.ProjectInfo], *, workspace_root: Path
+        self, projects: t.SequenceOf[m.Infra.ProjectInfo], *, repository_root: Path
     ) -> p.Result[t.Pair[m.Infra.ProjectInfo, str]]:
         """Resolve one workspace-relative FILE to its most specific project."""
         if self.file is None:
             return r.fail("file owner selection requires a file")
         path_prefix, separator, node_suffix = self.file.partition("::")
         resolved = FlextInfraPytestSelectorValidator.resolve_file(
-            workspace_root, self.file
+            repository_root, self.file
         )
         if resolved.failure:
             return r.fail(resolved.error or "pytest FILE resolution failed")
@@ -144,11 +144,11 @@ class FlextInfraOrchestratorService(
         if not projects:
             return r[bool].fail("no projects discovered")
 
-        workspace_root: Path = self.root
+        repository_root: Path = self.root
         effective_file = self.file
         if self.file is not None:
             owner_result = self._select_file_owner(
-                projects, workspace_root=workspace_root
+                projects, repository_root=repository_root
             )
             if owner_result.failure:
                 return r[bool].fail(
@@ -158,7 +158,7 @@ class FlextInfraOrchestratorService(
             projects = (owner,)
         orchestrate_result = self.orchestrate(
             projects=[
-                self._project_target(project, workspace_root=workspace_root)
+                self._project_target(project, repository_root=repository_root)
                 for project in projects
             ],
             verb=self.verb,

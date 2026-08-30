@@ -236,7 +236,7 @@ class FlextInfraPyprojectModernizer(
         # generated. Prefer the DECLARED roots, which is exactly how the
         # ensure-pyrefly phase keeps pre-write scope identical to the first
         # post-write discovery without fabricating directories on disk.
-        seed_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
+        seed_manager = FlextInfraExtraPathsManager(repository_root=self.root)
         discovered_search = seed_manager.pyrefly_search_paths(
             project_dir=path.parent, is_root=True
         )

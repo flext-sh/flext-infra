@@ -62,21 +62,21 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         """
         rules = {rule.stem: rule for rule in discover_rules()}
         for rule_dir_name in config.Infra.codegen.sgconfig.rule_dirs:
-            rule_dir = self.workspace_root / rule_dir_name
+            rule_dir = self.repository_root / rule_dir_name
             if not rule_dir.is_dir():
                 continue
             for rule_file in sorted(rule_dir.rglob("*.yml")):
                 rules[rule_file.stem] = rule_file
         if not rules:
             return r[t.SequenceOf[Path]].fail(
-                f"no ast-grep rules discovered for {self.workspace_root}"
+                f"no ast-grep rules discovered for {self.repository_root}"
             )
         return r[t.SequenceOf[Path]].ok(tuple(sorted(rules.values())))
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
         """Run check mode (report pending fixes) or the guarded apply circuit."""
-        root = self.workspace_root
+        root = self.repository_root
         rules_result = self._rules()
         if rules_result.failure:
             return r[t.Cli.ResultValue].fail(

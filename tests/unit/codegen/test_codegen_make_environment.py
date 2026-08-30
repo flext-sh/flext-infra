@@ -56,7 +56,7 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
             )
         )
-        workspace_root = project_root
+        repository_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
         local_subprojects = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
@@ -77,7 +77,7 @@ class TestsCodegenMakeEnvironment:
         )
         plan = tm.ok(
             FlextInfraCodegenConform(
-                workspace_root=workspace_root,
+                repository_root=repository_root,
                 request=request,
                 initial_workspace=workspace,
             ).plan(request)
@@ -88,7 +88,7 @@ class TestsCodegenMakeEnvironment:
         tm.ok(
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
-        return project_root, workspace_root
+        return project_root, repository_root
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
@@ -158,7 +158,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
         """Setup creates the venv and syncs dependencies before any runtime use."""
-        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        project_root, _repository_root = self._render_makefile(tmp_path, profile)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -212,7 +212,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Never substitute a system Mise for the generated launcher owner."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
@@ -242,7 +242,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Keep managed tools reachable while removing the hostile active venv."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         hostile_venv = tmp_path / "hostile" / ".venv"
@@ -292,7 +292,7 @@ class TestsCodegenMakeEnvironment:
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
         """All generated uv operations use the profile-owned environment."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         makefile = (project_root / "Makefile").read_text()
@@ -321,7 +321,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Refresh one Git dependency without globally upgrading the lock."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         runtime_python = project_root / ".venv" / "bin" / "python"
@@ -362,7 +362,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Fail before uv when the dependency selector is not one package name."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         runtime_python = project_root / ".venv" / "bin" / "python"
@@ -399,7 +399,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """A public gate preserves the canonical setup-required diagnostic."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
 
@@ -418,7 +418,7 @@ class TestsCodegenMakeEnvironment:
         )
 
     def test_generated_setup_is_self_contained(self, tmp_path: Path) -> None:
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
@@ -454,7 +454,7 @@ class TestsCodegenMakeEnvironment:
         self, tmp_path: Path
     ) -> None:
         """Make owns lock upgrade, open-floor projection, and final resolution."""
-        project_root, _workspace_root = self._render_makefile(
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")

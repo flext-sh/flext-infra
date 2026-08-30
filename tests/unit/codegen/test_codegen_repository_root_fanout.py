@@ -16,8 +16,8 @@ from flext_tests import tm
 from tests import u as test_u
 
 
-class TestsCodegenWorkspaceRootFanout:
-    def test_conform_owns_workspace_root_makefile(self) -> None:
+class TestsCodegenRepositoryRootFanout:
+    def test_conform_owns_repository_root_makefile(self) -> None:
         """The single Makefile render entry includes the workspace profile."""
         makefile_entries = tuple(
             entry
@@ -27,7 +27,7 @@ class TestsCodegenWorkspaceRootFanout:
         tm.that(makefile_entries, len=1)
         tm.that(makefile_entries[0].profiles, has=c.Infra.MakeProfile.WORKSPACE)
 
-    def test_workspace_root_gate_verbs_fan_out_via_orchestrator(
+    def test_repository_root_gate_verbs_fan_out_via_orchestrator(
         self, tmp_path: Path
     ) -> None:
         """Generated workspace check/test route through workspace orchestrate."""
@@ -52,16 +52,18 @@ def _render_root_makefile(tmp_path: Path) -> str:
         repository=repository,
         project=test_u.Tests.project_spec(repository.name),
     )
-    workspace_root = tmp_path / "workspace"
+    repository_root = tmp_path / "workspace"
     request = m.Infra.CodegenConformRequest(
-        root=workspace_root,
+        root=repository_root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
         scope=c.Infra.CodegenConformScope.SELF,
         mode=c.Infra.CodegenConformMode.CHECK,
     )
     plan: m.Infra.CodegenPlan = tm.ok(
         FlextInfraCodegenConform(
-            workspace_root=workspace_root, request=request, initial_workspace=workspace
+            repository_root=repository_root,
+            request=request,
+            initial_workspace=workspace,
         ).plan(request)
     )
     makefile_plans = tuple(

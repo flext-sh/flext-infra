@@ -111,17 +111,17 @@ class FlextInfraUtilitiesVersioning:
         return r[str].ok(f"{major}.{minor}.{patch}")
 
     @staticmethod
-    def current_workspace_version(workspace_root: Path) -> p.Result[str]:
+    def current_workspace_version(repository_root: Path) -> p.Result[str]:
         """Read the current version from the main pyproject.toml.
 
         Args:
-            workspace_root: The root directory of the workspace.
+            repository_root: The root directory of the workspace.
 
         Returns:
             r[str] with the version string.
 
         """
-        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        pyproject = repository_root / c.Infra.PYPROJECT_FILENAME
         try:
             content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:

@@ -140,7 +140,7 @@ class FlextInfraManualCommandValidator(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Fail when the live pre-commit config drifts from the canonical template."""
-        config_path = self.workspace_root / ".pre-commit-config.yaml"
+        config_path = self.repository_root / ".pre-commit-config.yaml"
         if not config_path.exists():
             return r[bool].fail(
                 ".pre-commit-config.yaml missing — run `make gen` to generate it"

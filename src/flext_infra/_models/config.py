@@ -1419,7 +1419,7 @@ class FlextInfraConfigModels:
 
             The base policy states the strictest contract (private handlers
             only). A profile whose custom surface legitimately owns more --
-            a workspace root orchestrating its subprojects -- declares only the
+            a repository root orchestrating its subprojects -- declares only the
             fields it relaxes, so the engine never has to know which project
             it is conforming.
             """
@@ -1633,7 +1633,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical GitHub clone URL ending in .git"),
         ]
         path: Annotated[
-            Path, m.Field(description="POSIX path relative to its workspace root")
+            Path, m.Field(description="POSIX path relative to its repository root")
         ]
         role: Annotated[
             FlextInfraConstantsCodegenProject.RepositoryRole,
@@ -1804,8 +1804,8 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr, m.Field(description="Relative workspace root path")
+        repository_root_rel: Annotated[
+            t.NonEmptyStr, m.Field(description="Relative repository root path")
         ]
         workspace_subprojects: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace subproject paths")
@@ -1868,7 +1868,7 @@ class FlextInfraConfigModels:
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
+                description="Repository-root gate verbs routed through orchestration"
             ),
         ] = ()
         workspace_cli_group: Annotated[
@@ -2111,9 +2111,9 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Declared relative path to the workspace root"),
+            m.Field(description="Declared relative path to the repository root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
@@ -2190,9 +2190,9 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Relative path to the declared workspace root"),
+            m.Field(description="Relative path to the declared repository root"),
         ]
         makefile_custom_include: Annotated[
             str,
@@ -2991,8 +2991,8 @@ class FlextInfraConfigModels:
     class WorkspaceEnvironmentSyncRequest(_ConfigContract):
         """Validated public request for one workspace environment sync."""
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+        repository_root: Annotated[
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
@@ -3045,7 +3045,7 @@ class FlextInfraConfigModels:
     class CodegenConformRequest(_ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""
 
-        root: Annotated[Path, m.Field(description="Repository or workspace root")]
+        root: Annotated[Path, m.Field(description="Repository or repository root")]
         what: Annotated[
             FlextInfraConstantsCodegenProject.CodegenConformSurface,
             m.Field(description="Managed file selection"),

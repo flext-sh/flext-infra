@@ -256,7 +256,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
 
     def _hydrate_lock_checksums(self) -> p.Result[bool]:
         """Download exact resolved artifacts and atomically add missing SHA-256 values."""
-        lock_path = self.workspace_root / "mise.lock"
+        lock_path = self.repository_root / "mise.lock"
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
             return r[bool].fail(source.error or "cannot read mise.lock")
@@ -270,7 +270,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].ok(True)
         try:
             with TemporaryDirectory(
-                prefix=".mise-checksum.", dir=self.workspace_root
+                prefix=".mise-checksum.", dir=self.repository_root
             ) as raw_scratch:
                 hydrated = self._hydrate_source(
                     source.value, missing.value, Path(raw_scratch)
@@ -383,7 +383,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Hydrate in explicit apply mode; otherwise validate entirely offline."""
         if not self.effective_dry_run:
             return self._hydrate_lock_checksums()
-        config_result = self._read_toml(self.workspace_root / ".mise.toml")
+        config_result = self._read_toml(self.repository_root / ".mise.toml")
         if config_result.failure:
             return r[bool].fail(config_result.error or "invalid .mise.toml")
         raw_settings = config_result.value.get("settings")
@@ -398,7 +398,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         tools_result = self._tool_specifiers(config_result.value)
         if tools_result.failure:
             return r[bool].fail(tools_result.error or "invalid .mise.toml tools")
-        lock_result = self._read_toml(self.workspace_root / "mise.lock")
+        lock_result = self._read_toml(self.repository_root / "mise.lock")
         if lock_result.failure:
             return r[bool].fail(lock_result.error or "invalid mise.lock")
         normalized_lock = self._normalize_lock_payload(lock_result.value)
@@ -408,12 +408,12 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             lock = m.Infra.MiseLockSpec.model_validate(normalized_lock.value)
         except c.ValidationError as exc:
             return r[bool].fail(f"invalid mise.lock metadata: {exc}")
-        launcher_result = self._validate_launchers(self.workspace_root)
+        launcher_result = self._validate_launchers(self.repository_root)
         if launcher_result.failure:
             return launcher_result
         exclusions = (
             FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions(
-                self.workspace_root
+                self.repository_root
             )
         )
         if exclusions.failure:

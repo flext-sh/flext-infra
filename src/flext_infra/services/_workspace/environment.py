@@ -36,8 +36,8 @@ class FlextInfraWorkspaceEnvironmentMixin:
     ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
         """Sync one workspace's generated environment files."""
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
-        workspace_root = request.workspace_root
-        if not (workspace_root / c.Infra.PYPROJECT_FILENAME).is_file():
+        repository_root = request.repository_root
+        if not (repository_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return cls._remove_generated_environment_files(request)
         envrc_result = cls._sync_envrc(request)
         if envrc_result.failure:
@@ -46,9 +46,13 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if mise_result.failure:
             return r[result_type].fail(mise_result.error or ".mise.toml sync failed")
         changed = (
-            *((workspace_root / c.Infra.ENVRC_FILENAME,) if envrc_result.value else ()),
             *(
-                (workspace_root / c.Infra.MISE_TOML_FILENAME,)
+                (repository_root / c.Infra.ENVRC_FILENAME,)
+                if envrc_result.value
+                else ()
+            ),
+            *(
+                (repository_root / c.Infra.MISE_TOML_FILENAME,)
                 if mise_result.value
                 else ()
             ),
@@ -64,7 +68,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if rendered.failure:
             return r[bool].fail(rendered.error or ".envrc template render failed")
         return cls._write_generated_text(
-            request.workspace_root / c.Infra.ENVRC_FILENAME,
+            request.repository_root / c.Infra.ENVRC_FILENAME,
             rendered.value,
             apply=request.apply,
             force=request.force,
@@ -75,11 +79,11 @@ class FlextInfraWorkspaceEnvironmentMixin:
         cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
     ) -> p.Result[bool]:
         """Render or merge canonical tool pins into ``.mise.toml``."""
-        workspace_root = request.workspace_root
+        repository_root = request.repository_root
         apply = request.apply
         force = request.force
-        target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
-        rendered = cls._render_mise_toml(workspace_root)
+        target_path = repository_root / c.Infra.MISE_TOML_FILENAME
+        rendered = cls._render_mise_toml(repository_root)
         if rendered.failure:
             return r[bool].fail(rendered.error or ".mise.toml render failed")
         if not target_path.is_file() or force:
@@ -95,24 +99,24 @@ class FlextInfraWorkspaceEnvironmentMixin:
                 target_path, rendered.value, apply=apply
             )
         return cls._merge_custom_mise_toml(
-            target_path, current, workspace_root, apply=apply
+            target_path, current, repository_root, apply=apply
         )
 
     @classmethod
-    def _render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
+    def _render_mise_toml(cls, repository_root: Path) -> p.Result[str]:
         """Render canonical ``.mise.toml`` content for one workspace."""
         rendered = cls._render_environment_template(c.Infra.MISE_TOML_FILENAME)
         if rendered.failure:
             return r[str].fail(rendered.error or ".mise.toml template render failed")
         composed = FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
-            workspace_root, rendered.value
+            repository_root, rendered.value
         )
         if composed.failure:
             return r[str].fail(composed.error or "project Mise composition failed")
         doc = u.Cli.toml_parse_text(composed.value)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")
-        python_version = cls._workspace_python_version(workspace_root)
+        python_version = cls._workspace_python_version(repository_root)
         if python_version is not None:
             tools = u.Cli.toml_ensure_table(doc, "tools")
             tools["python"] = python_version
@@ -132,13 +136,13 @@ class FlextInfraWorkspaceEnvironmentMixin:
 
     @classmethod
     def _merge_custom_mise_toml(
-        cls, target_path: Path, current: str, workspace_root: Path, *, apply: bool
+        cls, target_path: Path, current: str, repository_root: Path, *, apply: bool
     ) -> p.Result[bool]:
         """Merge canonical tool pins into a custom ``.mise.toml``."""
         doc = u.Cli.toml_read(target_path)
         if doc is None:
             return r[bool].fail(f"{target_path}: invalid TOML")
-        tool_pins_result = cls._mise_tool_pins(workspace_root)
+        tool_pins_result = cls._mise_tool_pins(repository_root)
         if tool_pins_result.failure:
             return r[bool].fail(tool_pins_result.error or ".mise.toml pins failed")
         tools = u.Cli.toml_ensure_table(doc, "tools")
@@ -180,9 +184,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         return changed
 
     @classmethod
-    def _mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, t.JsonValue]]:
+    def _mise_tool_pins(cls, repository_root: Path) -> p.Result[dict[str, t.JsonValue]]:
         """Return canonical mise tool pins for one workspace."""
-        rendered = cls._render_mise_toml(workspace_root)
+        rendered = cls._render_mise_toml(repository_root)
         if rendered.failure:
             return r[dict[str, t.JsonValue]].fail(
                 rendered.error or "canonical .mise.toml render failed"
@@ -207,9 +211,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         return r[dict[str, t.JsonValue]].ok(pins)
 
     @staticmethod
-    def _workspace_python_version(workspace_root: Path) -> str | None:
+    def _workspace_python_version(repository_root: Path) -> str | None:
         """Return the Python minor version declared by ``pyproject.toml``."""
-        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        pyproject = repository_root / c.Infra.PYPROJECT_FILENAME
         if not pyproject.is_file():
             return None
         read = u.Cli.files_read_text(pyproject)
@@ -226,7 +230,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
         removed: list[Path] = []
         for filename in c.Infra.WORKSPACE_ENV_FILES:
-            target_path = request.workspace_root / filename
+            target_path = request.repository_root / filename
             result = cls._remove_generated_environment_file(
                 target_path, apply=request.apply
             )

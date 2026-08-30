@@ -112,7 +112,7 @@ class TestsFlextInfraInfraVersioning:
     def test_current_workspace_version(
         self, tmp_path: Path, content: str | None, expected: str, error: str
     ) -> None:
-        """Read only the declared project version from a workspace root."""
+        """Read only the declared project version from a repository root."""
         if content is not None:
             tf(base_dir=tmp_path).create(content, "pyproject.toml")
         result = u.Infra.current_workspace_version(tmp_path)

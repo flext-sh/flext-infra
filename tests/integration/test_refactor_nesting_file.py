@@ -47,10 +47,10 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
 
 
 def _apply_rule(
-    workspace_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
+    repository_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
 ) -> m.Infra.Result:
     rule = _FileRuleHarness(config_path)
-    rope_project = u.Infra.init_rope_project(workspace_root)
+    rope_project = u.Infra.init_rope_project(repository_root)
     try:
         resource = u.Infra.get_resource_from_path(rope_project, file_path)
         if resource is None:

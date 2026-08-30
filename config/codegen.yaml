@@ -714,7 +714,7 @@ Infra:
         ruff.importStrategy: fromEnvironment
         ruff.lint.preview: true
         ruff.nativeServer: on
-        shellcheck.useWorkspaceRootAsCwd: true
+        shellcheck.useRepositoryRootAsCwd: true
       list_settings:
         python-envs.workspaceSearchPaths:
           - ./.venv
@@ -1412,16 +1412,16 @@ Infra:
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
             - ".claude/*"
-        # Only the workspace root owns agent skills as real versioned files.
+        # Only the repository root owns agent skills as real versioned files.
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config
         # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
         # repo-server refuse the repository, so subprojects must not track them.
-        - name: "BLOCK: Agent surface outside the workspace root"
+        - name: "BLOCK: Agent surface outside the repository root"
           profiles: [standalone]
           patterns:
             - ".agents/"
-        - name: "WHITELIST: Agent skills owned by the workspace root"
+        - name: "WHITELIST: Agent skills owned by the repository root"
           profiles: [workspace]
           patterns:
             - "!.agents/skills/"
@@ -1764,7 +1764,7 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Ledger routing config: rendered only for the workspace root (owned
+        # Ledger routing config: rendered only for the repository root (owned
         # ledger) and marker-attached standalones (routing-only); the engine
         # planner skips every other profile/class (mro-z89e governance).
         - source: base/beads-config.yaml.j2

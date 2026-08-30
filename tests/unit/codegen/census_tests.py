@@ -156,7 +156,7 @@ class TestFixabilityClassification:
 class TestCensusExecute:
     def test_execute_fails_when_apply_changes_requested(self, tmp_path: Path) -> None:
         result = FlextInfraCodegenCensus(
-            workspace_root=tmp_path, apply_changes=True
+            repository_root=tmp_path, apply_changes=True
         ).execute()
 
         tm.fail(

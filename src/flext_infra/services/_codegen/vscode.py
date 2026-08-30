@@ -28,10 +28,10 @@ class FlextInfraCodegenVscodeMixin:
     """Produce the canonical ``.vscode/settings.json`` document for one root."""
 
     @classmethod
-    def render_vscode_settings(cls, workspace_root: Path) -> p.Result[str]:
+    def render_vscode_settings(cls, repository_root: Path) -> p.Result[str]:
         """Return the canonical-merged ``settings.json`` document for one root."""
         settings_path = (
-            workspace_root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
+            repository_root / c.Infra.VSCODE_DIRNAME / c.Infra.VSCODE_SETTINGS_FILENAME
         )
         read_result = cls._read_existing_settings(settings_path)
         if read_result.failure:
@@ -40,7 +40,7 @@ class FlextInfraCodegenVscodeMixin:
             key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
-        applied = cls._apply_canonical_settings(settings, workspace_root)
+        applied = cls._apply_canonical_settings(settings, repository_root)
         if applied.failure:
             return r[str].fail(applied.error or "VS Code settings merge failed")
         serialized = u.Cli.json_dumps(dict(settings), indent=2)
@@ -164,7 +164,7 @@ class FlextInfraCodegenVscodeMixin:
 
     @classmethod
     def _apply_canonical_settings(
-        cls, settings: t.MutableJsonMapping, workspace_root: Path
+        cls, settings: t.MutableJsonMapping, repository_root: Path
     ) -> p.Result[bool]:
         """Merge canonical codegen VS Code settings into one settings mapping."""
         spec = config.Infra.codegen.vscode
@@ -172,7 +172,7 @@ class FlextInfraCodegenVscodeMixin:
             settings,
             scalar_settings=spec.scalar_settings,
             list_settings=spec.list_settings,
-            workspace_root=workspace_root,
+            repository_root=repository_root,
         )
         if changed.failure:
             return r[bool].fail(changed.error)
@@ -196,7 +196,7 @@ class FlextInfraCodegenVscodeMixin:
         *,
         scalar_settings: Mapping[str, str | bool],
         list_settings: Mapping[str, tuple[str, ...]],
-        workspace_root: Path,
+        repository_root: Path,
     ) -> p.Result[bool]:
         """Enforce exact scalar and list VS Code keys from the codegen config."""
         changed = False
@@ -208,7 +208,7 @@ class FlextInfraCodegenVscodeMixin:
             changed = True
         for key, list_value in list_settings.items():
             entries = cls._resolve_list_setting(
-                key, list_value, workspace_root=workspace_root
+                key, list_value, repository_root=repository_root
             )
             if entries.failure:
                 return r[bool].fail(entries.error)
@@ -250,10 +250,10 @@ class FlextInfraCodegenVscodeMixin:
 
     @staticmethod
     def _resolve_list_setting(
-        key: str, base_entries: tuple[str, ...], *, workspace_root: Path
+        key: str, base_entries: tuple[str, ...], *, repository_root: Path
     ) -> p.Result[tuple[str, ...]]:
         """Return one canonical list without consulting repository topology."""
-        del key, workspace_root
+        del key, repository_root
         return r[tuple[str, ...]].ok(base_entries)
 
 

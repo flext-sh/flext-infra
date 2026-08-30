@@ -127,16 +127,16 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
 
     @classmethod
     def project_descriptor_is_tracked(
-        cls, workspace_root: Path, project_root: Path
+        cls, repository_root: Path, project_root: Path
     ) -> bool:
         """Return whether one candidate project has a tracked descriptor file."""
         relative_paths = cls._git_tracked_scope_relative_paths(
-            str(workspace_root.resolve())
+            str(repository_root.resolve())
         )
         if relative_paths is None:
             return True
         tracked_paths = frozenset(relative_paths)
-        resolved_workspace = workspace_root.resolve()
+        resolved_workspace = repository_root.resolve()
         resolved_project = project_root.resolve()
         relative_prefix = ""
         if resolved_project != resolved_workspace:

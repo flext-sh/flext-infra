@@ -219,8 +219,8 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         tm.that(updated, has="def build() -> None:\n    return None\n")
 
     @staticmethod
-    def _write_project(workspace_root: Path, source: str) -> Path:
-        project_root = workspace_root / "flext-demo"
+    def _write_project(repository_root: Path, source: str) -> Path:
+        project_root = repository_root / "flext-demo"
         package_root = project_root / "src" / "flext_demo"
         package_root.mkdir(parents=True)
         (project_root / "pyproject.toml").write_text(
@@ -228,7 +228,7 @@ class TestsFlextInfraRefactorInfraRefactorImportModernizer:
         )
         sample_path = package_root / "sample.py"
         sample_path.write_text(source, encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace_root, (project_root.name,))
+        u.Tests.declare_workspace_projects(repository_root, (project_root.name,))
         return sample_path
 
     def test_modernize_run_dry_run_reports_planned_modification(

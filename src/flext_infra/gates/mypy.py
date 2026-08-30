@@ -86,8 +86,8 @@ class FlextInfraMypyGate(FlextInfraGate):
                 and u.Cli.toml_table_child(tool_table, c.Infra.MYPY) is not None
             ):
                 return proj_py
-        workspace_root: Path = ctx.workspace_root
-        return workspace_root / pyproject_name
+        repository_root: Path = ctx.repository_root
+        return repository_root / pyproject_name
 
     @override
     def _build_check_command(
@@ -118,7 +118,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> t.StrMapping | None:
         """Check env."""
         _ = project_dir
-        typings_generated = ctx.workspace_root / c.Infra.DIR_TYPINGS / "generated"
+        typings_generated = ctx.repository_root / c.Infra.DIR_TYPINGS / "generated"
         if not typings_generated.is_dir():
             return None
         base_env = u.Cli.process_env()

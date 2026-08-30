@@ -74,7 +74,7 @@ class TestsFlextInfraModernizerPyrefly:
         attached = workspace / "attached"
         for project_dir in (attached, linked):
             changes = FlextInfraPyprojectModernizer(
-                workspace_root=project_dir,
+                repository_root=project_dir,
                 apply_changes=True,
                 skip_comments=True,
                 skip_check=True,
@@ -238,7 +238,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
         )
 
         pyrefly = tool["pyrefly"]
@@ -260,7 +260,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=True,
         )
@@ -290,7 +290,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
             declared_python_dirs=(),
             declared_python_dirs_are_complete=True,
         )
@@ -328,7 +328,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
         )
 
         pyrefly = tool["pyrefly"]
@@ -357,7 +357,7 @@ class TestsFlextInfraModernizerPyrefly:
         )
 
         includes = FlextInfraExtraPathsManager(
-            workspace_root=tmp_path
+            repository_root=tmp_path
         ).pyrefly_project_includes(project_dir=project_dir, is_root=False)
 
         tm.that(includes, eq=["scripts/**/*.py*", "src/**/*.py*", "tests/**/*.py*"])
@@ -401,7 +401,7 @@ class TestsFlextInfraModernizerPyrefly:
             doc,
             is_root=True,
             project_dir=tmp_path,
-            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
         )
 
         pyrefly = tool["pyrefly"]

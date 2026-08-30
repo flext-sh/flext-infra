@@ -76,7 +76,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
-        # Modernization writes only the requested workspace root and its
+        # Modernization writes only the requested repository root and its
         # declared subprojects, never siblings.
         include_root = not project_names or "." in project_names
         selected_names = (

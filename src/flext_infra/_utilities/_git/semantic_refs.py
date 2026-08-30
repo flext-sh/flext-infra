@@ -84,7 +84,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreeMixi
     def git_show_toplevel(
         cls, request: m.Infra.GitRepoRequest
     ) -> p.Result[m.Infra.GitRootReport]:
-        """Resolve ``rev-parse --show-toplevel`` as a workspace root report."""
+        """Resolve ``rev-parse --show-toplevel`` as a repository root report."""
         try:
             repo = cls._repo(request.repo_root)
             root = (
@@ -100,7 +100,7 @@ class FlextInfraUtilitiesGitSemanticRefsMixin(FlextInfraUtilitiesGitWorktreeMixi
             return r[m.Infra.GitRootReport].fail(
                 f"failed to resolve Git top level: {exc}"
             )
-        return r[m.Infra.GitRootReport].ok(m.Infra.GitRootReport(workspace_root=root))
+        return r[m.Infra.GitRootReport].ok(m.Infra.GitRootReport(repository_root=root))
 
     @classmethod
     def git_current_branch(

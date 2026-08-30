@@ -1,6 +1,6 @@
 """Tests for canonical dependency source selection by topology role.
 
-The workspace root owns the local ``workspace = true`` overlay. Publishable
+The repository root owns the local ``workspace = true`` overlay. Publishable
 projects retain their catalog Git provenance so the same package metadata works
 outside the workspace; uv applies the root overlay when resolving them locally.
 
@@ -96,7 +96,7 @@ workspace = true
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
-    def test_workspace_root_never_gets_git_specifier(self) -> None:
+    def test_repository_root_never_gets_git_specifier(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(

@@ -17,13 +17,13 @@ class FlextInfraAccessorMigrationReportMixin:
     """Per-file lint snapshot/write and CLI report rendering.
 
     Composed into FlextInfraAccessorMigrationOrchestrator via inheritance; the
-    facade provides ``dry_run`` / ``workspace_root`` / the gate-name properties
+    facade provides ``dry_run`` / ``repository_root`` / the gate-name properties
     through FLEXT (declared below for static resolution).
     """
 
     if TYPE_CHECKING:
         dry_run: bool
-        workspace_root: Path
+        repository_root: Path
 
         @property
         def gate_names(self) -> t.StrSequence: ...
@@ -59,14 +59,14 @@ class FlextInfraAccessorMigrationReportMixin:
             if self.dry_run and include_preview:
                 before, after = u.Infra.preview_source_lint(
                     py_file,
-                    self.workspace_root,
+                    self.repository_root,
                     updated_source=updated_source,
                     gates=self.gate_names,
                 )
             elif not self.dry_run:
                 before = (
                     u.Infra.lint_snapshot(
-                        py_file, self.workspace_root, gates=self.gate_names
+                        py_file, self.repository_root, gates=self.gate_names
                     )
                     if include_preview
                     else {}
@@ -74,7 +74,7 @@ class FlextInfraAccessorMigrationReportMixin:
                 ok, report = u.Infra.protected_source_write(
                     py_file,
                     request=m.Infra.ProtectedSourceWriteRequest(
-                        workspace=self.workspace_root,
+                        workspace=self.repository_root,
                         updated_source=updated_source,
                         gates=self.gate_names,
                     ),
@@ -92,7 +92,7 @@ class FlextInfraAccessorMigrationReportMixin:
                     )
                 after = (
                     u.Infra.lint_snapshot(
-                        py_file, self.workspace_root, gates=self.gate_names
+                        py_file, self.repository_root, gates=self.gate_names
                     )
                     if include_preview
                     else {}

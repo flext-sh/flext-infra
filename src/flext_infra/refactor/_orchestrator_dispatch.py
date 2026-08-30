@@ -49,7 +49,7 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
 
         def refactor_workspace(
             self,
-            workspace_root: Path,
+            repository_root: Path,
             *,
             dry_run: bool = False,
             pattern: str = c.Infra.EXT_PYTHON_GLOB,

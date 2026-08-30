@@ -29,9 +29,9 @@ class FlextInfraEnforcementSourceCollectors(
 ):
     """Collect enforcement probes for supported catalog source kinds."""
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used for project discovery and Rope sessions."""
-        self._workspace_root = workspace_root
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used for project discovery and Rope sessions."""
+        self._repository_root = repository_root
 
     def collect_project(
         self, project_dir: Path, rules: t.SequenceOf[me.EnforcementRuleSpec]
@@ -102,7 +102,7 @@ class FlextInfraEnforcementSourceCollectors(
             file_paths.extend(self.stub_file_paths(project_dir))
         probes: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
         failures: list[m.Infra.FailedFix] = []
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 ctx = m.Infra.DetectorContext(
                     file_path=file_path,

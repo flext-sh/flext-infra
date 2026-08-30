@@ -36,15 +36,15 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     def build_report(self) -> p.Result[t.JsonMapping]:
         """Execute quality gate and return structured report payload."""
-        FlextInfraCodegenLazyInit(workspace_root=self.workspace_root).generate_inits()
+        FlextInfraCodegenLazyInit(repository_root=self.repository_root).generate_inits()
         census_report = FlextInfraRefactorCensus(
-            workspace_root=self.workspace_root,
+            repository_root=self.repository_root,
             include_local_scopes=False,
             kinds=("constant",),
         ).build_report()
-        modified_files = self.modified_python_files(self.workspace_root)
+        modified_files = self.modified_python_files(self.repository_root)
         pyrefly_check, ruff_check = self._run_static_checks(
-            self.workspace_root, modified_files
+            self.repository_root, modified_files
         )
         after_metrics = self.after_metrics(
             census_report=census_report, modified_files=modified_files
@@ -56,7 +56,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
         verdict = self.compute_verdict(checks)
         report_data = {
-            "workspace": str(self.workspace_root),
+            "workspace": str(self.repository_root),
             "generated_at": u.now().isoformat(),
             "verdict": verdict,
             "checks": [
@@ -73,7 +73,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         }
         report = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
         artifacts = self.write_artifacts(
-            workspace_root=self.workspace_root,
+            repository_root=self.repository_root,
             report=report,
             render_text=self.render_text(report),
         )
@@ -87,7 +87,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
 
     @staticmethod
-    def modified_python_files(workspace_root: Path) -> t.StrSequence:
+    def modified_python_files(repository_root: Path) -> t.StrSequence:
         """Return modified Python files detected by git porcelain status."""
         modified: t.MutableSequenceOf[str] = []
         git_bin = shutil.which(c.Infra.GIT)
@@ -96,7 +96,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         result = u.Cli.run_raw([
             git_bin,
             "-C",
-            str(workspace_root),
+            str(repository_root),
             "status",
             "--porcelain",
         ])
@@ -115,7 +115,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def run_static_check(
-        workspace_root: Path, modified_files: t.StrSequence, tool: str
+        repository_root: Path, modified_files: t.StrSequence, tool: str
     ) -> t.MappingKV[str, t.Infra.InfraValue]:
         """Run a targeted static tool on modified files and normalize result."""
         if not modified_files:
@@ -152,7 +152,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
                 "detail": f"unsupported tool: {tool}",
                 "exit_code": 2,
             }
-        run = u.Cli.run_raw(cmd, cwd=workspace_root)
+        run = u.Cli.run_raw(cmd, cwd=repository_root)
         if run.failure:
             return {
                 "passed": False,
@@ -169,7 +169,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @classmethod
     def _run_static_checks(
-        cls, workspace_root: Path, modified_files: t.StrSequence
+        cls, repository_root: Path, modified_files: t.StrSequence
     ) -> tuple[
         t.MappingKV[str, t.Infra.InfraValue], t.MappingKV[str, t.Infra.InfraValue]
     ]:
@@ -193,7 +193,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         with ThreadPoolExecutor(max_workers=len(tools)) as executor:
             futures: dict[Future[t.MappingKV[str, t.Infra.InfraValue]], str] = {
                 executor.submit(
-                    cls.run_static_check, workspace_root, modified_files, tool
+                    cls.run_static_check, repository_root, modified_files, tool
                 ): tool
                 for tool in tools
             }
@@ -325,10 +325,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     @staticmethod
     def write_artifacts(
-        workspace_root: Path, report: t.JsonMapping, render_text: str
+        repository_root: Path, report: t.JsonMapping, render_text: str
     ) -> p.Result[t.JsonMapping]:
         """Persist quality gate artifacts to the report directory."""
-        report_dir = workspace_root / c.Infra.QG_REPORT_DIR
+        report_dir = repository_root / c.Infra.QG_REPORT_DIR
         report_dir.mkdir(parents=True, exist_ok=True)
         report_json = report_dir / "latest.json"
         report_txt = report_dir / "latest.txt"

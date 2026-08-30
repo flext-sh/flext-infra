@@ -178,9 +178,9 @@ class TestsCodegenCatalogExtensions:
             ])
         )
 
-        workspace_root = tmp_path / "workspace"
+        repository_root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
-            workspace_root,
+            repository_root,
             root.distribution,
             workspace=root.name,
             database=root.name,
@@ -199,10 +199,10 @@ class TestsCodegenCatalogExtensions:
                     bare_repo.as_posix(),
                     member.name,
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
-        member_checkout = workspace_root / member.name
+        member_checkout = repository_root / member.name
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "remote", "set-url", "origin", member.url],
@@ -226,21 +226,21 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        gitmodules = WorktreeFixture.write_gitmodules(workspace_root, (member.name,))
+        gitmodules = WorktreeFixture.write_gitmodules(repository_root, (member.name,))
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "add", c.Infra.GITMODULES, member.name],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "commit", "-q", "-m", "Attach governed member"],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         root_head = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=workspace_root)
+            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=repository_root)
         )
         tm.ok(
             u.Cli.run_checked(
@@ -250,14 +250,14 @@ class TestsCodegenCatalogExtensions:
                     f"refs/remotes/origin/{provider.branch}",
                     root_head,
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         declared_gitmodules = gitmodules.read_bytes()
 
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
-                root=workspace_root,
+                root=repository_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
@@ -271,7 +271,7 @@ class TestsCodegenCatalogExtensions:
         root_makefile = next(
             file
             for file in plan.files
-            if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
+            if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(root_makefile.rendered, has=f"WORKSPACE_SUBPROJECTS := {member.name}")
         tm.that(

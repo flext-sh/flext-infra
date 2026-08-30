@@ -23,9 +23,9 @@ class FlextInfraFixerAdapter:
 
     kind: ClassVar[str] = ""
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used during fix execution."""
-        self._workspace_root = workspace_root
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used during fix execution."""
+        self._repository_root = repository_root
 
     def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""

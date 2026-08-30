@@ -116,7 +116,7 @@ if TYPE_CHECKING:
     from .server_tests import TestsFlextInfraDocServer
     from .shared_iter_tests import TestIterMarkdownFiles
     from .shared_tests import (
-        test_build_scopes_preserves_declared_workspace_root_and_projects,
+        test_build_scopes_preserves_declared_repository_root_and_projects,
         test_build_scopes_preserves_disabled_root_policy,
         test_build_scopes_preserves_discovered_package_name,
         test_build_scopes_returns_root_and_selected_projects,
@@ -190,7 +190,7 @@ __all__: tuple[str, ...] = (
     "test_auditor_main_writes_reports_for_selected_project",
     "test_build_missing_settings_failure_has_empty_site_dir",
     "test_build_returns_root_and_selected_project_reports",
-    "test_build_scopes_preserves_declared_workspace_root_and_projects",
+    "test_build_scopes_preserves_declared_repository_root_and_projects",
     "test_build_scopes_preserves_disabled_root_policy",
     "test_build_scopes_preserves_discovered_package_name",
     "test_build_scopes_returns_root_and_selected_projects",
@@ -382,7 +382,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".server_tests": ("TestsFlextInfraDocServer",),
             ".shared_iter_tests": ("TestIterMarkdownFiles",),
             ".shared_tests": (
-                "test_build_scopes_preserves_declared_workspace_root_and_projects",
+                "test_build_scopes_preserves_declared_repository_root_and_projects",
                 "test_build_scopes_preserves_disabled_root_policy",
                 "test_build_scopes_preserves_discovered_package_name",
                 "test_build_scopes_returns_root_and_selected_projects",

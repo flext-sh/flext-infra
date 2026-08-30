@@ -77,7 +77,7 @@ class TestCodegenLinkedWorktreeTopology:
             all(path.is_relative_to(lane) for path in applied.written_files), eq=True
         )
         tm.that(
-            tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(lane)),
+            tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(lane)),
             eq=lane.resolve(),
         )
         tm.that(lane_beads.read_bytes(), eq=lane_beads_bytes)
@@ -233,5 +233,5 @@ class TestCodegenLinkedWorktreeTopology:
             )
         )
 
-        tm.fail(result, has="escapes workspace root")
+        tm.fail(result, has="escapes repository root")
         tm.that(WorktreeFixture.repository_snapshot(outside), eq=outside_snapshot)

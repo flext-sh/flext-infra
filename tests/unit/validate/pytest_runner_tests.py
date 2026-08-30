@@ -58,7 +58,7 @@ class TestsFlextInfraPytestRunner:
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
         return FlextInfraPytestRunner(
-            workspace_root=root,
+            repository_root=root,
             started_at_monotonic=started_at_monotonic,
             file=file,
             match=match,

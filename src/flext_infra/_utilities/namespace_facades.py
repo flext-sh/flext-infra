@@ -134,7 +134,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         project_root: Path,
         project_name: str,
         facade_statuses: t.SequenceOf[m.Infra.FacadeStatus],
-        workspace_root: Path | None = None,
+        repository_root: Path | None = None,
     ) -> None:
         """Ensure missing facades."""
         del project_name
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             FlextInfraUtilitiesRefactorNamespaceFacades.build_expected_base_chains(
                 project_root=project_root
             )
-            if workspace_root is not None
+            if repository_root is not None
             else None
         )
         for status in facade_statuses:

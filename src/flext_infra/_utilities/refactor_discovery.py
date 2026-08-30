@@ -106,18 +106,18 @@ class FlextInfraUtilitiesRefactorDiscovery:
     @staticmethod
     def collect_refactor_workspace_files(
         settings: t.MappingKV[str, t.Infra.InfraValue],
-        workspace_root: Path,
+        repository_root: Path,
         *,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
     ) -> t.SequenceOf[Path]:
         """Collect all candidate files under workspace projects."""
-        root = workspace_root.resolve()
+        root = repository_root.resolve()
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
             settings
         )
         scan_dirs = frozenset(refactor_config.project_scan_dirs)
         projects = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            workspace_root=root, scan_dirs=scan_dirs or None
+            repository_root=root, scan_dirs=scan_dirs or None
         )
         ign = refactor_config.ignore_patterns
         ext = refactor_config.file_extensions
@@ -141,16 +141,16 @@ class FlextInfraUtilitiesRefactorDiscovery:
 
     @staticmethod
     def discover_refactor_projects(
-        settings: t.MappingKV[str, t.Infra.InfraValue], workspace_root: Path
+        settings: t.MappingKV[str, t.Infra.InfraValue], repository_root: Path
     ) -> t.SequenceOf[Path]:
         """Discover workspace projects using the typed refactor config."""
-        root = workspace_root.resolve()
+        root = repository_root.resolve()
         refactor_config = FlextInfraUtilitiesRefactorDiscovery._resolve_refactor_config(
             settings
         )
         scan_dirs = frozenset(refactor_config.project_scan_dirs)
         return FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            workspace_root=root, scan_dirs=scan_dirs or None
+            repository_root=root, scan_dirs=scan_dirs or None
         )
 
 

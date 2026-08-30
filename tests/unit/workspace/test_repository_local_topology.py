@@ -153,7 +153,7 @@ class TestsRepositoryLocalTopology:
 
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(child))
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(child))
-        resolved = tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(child))
+        resolved = tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(child))
 
         tm.that(mode, eq=c.Infra.WorkspaceMode.STANDALONE)
         tm.that(workspace.repository.name, eq="child")

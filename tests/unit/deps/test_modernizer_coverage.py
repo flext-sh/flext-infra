@@ -99,7 +99,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         root_path = tmp_path / "pyproject.toml"
         root_source = '[project]\nname = "arbitrary-root"\n'
         root_modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
+            repository_root=tmp_path, skip_check=True
         )
         root_first: str = tm.ok(
             root_modernizer.conform_source(

@@ -2269,9 +2269,9 @@ fix: |-
 id: doc201-065-workspace-from-file
 language: Python
 severity: warning
-message: Add the semantic Returns section for _workspace_root_from_file.
+message: Add the semantic Returns section for _repository_root_from_file.
 metadata:
-  source: "src/flext_infra/maintenance/python_version.py#_workspace_root_from_file"
+  source: "src/flext_infra/maintenance/python_version.py#_repository_root_from_file"
 rule:
   all:
     - pattern: '"""$DOC"""'
@@ -2285,7 +2285,7 @@ rule:
         kind: function_definition
         has:
           field: name
-          regex: "^_workspace_root_from_file$"
+          regex: "^_repository_root_from_file$"
 constraints:
   DOC:
     regex: "^Walk up from ``file`` to the first dir with \\.git\\+Makefile\\+pyproject\\.(?:\\n|$)"
@@ -2299,7 +2299,7 @@ fix: |-
   """$CLEAN_DOC
 
   Returns:
-      The nearest workspace root containing the required marker files.
+      The nearest repository root containing the required marker files.
   """
 ---
 id: doc201-066-apply-hoist-inline-imports

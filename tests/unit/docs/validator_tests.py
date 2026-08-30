@@ -33,7 +33,7 @@ def test_validate_workspace_fails_before_generated_files_exist(tmp_path: Path) -
 
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"], apply=False
         )
     )
 
@@ -46,13 +46,13 @@ def test_validate_workspace_passes_after_generate_apply(tmp_path: Path) -> None:
 
     generated = FlextInfraDocGenerator().generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=True
         )
     )
     tm.ok(generated)
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=True
         )
     )
 
@@ -65,12 +65,12 @@ def test_validate_workspace_apply_writes_project_todo(tmp_path: Path) -> None:
 
     FlextInfraDocGenerator().generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=True
         )
     )
     result = FlextInfraDocValidator().validate_workspace(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=True
         )
     )
 

@@ -25,7 +25,7 @@ _super_modules = [
     p for p in COMMON_DIR.parents if p.name == "modules" and p.parent.name == ".git"
 ]
 _resolve_root = _super_modules[0].parent.parent if _super_modules else ROOT
-WORKSPACE_ROOT = Path(
+REPOSITORY_ROOT = Path(
     tm.ok(
         u.Cli.capture(
             ["git", "rev-parse", "--path-format=absolute", "--show-toplevel"],

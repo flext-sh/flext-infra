@@ -18,7 +18,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     @staticmethod
     def _run_namespace_enforcement(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Run namespace enforcement and record any unresolved violations."""
-        enforcement = FlextInfraNamespaceEnforcer(workspace_root=project_path).enforce(
+        enforcement = FlextInfraNamespaceEnforcer(repository_root=project_path).enforce(
             apply=True, gates=(c.Infra.LINT,)
         )
         violating_projects = tuple(
@@ -49,7 +49,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx: m.Infra.FixContext, project_path: Path
     ) -> None:
         """Regenerate lazy ``__init__.py`` files and record skip on errors."""
-        lazy_generator = FlextInfraCodegenLazyInit(workspace_root=project_path)
+        lazy_generator = FlextInfraCodegenLazyInit(repository_root=project_path)
         lazy_errors = lazy_generator.generate_inits(check_only=False)
         ctx.files_modified |= set(lazy_generator.modified_files)
         if lazy_errors > 0:

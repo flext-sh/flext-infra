@@ -24,10 +24,10 @@ class FlextInfraGate(ABC):
     tool_url: ClassVar[str] = ""
 
     def __init__(
-        self, workspace_root: Path, *, runner: p.Cli.CommandRunner | None = None
+        self, repository_root: Path, *, runner: p.Cli.CommandRunner | None = None
     ) -> None:
-        """Bind workspace root and optional command runner override."""
-        self._workspace_root = workspace_root
+        """Bind repository root and optional command runner override."""
+        self._repository_root = repository_root
         self._runner = runner
 
     @staticmethod

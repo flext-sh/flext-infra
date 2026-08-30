@@ -49,7 +49,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         """
 
         def _action() -> tuple[m.Infra.ProjectInfo, ...]:
-            projects_result = u.Infra.projects(ctx.workspace_root)
+            projects_result = u.Infra.projects(ctx.repository_root)
             if projects_result.failure:
                 msg = projects_result.error or "project discovery failed"
                 raise RuntimeError(msg)
@@ -70,7 +70,7 @@ class FlextInfraCodegenPipelineStagesMixin:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             result = FlextInfraCodegenConform.execute_request(
                 m.Infra.CodegenConformRequest(
-                    root=ctx.workspace_root,
+                    root=ctx.repository_root,
                     what=c.Infra.CodegenConformSurface.ALL,
                     scope=c.Infra.CodegenConformScope.ALL,
                     mode=(
@@ -115,7 +115,7 @@ class FlextInfraCodegenPipelineStagesMixin:
                 else None
             )
             detector = FlextInfraRuntimeDevDependencyDetector(
-                workspace_root=ctx.workspace_root,
+                repository_root=ctx.repository_root,
                 apply_changes=not dry_run,
                 apply_typings=not dry_run,
                 selected_projects=selected,
@@ -139,7 +139,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         """Run PEP 561 py.typed marker generation."""
 
         def _action() -> int:
-            py_typed = FlextInfraCodegenPyTyped(workspace_root=ctx.workspace_root)
+            py_typed = FlextInfraCodegenPyTyped(repository_root=ctx.repository_root)
             return py_typed.run()
 
         return self._run_stage(
@@ -156,7 +156,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         def _action() -> tuple[
             FlextInfraCodegenCensus, t.SequenceOf[m.Infra.CensusReport]
         ]:
-            census = FlextInfraCodegenCensus(workspace_root=ctx.workspace_root)
+            census = FlextInfraCodegenCensus(repository_root=ctx.repository_root)
             projects = self._state.discovered_projects or None
             return census, census.run(projects=projects)
 
@@ -181,7 +181,7 @@ class FlextInfraCodegenPipelineStagesMixin:
         def _action() -> t.SequenceOf[m.Infra.ScaffoldResult]:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
-            return FlextInfraCodegenScaffolder(workspace_root=ctx.workspace_root).run(
+            return FlextInfraCodegenScaffolder(repository_root=ctx.repository_root).run(
                 dry_run=dry_run, projects=projects
             )
 
@@ -203,7 +203,7 @@ class FlextInfraCodegenPipelineStagesMixin:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
             projects = self._state.discovered_projects or None
             return FlextInfraCodegenFixer(
-                workspace_root=ctx.workspace_root, dry_run=dry_run
+                repository_root=ctx.repository_root, dry_run=dry_run
             ).fix_workspace(projects=projects)
 
         def _emit(results: t.SequenceOf[m.Infra.AutoFixResult]) -> t.JsonMapping:
@@ -222,7 +222,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         def _action() -> int:
             dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            lazy_init = FlextInfraCodegenLazyInit(workspace_root=ctx.workspace_root)
+            lazy_init = FlextInfraCodegenLazyInit(repository_root=ctx.repository_root)
             return lazy_init.generate_inits(check_only=dry_run)
 
         return self._run_stage(
@@ -238,7 +238,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         def _action() -> t.SequenceOf[m.Infra.CensusReport]:
             census = self._state.census_service or FlextInfraCodegenCensus(
-                workspace_root=ctx.workspace_root
+                repository_root=ctx.repository_root
             )
             projects = self._state.discovered_projects or None
             return census.run(projects=projects)

@@ -287,7 +287,7 @@ class FlextInfraConstantsCheck:
 # Every hook routes through the canonical `uv run --all-packages python -m flext_infra`
 # workspace monopoly; no standalone scripts and no bare tool invocations
 # (AGENTS.md `Build & Test`).
-# Enable locally with `pre-commit install` from the workspace root.
+# Enable locally with `pre-commit install` from the repository root.
 repos:
   - repo: local
     hooks:

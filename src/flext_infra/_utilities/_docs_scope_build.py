@@ -28,20 +28,20 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
 
     @staticmethod
     def _selected_project_names(
-        workspace_root: Path, projects: t.StrSequence | None
+        repository_root: Path, projects: t.StrSequence | None
     ) -> list[str]:
         """Return normalized project filters for docs-scoped operations."""
-        _ = workspace_root
+        _ = repository_root
         return list(FlextInfraUtilitiesBase.normalize_sequence_values(projects) or ())
 
     @staticmethod
     def build_scopes(
-        workspace_root: Path, projects: t.StrSequence | None, output_dir: Path | str
+        repository_root: Path, projects: t.StrSequence | None, output_dir: Path | str
     ) -> p.Result[t.SequenceOf[m.Infra.DocScope]]:
-        """Build DocScope objects for workspace root and selected projects."""
+        """Build DocScope objects for repository root and selected projects."""
         try:
             scopes = FlextInfraUtilitiesDocsScopeBuildMixin._build_scopes_unchecked(
-                workspace_root, projects, output_dir
+                repository_root, projects, output_dir
             )
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[t.SequenceOf[m.Infra.DocScope]].fail_op("scope resolution", exc)
@@ -49,10 +49,10 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
 
     @staticmethod
     def _build_scopes_unchecked(
-        workspace_root: Path, projects: t.StrSequence | None, output_dir: Path | str
+        repository_root: Path, projects: t.StrSequence | None, output_dir: Path | str
     ) -> t.SequenceOf[m.Infra.DocScope]:
         """Build docs scopes without exception wrapping."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         project_state = FlextInfraUtilitiesDocsScope.project_state(resolved_root)
         enabled = project_state.docs_meta.get("enabled", True)
         is_enabled = enabled if isinstance(enabled, bool) else True
@@ -82,28 +82,28 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
 
     @staticmethod
     def _workspace_scopes(
-        workspace_root: Path,
+        repository_root: Path,
         projects: t.StrSequence | None,
         output_dir: Path | str,
         discovered: t.SequenceOf[m.Infra.ProjectInfo],
     ) -> t.SequenceOf[m.Infra.DocScope]:
-        """Build docs scopes for a workspace root plus child projects."""
+        """Build docs scopes for a repository root plus child projects."""
         scopes: list[m.Infra.DocScope] = [
             m.Infra.DocScope(
                 name=c.Infra.RK_ROOT,
-                path=workspace_root,
-                report_dir=(workspace_root / output_dir).resolve(),
+                path=repository_root,
+                report_dir=(repository_root / output_dir).resolve(),
                 project_class="root",
                 package_name="",
             )
         ]
         selected_names = FlextInfraUtilitiesDocsScopeBuildMixin._selected_project_names(
-            workspace_root, projects
+            repository_root, projects
         )
         if selected_names:
             scopes.extend(
                 FlextInfraUtilitiesDocsScopeBuildMixin._selected_project_scopes(
-                    workspace_root, discovered, selected_names, output_dir
+                    repository_root, discovered, selected_names, output_dir
                 )
             )
             return tuple(scopes)
@@ -116,10 +116,10 @@ class FlextInfraUtilitiesDocsScopeBuildMixin(
         return tuple(scopes)
 
     @staticmethod
-    def _discover_projects(workspace_root: Path) -> t.SequenceOf[m.Infra.ProjectInfo]:
+    def _discover_projects(repository_root: Path) -> t.SequenceOf[m.Infra.ProjectInfo]:
         """Discover workspace projects or raise a typed value error."""
         discovered_result = FlextInfraUtilitiesDocsScope.discover_projects(
-            workspace_root
+            repository_root
         )
         if discovered_result.failure:
             msg = discovered_result.error or "project discovery failed"

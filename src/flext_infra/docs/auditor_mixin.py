@@ -23,9 +23,9 @@ class FlextInfraDocAuditorMixin:
     """Mixin providing helper methods for the documentation auditor."""
 
     @staticmethod
-    def find_architecture_config(workspace_root: Path) -> Path | None:
-        """Walk up from workspace_root looking for the architecture settings."""
-        for candidate in [workspace_root, *workspace_root.parents]:
+    def find_architecture_config(repository_root: Path) -> Path | None:
+        """Walk up from repository_root looking for the architecture settings."""
+        for candidate in [repository_root, *repository_root.parents]:
             path = candidate / "docs/architecture/architecture_config.json"
             if path.exists():
                 return path
@@ -70,11 +70,11 @@ class FlextInfraDocAuditorMixin:
 
     @classmethod
     def load_audit_budgets(
-        cls, workspace_root: Path
+        cls, repository_root: Path
     ) -> p.Result[t.Pair[int | None, t.IntMapping]]:
         """Load audit budgets from the nearest architecture settings."""
         empty: t.Pair[int | None, t.IntMapping] = (None, {})
-        settings = cls.find_architecture_config(workspace_root)
+        settings = cls.find_architecture_config(repository_root)
         if settings is None:
             return r[t.Pair[int | None, t.IntMapping]].ok(empty)
         payload_result = u.Cli.json_read(settings)

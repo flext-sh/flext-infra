@@ -33,12 +33,12 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
         return u.Infra.resolve_projects(self.root, self.project_names or ())
 
     @staticmethod
-    def _project_target(project: m.Infra.ProjectInfo, *, workspace_root: Path) -> str:
+    def _project_target(project: m.Infra.ProjectInfo, *, repository_root: Path) -> str:
         """Map a project info object into a relative make target."""
         project_path = project.path.resolve()
-        resolved_workspace_root = workspace_root.resolve()
+        resolved_repository_root = repository_root.resolve()
         try:
-            return str(project_path.relative_to(resolved_workspace_root))
+            return str(project_path.relative_to(resolved_repository_root))
         except ValueError:
             return str(project_path)
 

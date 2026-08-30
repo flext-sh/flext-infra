@@ -246,10 +246,10 @@ class FlextInfraModelsRope:
     class RopeWorkspaceIndex(m.ContractModel):
         """Generic Rope-backed workspace index for package planning."""
 
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path,
             m.Field(
-                description="Absolute workspace root used to open the Rope project"
+                description="Absolute repository root used to open the Rope project"
             ),
         ]
         package_dirs: Annotated[
@@ -394,10 +394,11 @@ class FlextInfraModelsRope:
     class RopeWorkspaceSession(m.ContractModel):
         """Public Rope workspace snapshot used by the service DSL."""
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Resolved workspace root requested by the caller")
+        repository_root: Annotated[
+            Path,
+            m.Field(description="Resolved repository root requested by the caller"),
         ]
-        rope_workspace_root: Annotated[
+        rope_repository_root: Annotated[
             Path,
             m.Field(description="Canonical root used to open the shared Rope project"),
         ]

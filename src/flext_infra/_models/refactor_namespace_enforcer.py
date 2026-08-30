@@ -430,7 +430,7 @@ class FlextInfraModelsNamespaceEnforcer:
     class WorkspaceEnforcementReport(m.ArbitraryTypesModel):
         """Workspace enforcement report."""
 
-        workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
+        workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
         projects: Annotated[
             t.SequenceOf[FlextInfraModelsNamespaceEnforcer.ProjectEnforcementReport],
             m.Field(

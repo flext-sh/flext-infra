@@ -53,7 +53,9 @@ if TYPE_CHECKING:
         TestsFlextInfraManagedMaintenanceHeaders,
     )
     from .test_vscode_owner_merge import TestsVscodeOwnerMerge
-    from .test_workspace_root_setup_submodules import TestsWorkspaceRootSetupSubmodules
+    from .test_repository_root_setup_submodules import (
+        TestsRepositoryRootSetupSubmodules,
+    )
 __all__: tuple[str, ...] = (
     "CodegenSpec",
     "TestAllDirectoriesScanned",
@@ -82,8 +84,8 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLazyInitTransforms",
     "TestsFlextInfraManagedMaintenanceHeaders",
     "TestsMakeTestSelector",
+    "TestsRepositoryRootSetupSubmodules",
     "TestsVscodeOwnerMerge",
-    "TestsWorkspaceRootSetupSubmodules",
     "c",
     "codegen",
     "d",
@@ -155,8 +157,8 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraManagedMaintenanceHeaders",
             ),
             ".test_vscode_owner_merge": ("TestsVscodeOwnerMerge",),
-            ".test_workspace_root_setup_submodules": (
-                "TestsWorkspaceRootSetupSubmodules",
+            ".test_repository_root_setup_submodules": (
+                "TestsRepositoryRootSetupSubmodules",
             ),
             "flext_tests": (
                 "c",

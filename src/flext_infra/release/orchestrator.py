@@ -41,11 +41,11 @@ class FlextInfraReleaseOrchestrator(
 
     @override
     def _build_targets(
-        self, workspace_root: Path, project_names: t.StrSequence
+        self, repository_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
         """Resolve release build targets."""
         targets: t.MutableSequenceOf[t.Pair[str, Path]] = []
-        projects_result = u.Infra.resolve_projects(workspace_root, project_names)
+        projects_result = u.Infra.resolve_projects(repository_root, project_names)
         if projects_result.failure:
             return r[t.SequenceOf[t.Pair[str, Path]]].fail(
                 projects_result.error or "release project resolution failed"
@@ -66,11 +66,13 @@ class FlextInfraReleaseOrchestrator(
 
     @override
     def _version_files(
-        self, workspace_root: Path, project_names: t.StrSequence
+        self, repository_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[Path]]:
         """Resolve candidate pyproject files for version updates."""
-        files: t.MutableSequenceOf[Path] = [workspace_root / c.Infra.PYPROJECT_FILENAME]
-        projects_result = u.Infra.resolve_projects(workspace_root, project_names)
+        files: t.MutableSequenceOf[Path] = [
+            repository_root / c.Infra.PYPROJECT_FILENAME
+        ]
+        projects_result = u.Infra.resolve_projects(repository_root, project_names)
         if projects_result.failure:
             return r[t.SequenceOf[Path]].fail(
                 projects_result.error or "version project resolution failed"

@@ -26,10 +26,10 @@ class FlextInfraUtilitiesRopeCore(
     """Core Rope lifecycle helpers."""
 
     @staticmethod
-    def init_rope_project(workspace_root: Path) -> t.Infra.RopeProject:
-        """Create a rope Project over workspace_root with no disk artifacts."""
+    def init_rope_project(repository_root: Path) -> t.Infra.RopeProject:
+        """Create a rope Project over repository_root with no disk artifacts."""
         FlextInfraUtilitiesRopePep695Patch.apply()
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         discovered_roots = (
             FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
                 resolved_root
@@ -71,9 +71,9 @@ class FlextInfraUtilitiesRopeCore(
 
     @staticmethod
     @contextmanager
-    def open_project(workspace_root: Path) -> Generator[t.Infra.RopeProject]:
+    def open_project(repository_root: Path) -> Generator[t.Infra.RopeProject]:
         """Open one Rope project and always close it through the core boundary."""
-        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(workspace_root)
+        rope_project = FlextInfraUtilitiesRopeCore.init_rope_project(repository_root)
         try:
             yield rope_project
         finally:

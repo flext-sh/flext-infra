@@ -12,11 +12,7 @@ exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for 
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
-mypy = "2026-08-15T03:04:00Z"
 cryptography = false
-django-stubs = "2026-08-13T00:00:00Z"
-mkdocstrings-python = "2026-08-18T00:00:00Z"
-types-setuptools = "2026-08-13T00:00:00Z"
 
 [manifest]
 excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
@@ -670,7 +666,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#7ce50312fb4ae6720a34924efc9d0c3ec0ed0721" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#ad5939b6e4429c1ee3f82cab26a9145e77f1f693" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -849,7 +845,7 @@ requires-dist = [
 dev = [
     { name = "actionlint-py", specifier = ">=1.7.12.24" },
     { name = "autoflake", specifier = ">=2.3.3" },
-    { name = "bandit", specifier = ">=1.8" },
+    { name = "bandit", specifier = ">=1.9.4" },
     { name = "black", specifier = ">=26.5.1" },
     { name = "blacken-docs", specifier = ">=1.20.0" },
     { name = "codespell", specifier = ">=2.4.3" },
@@ -880,13 +876,13 @@ dev = [
     { name = "mkdocs-versioning", specifier = ">=0.4.0" },
     { name = "mkdocstrings", specifier = ">=1.0.6" },
     { name = "mkdocstrings-python", specifier = ">=2.0.5" },
-    { name = "mypy", specifier = ">=2.3.0" },
+    { name = "mypy", specifier = ">=2.3.1" },
     { name = "pip-audit", specifier = ">=2.10.1" },
     { name = "pre-commit", specifier = ">=4.6.1" },
     { name = "pylint", specifier = ">=4.0.6" },
     { name = "pyrefly", specifier = ">=1.2.0" },
     { name = "pyright", specifier = ">=1.1.411" },
-    { name = "pytest", specifier = ">=9.0.3" },
+    { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-benchmark", specifier = ">=5.2.3" },
     { name = "pytest-clarity", specifier = ">=1.0.1" },
     { name = "pytest-codeblocks", specifier = ">=0.18.0" },
@@ -902,7 +898,7 @@ dev = [
     { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "pyupgrade", specifier = ">=3.21.2" },
     { name = "radon", specifier = ">=6.0.1" },
-    { name = "ruff", specifier = ">=0.15.12" },
+    { name = "ruff", specifier = ">=0.16.0" },
     { name = "rumdl", specifier = ">=0.2.45" },
     { name = "types-cachetools", specifier = ">=7.0.0.20260713" },
     { name = "types-cffi", specifier = ">=2.0.0.20260518" },

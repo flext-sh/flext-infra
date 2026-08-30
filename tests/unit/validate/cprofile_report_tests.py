@@ -38,7 +38,7 @@ class TestsFlextInfraCProfileReport:
         tm.ok(profiled)
 
         result = FlextInfraCProfileReport(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             profile=profile_path,
             output=output_path,
             sort=policy.profile_sort,
@@ -63,7 +63,7 @@ class TestsFlextInfraCProfileReport:
 
         with pytest.raises(ValueError, match="cProfile path must stay under"):
             FlextInfraCProfileReport(
-                workspace_root=tmp_path,
+                repository_root=tmp_path,
                 profile=tmp_path / "outside.pstats",
                 output=tmp_path / "outside.txt",
                 sort=policy.profile_sort,

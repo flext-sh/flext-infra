@@ -81,7 +81,7 @@ class FlextInfraPytestRunner(s[int]):
             msg = "FILES is forbidden for pytest; use one exact FILE selector"
             raise ValueError(msg)
         return cls(
-            workspace_root=Path.cwd(),
+            repository_root=Path.cwd(),
             started_at_monotonic=started_at_monotonic,
             file=cls._environment_value(c.Infra.PYTEST_ENV_FILE) or None,
             match=cls._environment_value(c.Infra.PYTEST_ENV_MATCH) or None,
@@ -97,7 +97,7 @@ class FlextInfraPytestRunner(s[int]):
     def _validate_paths_and_selectors(self) -> Self:
         """Reject selector and output paths that escape the active project."""
         selector = FlextInfraPytestSelectorValidator(
-            workspace_root=self.root, file=self.file, match=self.match, what=self.what
+            repository_root=self.root, file=self.file, match=self.match, what=self.what
         )
         resolved_selector = selector.execute()
         if resolved_selector.failure:
@@ -274,7 +274,7 @@ class FlextInfraPytestRunner(s[int]):
     ) -> p.Result[m.Infra.PytestDiagnostics]:
         """Compose the existing JUnit/log diagnostic owner in-process."""
         extractor = FlextInfraPytestDiagExtractor(
-            workspace_root=self.root,
+            repository_root=self.root,
             junit=report_dir / "junit.xml",
             log_path=report_dir / "pytest.log",
         )
@@ -310,7 +310,7 @@ class FlextInfraPytestRunner(s[int]):
             )
             return r[int].ok(0)
         state = FlextInfraTestmonDbInspector(
-            workspace_root=self.root,
+            repository_root=self.root,
             db_path=db,
             pre_run_digest=FlextInfraTestmonDbInspector.digest_file(db),
             run_succeeded=True,
@@ -376,7 +376,7 @@ class FlextInfraPytestRunner(s[int]):
             return r[int].fail(run_result.error or "pytest process execution failed")
         exit_code = run_result.value
         profile_result = FlextInfraCProfileReport(
-            workspace_root=self.root,
+            repository_root=self.root,
             profile=report_dir / "pytest.pstats",
             output=report_dir / "pytest-profile.txt",
             sort=pytest.profile_sort,
@@ -456,7 +456,7 @@ class FlextInfraPytestRunner(s[int]):
         if exit_code == 0 and not coverage_enabled:
             timed_out_or_signal = timed_out
             inspector = FlextInfraTestmonDbInspector(
-                workspace_root=self.root,
+                repository_root=self.root,
                 db_path=self._testmon_db_path(),
                 pre_run_digest=pre_run_digest,
                 run_succeeded=not timed_out_or_signal,

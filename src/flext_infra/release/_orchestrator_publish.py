@@ -27,17 +27,17 @@ class FlextInfraReleaseOrchestratorPublishMixin:
             self, ctx: m.Infra.ReleasePhaseDispatchConfig, output_path: Path
         ) -> p.Result[bool]: ...
 
-        def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
+        def _create_tag(self, repository_root: Path, tag: str) -> p.Result[bool]: ...
 
-        def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]: ...
+        def _push_release(self, repository_root: Path, tag: str) -> p.Result[bool]: ...
 
     def phase_publish(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Execute publish phase: notes, changelog, tag, optional push."""
-        workspace_root = ctx.workspace_root
+        repository_root = ctx.repository_root
         tag = ctx.tag
         notes_dir = (
             u.Cli.resolve_report_dir(
-                workspace_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
+                repository_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
             )
             / tag
         )
@@ -53,7 +53,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
             return r[bool].fail(f"release notes generation did not create {notes_path}")
         if not ctx.dry_run:
             apply_result = self._publish_apply(
-                workspace_root=workspace_root,
+                repository_root=repository_root,
                 version=ctx.version,
                 tag=tag,
                 notes_path=notes_path,
@@ -67,7 +67,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
     def _publish_apply(
         self,
         *,
-        workspace_root: Path,
+        repository_root: Path,
         version: str,
         tag: str,
         notes_path: Path,
@@ -75,15 +75,15 @@ class FlextInfraReleaseOrchestratorPublishMixin:
     ) -> p.Result[bool]:
         """Apply changelog, tag, and optional push for publish phase."""
         changelog_result = u.Infra.update_changelog(
-            workspace_root, version, tag, notes_path
+            repository_root, version, tag, notes_path
         )
         if changelog_result.failure:
             return changelog_result
-        tag_result = self._create_tag(workspace_root, tag)
+        tag_result = self._create_tag(repository_root, tag)
         if tag_result.failure:
             return tag_result
         if push:
-            push_result = self._push_release(workspace_root, tag)
+            push_result = self._push_release(repository_root, tag)
             if push_result.failure:
                 return push_result
         return r[bool].ok(True)

@@ -28,7 +28,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         monkeypatch.setenv("PATH", "")
 
         resolved = FlextInfraPyprojectModernizer(
-            workspace_root=project, skip_check=True
+            repository_root=project, skip_check=True
         ).resolve_tooling_context(
             project_name="flext-demo",
             package_name="flext_demo",
@@ -155,20 +155,20 @@ class TestsFlextInfraDepsModernizerWorkspace:
         else:
             tm.that(log_entries, empty=True)
 
-    def test_workspace_root_returns_explicit_path(self, tmp_path: Path) -> None:
-        """Verify workspace root returns explicit path."""
+    def test_repository_root_returns_explicit_path(self, tmp_path: Path) -> None:
+        """Verify repository root returns explicit path."""
         explicit = tmp_path / "explicit"
         explicit.mkdir()
-        result = u.Infra.resolve_workspace_root_or_cwd(explicit)
+        result = u.Infra.resolve_repository_root_or_cwd(explicit)
         tm.that(str(result), eq=str(explicit.resolve()))
 
-    def test_workspace_root_fallback_returns_non_empty_path(
+    def test_repository_root_fallback_returns_non_empty_path(
         self, tmp_path: Path
     ) -> None:
-        """Verify workspace root fallback returns non empty path."""
+        """Verify repository root fallback returns non empty path."""
         deep_path = tmp_path / "a" / "b" / "c" / "d" / "e"
         deep_path.mkdir(parents=True, exist_ok=True)
-        result = u.Infra.resolve_workspace_root_or_cwd(deep_path)
+        result = u.Infra.resolve_repository_root_or_cwd(deep_path)
         tm.that(str(result), ne="")
 
     @pytest.mark.parametrize(
@@ -210,11 +210,11 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
         modernizer = (
             FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True, skip_comments=True
+                repository_root=tmp_path, skip_check=True, skip_comments=True
             )
             if sort_first is None
             else FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path,
+                repository_root=tmp_path,
                 skip_check=True,
                 skip_comments=True,
                 tomlsort_sort_first=sort_first,
@@ -287,7 +287,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
 
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=workspace,
+            repository_root=workspace,
             selected_projects=["declared-name"],
             apply_changes=False,
             skip_check=True,
@@ -316,7 +316,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
 
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=workspace,
+            repository_root=workspace,
             selected_projects=["member"],
             apply_changes=False,
             skip_check=True,
@@ -349,14 +349,14 @@ class TestsFlextInfraDepsModernizerWorkspace:
             )
 
         ambiguous = FlextInfraPyprojectModernizer(
-            workspace_root=workspace,
+            repository_root=workspace,
             selected_projects=["shared-name"],
             apply_changes=False,
             skip_check=True,
             skip_comments=True,
         )
         exact = FlextInfraPyprojectModernizer(
-            workspace_root=workspace,
+            repository_root=workspace,
             selected_projects=["first-dir"],
             apply_changes=False,
             skip_check=True,
@@ -392,7 +392,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
 
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
+            repository_root=modernizer_workspace,
             selected_projects=[selector],
             apply_changes=True,
             skip_check=True,
@@ -417,7 +417,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
         )
 
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
+            repository_root=modernizer_workspace,
             selected_projects=[selector],
             apply_changes=True,
             skip_check=True,

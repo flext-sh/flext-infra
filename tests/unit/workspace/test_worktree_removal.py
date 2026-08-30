@@ -21,7 +21,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         epic = Path(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.ADD,
                     branch=epic_branch,
                     base="HEAD",
@@ -33,7 +33,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         child = Path(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.ADD,
                     branch=child_branch,
                     base=epic_branch,
@@ -44,7 +44,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         )
 
         refused = FlextInfraWorktreeService(
-            workspace_root=repository,
+            repository_root=repository,
             operation=c.Infra.WorktreeOperation.REMOVE,
             branch=epic_branch,
             apply_changes=True,
@@ -57,7 +57,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         tm.that(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.REMOVE,
                     branch=child_branch,
                     apply_changes=True,
@@ -68,7 +68,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         tm.that(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.REMOVE,
                     branch=epic_branch,
                     apply_changes=True,
@@ -84,7 +84,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         missing = tmp_path / "no-such-epic"
 
         result = FlextInfraWorktreeService(
-            workspace_root=repository,
+            repository_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
             branch="feature/child-orphan",
             base="HEAD",

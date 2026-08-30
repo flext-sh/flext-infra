@@ -33,14 +33,14 @@ _INTERPRETER_RUN = re.compile(
 )
 
 
-def _workspace_root() -> Path:
-    """Return the workspace root that owns this checkout."""
+def _repository_root() -> Path:
+    """Return the repository root that owns this checkout."""
     return Path(__file__).resolve().parents[2]
 
 
 def _make_surfaces() -> tuple[Path, ...]:
     """Return every Make surface plus the templates that generate them."""
-    root = _workspace_root()
+    root = _repository_root()
     names = (c.Infra.MAKEFILE_FILENAME, c.Infra.CUSTOM_MAKE_FILENAME)
     templates = Path(flext_infra.__file__).resolve().parent / "templates"
     return (

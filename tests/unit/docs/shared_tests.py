@@ -74,7 +74,7 @@ def test_build_scopes_treats_non_flext_project_as_its_own_root(tmp_path: Path) -
     )
 
 
-def test_build_scopes_preserves_declared_workspace_root_and_projects(
+def test_build_scopes_preserves_declared_repository_root_and_projects(
     tmp_path: Path,
 ) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))

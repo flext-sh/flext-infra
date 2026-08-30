@@ -69,7 +69,7 @@ class TestsFlextInfraContainerInfraContainer:
 
     def test_path_methods_available(self) -> None:
         """Verify path methods are accessible via u.Infra FLEXT."""
-        tm.that(callable(u.Infra.rope_workspace_root), eq=True)
+        tm.that(callable(u.Infra.rope_repository_root), eq=True)
 
     def test_template_methods_available(self) -> None:
         """Verify template constants are accessible via c.Infra FLEXT."""

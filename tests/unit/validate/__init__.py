@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from .governance_authority_tests import (
         COMMON_DIR,
         ROOT,
-        WORKSPACE_ROOT,
+        REPOSITORY_ROOT,
         test_markdownlint_does_not_suppress_strict_rules,
         test_prompt_skills_resolve_to_existing_paths,
     )
@@ -27,8 +27,8 @@ if TYPE_CHECKING:
     from .testmon_db_tests import TestsFlextInfraTestmonDbInspector
 __all__: tuple[str, ...] = (
     "COMMON_DIR",
+    "REPOSITORY_ROOT",
     "ROOT",
-    "WORKSPACE_ROOT",
     "TestFlextInfraNamespaceValidator",
     "TestValidateCli",
     "TestsFlextInfraCProfileReport",
@@ -62,7 +62,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".governance_authority_tests": (
                 "COMMON_DIR",
                 "ROOT",
-                "WORKSPACE_ROOT",
+                "REPOSITORY_ROOT",
                 "test_markdownlint_does_not_suppress_strict_rules",
                 "test_prompt_skills_resolve_to_existing_paths",
             ),

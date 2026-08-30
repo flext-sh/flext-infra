@@ -19,12 +19,12 @@ class TestFlextInfraConfigFixer:
     """Test suite for FlextInfraConfigFixer."""
 
     def test_init_creates_instance(self) -> None:
-        """Test that fixer initializes with default workspace root."""
+        """Test that fixer initializes with default repository root."""
         fixer = FlextInfraConfigFixer()
         tm.that(fixer, none=False)
 
-    def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
-        """Test that fixer accepts custom workspace root."""
+    def test_init_with_custom_repository_root(self, tmp_path: Path) -> None:
+        """Test that fixer accepts custom repository root."""
         fixer = FlextInfraConfigFixer(workspace=tmp_path)
         tm.that(fixer, none=False)
 

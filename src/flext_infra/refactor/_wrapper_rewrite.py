@@ -19,14 +19,14 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     """Detect ``Core.Tests`` chain rewrites + import candidates per file.
 
     Composed into FlextInfraWrapperRootNamespaceRefactor via inheritance;
-    borrows workspace_root + the include-init / dry-run flags + the wrapper
+    borrows repository_root + the include-init / dry-run flags + the wrapper
     package set from the facade via FLEXT. ``module_ast`` is typed ``object`` to
     mirror the rope-AST abstraction (FlextInfraUtilitiesRopeAnalysis), which
     deliberately avoids ``import ast`` at the consumer layer (tracked: flext-6flt).
     """
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
         include_init: bool
         _WRAPPER_PACKAGES: ClassVar[t.StrSequence]
 
@@ -44,7 +44,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     ) -> None:
         """Detect Core.Tests chain rewrites and import candidates for one file."""
         try:
-            rel = file_path.relative_to(self.workspace_root)
+            rel = file_path.relative_to(self.repository_root)
         except ValueError:
             rel = file_path
         project_name = rel.parts[0] if rel.parts else "."

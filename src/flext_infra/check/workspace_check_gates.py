@@ -69,10 +69,10 @@ class FlextInfraGateRegistry:
         """Return the registered gate class for one gate id, when present."""
         return self._gates.get(gate_id)
 
-    def create(self, gate_id: str, workspace_root: Path) -> FlextInfraGate | None:
-        """Instantiate one registered gate for ``workspace_root`` when available."""
+    def create(self, gate_id: str, repository_root: Path) -> FlextInfraGate | None:
+        """Instantiate one registered gate for ``repository_root`` when available."""
         gate_cls = self._gates.get(gate_id)
-        return gate_cls(workspace_root) if gate_cls else None
+        return gate_cls(repository_root) if gate_cls else None
 
     @classmethod
     def default(cls) -> FlextInfraGateRegistry:
@@ -83,7 +83,7 @@ class FlextInfraGateRegistry:
 class FlextInfraWorkspaceCheckGatesMixin:
     """Gate execution, project loop, and individual gate runner methods."""
 
-    _workspace_root: Path
+    _repository_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
     _gate_logger: ClassVar[p.Logger] = u.fetch_logger(__name__)
@@ -93,7 +93,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     ) -> m.Infra.GateContext:
         """Create a fresh GateContext scoped to a single project."""
         return m.Infra.GateContext(
-            workspace=ctx.workspace_root,
+            workspace=ctx.repository_root,
             reports_dir=ctx.reports_dir / target.name,
             apply_fixes=ctx.apply_fixes,
             check_only=ctx.check_only,
@@ -169,7 +169,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
     def _gate_ctx(self, reports_dir: Path | None = None) -> m.Infra.GateContext:
         """Gate ctx."""
         return m.Infra.GateContext(
-            workspace=self._workspace_root,
+            workspace=self._repository_root,
             reports_dir=reports_dir or self._default_reports_dir,
         )
 
@@ -182,7 +182,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ctx: m.Infra.GateContext | None = None,
     ) -> m.Infra.GateExecution:
         """Run gate."""
-        gate = self._registry.create(gate_id, self._workspace_root)
+        gate = self._registry.create(gate_id, self._repository_root)
         if gate is None:
             return m.Infra.GateExecution(
                 result=m.Infra.GateResult(
@@ -206,7 +206,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
 
         stages: t.MutableSequenceOf[m.Cli.PipelineStageSpec] = []
         for gate_id in gates:
-            gate_instance = self._registry.create(gate_id, self._workspace_root)
+            gate_instance = self._registry.create(gate_id, self._repository_root)
             if gate_instance is None:
                 continue
             stages.append(
@@ -250,7 +250,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         ) -> p.Result[m.Cli.PipelineStageResult]:
             """Run the gate and record its execution in the sink."""
             gate_ctx = m.Infra.GateContext(
-                workspace=ctx.workspace_root,
+                workspace=ctx.repository_root,
                 reports_dir=ctx.reports_dir,
                 apply_fixes=ctx.apply_fixes,
                 check_only=ctx.check_only,

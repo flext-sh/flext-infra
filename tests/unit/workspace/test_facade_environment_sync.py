@@ -38,7 +38,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         _write_pyproject(workspace)
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.ok(result)
@@ -62,7 +62,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         _ = custom.write_text("PATH_add bin\n", encoding="utf-8")
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.ok(result)
@@ -79,7 +79,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
 
         result = infra.sync_environment_files(
             m.Infra.WorkspaceEnvironmentSyncRequest(
-                workspace_root=workspace, force=True
+                repository_root=workspace, force=True
             )
         )
 
@@ -107,7 +107,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.ok(result)
@@ -123,7 +123,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         _write_pyproject(workspace, requires_python=">=3.14")
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.ok(result)
@@ -148,7 +148,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.ok(result)
@@ -173,7 +173,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
             )
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.that(result.failure, eq=True)
@@ -193,7 +193,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.that(result.failure, eq=True)
@@ -209,13 +209,13 @@ class TestsFlextInfraFacadeEnvironmentSync:
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
         setup = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(setup)
         (workspace / "pyproject.toml").unlink()
 
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
         tm.ok(result)

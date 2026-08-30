@@ -19,8 +19,8 @@ class FlextInfraModelsGates:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             extra="forbid", arbitrary_types_allowed=True, populate_by_name=True
         )
-        workspace_root: Path = m.Field(
-            alias="workspace", description="Workspace root directory"
+        repository_root: Path = m.Field(
+            alias="workspace", description="Repository root directory"
         )
         reports_dir: Annotated[Path, m.Field(description="Reports output directory")]
         apply_fixes: Annotated[

@@ -15,14 +15,14 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         self, tmp_path: Path
     ) -> None:
         service = u.Infra()
-        workspace_root = tmp_path
-        non_git_dir = workspace_root / "non_git_project"
+        repository_root = tmp_path
+        non_git_dir = repository_root / "non_git_project"
         non_git_dir.mkdir()
         (non_git_dir / "pyproject.toml").write_text(
             "[project]\nname='non_git_project'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
-        result = service.discover_projects(workspace_root)
+        result = service.discover_projects(repository_root)
         tm.ok(result)
         tm.that(result.value, empty=True)
 
@@ -64,13 +64,13 @@ class TestsFlextInfraDiscoveryInfraDiscoveryEdgeCases:
         self, tmp_path: Path
     ) -> None:
         service = u.Infra()
-        workspace_root = tmp_path
-        proj = workspace_root / "incomplete_project"
+        repository_root = tmp_path
+        proj = repository_root / "incomplete_project"
         proj.mkdir()
         (proj / "pyproject.toml").write_text(
             "[project]\nname='incomplete_project'\n", encoding="utf-8"
         )
-        result = service.discover_projects(workspace_root)
+        result = service.discover_projects(repository_root)
         tm.ok(result)
         tm.that(not result.value, eq=True)
 

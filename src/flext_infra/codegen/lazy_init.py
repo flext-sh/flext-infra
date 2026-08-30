@@ -68,24 +68,24 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         """Process all package directories bottom-up and generate PEP 562 inits."""
         self._modified_files.clear()
         self._duplicate_class_names = 0
-        if not self.workspace_root.exists():
+        if not self.repository_root.exists():
             u.Cli.info("Lazy-init summary: 0 generated, 0 errors (0 dirs scanned)")
             return 0
         started_at = perf_counter()
         u.Cli.info(
             "lazy-init: starting "
-            f"({'check' if check_only else 'apply'}) for {self.workspace_root}"
+            f"({'check' if check_only else 'apply'}) for {self.repository_root}"
         )
         lazy_init = config.Infra.tooling.lazy_init
-        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(self.repository_root) as rope:
             workspace_index = rope.workspace_index
-            resolved_workspace_root = self.workspace_root.resolve()
+            resolved_repository_root = self.repository_root.resolve()
             indexed_package_dirs = tuple(
                 sorted(
                     (
                         package_dir.resolve()
                         for package_dir in workspace_index.package_dirs
-                        if package_dir.is_relative_to(resolved_workspace_root)
+                        if package_dir.is_relative_to(resolved_repository_root)
                     ),
                     key=path_depth,
                     reverse=True,
@@ -124,7 +124,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 package_dirs = indexed_package_dirs
             else:
                 target_parts = target_package_dir.relative_to(
-                    resolved_workspace_root
+                    resolved_repository_root
                 ).parts
                 boundary_names = frozenset({
                     c.Infra.DEFAULT_SRC_DIR,
@@ -145,13 +145,13 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     package_dir
                     for package_dir in indexed_package_dirs
                     if (
-                        package_dir.relative_to(resolved_workspace_root).parts[
+                        package_dir.relative_to(resolved_repository_root).parts[
                             : len(scope_prefix)
                         ]
                         == scope_prefix
                         # flext-pulj (codex): wrapper aliases depend on the same
                         # project's production plans, consumed read-only.
-                        or package_dir.relative_to(resolved_workspace_root).parts[
+                        or package_dir.relative_to(resolved_repository_root).parts[
                             : len(production_prefix)
                         ]
                         == production_prefix
@@ -214,7 +214,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         if not targets:
             return 0
         check = u.Cli.run_raw(
-            [c.Infra.RUFF, c.Infra.CHECK, "--no-fix", *targets], cwd=self.workspace_root
+            [c.Infra.RUFF, c.Infra.CHECK, "--no-fix", *targets],
+            cwd=self.repository_root,
         )
         if check.failure:
             u.Cli.error(f"batched Ruff check failed to run: {check.error}")

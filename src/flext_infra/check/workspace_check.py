@@ -21,27 +21,27 @@ class FlextInfraWorkspaceChecker(
 ):
     """Run workspace quality gates and generate reports."""
 
-    _workspace_root: Path
+    _repository_root: Path
     _registry: FlextInfraGateRegistry
     _default_reports_dir: Path
 
     def __init__(
-        self, workspace_root: Path | None = None, *, workspace: Path | None = None
+        self, repository_root: Path | None = None, *, workspace: Path | None = None
     ) -> None:
         """Initialize workspace checker services and paths."""
-        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
-            workspace_root or workspace
+        resolved_workspace = u.Infra.resolve_repository_root_or_cwd(
+            repository_root or workspace
         )
-        super().__init__(workspace_root=resolved_workspace)
-        self._workspace_root = self.workspace_root
+        super().__init__(repository_root=resolved_workspace)
+        self._repository_root = self.repository_root
         self._registry = FlextInfraGateRegistry.default()
         report_dir = u.Cli.resolve_report_dir(
-            self._workspace_root, c.Infra.PROJECT, c.Infra.VERB_CHECK
+            self._repository_root, c.Infra.PROJECT, c.Infra.VERB_CHECK
         )
         dir_result = u.Cli.ensure_dir(report_dir)
         if dir_result.failure:
             self._default_reports_dir = (
-                self._workspace_root / c.Infra.REPORTS_DIR_NAME / c.Infra.VERB_CHECK
+                self._repository_root / c.Infra.REPORTS_DIR_NAME / c.Infra.VERB_CHECK
             )
         else:
             self._default_reports_dir = report_dir
@@ -95,7 +95,7 @@ class FlextInfraWorkspaceChecker(
     @classmethod
     def execute_payload(cls, params: m.Infra.RunCommand) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
-        checker = cls(workspace_root=params.workspace_path)
+        checker = cls(repository_root=params.workspace_path)
         project_targets_result = cls._resolve_project_targets(params)
         if project_targets_result.failure:
             return r[bool].fail(
@@ -222,7 +222,7 @@ class FlextInfraWorkspaceChecker(
                 dir_ensure.error or "failed to create report directory"
             )
         effective_ctx = ctx or m.Infra.GateContext(
-            workspace=self._workspace_root, reports_dir=report_base
+            workspace=self._repository_root, reports_dir=report_base
         )
         outcome = self._run_project_loop(
             self._project_targets(projects),
@@ -243,7 +243,7 @@ class FlextInfraWorkspaceChecker(
                 continue
             targets.append(
                 m.Infra.CheckProjectTarget.from_workspace_name(
-                    self._workspace_root, project
+                    self._repository_root, project
                 )
             )
         return tuple(targets)

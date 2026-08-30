@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 class FlextInfraConfigFixerSteps:
     """Mixin holding the three cohesive pyrefly fix-steps."""
 
-    _workspace_root: Path
+    _repository_root: Path
 
     def _sync_search_path(
         self,
@@ -45,7 +45,7 @@ class FlextInfraConfigFixerSteps:
             path_item for path_item in current_paths if isinstance(path_item, str)
         ]
         expected_search = FlextInfraExtraPathsManager(
-            workspace_root=self._workspace_root
+            repository_root=self._repository_root
         ).pyrefly_search_paths(project_dir=project_dir, is_root=is_root)
         if current_search != expected_search:
             pyrefly[c.Infra.SEARCH_PATH] = u.Cli.toml_array(expected_search)
@@ -73,7 +73,7 @@ class FlextInfraConfigFixerSteps:
             path_item for path_item in current_items if isinstance(path_item, str)
         ]
         expected_includes = FlextInfraExtraPathsManager(
-            workspace_root=self._workspace_root
+            repository_root=self._repository_root
         ).pyrefly_project_includes(project_dir=project_dir, is_root=is_root)
         if current_includes != expected_includes:
             pyrefly[c.Infra.PROJECT_INCLUDES] = u.Cli.toml_array(expected_includes)

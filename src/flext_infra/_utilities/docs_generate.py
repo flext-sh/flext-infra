@@ -133,14 +133,14 @@ class FlextInfraUtilitiesDocsGenerate:
 
     @staticmethod
     def docs_project_guides_files(
-        scope: m.Infra.DocScope, *, workspace_root: Path, apply: bool
+        scope: m.Infra.DocScope, *, repository_root: Path, apply: bool
     ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Return project guide files managed by generation.
 
         Guide propagation is intentionally disabled; curated guides stay local.
         """
         _ = scope
-        _ = workspace_root
+        _ = repository_root
         _ = apply
         return []
 
@@ -169,7 +169,7 @@ class FlextInfraUtilitiesDocsGenerate:
 
     @staticmethod
     def docs_root_generated_files(
-        workspace_root: Path, *, apply: bool, projects: t.StrSequence | None = None
+        repository_root: Path, *, apply: bool, projects: t.StrSequence | None = None
     ) -> t.SequenceOf[m.Infra.GeneratedFile]:
         """Generate root workspace docs artifacts from discovered FLEXT projects.
 
@@ -180,13 +180,13 @@ class FlextInfraUtilitiesDocsGenerate:
         """
         _ = projects
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
-            workspace_root
+            repository_root
         )
         exclude_docs = FlextInfraUtilitiesDocsRender.as_string_sequence(
             workspace_contract, "exclude_docs"
         )
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
-            workspace_root, None, c.Infra.DEFAULT_DOCS_OUTPUT_DIR
+            repository_root, None, c.Infra.DEFAULT_DOCS_OUTPUT_DIR
         )
         scopes = (
             [scope for scope in scopes_result.value if scope.name != c.Infra.RK_ROOT]
@@ -212,7 +212,7 @@ class FlextInfraUtilitiesDocsGenerate:
             )
             src_dir = scope.path / "src"
             if src_dir.is_dir():
-                src_paths.append(src_dir.relative_to(workspace_root).as_posix())
+                src_paths.append(src_dir.relative_to(repository_root).as_posix())
             catalog_entries.append({
                 "name": scope.name,
                 "project_class": scope.project_class,
@@ -221,21 +221,21 @@ class FlextInfraUtilitiesDocsGenerate:
                 "api_page": f"../../api-reference/generated/{scope.name}.md",
             })
         expected_api_generated: t.MutableSequenceOf[Path] = [
-            workspace_root / "docs/api-reference/generated/overview.md"
+            repository_root / "docs/api-reference/generated/overview.md"
         ]
         expected_project_generated: t.MutableSequenceOf[Path] = [
-            workspace_root / "docs/projects/generated/catalog.md"
+            repository_root / "docs/projects/generated/catalog.md"
         ]
         files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                workspace_root / "mkdocs.yml",
+                repository_root / "mkdocs.yml",
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
                     workspace_contract, src_paths
                 ),
                 apply=apply,
             ),
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                workspace_root / "docs/api-reference/generated/overview.md",
+                repository_root / "docs/api-reference/generated/overview.md",
                 FlextInfraUtilitiesDocsRender.docs_root_overview_page(
                     workspace_contract,
                     project_count=len(scopes),
@@ -244,7 +244,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 apply=apply,
             ),
             FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                workspace_root / "docs/projects/generated/catalog.md",
+                repository_root / "docs/projects/generated/catalog.md",
                 FlextInfraUtilitiesDocsRender.docs_project_catalog_page(
                     catalog_entries, exclude_docs=exclude_docs
                 ),
@@ -254,11 +254,11 @@ class FlextInfraUtilitiesDocsGenerate:
         projects_index_entries: t.MutableSequenceOf[dict[str, str]] = []
         for scope in scopes:
             expected_api_generated.append(
-                workspace_root / "docs/api-reference/generated" / f"{scope.name}.md"
+                repository_root / "docs/api-reference/generated" / f"{scope.name}.md"
             )
             files.append(
                 FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    workspace_root
+                    repository_root
                     / "docs/api-reference/generated"
                     / f"{scope.name}.md",
                     FlextInfraUtilitiesDocsRender.docs_directive_page(
@@ -273,7 +273,7 @@ class FlextInfraUtilitiesDocsGenerate:
             # links resolve identically to the project-scope layout.
             module_names = scope_modules.get(scope.name, [])
             modules_root = (
-                workspace_root
+                repository_root
                 / "docs/api-reference/generated/projects"
                 / scope.name
                 / "modules"
@@ -308,7 +308,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 "module_count": str(len(module_names)),
             })
         projects_index_path = (
-            workspace_root / "docs/api-reference/generated/projects/index.md"
+            repository_root / "docs/api-reference/generated/projects/index.md"
         )
         expected_api_generated.append(projects_index_path)
         files.append(
@@ -322,14 +322,14 @@ class FlextInfraUtilitiesDocsGenerate:
         )
         files.extend(
             FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
-                workspace_root / "docs/api-reference/generated",
+                repository_root / "docs/api-reference/generated",
                 expected_api_generated,
                 apply=apply,
             )
         )
         files.extend(
             FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
-                workspace_root / "docs/projects/generated",
+                repository_root / "docs/projects/generated",
                 expected_project_generated,
                 apply=apply,
             )
@@ -362,13 +362,13 @@ class FlextInfraUtilitiesDocsGenerate:
         scope: m.Infra.DocScope,
         *,
         apply: bool,
-        workspace_root: Path,
+        repository_root: Path,
         projects: t.StrSequence | None = None,
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope and persist the standard reports."""
         files: t.MutableSequenceOf[m.Infra.GeneratedFile] = list(
             FlextInfraUtilitiesDocsGenerate.docs_root_generated_files(
-                workspace_root, apply=apply, projects=projects
+                repository_root, apply=apply, projects=projects
             )
             if scope.name == c.Infra.RK_ROOT
             else FlextInfraUtilitiesDocsGenerate.docs_project_generated_files(

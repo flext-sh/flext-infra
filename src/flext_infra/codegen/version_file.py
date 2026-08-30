@@ -48,7 +48,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
             / "templates"
             / c.Infra.TEMPLATE_VERSION_FILE
         )
-        discovered = u.Infra.discover_projects(self.workspace_root)
+        discovered = u.Infra.discover_projects(self.repository_root)
         if not discovered.success:
             return r[bool].fail("version-file: project discovery failed")
 
@@ -94,7 +94,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
                     continue
 
             if self.check_only or self.dry_run:
-                u.Cli.info(f"  stale: {target.relative_to(self.workspace_root)}")
+                u.Cli.info(f"  stale: {target.relative_to(self.repository_root)}")
                 generated += 1
                 continue
 
@@ -104,7 +104,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
                     write_result.error or f"version-file: cannot write {target}"
                 )
             generated += 1
-            u.Cli.info(f"  generated: {target.relative_to(self.workspace_root)}")
+            u.Cli.info(f"  generated: {target.relative_to(self.repository_root)}")
 
         verb = "would generate" if (self.check_only or self.dry_run) else "generated"
         u.Cli.info(f"version-file: {verb} {generated}, skipped {skipped}")

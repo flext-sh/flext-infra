@@ -50,13 +50,13 @@ class FlextInfraRefactorClassvarConstantAutofix:
 
     @staticmethod
     def plan(
-        workspace_root: Path,
+        repository_root: Path,
         class_full_name: str,
         constant_name: str,
         constants_module: str,
     ) -> ClassvarConstantAutofixPlan:
         """Build an autofix plan without touching disk."""
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
+        with FlextInfraUtilitiesRopeCore.open_project(repository_root) as project:
             return FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
                 project, class_full_name, constant_name, constants_module
             )
@@ -102,7 +102,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
 
     @staticmethod
     def apply(
-        workspace_root: Path,
+        repository_root: Path,
         class_full_name: str,
         constant_name: str,
         constants_module: str,
@@ -110,7 +110,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         dry_run: bool = False,
     ) -> m.Infra.ClassvarConstantAutofixResult:
         """Move the constant and rewrite all internal references."""
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as project:
+        with FlextInfraUtilitiesRopeCore.open_project(repository_root) as project:
             plan = FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
                 project, class_full_name, constant_name, constants_module
             )

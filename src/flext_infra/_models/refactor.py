@@ -117,8 +117,8 @@ class FlextInfraModelsRefactor(
     class Checkpoint(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
         """Serialisable checkpoint state for refactor safety recovery."""
 
-        workspace_root: Annotated[
-            t.NonEmptyStr, m.Field(description="Workspace root path")
+        repository_root: Annotated[
+            t.NonEmptyStr, m.Field(description="Repository root path")
         ]
         status: Annotated[str, m.Field(description="Checkpoint status")] = "running"
         processed_targets: Annotated[

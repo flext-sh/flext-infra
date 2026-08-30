@@ -24,13 +24,13 @@ class TestsReleasePolicyFixtureRoot:
         clone and must equally hold in a linked worktree, where the repository
         sits deeper in the filesystem.
         """
-        workspace_root = u.Tests.release_policy_root()
+        repository_root = u.Tests.release_policy_root()
 
         for policy_path in (
             c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
             c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
         ):
-            tm.that((workspace_root / policy_path).is_file(), eq=True)
+            tm.that((repository_root / policy_path).is_file(), eq=True)
 
     def test_policy_root_is_not_derived_by_counting_parents(self) -> None:
         """The fixture belongs to this test package, not an ambient parent."""

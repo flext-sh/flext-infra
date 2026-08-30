@@ -50,7 +50,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
     """
 
     if TYPE_CHECKING:
-        _workspace_root: Path
+        _repository_root: Path
 
         def _detect_and_apply[V](
             self,
@@ -67,7 +67,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             project: tuple[Path, str],
             rope_project: t.Infra.RopeProject,
             apply: bool,
-            workspace_root: Path,
+            repository_root: Path,
         ) -> t.SequenceOf[m.Infra.FacadeStatus]: ...
 
         @staticmethod
@@ -124,7 +124,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             project=(project_root, project_name),
             rope_project=rope_project,
             apply=apply,
-            workspace_root=self._workspace_root,
+            repository_root=self._repository_root,
         )
         py_files = self._collect_py_files(project_root=project_root)
         project_layout = u.Infra.layout(project_root)

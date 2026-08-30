@@ -441,14 +441,14 @@ class FlextInfraUtilitiesCodegenNamespace:
     @classmethod
     def projects(
         cls,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
         """Discover only projects that participate in codegen automation."""
         if projects is None:
             projects_result = FlextInfraUtilitiesDocsScope.discover_projects(
-                workspace_root
+                repository_root
             )
             if not projects_result.success:
                 return r[t.SequenceOf[m.Infra.ProjectInfo]].fail(

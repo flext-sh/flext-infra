@@ -22,17 +22,17 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @classmethod
     def discover_project_roots(
-        cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
+        cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:
-        """Discover all project directories under workspace root.
+        """Discover all project directories under repository root.
 
         Algorithm:
-          1. Check if workspace_root itself looks like a project
+          1. Check if repository_root itself looks like a project
           2. Enumerate only projects declared by the root's own ``.gitmodules``.
           3. Return the root and declared projects in deterministic order.
 
         Args:
-            workspace_root: Root directory to start search from.
+            repository_root: Root directory to start search from.
             scan_dirs: Directory names indicating a project exists (e.g., "src", "tests").
                 Must be frozenset for use as constant. Defaults to standard project dirs.
 
@@ -41,28 +41,28 @@ class FlextInfraUtilitiesProjectDiscovery(
 
         """
         declared_paths = FlextInfraUtilitiesGit.git_declared_submodule_paths(
-            workspace_root
+            repository_root
         )
         if declared_paths.failure:
             raise ValueError(declared_paths.error or "invalid .gitmodules")
         configured_projects = tuple(path.as_posix() for path in declared_paths.value)
         candidates = cls.discover_project_candidates(
-            workspace_root, scan_dirs=scan_dirs
+            repository_root, scan_dirs=scan_dirs
         )
-        resolved_workspace_root = workspace_root.resolve()
+        resolved_repository_root = repository_root.resolve()
         if not configured_projects:
             return candidates
         configured_order = {name: idx for idx, name in enumerate(configured_projects)}
         ordered: list[Path] = []
 
         def configured_key(candidate: Path) -> tuple[int, str]:
-            relative = candidate.relative_to(resolved_workspace_root).as_posix()
+            relative = candidate.relative_to(resolved_repository_root).as_posix()
             return configured_order.get(
                 relative, len(configured_projects)
             ), candidate.name
 
         non_root_candidates = sorted(
-            (c for c in candidates if c != resolved_workspace_root), key=configured_key
+            (c for c in candidates if c != resolved_repository_root), key=configured_key
         )
         ordered.extend(non_root_candidates)
         return ordered

@@ -67,7 +67,7 @@ class TestsFlextInfraGitFacet:
         )
         assert primary.success
         assert primary.value.primary_root == real_git_repo.resolve()
-        report = FlextInfraGitService(workspace_root=real_git_repo).execute()
+        report = FlextInfraGitService(repository_root=real_git_repo).execute()
         assert report.success
         assert isinstance(report.value, m.Infra.GitStatusReport)
         assert report.value.repo_root == real_git_repo.resolve()
@@ -86,11 +86,11 @@ class TestsFlextInfraGitFacet:
 
     def test_service_status_reports_dirty_tree(self, real_git_repo: Path) -> None:
         """The status-only service flips dirty when the worktree changes."""
-        clean = FlextInfraGitService(workspace_root=real_git_repo).execute()
+        clean = FlextInfraGitService(repository_root=real_git_repo).execute()
         assert clean.success
         assert clean.value.dirty is False
         (real_git_repo / "dirty.txt").write_text("x", encoding="utf-8")
-        dirty = FlextInfraGitService(workspace_root=real_git_repo).execute()
+        dirty = FlextInfraGitService(repository_root=real_git_repo).execute()
         assert dirty.success
         assert dirty.value.dirty is True
         assert "dirty.txt" in dirty.value.porcelain
@@ -156,8 +156,7 @@ class TestsFlextInfraGitFacet:
     ) -> None:
         """Missing git on PATH must Result.fail without raising."""
         monkeypatch.setattr(
-            "flext_infra._utilities._git.repo.shutil.which",
-            _no_executable,
+            "flext_infra._utilities._git.repo.shutil.which", _no_executable
         )
         result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure

@@ -22,8 +22,8 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     """Shared text and path helpers for namespace refactor utilities."""
 
     @staticmethod
-    def shared_workspace_root(*, py_files: t.SequenceOf[Path]) -> Path:
-        """Shared workspace root."""
+    def shared_repository_root(*, py_files: t.SequenceOf[Path]) -> Path:
+        """Shared repository root."""
         existing_files = [path.resolve() for path in py_files if path.exists()]
         if not existing_files:
             return Path.cwd()

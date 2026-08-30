@@ -60,7 +60,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     def execute_payload(cls, params: m.Infra.FixEnforcementCommand) -> p.Result[str]:
         """Execute enforcement fixes from the canonical CLI payload."""
         instance = cls(
-            workspace_root=params.workspace_path,
+            repository_root=params.workspace_path,
             selected_projects=params.projects,
             apply=params.apply,
             rules=tuple(params.rules),
@@ -125,7 +125,7 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     def _resolve_projects(self) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         """Resolve the project list from CLI selection or workspace discovery."""
-        projects_result = u.Infra.projects(self.workspace_root)
+        projects_result = u.Infra.projects(self.repository_root)
         if projects_result.failure:
             return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
                 projects_result.error or "workspace discovery failed"
@@ -258,12 +258,12 @@ class FlextInfraEnforcementFixerOrchestrator(
     def _instantiate_adapter(
         self, adapter_cls: type[FlextInfraFixerAdapter]
     ) -> FlextInfraFixerAdapter:
-        """Create an adapter instance, injecting workspace root."""
-        return adapter_cls(self.workspace_root)
+        """Create an adapter instance, injecting repository root."""
+        return adapter_cls(self.repository_root)
 
     def _engine(self) -> FlextInfraEnforcementEngine:
         """Build the shared enforcement engine for this workspace."""
-        return FlextInfraEnforcementEngine(self.workspace_root)
+        return FlextInfraEnforcementEngine(self.repository_root)
 
     def _collect_violations(
         self, project_dir: Path, rules: t.SequenceOf[me.EnforcementRuleSpec]
@@ -344,7 +344,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         of the CLI default or any future check-after implementation.
         """
         return m.Infra.FixEnforcementCommand(
-            workspace=str(self.workspace_root),
+            workspace=str(self.repository_root),
             projects=self.project_names,
             apply=self.apply,
             rules=self.rules,

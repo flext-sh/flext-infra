@@ -36,7 +36,7 @@ class FlextInfraWorktreeService(s[str]):
     def _primary_root(self) -> p.Result[Path]:
         """Resolve the primary worktree from Git's canonical registry."""
         primary = u.Infra.git_primary_worktree_root(
-            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
+            m.Infra.GitRepoRequest(repo_root=self.repository_root)
         )
         if primary.failure:
             return r[Path].fail(primary.error or "failed to resolve primary worktree")
@@ -48,7 +48,7 @@ class FlextInfraWorktreeService(s[str]):
         if not branch:
             return r.fail(f"worktree {self.operation} requires --branch")
         checked = u.Infra.git_check_branch_format(
-            m.Infra.GitBranchRequest(repo_root=self.workspace_root, branch=branch)
+            m.Infra.GitBranchRequest(repo_root=self.repository_root, branch=branch)
         )
         if checked.failure or not checked.value.value:
             return r.fail(checked.error or f"invalid branch name: {branch}")
@@ -162,7 +162,7 @@ class FlextInfraWorktreeService(s[str]):
     def _ref_exists(self, reference: str) -> p.Result[bool]:
         """Return whether an exact Git ref exists, preserving command failures."""
         checked = u.Infra.git_ref_exists(
-            m.Infra.GitRefRequest(repo_root=self.workspace_root, reference=reference)
+            m.Infra.GitRefRequest(repo_root=self.repository_root, reference=reference)
         )
         if checked.failure:
             return r.fail(checked.error or f"failed to inspect Git ref: {reference}")
@@ -236,7 +236,7 @@ class FlextInfraWorktreeService(s[str]):
             return r.fail(remote.error or "failed to inspect remote branch")
         added = u.Infra.git_add_lane_worktree(
             m.Infra.GitWorktreeAddRequest(
-                repo_root=self.workspace_root,
+                repo_root=self.repository_root,
                 lane=lane,
                 branch=branch,
                 base=base_oid,

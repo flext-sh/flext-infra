@@ -222,7 +222,7 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     @cache
-    def workspace_project_paths(workspace_root: Path) -> t.StrSequence:
+    def workspace_project_paths(repository_root: Path) -> t.StrSequence:
         """Return project paths declared by this directory's own ``.gitmodules``.
 
         A missing file denotes a standalone project and therefore an empty
@@ -230,9 +230,9 @@ class FlextInfraUtilitiesPyproject:
         remains a loud error; no pyproject table or parent directory is used as
         an alternate topology source.
         """
-        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(workspace_root)
+        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(repository_root)
         if declared.failure:
-            msg = declared.error or f"invalid workspace topology: {workspace_root}"
+            msg = declared.error or f"invalid workspace topology: {repository_root}"
             raise ValueError(msg)
         return tuple(path.as_posix() for path in declared.value)
 

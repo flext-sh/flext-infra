@@ -143,7 +143,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
         """Run the workspace scan once per process; a missing binary is VISIBLE."""
-        key = str(self._workspace_root)
+        key = str(self._repository_root)
         cached = self._scan_cache.get(key)
         if cached is not None:
             return cached
@@ -160,7 +160,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         else:
             output = self._run(
                 [binary, *c.Infra.SMELLS_QLTY_ARGS],
-                self._workspace_root,
+                self._repository_root,
                 timeout=c.Infra.TIMEOUT_LONG,
             )
             if "No qlty config file found" in output.stderr:

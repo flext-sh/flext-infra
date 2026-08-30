@@ -43,12 +43,12 @@ def _consolidator_payload(value: str) -> _ConsolidatorJsonPayload:
 
 
 def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
-    workspace_root = tmp_path / "workspace"
-    workspace_root.mkdir(parents=True)
-    (workspace_root / "pyproject.toml").write_text(
+    repository_root = tmp_path / "workspace"
+    repository_root.mkdir(parents=True)
+    (repository_root / "pyproject.toml").write_text(
         '[tool.uv.workspace]\nmembers = ["flext-demo"]\n', encoding="utf-8"
     )
-    project_root = workspace_root / "flext-demo"
+    project_root = repository_root / "flext-demo"
     package_dir = project_root / "src" / "flext_demo"
     package_dir.mkdir(parents=True)
     (project_root / "pyproject.toml").write_text(
@@ -64,9 +64,9 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
-    u.Tests.declare_workspace_projects(workspace_root, ("flext-demo",))
+    u.Tests.declare_workspace_projects(repository_root, ("flext-demo",))
 
-    result = u.Tests.consolidate_codegen(workspace_root=workspace_root, dry_run=True)
+    result = u.Tests.consolidate_codegen(repository_root=repository_root, dry_run=True)
 
     tm.ok(result)
     tm.that(result.value, has="Found")
@@ -74,12 +74,12 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
 
 def _build_consolidator_workspace(tmp_path: Path) -> Path:
     """Create a workspace with one project whose constants define a demo value."""
-    workspace_root = tmp_path / "workspace"
-    workspace_root.mkdir(parents=True)
-    (workspace_root / "pyproject.toml").write_text(
+    repository_root = tmp_path / "workspace"
+    repository_root.mkdir(parents=True)
+    (repository_root / "pyproject.toml").write_text(
         '[tool.uv.workspace]\nmembers = ["flext-demo"]\n', encoding="utf-8"
     )
-    project_root = workspace_root / "flext-demo"
+    project_root = repository_root / "flext-demo"
     package_dir = project_root / "src" / "flext_demo"
     package_dir.mkdir(parents=True)
     (project_root / "pyproject.toml").write_text(
@@ -106,13 +106,13 @@ def _build_consolidator_workspace(tmp_path: Path) -> Path:
     (package_dir / "consumer.py").write_text(
         'from __future__ import annotations\n\nVALUE = "demo"\n', encoding="utf-8"
     )
-    u.Tests.declare_workspace_projects(workspace_root, ("flext-demo",))
-    return workspace_root
+    u.Tests.declare_workspace_projects(repository_root, ("flext-demo",))
+    return repository_root
 
 
-def _write_wrapper_consumer(workspace_root: Path, segment: str) -> Path:
+def _write_wrapper_consumer(repository_root: Path, segment: str) -> Path:
     """Create one wrapper-surface consumer for constants consolidation."""
-    project_root = workspace_root / "flext-demo"
+    project_root = repository_root / "flext-demo"
     consumer_path = project_root / segment / "consumer.py"
     consumer_path.parent.mkdir(parents=True, exist_ok=True)
     consumer_path.write_text(
@@ -124,10 +124,12 @@ def _write_wrapper_consumer(workspace_root: Path, segment: str) -> Path:
 def test_execute_apply_mode_replaces_literal_with_canonical_reference(
     tmp_path: Path,
 ) -> None:
-    workspace_root = _build_consolidator_workspace(tmp_path)
-    consumer_path = workspace_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
+    repository_root = _build_consolidator_workspace(tmp_path)
+    consumer_path = (
+        repository_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
+    )
 
-    result = u.Tests.consolidate_codegen(workspace_root=workspace_root, dry_run=False)
+    result = u.Tests.consolidate_codegen(repository_root=repository_root, dry_run=False)
 
     tm.ok(result)
     tm.that(result.value, has="Applied 1 replacements")
@@ -142,17 +144,17 @@ def test_execute_apply_mode_replaces_literal_with_canonical_reference(
 def test_execute_apply_mode_scans_wrapper_surfaces(
     tmp_path: Path, wrapper_segment: str
 ) -> None:
-    workspace_root = _build_consolidator_workspace(tmp_path)
+    repository_root = _build_consolidator_workspace(tmp_path)
     package_consumer_path = (
-        workspace_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
+        repository_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
     )
     package_consumer_path.write_text(
         'from __future__ import annotations\n\nVALUE = "covered-elsewhere"\n',
         encoding="utf-8",
     )
-    wrapper_consumer_path = _write_wrapper_consumer(workspace_root, wrapper_segment)
+    wrapper_consumer_path = _write_wrapper_consumer(repository_root, wrapper_segment)
     constants_family_path = (
-        workspace_root
+        repository_root
         / "flext-demo"
         / "src"
         / "flext_demo"
@@ -164,7 +166,7 @@ def test_execute_apply_mode_scans_wrapper_surfaces(
         'from __future__ import annotations\n\nVALUE = "demo"\n', encoding="utf-8"
     )
     service = FlextInfraCodegenConsolidator(
-        workspace_root=workspace_root, dry_run=False, output_format="json"
+        repository_root=repository_root, dry_run=False, output_format="json"
     )
 
     result = service.execute()
@@ -189,9 +191,9 @@ def test_execute_apply_mode_scans_wrapper_surfaces(
 
 @pytest.mark.slow
 def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
-    workspace_root = _build_consolidator_workspace(tmp_path)
+    repository_root = _build_consolidator_workspace(tmp_path)
     service = FlextInfraCodegenConsolidator(
-        workspace_root=workspace_root, dry_run=False, output_format="json"
+        repository_root=repository_root, dry_run=False, output_format="json"
     )
 
     result = service.execute()
@@ -206,9 +208,9 @@ def test_execute_apply_mode_json_output(tmp_path: Path) -> None:
 
 
 def test_execute_dry_run_json_output(tmp_path: Path) -> None:
-    workspace_root = _build_consolidator_workspace(tmp_path)
+    repository_root = _build_consolidator_workspace(tmp_path)
     service = FlextInfraCodegenConsolidator(
-        workspace_root=workspace_root, dry_run=True, output_format="json"
+        repository_root=repository_root, dry_run=True, output_format="json"
     )
 
     result = service.execute()

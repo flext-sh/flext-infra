@@ -79,23 +79,25 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def resolve_projects(
-        workspace_root: Path, names: t.StrSequence
+        repository_root: Path, names: t.StrSequence
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Resolve project names through repository-local topology only."""
-        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(workspace_root)
+        discover_result = FlextInfraUtilitiesDocsScope.discover_projects(
+            repository_root
+        )
         if discover_result.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
                 discover_result.error or "discovery failed"
             )
         projects = list(discover_result.value)
-        resolved_workspace_root = workspace_root.resolve()
+        resolved_repository_root = repository_root.resolve()
         if all(
-            project.path.resolve() != resolved_workspace_root for project in projects
+            project.path.resolve() != resolved_repository_root for project in projects
         ):
             root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
-                resolved_workspace_root,
+                resolved_repository_root,
                 workspace_subprojects=FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(
-                    resolved_workspace_root
+                    resolved_repository_root
                 ),
             )
             if root_project is not None:
@@ -109,11 +111,11 @@ class FlextInfraUtilitiesDocsScope:
             by_name.setdefault(project.name, project)
             by_name.setdefault(project.path.name, project)
             project_path = project.path.resolve()
-            if project_path == resolved_workspace_root:
+            if project_path == resolved_repository_root:
                 by_name.setdefault(".", project)
-            elif project_path.is_relative_to(resolved_workspace_root):
+            elif project_path.is_relative_to(resolved_repository_root):
                 by_name.setdefault(
-                    project_path.relative_to(resolved_workspace_root).as_posix(),
+                    project_path.relative_to(resolved_repository_root).as_posix(),
                     project,
                 )
         missing = [name for name in names if name not in by_name]
@@ -132,9 +134,9 @@ class FlextInfraUtilitiesDocsScope:
         return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
     @staticmethod
-    def _workspace_subproject_path_set(workspace_root: Path) -> frozenset[Path]:
+    def _workspace_subproject_path_set(repository_root: Path) -> frozenset[Path]:
         """Return resolved subprojects declared by this root's ``.gitmodules``."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         return frozenset(
             (resolved_root / path).resolve()
             for path in FlextInfraUtilitiesPyproject.workspace_project_paths(
@@ -201,11 +203,11 @@ class FlextInfraUtilitiesDocsScope:
         return project_info
 
     @staticmethod
-    def config_path(workspace_root: Path) -> Path:
+    def config_path(repository_root: Path) -> Path:
         """Return the minimal docs policy settings path."""
         dir_docs: str = c.Infra.DIR_DOCS
         docs_config: str = c.Infra.DOCS_CONFIG_FILENAME
-        return workspace_root / dir_docs / docs_config
+        return repository_root / dir_docs / docs_config
 
     @staticmethod
     def project_payload(project_root: Path) -> t.JsonMapping:
@@ -213,9 +215,9 @@ class FlextInfraUtilitiesDocsScope:
         return FlextInfraUtilitiesDocsScope.project_state(project_root).payload
 
     @staticmethod
-    def load_config(workspace_root: Path) -> t.JsonMapping:
+    def load_config(repository_root: Path) -> t.JsonMapping:
         """Load the minimal docs policy settings if present."""
-        path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
+        path = FlextInfraUtilitiesDocsScope.config_path(repository_root)
         empty: t.JsonMapping = {}
         if not path.exists():
             return empty
@@ -227,9 +229,9 @@ class FlextInfraUtilitiesDocsScope:
         return empty
 
     @staticmethod
-    def excluded_roots(workspace_root: Path) -> t.Infra.StrSet:
+    def excluded_roots(repository_root: Path) -> t.Infra.StrSet:
         """Return explicitly excluded root directories from docs scope."""
-        payload = FlextInfraUtilitiesDocsScope.load_config(workspace_root)
+        payload = FlextInfraUtilitiesDocsScope.load_config(repository_root)
         scope = payload.get("scope")
         if not isinstance(scope, dict):
             return set()
@@ -264,16 +266,16 @@ class FlextInfraUtilitiesDocsScope:
         return False
 
     @staticmethod
-    def is_governed_project(project_name: str, workspace_root: Path) -> bool:
+    def is_governed_project(project_name: str, repository_root: Path) -> bool:
         """Return whether a project belongs to the governed FLEXT docs scope."""
-        project_root = workspace_root / project_name
+        project_root = repository_root / project_name
         docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(project_root)
         enabled = docs_meta.get("enabled", True)
         is_enabled = enabled if isinstance(enabled, bool) else True
         return (
             project_name.startswith(c.Infra.PKG_PREFIX_HYPHEN)
             and project_name
-            not in FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
+            not in FlextInfraUtilitiesDocsScope.excluded_roots(repository_root)
             and is_enabled
         )
 
@@ -330,19 +332,19 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def discover_projects(
-        workspace_root: Path,
+        repository_root: Path,
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``."""
-        if not workspace_root.exists() or not workspace_root.is_dir():
+        if not repository_root.exists() or not repository_root.is_dir():
             return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                f"discovery failed: invalid workspace root {workspace_root}"
+                f"discovery failed: invalid repository root {repository_root}"
             )
-        excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
+        excluded = FlextInfraUtilitiesDocsScope.excluded_roots(repository_root)
         workspace_subprojects = (
-            FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(workspace_root)
+            FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(repository_root)
         )
         project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
-            workspace_root
+            repository_root
         )
         root_project: mw.ProjectInfo | None = None
         projects: list[mw.ProjectInfo] = []
@@ -350,7 +352,7 @@ class FlextInfraUtilitiesDocsScope:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
             if (
-                project_root == workspace_root.resolve()
+                project_root == repository_root.resolve()
                 and not (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
             ):
                 continue
@@ -359,7 +361,7 @@ class FlextInfraUtilitiesDocsScope:
             )
             if project_info is None:
                 continue
-            if project_root == workspace_root.resolve():
+            if project_root == repository_root.resolve():
                 root_project = project_info
                 continue
             projects.append(project_info)

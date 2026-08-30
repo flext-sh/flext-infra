@@ -38,7 +38,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         if not py_files:
             return
         with FlextInfraUtilitiesRopeCore.open_project(
-            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_repository_root(
                 py_files=py_files
             )
         ) as rope_project:
@@ -102,12 +102,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             ].add(violation.alias)
         if not grouped:
             return
-        workspace_root = (
-            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
+        repository_root = (
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_repository_root(
                 py_files=tuple(grouped)
             )
         )
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as rope_project:
+        with FlextInfraUtilitiesRopeCore.open_project(repository_root) as rope_project:
             for file_path, moves in grouped.items():
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, file_path
@@ -149,12 +149,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         """Rewrite runtime alias violations."""
         if not py_files:
             return
-        workspace_root = (
-            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
+        repository_root = (
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_repository_root(
                 py_files=py_files
             )
         )
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as rope_project:
+        with FlextInfraUtilitiesRopeCore.open_project(repository_root) as rope_project:
             for file_path in py_files:
                 expected = c.Infra.NAMESPACE_FAMILY_EXPECTED_ALIAS.get(file_path.name)
                 if expected is None:
@@ -192,7 +192,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 _ = FlextInfraUtilitiesProtectedEdit.protected_source_write(
                     file_path,
                     request=m.Infra.ProtectedSourceWriteRequest(
-                        workspace=workspace_root,
+                        workspace=repository_root,
                         updated_source=rewritten,
                         keep_backup=True,
                         gates=gates,
@@ -312,16 +312,16 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             *compat_import_grouped.keys(),
             *project_alias_grouped.keys(),
         ]
-        workspace_root = (
-            FlextInfraUtilitiesRefactorNamespaceCommon.shared_workspace_root(
+        repository_root = (
+            FlextInfraUtilitiesRefactorNamespaceCommon.shared_repository_root(
                 py_files=all_import_files
             )
             if all_import_files
             else None
         )
-        if workspace_root is None:
+        if repository_root is None:
             return
-        with FlextInfraUtilitiesRopeCore.open_project(workspace_root) as rope_project:
+        with FlextInfraUtilitiesRopeCore.open_project(repository_root) as rope_project:
             for file_path, file_violations in project_alias_grouped.items():
                 current_project = file_violations[0].module_name
                 FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_project_alias_imports_in_file(

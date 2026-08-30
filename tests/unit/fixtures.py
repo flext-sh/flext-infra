@@ -112,16 +112,16 @@ def real_python_package(tmp_path: Path) -> Path:
 @pytest.fixture
 def real_workspace(tmp_path: Path) -> Path:
     """Create a real multi-project workspace."""
-    workspace_root = tmp_path / "workspace"
-    workspace_root.mkdir()
-    (workspace_root / "Makefile").write_text(
+    repository_root = tmp_path / "workspace"
+    repository_root.mkdir()
+    (repository_root / "Makefile").write_text(
         ".PHONY: help\nhelp:\n\t@echo 'Workspace'\n"
     )
-    (workspace_root / "pyproject.toml").write_text(
+    (repository_root / "pyproject.toml").write_text(
         '[project]\nname = "workspace"\nversion = "0.1.0"\n'
     )
     for i in range(1, 4):
-        project_dir = workspace_root / f"project_{i}"
+        project_dir = repository_root / f"project_{i}"
         project_dir.mkdir()
         (project_dir / "pyproject.toml").write_text(
             f'[project]\nname = "project-{i}"\nversion = "0.1.0"\n'
@@ -129,7 +129,7 @@ def real_workspace(tmp_path: Path) -> Path:
         src_dir = project_dir / "src" / f"project_{i}"
         src_dir.mkdir(parents=True)
         (src_dir / "__init__.py").write_text(f'"""Project {i}."""\n')
-    return workspace_root
+    return repository_root
 
 
 @pytest.fixture
@@ -184,8 +184,8 @@ def real_docs_project(tmp_path: Path) -> Path:
 @pytest.fixture
 def rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]:
     """Create a real rope workspace with semantic-analysis fixtures."""
-    workspace_root = tmp_path / "rope_workspace"
-    package_root = workspace_root / "src" / "rope_demo"
+    repository_root = tmp_path / "rope_workspace"
+    package_root = repository_root / "src" / "rope_demo"
     package_root.mkdir(parents=True, exist_ok=True)
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     (package_root / "models.py").write_text(
@@ -212,8 +212,8 @@ def rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]:
         encoding="utf-8",
     )
 
-    rope_project = u.Infra.init_rope_project(workspace_root)
-    return rope_project, workspace_root
+    rope_project = u.Infra.init_rope_project(repository_root)
+    return rope_project, repository_root
 
 
 @pytest.fixture
@@ -221,9 +221,9 @@ def models_resource(
     rope_workspace: t.Pair[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeResource:
     """Return the Rope resource for the semantic models fixture module."""
-    rope_project, workspace_root = rope_workspace
+    rope_project, repository_root = rope_workspace
     resource = u.Infra.get_resource_from_path(
-        rope_project, workspace_root / "src" / "rope_demo" / "models.py"
+        rope_project, repository_root / "src" / "rope_demo" / "models.py"
     )
     validated: t.Infra.RopeResource = tm.not_none(resource)
     return validated
@@ -234,9 +234,9 @@ def services_resource(
     rope_workspace: t.Pair[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeResource:
     """Return the Rope resource for the semantic services fixture module."""
-    rope_project, workspace_root = rope_workspace
+    rope_project, repository_root = rope_workspace
     resource = u.Infra.get_resource_from_path(
-        rope_project, workspace_root / "src" / "rope_demo" / "services.py"
+        rope_project, repository_root / "src" / "rope_demo" / "services.py"
     )
     validated: t.Infra.RopeResource = tm.not_none(resource)
     return validated

@@ -36,7 +36,7 @@ class FlextInfraModelsMixins:
             m.Field(
                 alias="workspace",
                 validation_alias=t.AliasChoices("workspace", "workspace_path"),
-                description="Workspace root",
+                description="Repository root",
             ),
         ] = "."
         projects: Annotated[
@@ -298,10 +298,10 @@ class FlextInfraModelsMixins:
 
         project_name: Annotated[t.NonEmptyStr, m.Field(description="Project name")]
 
-    class WorkspaceRootPathMixin:
-        """Shared workspace root path field."""
+    class RepositoryRootPathMixin:
+        """Shared repository root path field."""
 
-        workspace_root: Annotated[Path, m.Field(description="Workspace root path")]
+        repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
     class CheckpointRefMixin:
         """Shared safety checkpoint reference field."""

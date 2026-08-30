@@ -25,14 +25,14 @@ class FlextInfraWorkspaceEnvironmentProvenance:
         cls, request: p.Infra.WorkspaceEnvironmentRequest
     ) -> p.Result[int]:
         """Validate one CLI request without mutating the environment."""
-        return cls.validate(request.workspace_root)
+        return cls.validate(request.repository_root)
 
     @classmethod
     def validate(
-        cls, workspace_root: Path, *, metadata_paths: t.StrSequence | None = None
+        cls, repository_root: Path, *, metadata_paths: t.StrSequence | None = None
     ) -> p.Result[int]:
         """Validate PEP 610 and editable path metadata for active members."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
             resolved_root
         )

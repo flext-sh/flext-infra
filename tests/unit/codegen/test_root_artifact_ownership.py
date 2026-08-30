@@ -214,7 +214,9 @@ class TestsAncestryNetworkBoundary:
         monkeypatch.setattr(u.Cli, "run_raw", _record)
         request = m.Infra.CodegenConformRequest(root=root)
         tm.ok(
-            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
+            FlextInfraCodegenConform(repository_root=root, request=request).plan(
+                request
+            )
         )
 
         fetches = [entry for entry in recorded if "fetch" in entry[0]]

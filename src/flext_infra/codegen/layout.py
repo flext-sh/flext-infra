@@ -76,24 +76,24 @@ class FlextInfraCodegenLayout(
     def _project_dirs(self) -> p.Result[t.SequenceOf[Path]]:
         """Resolve the selected project directories, degrading to plain dirs."""
         if self.project_name is not None:
-            candidate = self.workspace_root / self.project_name
+            candidate = self.repository_root / self.project_name
             if candidate.is_dir():
                 return r[t.SequenceOf[Path]].ok((candidate,))
             if (
-                self.workspace_root.name == self.project_name
-                and self.workspace_root.is_dir()
+                self.repository_root.name == self.project_name
+                and self.repository_root.is_dir()
             ):
-                return r[t.SequenceOf[Path]].ok((self.workspace_root,))
+                return r[t.SequenceOf[Path]].ok((self.repository_root,))
             return r[t.SequenceOf[Path]].fail(
                 f"project not found in workspace: {self.project_name}"
             )
-        discovered = u.Infra.projects(self.workspace_root)
+        discovered = u.Infra.projects(self.repository_root)
         if discovered.success and discovered.value:
             return r[t.SequenceOf[Path]].ok(
                 tuple(project.path for project in discovered.value)
             )
-        if self.workspace_root.is_dir():
-            return r[t.SequenceOf[Path]].ok((self.workspace_root,))
+        if self.repository_root.is_dir():
+            return r[t.SequenceOf[Path]].ok((self.repository_root,))
         return r[t.SequenceOf[Path]].fail("no projects discovered")
 
     def _render_output(self, reports: t.SequenceOf[m.Infra.LayoutProjectReport]) -> str:

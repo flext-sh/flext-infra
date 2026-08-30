@@ -37,10 +37,10 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
     _VIOLATION_KIND: ClassVar[str] = ""
     _SCAN_KIND: ClassVar[str] = ""
 
-    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
-        """Scan ``workspace_root`` and return a ``ValidationReport``."""
+    def build_report(self, repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
+        """Scan ``repository_root`` and return a ``ValidationReport``."""
         try:
-            violations = self._collect_violations(workspace_root)
+            violations = self._collect_violations(repository_root)
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail(
                 f"{self._SCAN_KIND} scan failed: {exc}"
@@ -57,10 +57,10 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
             )
         )
 
-    def _collect_violations(self, workspace_root: Path) -> t.StrSequence:
+    def _collect_violations(self, repository_root: Path) -> t.StrSequence:
         """Traverse the rope project and accumulate boundary violations."""
         violations: t.MutableSequenceOf[str] = []
-        with u.Infra.open_project(workspace_root) as project:
+        with u.Infra.open_project(repository_root) as project:
             for resource in u.Infra.python_resources(project):
                 file_path = u.Infra.resource_file_path(project, resource)
                 if file_path is None or not self._is_in_scope(file_path):
@@ -114,8 +114,8 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Run the validation against ``self.workspace_root``."""
-        report_result = self.build_report(self.workspace_root)
+        """Run the validation against ``self.repository_root``."""
+        report_result = self.build_report(self.repository_root)
         if report_result.failure:
             return r[bool].fail(
                 report_result.error or f"{self._VIOLATION_KIND} validation failed"

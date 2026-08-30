@@ -37,30 +37,30 @@ class FlextInfraRefactorSafetyManager:
         return bool(self._emergency_stop_reason)
 
     def create_pre_transformation_checkpoint(
-        self, workspace_root: Path, *, label: str = "flext-refactor-pre-transform"
+        self, repository_root: Path, *, label: str = "flext-refactor-pre-transform"
     ) -> p.Result[str]:
-        """Back up files in workspace root and return label as reference."""
+        """Back up files in repository root and return label as reference."""
         _ = label
         py_files = list(
             u.Infra.iter_matching_files(
-                workspace_root, includes=[c.Infra.EXT_PYTHON_GLOB]
+                repository_root, includes=[c.Infra.EXT_PYTHON_GLOB]
             )
         )
         self._bak_paths = u.Infra.backup_files(py_files)
-        return r[str].ok(str(workspace_root))
+        return r[str].ok(str(repository_root))
 
     def rollback(
-        self, workspace_root: Path, checkpoint_ref: str = ""
+        self, repository_root: Path, checkpoint_ref: str = ""
     ) -> p.Result[bool]:
         """Restore previously backed up files."""
-        _ = workspace_root, checkpoint_ref
+        _ = repository_root, checkpoint_ref
         u.Infra.restore_files(self._bak_paths)
         self._bak_paths = []
         return r[bool].ok(True)
 
     def save_checkpoint_state(
         self,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         status: str,
         checkpoint_ref: str,
@@ -72,7 +72,7 @@ class FlextInfraRefactorSafetyManager:
         checkpoint state is intentionally a no-op hook used by integrations
         and tests to observe lifecycle sequencing.
         """
-        _ = workspace_root, status, checkpoint_ref, processed_targets
+        _ = repository_root, status, checkpoint_ref, processed_targets
         return r[bool].ok(True)
 
     @staticmethod
@@ -85,17 +85,17 @@ class FlextInfraRefactorSafetyManager:
             "no tests collected" in normalized or "no tests ran" in normalized
         )
 
-    def run_semantic_validation(self, workspace_root: Path) -> p.Result[bool]:
-        """Run import checks and tests against the workspace root."""
+    def run_semantic_validation(self, repository_root: Path) -> p.Result[bool]:
+        """Run import checks and tests against the repository root."""
         if self._emergency_stop_reason:
             return r[bool].fail(f"Emergency stop: {self._emergency_stop_reason}")
         ic = u.Cli.run_checked(
             [c.Infra.PYTHON, "-m", c.Infra.PYTEST, "--collect-only", "-q"],
-            cwd=workspace_root,
+            cwd=repository_root,
         )
         if ic.failure and not self._is_no_tests_collected_error(ic.error):
             return r[bool].fail(ic.error or "import validation failed")
-        tc = u.Cli.run_checked(self._test_command, cwd=workspace_root)
+        tc = u.Cli.run_checked(self._test_command, cwd=repository_root)
         if tc.failure and not self._is_no_tests_collected_error(tc.error):
             return r[bool].fail(tc.error or "test validation failed")
         return r[bool].ok(True)

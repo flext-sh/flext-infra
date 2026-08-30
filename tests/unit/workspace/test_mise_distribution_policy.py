@@ -34,7 +34,7 @@ def _alternate_selector() -> str:
 
 def _sync(root: Path) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
     return infra.sync_environment_files(
-        m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=root)
+        m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=root)
     )
 
 

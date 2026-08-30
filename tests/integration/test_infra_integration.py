@@ -42,9 +42,9 @@ class TestsFlextInfraIntegrationInfraIntegration:
         - Orchestrator can be created
         - Both can access shared workspace information
         """
-        workspace_root = tmp_path / "workspace"
-        workspace_root.mkdir()
-        (workspace_root / ".git").mkdir()
+        repository_root = tmp_path / "workspace"
+        repository_root.mkdir()
+        (repository_root / ".git").mkdir()
         detector = FlextInfraWorkspaceDetector()
         orchestrator = FlextInfraOrchestratorService(verb="test")
         tm.that(detector, none=False)
@@ -200,10 +200,10 @@ class TestsFlextInfraIntegrationInfraIntegration:
 
         Validates:
         - discover_projects is callable via u.Infra FLEXT
-        - workspace_root is callable via u.Infra FLEXT
+        - repository_root is callable via u.Infra FLEXT
         """
         tm.that(callable(u.Infra.discover_projects), eq=True)
-        tm.that(callable(u.Infra.resolve_workspace_root_or_cwd), eq=True)
+        tm.that(callable(u.Infra.resolve_repository_root_or_cwd), eq=True)
 
     @pytest.mark.integration
     def test_path_utilities_via_flext(self) -> None:

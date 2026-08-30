@@ -88,7 +88,7 @@ class FlextInfraUtilities(u):
 
         u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)
-        u.Infra.discover_projects(workspace_root)
+        u.Infra.discover_projects(repository_root)
         u.Infra.parse_semver("1.2.3")
     """
 

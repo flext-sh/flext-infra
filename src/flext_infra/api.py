@@ -24,13 +24,13 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
     app_name: ClassVar[str] = "flext-infra"
 
     def rope_workspace(
-        self, workspace_root: Path | None = None
+        self, repository_root: Path | None = None
     ) -> p.Infra.RopeWorkspaceDsl:
         """Open the public Rope workspace DSL directly from the facade."""
         # NOTE (multi-agent, flext-wkii.17.24): Rope reads its source policy
         # directly from config.Infra at the service boundary.
         resolved_root = (
-            self.workspace_root if workspace_root is None else workspace_root
+            self.repository_root if repository_root is None else repository_root
         )
         return FlextInfraRopeWorkspace.open_workspace(resolved_root)
 
@@ -40,7 +40,7 @@ class FlextInfra(FlextInfraWorkspaceEnvironmentMixin, s[t.JsonDict]):
         report: t.JsonDict = {
             "service": "flext-infra",
             "status": "ok",
-            "workspace_root": str(self.workspace_root),
+            "repository_root": str(self.repository_root),
             "apply_changes": self.apply_changes,
         }
         return r[t.JsonDict].ok(report)

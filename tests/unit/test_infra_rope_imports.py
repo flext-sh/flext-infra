@@ -19,7 +19,7 @@ class TestsFlextInfraRopeImports:
         self, tmp_path: Path
     ) -> None:
         """Centralized import cleanup should leave one lint-clean module."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
@@ -34,7 +34,7 @@ class TestsFlextInfraRopeImports:
             encoding="utf-8",
         )
 
-        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             result = u.Infra.normalize_imports(
                 rope.rope_project, file_paths=(module_path,)
             )
@@ -55,7 +55,7 @@ class TestsFlextInfraRopeImports:
         self, tmp_path: Path
     ) -> None:
         """An already-organized module yields a clean no-op result."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
@@ -69,7 +69,7 @@ class TestsFlextInfraRopeImports:
             encoding="utf-8",
         )
 
-        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             resource = rope.resource(module_path)
             resource = tm.not_none(resource)
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)
@@ -81,7 +81,7 @@ class TestsFlextInfraRopeImports:
         self, tmp_path: Path
     ) -> None:
         """A module with an unused import yields a pending organize change."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
@@ -96,7 +96,7 @@ class TestsFlextInfraRopeImports:
             encoding="utf-8",
         )
 
-        with FlextInfraRopeWorkspace.open_workspace(workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
             resource = rope.resource(module_path)
             resource = tm.not_none(resource)
             result = u.Infra.organize_imports(rope.rope_project, resource, apply=False)

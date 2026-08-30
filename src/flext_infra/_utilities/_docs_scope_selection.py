@@ -19,7 +19,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _selected_project_scopes(
-        workspace_root: Path,
+        repository_root: Path,
         discovered: t.SequenceOf[m.Infra.ProjectInfo],
         selected_names: t.StrSequence,
         output_dir: Path | str,
@@ -31,7 +31,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         scopes: list[m.Infra.DocScope] = []
         for name in selected_names:
             scope = FlextInfraUtilitiesDocsScopeSelectionMixin._selected_scope(
-                workspace_root, name, project_by_name, output_dir
+                repository_root, name, project_by_name, output_dir
             )
             if scope is not None:
                 scopes.append(scope)
@@ -39,7 +39,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _selected_scope(
-        workspace_root: Path,
+        repository_root: Path,
         name: str,
         project_by_name: dict[str, m.Infra.ProjectInfo],
         output_dir: Path | str,
@@ -51,7 +51,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
                 project=selected, output_dir=output_dir
             )
         return FlextInfraUtilitiesDocsScopeSelectionMixin._optional_path_scope(
-            workspace_root, name, output_dir
+            repository_root, name, output_dir
         )
 
     @staticmethod
@@ -67,10 +67,10 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _optional_path_scope(
-        workspace_root: Path, name: str, output_dir: Path | str
+        repository_root: Path, name: str, output_dir: Path | str
     ) -> m.Infra.DocScope | None:
         """Build a selected path scope when it is a local pyproject project."""
-        project_root = (workspace_root / name).resolve()
+        project_root = (repository_root / name).resolve()
         if not (
             project_root.is_dir()
             and (project_root / c.Infra.PYPROJECT_FILENAME).is_file()

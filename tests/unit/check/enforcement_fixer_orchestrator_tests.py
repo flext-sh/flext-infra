@@ -35,7 +35,7 @@ class TestsEnforcementFixerOrchestrator:
     @staticmethod
     def _orchestrator(workspace: Path) -> FlextInfraEnforcementFixerOrchestrator:
         return FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=workspace, selected_projects=("demo",)
+            repository_root=workspace, selected_projects=("demo",)
         )
 
     def test_validator_import_failure_is_failed_fix(
@@ -56,14 +56,14 @@ class TestsEnforcementFixerOrchestrator:
         project = m.Infra.ProjectInfo(name="demo", path=project_dir, stack="python")
 
         def fake_projects(
-            workspace_root: Path,
+            repository_root: Path,
         ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-            _ = workspace_root
+            _ = repository_root
             return r[t.SequenceOf[p.Infra.ProjectInfo]].ok((project,))
 
         monkeypatch.setattr(u.Infra, "projects", staticmethod(fake_projects))
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             selected_projects=("demo",),
             rules=("ENFORCE-016",),
             safe_only=False,
@@ -92,14 +92,14 @@ class TestsEnforcementFixerOrchestrator:
         project = m.Infra.ProjectInfo(name="demo", path=project_dir, stack="python")
 
         def fake_projects(
-            workspace_root: Path,
+            repository_root: Path,
         ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-            _ = workspace_root
+            _ = repository_root
             return r[t.SequenceOf[p.Infra.ProjectInfo]].ok((project,))
 
         monkeypatch.setattr(u.Infra, "projects", staticmethod(fake_projects))
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             selected_projects=("demo",),
             rules=("ENFORCE-045",),
             safe_only=False,
@@ -120,14 +120,14 @@ class TestsEnforcementFixerOrchestrator:
         project = m.Infra.ProjectInfo(name="demo", path=project_dir, stack="python")
 
         def fake_projects(
-            workspace_root: Path,
+            repository_root: Path,
         ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-            _ = workspace_root
+            _ = repository_root
             return r[t.SequenceOf[p.Infra.ProjectInfo]].ok((project,))
 
         monkeypatch.setattr(u.Infra, "projects", staticmethod(fake_projects))
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             selected_projects=("demo",),
             rules=("ENFORCE-045",),
             safe_only=False,
@@ -155,14 +155,14 @@ class TestsEnforcementFixerOrchestrator:
         project = m.Infra.ProjectInfo(name="demo", path=project_dir, stack="python")
 
         def fake_projects(
-            workspace_root: Path,
+            repository_root: Path,
         ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-            _ = workspace_root
+            _ = repository_root
             return r[t.SequenceOf[p.Infra.ProjectInfo]].ok((project,))
 
         monkeypatch.setattr(u.Infra, "projects", staticmethod(fake_projects))
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             selected_projects=("demo",),
             rules=("ENFORCE-090",),
             safe_only=False,
@@ -282,14 +282,14 @@ class TestsEnforcementFixerOrchestrator:
         demo = m.Infra.ProjectInfo(name="demo", path=tmp_path / "demo", stack="python")
 
         def fake_projects(
-            workspace_root: Path,
+            repository_root: Path,
         ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
-            _ = workspace_root
+            _ = repository_root
             return r[t.SequenceOf[p.Infra.ProjectInfo]].ok((demo,))
 
         monkeypatch.setattr(u.Infra, "projects", staticmethod(fake_projects))
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             selected_projects=("missing",),
             rules=("ENFORCE-090",),
             safe_only=False,
@@ -303,7 +303,7 @@ class TestsEnforcementFixerOrchestrator:
     def test_explicit_unsafe_rule_fails_under_safe_only(self, tmp_path: Path) -> None:
         """Explicit unsafe fix requests must fail instead of becoming no-op success."""
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             selected_projects=("demo",),
             rules=("ENFORCE-067",),
             safe_only=True,
@@ -323,13 +323,13 @@ class TestsEnforcementFixerOrchestrator:
             checked: ClassVar[bool] = False
             fixed: ClassVar[bool] = False
 
-            def __init__(self, workspace_root: Path) -> None:
-                self.workspace_root = workspace_root
+            def __init__(self, repository_root: Path) -> None:
+                self.repository_root = repository_root
 
             def check(
                 self, project_dir: Path, ctx: m.Infra.GateContext
             ) -> m.Infra.GateExecution:
-                _ = self.workspace_root
+                _ = self.repository_root
                 tm.that(ctx.check_only, eq=True)
                 tm.that(ctx.apply_fixes, eq=False)
                 FakeGate.checked = True

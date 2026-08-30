@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _extra_paths_manager(workspace_root: Path) -> FlextInfraExtraPathsManager:
-    return FlextInfraExtraPathsManager(workspace_root=workspace_root)
+def _extra_paths_manager(repository_root: Path) -> FlextInfraExtraPathsManager:
+    return FlextInfraExtraPathsManager(repository_root=repository_root)
 
 
 class TestConfigFixerProcessFile:

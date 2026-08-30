@@ -203,7 +203,7 @@ class FlextInfraModelsRelease:
 
     class ReleaseOrchestratorConfig(
         mm.ProjectNamesOptionalMixin,
-        mm.WorkspaceRootPathMixin,
+        mm.RepositoryRootPathMixin,
         mm.VersionTagMixin,
         mm.AutomationMixin,
         m.ArbitraryTypesModel,
@@ -220,7 +220,7 @@ class FlextInfraModelsRelease:
 
     class ReleasePhaseDispatchConfig(
         mm.ProjectNamesListMixin,
-        mm.WorkspaceRootPathMixin,
+        mm.RepositoryRootPathMixin,
         mm.VersionTagMixin,
         mm.AutomationMixin,
         m.ArbitraryTypesModel,

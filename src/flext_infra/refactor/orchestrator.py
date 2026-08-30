@@ -70,7 +70,7 @@ class FlextInfraRefactorOrchestrator(
         self, file_path: Path, *, dry_run: bool, gates: t.StrSequence | None
     ) -> m.Infra.Result:
         """Refactor one Python source file after caller-level exception handling."""
-        workspace_root = u.Infra.project_root(file_path) or file_path.parent
+        repository_root = u.Infra.project_root(file_path) or file_path.parent
         read = u.Cli.files_read_text(file_path)
         if read.failure:
             return self._error_result(
@@ -79,7 +79,7 @@ class FlextInfraRefactorOrchestrator(
         original = read.value
         current, all_changes = original, list[str]()
         current, error_result = self._apply_file_rules(
-            file_path, workspace_root, current, all_changes
+            file_path, repository_root, current, all_changes
         )
         if error_result is not None:
             return error_result
@@ -88,7 +88,7 @@ class FlextInfraRefactorOrchestrator(
         if not dry_run and modified:
             error_result = self._write_refactored_source(
                 file_path=file_path,
-                workspace_root=workspace_root,
+                repository_root=repository_root,
                 current=current,
                 original=original,
                 all_changes=all_changes,
@@ -105,7 +105,7 @@ class FlextInfraRefactorOrchestrator(
     def _apply_file_rules(
         self,
         file_path: Path,
-        workspace_root: Path,
+        repository_root: Path,
         current: str,
         all_changes: t.MutableSequenceOf[str],
     ) -> tuple[str, m.Infra.Result | None]:
@@ -113,7 +113,7 @@ class FlextInfraRefactorOrchestrator(
         if not self.loader.file_rules:
             return current, None
         updated_source = current
-        with u.Infra.open_project(workspace_root) as rope_project:
+        with u.Infra.open_project(repository_root) as rope_project:
             resource = u.Infra.get_resource_from_path(rope_project, file_path)
             if resource is None:
                 return (
@@ -161,7 +161,7 @@ class FlextInfraRefactorOrchestrator(
         self,
         *,
         file_path: Path,
-        workspace_root: Path,
+        repository_root: Path,
         current: str,
         original: str,
         all_changes: t.MutableSequenceOf[str],
@@ -171,7 +171,7 @@ class FlextInfraRefactorOrchestrator(
         ok, report = u.Infra.protected_source_write(
             file_path,
             request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=workspace_root,
+                workspace=repository_root,
                 updated_source=current,
                 keep_backup=True,
                 gates=gates,
