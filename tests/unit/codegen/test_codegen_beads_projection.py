@@ -78,10 +78,7 @@ class TestsCodegenBeadsProjection:
         # The city owns the endpoint and reallocates the port at runtime, so the
         # marker carries no host and no port. `project_id` is absent here because
         # this fixture has no .beads/identity.toml: Beads has not minted one yet.
-        tm.that(
-            set(metadata),
-            eq={"database", "backend", "dolt_mode", "dolt_database"},
-        )
+        tm.that(set(metadata), eq={"database", "backend", "dolt_mode", "dolt_database"})
         tm.that(hasattr(plan, "beads"), eq=False)
 
     def test_metadata_projection_preserves_a_minted_ledger_identity(

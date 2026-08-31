@@ -390,7 +390,7 @@ whitelines = {{ tooling.tools.yamlfix.whitelines }}
 [tool.uv]
 link-mode = "{{ uv_link_mode }}"
 exclude-newer = "{{ uv_exclude_newer }}"
-{% if workspace_mode == "standalone" %}
+{% if make_profile == "standalone" %}
 # Self-rooted workspace: stops uv's parent-directory walk-up, so a checkout
 # nested under a repository that declares [tool.uv.workspace] resolves its
 # own dependencies from its own lock instead of being adopted as an editable

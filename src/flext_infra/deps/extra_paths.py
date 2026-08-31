@@ -110,21 +110,63 @@ class FlextInfraExtraPathsManager(
             for relative_path in rules.project_shared_search_paths
             if (project_dir / relative_path).is_dir()
         ]
-        # Why (ai-hub-qwoc, fleet-wide fix): pyrefly resolves the FIRST
-        # matching search-path entry. "src" must precede "." or every module
-        # resolves twice (ai_hub.X via src AND src.ai_hub.X via "."),
-        # producing distinct classes for the same symbol and phantom
-        # bad-argument-type errors. A naive sorted({...}) puts "." before
-        # "src" (ASCII '.' < 's'), silently breaking every consumer with a
-        # "." shared search path (e.g. tests.* resolution). Sort everything
-        # else, then place the declared source root first so it always wins.
+        # Why (cosmos-45hiv, 2026-08-31): the project root closes the chain for
+        # cross-tree imports. `scripts/` is a checked env dir and owns
+        # `scripts/__init__.py`, so `tests/` and `scripts/` import its modules
+        # as `scripts.*`; resolving them needs the repo root on the search
+        # path. It must come LAST: pyrefly resolves the FIRST matching entry,
+        # so `source_dir` ahead of "." keeps `src.x` from also resolving as
+        # `x` (the ai-hub-qwoc duplicate-class failure below). mypy cannot
+        # share this value — it enumerates every search-path root and reports
+        # the same file under two module names as source-file-found-twice —
+        # which is why the two tools now derive separately.
+        root_path = rules.project_root
+        has_project_root = (project_dir / root_path).is_dir()
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
         has_source_root = (project_dir / source_root).is_dir()
         paths.discard(source_root)
+        paths.discard(root_path)
         ordered = sorted(paths)
+        if has_project_root:
+            ordered.append(root_path)
         if has_source_root:
             return (source_root, *ordered)
         return tuple(ordered)
+
+    def mypy_search_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
+        """Compute mypy search paths: like pyrefly but without the project root.
+
+        mypy treats each search-path entry as a package root and enumerates the
+        files under it. When a root re-spells a module that another root already
+        provides -- the repo root resolving ``scripts/legado/lib/argocd.py`` as
+        ``scripts.legado.lib.argocd`` while ``scripts/`` on the same path offers
+        it as ``legado.lib.argocd`` -- mypy reports "Source file found twice
+        under different module names" and aborts before checking anything.
+        pyrefly does not have that failure mode: it resolves imports
+        first-match-wins, so the project root is a safe resolution aid there
+        and stays one (see :meth:`pyrefly_search_paths`).
+        """
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
+        source_root = rules.source_dir
+        configured_typings = (
+            rules.root_typings_paths if is_root else rules.project_typings_paths
+        )
+        typings_paths = [
+            relative_path
+            for relative_path in configured_typings
+            if (project_dir / relative_path).is_dir()
+        ]
+        shared_paths = [
+            relative_path
+            for relative_path in rules.project_shared_search_paths
+            if (project_dir / relative_path).is_dir()
+        ]
+        paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
+        paths.discard(source_root)
+        paths.discard(rules.project_root)
+        if (project_dir / source_root).is_dir():
+            return (source_root, *sorted(paths))
+        return tuple(sorted(paths))
 
     def pyrefly_project_includes(
         self, *, project_dir: Path, is_root: bool

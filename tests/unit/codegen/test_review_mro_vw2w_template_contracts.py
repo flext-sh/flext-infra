@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra import config, m
 from flext_tests import tm
 
 _TEMPLATES = (
@@ -24,16 +25,23 @@ class TestsReviewTemplateContracts:
     """Lock the SSOT fixes for bootstrap pin, PROJECT selection, TestPyPI order."""
 
     def test_makefile_bootstrap_uses_configured_branch_without_git_probe(self) -> None:
+        """Bootstrap pins its toolchain declaratively, never by probing git.
+
+        The original defect was a bootstrap that resolved flext-infra by running
+        ``git rev-parse`` against the caller's checkout, so the pin depended on
+        whatever tree invoked make. That probe stays banned. The pip/``git+``
+        install it once required is gone: ``infra_repository`` is no longer part
+        of ``ProjectRenderContext``, and provisioning now runs through the
+        tracked mise launcher pinned to a config-owned version.
+        """
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(text, lacks="FLEXT_INFRA_BOOTSTRAP_REF")
         tm.that(text, lacks='rev-parse "HEAD:{{ infra_repository.path }}"')
         tm.that(
-            text,
-            has=(
-                "{{ infra_repository.distribution }} @ git+"
-                "{{ infra_repository.url }}@{{ infra_repository_branch }}"
-            ),
+            "infra_repository" in m.Infra.ProjectRenderContext.model_fields, eq=False
         )
+        tm.that(text, has="SETUP_MISE_VERSION := {{ mise_version }}")
+        tm.that(text, has="setup: _bootstrap_setup_tools")
 
     def test_makefile_deps_modernize_uses_selected_projects(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
@@ -64,9 +72,23 @@ class TestsReviewTemplateContracts:
         )
 
     def test_makefile_has_no_legacy_work_lifecycle(self) -> None:
-        """Gas Town is the sole lane lifecycle owner."""
+        """The lane lifecycle routes through the canonical CLI, not ad-hoc git.
+
+        Gas Town is retired, so its former ownership of the lane lifecycle no
+        longer removes ``work`` from the Make surface: ``work`` is a declared
+        verb in the codegen SSOT and rule 17 makes the Make verb the canonical
+        entry point. What must stay true is that each handler delegates to the
+        typed CLI instead of driving git/gh directly from the recipe.
+        """
         text = _MAKEFILE.read_text(encoding="utf-8")
-        tm.that(text, lacks=["_builtin_work_", "make work", "work start"])
+        work_whats = config.Infra.codegen.make.handler_whats["work"]
+        for what in work_whats:
+            tm.that(text, has=f"_builtin_work_{what}:")
+        for operation in ("start", "land", "finish"):
+            tm.that(
+                text,
+                has=f'workspace work --workspace "$(WORKSPACE)" --operation {operation}',
+            )
 
     def test_release_verifies_core_gitlink_after_setup(self) -> None:
         text = _RELEASE.read_text(encoding="utf-8")
@@ -121,13 +143,19 @@ class TestsReviewTemplateContracts:
         tm.that("    # End SECTION: ci job" not in text.splitlines(), eq=True)
 
     def test_docs_workflow_uses_public_cli_not_removed_make_verb(self) -> None:
+        """CI drives docs through the canonical Make verb, never a phase flag.
+
+        ``DOCS_PHASE`` was a private knob and stays banned. ``docs`` itself is a
+        declared verb in the codegen SSOT, so rule 17 makes ``make docs
+        WHAT=<what>`` the canonical CI entry point; the workflow must reach the
+        documented surface rather than invoking the module directly.
+        """
         text = _DOCS.read_text(encoding="utf-8")
+        docs_whats = config.Infra.codegen.make.handler_whats["docs"]
         tm.that(text, lacks="DOCS_PHASE=")
-        tm.that(text, lacks="make docs")
-        tm.that(text, has="python -m flext_infra docs audit")
-        tm.that(text, has="python -m flext_infra docs generate")
-        tm.that(text, has="python -m flext_infra docs validate")
-        tm.that(text, has="python -m flext_infra docs build")
+        for what in ("audit", "validate", "build"):
+            tm.that(what in docs_whats, eq=True)
+            tm.that(text, has=f"make docs WHAT={what}")
 
     def test_docs_pages_environment_avoids_static_schema_enum(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")

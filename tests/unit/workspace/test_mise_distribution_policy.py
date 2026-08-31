@@ -114,7 +114,7 @@ class TestsMiseDistributionPolicy:
             "tools"
         ]
         tm.that(tools[beads.selector]["version"], eq=beads.version)
-        tm.that(tools[beads.selector]["prerelease"], eq=False)
+        tm.that(tools[beads.selector]["prerelease"], eq=beads.prerelease)
         tm.that(tools["node"], eq="22")
 
 

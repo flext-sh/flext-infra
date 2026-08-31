@@ -512,7 +512,21 @@ Infra:
           # Why (flext-463 follow-up): scripts/ is a checked env dir, so its
           # runtime sys.path imports (e.g. `from lib...`) must also resolve at
           # check time; absent dirs are filtered by the is_dir guard.
-          project-shared-search-paths: [".", "scripts"]
+          # Amended 2026-08-31 (cosmos-45hiv): now EMPTY. Two rounds of
+          # evidence emptied it. "." first: scripts/ owns scripts/__init__.py,
+          # so every script module resolves as `scripts.*` with the repo root
+          # as CWD, and "." made the same file reachable a second way
+          # (`legado.lib.argocd` vs `scripts.legado.lib.argocd`), which mypy
+          # reports as source-file-found-twice and dies repo-wide. "scripts"
+          # second: with that entry on the search path, `scripts/` becomes a
+          # search-path ROOT, so `scripts/legado/lib/argocd.py` resolves once
+          # more as `legado.lib.argocd` -- the same duplicate under a different
+          # mechanism. scripts/ is analyzed because `files` names it, not
+          # because the search path does; import resolution there uses the
+          # `scripts.*` package rooted at the CWD. No live consumer of either
+          # bare spelling remains; the only importer was the archived
+          # scripts/legado/dispatch.py.
+          project-shared-search-paths: []
       pytest:
         # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686

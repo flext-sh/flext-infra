@@ -223,7 +223,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Marker expressions limiting the environments uv resolves "
                     "for the generated lock. Empty resolves every environment."
-                ),
+                )
             ),
         ] = ()
         dependency_cooldown_days: Annotated[
@@ -362,6 +362,10 @@ class FlextInfraConfigModels:
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
+        ]
+        gascity: Annotated[
+            FlextInfraConfigModels.ProtectedMiseToolSpec,
+            m.Field(description="Gas City CLI (gc) installed through mise"),
         ]
         protected_mise_tools: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -2308,6 +2312,14 @@ class FlextInfraConfigModels:
         beads_tool_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Beads CLI version")
         ]
+        beads_tool_prerelease: Annotated[
+            bool,
+            m.Field(description="Whether mise may resolve prerelease Beads versions"),
+        ] = False
+        beads_tool_minimum_release_age: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Per-tool Beads release quarantine override"),
+        ] = None
         beads: Annotated[
             FlextInfraConfigModels.BeadsProjectSpec,
             m.Field(description="Explicit repository-local Beads identity"),
@@ -2925,6 +2937,33 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Ordered static-analysis rules"),
         ]
 
+    class ReleaseEligibilitySpec(_ConfigContract):
+        """Which projects a release may build and publish.
+
+        Why (aihub-ioijy.9): `ReleaseOrchestrator._build_targets` hardcoded
+        `project.name.startswith("flext-")`, so any consumer of this release
+        engine whose distribution is not named `flext-*` resolved zero targets
+        and died with "release build selected no publishable projects" — the
+        version phase had already rewritten pyproject.toml by then. Publishable
+        membership is project policy, not a naming convention baked into the
+        orchestrator.
+
+        An empty `publishable_prefixes` means "no prefix filter": every resolved
+        project is a candidate. That is the correct default for a single-project
+        repository and keeps the engine reusable outside this workspace.
+        """
+
+        publishable_prefixes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Distribution-name prefixes eligible for build/publish. "
+                    "Empty means every resolved project is eligible."
+                ),
+            ),
+        ]
+
     # This
     # field-only namespace is the sole validated owner exposed as config.Infra.
     class Infra(_ConfigContract):
@@ -2945,6 +2984,15 @@ class FlextInfraConfigModels:
         source_scan: Annotated[
             FlextInfraConfigModels.SourceScanSpec,
             m.Field(description="Production-only source discovery contract"),
+        ]
+        release: Annotated[
+            FlextInfraConfigModels.ReleaseEligibilitySpec,
+            m.Field(
+                default_factory=lambda: FlextInfraConfigModels.ReleaseEligibilitySpec(
+                    publishable_prefixes=()
+                ),
+                description="Release build and publish eligibility contract",
+            ),
         ]
         # Static policy is validated data, never detector code.
         enforcement: Annotated[

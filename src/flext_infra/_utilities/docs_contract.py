@@ -187,9 +187,7 @@ class FlextInfraUtilitiesDocsContract:
             path.parent.mkdir(parents=True, exist_ok=True)
             _ = path.write_text(normalized, encoding=c.Cli.ENCODING_DEFAULT)
         return m.Infra.GeneratedFile(
-            path=path.as_posix(),
-            changed=drift,
-            written=apply and (drift or created),
+            path=path.as_posix(), changed=drift, written=apply and (drift or created)
         )
 
 

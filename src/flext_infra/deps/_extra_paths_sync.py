@@ -80,9 +80,14 @@ class FlextInfraExtraPathsSyncMixin:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
-            # Same import graph as Pyrefly: mypy needs the path dependencies
-            # that pyright_extra_paths omits (see sync_payload).
-            expected_mypy = self.pyrefly_search_paths(
+            # NOT the pyrefly search path any more (cosmos-45hiv, 2026-08-31).
+            # mypy enumerates every search-path root as a package root, so a
+            # root that re-spells an already-rooted module makes it report the
+            # same file twice ("Source file found twice under different module
+            # names") and abort repo-wide. pyrefly resolves first-match and
+            # tolerates what mypy cannot. mypy gets source + shared config
+            # paths only; the project root stays a pyrefly-only resolution aid.
+            expected_mypy = self.mypy_search_paths(
                 project_dir=project_dir, is_root=is_root
             )
             mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
@@ -120,10 +125,14 @@ class FlextInfraExtraPathsSyncMixin:
         # Mypy resolves the same import graph as Pyrefly, so it needs the same
         # roots. pyright_extra_paths omits path dependencies, which left sibling
         # packages unresolvable and degraded every symbol they export to Any.
+        # It does NOT take pyrefly_search_paths any more (cosmos-45hiv): mypy
+        # enumerates each root as a package root and aborts repo-wide when two
+        # roots re-spell one file (source-file-found-twice). First-match
+        # resolution is pyrefly-only.
         if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
-            self.pyrefly_search_paths(project_dir=project_dir, is_root=is_root),
+            self.mypy_search_paths(project_dir=project_dir, is_root=is_root),
         ):
             changes.append("synchronized mypy mypy_path")
         return changes

@@ -323,6 +323,118 @@ class TestCodegenConform:
 
         tm.that(merging_current.ancestor, eq=True)
 
+    def test_branch_ancestry_anchors_baseline_to_triggering_commit(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A concurrent publisher on the lane must not fail a linear commit.
+
+        flext-9ehwb (run 31218338222). ``refs/remotes/origin/<lane>`` is the
+        remote's LIVE tip: ``actions/checkout`` fetches at job start, so the tip
+        advances whenever another actor publishes while this run waits in the
+        queue. Gating against it asks whether the commit already absorbed work
+        published AFTER it was written -- false by construction for a perfectly
+        linear commit, which then fails with "does not descend from".
+
+        The baseline is therefore anchored to ``merge-base(live_tip,
+        GITHUB_SHA)``: the lane point the triggering commit actually knew.
+        Concurrent publishers move the tip; they never move that merge base.
+
+        The repository here reproduces the race exactly: HEAD is linear on top
+        of the lane, and the remote tip then advances by one unrelated commit.
+        """
+        root = tmp_path / "repository"
+        root.mkdir()
+        u.Tests.initialize_git_repo(root)
+        lane_point = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "checkout", "-B", "0.12.0-dev", lane_point], cwd=root
+            )
+        )
+        # Our commit: written linearly on top of the lane as it existed.
+        (root / "ours.txt").write_text("ours\n", encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["git", "add", "ours.txt"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-m", "Our linear commit on the lane"], cwd=root
+            )
+        )
+        triggering_sha = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        # A concurrent actor publishes to the same lane while our run queues,
+        # so the fetched remote tip moves past the point we branched from.
+        empty_tree = tm.ok(u.Cli.capture(["git", "mktree"], cwd=root))
+        concurrent_tip = tm.ok(
+            u.Cli.capture(
+                [
+                    "git",
+                    "commit-tree",
+                    empty_tree,
+                    "-p",
+                    lane_point,
+                    "-m",
+                    "Concurrent publisher advances the lane",
+                ],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", concurrent_tip],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
+                cwd=root,
+            )
+        )
+        # The live tip is genuinely NOT an ancestor of our commit: this is the
+        # exact state the old gate rejected.
+        live_tip_check = tm.ok(
+            u.Cli.run_raw(
+                ["git", "merge-base", "--is-ancestor", concurrent_tip, triggering_sha],
+                cwd=root,
+            )
+        )
+        tm.that(live_tip_check.exit_code, eq=1)
+
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path()}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
+            repository=repository,
+            project=u.Tests.project_spec(repository.name),
+        )
+        (root / "pyproject.toml").write_text(
+            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
+            encoding="utf-8",
+        )
+        package = root / "src" / repository.distribution.replace("-", "_")
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        )
+
+        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
+        anchored = tm.ok(service.plan(request)).branch_ancestry[0]
+
+        current = next(
+            reference
+            for reference in anchored.references
+            if reference.reference == "refs/heads/0.12.0-dev"
+        )
+        tm.that(current.ancestor, eq=True)
+        tm.that(anchored.baseline_sha, eq=lane_point)
+
     def test_branch_ancestry_skips_bare_main_worktree_entry(
         self, tmp_path: Path
     ) -> None:
@@ -1434,19 +1546,27 @@ class TestScriptDispatchMakefile:
             ],
         )
 
-    def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
-        """Gas Town owns lifecycle; generated Make exposes no work command."""
+    def test_work_verb_projects_every_declared_what(self, tmp_path: Path) -> None:
+        """`work` is a declared verb, and the generated Make surface exposes it.
+
+        This contract predates Gas Town's retirement: when Gas Town owned the
+        lane lifecycle, `work` was deliberately absent from generated Make. The
+        codegen SSOT now declares `work` with its whats, and rule 17 makes the
+        Make verb the canonical entry point, so the generated surface must
+        project exactly what the SSOT declares — never a frozen absence.
+        """
         make_config = config.Infra.codegen.make
         verb_names = {verb.name for verb in make_config.verbs}
-        tm.that("work" in verb_names, eq=False)
+        tm.that("work" in verb_names, eq=True)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
         public_line = next(
             line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
-        tm.that(" work" in public_line, eq=False)
-        tm.that(rendered, lacks=["_builtin_work_", "make work", "work start"])
+        tm.that(" work" in public_line, eq=True)
+        for what in make_config.handler_whats["work"]:
+            tm.that(rendered, has=f"_builtin_work_{what}:")
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

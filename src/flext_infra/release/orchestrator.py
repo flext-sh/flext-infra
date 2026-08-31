@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.release._orchestrator_dispatch import (
     FlextInfraReleaseOrchestratorDispatchMixin,
@@ -43,17 +43,28 @@ class FlextInfraReleaseOrchestrator(
     def _build_targets(
         self, workspace_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
-        """Resolve release build targets."""
+        """Resolve release build targets from the configured eligibility policy.
+
+        Why (aihub-ioijy.9): this used to hardcode
+        ``project.name.startswith("flext-")``. Any repository whose distribution
+        is not named ``flext-*`` therefore resolved zero targets and the release
+        died with "release build selected no publishable projects" — after the
+        version phase had already rewritten its ``pyproject.toml``. Eligibility
+        is now declared data (``config.Infra.release.publishable_prefixes``); an
+        empty tuple means no prefix filter, so a single-project repository
+        publishes itself without naming conventions.
+        """
         targets: t.MutableSequenceOf[t.Pair[str, Path]] = []
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.failure:
             return r[t.SequenceOf[t.Pair[str, Path]]].fail(
                 projects_result.error or "release project resolution failed"
             )
+        prefixes = tuple(config.Infra.release.publishable_prefixes)
         targets.extend(
             (project.name, project.path)
             for project in projects_result.value
-            if project.name.startswith("flext-")
+            if not prefixes or project.name.startswith(prefixes)
         )
         seen: t.Infra.StrSet = set()
         unique: t.MutableSequenceOf[t.Pair[str, Path]] = []
