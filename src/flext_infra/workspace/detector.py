@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, override
-from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, config, m, u
@@ -31,26 +30,25 @@ class FlextInfraWorkspaceDetector(
 
     @staticmethod
     def _provider_owns_url(provider: m.Infra.ProviderSpec, url: str) -> bool:
-        """Require scheme, host, and organization to agree exactly."""
-        provider_url = urlparse(provider.base_url)
-        repository_url = urlparse(url)
-        provider_path = provider_url.path.strip("/")
-        repository_path = repository_url.path.strip("/")
-        repository_name = repository_path.removeprefix(
-            f"{provider.organization}/"
-        ).removesuffix(".git")
-        canonical_path = f"{provider.organization}/{repository_name}.git"
-        actual_path = (
-            repository_path
-            if repository_path.endswith(".git")
-            else f"{repository_path}.git"
-        )
+        """Require the remote identity to name this provider's organization.
+
+        Compares the normalized ``owner/repository`` identity instead of the raw
+        URL. CI rewrites private submodule origins to SSH deploy-key URLs, and
+        ``urlparse`` cannot read SCP-style Git syntax: ``git@host:org/repo.git``
+        yields an empty scheme and netloc, so comparing those fields rejected
+        every SSH remote for every provider. ``git_remote_identity`` is the
+        owner that already normalizes HTTPS, SSH and Host-alias forms — this
+        class uses it to compare declared and live origins — and the
+        organization is the discriminator, exactly as ``_provider_for_url``
+        documents.
+        """
+        organization, separator, repository = u.Infra.git_remote_identity(
+            url
+        ).partition("/")
         return (
-            provider_url.scheme == repository_url.scheme
-            and provider_url.netloc == repository_url.netloc
-            and provider_path == provider.organization
-            and bool(repository_name)
-            and actual_path == canonical_path
+            bool(separator)
+            and bool(repository)
+            and organization == provider.organization.casefold()
         )
 
     @staticmethod
