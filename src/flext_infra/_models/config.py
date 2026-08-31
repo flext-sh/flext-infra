@@ -3026,6 +3026,61 @@ class FlextInfraConfigModels:
         force: Annotated[
             bool, m.Field(description="Replace custom files with generated content")
         ] = False
+        beads: Annotated[
+            FlextInfraConfigModels.BeadsWorkspaceEnvironmentSpec | None,
+            m.Field(
+                description=(
+                    "When set, sync one generated beads-workspace .envrc "
+                    "instead of the Python package environment"
+                )
+            ),
+        ] = None
+        allow_direnv: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Run `direnv allow` for the workspace after a successful "
+                    "applied sync so managed roots never carry a stale allow"
+                )
+            ),
+        ] = True
+
+    class BeadsWorkspaceEnvironmentSpec(_ConfigContract):
+        """Declarative contract for one generated beads-workspace .envrc.
+
+        Defaults encode the canonical Gas City + Beads wiring: the sync owns
+        the file end to end while every credential-free fact stays declarative
+        here, and the single identity variable (``AGENTS_GAS_CITY_ROOT``) keeps
+        failing loudly when the canonical checkout is not declared.
+        """
+
+        environment_sources: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Environment files sourced on activation"),
+        ] = ("$HOME/.config/environment.d/projects/agent-tools.envrc",)
+        identity_var: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Required variable naming the Gas City checkout"),
+        ] = "AGENTS_GAS_CITY_ROOT"
+        city_state_relpath: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Gas City Dolt state path relative to the checkout"),
+        ] = ".gc/runtime/packs/dolt/dolt-state.json"
+        beads_metadata_relpath: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Beads metadata path relative to the workspace"),
+        ] = ".beads/metadata.json"
+        unset_vars: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Inherited orchestration variables cleared on entry"),
+        ] = (
+            "GT_ROOT",
+            "GT_TOWN_ROOT",
+            "BEADS_DIR",
+            "BEADS_DOLT_PORT",
+            "BEADS_DOLT_DATA_DIR",
+            "BEADS_DOLT_SHARED_SERVER",
+        )
 
     class WorkspaceEnvironmentSyncResult(_ConfigContract):
         """Outcome of one workspace environment sync."""

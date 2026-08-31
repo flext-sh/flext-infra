@@ -61,6 +61,10 @@ class FlextInfraConstantsCheck:
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
         ),
+        "direnv": (
+            "Flext Direnv Environment Contract Gate",
+            "internal://flext-infra/direnv",
+        ),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
@@ -175,6 +179,7 @@ class FlextInfraConstantsCheck:
     LOC_CAP_MAX: Final[int] = 1000
     "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
     TOKEI_BINARY: Final[str] = "tokei"
+    CLI_DIRENV: Final[str] = "direnv"
     TOKEI_TOTAL_KEY: Final[str] = "Total"
     TOKEI_PYTHON_LANG: Final[str] = "Python"
     "tokei language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
