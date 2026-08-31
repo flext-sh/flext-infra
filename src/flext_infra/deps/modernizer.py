@@ -269,6 +269,17 @@ class FlextInfraPyprojectModernizer(
         # for search/mypy whenever scaffolding supplied them; pyright extras keep
         # discovery order (sorted {'.', 'src'}) so the first write matches sync.
         derived_search_path = declared_roots or discovered_search
+        # mypy and pyrefly diverge here (cosmos-45hiv, 2026-08-31): mypy
+        # enumerates each search-path root as a package root, so roots that
+        # re-spell the same files (". " vs a rooted "scripts/") make it abort
+        # with source-file-found-twice. pyrefly resolves first-match and needs
+        # the extra roots. mypy keeps declared source roots; pyrefly keeps the
+        # full derivation.
+        derived_mypy_path = (
+            tuple(root for root in declared_roots if root != ".")
+            if declared_roots
+            else derived_search_path
+        )
         derived_extra_paths = discovered_extra or declared_roots
         resolved_project_kind = project_kind or "core"
         if project_kind is None and path.parent.resolve() != self.root.resolve():
@@ -297,9 +308,9 @@ class FlextInfraPyprojectModernizer(
                 # have written a partial mypy_path ('.' only). Prefer derivation
                 # so the template matches post-write ExtraPaths sync.
                 "mypy_path": (
-                    derived_search_path
+                    derived_mypy_path
                     if declared_roots
-                    else (mypy.get("mypy_path") or derived_search_path)
+                    else (mypy.get("mypy_path") or derived_mypy_path)
                 ),
                 "pyrefly_search_path": (
                     derived_search_path
