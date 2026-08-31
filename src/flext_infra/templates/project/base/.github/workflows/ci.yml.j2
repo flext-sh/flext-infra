@@ -65,9 +65,16 @@ jobs:
       # The direnv check gate runs a real `direnv exec` activation smoke. The
       # preinstalled runner image has no direnv binary, so provision it here —
       # the gate is intentional and its binary must exist wherever CI=Y make
-      # check runs.
+      # check runs. The smoke runs unattended, where no one can answer
+      # `direnv allow`, so the generated .envrc is trusted for this checkout
+      # via DIRENV_ALLOW (a repo-scoped allow file under the runner home; it
+      # does not change local machines, which still whitelist interactively).
       - name: Install direnv (check-gate dependency)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq direnv
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq direnv
+          mkdir -p "$HOME/.config/direnv"
+          echo "{% raw %}${{ github.workspace }}{% endraw %}" > "$HOME/.config/direnv/allow-repo-scoped"
+          echo "DIRENV_ALLOW=$HOME/.config/direnv/allow-repo-scoped" >> "$GITHUB_ENV"
 
 {%- include "_fragments/testmon_cache.j2" %}
 
