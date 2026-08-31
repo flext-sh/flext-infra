@@ -1673,6 +1673,10 @@ Infra:
             # other entry (venv shims, local symlinks) is machine-local and
             # gets rewritten by `make setup`, so tracking it makes the docs
             # byte-identical verification fail on a clean runner.
+            # A deny-all allowlist (`/*/`) excludes the bin/ directory itself,
+            # and git never descends into an excluded directory, so the two
+            # negations below cannot re-include the pair without this line.
+            - "!/bin/"
             - "/bin/*"
             - "!/bin/mise"
             - "!/bin/mise.cmd"
