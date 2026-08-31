@@ -43,7 +43,7 @@ class TestsBeadsEnvironmentSync:
         )
         tm.that("BEADS_DOLT_SERVER_PORT" in content, eq=True)
         tm.that(
-            "gas_city_root=\"$(cd \"${AGENTS_GAS_CITY_ROOT}\" && pwd -P)\""
+            'gas_city_root="$(cd "${AGENTS_GAS_CITY_ROOT}" && pwd -P)"'
             in content,
             eq=True,
         )
