@@ -43,9 +43,15 @@ class FlextInfraUtilitiesDependencies:
 
     @staticmethod
     def constraint_specifier(version: str) -> str:
-        """Return the resolved lock version as an open-ended dependency floor."""
-        normalized_version = version.strip()
-        return f">={normalized_version}" if normalized_version else ""
+        """Return the resolved lock version as an open-ended dependency floor.
+
+        PEP 440 permits a local version label only with ``==`` or ``!=``, so a
+        floor built straight from a locally tagged resolution is rejected by
+        every build backend. The public release is what a floor means, and the
+        local build satisfies it.
+        """
+        public_version = version.strip().partition("+")[0]
+        return f">={public_version}" if public_version else ""
 
     @classmethod
     def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:

@@ -1343,6 +1343,11 @@ Infra:
             # ignored: their embedded-mode file carries a per-machine
             # project_id UUID.
             - "!.beads/metadata.json"
+            # The canonical ledger identity (the [project] id). Conform reads
+            # it to render the identity-preserving metadata.json; untracked,
+            # every fresh clone rendered a metadata without the id and failed
+            # the gen check gate against the committed file.
+            - "!.beads/identity.toml"
         - name: "Python configuration"
           profiles: [workspace]
           patterns:
@@ -1649,6 +1654,11 @@ Infra:
           profiles: [workspace, standalone]
           patterns:
             - "!.beads/metadata.json"
+            # The canonical ledger identity: conform reads it to render the
+            # identity-preserving metadata.json on fresh checkouts. Without
+            # the exception the render loses the project id and the gen
+            # check gate drifts on every clean clone.
+            - "!.beads/identity.toml"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
           patterns:
             - "*.tpl.rej"
@@ -1660,7 +1670,9 @@ Infra:
             - ".venv/"
             - ".bin/"
             # Repo-root bin/: only the mise bootstrap pair is tracked; every
-            # other entry (venv shims, local symlinks) is machine-local.
+            # other entry (venv shims, local symlinks) is machine-local and
+            # gets rewritten by `make setup`, so tracking it makes the docs
+            # byte-identical verification fail on a clean runner.
             - "/bin/*"
             - "!/bin/mise"
             - "!/bin/mise.cmd"

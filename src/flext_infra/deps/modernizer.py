@@ -244,8 +244,23 @@ class FlextInfraPyprojectModernizer(
             project_dir=path.parent, is_root=True
         )
         path_rules = config.Infra.tooling.tools.pyrefly.path_rules
+        # A shared search path belongs to the project when the scaffold
+        # declares it or the tree already has it — the same rule
+        # `pyrefly_search_paths` applies after the write. Seeding every
+        # configured path regardless left `scripts` in the render and out of
+        # the sync, so apply could never reach a fixed point.
+        project_dir = path.parent
         declared_roots = (
-            (path_rules.source_dir, *path_rules.project_shared_search_paths)
+            (
+                path_rules.source_dir,
+                *(
+                    shared
+                    for shared in path_rules.project_shared_search_paths
+                    if shared == c.Infra.ROOT_PROJECT_SELECTOR
+                    or shared in declared_python_dirs
+                    or (project_dir / shared).is_dir()
+                ),
+            )
             if path_rules.source_dir in declared_python_dirs
             else ()
         )
