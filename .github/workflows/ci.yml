@@ -65,8 +65,8 @@ jobs:
           version: 2026.8.14
       # The direnv check gate runs a real `direnv exec` activation smoke. The
       # preinstalled runner image has no direnv binary, so provision it here —
-      # the gate is intentional (21f928939) and its binary must exist wherever
-      # CI=Y make check runs.
+      # the gate is intentional and its binary must exist wherever CI=Y make
+      # check runs.
       - name: Install direnv (check-gate dependency)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq direnv
       - name: Restore testmon cache
