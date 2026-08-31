@@ -11,6 +11,19 @@ from flext_tests import tm
 from tests import WorktreeFixture, u as test_u
 
 
+def _is_immutable_selector(version: str) -> bool:
+    """Exact release tag (fork/prerelease suffix allowed) or full commit sha.
+
+    A suffixed tag such as ``1.2.2-fd1`` names one published artifact just as
+    exactly as ``1.2.2``; only a moving ref (``latest``, a branch, a range) is
+    mutable, and those never match the shapes below.
+    """
+    if len(version) == 40 and all(char in "0123456789abcdef" for char in version):
+        return True
+    core = version.partition("-")[0].split(".")
+    return len(core) == 3 and all(part.isdecimal() for part in core)
+
+
 def _repository(
     name: str, *, path: str, role: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryRef:
@@ -59,16 +72,10 @@ class TestsCodegenCatalogExtensions:
         tm.that(duplicate_result.error, has="must resolve exactly once")
 
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
-        selector = config.Infra.codegen.toolchain.beads.version
-
-        version_parts = selector.split(".")
-        is_semver = len(version_parts) == 3 and all(
-            part.isdecimal() for part in version_parts
+        tm.that(
+            _is_immutable_selector(config.Infra.codegen.toolchain.beads.version),
+            eq=True,
         )
-        is_commit = len(selector) == 40 and all(
-            char in "0123456789abcdef" for char in selector
-        )
-        tm.that(is_semver or is_commit, eq=True)
 
     def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
         toolchain = config.Infra.codegen.toolchain
@@ -76,15 +83,7 @@ class TestsCodegenCatalogExtensions:
         mise_parts = toolchain.mise_version.split(".")
         tm.that(len(mise_parts), eq=3)
         tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
-        beads_version = toolchain.beads.version
-        beads_parts = beads_version.split(".")
-        beads_is_semver = len(beads_parts) == 3 and all(
-            part.isdecimal() for part in beads_parts
-        )
-        beads_is_commit = len(beads_version) == 40 and all(
-            char in "0123456789abcdef" for char in beads_version
-        )
-        tm.that(beads_is_semver or beads_is_commit, eq=True)
+        tm.that(_is_immutable_selector(toolchain.beads.version), eq=True)
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""

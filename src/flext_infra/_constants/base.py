@@ -402,6 +402,9 @@ class FlextInfraConstantsBase(
     ENV_VAR_GITHUB_ACTIONS: Final[str] = "GITHUB_ACTIONS"
     ENV_VAR_GITHUB_HEAD_REF: Final[str] = "GITHUB_HEAD_REF"
     ENV_VAR_GITHUB_REF_NAME: Final[str] = "GITHUB_REF_NAME"
+    # flext-9ehwb: the commit that triggered the run; the ancestry gate anchors
+    # its baseline here instead of the remote's live tip.
+    ENV_VAR_GITHUB_SHA: Final[str] = "GITHUB_SHA"
     ENV_DEFAULT_STANDALONE: Final[bool] = False
     ENV_DEFAULT_USE_HTTPS: Final[bool] = False
     ENV_DEFAULT_GITHUB_ACTIONS: Final[bool] = False

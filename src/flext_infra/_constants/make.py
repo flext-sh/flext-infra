@@ -147,6 +147,15 @@ class FlextInfraConstantsMake:
         "UV_PROJECT",
         "UV_PROJECT_ENVIRONMENT",
         "VIRTUAL_ENV",
+        # flext-zykgh: WHAT is a dispatch selector owned by each Makefile, exactly
+        # like PROJECT/PROJECTS above. The root translates `WHAT=<gate>` into
+        # `--make-arg CHECK_GATES=<gate>` before delegating, but the inherited
+        # WHAT then overrode that intent in the member, which dispatched
+        # `_builtin_check_<gate>` — a target the standalone profile never emits
+        # because it selects gates through CHECK_GATES. The member failed with
+        # "No rule to make target" in ~34ms while reporting "0 errors", a
+        # missing-target failure disguised as a clean gate run.
+        "WHAT",
     )
     "Environment keys removed before project-level make orchestration."
     ORCHESTRATOR_ENV_NO_COLOR: Final[str] = "NO_COLOR"

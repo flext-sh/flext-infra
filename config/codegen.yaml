@@ -59,10 +59,32 @@ Infra:
           - windows-x64
       protected_mise_tools:
         - beads
+        - gascity
       go_version: "1.26"
+      gascity:
+        # The fleet gc is the operator's build of upstream tag v1.4.1: the
+        # source tree is byte-identical, but it links beads v1.2.2 without a
+        # module replace, so the native store's version_compat gate stops
+        # degrading every rig to the fork-per-op BdStore fallback.
+        selector: github:marlon-costa-dc/gascity
+        version: "1.4.1-fc1"
+        # Suffixed release tag; mise only resolves it when told it is a prerelease.
+        prerelease: true
+        # Selector shapes that identify gc in a mise manifest, so a regenerated
+        # .mise.toml cannot silently swap the fleet build for another distribution.
+        selector_patterns:
+          - gc
+          - gascity
+          - "*:*/gascity"
       beads:
-        selector: github:gastownhall/beads
-        version: "1.2.2"
+        selector: github:marlon-costa-dc/beads
+        version: "1.2.2-fd1"
+        # The fleet bd is the operator's fork: it carries 4c1c40337
+        # "fix(list): stop bd list from looping forever on hierarchy cycles",
+        # absent from upstream v1.2.2, which has already produced a 17.7 GB
+        # runaway and an OOM on this host. The tag is a prerelease, so mise
+        # must be allowed to resolve it.
+        prerelease: true
         # Selector shapes that identify this tool in a mise manifest, so a
         # regenerated .mise.toml cannot silently replace the pinned release.
         selector_patterns:
@@ -1308,6 +1330,17 @@ Infra:
             - "!.code-review-graph/"
             - "!.claude/"
             - "!.claude-plugin/"
+            # Provider surfaces are generated governance artifacts owned by the
+            # workspace root, so each provider directory is trackable exactly
+            # like .claude/ and .agents/ above.
+            - "!.codex/"
+            - "!.codex/**"
+            - "!.cursor/"
+            - "!.cursor/**"
+            - "!.gemini/"
+            - "!.gemini/**"
+            - "!.opencode/"
+            - "!.opencode/**"
             - "!/config/"
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
@@ -1375,6 +1408,13 @@ Infra:
             - "!Makefile"
             - "!Makefile.flext-docker"
             - "!*.mk"
+            # The generated toolchain lock pins every tool to a checksum. A
+            # clean CI checkout must receive it, so the deny-first root cannot
+            # swallow it; `make gen` owns its content.
+            - "!.mise.toml"
+            - "!mise.lock"
+            - "!bin/mise"
+            - "!bin/mise.cmd"
         - name: "Documentation"
           profiles: [workspace]
           patterns:
@@ -1419,18 +1459,32 @@ Infra:
         # NOTE: member contents are emitted by the same derived section as the
         # member directories themselves (see the note above), so both come from
         # the live workspace topology and can never diverge from each other.
+        # `.claude/*` re-blocked the whole directory AFTER the whitelist above
+        # had unblocked it, and in gitignore the last matching rule wins — so
+        # every governed provider artifact (.claude/settings.json, the skill
+        # surfaces) became untrackable. Local session data is named explicitly
+        # instead of re-blocking the directory that the whitelist just opened.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
-            - ".claude/*"
-        # Only the workspace root owns agent skills as real versioned files.
-        # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
-        # provider surfaces as real local files via generate-workspace-config
-        # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
-        # repo-server refuse the repository, so subprojects must not track them.
-        - name: "BLOCK: Agent surface outside the workspace root"
+            - ".claude/local/"
+            - ".claude/history/"
+            - ".claude/todos/"
+            - ".claude/statsig/"
+            - ".claude/projects/"
+            - ".claude/shell-snapshots/"
+            - ".claude/settings.local.json.bak"
+        # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
+        # once justified blocking `.agents/` in non-root checkouts no longer
+        # applies: ai-hub materializes them via generate-workspace-config and
+        # never as mode-120000 symlinks (measured: flext-cli, a standalone
+        # checkout, carries 74 regular files and 0 symlinks under .agents/).
+        # Blocking them made governed projections untrackable in exactly the
+        # repositories that must carry their own authorization surface.
+        - name: "WHITELIST: Governed agent projections (every repository role)"
           profiles: [standalone]
           patterns:
-            - ".agents/"
+            - "!.agents/"
+            - "!.agents/**"
         - name: "WHITELIST: Agent skills owned by the workspace root"
           profiles: [workspace]
           patterns:
@@ -1445,9 +1499,11 @@ Infra:
             - ".aider.conf.yml"
             - ".aider.chat.history.md"
             - "**/.aider/"
+        # `.cursor/` moved to the governed provider whitelist above: it now
+        # carries generated hooks/skills that must be versioned. Only assistants
+        # with no governed surface stay blocked here.
         - name: "Other AI assistants"
           patterns:
-            - ".cursor/"
             - ".copilot/"
             - ".codeium/"
         - name: "Oracle dump files"

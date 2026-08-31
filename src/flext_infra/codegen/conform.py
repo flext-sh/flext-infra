@@ -7,6 +7,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+import os
 import re
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
@@ -1802,6 +1803,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads_tool_selector=codegen.toolchain.beads.selector,
                 beads_tool_version=codegen.toolchain.beads.version,
+                # prerelease is load-bearing: the fleet bd is a suffixed tag
+                # (v1.2.2-fd1) and mise refuses to resolve it unless told the
+                # release is a prerelease. Omitting it silently pinned every
+                # rig to upstream v1.2.2, which lacks the bd list cycle guard.
+                beads_tool_prerelease=codegen.toolchain.beads.prerelease,
+                beads_tool_minimum_release_age=(
+                    codegen.toolchain.beads.minimum_release_age
+                ),
                 beads=workspace.beads,
                 canonical_project_name=target.canonical_project_name,
                 const_name=project.constant_name,
@@ -2044,6 +2053,42 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
+        # flext-9ehwb: `refs/remotes/origin/<lane>` is the remote's LIVE tip.
+        # `actions/checkout` fetches at job start, so that tip advances whenever
+        # another actor publishes to the same lane while this run waits in the
+        # queue. Gating against it asks "has this commit already absorbed work
+        # published after it was written?" -- unanswerable by construction, and
+        # a perfectly linear commit fails with "does not descend from"
+        # (run 31218338222). The question the gate actually owns is "was this
+        # commit written on top of the lane?", so the baseline is pinned to the
+        # merge base between the live tip and the commit that triggered the run.
+        # That point is immutable for a given commit: concurrent publishers move
+        # the tip, never the merge base. Outside CI GITHUB_SHA is unset and the
+        # live tip remains the baseline, which is correct for a local checkout.
+        triggering_sha = os.environ.get(c.Infra.ENV_VAR_GITHUB_SHA, "").strip()
+        if triggering_sha:
+            merge_base_command = (
+                c.Infra.GIT,
+                "merge-base",
+                baseline_sha,
+                triggering_sha,
+            )
+            merge_base_result = u.Cli.run_raw(merge_base_command, cwd=root)
+            if merge_base_result.failure:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "cannot anchor ancestry baseline to the triggering commit: "
+                    f"command={' '.join(merge_base_command)}; "
+                    f"error={merge_base_result.error}"
+                )
+            if merge_base_result.value.exit_code != 0:
+                return r[m.Infra.BranchAncestryPlan].fail(
+                    "triggering commit shares no history with the baseline: "
+                    f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
+                    f"command={' '.join(merge_base_command)}; "
+                    f"exit={merge_base_result.value.exit_code}; "
+                    f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
+                )
+            baseline_sha = merge_base_result.value.stdout.strip()
         pending_merge_result = u.Cli.run_raw(
             (
                 c.Infra.GIT,

@@ -1,6 +1,13 @@
 Infra:
   name: flext-infra
   version: "0.12.0-dev"
+  # Release eligibility is declared data, not a naming convention compiled into
+  # the orchestrator (aihub-ioijy.9). This workspace publishes the flext-* member
+  # distributions; a consumer repository leaves the tuple empty and every
+  # resolved project becomes a candidate.
+  release:
+    publishable_prefixes:
+      - flext-
   source_scan:
     roots:
       - src
