@@ -66,17 +66,14 @@ jobs:
       # preinstalled runner image has no direnv binary, so provision it here —
       # the gate is intentional and its binary must exist wherever CI=Y make
       # check runs. The smoke runs unattended, where no one can answer
-      # `direnv allow`, so the generated .envrc is marked allowed directly:
-      # direnv records approval as a SHA-256 of the .envrc absolute path under
-      # XDG_DATA_HOME/direnv/allow (empty file content), which we write after
-      # checkout. This is runner-local trust of the repo's own generated file;
-      # local machines still whitelist interactively.
+      # `direnv allow`, so allow the checkout's .envrc up front: `direnv allow
+      # <path>` computes and stores the same path-hash record an interactive
+      # allow writes. .envrc is tracked, so it exists right after checkout.
+      # This trusts only this repo's own generated file, on this runner only.
       - name: Install direnv (check-gate dependency)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq direnv
-          mkdir -p "$HOME/.local/share/direnv/allow"
-          allow_hash="$(printf '%s' "{% raw %}${{ github.workspace }}{% endraw %}/.envrc" | sha256sum | awk '{print $1}')"
-          : > "$HOME/.local/share/direnv/allow/$allow_hash"
+          direnv allow "{% raw %}${{ github.workspace }}{% endraw %}/.envrc"
 
 {%- include "_fragments/testmon_cache.j2" %}
 
