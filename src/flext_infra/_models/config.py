@@ -223,7 +223,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Marker expressions limiting the environments uv resolves "
                     "for the generated lock. Empty resolves every environment."
-                ),
+                )
             ),
         ] = ()
         dependency_cooldown_days: Annotated[
@@ -2314,9 +2314,7 @@ class FlextInfraConfigModels:
         ]
         beads_tool_prerelease: Annotated[
             bool,
-            m.Field(
-                description="Whether mise may resolve prerelease Beads versions"
-            ),
+            m.Field(description="Whether mise may resolve prerelease Beads versions"),
         ] = False
         beads_tool_minimum_release_age: Annotated[
             t.NonEmptyStr | None,
