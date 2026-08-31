@@ -11,6 +11,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .detector import FlextInfraWorkspaceDetector
+    from .environment_contracts import envrc_contract_violations
     from .environment_provenance import FlextInfraWorkspaceEnvironmentProvenance
     from .flext_binding import FlextInfraFlextBindingService
     from .orchestrator import FlextInfraOrchestratorService
@@ -23,12 +24,14 @@ __all__: tuple[str, ...] = (
     "FlextInfraSandboxOrchestrator",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceEnvironmentProvenance",
+    "envrc_contract_violations",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".detector": ("FlextInfraWorkspaceDetector",),
+            ".environment_contracts": ("envrc_contract_violations",),
             ".environment_provenance": ("FlextInfraWorkspaceEnvironmentProvenance",),
             ".flext_binding": ("FlextInfraFlextBindingService",),
             ".orchestrator": ("FlextInfraOrchestratorService",),

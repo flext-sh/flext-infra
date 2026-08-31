@@ -1262,16 +1262,16 @@ Infra:
           # The security gate (flext_infra.gates.bandit) runs unconditionally for
           # every project owning src/, so the tool it shells out to must be a
           # declared dev dependency of every generated project.
-          - bandit>=1.8
+          - bandit>=1.9.4
           - flext-tests
           # Floors let uv select released tools without a cap or downgrade path.
           # Every diagnostic from the resolved release remains blocking.
-          - mypy>=2.3.0
-          - pyrefly>=1.1.1
+          - mypy>=2.3.1
+          - pyrefly>=1.2.0
           - pyright>=1.1.411
-          - pytest>=9.0.3
+          - pytest>=9.1.1
           - pytest-testmon>=2.2.0
-          - ruff>=0.15.12
+          - ruff>=0.16.0
           - rumdl>=0.2.45
           - vulture>=2.16
           - yamlfix>=1.19.1
@@ -1729,6 +1729,10 @@ Infra:
             # other entry (venv shims, local symlinks) is machine-local and
             # gets rewritten by `make setup`, so tracking it makes the docs
             # byte-identical verification fail on a clean runner.
+            # A deny-all allowlist (`/*/`) excludes the bin/ directory itself,
+            # and git never descends into an excluded directory, so the two
+            # negations below cannot re-include the pair without this line.
+            - "!/bin/"
             - "/bin/*"
             - "!/bin/mise"
             - "!/bin/mise.cmd"
