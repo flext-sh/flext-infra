@@ -75,10 +75,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq direnv
           mkdir -p "$HOME/.local/share/direnv/allow"
-          allow_hash="$(
-            printf '%s' "${{ github.workspace }}/.envrc" \
-              | sha256sum | awk '{print $1}'
-          )"
+          allow_hash="$(printf '%s' "{% raw %}${{ github.workspace }}{% endraw %}/.envrc" | sha256sum | awk '{print $1}')"
           : > "$HOME/.local/share/direnv/allow/$allow_hash"
 
 {%- include "_fragments/testmon_cache.j2" %}
