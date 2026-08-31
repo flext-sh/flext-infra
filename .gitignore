@@ -233,6 +233,7 @@ legado/
 .venv
 .venv/
 .bin/
+!/bin/
 /bin/*
 !/bin/mise
 !/bin/mise.cmd
