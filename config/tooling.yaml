@@ -564,12 +564,15 @@ Infra:
         # tomlsort alpha-sort filterwarnings, so any override MUST sort AFTER
         # "error" to survive re-conform. Only module::/once:: sort after 'error'
         # ('m'/'o' > 'e'); default::/always::/ignore:: get reordered before it and
-        # lose. module:: keeps FlextSmellViolation (and its FlextSmellViolation
-        # subclass) VISIBLE-but-non-fatal, matching the non-strict enforcement
-        # policy (flext-tests registers default::{category}); all other warnings
-        # stay fatal. See flext-core test_enforcement_warning_visibility.
+        # lose. The entry names FlextMroViolation because FlextSmellViolation is
+        # its SUBCLASS: a filter on the child leaves the parent fatal, which is
+        # how MRO violations became errors again after a regeneration dropped
+        # the hand-added entry from ade37396c. One entry on the parent keeps
+        # both VISIBLE-but-non-fatal, matching the non-strict enforcement policy
+        # (flext-tests registers default::{category}); all other warnings stay
+        # fatal. See flext-core test_enforcement_warning_visibility.
         filter-warnings:
-          [error, "module::flext_core._constants.enforcement.FlextSmellViolation"]
+          [error, "module::flext_core._constants.enforcement.FlextMroViolation"]
         standard-markers:
           - "smoke: public-interface smoke tests"
           - "unit: unit tests"
