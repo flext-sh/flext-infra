@@ -46,6 +46,11 @@ Infra:
         - macos-arm64
         - windows-x64
       mise_lock_platform_exclusions:
+        # Keyed by full mise selector (that is the key the lock validator
+        # resolves). gc does not build for Windows: its process control uses
+        # syscall.Kill/Flock (unix-only), so no windows-x64 artifact can exist.
+        github:marlon-costa-dc/gascity:
+          - windows-x64
         ast-grep:
           - linux-x64-musl
           - linux-arm64-musl
@@ -67,7 +72,7 @@ Infra:
         # module replace, so the native store's version_compat gate stops
         # degrading every rig to the fork-per-op BdStore fallback.
         selector: github:marlon-costa-dc/gascity
-        version: "1.4.1-fc1"
+        version: "1.4.1-fc2"
         # Suffixed release tag; mise only resolves it when told it is a prerelease.
         prerelease: true
         # Selector shapes that identify gc in a mise manifest, so a regenerated
