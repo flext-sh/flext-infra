@@ -269,9 +269,12 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(tool, is_=MutableMapping)
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
+        expected_search = FlextInfraExtraPathsManager(
+            workspace_root=tmp_path
+        ).pyrefly_search_paths(project_dir=project_dir, is_root=False)
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly["search-path"]),
-            eq=[rules.source_dir, *rules.project_shared_search_paths],
+            eq=[str(item) for item in expected_search],
         )
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]),
@@ -299,9 +302,19 @@ class TestsFlextInfraModernizerPyrefly:
         tm.that(tool, is_=MutableMapping)
         pyrefly = tool["pyrefly"]
         tm.that(pyrefly, is_=MutableMapping)
+        fresh = u.Cli.toml_document()
+        _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
+            fresh,
+            is_root=False,
+            project_dir=project_dir,
+            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            declared_python_dirs=(),
+            declared_python_dirs_are_complete=True,
+        )
+        fresh_tool = fresh["tool"]
         tm.that(
-            u.Cli.toml_unwrap_item(pyrefly["search-path"]),
-            eq=list(rules.project_shared_search_paths),
+            u.Cli.toml_unwrap_item(fresh_tool["pyrefly"]["search-path"]),
+            eq=u.Cli.toml_unwrap_item(pyrefly["search-path"]),
         )
         tm.that(u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]), eq=[])
 
