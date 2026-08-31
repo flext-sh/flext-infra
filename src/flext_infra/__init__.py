@@ -147,6 +147,7 @@ if TYPE_CHECKING:
     from .gates.base_gate import FlextInfraGate
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
+    from .gates.direnv import FlextInfraDirenvGate
     from .gates.layout import FlextInfraLayoutGate
     from .gates.loc_cap import FlextInfraLocCapGate
     from .gates.markdown import FlextInfraMarkdownGate
@@ -291,6 +292,7 @@ if TYPE_CHECKING:
     )
     from .validate.tier_whitelist import FlextInfraValidateTierWhitelist
     from .workspace.detector import FlextInfraWorkspaceDetector
+    from .workspace.environment_contracts import envrc_contract_violations
     from .workspace.environment_provenance import (
         FlextInfraWorkspaceEnvironmentProvenance,
     )
@@ -346,6 +348,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
+    "FlextInfraDirenvGate",
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
@@ -526,6 +529,7 @@ __all__: tuple[str, ...] = (
     "docs",
     "docs_main",
     "e",
+    "envrc_contract_violations",
     "fixers",
     "gates",
     "h",
@@ -684,6 +688,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.base_gate": ("FlextInfraGate",),
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
+            ".gates.direnv": ("FlextInfraDirenvGate",),
             ".gates.layout": ("FlextInfraLayoutGate",),
             ".gates.loc_cap": ("FlextInfraLocCapGate",),
             ".gates.markdown": ("FlextInfraMarkdownGate",),
@@ -859,6 +864,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validate.tier_whitelist": ("FlextInfraValidateTierWhitelist",),
             ".workspace": ("workspace",),
             ".workspace.detector": ("FlextInfraWorkspaceDetector",),
+            ".workspace.environment_contracts": ("envrc_contract_violations",),
             ".workspace.environment_provenance": (
                 "FlextInfraWorkspaceEnvironmentProvenance",
             ),

@@ -641,7 +641,7 @@ class TestCodegenConform:
     ) -> None:
         root = infra_git_repo
         repository = u.Tests.repository_ref(
-            config.Infra.name, role=c.Infra.RepositoryRole.STANDALONE
+            config.Infra.name, role=c.Infra.MakeProfile.STANDALONE
         )
         local_repository = repository.model_copy(update={"path": Path()})
         create_only = {
@@ -750,7 +750,7 @@ class TestCodegenConform:
                 "distribution": "arbitrary-root",
                 "url": f"{provider.base_url}/arbitrary-root.git",
                 "path": Path(),
-                "role": c.Infra.RepositoryRole.WORKSPACE,
+                "role": c.Infra.MakeProfile.WORKSPACE,
                 "package": False,
                 "editable": False,
             }
@@ -1174,7 +1174,7 @@ class TestScriptDispatchMakefile:
             url=f"{provider.base_url}/demo-root.git",
             path=Path(),
             # Script dispatch is a generic capability: exercise it on standalone.
-            role=c.Infra.RepositoryRole.STANDALONE,
+            role=c.Infra.MakeProfile.STANDALONE,
             provider=provider.name,
             checkout=c.Infra.CheckoutKind.ROOT,
             codegen=c.Infra.CodegenKind.CONFORM,

@@ -14,6 +14,8 @@ from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from flext_infra import p
 
 
@@ -213,9 +215,33 @@ class FlextInfraUtilitiesDiscovery(
             and subdir.name not in workspace_excluded
             and any(
                 cls._python_file_belongs_to_project(project_dir, source)
-                for source in subdir.rglob(c.Infra.EXT_PYTHON_GLOB)
+                for source in cls._walk_python_files(subdir, effective_skip)
             )
         ]
+
+    @staticmethod
+    def _walk_python_files(
+        directory: Path, skip_dirs: frozenset[str]
+    ) -> Iterator[Path]:
+        """Yield Python files under ``directory``, pruning skipped directories.
+
+        ``skip_dirs`` names trees that are never first-party source: virtual
+        environments, caches, build output, vendored code. ``Path.rglob`` has no
+        way to prune, so it descends into them and the walk costs whatever those
+        directories happen to contain — in a workspace whose members each own a
+        populated ``.venv`` that is tens of thousands of irrelevant files, and
+        the caller's only signal is a timeout. Pruning applies the same names at
+        every depth instead of only to the top-level entry.
+        """
+        for parent, child_dirs, file_names in directory.walk():
+            child_dirs[:] = [
+                name
+                for name in child_dirs
+                if name not in skip_dirs and not name.startswith(".")
+            ]
+            for file_name in file_names:
+                if file_name.endswith(c.Infra.EXT_PYTHON):
+                    yield parent / file_name
 
     @staticmethod
     def _python_file_belongs_to_project(project_dir: Path, source: Path) -> bool:

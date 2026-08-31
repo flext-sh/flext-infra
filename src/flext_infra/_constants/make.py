@@ -85,6 +85,7 @@ class FlextInfraConstantsMake:
         "security",
         "markdown",
         "smells",
+        "direnv",
     )
     # The gates CI=N owns: the type checkers only. They are the slow, whole-
     # program analyses, so CI=Y runs the strict complement of this set -- ruff

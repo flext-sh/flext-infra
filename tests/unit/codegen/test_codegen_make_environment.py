@@ -23,7 +23,7 @@ class TestsCodegenMakeEnvironment:
     def _render_makefile(
         tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
     ) -> tuple[Path, Path]:
-        role = c.Infra.RepositoryRole(profile.value)
+        role = c.Infra.MakeProfile(profile.value)
         repository = test_u.Tests.repository_ref(
             "fixture-project", role=role
         ).model_copy(update={"editable": True})

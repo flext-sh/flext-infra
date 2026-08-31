@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 import re
+from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, override
@@ -255,15 +256,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     baseline_result.error
                     or f"integration baseline resolution failed: {root}"
                 )
-            current_make_profile = (
-                c.Infra.MakeProfile.WORKSPACE
-                if current_repository.role is c.Infra.RepositoryRole.WORKSPACE
-                else c.Infra.MakeProfile.STANDALONE
-            )
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
-                make_profile=current_make_profile,
+                make_profile=current_repository.role,
                 beads=workspace.beads,
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=baseline_result.value,
@@ -894,6 +890,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
+            if (
+                destination == c.Infra.BEADS_METADATA_RELPATH
+                and not (root / destination).is_file()
+            ):
+                # Why (flext-l2296 family): the ledger metadata is minted by
+                # Beads at first use, so a fresh clone legitimately lacks it.
+                # Planning the absent runtime artifact failed the gen check
+                # gate on every clean checkout. When present, the render below
+                # stays identity-preserving.
+                continue
             artifact_context = self._artifact_render_context(
                 dist=context.dist,
                 repository=repository,
@@ -974,7 +980,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             initial_tooling.value,
             providers=codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
@@ -1039,11 +1045,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
-        workspace_mode = (
-            c.Infra.WorkspaceMode.WORKSPACE
-            if target.make_profile is c.Infra.MakeProfile.WORKSPACE
-            else c.Infra.WorkspaceMode.STANDALONE
-        )
         # Workspace root owns resolution for attached subprojects (uv reads
         # exclude-dependencies only from the workspace root). Subprojects still
         # receive their own routed excludes for standalone CI clones.
@@ -1060,7 +1061,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pyproject_read.value,
                 providers=codegen.providers,
                 workspace=workspace,
-                workspace_mode=workspace_mode,
+                workspace_mode=target.make_profile,
             )
             if dependency_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1105,7 +1106,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_read.value,
             providers=codegen.providers,
             workspace=workspace,
-            workspace_mode=workspace_mode,
+            workspace_mode=target.make_profile,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
@@ -1223,6 +1224,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"managed destination escapes repository root: {entry.destination}"
                 )
             path = (root / relative).resolve()
+            if (
+                entry.destination == c.Infra.BEADS_METADATA_RELPATH
+                and not path.is_file()
+            ):
+                # Why (flext-l2296 family): the ledger metadata is minted by
+                # Beads at first use, so a fresh clone legitimately lacks it.
+                # Planning an absent runtime artifact made the gen check gate
+                # fail on every clean checkout. When the file exists, the
+                # identity-preserving refresh below still applies.
+                continue
             try:
                 path.relative_to(root.resolve())
             except ValueError:
@@ -1383,6 +1394,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].ok(tuple(resolved))
 
+    @staticmethod
+    def _beads_project_id(repository_root: Path) -> str | None:
+        """Return the checkout's own ledger identity, or None if unminted.
+
+        `.beads/identity.toml` is the canonical owner (`[project] id`); the
+        generated marker is its projection. An absent file is not a failure —
+        it means Beads has not minted an identity for this checkout yet.
+        """
+        identity = repository_root / ".beads" / "identity.toml"
+        if not identity.is_file():
+            return None
+        source = u.Cli.files_read_text(identity)
+        if source.failure:
+            return None
+        payload = u.Cli.toml_mapping_from_text(source.value)
+        if payload is None:
+            return None
+        project = payload.get("project")
+        if not isinstance(project, Mapping):
+            return None
+        value = project.get("id")
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
     def _artifact_render_context(
         self,
         *,
@@ -1431,8 +1465,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             )
         if destination == c.Infra.BEADS_METADATA_RELPATH:
+            # Why: this marker is regenerated on every `make gen`, but the
+            # ledger identity inside it is owned by the checkout, not by the
+            # fleet SSOT. Rendering without it stripped the key, and Beads then
+            # minted a NEW identity on next access — rig gmn lost
+            # 2b1a0582-… that way (commit 3e7ba1e). Read it back so a
+            # regeneration is identity-preserving.
             return r[p.Model].ok(
-                m.Infra.BeadsMetadataRenderSpec(database=target.beads.database)
+                m.Infra.BeadsMetadataRenderSpec(
+                    database=target.beads.database,
+                    project_id=self._beads_project_id(repository_root),
+                )
             )
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)
@@ -1559,11 +1602,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Make contract as Makefile; they do not require scaffold-only
             # project metadata.
             make_context = FlextInfraCodegenConform.make_render_context(
-                repository,
-                target,
-                workspace,
-                codegen,
-                tooling_runtime=tooling_runtime,
+                repository, target, workspace, codegen, tooling_runtime=tooling_runtime
             )
             if make_context.failure:
                 return r[p.Model].fail(

@@ -1645,7 +1645,7 @@ class FlextInfraConfigModels:
             Path, m.Field(description="POSIX path relative to its workspace root")
         ]
         role: Annotated[
-            FlextInfraConstantsCodegenProject.RepositoryRole,
+            FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Repository role in the declared topology"),
         ]
         state: Annotated[
@@ -1939,13 +1939,30 @@ class FlextInfraConfigModels:
     class BeadsMetadataRenderSpec(_ConfigContract):
         """Field-only render input for the generated Beads ledger marker.
 
-        The generated marker contains only portable storage and database identity.
+        The marker carries portable storage and database identity plus the
+        checkout's ledger identity. ``project_id`` is NOT invented here: it is
+        read back from the checkout's own ``.beads/identity.toml`` so a
+        regeneration preserves it. Omitting it made every ``make gen`` strip the
+        key, and Beads then minted a fresh identity on next access — observed in
+        rig ``gmn`` (commit 3e7ba1e), where the ledger identity changed from
+        2b1a0582-… to e9a551fc-…. ``None`` means the checkout has no ledger
+        identity yet, and Beads mints the first one.
         """
 
         database: Annotated[
             t.NonEmptyStr,
             m.Field(description="Dolt database from local config/beads.yaml"),
         ]
+        project_id: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Ledger identity read back from .beads/identity.toml; "
+                    "None only before Beads has minted one"
+                ),
+            ),
+        ] = None
 
     class GitignoreRenderSpec(_ConfigContract):
         """Typed, profile-filtered input for the generated Git ignore file."""
@@ -3009,6 +3026,61 @@ class FlextInfraConfigModels:
         force: Annotated[
             bool, m.Field(description="Replace custom files with generated content")
         ] = False
+        beads: Annotated[
+            FlextInfraConfigModels.BeadsWorkspaceEnvironmentSpec | None,
+            m.Field(
+                description=(
+                    "When set, sync one generated beads-workspace .envrc "
+                    "instead of the Python package environment"
+                )
+            ),
+        ] = None
+        allow_direnv: Annotated[
+            bool,
+            m.Field(
+                description=(
+                    "Run `direnv allow` for the workspace after a successful "
+                    "applied sync so managed roots never carry a stale allow"
+                )
+            ),
+        ] = True
+
+    class BeadsWorkspaceEnvironmentSpec(_ConfigContract):
+        """Declarative contract for one generated beads-workspace .envrc.
+
+        Defaults encode the canonical Gas City + Beads wiring: the sync owns
+        the file end to end while every credential-free fact stays declarative
+        here, and the single identity variable (``AGENTS_GAS_CITY_ROOT``) keeps
+        failing loudly when the canonical checkout is not declared.
+        """
+
+        environment_sources: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Environment files sourced on activation"),
+        ] = ("$HOME/.config/environment.d/projects/agent-tools.envrc",)
+        identity_var: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Required variable naming the Gas City checkout"),
+        ] = "AGENTS_GAS_CITY_ROOT"
+        city_state_relpath: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Gas City Dolt state path relative to the checkout"),
+        ] = ".gc/runtime/packs/dolt/dolt-state.json"
+        beads_metadata_relpath: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Beads metadata path relative to the workspace"),
+        ] = ".beads/metadata.json"
+        unset_vars: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Inherited orchestration variables cleared on entry"),
+        ] = (
+            "GT_ROOT",
+            "GT_TOWN_ROOT",
+            "BEADS_DIR",
+            "BEADS_DOLT_PORT",
+            "BEADS_DOLT_DATA_DIR",
+            "BEADS_DOLT_SHARED_SERVER",
+        )
 
     class WorkspaceEnvironmentSyncResult(_ConfigContract):
         """Outcome of one workspace environment sync."""

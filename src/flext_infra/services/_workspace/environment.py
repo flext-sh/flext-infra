@@ -118,8 +118,13 @@ class FlextInfraWorkspaceEnvironmentMixin:
             tools["python"] = python_version
         return r[str].ok(u.Cli.toml_dumps(doc))
 
-    @staticmethod
-    def _render_environment_template(destination: str) -> p.Result[str]:
+    @classmethod
+    def _render_environment_template(
+        cls,
+        destination: str,
+        *,
+        context: m.Infra.BeadsWorkspaceEnvironmentSpec | None = None,
+    ) -> p.Result[str]:
         """Render one SSOT environment template from the toolchain spec."""
         template_path = (
             Path(__file__).resolve().parents[2]
@@ -128,7 +133,10 @@ class FlextInfraWorkspaceEnvironmentMixin:
             / "base"
             / f"{destination}.j2"
         )
-        return u.Cli.template_render(template_path, config.Infra.codegen.toolchain)
+        render_context: (
+            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.ToolchainSpec
+        ) = context if context is not None else config.Infra.codegen.toolchain
+        return u.Cli.template_render(template_path, render_context)
 
     @classmethod
     def _merge_custom_mise_toml(

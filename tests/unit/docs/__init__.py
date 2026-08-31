@@ -77,6 +77,7 @@ if TYPE_CHECKING:
         test_update_toc_replaces_existing_block,
     )
     from .generator_tests import (
+        test_collocated_workspace_project_keeps_root_aggregate_as_single_owner,
         test_configured_api_modules_own_generated_module_pages,
         test_docs_policy_declares_cross_project_relative_link_pattern,
         test_generate_apply_writes_summary_and_report,
@@ -204,6 +205,7 @@ __all__: tuple[str, ...] = (
     "test_build_uses_custom_output_dir",
     "test_builder_execute_fails_when_mkdocs_is_missing",
     "test_builder_execute_fails_with_invalid_mkdocs_config",
+    "test_collocated_workspace_project_keeps_root_aggregate_as_single_owner",
     "test_configured_api_modules_own_generated_module_pages",
     "test_doc_scope_creation",
     "test_doc_scope_requires_name",
@@ -343,6 +345,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_update_toc_replaces_existing_block",
             ),
             ".generator_tests": (
+                "test_collocated_workspace_project_keeps_root_aggregate_as_single_owner",
                 "test_configured_api_modules_own_generated_module_pages",
                 "test_docs_policy_declares_cross_project_relative_link_pattern",
                 "test_generate_apply_writes_summary_and_report",
