@@ -349,6 +349,8 @@ class FlextInfraUtilitiesDiscovery(
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
+        project_root = cls.project_root(resolved_root)
+        ownership_root = project_root.resolve() if project_root is not None else resolved_root
         from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
         for candidate in (execution_dir, *execution_dir.parents):
@@ -358,12 +360,8 @@ class FlextInfraUtilitiesDiscovery(
             if declared.failure:
                 continue
             member_roots = tuple((candidate / path).resolve() for path in declared.value)
-            if resolved_root == candidate or any(
-                resolved_root == member or member in resolved_root.parents
-                for member in member_roots
-            ):
+            if ownership_root == candidate or ownership_root in member_roots:
                 return candidate.resolve()
-        project_root = cls.project_root(resolved_root)
         if project_root is not None and (
             (project_root / c.Infra.PYPROJECT_FILENAME).is_file()
             or (project_root / c.Infra.GIT_DIR).exists()
