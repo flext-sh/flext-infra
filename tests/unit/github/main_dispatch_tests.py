@@ -75,3 +75,30 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> 
     tm.that(report.fail, eq=1)
     tm.that((report_dir / "flext-a.log").exists(), eq=False)
     tm.that((report_dir / "flext-b.log").exists(), eq=False)
+
+
+def test_run_github_workspace_pull_requests_continues_without_fail_fast(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Tests.create_github_workspace(
+        tmp_path, project_names=("flext-a", "flext-b")
+    )
+    for project_name in ("flext-a", "flext-b"):
+        u.Tests.initialize_git_repo(workspace / project_name)
+
+    result = infra_u.Infra.run_github_workspace_pull_requests(
+        m.Infra.GithubPullRequestWorkspaceRequest(
+            workspace=str(workspace),
+            projects=("flext-a", "flext-b"),
+            fail_fast=False,
+        )
+    )
+
+    tm.ok(result)
+    report = result.unwrap()
+    report_dir = workspace / ".reports/workspace/pr"
+    tm.that(report.total, eq=2)
+    tm.that(report.success, eq=0)
+    tm.that(report.fail, eq=2)
+    tm.that((report_dir / "flext-a.log").is_file(), eq=True)
+    tm.that((report_dir / "flext-b.log").is_file(), eq=True)
