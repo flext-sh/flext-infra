@@ -97,7 +97,7 @@ class ValidationRoutes(ValidationCommandRoutes):
             ),
             m.Cli.ResultCommandRoute(
                 name="verify-gates",
-                help_text="Verify the SSH-signed gate attestation for HEAD",
+                help_text="Verify the SSH-signed gate attestation for an exact commit",
                 model_cls=m.Infra.GateAttestationVerifyRequest,
                 handler=u.Infra.git_verify_gate_attestation,
             ),

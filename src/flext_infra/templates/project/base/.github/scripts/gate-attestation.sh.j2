@@ -263,6 +263,7 @@ case "$mode" in
     .venv/bin/python -m flext_infra github verify-gates \
       --workspace . --allowed-signers .github/attestations/allowed_signers \
       --expected-gates gen --expected-gates check --expected-gates test \
+      --commit-sha "$GATE_COMMIT_SHA" \
       --output "$GATE_RECEIPT_OUTPUT"
     ;;
   *) printf 'ERROR: unsupported gate attestation mode: %s\n' "$mode" >&2; exit 2 ;;

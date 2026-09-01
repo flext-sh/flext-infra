@@ -110,12 +110,13 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _promotion_sources(
-        cls, repo_root: Path
+        cls, repo_root: Path, commit_sha: str | None = None
     ) -> p.Result[tuple[m.Infra.GatePromotionSource, ...]]:
         """Load the ordered source manifest from the exact committed tree."""
         repo = cls._repo(repo_root)
+        commit = repo.commit(commit_sha) if commit_sha is not None else repo.head.commit
         try:
-            blob = repo.head.commit.tree / _PROMOTION_MANIFEST
+            blob = commit.tree / _PROMOTION_MANIFEST
             content = blob.data_stream.read().decode("utf-8")
         except (KeyError, OSError, UnicodeError, ValueError) as exc:
             return r[tuple[m.Infra.GatePromotionSource, ...]].fail(str(exc))
@@ -137,9 +138,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[tuple[m.Infra.GatePromotionSource, ...]].fail(str(exc))
         merge_parents = {
             parent.hexsha
-            for commit in repo.iter_commits(repo.head.commit)
-            if len(commit.parents) > 1
-            for parent in commit.parents[1:]
+            for history_commit in repo.iter_commits(commit)
+            if len(history_commit.parents) > 1
+            for parent in history_commit.parents[1:]
         }
         missing = tuple(source.head_sha for source in sources if source.head_sha not in merge_parents)
         if missing:
@@ -150,13 +151,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
         return r[tuple[m.Infra.GatePromotionSource, ...]].ok(sources)
 
     @classmethod
-    def _toolchain_digest(cls, repo_root: Path) -> str:
+    def _toolchain_digest(cls, repo_root: Path, commit_sha: str | None = None) -> str:
         repo = cls._repo(repo_root)
+        commit = repo.commit(commit_sha) if commit_sha is not None else repo.head.commit
         names = (".mise.toml", ".python-version", "pyproject.toml", "uv.lock")
         tracked: list[str] = []
         for name in names:
             try:
-                blob = repo.head.commit.tree / name
+                blob = commit.tree / name
             except KeyError:
                 continue
             tracked.append(f"{name}:{blob.hexsha}")
@@ -230,7 +232,8 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 f"allowed_signers file not found: {allowed}"
             )
         repo = cls._repo(repo_root)
-        tag = cls._attestation_tag(repo.head.commit.hexsha)
+        commit_sha = request.commit_sha
+        tag = cls._attestation_tag(commit_sha)
         verification = u.Cli.run_raw(
             [
                 "git", "-c", "gpg.format=ssh",
@@ -243,13 +246,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationReport].fail(
                 verification.error or f"signature verification failed: {tag}"
             )
-        predicate_result = cls._predicate_from_tag(repo_root, tag)
+        predicate_result = cls._predicate_from_tag(repo_root, tag, commit_sha)
         if predicate_result.failure:
             return r[m.Infra.GateAttestationReport].fail(
                 predicate_result.error or "invalid attestation tag"
             )
         predicate = predicate_result.value
-        checked = cls._attestation_predicate_from_value(repo_root, predicate)
+        checked = cls._attestation_predicate_from_value(
+            repo_root, predicate, commit_sha
+        )
         if checked.failure:
             return r[m.Infra.GateAttestationReport].fail(
                 checked.error or "attestation identity mismatch"
@@ -285,7 +290,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _predicate_from_tag(
-        cls, repo_root: Path, tag: str
+        cls, repo_root: Path, tag: str, commit_sha: str
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         try:
             tag_ref = next(item for item in cls._repo(repo_root).tags if item.name == tag)
@@ -296,10 +301,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 f"attestation is not an annotated tag: {tag}"
             )
         target = tag_ref.commit.hexsha
-        head = cls._repo(repo_root).head.commit.hexsha
-        if target != head:
+        if target != commit_sha:
             return r[m.Infra.GateAttestationPredicate].fail(
-                f"attestation tag target does not equal HEAD: {target} != {head}"
+                "attestation tag target does not equal selected commit: "
+                f"{target} != {commit_sha}"
             )
         message = tag_ref.tag.message.split(_SSH_SIGNATURE_MARKER, maxsplit=1)[0]
         parsed = u.Cli.json_loads(message)
@@ -315,22 +320,27 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _attestation_predicate_from_value(
-        cls, repo_root: Path, predicate: m.Infra.GateAttestationPredicate
+        cls,
+        repo_root: Path,
+        predicate: m.Infra.GateAttestationPredicate,
+        commit_sha: str,
     ) -> p.Result[bool]:
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=repo_root))
         if identity.failure:
             return r[bool].fail(identity.error or "failed to resolve Git identity")
-        tree_sha = cls._repo(repo_root).head.commit.tree.hexsha
-        sources = cls._promotion_sources(repo_root)
+        repo = cls._repo(repo_root)
+        commit = repo.commit(commit_sha)
+        tree_sha = commit.tree.hexsha
+        sources = cls._promotion_sources(repo_root, commit_sha)
         if sources.failure:
             return r[bool].fail(sources.error or "invalid promotion source manifest")
         actual_repository = canonical_origin_remote(identity.value.origin_remote or "")
-        actual_toolchain = cls._toolchain_digest(repo_root)
+        actual_toolchain = cls._toolchain_digest(repo_root, commit_sha)
         mismatches = tuple(
             field
             for field, matches in (
                 ("repository", predicate.repository == actual_repository),
-                ("commit", predicate.commit_sha == identity.value.head_oid),
+                ("commit", predicate.commit_sha == commit_sha),
                 ("tree", predicate.tree_sha == tree_sha),
                 ("toolchain", predicate.toolchain_digest == actual_toolchain),
                 ("sources", predicate.sources == sources.value),

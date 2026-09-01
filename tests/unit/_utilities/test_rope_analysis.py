@@ -87,15 +87,26 @@ class TestsFlextInfraRopeAnalysis:
         )
 
         tm.that(parent_packages, contains="flext_cli")
-        tm.that(model_context["u"], eq=frozenset({"flext_cli"}))
-        tm.that(base_context["s"], eq=frozenset({"flext_cli"}))
+        tm.that(model_context["u"], eq=frozenset({"flext_cli", "flext_core"}))
+        tm.that(base_context["s"], eq=frozenset({"flext_cli", "flext_core"}))
 
     def test_contextual_runtime_sources_resolve_transitive_parent_facades(
         self, tmp_path: Path
     ) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
-        _ = (workspace / ".gitmodules").write_text("", encoding="utf-8")
+        _ = (workspace / ".gitmodules").write_text(
+            "[submodule \"demo-grandparent\"]\n"
+            "\tpath = demo-grandparent\n"
+            "\turl = https://example.invalid/demo-grandparent.git\n"
+            "[submodule \"demo-parent\"]\n"
+            "\tpath = demo-parent\n"
+            "\turl = https://example.invalid/demo-parent.git\n"
+            "[submodule \"demo-child\"]\n"
+            "\tpath = demo-child\n"
+            "\turl = https://example.invalid/demo-child.git\n",
+            encoding="utf-8",
+        )
         grandparent_pkg = workspace / "demo-grandparent" / "src" / "demo_grandparent"
         parent_pkg = workspace / "demo-parent" / "src" / "demo_parent"
         child_project = workspace / "demo-child"
