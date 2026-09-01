@@ -35,7 +35,6 @@ Infra:
       gitleaks_version: "8.30"
       tokei_version: "14.0"
       kubeconform_version: "0.8"
-      terraform_version: "1.13"
       qlty_version: "0.642"
       mise_version: "2026.8.14"
       mise_lock_platforms:
