@@ -231,7 +231,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationReport].fail(
                 f"allowed_signers file not found: {allowed}"
             )
-        repo = cls._repo(repo_root)
         commit_sha = request.commit_sha
         tag = cls._attestation_tag(commit_sha)
         verification = u.Cli.run_raw(

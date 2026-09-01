@@ -96,13 +96,13 @@ class TestsFlextInfraRopeAnalysis:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
         _ = (workspace / ".gitmodules").write_text(
-            "[submodule \"demo-grandparent\"]\n"
+            '[submodule "demo-grandparent"]\n'
             "\tpath = demo-grandparent\n"
             "\turl = https://example.invalid/demo-grandparent.git\n"
-            "[submodule \"demo-parent\"]\n"
+            '[submodule "demo-parent"]\n'
             "\tpath = demo-parent\n"
             "\turl = https://example.invalid/demo-parent.git\n"
-            "[submodule \"demo-child\"]\n"
+            '[submodule "demo-child"]\n'
             "\tpath = demo-child\n"
             "\turl = https://example.invalid/demo-child.git\n",
             encoding="utf-8",

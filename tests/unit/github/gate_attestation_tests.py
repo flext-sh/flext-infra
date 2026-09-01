@@ -17,7 +17,7 @@ _OPEN_REPOSITORIES: list[Repo] = []
 
 
 @pytest.fixture(autouse=True)
-def _close_git_repositories() -> Iterator[None]:
+def close_git_repositories() -> Iterator[None]:
     yield
     while _OPEN_REPOSITORIES:
         _OPEN_REPOSITORIES.pop().close()

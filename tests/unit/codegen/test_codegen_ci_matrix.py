@@ -105,7 +105,7 @@ class TestCodegenCiMatrix:
         tm.that(script, has="Transferred automatically to maintained PR #$PR")
         tm.that(script, has="for source_pr in $SOURCE_PRS")
         tm.that(script, has='jq -c \'.[]\' "$canonical_manifest" >>"$manifest_lines"')
-        tm.that(script, has='select(.pr == $pr)')
+        tm.that(script, has="select(.pr == $pr)")
         tm.that(script, has='jq -c \'.\' "$transferred_lines"')
         tm.that(script, lacks="MAX_DRAFT")
         tm.that(review_case, has="publish_receipt")
