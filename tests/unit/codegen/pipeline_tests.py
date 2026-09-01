@@ -117,7 +117,9 @@ def _make_project(
             f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
-    (project / ".git").mkdir()
+    init_result = u.Cli.run_raw(["git", "init"], cwd=project)
+    tm.ok(init_result)
+    tm.that(init_result.value.exit_code, eq=0)
     package_name = name.replace("-", "_")
     pkg_dir = project / "src" / package_name
     pkg_dir.mkdir(parents=True)
@@ -193,7 +195,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     all_violations = list(project_b_fixed.violations_fixed) + list(
         project_b_fixed.violations_skipped
     )
-    assert any(v.rule.startswith("NS-002") for v in all_violations), all_violations
+    tm.that(any(v.rule.startswith("NS-002") for v in all_violations), eq=True)
     unmapped_count = FlextInfraCodegenLazyInit.model_validate(payload).generate_inits()
     tm.that(unmapped_count, gte=0)
     census_after = FlextInfraCodegenCensus.model_validate(payload).run()
