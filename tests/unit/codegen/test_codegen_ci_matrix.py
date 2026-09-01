@@ -447,6 +447,7 @@ class TestCodegenCiMatrix:
         ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
 
         tm.that(ci_job, has="github.event.pull_request.draft == false")
+        tm.that(ci_job, lacks="make test")
         tm.that(merge_guard, has="github.event.pull_request.draft == false")
         tm.that(merge_guard, has="subject=$(git log -1 --format=%s)")
         tm.that(merge_guard, has='[[ "$subject" == \\[WIP\\]* ]]')
