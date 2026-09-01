@@ -109,6 +109,30 @@ def test_signed_gate_attestation_round_trip(tmp_path: Path) -> None:
     tm.that(verified.unwrap().sources[0].pr, eq=518)
 
 
+def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -> None:
+    repo, remote, allowed_signers = _signed_repository(tmp_path)
+    transport = remote.working_dir
+    with repo.config_writer() as config:
+        config.set_value(
+            f'url "file://{transport}"',
+            "insteadOf",
+            "https://github.example/flext/fixture.git",
+        )
+    repo.remote("origin").set_url("https://github.example/flext/fixture.git")
+    tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
+    repo.remote("origin").set_url("https://github.example/flext/fixture")
+
+    verified = u.Infra.git_verify_gate_attestation(
+        m.Infra.GateAttestationVerifyRequest(
+            workspace=str(tmp_path),
+            allowed_signers=str(allowed_signers),
+            expected_gates=("gen", "check", "test"),
+        )
+    )
+
+    tm.ok(verified)
+
+
 def test_gate_attestation_rejects_incomplete_coverage(tmp_path: Path) -> None:
     _repo, _remote, allowed_signers = _signed_repository(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))

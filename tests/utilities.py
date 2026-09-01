@@ -1070,7 +1070,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n"),
                 encoding="utf-8",
             )
-            (project / ".git").mkdir()
             TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
             pkg = project / "src" / pkg_name
             pkg.mkdir(parents=True)
@@ -1094,6 +1093,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             for filename, content in files.items():
                 (pkg / filename).write_text(content, encoding="utf-8")
+            TestsFlextInfraUtilities.Tests.initialize_git_repo(project)
             return project
 
         @staticmethod
