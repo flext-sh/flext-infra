@@ -256,8 +256,7 @@ class FlextInfraPyprojectModernizer(
                 *(
                     shared
                     for shared in path_rules.project_shared_search_paths
-                    if shared in declared_python_dirs
-                    or (project_dir / shared).is_dir()
+                    if shared in declared_python_dirs or (project_dir / shared).is_dir()
                 ),
                 path_rules.project_root,
             )

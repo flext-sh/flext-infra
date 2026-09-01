@@ -17,6 +17,92 @@ from tests.unit.workspace.worktree_fixture import WorktreeFixture
 class TestsRepositoryLocalTopology:
     """Prove each repository owns its topology and typed Beads identity."""
 
+    def test_repository_manifest_projects_declared_command_policy(
+        self, tmp_path: Path
+    ) -> None:
+        """Load local command extensions only after validating Git identity."""
+        root = tmp_path / "project"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-project",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+        manifest: dict[str, t.JsonValue] = {
+            "repository": {
+                "name": "fixture-project",
+                "distribution": "fixture-project",
+                "url": WorktreeFixture.governed_repository_url("fixture-project"),
+                "path": ".",
+                "role": "standalone",
+                "provider": u.Tests.provider().name,
+                "checkout": "root",
+                "codegen": "conform",
+                "package": True,
+                "editable": False,
+                "read_only": False,
+                "extra_verbs": [
+                    {
+                        "name": "charts",
+                        "default_what": "all",
+                        "whats": ["all", "template"],
+                    }
+                ],
+                "script_dispatch": {
+                    "dispatcher": "scripts/dispatch.py",
+                    "roots": ["scripts"],
+                },
+            }
+        }
+        tm.ok(u.Cli.yaml_dump(root / "config" / "workspace.yaml", manifest))
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(
+            tuple(verb.name for verb in workspace.repository.extra_verbs),
+            eq=("charts",),
+        )
+        tm.that(
+            workspace.repository.script_dispatch,
+            eq=m.Infra.ScriptDispatchSpec(
+                dispatcher="scripts/dispatch.py", roots=("scripts",)
+            ),
+        )
+
+    def test_repository_manifest_cannot_override_git_identity(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject a local manifest naming a different canonical repository."""
+        root = tmp_path / "project"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            "fixture-project",
+            workspace="fixture-workspace",
+            database="fixture-database",
+            issue_prefix="fixture-prefix",
+        )
+        manifest: dict[str, t.JsonValue] = {
+            "repository": {
+                "name": "different-project",
+                "distribution": "fixture-project",
+                "url": WorktreeFixture.governed_repository_url("fixture-project"),
+                "path": ".",
+                "role": "standalone",
+                "provider": u.Tests.provider().name,
+                "checkout": "root",
+                "codegen": "conform",
+                "package": True,
+                "editable": False,
+                "read_only": False,
+            }
+        }
+        tm.ok(u.Cli.yaml_dump(root / "config" / "workspace.yaml", manifest))
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="repository manifest differs from Git identity: name")
+
     def test_loads_typed_beads_identity_from_the_repository_itself(
         self, tmp_path: Path
     ) -> None:

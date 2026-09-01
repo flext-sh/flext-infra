@@ -105,6 +105,7 @@ class FlextInfraConstantsCodegenProject:
 
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
     BEADS_CONFIG_VERSION: Final = 1
+    WORKSPACE_CONFIG_FILENAME: Final[str] = "workspace.yaml"
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"

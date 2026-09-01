@@ -29,6 +29,69 @@ class FlextInfraWorkspaceDetector(
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
 
     @staticmethod
+    def _workspace_path(repository_root: Path) -> Path:
+        """Return the optional repository-local policy manifest path."""
+        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_CONFIG_FILENAME
+
+    @classmethod
+    def _apply_repository_manifest(
+        cls, repository_root: Path, derived: m.Infra.RepositoryRef
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Validate local policy against Git identity and apply owned extensions."""
+        manifest_path = cls._workspace_path(repository_root)
+        if not manifest_path.is_file():
+            return r[m.Infra.RepositoryRef].ok(derived)
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            return r[m.Infra.RepositoryRef].fail(
+                f"invalid repository manifest ({manifest_path}): "
+                f"{loaded.error or 'configuration load failed'}"
+            )
+        payload = loaded.value.data
+        repository_payload = payload.get("repository")
+        try:
+            declared = m.Infra.RepositoryRef.model_validate(repository_payload)
+        except c.ValidationError as exc:
+            return r[m.Infra.RepositoryRef].fail_op(
+                f"repository manifest model validation ({manifest_path})", exc
+            )
+        identity_fields = (
+            "name",
+            "distribution",
+            "path",
+            "role",
+            "state",
+            "provider",
+            "checkout",
+            "codegen",
+            "package",
+            "editable",
+            "read_only",
+        )
+        divergent = tuple(
+            field
+            for field in identity_fields
+            if getattr(declared, field) != getattr(derived, field)
+        )
+        if u.Infra.git_remote_identity(declared.url) != u.Infra.git_remote_identity(
+            derived.url
+        ):
+            divergent = (*divergent, "url")
+        if divergent:
+            return r[m.Infra.RepositoryRef].fail(
+                f"repository manifest differs from Git identity: {', '.join(divergent)}"
+            )
+        return r[m.Infra.RepositoryRef].ok(
+            derived.model_copy(
+                update={
+                    "uv_link_mode": declared.uv_link_mode,
+                    "extra_verbs": declared.extra_verbs,
+                    "script_dispatch": declared.script_dispatch,
+                }
+            )
+        )
+
+    @staticmethod
     def _provider_owns_url(provider: m.Infra.ProviderSpec, url: str) -> bool:
         """Require the remote identity to name this provider's organization.
 
@@ -192,7 +255,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail(
                 f"repository is not governed by provider {provider.name}: {effective_url}"
             )
-        return r[m.Infra.RepositoryRef].ok(repository)
+        return cls._apply_repository_manifest(repository_root, repository)
 
     @classmethod
     def _load_subprojects(
