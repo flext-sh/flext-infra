@@ -51,8 +51,8 @@ class TestsFlextInfraRopeAnalysis:
         settings_context = u.Infra.contextual_runtime_alias_sources(
             project_root=project, file_path=package_dir / "settings.py"
         )
-        tm.that(model_context["m"], eq=frozenset({"flext_cli"}))
-        tm.that(settings_context["m"], eq=frozenset({"flext_cli"}))
+        tm.that(model_context["m"], eq=frozenset({"flext_cli", "flext_core"}))
+        tm.that(settings_context["m"], eq=frozenset({"flext_cli", "flext_core"}))
 
     def test_contextual_runtime_sources_resolve_parent_facade_alias_base(
         self, tmp_path: Path
@@ -87,8 +87,8 @@ class TestsFlextInfraRopeAnalysis:
         )
 
         tm.that(parent_packages, contains="flext_cli")
-        tm.that(model_context["u"], eq=frozenset({"flext_cli"}))
-        tm.that(base_context["s"], eq=frozenset({"flext_cli"}))
+        tm.that(model_context["u"], eq=frozenset({"flext_cli", "flext_core"}))
+        tm.that(base_context["s"], eq=frozenset({"flext_cli", "flext_core"}))
 
     def test_contextual_runtime_sources_resolve_transitive_parent_facades(
         self, tmp_path: Path
