@@ -573,7 +573,7 @@ class FlextInfraUtilitiesPyprojectConform:
         exclude_newer_overrides: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
-        uv_environments: t.StrSequence = (),
+        uv_environments: t.StrSequence | None = None,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         workspace_root = cls._is_workspace_context_root(
@@ -632,13 +632,13 @@ class FlextInfraUtilitiesPyprojectConform:
         # sequence skips the splits the fleet does not support (win32 resolves
         # meltano's structlog cap against flext-core's floor and is
         # unsatisfiable).
-        if uv_environments:
+        if uv_environments is not None and uv_environments:
             # Declared as list[JsonValue], not list[str]: `list` is invariant,
             # so the narrower element type is not assignable to the writer's
             # parameter even though every element is a valid JsonValue.
             environments: list[t.JsonValue] = list(uv_environments)
             u.Cli.toml_sync_value(uv, "environments", environments)
-        else:
+        elif uv_environments is not None:
             u.Cli.toml_remove_key_if_present(uv, "environments")
         # Two shapes share this uv key. A bare exemption is `false` (waive the
         # cooldown entirely, for a reviewed security floor). An override is a

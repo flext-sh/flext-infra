@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_tests import tm
 from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
 
@@ -12,6 +13,17 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraExtraPathsSearchPaths:
+    def test_pyrefly_search_paths_include_declared_generated_roots(
+        self, tmp_path: Path
+    ) -> None:
+        manager = FlextInfraExtraPathsManager(
+            workspace_root=tmp_path, generated_python_roots=("src", "tests")
+        )
+
+        result = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+
+        tm.that(result, eq=("src", "."))
+
     """Verify productive, existing Pyrefly search roots."""
 
     def test_pyrefly_search_paths_only_use_local_project_dirs(
