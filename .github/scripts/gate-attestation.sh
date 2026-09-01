@@ -36,13 +36,11 @@ city_path() {
 
 ensure_draft_pull_request() {
   branch=$(git branch --show-current)
-  repository=$(current_repository)
-  owner=${repository%%/*}
-  pr_json=$(gh pr list --state open --head "$owner:$branch" --json number,baseRefName,isDraft --limit 1 --jq '.[0]')
+  pr_json=$(gh pr list --state open --head "$branch" --json number,baseRefName,isDraft --limit 1 --jq '.[0]')
   if test -n "$pr_json"; then :; else
     gh label create WIP --color D4C5F9 --description 'Draft persistence; validation and attestation are not selected' --force
     gh pr create --draft --base "$BASE" --head "$branch" --title "[WIP] $MESSAGE ($BEAD)" --body "Bead: $BEAD"
-    pr_json=$(gh pr list --state open --head "$owner:$branch" --json number,baseRefName,isDraft --limit 1 --jq '.[0]')
+    pr_json=$(gh pr list --state open --head "$branch" --json number,baseRefName,isDraft --limit 1 --jq '.[0]')
   fi
   test -n "$pr_json"
   test "$(printf '%s' "$pr_json" | jq -r .baseRefName)" = "$BASE"

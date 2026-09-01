@@ -89,7 +89,7 @@ class TestCodegenCiMatrix:
         tm.that(makefile, has="_builtin_checkpoint_verify:")
         tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
         tm.that(script, has="gh pr list --state open")
-        tm.that(script, has='--head "$owner:$branch"')
+        tm.that(script, has='--head "$branch"')
         tm.that(script, lacks='gh pr view "$branch"')
         tm.that(script, lacks="[skip ci]")
         tm.that(
