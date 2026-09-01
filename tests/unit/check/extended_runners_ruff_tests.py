@@ -56,6 +56,9 @@ class TestRealGateRunners:
     ) -> None:
         """Do not recurse into nested consumer repositories or worktrees."""
         project_dir = u.Tests.mk_project(tmp_path, "scoped-project", with_src=True)
+        (project_dir / "src/scoped_project/__init__.py").write_text(
+            '"""Scoped test package."""\n', encoding="utf-8"
+        )
         (project_dir / "tests").mkdir()
         nested = project_dir / ".claude" / "worktrees" / "nested"
         nested.mkdir(parents=True)

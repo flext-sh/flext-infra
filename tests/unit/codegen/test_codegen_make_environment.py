@@ -307,15 +307,14 @@ class TestsCodegenMakeEnvironment:
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
                 "-u UV_PROJECT_ENVIRONMENT "
-                '-u PROJECT_ROOT TMPDIR="$(PROJECT_ROOT)/.test-tmp" '
-                'GOTMPDIR="$(PROJECT_ROOT)/.test-tmp" '
-                'PYTHONPATH="$(PROJECT_ROOT)/src" '
+                '-u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
             in makefile,
             eq=True,
         )
-        tm.that('mkdir -p "$(PROJECT_ROOT)/.test-tmp"' in makefile, eq=True)
+        tm.that('test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"' in makefile, eq=True)
+        tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)

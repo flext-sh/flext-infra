@@ -349,7 +349,12 @@ class FlextInfraUtilitiesDiscovery(
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
-        project_root = cls.project_root(resolved_root)
+        explicit_root = (
+            execution_dir
+            if (execution_dir / c.Infra.PYPROJECT_FILENAME).is_file()
+            else None
+        )
+        project_root = explicit_root or cls.project_root(resolved_root)
         ownership_root = project_root.resolve() if project_root is not None else resolved_root
         from flext_infra._utilities.git import FlextInfraUtilitiesGit
 

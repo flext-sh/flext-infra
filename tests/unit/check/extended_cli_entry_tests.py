@@ -24,6 +24,9 @@ class TestWorkspaceCheckCLI:
             pyproject='[project]\nname = "p1"\nversion = "0.1.0"\n',
             with_src=True,
         )
+        (workspace / "p1/src/p1/__init__.py").write_text(
+            '"""Test package."""\n', encoding="utf-8"
+        )
         u.Tests.declare_workspace_projects(workspace, ("p1",))
         return workspace
 

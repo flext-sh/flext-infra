@@ -191,6 +191,14 @@ class TestCodegenCiMatrix:
 
         tm.that(workflow, has="run: CI=Y make setup")
         tm.that(workflow, has="github verify-gates")
+        tm.that(
+            workflow,
+            has="ref: ${{ github.event.pull_request.head.sha || github.sha }}",
+        )
+        tm.that(
+            workflow,
+            has='git fetch --force origin "refs/tags/attest/gates/v1/$GATE_COMMIT_SHA:',
+        )
         tm.that(workflow, lacks="run: CI=Y make gen WHAT=check")
         tm.that(workflow, lacks="run: CI=Y make check")
         tm.that(workflow, lacks="run: CI=Y make test")
@@ -198,8 +206,10 @@ class TestCodegenCiMatrix:
         tm.that(workflow, lacks="WHAT=apply")
         tm.that(workflow, lacks="APPLY=Y")
         tm.that(
-            workflow.index("run: CI=Y make setup"),
-            lt=workflow.index("github verify-gates"),
+            workflow.index("run: CI=Y make setup")
+            < workflow.index("git fetch --force origin")
+            < workflow.index("github verify-gates"),
+            eq=True,
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
