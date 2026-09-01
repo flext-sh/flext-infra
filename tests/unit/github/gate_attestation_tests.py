@@ -77,6 +77,7 @@ def _verify(
         )
     )
 
+
 def test_signed_gate_attestation_round_trip_is_local(tmp_path: Path) -> None:
     repo, allowed_signers = _signed_repository(tmp_path)
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
