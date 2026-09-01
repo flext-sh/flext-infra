@@ -137,6 +137,7 @@ case "$mode" in
     git push origin "HEAD:refs/heads/$(git branch --show-current)"
     ensure_draft_pull_request
     update_wip_tracker
+    printf '%s\n' '[WIP] persisted; validation and attestation NOT SELECTED'
     ;;
   merge)
     : "${BEAD:?BEAD is required}"; : "${TARGET_PR:?TARGET_PR is required}"; : "${SOURCE_PRS:?SOURCE_PRS is required}"

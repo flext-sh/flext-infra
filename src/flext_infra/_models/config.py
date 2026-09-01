@@ -1499,6 +1499,10 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
+        executable: Annotated[
+            bool | None,
+            m.Field(description="Required executable state when mode is governed"),
+        ] = None
         conflict_sections: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -3251,6 +3255,10 @@ class FlextInfraConfigModels:
         current_sha256: Annotated[
             str, m.Field(description="SHA-256 of current content, empty when missing")
         ] = ""
+        executable: Annotated[
+            bool | None,
+            m.Field(description="Required executable state when mode is governed"),
+        ] = None
         changed: Annotated[bool, m.Field(description="Whether content differs")]
         absent: Annotated[
             bool,

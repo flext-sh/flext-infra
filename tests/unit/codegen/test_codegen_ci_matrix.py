@@ -89,6 +89,10 @@ class TestCodegenCiMatrix:
         tm.that(makefile, has="_builtin_checkpoint_verify:")
         tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
         tm.that(script, lacks="[skip ci]")
+        tm.that(
+            (root / ".github/scripts/gate-attestation.sh").stat().st_mode & 0o111,
+            eq=0o111,
+        )
         wip_case = script.split("  wip)", maxsplit=1)[1].split("  merge)", maxsplit=1)[0]
         merge_case = script.split("  merge)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
         review_case = script.split("  review)", maxsplit=1)[1].split("  verify)", maxsplit=1)[0]
@@ -112,8 +116,8 @@ class TestCodegenCiMatrix:
         tm.that(script, lacks="git tag -s")
         tm.that(script, has="github attest-gates")
         tm.that(script, has="github verify-gates")
-        tm.that(script, lacks="gc bd")
-        tm.that(script, has="bd update")
+        tm.that(script, has='gc bd update "$BEAD" --rig "$rig"')
+        tm.that(script, has='bd -C "$city_path" update "$shared_child"')
         tm.that(workflow, has="id-token: write")
         tm.that(workflow, has="attestations: write")
         action = config.Infra.codegen.github_actions["attest"]

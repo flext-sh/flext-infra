@@ -88,3 +88,15 @@ def test_gate_attestation_rejects_incomplete_coverage(tmp_path: Path) -> None:
     )
     tm.fail(verified)
     tm.that(verified.error or "", has="exactly match")
+
+
+def test_gate_attestation_removes_local_tag_when_atomic_push_fails(
+    tmp_path: Path,
+) -> None:
+    repo, _remote, _allowed_signers = _signed_repository(tmp_path)
+    repo.delete_remote("origin")
+
+    created = u.Infra.git_create_gate_attestation(_request(tmp_path))
+
+    tm.fail(created)
+    tm.that(tuple(tag.name for tag in repo.tags), eq=())

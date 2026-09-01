@@ -134,6 +134,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationReport].fail(
                 serialized.error or "failed to serialize attestation predicate"
             )
+        tag_created = False
         try:
             repo = cls._repo(repo_root)
             if tag in {item.name for item in repo.tags}:
@@ -141,6 +142,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     f"attestation tag already exists: {tag}"
                 )
             repo.git.tag("--sign", "--annotate", "--message", serialized.value, tag)
+            tag_created = True
             branch = repo.active_branch.name
             repo.git.push(
                 "--atomic",
@@ -149,6 +151,13 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 f"refs/tags/{tag}:refs/tags/{tag}",
             )
         except (GitCommandError, OSError, ValueError) as exc:
+            if tag_created:
+                try:
+                    repo.delete_tag(tag)
+                except (GitCommandError, OSError, ValueError) as cleanup_exc:
+                    return r[m.Infra.GateAttestationReport].fail(
+                        f"{exc}; transaction cleanup failed: {cleanup_exc}"
+                    )
             return r[m.Infra.GateAttestationReport].fail(str(exc))
         return r[m.Infra.GateAttestationReport].ok(
             cls._attestation_report(tag, predicate)

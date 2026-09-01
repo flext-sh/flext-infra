@@ -291,6 +291,8 @@ skill-create-output/
 CLAUDE.local.md
 
 # Tracked managed artifacts
+!.coderabbit.yaml
+!cubic.yaml
 !.github/attestations/
 !.github/attestations/allowed_signers
 !.github/ci-template/

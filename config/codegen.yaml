@@ -1142,6 +1142,7 @@ Infra:
       - path: .github/scripts/gate-attestation.sh
         owner: codegen
         policy: full
+        executable: true
       - path: tests/fixtures/ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
