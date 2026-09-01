@@ -313,7 +313,7 @@ _bootstrap_setup_tools:
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	fi; \
-	current=$$("$$mise" --version); \
+	current=$$(env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" --version); \
 	current=$${current%% *}; \
 	if [ "$$current" != "$$mise_version" ]; then \
 		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
@@ -333,12 +333,12 @@ _bootstrap_setup_tools:
 	mkdir -p "$$config_dir"; \
 	: > "$$global_config"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" trust "$$project_root/.mise.toml"; \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" trust "$$project_root/.mise.toml"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" install --locked --yes; \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" -C "$$project_root" install --locked --yes; \
 	uv_output=$$(MISE_CONFIG_DIR="$$config_dir" \
 		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" -C "$$project_root" \
 		exec -- uv --version); \
 	case "$$uv_output" in \
 		'uv '*) uv_actual=$${uv_output#uv }; uv_actual=$${uv_actual%% *} ;; \
@@ -542,7 +542,7 @@ endif
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
-	@"$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
+	@env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
 		$(SELF_MAKE) _setup_lifecycle
 
 .PHONY: _setup_lifecycle
@@ -1031,7 +1031,7 @@ define _mise_launcher_apply
 		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-		"$(SETUP_MISE)" -C "$$scratch" generate install-script \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" generate install-script \
 		--version "$(SETUP_MISE_VERSION)" \
 		--write "$$scratch/mise" --windows \
 		>"$$scratch/generate.log" 2>&1; then \
@@ -1089,7 +1089,7 @@ define _mise_lock_apply
 			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 			MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-			"$(SETUP_MISE)" -C "$$scratch" lock \
+			env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" lock \
 			--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
 			cat "$$scratch/lock.log"; \
 		else \

@@ -493,7 +493,7 @@ endif
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
-	@"$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
+	@env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
 		$(SELF_MAKE) _setup_lifecycle
 
 .PHONY: _setup_lifecycle
@@ -835,7 +835,7 @@ define _mise_launcher_apply
 		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-		"$(SETUP_MISE)" -C "$$scratch" generate install-script \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" generate install-script \
 		--version "$(SETUP_MISE_VERSION)" \
 		--write "$$scratch/mise" --windows \
 		>"$$scratch/generate.log" 2>&1; then \
@@ -893,7 +893,7 @@ define _mise_lock_apply
 			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 			MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-			"$(SETUP_MISE)" -C "$$scratch" lock \
+			env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" lock \
 			--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
 			cat "$$scratch/lock.log"; \
 		else \

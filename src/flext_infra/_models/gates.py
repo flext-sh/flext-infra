@@ -82,6 +82,26 @@ class FlextInfraModelsGates:
                 raise ValueError(msg)
             return self
 
+    class GatePromotionSource(m.ContractModel):
+        """One exact Draft head incorporated into the promoted aggregate."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True
+        )
+
+        pr: Annotated[t.PositiveInt, m.Field(description="Source Draft PR number")]
+        head_sha: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact source Draft head SHA")
+        ]
+        bead: Annotated[t.NonEmptyStr, m.Field(description="Source work Bead")]
+
+        @u.model_validator(mode="after")
+        def _validate_source(self) -> Self:
+            if not re.fullmatch(r"[0-9a-f]{40}", self.head_sha):
+                msg = "promotion source head_sha must be a full lowercase Git SHA"
+                raise ValueError(msg)
+            return self
+
     class GateAttestationPredicate(m.ContractModel):
         """Canonical signed statement for locally completed gates."""
 
@@ -102,6 +122,10 @@ class FlextInfraModelsGates:
         ]
         integration_branch: Annotated[
             t.NonEmptyStr, m.Field(description="Protected integration branch")
+        ]
+        sources: Annotated[
+            tuple[FlextInfraModelsGates.GatePromotionSource, ...],
+            m.Field(min_length=1, description="Complete ordered Draft source manifest"),
         ]
         signer: Annotated[
             t.NonEmptyStr, m.Field(description="Allowed-signers principal")
@@ -127,8 +151,17 @@ class FlextInfraModelsGates:
                 msg = "toolchain_digest must be sha256:<64 lowercase hex>"
                 raise ValueError(msg)
             gates = tuple(item.gate for item in self.commands)
-            if len(gates) != len(set(gates)) or set(gates) != set(self.covered_gates):
+            covered_gates = tuple(self.covered_gates)
+            if (
+                len(gates) != len(set(gates))
+                or len(covered_gates) != len(set(covered_gates))
+                or gates != covered_gates
+            ):
                 msg = "covered_gates and command evidence must match one-to-one"
+                raise ValueError(msg)
+            source_prs = tuple(item.pr for item in self.sources)
+            if len(source_prs) != len(set(source_prs)):
+                msg = "promotion source PRs must be unique"
                 raise ValueError(msg)
             return self
 
@@ -150,6 +183,13 @@ class FlextInfraModelsGates:
             t.StrSequence, m.Field(min_length=1, description="Canonical Make gates")
         ]
 
+        @u.model_validator(mode="after")
+        def _validate_gates(self) -> Self:
+            if len(self.gates) != len(set(self.gates)):
+                msg = "attestation gates must be unique"
+                raise ValueError(msg)
+            return self
+
     class GateAttestationVerifyRequest(m.ContractModel):
         """Verify the signed attestation for the repository HEAD."""
 
@@ -165,6 +205,13 @@ class FlextInfraModelsGates:
             m.Field(description="Optional path receiving the verified predicate JSON"),
         ] = None
 
+        @u.model_validator(mode="after")
+        def _validate_expected_gates(self) -> Self:
+            if len(self.expected_gates) != len(set(self.expected_gates)):
+                msg = "expected attestation gates must be unique"
+                raise ValueError(msg)
+            return self
+
     class GateAttestationReport(m.ContractModel):
         """Verified or newly created signed gate attestation."""
 
@@ -173,6 +220,10 @@ class FlextInfraModelsGates:
         tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested tree SHA")]
         signer: Annotated[t.NonEmptyStr, m.Field(description="Verified signer principal")]
         covered_gates: Annotated[t.StrSequence, m.Field(description="Covered gates")]
+        sources: Annotated[
+            tuple[FlextInfraModelsGates.GatePromotionSource, ...],
+            m.Field(description="Attested Draft source manifest"),
+        ]
 
 
 __all__: list[str] = ["FlextInfraModelsGates"]

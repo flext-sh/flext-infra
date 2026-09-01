@@ -19,10 +19,19 @@ current_repository() {
 
 local_rig() {
   root=$(git rev-parse --show-toplevel)
-  gc status --json | jq -er --arg root "$root" '
+  git_common=$(git rev-parse --path-format=absolute --git-common-dir)
+  (cd "$git_common" && gc status --json) | jq -er --arg root "$root" --arg git_common "$git_common" '
     [.rigs[] | . as $rig
-      | select($root == $rig.path or ($root | startswith($rig.path + "/")))]
+      | select(
+        $root == $rig.path or ($root | startswith($rig.path + "/")) or
+        $git_common == $rig.path or ($git_common | startswith($rig.path + "/"))
+      )]
     | sort_by(.path | length) | last | .name'
+}
+
+city_path() {
+  git_common=$(git rev-parse --path-format=absolute --git-common-dir)
+  (cd "$git_common" && gc status --json) | jq -er .city_path
 }
 
 ensure_draft_pull_request() {
@@ -47,7 +56,8 @@ publish_receipt() {
     --integration-branch "$BASE" --signer "$signer" \
     --gates gen --gates check --gates test
   rig=$(local_rig)
-  gc bd update "$BEAD" --rig "$rig" --set-metadata "gc.work_branch=$(git branch --show-current)" \
+  city=$(city_path)
+  gc --city "$city" bd update "$BEAD" --rig "$rig" --set-metadata "gc.work_branch=$(git branch --show-current)" \
     --set-metadata "gc.work_commit=$sha" --set-metadata "gc.work_pr=$PR" \
     --set-metadata 'gc.work_pr_state=review' \
     --append-notes "Automatic Review proof: SHA $sha, PR $PR, signed aggregate receipt $tag, local gates exit 0."
@@ -56,7 +66,8 @@ publish_receipt() {
 update_wip_tracker() {
   sha=$(git rev-parse HEAD)
   rig=$(local_rig)
-  gc bd update "$BEAD" --rig "$rig" --set-metadata "gc.work_branch=$(git branch --show-current)" \
+  city=$(city_path)
+  gc --city "$city" bd update "$BEAD" --rig "$rig" --set-metadata "gc.work_branch=$(git branch --show-current)" \
     --set-metadata "gc.work_commit=$sha" --set-metadata "gc.work_pr=$PR" \
     --set-metadata 'gc.work_pr_state=draft_wip' \
     --append-notes "[WIP] checkpoint: SHA $sha, PR $PR Draft/WIP; validation and attestation NOT SELECTED."
@@ -64,9 +75,9 @@ update_wip_tracker() {
 
 update_shared_tracker() {
   rig=$(local_rig)
-  shared_child=$(gc bd show "$BEAD" --rig "$rig" --json | jq -er '.[0].metadata["gc.shared_child"]')
-  city_path=$(gc status --json | jq -er .city_path)
-  bd -C "$city_path" update "$shared_child" --append-notes "$1"
+  city=$(city_path)
+  shared_child=$(gc --city "$city" bd show "$BEAD" --rig "$rig" --json | jq -er '.[0].metadata["gc.shared_child"]')
+  bd -C "$city" update "$shared_child" --append-notes "$1"
 }
 
 source_bead() {
@@ -129,13 +140,14 @@ aggregate_pull_requests() {
 close_transferred_drafts() {
   aggregate_sha=$(git rev-parse HEAD)
   rig=$(local_rig)
+  city=$(city_path)
   jq -c '.[]' "$canonical_manifest" | while IFS= read -r source; do
     source_pr=$(printf '%s' "$source" | jq -r .pr)
     source_sha=$(printf '%s' "$source" | jq -r .head_sha)
     source_work=$(printf '%s' "$source" | jq -r .bead)
     gh pr comment "$source_pr" --body "Transferred automatically to maintained PR #$PR at aggregate SHA $aggregate_sha; source SHA $source_sha; bead $source_work."
     gh pr close "$source_pr" --comment "Draft source closed after automatic transfer to maintained PR #$PR."
-    gc bd update "$source_work" --rig "$rig" --append-notes "Draft PR $source_pr transferred to maintained PR $PR at $aggregate_sha and closed automatically."
+    gc --city "$city" bd update "$source_work" --rig "$rig" --append-notes "Draft PR $source_pr transferred to maintained PR $PR at $aggregate_sha and closed automatically."
   done
 }
 
@@ -143,7 +155,8 @@ case "$mode" in
   wip)
     : "${BEAD:?BEAD is required}"; : "${BASE:?BASE is required}"; : "${PATHS:?PATHS is required}"
     rig=$(local_rig)
-    gc bd show "$BEAD" --rig "$rig" --json >/dev/null
+    city=$(city_path)
+    gc --city "$city" bd show "$BEAD" --rig "$rig" --json >/dev/null
     MESSAGE=${MESSAGE:-checkpoint}
     git add -- $PATHS
     git diff --cached --quiet && { printf 'ERROR: checkpoint has no staged changes\n' >&2; exit 2; }
