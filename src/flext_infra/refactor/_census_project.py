@@ -23,7 +23,8 @@ class FlextInfraRefactorCensusProjectMixin:
     """
 
     if TYPE_CHECKING:
-        fail_fast: bool
+        @property
+        def fail_fast(self) -> bool: ...
 
         @staticmethod
         def _include_rule(

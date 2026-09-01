@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+from flext_infra import c, u as infra_u
 from flext_tests import tm
 from tests import m, u
 
@@ -12,24 +12,25 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_run_github_workspace_pull_requests_aggregates_results(tmp_path: Path) -> None:
+def test_run_github_workspace_pull_requests_stops_on_first_failure(
+    tmp_path: Path,
+) -> None:
     workspace = u.Tests.create_github_workspace(
         tmp_path, project_names=("flext-a", "flext-b")
     )
 
-    result = u.Infra.run_github_workspace_pull_requests(
+    result = infra_u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
             workspace=str(workspace),
             action=c.Infra.PullRequestAction.STATUS,
-            fail_fast=False,
         )
     )
 
     tm.ok(result)
     report = result.unwrap()
-    tm.that(report.total, eq=2)
+    tm.that(report.total, eq=1)
     tm.that(report.success, eq=0)
-    tm.that(report.fail, eq=2)
+    tm.that(report.fail, eq=1)
 
 
 def test_run_github_workspace_pull_requests_respects_project_selection(
@@ -39,19 +40,19 @@ def test_run_github_workspace_pull_requests_respects_project_selection(
         tmp_path, project_names=("flext-a", "flext-b", "flext-c")
     )
 
-    result = u.Infra.run_github_workspace_pull_requests(
+    result = infra_u.Infra.run_github_workspace_pull_requests(
         m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace), projects=["flext-a", "flext-b"], fail_fast=False
+            workspace=str(workspace), projects=["flext-a", "flext-b"]
         )
     )
 
     tm.ok(result)
     report = result.unwrap()
     report_dir = workspace / ".reports/workspace/pr"
-    tm.that(report.total, eq=2)
-    tm.that(report.fail, eq=2)
-    tm.that((report_dir / "flext-a.log").is_file(), eq=True)
-    tm.that((report_dir / "flext-b.log").is_file(), eq=True)
+    tm.that(report.total, eq=1)
+    tm.that(report.fail, eq=1)
+    tm.that((report_dir / "flext-a.log").exists(), eq=False)
+    tm.that((report_dir / "flext-b.log").exists(), eq=False)
     tm.that((report_dir / "flext-c.log").exists(), eq=False)
 
 
@@ -60,11 +61,11 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> 
         tmp_path, project_names=("flext-a", "flext-b")
     )
 
-    result = u.Infra.run_github_workspace_pull_requests(
-        m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace), fail_fast=True
-        )
+    request = m.Infra.GithubPullRequestWorkspaceRequest(
+        workspace=str(workspace), fail_fast=True
     )
+    tm.that(request.fail_fast, eq=True)
+    result = infra_u.Infra.run_github_workspace_pull_requests(request)
 
     tm.ok(result)
     report = result.unwrap()
@@ -72,5 +73,32 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> 
     tm.that(report.total, eq=1)
     tm.that(report.success, eq=0)
     tm.that(report.fail, eq=1)
-    tm.that((report_dir / "flext-a.log").is_file(), eq=True)
+    tm.that((report_dir / "flext-a.log").exists(), eq=False)
     tm.that((report_dir / "flext-b.log").exists(), eq=False)
+
+
+def test_run_github_workspace_pull_requests_continues_without_fail_fast(
+    tmp_path: Path,
+) -> None:
+    workspace = u.Tests.create_github_workspace(
+        tmp_path, project_names=("flext-a", "flext-b")
+    )
+    for project_name in ("flext-a", "flext-b"):
+        u.Tests.initialize_git_repo(workspace / project_name)
+
+    result = infra_u.Infra.run_github_workspace_pull_requests(
+        m.Infra.GithubPullRequestWorkspaceRequest(
+            workspace=str(workspace),
+            projects=("flext-a", "flext-b"),
+            fail_fast=False,
+        )
+    )
+
+    tm.ok(result)
+    report = result.unwrap()
+    report_dir = workspace / ".reports/workspace/pr"
+    tm.that(report.total, eq=2)
+    tm.that(report.success, eq=0)
+    tm.that(report.fail, eq=2)
+    tm.that((report_dir / "flext-a.log").is_file(), eq=True)
+    tm.that((report_dir / "flext-b.log").is_file(), eq=True)

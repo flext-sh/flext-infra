@@ -128,12 +128,18 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
         # partially initialized FlextCliUtilities instead of FlextInfraUtilities.
         from flext_infra import u as infra_u
 
-        result = infra_u.Infra.git_current_branch(
+        result = infra_u.Infra.git_identity(
             m.Infra.GitRepoRequest(repo_root=repo_root)
         )
         if result.failure:
             return r.fail(result.error or "failed to resolve current branch")
-        return r.ok(result.value.text)
+        if result.value.repo_root != repo_root.resolve():
+            return r.fail(
+                f"repository root is owned by an ancestor worktree: {repo_root}"
+            )
+        if result.value.branch is None:
+            return r.fail(f"repository has no active branch: {repo_root}")
+        return r.ok(result.value.branch)
 
     @classmethod
     def _github_pr_execute_create(
@@ -187,14 +193,9 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
             if request.head is not None
             else cls._github_pr_current_head(repo_root)
         )
-        if request.action == c.Infra.PullRequestAction.STATUS and head_result.failure:
-            execution = u.Cli.run_raw(
-                (c.Infra.GH, c.Infra.PR, c.Infra.PullRequestAction.STATUS),
-                cwd=repo_root,
-            )
-        elif head_result.failure:
+        if head_result.failure:
             return r.fail(head_result.error or "head branch is required")
-        elif request.action == c.Infra.PullRequestAction.CREATE:
+        if request.action == c.Infra.PullRequestAction.CREATE:
             return cls._github_pr_execute_create(
                 request=request,
                 repo_root=repo_root,
@@ -202,11 +203,10 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
                 display=display,
                 log_path=log_path,
             )
-        else:
-            execution = u.Cli.run_raw(
-                cls._github_pr_list_command(request, head_result.value, url_only=False),
-                cwd=repo_root,
-            )
+        execution = u.Cli.run_raw(
+            cls._github_pr_list_command(request, head_result.value, url_only=False),
+            cwd=repo_root,
+        )
         if execution.failure:
             return r.fail(execution.error or "pull-request status failed")
         return cls._github_pr_outcome(

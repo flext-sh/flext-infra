@@ -28,6 +28,8 @@ def test_pr_workspace_accepts_repeated_project_options(tmp_path: Path) -> None:
     workspace = u.Tests.create_github_workspace(
         tmp_path, project_names=("flext-a", "flext-b", "flext-c")
     )
+    for project_name in ("flext-a", "flext-b"):
+        u.Tests.initialize_git_repo(workspace / project_name)
 
     result = infra_main([
         "github",

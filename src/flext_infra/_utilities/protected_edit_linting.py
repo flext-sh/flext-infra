@@ -237,6 +237,11 @@ class FlextInfraUtilitiesProtectedEditLinting:
             *cls._workspace_tool_command(workspace, template[0]),
             *(item.replace("{file}", str(py_file)) for item in template[1:]),
         )
+        if (
+            tool_name == c.Infra.PYREFLY
+            and (project_config := command_cwd / c.Infra.PYPROJECT_FILENAME).is_file()
+        ):
+            command = (*command, "--config", str(project_config))
         cmd = (
             FlextInfraUtilitiesResourceLimits.mypy_limited_command(command)
             if tool_name == c.Infra.MYPY

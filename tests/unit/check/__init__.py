@@ -12,6 +12,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
+    from .direnv_gate_tests import TestsDirenvContractLint, TestsDirenvGate, make_ctx
     from .enforcement_fixer_orchestrator_tests import TestsEnforcementFixerOrchestrator
     from .extended_cli_entry_tests import TestWorkspaceCheckCLI
     from .extended_config_fixer_errors_tests import TestConfigFixerPublicBehavior
@@ -68,6 +69,8 @@ __all__: tuple[str, ...] = (
     "TestWorkspaceCheckerCiGateRules",
     "TestWorkspaceCheckerErrorSummary",
     "TestWorkspaceCheckerResolveGates",
+    "TestsDirenvContractLint",
+    "TestsDirenvGate",
     "TestsEnforcementFixerOrchestrator",
     "TestsExtendedProjectRunners",
     "c",
@@ -75,6 +78,7 @@ __all__: tuple[str, ...] = (
     "e",
     "h",
     "m",
+    "make_ctx",
     "p",
     "r",
     "s",
@@ -94,6 +98,11 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            ".direnv_gate_tests": (
+                "TestsDirenvContractLint",
+                "TestsDirenvGate",
+                "make_ctx",
+            ),
             ".enforcement_fixer_orchestrator_tests": (
                 "TestsEnforcementFixerOrchestrator",
             ),

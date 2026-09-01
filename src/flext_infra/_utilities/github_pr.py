@@ -55,8 +55,8 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             failed = outcome_result.failure or outcome_result.unwrap().exit_code != 0
             if failed:
                 failures += 1
-                if request.fail_fast:
-                    break
+            if failed and request.fail_fast:
+                break
         return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
             m.Infra.GithubPullRequestWorkspaceReport(
                 total=processed,

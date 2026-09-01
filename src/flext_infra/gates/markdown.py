@@ -47,7 +47,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
         """Resolve only the repository-local markdown settings owner."""
         config_path = project_dir / ".markdownlint.json"
         if not config_path.is_file():
-            return []
+            return ["--no-config"]
         return ["--config", str(config_path.resolve())]
 
     @override

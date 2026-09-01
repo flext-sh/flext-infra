@@ -50,7 +50,6 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     )
     check_only: bool = m.Field(default=False, alias="check", description="Check mode")
     dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
-    fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     output_format: Annotated[
         str,
         m.Field(description="Output format (json|text)"),
@@ -112,6 +111,12 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     def root(self) -> Path:
         """Canonical normalized workspace root."""
         return self.workspace_root
+
+    @override
+    @property
+    def fail_fast(self) -> bool:
+        """Stop at the first failure as an invariant, never a CLI choice."""
+        return True
 
     @m.computed_field
     @property

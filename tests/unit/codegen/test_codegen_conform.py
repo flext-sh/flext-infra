@@ -1466,6 +1466,13 @@ class TestScriptDispatchMakefile:
             ],
         )
         tm.that("_require_apply" in gen_all_body, eq=True)
+        credential_preflight = "MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR"
+        tm.that(credential_preflight in gen_all_body, eq=True)
+        tm.that(
+            gen_all_body.index(credential_preflight)
+            < gen_all_body.index("codegen conform"),
+            eq=True,
+        )
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
@@ -1547,27 +1554,20 @@ class TestScriptDispatchMakefile:
             ],
         )
 
-    def test_work_verb_projects_every_declared_what(self, tmp_path: Path) -> None:
-        """`work` is a declared verb, and the generated Make surface exposes it.
-
-        This contract predates Gas Town's retirement: when Gas Town owned the
-        lane lifecycle, `work` was deliberately absent from generated Make. The
-        codegen SSOT now declares `work` with its whats, and rule 17 makes the
-        Make verb the canonical entry point, so the generated surface must
-        project exactly what the SSOT declares — never a frozen absence.
-        """
+    def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
+        """Gas City owns lanes; generated repositories expose no second lifecycle."""
         make_config = config.Infra.codegen.make
         verb_names = {verb.name for verb in make_config.verbs}
-        tm.that("work" in verb_names, eq=True)
+        tm.that("work" in verb_names, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
         public_line = next(
             line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
-        tm.that(" work" in public_line, eq=True)
-        for what in make_config.handler_whats["work"]:
-            tm.that(rendered, has=f"_builtin_work_{what}:")
+        tm.that(" work" in public_line, eq=False)
+        tm.that(rendered, lacks="_builtin_work_")
+        tm.that(rendered, lacks="workspace work")
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer
