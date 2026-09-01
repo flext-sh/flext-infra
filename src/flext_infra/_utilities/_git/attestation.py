@@ -141,7 +141,13 @@ class FlextInfraUtilitiesGitAttestationMixin(
                     f"attestation tag already exists: {tag}"
                 )
             repo.git.tag("--sign", "--annotate", "--message", serialized.value, tag)
-            repo.git.push("origin", f"refs/tags/{tag}:refs/tags/{tag}")
+            branch = repo.active_branch.name
+            repo.git.push(
+                "--atomic",
+                "origin",
+                f"HEAD:refs/heads/{branch}",
+                f"refs/tags/{tag}:refs/tags/{tag}",
+            )
         except (GitCommandError, OSError, ValueError) as exc:
             return r[m.Infra.GateAttestationReport].fail(str(exc))
         return r[m.Infra.GateAttestationReport].ok(
@@ -197,6 +203,17 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if set(request.expected_gates) != set(predicate.covered_gates):
             return r[m.Infra.GateAttestationReport].fail(
                 "attestation gate coverage does not exactly match required gates"
+            )
+        if request.output is not None:
+            serialized = u.Cli.json_dumps(
+                predicate.model_dump(mode="json"), sort_keys=True
+            )
+            if serialized.failure:
+                return r[m.Infra.GateAttestationReport].fail(
+                    serialized.error or "failed to serialize verified predicate"
+                )
+            Path(request.output).expanduser().resolve().write_text(
+                serialized.value, encoding="utf-8"
             )
         return r[m.Infra.GateAttestationReport].ok(
             cls._attestation_report(tag, predicate)

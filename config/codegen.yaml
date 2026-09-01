@@ -529,9 +529,11 @@ Infra:
           whats: [diagnostics]
           apply_guarded: false
         - name: checkpoint
-          default_what: wip
+          default_what: verify
           whats: [wip, merge, review, verify]
           apply_guarded: false
+          accepts_apply: true
+          apply_what: review
         - name: docs
           # `validate` is the read-only fixed-point after mutation (must differ
           # from apply_what so serialize-make can re-check without APPLY=Y).

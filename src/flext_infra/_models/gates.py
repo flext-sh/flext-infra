@@ -160,6 +160,10 @@ class FlextInfraModelsGates:
         expected_gates: Annotated[
             t.StrSequence, m.Field(min_length=1, description="Required gate coverage")
         ]
+        output: Annotated[
+            str | None,
+            m.Field(description="Optional path receiving the verified predicate JSON"),
+        ] = None
 
     class GateAttestationReport(m.ContractModel):
         """Verified or newly created signed gate attestation."""

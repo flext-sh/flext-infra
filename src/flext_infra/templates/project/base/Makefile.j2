@@ -759,12 +759,15 @@ _builtin_status_diagnostics: _builtin_require_environment
 	@git -C "$(PROJECT_ROOT)" status --short
 
 _builtin_checkpoint_wip: _builtin_require_environment
+	$(call _require_apply)
 	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" wip
 
 _builtin_checkpoint_merge: _builtin_require_environment
+	$(call _require_apply)
 	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" merge
 
 _builtin_checkpoint_review: _builtin_require_environment
+	$(call _require_apply)
 	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" review
 
 _builtin_checkpoint_verify: _builtin_require_environment
