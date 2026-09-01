@@ -143,7 +143,18 @@ aggregate_pull_requests() {
     git switch -C "$target_branch" "origin/$target_branch"
   fi
   manifest_lines=$(mktemp)
-  trap 'rm -f "$manifest_lines"' EXIT
+  transferred_lines=$(mktemp)
+  trap 'rm -f "$manifest_lines" "$transferred_lines" "$transferred_lines.current"' EXIT
+  if test -f "$canonical_manifest"; then
+    jq -ce '
+      type == "array" and length > 0 and
+      all(.[]; (.pr | type == "number") and (.pr > 0) and
+        (.head_sha | type == "string" and test("^[0-9a-f]{40}$")) and
+        (.bead | type == "string" and length > 0)) and
+      ([.[].pr] | length == (unique | length))
+    ' "$canonical_manifest" >/dev/null
+    jq -c '.[]' "$canonical_manifest" >>"$manifest_lines"
+  fi
   for source_pr in $SOURCE_PRS; do
     case "$source_pr" in *[!0-9]*|'') printf 'ERROR: invalid source PR: %s\n' "$source_pr" >&2; exit 2 ;; esac
     test "$source_pr" != "$PR"
@@ -165,11 +176,19 @@ aggregate_pull_requests() {
       AGGREGATE_CHANGED=true
     fi
     jq -cn --argjson pr "$source_pr" --arg head_sha "$source_sha" --arg bead "$source_work" \
-      '{pr:$pr,head_sha:$head_sha,bead:$bead}' >>"$manifest_lines"
+      '{pr:$pr,head_sha:$head_sha,bead:$bead}' >"$transferred_lines.current"
+    existing_source=$(jq -c --argjson pr "$source_pr" 'select(.pr == $pr)' "$manifest_lines")
+    if test -n "$existing_source"; then
+      test "$existing_source" = "$(cat "$transferred_lines.current")"
+    else
+      cat "$transferred_lines.current" >>"$manifest_lines"
+    fi
+    cat "$transferred_lines.current" >>"$transferred_lines"
+    rm -f "$transferred_lines.current"
   done
   test -s "$manifest_lines"
   rendered_manifest=$(mktemp)
-  trap 'rm -f "$manifest_lines" "$rendered_manifest"' EXIT
+  trap 'rm -f "$manifest_lines" "$transferred_lines" "$transferred_lines.current" "$rendered_manifest"' EXIT
   jq -sS . "$manifest_lines" >"$rendered_manifest"
   if ! test -f "$canonical_manifest" || ! cmp -s "$rendered_manifest" "$canonical_manifest"; then
     install -d "$(dirname "$canonical_manifest")"
@@ -183,7 +202,7 @@ close_transferred_drafts() {
   aggregate_sha=$(git rev-parse HEAD)
   rig=$(local_rig)
   city=$(city_path)
-  jq -c '.[]' "$canonical_manifest" | while IFS= read -r source; do
+  jq -c '.' "$transferred_lines" | while IFS= read -r source; do
     source_pr=$(printf '%s' "$source" | jq -r .pr)
     source_sha=$(printf '%s' "$source" | jq -r .head_sha)
     source_work=$(printf '%s' "$source" | jq -r .bead)
