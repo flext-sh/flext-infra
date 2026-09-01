@@ -29,6 +29,14 @@ local_rig() {
     | sort_by(.path | length) | last | .name'
 }
 
+tracker_rig() {
+  if test -n "${BEAD_RIG:-}"; then
+    printf '%s\n' "$BEAD_RIG"
+  else
+    local_rig
+  fi
+}
+
 city_path() {
   git_common=$(git rev-parse --path-format=absolute --git-common-dir)
   (cd "$git_common" && gc status --json) | jq -er .city_path
@@ -55,7 +63,7 @@ publish_receipt() {
     --workspace . --bead "$BEAD" --pull-request "$PR" \
     --integration-branch "$BASE" --signer "$signer" \
     --gates gen --gates check --gates test
-  rig=$(local_rig)
+  rig=$(tracker_rig)
   city=$(city_path)
   gc --city "$city" bd update "$BEAD" --rig "$rig" --set-metadata "gc.work_branch=$(git branch --show-current)" \
     --set-metadata "gc.work_commit=$sha" --set-metadata "gc.work_pr=$PR" \
@@ -87,7 +95,7 @@ require_review_pr_contract() {
 demote_failed_promotion() {
   gh pr ready "$PR" --undo
   gh pr edit "$PR" --add-label WIP
-  rig=$(local_rig)
+  rig=$(tracker_rig)
   gc bd update "$BEAD" --rig "$rig" --set-metadata 'gc.work_pr_state=draft_wip' \
     --append-notes "Promotion failed for SHA $(git rev-parse HEAD); PR $PR returned automatically to Draft/WIP for fix-forward."
 }
@@ -107,7 +115,7 @@ complete_transactional_promotion() {
 
 update_wip_tracker() {
   sha=$(git rev-parse HEAD)
-  rig=$(local_rig)
+  rig=$(tracker_rig)
   city=$(city_path)
   gc --city "$city" bd update "$BEAD" --rig "$rig" --set-metadata "gc.work_branch=$(git branch --show-current)" \
     --set-metadata "gc.work_commit=$sha" --set-metadata "gc.work_pr=$PR" \
@@ -116,7 +124,7 @@ update_wip_tracker() {
 }
 
 update_shared_tracker() {
-  rig=$(local_rig)
+  rig=$(tracker_rig)
   city=$(city_path)
   shared_child=$(gc --city "$city" bd show "$BEAD" --rig "$rig" --json | jq -er '.[0].metadata["gc.shared_child"]')
   bd -C "$city" update "$shared_child" --append-notes "$1"
@@ -200,7 +208,7 @@ aggregate_pull_requests() {
 
 close_transferred_drafts() {
   aggregate_sha=$(git rev-parse HEAD)
-  rig=$(local_rig)
+  rig=$(tracker_rig)
   city=$(city_path)
   jq -c '.' "$transferred_lines" | while IFS= read -r source; do
     source_pr=$(printf '%s' "$source" | jq -r .pr)
@@ -215,7 +223,7 @@ close_transferred_drafts() {
 case "$mode" in
   wip)
     : "${BEAD:?BEAD is required}"; : "${BASE:?BASE is required}"; : "${PATHS:?PATHS is required}"
-    rig=$(local_rig)
+    rig=$(tracker_rig)
     city=$(city_path)
     gc --city "$city" bd show "$BEAD" --rig "$rig" --json >/dev/null
     MESSAGE=${MESSAGE:-checkpoint}
