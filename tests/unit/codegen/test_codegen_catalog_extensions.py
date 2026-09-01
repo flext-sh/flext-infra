@@ -273,9 +273,12 @@ class TestsCodegenCatalogExtensions:
             if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(root_makefile.rendered, has=f"WORKSPACE_SUBPROJECTS := {member.name}")
-        tm.that(
-            any(file.path.name == c.Infra.GITMODULES for file in plan.files), eq=False
+        gitmodules_plan = next(
+            file for file in plan.files if file.path == gitmodules.resolve()
         )
+        tm.that(gitmodules_plan.policy, eq="manual")
+        tm.that(gitmodules_plan.changed, eq=False)
+        tm.that(gitmodules_plan.rendered.encode(), eq=declared_gitmodules)
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 
