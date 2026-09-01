@@ -372,9 +372,9 @@ Infra:
         - { verb: fmt, apply: true, contexts: [local, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
-        # Review CI proves the complete native gate set. Draft PRs do not select
-        # the job, while attestation reuse is selected externally by AI Hub.
-        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
+        # Local and pre-push own pytest. Review CI must not rerun pytest; local
+        # attestation reuse is selected externally by AI Hub for managed repos.
+        - { verb: test, apply: false, contexts: [local, pre_push] }
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
