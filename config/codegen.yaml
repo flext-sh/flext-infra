@@ -349,8 +349,10 @@ Infra:
         # make fmt / make fix APPLY=Y only. This supersedes the earlier
         # check_gates_skip list, which could drift out of sync with the set it
         # was meant to complement.
-        # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
-        # full pytest+coverage; absent = testmon incremental.
+        # RULING 1: CI is ternary (Y/N/absent). CI=Y owns the Review workflow,
+        # including full pytest+coverage while attestation is not selected;
+        # CI=N owns the complementary local check gates; absent uses testmon
+        # for incremental developer runs.
         #
         # The set is the SLOW whole-program type checkers, matching
         # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
