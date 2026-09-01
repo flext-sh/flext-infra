@@ -83,6 +83,12 @@ jobs:
         run: {{ make.ci.variable }}={{ make.ci.value }} make {{ step.verb }}{% if step.apply %} WHAT=apply {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {%- if step.verb == "setup" %}
 
+      # `make setup` renders .envrc; direnv must re-allow it here because the
+      # unattended smoke cannot answer `direnv allow`. Any content change
+      # re-blocks, so the allow MUST run after every render — including this one.
+      - name: direnv allow (rendered .envrc)
+        run: direnv allow "${{ github.workspace }}/.envrc"
+
       - name: gen check (blocking)
         run: {{ make.ci.variable }}={{ make.ci.value }} make gen WHAT=check
 {%- endif %}
