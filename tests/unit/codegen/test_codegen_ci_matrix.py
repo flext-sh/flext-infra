@@ -127,8 +127,9 @@ class TestCodegenCiMatrix:
         tm.that(script, lacks="git tag -s")
         tm.that(script, has="github attest-gates")
         tm.that(script, has="github verify-gates")
-        tm.that(script, has='gc bd update "$BEAD" --rig "$rig"')
-        tm.that(script, has='bd -C "$city_path" update "$shared_child"')
+        tm.that(script, has='gc --city "$city" bd update "$BEAD" --rig "$rig"')
+        tm.that(script, has='bd -C "$city" update "$shared_child"')
+        tm.that(script, has="git rev-parse --path-format=absolute --git-common-dir")
         tm.that(workflow, has="id-token: write")
         tm.that(workflow, has="attestations: write")
         action = config.Infra.codegen.github_actions["attest"]

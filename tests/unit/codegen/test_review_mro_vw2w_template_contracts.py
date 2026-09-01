@@ -42,6 +42,7 @@ class TestsReviewTemplateContracts:
         )
         tm.that(text, has="SETUP_MISE_VERSION := {{ mise_version }}")
         tm.that(text, has="setup: _bootstrap_setup_tools")
+        tm.that(text, has="env -u MISE_INSTALL_PATH -u MISE_VERSION")
 
     def test_makefile_deps_modernize_uses_selected_projects(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")

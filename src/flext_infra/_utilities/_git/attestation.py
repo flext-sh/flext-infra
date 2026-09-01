@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 _TAG_PREFIX = "attest/gates/v1"
 _SSH_SIGNATURE_MARKER = "\n-----BEGIN SSH SIGNATURE-----"
+_PROMOTION_MANIFEST = ".github/attestations/promotion-sources.json"
 
 
 class FlextInfraUtilitiesGitAttestationMixin(
@@ -53,6 +54,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationPredicate].fail(
                 evidence_result.error or "local gate execution failed"
             )
+        sources_result = cls._promotion_sources(repo_root)
+        if sources_result.failure:
+            return r[m.Infra.GateAttestationPredicate].fail(
+                sources_result.error or "invalid promotion source manifest"
+            )
         toolchain = cls._toolchain_digest(repo_root)
         predicate = m.Infra.GateAttestationPredicate(
             schema_version="https://flext.sh/attestations/gates/v1",
@@ -62,6 +68,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             bead=request.bead,
             pull_request=request.pull_request,
             integration_branch=request.integration_branch,
+            sources=sources_result.value,
             signer=request.signer,
             toolchain_digest=toolchain,
             covered_gates=request.gates,
@@ -99,6 +106,47 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 completed_at=completed.isoformat().replace("+00:00", "Z"),
             ))
         return r[tuple[m.Infra.GateCommandEvidence, ...]].ok(tuple(evidence))
+
+    @classmethod
+    def _promotion_sources(
+        cls, repo_root: Path
+    ) -> p.Result[tuple[m.Infra.GatePromotionSource, ...]]:
+        """Load the ordered source manifest from the exact committed tree."""
+        repo = cls._repo(repo_root)
+        try:
+            blob = repo.head.commit.tree / _PROMOTION_MANIFEST
+            content = blob.data_stream.read().decode("utf-8")
+        except (KeyError, OSError, UnicodeError, ValueError) as exc:
+            return r[tuple[m.Infra.GatePromotionSource, ...]].fail(str(exc))
+        parsed = u.Cli.json_loads(content)
+        if parsed.failure:
+            return r[tuple[m.Infra.GatePromotionSource, ...]].fail(
+                parsed.error or "promotion source manifest is not valid JSON"
+            )
+        if not isinstance(parsed.value, list) or not parsed.value:
+            return r[tuple[m.Infra.GatePromotionSource, ...]].fail(
+                "promotion source manifest must be a non-empty JSON array"
+            )
+        try:
+            sources = tuple(
+                m.Infra.GatePromotionSource.model_validate(item)
+                for item in parsed.value
+            )
+        except ValueError as exc:
+            return r[tuple[m.Infra.GatePromotionSource, ...]].fail(str(exc))
+        merge_parents = {
+            parent.hexsha
+            for commit in repo.iter_commits(repo.head.commit)
+            if len(commit.parents) > 1
+            for parent in commit.parents[1:]
+        }
+        missing = tuple(source.head_sha for source in sources if source.head_sha not in merge_parents)
+        if missing:
+            return r[tuple[m.Infra.GatePromotionSource, ...]].fail(
+                "promotion source is not a no-ff merge parent of HEAD: "
+                + ", ".join(missing)
+            )
+        return r[tuple[m.Infra.GatePromotionSource, ...]].ok(sources)
 
     @classmethod
     def _toolchain_digest(cls, repo_root: Path) -> str:
@@ -215,7 +263,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationReport].fail(
                 f"verified signature does not identify signer: {predicate.signer}"
             )
-        if set(request.expected_gates) != set(predicate.covered_gates):
+        if tuple(request.expected_gates) != tuple(predicate.covered_gates):
             return r[m.Infra.GateAttestationReport].fail(
                 "attestation gate coverage does not exactly match required gates"
             )
@@ -272,12 +320,19 @@ class FlextInfraUtilitiesGitAttestationMixin(
         if identity.failure:
             return r[bool].fail(identity.error or "failed to resolve Git identity")
         tree_sha = cls._repo(repo_root).head.commit.tree.hexsha
+        sources = cls._promotion_sources(repo_root)
+        if sources.failure:
+            return r[bool].fail(sources.error or "invalid promotion source manifest")
         if (
             predicate.repository != identity.value.origin_remote
             or predicate.commit_sha != identity.value.head_oid
             or predicate.tree_sha != tree_sha
+            or predicate.toolchain_digest != cls._toolchain_digest(repo_root)
+            or predicate.sources != sources.value
         ):
-            return r[bool].fail("attestation repository/commit/tree does not match HEAD")
+            return r[bool].fail(
+                "attestation repository/commit/tree/toolchain/sources does not match HEAD"
+            )
         return r[bool].ok(True)
 
     @staticmethod
@@ -290,6 +345,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             tree_sha=predicate.tree_sha,
             signer=predicate.signer,
             covered_gates=predicate.covered_gates,
+            sources=predicate.sources,
         )
 
 
