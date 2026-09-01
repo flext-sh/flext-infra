@@ -3091,9 +3091,10 @@ class FlextInfraConfigModels:
         beads: Annotated[
             FlextInfraConfigModels.BeadsWorkspaceEnvironmentSpec | None,
             m.Field(
+                exclude=True,
                 description=(
-                    "When set, sync one generated beads-workspace .envrc "
-                    "instead of the Python package environment"
+                    "Programmatic-only selection of generated beads-workspace "
+                    ".envrc instead of the Python package environment"
                 )
             ),
         ] = None

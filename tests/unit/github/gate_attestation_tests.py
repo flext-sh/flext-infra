@@ -32,10 +32,12 @@ def _signed_repository(root: Path) -> tuple[Repo, Path]:
         config.set_value("commit", "gpgsign", "false")
     repo.create_remote("origin", "https://github.example/flext/fixture.git")
     key_path = root / "signing_key"
-    tm.ok(cli_u.Cli.run_raw(
-        ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key_path)],
-        cwd=root,
-    ))
+    tm.ok(
+        cli_u.Cli.run_raw(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key_path)],
+            cwd=root,
+        )
+    )
     with repo.config_writer() as config:
         config.set_value("user", "signingkey", str(key_path))
     (root / "tracked.txt").write_text("attested\n", encoding="utf-8")
@@ -75,7 +77,6 @@ def _verify(
         )
     )
 
-
 def test_signed_gate_attestation_round_trip_is_local(tmp_path: Path) -> None:
     repo, allowed_signers = _signed_repository(tmp_path)
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
@@ -95,9 +96,11 @@ def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     repo.remote("origin").set_url("https://github.example/flext/fixture")
 
-    tm.ok(_verify(
-        tmp_path, allowed_signers, repo.head.commit.hexsha, "gen", "check", "test"
-    ))
+    tm.ok(
+        _verify(
+            tmp_path, allowed_signers, repo.head.commit.hexsha, "gen", "check", "test"
+        )
+    )
 
 
 def test_gate_attestation_verifies_selected_commit_with_equal_tree(tmp_path: Path) -> None:
