@@ -800,6 +800,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=tooling_root, skip_check=True
         )
+        analysis_exclusions = tuple(
+            path.as_posix()
+            for path in (
+                *target.external_dependency_paths,
+                *workspace.external_dependency_paths,
+            )
+        )
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
         )
@@ -813,6 +820,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -978,19 +986,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_render.error or "pyproject template render failed"
             )
-        initial_tooling = modernizer.conform_source(
-            pyproject_render.value,
-            path=pyproject,
-            format_source=False,
-            declared_python_dirs=declared_python_dirs,
-            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
-        )
-        if initial_tooling.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                initial_tooling.error or f"initial tooling conform failed: {pyproject}"
-            )
         prepared_result = u.Infra.pyproject_conform(
-            initial_tooling.value,
+            pyproject_render.value,
             providers=codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
@@ -1006,8 +1003,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         final_tooling = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
+            format_source=False,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1093,6 +1092,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
+        analysis_exclusions = tuple(
+            path.as_posix() for path in target.external_dependency_paths
+        )
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
@@ -1100,6 +1102,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             declared_python_dirs=(
                 config.Infra.tooling.tools.pyright.path_rules.source_dir,
             ),
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1140,6 +1143,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             generated_python_roots=self._scaffold_python_dirs(
                 codegen.templates.entries, target.make_profile
             ),
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
