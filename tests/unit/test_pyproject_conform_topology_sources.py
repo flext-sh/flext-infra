@@ -297,5 +297,6 @@ workspace = true
         )
         parsed = u.Cli.toml_parse_text(rendered)
         if parsed is None:
-            raise AssertionError("rendered dependency metadata is invalid TOML")
+            message = "rendered dependency metadata is invalid TOML"
+            raise AssertionError(message)
         tm.that("tool" in parsed, eq=False)
