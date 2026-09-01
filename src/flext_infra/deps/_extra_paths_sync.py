@@ -24,6 +24,7 @@ class FlextInfraExtraPathsSyncMixin:
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
         pyrefly_search_paths: Callable[..., t.StrSequence]
+        mypy_search_paths: Callable[..., t.StrSequence]
 
     def resolve_transitive_dependency_names(
         self, direct_names: t.StrSequence
