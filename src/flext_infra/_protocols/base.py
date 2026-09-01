@@ -419,6 +419,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def terraform_version(self) -> str:
+            """Compatible terraform minor line."""
+            ...
+
+        @property
         def qlty_version(self) -> str:
             """Exact qlty code-smell scanner version."""
             ...
