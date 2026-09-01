@@ -113,6 +113,11 @@ class TestCodegenCiMatrix:
         tm.that(review_case, has="complete_transactional_promotion")
         tm.that(script, has='gh pr ready "$PR"')
         tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
+        tm.that(
+            script.index('gh pr ready "$PR"')
+            < script.index('gh pr checks "$PR" --watch --fail-fast'),
+            eq=True,
+        )
         tm.that(script, has='gh pr ready "$PR" --undo')
         tm.that(
             review_case.index("require_review_pr_contract")
@@ -121,7 +126,8 @@ class TestCodegenCiMatrix:
             eq=True,
         )
         tm.that(
-            review_case.index("git commit --allow-empty")
+            review_case.index("require_review_pr_contract")
+            < review_case.index("git commit --allow-empty")
             < review_case.index("publish_receipt"),
             eq=True,
         )
@@ -294,13 +300,15 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
         marker = (
-            "fetch-depth: 0\n\n      # Codegen refreshes the declared provider baseline"
+            "fetch-depth: 0\n"
+            "          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n"
+            "      # Codegen refreshes the declared provider baseline"
         )
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                "fetch-depth: 0\n\n\n"
+                "ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n\n"
                 "      # Codegen refreshes the declared provider baseline"
             ),
         )
