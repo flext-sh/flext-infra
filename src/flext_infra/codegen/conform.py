@@ -1864,6 +1864,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                direnv_version=codegen.toolchain.direnv_version,
                 uv_version=codegen.toolchain.uv_version,
                 mise_version=codegen.toolchain.mise_version,
                 mise_lock_platforms=codegen.toolchain.mise_lock_platforms,

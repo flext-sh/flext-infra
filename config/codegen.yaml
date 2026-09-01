@@ -30,6 +30,7 @@ Infra:
       kubectl_version: "1.32"
       helm_version: "3.19"
       kind_version: "0.31"
+      direnv_version: "2.37"
       taplo_version: "0.10"
       ast_grep_version: "0.45"
       gitleaks_version: "8.30"
