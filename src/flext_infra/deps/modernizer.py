@@ -66,7 +66,7 @@ class FlextInfraPyprojectModernizer(
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply.
 
@@ -120,7 +120,7 @@ class FlextInfraPyprojectModernizer(
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         project_kind: str | None = None,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
         # flext-j47u (codex): resolve values only; template retains the full structure.

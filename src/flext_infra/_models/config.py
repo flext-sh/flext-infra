@@ -272,6 +272,9 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
+        direnv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
+        ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -568,18 +571,6 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 
-    class GateAttestationSpec(_ConfigContract):
-        """SSH trust and exact gate coverage for managed repositories."""
-
-        allowed_signers: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="OpenSSH allowed_signers lines"),
-        ]
-        required_gates: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Gates CI requires from local proof"),
-        ]
-
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
 
@@ -622,10 +613,6 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
-        ]
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -1179,10 +1166,6 @@ class FlextInfraConfigModels:
 
         draft_pr: Annotated[
             bool, m.Field(description="Treat GitHub draft PRs as work-in-progress")
-        ]
-        attestation_tag_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Immutable signed-tag namespace for local gate receipts"),
         ]
         branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -1846,11 +1829,6 @@ class FlextInfraConfigModels:
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
-        ]
-
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -2189,11 +2167,6 @@ class FlextInfraConfigModels:
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
 
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
-        ]
-
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Generated Make command contract"),
@@ -2422,6 +2395,9 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
         ]
+        direnv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
+        ]
         uv_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
         ]
@@ -2599,10 +2575,6 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
-        ]
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
         ]
         checkout_submodules: Annotated[
             t.NonEmptyStr,

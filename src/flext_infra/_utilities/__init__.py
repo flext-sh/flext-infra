@@ -39,8 +39,6 @@ if TYPE_CHECKING:
     from ._git.worktree_removal import FlextInfraUtilitiesGitWorktreeRemovalMixin
     from ._git.worktree_roots import FlextInfraUtilitiesGitWorktreeRootsMixin
     from ._git.worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
-    from ._github_pr_execution import FlextInfraUtilitiesGithubPrExecutionMixin
-    from ._github_pr_single import FlextInfraUtilitiesGithubPrSingleMixin
     from ._github_sync import FlextInfraUtilitiesGithubSyncMixin
     from ._project_discovery_candidates import (
         FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
@@ -72,7 +70,6 @@ if TYPE_CHECKING:
     from .docs_validate import FlextInfraUtilitiesDocsValidate
     from .git import FlextInfraUtilitiesGit
     from .github import FlextInfraUtilitiesGithub
-    from .github_pr import FlextInfraUtilitiesGithubPr
     from .log_parser import FlextInfraUtilitiesLogParser
     from .namespace import FlextInfraUtilitiesCodegenNamespace
     from .namespace_analysis import FlextInfraUtilitiesRefactorNamespaceFlext
@@ -165,9 +162,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
     "FlextInfraUtilitiesGithub",
-    "FlextInfraUtilitiesGithubPr",
-    "FlextInfraUtilitiesGithubPrExecutionMixin",
-    "FlextInfraUtilitiesGithubPrSingleMixin",
     "FlextInfraUtilitiesGithubSyncMixin",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesNamespaceConfig",
@@ -267,8 +261,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.worktree_removal": ("FlextInfraUtilitiesGitWorktreeRemovalMixin",),
             "._git.worktree_roots": ("FlextInfraUtilitiesGitWorktreeRootsMixin",),
             "._git.worktree_status": ("FlextInfraUtilitiesGitWorktreeStatusMixin",),
-            "._github_pr_execution": ("FlextInfraUtilitiesGithubPrExecutionMixin",),
-            "._github_pr_single": ("FlextInfraUtilitiesGithubPrSingleMixin",),
             "._github_sync": ("FlextInfraUtilitiesGithubSyncMixin",),
             "._project_discovery_candidates": (
                 "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
@@ -303,7 +295,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             ".git": ("FlextInfraUtilitiesGit",),
             ".github": ("FlextInfraUtilitiesGithub",),
-            ".github_pr": ("FlextInfraUtilitiesGithubPr",),
             ".log_parser": ("FlextInfraUtilitiesLogParser",),
             ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
             ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceFlext",),

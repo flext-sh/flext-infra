@@ -1,4 +1,4 @@
-"""GitHub integration utility functions and automation helpers.
+"""GitHub workflow synchronization and lint helpers.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
-    """Utilities for GitHub automation including PRs and Workflows."""
+    """Utilities for GitHub workflow synchronization and linting."""
 
     @classmethod
     def lint_github_workflows(

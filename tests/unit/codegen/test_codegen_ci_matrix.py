@@ -70,114 +70,29 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
-    def test_gate_attestation_is_generated_as_transparent_checkpoint(
+    def test_external_attestation_orchestration_is_not_generated_by_flext(
         self, tmp_path: Path
     ) -> None:
-        """Managed projects emit one automatic local-to-GitHub proof pipeline."""
+        """FLEXT exposes primitives without selecting AI Hub's GitHub capability."""
         root = self._render_project(tmp_path / "attested")
         makefile = (root / "Makefile").read_text(encoding="utf-8")
-        script = (root / ".github/scripts/gate-attestation.sh").read_text(
-            encoding="utf-8"
-        )
-        workflow = (root / ".github/workflows/gate-attestation.yml").read_text(
-            encoding="utf-8"
-        )
+        tm.that(makefile, lacks="_builtin_checkpoint_")
+        tm.that((root / ".github/scripts/gate-attestation.sh").exists(), eq=False)
+        tm.that((root / ".github/workflows/gate-attestation.yml").exists(), eq=False)
+        tm.that((root / ".github/attestations/allowed_signers").exists(), eq=False)
 
-        tm.that(makefile, has="_builtin_checkpoint_wip:")
-        tm.that(makefile, has="_builtin_checkpoint_merge:")
-        tm.that(makefile, has="_builtin_checkpoint_review:")
-        tm.that(makefile, has="_builtin_checkpoint_verify:")
-        tm.that(makefile, lacks="make work")
-        tm.that(makefile, lacks="work start")
-        tm.that(makefile, lacks="KIND/NAME")
-        tm.that(makefile, lacks="member checkout for work")
-        tm.that(makefile, has="tracker item bound to a checkpoint")
-        tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
-        tm.that(script, lacks="[skip ci]")
-        tm.that(
-            (root / ".github/scripts/gate-attestation.sh").stat().st_mode & 0o111,
-            eq=0o111,
-        )
-        wip_case = script.split("  wip)", maxsplit=1)[1].split("  merge)", maxsplit=1)[0]
-        merge_case = script.split("  merge)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
-        review_case = script.split("  review)", maxsplit=1)[1].split("  verify)", maxsplit=1)[0]
-        tm.that(wip_case, lacks="run_local_gates")
-        tm.that(wip_case, lacks="publish_receipt")
-        tm.that(wip_case, has="validation and attestation NOT SELECTED")
-        tm.that(merge_case, has="aggregate_pull_requests")
-        tm.that(merge_case, has="close_transferred_drafts")
-        tm.that(script, has='gh pr close "$source_pr"')
-        tm.that(script, has="Transferred automatically to maintained PR #$PR")
-        tm.that(script, has="for source_pr in $SOURCE_PRS")
-        tm.that(script, has="git worktree list --porcelain")
-        tm.that(script, has="git config --get core.worktree")
-        tm.that(script, has='primary=$(realpath "$git_common/$core_worktree")')
-        tm.that(script, has='--arg primary "$primary"')
-        tm.that(script, has='jq -c \'.[]\' "$canonical_manifest" >>"$manifest_lines"')
-        tm.that(script, has="select(.pr == $pr)")
-        tm.that(script, has='jq -c \'.\' "$transferred_lines"')
-        tm.that(script, lacks="MAX_DRAFT")
-        tm.that(review_case, has="publish_receipt")
-        tm.that(review_case, has="require_review_pr_contract")
-        tm.that(review_case, has="complete_transactional_promotion")
-        tm.that(script, has='gh pr ready "$PR"')
-        tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
-        tm.that(
-            script.index('gh pr ready "$PR"')
-            < script.index('gh pr checks "$PR" --watch --fail-fast'),
-            eq=True,
-        )
-        tm.that(script, has='gh pr ready "$PR" --undo')
-        tm.that(
-            review_case.index("require_review_pr_contract")
-            < review_case.index("publish_receipt")
-            < review_case.index("complete_transactional_promotion"),
-            eq=True,
-        )
-        tm.that(
-            review_case.index("require_review_pr_contract")
-            < review_case.index("git commit --allow-empty")
-            < review_case.index("publish_receipt"),
-            eq=True,
-        )
-        tm.that(script, has="git merge --no-ff")
-        tm.that(script, lacks="run_local_gates")
-        tm.that(script, lacks="git tag -s")
-        tm.that(script, has="github attest-gates")
-        tm.that(script, has="github verify-gates")
-        tm.that(script, has='--commit-sha "$GATE_COMMIT_SHA"')
-        tm.that(script, has='gc --city "$city" bd update "$BEAD" --rig "$rig"')
-        tm.that(script, has='bd -C "$city" update "$shared_child"')
-        tm.that(script, has='if test -n "${BEAD_RIG:-}"')
-        tm.that(script, has='printf \'%s\\n\' "$BEAD_RIG"')
-        tm.that(script.count("rig=$(tracker_rig)"), eq=6)
-        tm.that(script, has="git rev-parse --path-format=absolute --git-common-dir")
-        tm.that(workflow, has="id-token: write")
-        tm.that(workflow, has="attestations: write")
-        action = config.Infra.codegen.github_actions["attest"]
-        tm.that(workflow, has=f"uses: {action.repository}@{action.sha}")
-        tm.that(workflow, has=".github/scripts/gate-attestation.sh verify")
-        tm.that(workflow, has="run: make setup")
-        tm.that(workflow, lacks="make check")
-        tm.that(workflow, lacks="make test")
-
-    def test_github_apps_are_not_selected_for_draft_prs(self, tmp_path: Path) -> None:
-        """Versioned app policy reserves external review for non-Draft PRs."""
+    def test_github_app_policy_is_not_owned_by_flext(self, tmp_path: Path) -> None:
+        """AI Hub, not FLEXT codegen, owns external GitHub app selection."""
         root = self._render_project(tmp_path / "apps-review-only")
-        cubic = (root / "cubic.yaml").read_text(encoding="utf-8")
-        tm.that(cubic, has="check_drafts: false")
-        tm.that(cubic, has="- WIP")
-        tm.that(cubic, has="generate: false")
-        coderabbit = (root / ".coderabbit.yaml").read_text(encoding="utf-8")
-        tm.that(coderabbit, has="drafts: false")
-        tm.that(coderabbit, has='- "!WIP"')
+        tm.that((root / "cubic.yaml").exists(), eq=False)
+        tm.that((root / ".coderabbit.yaml").exists(), eq=False)
 
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")
         workflows = "\n".join(
             (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
-            for filename in ("ci.yml", "ci-matrix.yml", "gate-attestation.yml")
+            for filename in ("ci.yml", "ci-matrix.yml")
         )
         catalog = {
             f"{action.repository}@{action.sha}": action.version
@@ -208,61 +123,49 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
 
-        tm.that(workflow, has="run: CI=Y make setup")
-        tm.that(workflow, has="github verify-gates")
-        tm.that(
-            workflow,
-            has="ref: ${{ github.event.pull_request.head.sha || github.sha }}",
+        ci_step_runs = tuple(
+            f"run: CI=Y make {step.verb}"
+            for step in config.Infra.codegen.make.workflow
+            if "ci" in step.contexts
         )
-        tm.that(
-            workflow,
-            has='git fetch --force origin "refs/tags/attest/gates/v1/$GATE_COMMIT_SHA:',
-        )
-        tm.that(workflow, has='if [ "${{ github.event_name }}" = "pull_request" ]')
-        tm.that(workflow, has='if [ "$#" -ne 3 ]')
-        tm.that(workflow, has='GATE_COMMIT_SHA="$3"')
-        tm.that(workflow, has="integration merge tree does not equal promoted head tree")
-        tm.that(workflow, has='--commit-sha "$GATE_COMMIT_SHA"')
-        tm.that(workflow, lacks="run: CI=Y make gen WHAT=check")
-        tm.that(workflow, lacks="run: CI=Y make check")
-        tm.that(workflow, lacks="run: CI=Y make test")
-        tm.that(workflow, lacks="run: make test")
+        for run_line in ci_step_runs:
+            tm.that(workflow, has=run_line)
+        tm.that(ci_step_runs, has="run: CI=Y make setup")
+        tm.that(workflow, has="run: CI=Y make gen WHAT=check")
+        tm.that(workflow, lacks="attest/gates/v1")
+        tm.that(workflow, lacks="github verify-gates")
         tm.that(workflow, lacks="WHAT=apply")
         tm.that(workflow, lacks="APPLY=Y")
-        tm.that(
-            workflow.index("run: CI=Y make setup")
-            < workflow.index("git fetch --force origin")
-            < workflow.index("github verify-gates"),
-            eq=True,
-        )
+        step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
+        tm.that(step_indices, eq=tuple(sorted(step_indices)))
+        setup_index = workflow.index("run: CI=Y make setup")
+        gen_index = workflow.index("run: CI=Y make gen WHAT=check")
+        tm.that(setup_index < gen_index, eq=True)
+        if "run: CI=Y make check" in ci_step_runs:
+            tm.that(workflow, has="run: CI=N make check")
+            check_index = workflow.index("run: CI=Y make check")
+            check_complement_index = workflow.index("run: CI=N make check")
+            tm.that(gen_index < check_index < check_complement_index, eq=True)
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
         tm.that(ci_job, has="permissions:\n      contents: read")
 
-    def test_blocking_ci_configures_git_auth_through_gh(self, tmp_path: Path) -> None:
-        """Provider baseline fetches use the runner token through the gh owner."""
+    def test_blocking_ci_does_not_configure_github_cli_auth(
+        self, tmp_path: Path
+    ) -> None:
+        """FLEXT codegen never selects GitHub CLI authentication."""
         root = self._render_project(tmp_path / "external")
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
 
-        tm.that(workflow, has="- name: Configure GitHub authentication")
-        tm.that(workflow, has="GH_TOKEN: ${{ github.token }}")
-        # The gh credential helper reads GH_TOKEN from the environment of the
-        # step that runs git, so the token must be declared on the job, before
-        # any step, not only on the setup-git step.
-        tm.that(
-            workflow.index("GH_TOKEN: ${{ github.token }}")
-            < workflow.index("    steps:"),
-            eq=True,
-        )
-        tm.that(workflow, has="run: gh auth setup-git")
-        tm.that(
-            workflow.index("run: gh auth setup-git")
-            < workflow.index("github verify-gates"),
-            eq=True,
-        )
+        tm.that(workflow, lacks="- name: Configure GitHub authentication")
+        tm.that(workflow, lacks="GH_TOKEN: ${{ github.token }}")
+        tm.that(workflow, lacks="run: gh auth setup-git")
+        steps_index = workflow.index("    steps:")
+        setup_index = workflow.index("run: CI=Y make setup")
+        tm.that(steps_index < setup_index, eq=True)
 
     def test_rendered_pre_commit_uses_typed_hook_contexts(self, tmp_path: Path) -> None:
         """The generated staged hooks render the configured workflow partitions."""
@@ -317,16 +220,13 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        marker = (
-            "ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n"
-            "      # Codegen refreshes the declared provider baseline"
-        )
+        marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                "ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n\n"
-                "      # Codegen refreshes the declared provider baseline"
+                "fetch-depth: 0\n\n\n"
+                "      - name: Install mise toolchain"
             ),
         )
         root2 = self._render_project(tmp_path / "member-again")
@@ -358,7 +258,6 @@ class TestCodegenCiMatrix:
             uv_version=codegen.toolchain.uv_version,
             dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,
-            gate_attestation=codegen.gate_attestation,
             make=codegen.make,
             workspace_repositories=(),
             checkout_submodules=codegen.checkout_submodules,
@@ -548,6 +447,7 @@ class TestCodegenCiMatrix:
         ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
 
         tm.that(ci_job, has="github.event.pull_request.draft == false")
+        tm.that(ci_job, has="make test")
         tm.that(merge_guard, has="github.event.pull_request.draft == false")
         tm.that(merge_guard, has="subject=$(git log -1 --format=%s)")
         tm.that(merge_guard, has='[[ "$subject" == \\[WIP\\]* ]]')

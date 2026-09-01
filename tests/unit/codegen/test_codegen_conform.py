@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import tomllib
+from difflib import unified_diff
 from pathlib import Path
 
 import pytest
@@ -83,6 +84,26 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
     )
 
 
+def _project_tree_diff(
+    expected: tuple[tuple[str, bytes], ...], actual: tuple[tuple[str, bytes], ...]
+) -> str:
+    """Render only differing generated files when a fixed-point contract fails."""
+    expected_files = dict(expected)
+    actual_files = dict(actual)
+    return "\n".join(
+        line
+        for path in sorted(expected_files.keys() | actual_files.keys())
+        if expected_files.get(path) != actual_files.get(path)
+        for line in unified_diff(
+            expected_files.get(path, b"").decode(errors="replace").splitlines(),
+            actual_files.get(path, b"").decode(errors="replace").splitlines(),
+            fromfile=f"created/{path}",
+            tofile=f"conformed/{path}",
+            lineterm="",
+        )
+    )
+
+
 def _seed_infra_package_tree(root: Path) -> None:
     """Seed the minimal flext-infra tree (pyproject, src package, tests package).
 
@@ -150,9 +171,10 @@ class TestCodegenConform:
         original = "existing generated makefile\n"
         target.write_text(original, encoding="utf-8")
 
-        rejected = self._conform_with_rendered_makefile(
-            root, monkeypatch, "\n<<<<<<< incoming\n"
-        )
+        with monkeypatch.context() as render_patch:
+            rejected = self._conform_with_rendered_makefile(
+                root, render_patch, "\n<<<<<<< incoming\n"
+            )
 
         tm.fail(rejected)
         tm.that(rejected.error, has="base/Makefile.j2")
@@ -160,7 +182,10 @@ class TestCodegenConform:
         tm.that(rejected.error, has=str(root))
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
-        monkeypatch.undo()
+        # The outer autouse fixture owns GITHUB_SHA isolation. Exiting the
+        # narrow render patch must not undo that fixture and restore a CI SHA
+        # that cannot belong to this synthetic repository.
+        tm.that(os.getenv(c.Infra.ENV_VAR_GITHUB_SHA), eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
@@ -668,7 +693,10 @@ class TestCodegenConform:
             )
         )
         tm.ok(migrated)
-        tm.that(_project_tree(existing_root), eq=expected_tree)
+        actual_tree = _project_tree(existing_root)
+        assert actual_tree == expected_tree, _project_tree_diff(
+            expected_tree, actual_tree
+        )
 
     @pytest.mark.slow
     def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(

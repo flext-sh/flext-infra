@@ -10,13 +10,6 @@ class FlextInfraConstantsGithub:
     """Github infrastructure constants."""
 
     @unique
-    class PullRequestAction(StrEnum):
-        """Supported pull-request publication actions."""
-
-        CREATE = "create"
-        STATUS = "status"
-
-    @unique
     class WorkflowLintStatus(StrEnum):
         """GitHub workflow lint status enumeration (single source of truth).
 
@@ -31,10 +24,6 @@ class FlextInfraConstantsGithub:
         SKIPPED = "skipped"
         FAIL = "fail"
 
-    GH: Final[str] = "gh"
-    PULL_REQUEST_JSON_FIELDS: Final[str] = (
-        "number,title,state,baseRefName,headRefName,url,isDraft"
-    )
     MANAGED_FILES: Final[frozenset[str]] = frozenset({"ci.yml"})
 
 
