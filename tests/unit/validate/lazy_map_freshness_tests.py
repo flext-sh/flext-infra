@@ -54,6 +54,9 @@ class TestLazyMapFreshnessValidatorCore:
         report: m.Infra.ValidationReport = tm.ok(v.build_report(tmp_path))
         tm.that(report, is_=m.Infra.ValidationReport)
 
+    # Why (suite budget): full-suite xdist can stall durable atomic writes
+    # beyond the default case timeout while the lazy-init harness publishes files.
+    @pytest.mark.slow
     def test_stale_generated_lazy_map_fails_report(
         self, tmp_path: Path, v: FlextInfraValidateLazyMapFreshness
     ) -> None:
