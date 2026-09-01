@@ -20,7 +20,8 @@ current_repository() {
 local_rig() {
   root=$(git rev-parse --show-toplevel)
   gc status --json | jq -er --arg root "$root" '
-    [.rigs[] | select($root == .path or ($root | startswith(.path + "/")))]
+    [.rigs[] | . as $rig
+      | select($root == $rig.path or ($root | startswith($rig.path + "/")))]
     | sort_by(.path | length) | last | .name'
 }
 
@@ -141,6 +142,8 @@ close_transferred_drafts() {
 case "$mode" in
   wip)
     : "${BEAD:?BEAD is required}"; : "${BASE:?BASE is required}"; : "${PATHS:?PATHS is required}"
+    rig=$(local_rig)
+    gc bd show "$BEAD" --rig "$rig" --json >/dev/null
     MESSAGE=${MESSAGE:-checkpoint}
     git add -- $PATHS
     git diff --cached --quiet && { printf 'ERROR: checkpoint has no staged changes\n' >&2; exit 2; }
