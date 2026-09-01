@@ -124,7 +124,7 @@ class TestsInfraGithub:
         )
 
         tm.fail(result)
-        tm.that((result.error or ""), has="owned by an ancestor worktree")
+        tm.that((result.error or ""), has="failed to resolve Git identity")
         log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
         tm.that(log_path.exists(), eq=False)
 
