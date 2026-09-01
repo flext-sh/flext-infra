@@ -15,6 +15,7 @@ from flext_core import r
 from flext_infra._utilities._git.semantic_identity import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
 )
+from flext_infra._utilities._git.remote import canonical_origin_remote
 from flext_infra.models import m
 
 if TYPE_CHECKING:
@@ -62,7 +63,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         toolchain = cls._toolchain_digest(repo_root)
         predicate = m.Infra.GateAttestationPredicate(
             schema_version="https://flext.sh/attestations/gates/v1",
-            repository=identity.value.origin_remote or "",
+            repository=canonical_origin_remote(identity.value.origin_remote or ""),
             commit_sha=identity.value.head_oid,
             tree_sha=repo.head.commit.tree.hexsha,
             bead=request.bead,
@@ -323,15 +324,22 @@ class FlextInfraUtilitiesGitAttestationMixin(
         sources = cls._promotion_sources(repo_root)
         if sources.failure:
             return r[bool].fail(sources.error or "invalid promotion source manifest")
-        if (
-            predicate.repository != identity.value.origin_remote
-            or predicate.commit_sha != identity.value.head_oid
-            or predicate.tree_sha != tree_sha
-            or predicate.toolchain_digest != cls._toolchain_digest(repo_root)
-            or predicate.sources != sources.value
-        ):
+        actual_repository = canonical_origin_remote(identity.value.origin_remote or "")
+        actual_toolchain = cls._toolchain_digest(repo_root)
+        mismatches = tuple(
+            field
+            for field, matches in (
+                ("repository", predicate.repository == actual_repository),
+                ("commit", predicate.commit_sha == identity.value.head_oid),
+                ("tree", predicate.tree_sha == tree_sha),
+                ("toolchain", predicate.toolchain_digest == actual_toolchain),
+                ("sources", predicate.sources == sources.value),
+            )
+            if not matches
+        )
+        if mismatches:
             return r[bool].fail(
-                "attestation repository/commit/tree/toolchain/sources does not match HEAD"
+                "attestation does not match HEAD: " + ", ".join(mismatches)
             )
         return r[bool].ok(True)
 
