@@ -27,6 +27,7 @@ def _render_ci(*, repository_branch: str) -> str:
         ),
         python_version=codegen.toolchain.python_version,
         mise_version=codegen.toolchain.mise_version,
+        uv_version=codegen.toolchain.uv_version,
         dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
         github_actions=codegen.github_actions,
         make=codegen.make,

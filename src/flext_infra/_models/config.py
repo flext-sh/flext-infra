@@ -591,6 +591,16 @@ class FlextInfraConfigModels:
         mise_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact mise action version")
         ]
+        uv_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Compatible uv major.minor line from the toolchain SSOT; "
+                    "feeds the CI setup-uv step so local (mise) and CI "
+                    "(setup-uv) resolve the same tool line"
+                )
+            ),
+        ]
         dependency_cooldown_days: Annotated[
             int,
             m.Field(

@@ -58,6 +58,7 @@ class FlextInfraEnsurePyreflyConfigPhase:
             merged_search = {
                 *expected_search,
                 *pyrefly_rules.path_rules.project_shared_search_paths,
+                pyrefly_rules.path_rules.project_root,
             }
             if not declared_import_roots:
                 merged_search.discard(pyrefly_rules.path_rules.source_dir)

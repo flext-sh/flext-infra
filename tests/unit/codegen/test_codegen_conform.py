@@ -1064,6 +1064,7 @@ class TestCodegenConform:
             tuple(file.path.name for file in planned.value.files),
             eq=("pyproject.toml",),
         )
+        tm.that(tuple(file.changed for file in planned.value.files), eq=(False,))
         exit_code = main([
             "codegen",
             "conform",

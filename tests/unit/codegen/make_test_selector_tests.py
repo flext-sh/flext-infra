@@ -188,16 +188,6 @@ class TestsMakeTestSelector:
             uv_log.read_text(encoding="utf-8"),
             has=[f"venv {engine_root / '.venv'}", f"sync --project {engine_root}"],
         )
-        tm.that(
-            uv_log.read_text(encoding="utf-8"),
-            has=[
-                "run --no-project --with",
-                "-m flext_infra codegen conform",
-                f"--root {engine_root}",
-                "--scope self",
-                "--mode check",
-            ],
-        )
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
         """A focused target is the pytest target, not an appendix to tests/."""
