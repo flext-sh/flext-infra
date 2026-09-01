@@ -171,9 +171,10 @@ class TestCodegenConform:
         original = "existing generated makefile\n"
         target.write_text(original, encoding="utf-8")
 
-        rejected = self._conform_with_rendered_makefile(
-            root, monkeypatch, "\n<<<<<<< incoming\n"
-        )
+        with monkeypatch.context() as render_patch:
+            rejected = self._conform_with_rendered_makefile(
+                root, render_patch, "\n<<<<<<< incoming\n"
+            )
 
         tm.fail(rejected)
         tm.that(rejected.error, has="base/Makefile.j2")
@@ -181,7 +182,10 @@ class TestCodegenConform:
         tm.that(rejected.error, has=str(root))
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
-        monkeypatch.undo()
+        # The outer autouse fixture owns GITHUB_SHA isolation. Exiting the
+        # narrow render patch must not undo that fixture and restore a CI SHA
+        # that cannot belong to this synthetic repository.
+        tm.that(os.getenv(c.Infra.ENV_VAR_GITHUB_SHA), eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
