@@ -17,7 +17,7 @@ _OPEN_REPOSITORIES: list[Repo] = []
 
 
 @pytest.fixture(autouse=True)
-def _close_git_repositories() -> Iterator[None]:
+def close_git_repositories() -> Iterator[None]:
     yield
     while _OPEN_REPOSITORIES:
         _OPEN_REPOSITORIES.pop().close()
@@ -102,32 +102,12 @@ def test_signed_gate_attestation_round_trip(tmp_path: Path) -> None:
             workspace=str(tmp_path),
             allowed_signers=str(allowed_signers),
             expected_gates=("gen", "check", "test"),
+            commit_sha=repo.head.commit.hexsha,
         )
     )
     tm.ok(verified)
     tm.that(verified.unwrap().signer, eq="attester@example.test")
     tm.that(verified.unwrap().sources[0].pr, eq=518)
-
-
-def test_gate_attestation_verifies_promoted_head_from_pull_request_merge_checkout(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    repo, _remote, allowed_signers = _signed_repository(tmp_path)
-    tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
-    promoted_head = repo.head.commit.hexsha
-    repo.index.commit("synthetic pull request merge checkout")
-    monkeypatch.setenv("GATE_COMMIT_SHA", promoted_head)
-
-    verified = u.Infra.git_verify_gate_attestation(
-        m.Infra.GateAttestationVerifyRequest(
-            workspace=str(tmp_path),
-            allowed_signers=str(allowed_signers),
-            expected_gates=("gen", "check", "test"),
-        )
-    )
-
-    tm.ok(verified)
 
 
 def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -> None:
@@ -148,20 +128,43 @@ def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -
             workspace=str(tmp_path),
             allowed_signers=str(allowed_signers),
             expected_gates=("gen", "check", "test"),
+            commit_sha=repo.head.commit.hexsha,
         )
     )
 
     tm.ok(verified)
 
 
+def test_gate_attestation_verifies_selected_promoted_parent(tmp_path: Path) -> None:
+    repo, _remote, allowed_signers = _signed_repository(tmp_path)
+    tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
+    promoted_sha = repo.head.commit.hexsha
+    promoted_tree = repo.head.commit.tree.hexsha
+    repo.index.commit("test: integration merge shell")
+    tm.that(repo.head.commit.tree.hexsha, eq=promoted_tree)
+
+    verified = u.Infra.git_verify_gate_attestation(
+        m.Infra.GateAttestationVerifyRequest(
+            workspace=str(tmp_path),
+            allowed_signers=str(allowed_signers),
+            expected_gates=("gen", "check", "test"),
+            commit_sha=promoted_sha,
+        )
+    )
+
+    tm.ok(verified)
+    tm.that(verified.unwrap().commit_sha, eq=promoted_sha)
+
+
 def test_gate_attestation_rejects_incomplete_coverage(tmp_path: Path) -> None:
-    _repo, _remote, allowed_signers = _signed_repository(tmp_path)
+    repo, _remote, allowed_signers = _signed_repository(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     verified = u.Infra.git_verify_gate_attestation(
         m.Infra.GateAttestationVerifyRequest(
             workspace=str(tmp_path),
             allowed_signers=str(allowed_signers),
             expected_gates=("check",),
+            commit_sha=repo.head.commit.hexsha,
         )
     )
     tm.fail(verified)

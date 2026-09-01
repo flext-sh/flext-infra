@@ -110,13 +110,26 @@ jobs:
       # fails closed for missing, invalid, partial, wrong-repository, wrong-tree,
       # or wrong-HEAD evidence; covered gates are never executed again in CI.
       - name: Verify local gate attestation (blocking)
-        env:
-          GATE_COMMIT_SHA: {% raw %}${{ github.event.pull_request.head.sha || github.sha }}{% endraw %}
         run: |
+          if [ "{% raw %}${{ github.event_name }}{% endraw %}" = "pull_request" ]; then
+            GATE_COMMIT_SHA="{% raw %}${{ github.event.pull_request.head.sha }}{% endraw %}"
+          else
+            set -- $(git rev-list --parents -n 1 HEAD)
+            if [ "$#" -ne 3 ]; then
+              echo "integration push must be one no-ff merge with exactly two parents" >&2
+              exit 1
+            fi
+            GATE_COMMIT_SHA="$3"
+            if [ "$(git rev-parse HEAD^{tree})" != "$(git rev-parse "$GATE_COMMIT_SHA^{tree}")" ]; then
+              echo "integration merge tree does not equal promoted head tree" >&2
+              exit 1
+            fi
+          fi
           git fetch --force origin "refs/tags/{{ make.work_in_progress.attestation_tag_prefix }}/$GATE_COMMIT_SHA:refs/tags/{{ make.work_in_progress.attestation_tag_prefix }}/$GATE_COMMIT_SHA"
           .venv/bin/python -m flext_infra github verify-gates \
             --workspace . \
             --allowed-signers .github/attestations/allowed_signers \
+            --commit-sha "$GATE_COMMIT_SHA" \
 {%- for gate in gate_attestation.required_gates %}
             --expected-gates {{ gate }}{% if not loop.last %} \{% endif %}
 {%- endfor %}
