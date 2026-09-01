@@ -319,7 +319,19 @@ class FlextInfraWorkspaceDetector(
         beads = cls.load_beads_spec(resolved_root)
         if beads.failure:
             return r[m.Infra.WorkspaceSpec].fail(beads.error)
-        repository = cls._local_repository_ref(resolved_root)
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
+        if identity.failure:
+            return r[m.Infra.WorkspaceSpec].fail(
+                identity.error or "failed to resolve local Git identity"
+            )
+        repository = cls._local_repository_ref(
+            resolved_root,
+            checkout=(
+                c.Infra.CheckoutKind.SUBMODULE
+                if identity.value.is_submodule
+                else c.Infra.CheckoutKind.ROOT
+            ),
+        )
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
         topology = cls._load_subprojects(resolved_root)

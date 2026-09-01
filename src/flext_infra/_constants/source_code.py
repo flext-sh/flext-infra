@@ -57,6 +57,7 @@ class FlextInfraConstantsSourceCode:
         ".cursor",
         ".gemini",
         ".opencode",
+        ".test-tmp",
         ".beads",
         "reports",
         ".agents",
@@ -66,7 +67,6 @@ class FlextInfraConstantsSourceCode:
         "agents",
         "hooks",
         "instructions",
-        "prompts",
         "skills",
     })
     "GitHub provider directories owned by the agentsctl projection."
