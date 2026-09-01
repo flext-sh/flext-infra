@@ -136,7 +136,7 @@ def test_gate_attestation_removes_local_tag_when_atomic_push_fails(
     tmp_path: Path,
 ) -> None:
     repo, _remote, _allowed_signers = _signed_repository(tmp_path)
-    repo.delete_remote("origin")
+    repo.remote("origin").set_url(str(tmp_path / "missing-remote.git"))
 
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
 
