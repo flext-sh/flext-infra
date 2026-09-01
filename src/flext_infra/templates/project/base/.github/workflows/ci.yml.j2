@@ -62,6 +62,19 @@ jobs:
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
         with:
           version: {{ mise_version }}
+
+      # Why: the official uv cache must never be reused across differently
+      # resolved projects — cache identity is owned ONLY by uv.lock, and the
+      # exact uv version comes from the same lock (version-file), keeping one
+      # lock-owned source of truth for both the tool and its cache key.
+      - name: Set up uv with lock-owned cache
+        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
+        with:
+          version-file: uv.lock
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: locked
+
       # The direnv check gate runs a real `direnv exec` activation smoke. The
       # preinstalled runner image has no direnv binary, so provision it here —
       # the gate is intentional and its binary must exist wherever CI=Y make
