@@ -200,6 +200,10 @@ class FlextInfraModelsGates:
         expected_gates: Annotated[
             t.StrSequence, m.Field(min_length=1, description="Required gate coverage")
         ]
+        commit_sha: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact attested commit SHA"),
+        ]
         output: Annotated[
             str | None,
             m.Field(description="Optional path receiving the verified predicate JSON"),
@@ -209,6 +213,9 @@ class FlextInfraModelsGates:
         def _validate_expected_gates(self) -> Self:
             if len(self.expected_gates) != len(set(self.expected_gates)):
                 msg = "expected attestation gates must be unique"
+                raise ValueError(msg)
+            if not re.fullmatch(r"[0-9a-f]{40}", self.commit_sha):
+                msg = "commit_sha must be a full lowercase Git SHA"
                 raise ValueError(msg)
             return self
 

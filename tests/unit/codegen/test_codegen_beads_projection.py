@@ -60,8 +60,8 @@ class TestsCodegenBeadsProjection:
         rendered_config = self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH)
         rendered_metadata = self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH)
 
-        if rendered_config is None or rendered_metadata is None:
-            pytest.fail("local identity must produce both Beads projections")
+        if rendered_config is None:
+            pytest.fail("local identity must produce the declarative Beads config")
         tm.that(rendered_config, has='issue-prefix: "project-prefix"')
         # The config projection carries the ISSUE prefix, not the database name;
         # asserting a bare `prefix: <database>` kept this red against a template
@@ -70,15 +70,9 @@ class TestsCodegenBeadsProjection:
         tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
         tm.that(rendered_config, has="gc.endpoint_status: verified")
         tm.that(rendered_config, has="types.custom:")
-        metadata = json.loads(rendered_metadata)
-        tm.that(metadata["database"], eq="dolt")
-        tm.that(metadata["backend"], eq="dolt")
-        tm.that(metadata["dolt_database"], eq="project_database")
-        tm.that(metadata["dolt_mode"], eq="server")
-        # The city owns the endpoint and reallocates the port at runtime, so the
-        # marker carries no host and no port. `project_id` is absent here because
-        # this fixture has no .beads/identity.toml: Beads has not minted one yet.
-        tm.that(set(metadata), eq={"database", "backend", "dolt_mode", "dolt_database"})
+        # Beads owns and mints metadata at first use. Codegen must not create
+        # that runtime artifact in a fresh checkout.
+        tm.that(rendered_metadata, none=True)
         tm.that(hasattr(plan, "beads"), eq=False)
 
     def test_metadata_projection_preserves_a_minted_ledger_identity(
@@ -99,6 +93,9 @@ class TestsCodegenBeadsProjection:
         identity = root / ".beads" / "identity.toml"
         identity.parent.mkdir(parents=True, exist_ok=True)
         identity.write_text(f'[project]\nid = "{minted}"\n')
+        (root / c.Infra.BEADS_METADATA_RELPATH).write_text(
+            '{"backend":"dolt"}\n', encoding="utf-8"
+        )
 
         rendered = self._rendered(self._plan(root), c.Infra.BEADS_METADATA_RELPATH)
         if rendered is None:

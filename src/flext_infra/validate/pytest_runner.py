@@ -137,8 +137,8 @@ class FlextInfraPytestRunner(s[int]):
         return raw == config.Infra.codegen.make.ci.value
 
     def _cov_enabled(self) -> bool:
-        """True when Make COV token requests a full coverage run (COV=Y)."""
-        return self._environment_flag(c.Infra.PYTEST_ENV_COV)
+        """True when COV=Y or WHAT=full selects the full coverage suite."""
+        return self.what == "full" or self._environment_flag(c.Infra.PYTEST_ENV_COV)
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""

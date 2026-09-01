@@ -145,8 +145,12 @@ class TestCodegenCiMatrix:
         tm.that(script, lacks="git tag -s")
         tm.that(script, has="github attest-gates")
         tm.that(script, has="github verify-gates")
+        tm.that(script, has='--commit-sha "$GATE_COMMIT_SHA"')
         tm.that(script, has='gc --city "$city" bd update "$BEAD" --rig "$rig"')
         tm.that(script, has='bd -C "$city" update "$shared_child"')
+        tm.that(script, has='if test -n "${BEAD_RIG:-}"')
+        tm.that(script, has='printf \'%s\\n\' "$BEAD_RIG"')
+        tm.that(script.count("rig=$(tracker_rig)"), eq=6)
         tm.that(script, has="git rev-parse --path-format=absolute --git-common-dir")
         tm.that(workflow, has="id-token: write")
         tm.that(workflow, has="attestations: write")
@@ -214,6 +218,11 @@ class TestCodegenCiMatrix:
             workflow,
             has='git fetch --force origin "refs/tags/attest/gates/v1/$GATE_COMMIT_SHA:',
         )
+        tm.that(workflow, has='if [ "${{ github.event_name }}" = "pull_request" ]')
+        tm.that(workflow, has='if [ "$#" -ne 3 ]')
+        tm.that(workflow, has='GATE_COMMIT_SHA="$3"')
+        tm.that(workflow, has="integration merge tree does not equal promoted head tree")
+        tm.that(workflow, has='--commit-sha "$GATE_COMMIT_SHA"')
         tm.that(workflow, lacks="run: CI=Y make gen WHAT=check")
         tm.that(workflow, lacks="run: CI=Y make check")
         tm.that(workflow, lacks="run: CI=Y make test")
@@ -309,8 +318,7 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
         marker = (
-            "fetch-depth: 0\n"
-            "          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n"
+            "ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n"
             "      # Codegen refreshes the declared provider baseline"
         )
         tm.that(workflow, has=marker)

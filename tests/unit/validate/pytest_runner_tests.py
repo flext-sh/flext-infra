@@ -442,6 +442,14 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="--cov-report")
         tm.that(any(arg == "--cov" for arg in command), eq=False)
 
+    def test_full_selector_disables_testmon_and_enables_coverage(
+        self, tmp_path: Path
+    ) -> None:
+        runner = self._runner(tmp_path, what="full")
+        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
+        tm.that(command, has="--cov")
+        tm.that(command, lacks=["--testmon", "--no-cov"])
+
     def test_cov_y_disables_testmon_and_enables_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

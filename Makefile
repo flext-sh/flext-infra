@@ -167,7 +167,7 @@ _ALLOWED_WHATS_setup := environment
 _ALLOWED_WHATS_deps := check lock upgrade
 _ALLOWED_WHATS_build := artifacts
 _ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells direnv
-_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint
+_ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint
 _ALLOWED_WHATS_fmt := check all apply
 _ALLOWED_WHATS_fix := check all apply
 _ALLOWED_WHATS_run := default
@@ -184,7 +184,7 @@ _ALLOWED_WHATS_setup := environment $(patsubst _custom_setup_%,%,$(filter _custo
 _ALLOWED_WHATS_deps := check lock upgrade $(patsubst _custom_deps_%,%,$(filter _custom_deps_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_build := artifacts $(patsubst _custom_build_%,%,$(filter _custom_build_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells direnv $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(patsubst _custom_test_%,%,$(filter _custom_test_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint $(patsubst _custom_test_%,%,$(filter _custom_test_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fmt := check all apply $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fix := check all apply $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_run := default $(patsubst _custom_run_%,%,$(filter _custom_run_%,$(CUSTOM_DECLARED_TARGETS)))
@@ -504,7 +504,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_checkpoint_wip _builtin_checkpoint_merge _builtin_checkpoint_review _builtin_checkpoint_verify _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_checkpoint_wip _builtin_checkpoint_merge _builtin_checkpoint_review _builtin_checkpoint_verify _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
@@ -891,6 +891,16 @@ _builtin_test_all: _builtin_require_environment
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
+
+_builtin_test_full: _builtin_require_environment
+
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
 _builtin_test_cache-status: _builtin_require_environment
 
