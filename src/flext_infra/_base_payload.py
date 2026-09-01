@@ -18,7 +18,10 @@ class FlextInfraCommandPayloadMixin:
         apply_changes: bool
         check_only: bool
         dry_run: bool
-        fail_fast: bool
+
+        @property
+        def fail_fast(self) -> bool: ...
+
         output_format: str
         project_filter: str | None
         report_path: Path | None

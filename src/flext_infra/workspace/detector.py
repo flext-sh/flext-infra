@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -338,11 +339,20 @@ class FlextInfraWorkspaceDetector(
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
         subprojects, external = topology.value
+        repository_ref = repository.value.model_copy(
+            update={
+                "role": (
+                    c.Infra.MakeProfile.WORKSPACE
+                    if subprojects
+                    else c.Infra.MakeProfile.STANDALONE
+                )
+            }
+        )
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=beads.value.workspace,
                 beads=beads.value,
-                repository=repository.value,
+                repository=repository_ref,
                 subprojects=subprojects,
                 external_dependency_paths=external,
             )
@@ -391,11 +401,7 @@ class FlextInfraWorkspaceDetector(
                 "project metadata and repository identity differ: "
                 f"{canonical_project_name} != {workspace.repository.distribution}"
             )
-        make_profile = (
-            c.Infra.MakeProfile.WORKSPACE
-            if (resolved_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.MakeProfile.STANDALONE
-        )
+        make_profile = workspace.repository.role
         # The provider default is the fallback, never the answer: this
         # repository's own published integration branch decides. Line 206 of
         # this same file already derives it that way for submodule discovery;
@@ -447,6 +453,7 @@ class FlextInfraWorkspaceDetector(
         return workspace.external_dependency_paths
 
     @classmethod
+    @cache
     def analysis_exclusion_paths(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
@@ -462,7 +469,7 @@ class FlextInfraWorkspaceDetector(
         )
 
     def detect(self, project_root: Path) -> p.Result[c.Infra.MakeProfile]:
-        """Classify solely by the requested repository's own ``.gitmodules``."""
+        """Classify from governed members, not mere vendored Git topology."""
         try:
             resolved_root = project_root.expanduser().resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
@@ -471,9 +478,13 @@ class FlextInfraWorkspaceDetector(
             return r[c.Infra.MakeProfile].fail(
                 f"project root is not a directory: {resolved_root}"
             )
+        topology = self._load_subprojects(resolved_root)
+        if topology.failure:
+            return r[c.Infra.MakeProfile].fail(topology.error)
+        subprojects, _external = topology.value
         return r[c.Infra.MakeProfile].ok(
             c.Infra.MakeProfile.WORKSPACE
-            if (resolved_root / c.Infra.GITMODULES).is_file()
+            if subprojects
             else c.Infra.MakeProfile.STANDALONE
         )
 

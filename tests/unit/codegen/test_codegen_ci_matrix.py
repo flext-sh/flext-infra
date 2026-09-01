@@ -70,12 +70,80 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
+    def test_gate_attestation_is_generated_as_transparent_checkpoint(
+        self, tmp_path: Path
+    ) -> None:
+        """Managed projects emit one automatic local-to-GitHub proof pipeline."""
+        root = self._render_project(tmp_path / "attested")
+        makefile = (root / "Makefile").read_text(encoding="utf-8")
+        script = (root / ".github/scripts/gate-attestation.sh").read_text(
+            encoding="utf-8"
+        )
+        workflow = (root / ".github/workflows/gate-attestation.yml").read_text(
+            encoding="utf-8"
+        )
+
+        tm.that(makefile, has="_builtin_checkpoint_wip:")
+        tm.that(makefile, has="_builtin_checkpoint_merge:")
+        tm.that(makefile, has="_builtin_checkpoint_review:")
+        tm.that(makefile, has="_builtin_checkpoint_verify:")
+        tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
+        tm.that(script, lacks="[skip ci]")
+        tm.that(
+            (root / ".github/scripts/gate-attestation.sh").stat().st_mode & 0o111,
+            eq=0o111,
+        )
+        wip_case = script.split("  wip)", maxsplit=1)[1].split("  merge)", maxsplit=1)[0]
+        merge_case = script.split("  merge)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
+        review_case = script.split("  review)", maxsplit=1)[1].split("  verify)", maxsplit=1)[0]
+        tm.that(wip_case, lacks="run_local_gates")
+        tm.that(wip_case, lacks="publish_receipt")
+        tm.that(wip_case, has="validation and attestation NOT SELECTED")
+        tm.that(merge_case, has="aggregate_pull_requests")
+        tm.that(merge_case, has="close_transferred_drafts")
+        tm.that(script, has='gh pr close "$source_pr"')
+        tm.that(script, has="Transferred automatically to maintained PR #$PR")
+        tm.that(script, has="for source_pr in $SOURCE_PRS")
+        tm.that(script, lacks="MAX_DRAFT")
+        tm.that(review_case, has="publish_receipt")
+        tm.that(
+            review_case.index("git commit --allow-empty")
+            < review_case.index("publish_receipt"),
+            eq=True,
+        )
+        tm.that(script, has='git merge --no-ff')
+        tm.that(script, lacks="run_local_gates")
+        tm.that(script, lacks="git tag -s")
+        tm.that(script, has="github attest-gates")
+        tm.that(script, has="github verify-gates")
+        tm.that(script, has='gc bd update "$BEAD" --rig "$rig"')
+        tm.that(script, has='bd -C "$city_path" update "$shared_child"')
+        tm.that(workflow, has="id-token: write")
+        tm.that(workflow, has="attestations: write")
+        action = config.Infra.codegen.github_actions["attest"]
+        tm.that(workflow, has=f"uses: {action.repository}@{action.sha}")
+        tm.that(workflow, has=".github/scripts/gate-attestation.sh verify")
+        tm.that(workflow, has="run: make setup")
+        tm.that(workflow, lacks="make check")
+        tm.that(workflow, lacks="make test")
+
+    def test_github_apps_are_not_selected_for_draft_prs(self, tmp_path: Path) -> None:
+        """Versioned app policy reserves external review for non-Draft PRs."""
+        root = self._render_project(tmp_path / "apps-review-only")
+        cubic = (root / "cubic.yaml").read_text(encoding="utf-8")
+        tm.that(cubic, has="check_drafts: false")
+        tm.that(cubic, has="- WIP")
+        tm.that(cubic, has="generate: false")
+        coderabbit = (root / ".coderabbit.yaml").read_text(encoding="utf-8")
+        tm.that(coderabbit, has="drafts: false")
+        tm.that(coderabbit, has='- "!WIP"')
+
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")
         workflows = "\n".join(
             (root / ".github" / "workflows" / filename).read_text(encoding="utf-8")
-            for filename in ("ci.yml", "ci-matrix.yml")
+            for filename in ("ci.yml", "ci-matrix.yml", "gate-attestation.yml")
         )
         catalog = {
             f"{action.repository}@{action.sha}": action.version
@@ -239,6 +307,7 @@ class TestCodegenCiMatrix:
             uv_version=codegen.toolchain.uv_version,
             dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
             github_actions=codegen.github_actions,
+            gate_attestation=codegen.gate_attestation,
             make=codegen.make,
             workspace_repositories=(),
             checkout_submodules=codegen.checkout_submodules,
@@ -415,6 +484,24 @@ class TestCodegenCiMatrix:
         tm.that(triggers, lacks="0.12.0-dev")
         tm.that(triggers, lacks="develop")
         tm.that(triggers, lacks="branches: [dev]")
+
+    def test_draft_wip_selects_no_jobs_and_review_blocks_wip_head(
+        self, tmp_path: Path
+    ) -> None:
+        """Draft is remote durability; only a promoted non-WIP head may land."""
+        root = self._render_project(tmp_path / "external")
+        workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        _, jobs = workflow.split("\njobs:\n", maxsplit=1)
+        ci_job, merge_guard = jobs.split("\n  merge-guard:", maxsplit=1)
+
+        tm.that(ci_job, has="github.event.pull_request.draft == false")
+        tm.that(merge_guard, has="github.event.pull_request.draft == false")
+        tm.that(merge_guard, has="subject=$(git log -1 --format=%s)")
+        tm.that(merge_guard, has='[[ "$subject" == \\[WIP\\]* ]]')
+        tm.that(merge_guard, has="WIP head cannot merge")
+        tm.that(merge_guard, lacks="DRAFT PR cannot merge")
 
     def test_ci_matrix_template_defaults_dispatch_only(self) -> None:
         """The SSOT template is statically dispatch-only for every profile."""

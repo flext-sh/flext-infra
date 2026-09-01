@@ -90,6 +90,18 @@ class ValidationRoutes(ValidationCommandRoutes):
         ),
         c.Infra.CLI_GROUP_GITHUB: (
             m.Cli.ResultCommandRoute(
+                name="attest-gates",
+                help_text="Create an SSH-signed local gate attestation",
+                model_cls=m.Infra.GateAttestationCreateRequest,
+                handler=u.Infra.git_create_gate_attestation,
+            ),
+            m.Cli.ResultCommandRoute(
+                name="verify-gates",
+                help_text="Verify the SSH-signed gate attestation for HEAD",
+                model_cls=m.Infra.GateAttestationVerifyRequest,
+                handler=u.Infra.git_verify_gate_attestation,
+            ),
+            m.Cli.ResultCommandRoute(
                 name="workflows",
                 help_text="Sync GitHub workflow files across workspace",
                 model_cls=m.Infra.GithubWorkflowSyncRequest,

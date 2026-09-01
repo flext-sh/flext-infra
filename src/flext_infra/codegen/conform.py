@@ -185,6 +185,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"path={file.path}: atomic write failed"
                     )
                 )
+            if file.executable is not None:
+                current_mode = file.path.stat().st_mode
+                executable_bits = 0o111
+                file.path.chmod(
+                    current_mode | executable_bits
+                    if file.executable
+                    else current_mode & ~executable_bits
+                )
             written.append(file.path)
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
@@ -1273,7 +1281,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                         current.error or f"managed file read failed: {path}"
                     )
-                file_plan = self._file_plan(root, entry.destination, current.value)
+                file_plan = self._file_plan(
+                    root,
+                    entry.destination,
+                    current.value,
+                    executable=managed.executable,
+                )
                 if file_plan.failure:
                     return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                         file_plan.error
@@ -1334,7 +1347,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"source={entry.source}; target={path}; root={root}; "
                     f"marker={conflict_marker}"
                 )
-            file_plan = self._file_plan(root, entry.destination, rendered_content)
+            file_plan = self._file_plan(
+                root,
+                entry.destination,
+                rendered_content,
+                executable=managed.executable,
+            )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     file_plan.error
@@ -1446,7 +1464,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
-        if destination == ".pre-commit-config.yaml":
+        if destination in {
+            ".coderabbit.yaml",
+            ".pre-commit-config.yaml",
+            "cubic.yaml",
+        }:
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
@@ -1510,6 +1532,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         codegen.toolchain.dependency_cooldown_days
                     ),
                     github_actions=codegen.github_actions,
+                    gate_attestation=codegen.gate_attestation,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
                     # Why: dependabot.yml.j2 branches on this and the model
@@ -1553,6 +1576,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
+                    gate_attestation=codegen.gate_attestation,
                     dist=dist,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
@@ -1652,6 +1676,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
+                gate_attestation=codegen.gate_attestation,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1984,7 +2009,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[bool].ok(True)
 
     def _file_plan(
-        self, root: Path, relative_path: str, rendered: str
+        self,
+        root: Path,
+        relative_path: str,
+        rendered: str,
+        *,
+        executable: bool | None = None,
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Compare one expected output and mark whether it changed."""
         path = root / relative_path
@@ -2002,13 +2032,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current = read.value
         expected_sha = u.Cli.sha256_content(rendered)
         current_sha = u.Cli.sha256_content(current) if path.is_file() else ""
-        changed = current != rendered
+        mode_changed = (
+            path.is_file()
+            and executable is not None
+            and bool(path.stat().st_mode & 0o111) is not executable
+        )
+        changed = current != rendered or mode_changed
         return r[m.Infra.CodegenFilePlan].ok(
             m.Infra.CodegenFilePlan(
                 path=path,
                 rendered=rendered,
                 expected_sha256=expected_sha,
                 current_sha256=current_sha,
+                executable=executable,
                 changed=changed,
                 blocked=False,
                 reason="",

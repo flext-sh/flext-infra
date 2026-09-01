@@ -12,11 +12,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_infra import infra
+from flext_infra import infra, m, u as infra_u
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPipeline,
     FlextInfraCodegenScaffolder,
 )
 from flext_tests import tm
@@ -33,6 +34,40 @@ _SRC_MODULES = (
     "models.py",
     "utilities.py",
 )
+
+
+def test_pipeline_state_resolves_runtime_protocol_annotations() -> None:
+    """The public pipeline state must construct under the installed Pydantic."""
+    state = m.Infra.CodegenPipelineState()
+
+    tm.that(state.discovered_projects, eq=())
+
+
+def test_codegen_pipeline_fail_fast_is_invariant() -> None:
+    """Fail-fast is code-owned and cannot be disabled through CLI input."""
+    pipeline = FlextInfraCodegenPipeline()
+
+    tm.that(pipeline.fail_fast, eq=True)
+    tm.that("fail_fast" in type(pipeline).model_fields, eq=False)
+
+
+def test_package_lookup_prunes_excluded_project_trees(tmp_path: Path) -> None:
+    """Package discovery indexes valid projects without entering hidden trees."""
+    project = tmp_path / "member"
+    package = project / "src" / "member_pkg"
+    package.mkdir(parents=True)
+    (project / "pyproject.toml").touch()
+    (package / "__init__.py").touch()
+    hidden = tmp_path / ".cache" / "src" / "hidden_pkg"
+    hidden.mkdir(parents=True)
+    (hidden.parent.parent / "pyproject.toml").touch()
+    (hidden / "__init__.py").touch()
+
+    tm.that(
+        infra_u.Infra.package_init_path(tmp_path, "member_pkg"),
+        eq=package / "__init__.py",
+    )
+    tm.that(infra_u.Infra.package_init_path(tmp_path, "hidden_pkg"), eq=None)
 
 
 def _project_prefix(package_name: str) -> str:

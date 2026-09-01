@@ -614,13 +614,21 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             stripped = line.strip()
             typing_match = c.Infra.TYPING_FACTORY_ASSIGN_RE.match(stripped)
             typing_name = typing_match.group(1) if typing_match is not None else ""
+            legacy_alias_match = c.Infra.LEGACY_TYPEALIAS_RE.match(stripped)
+            legacy_alias_name = (
+                legacy_alias_match.group(1) if legacy_alias_match is not None else ""
+            )
             should_move = any(
                 stripped.startswith((f"type {name} =", f"{name}: TypeAlias ="))
                 or typing_name == name
                 for name in alias_names
             )
             if should_move:
-                moved_lines.append(line)
+                moved_lines.append(
+                    f"type {legacy_alias_name} = {legacy_alias_match.group(2)}"
+                    if legacy_alias_match is not None
+                    else line
+                )
                 moved_line_numbers.append(line_number)
             else:
                 kept_lines.append(line)

@@ -152,7 +152,6 @@ class TestsFlextInfraWorkspaceMain:
             verb="check",
             selected_projects=["demo"],
             workspace_root=workspace_root,
-            fail_fast=True,
             make_arg=[
                 f"PROJECT_INFRA_PYTHONPATH={_INFRA_SRC}",
                 f"CAPTURE_PATH={capture_path}",
