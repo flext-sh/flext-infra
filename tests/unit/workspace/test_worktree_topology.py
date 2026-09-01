@@ -19,7 +19,7 @@ class TestsWorktreeTopology(WorktreeFixture):
         """Update preserves lane ancestry through the canonical no-ff merge."""
         repository = self._repository(tmp_path)
         branch = "feature/update"
-        lane = self._lane(repository, repository, branch)
+        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
         tm.ok(
             FlextInfraWorktreeService(
                 workspace_root=repository,

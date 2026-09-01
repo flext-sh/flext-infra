@@ -124,10 +124,12 @@ class TestsInfraGithub:
         )
 
         tm.fail(result)
-        tm.that((result.error or ""), has="PR operation exited with code")
+        tm.that(
+            (result.error or ""),
+            has="repository root is owned by an ancestor worktree",
+        )
         log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
-        tm.that(log_path.is_file(), eq=True)
-        tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")
+        tm.that(log_path.exists(), eq=False)
 
     def test_pull_request_create_requires_noninteractive_content(
         self, tmp_path: Path

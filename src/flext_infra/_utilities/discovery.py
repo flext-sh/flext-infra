@@ -33,7 +33,6 @@ class FlextInfraUtilitiesDiscovery(
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
-    @cache
     def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
         """Discover project roots once for a command-scoped workspace."""
         resolved_root = Path(workspace_root).resolve()
@@ -49,7 +48,6 @@ class FlextInfraUtilitiesDiscovery(
         return tuple(sorted({resolved_root, *nested_roots}))
 
     @staticmethod
-    @cache
     def _discover_project_root_from_path(file_path: str) -> str:
         """Discover the enclosing project root path cached by file path."""
         resolved = Path(file_path).resolve()
@@ -121,7 +119,6 @@ class FlextInfraUtilitiesDiscovery(
         return Path(project_root) if project_root else None
 
     @classmethod
-    @cache
     def _discover_package_from_path(cls, file_path: str) -> str:
         """Discover the package path cached by file path."""
         resolved = Path(file_path).resolve()
@@ -352,8 +349,19 @@ class FlextInfraUtilitiesDiscovery(
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
+        from flext_infra._utilities.git import FlextInfraUtilitiesGit
+
         for candidate in (execution_dir, *execution_dir.parents):
-            if (candidate / c.Infra.GITMODULES).is_file():
+            if not (candidate / c.Infra.GITMODULES).is_file():
+                continue
+            declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(candidate)
+            if declared.failure:
+                continue
+            member_roots = tuple((candidate / path).resolve() for path in declared.value)
+            if resolved_root == candidate or any(
+                resolved_root == member or member in resolved_root.parents
+                for member in member_roots
+            ):
                 return candidate.resolve()
         project_root = cls.project_root(resolved_root)
         if project_root is not None and (

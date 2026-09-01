@@ -453,11 +453,12 @@ class FlextInfraWorkspaceDetector(
         return workspace.external_dependency_paths
 
     @classmethod
-    @cache
     def analysis_exclusion_paths(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
         """Load exclusions for governed repositories; ignore ungoverned trees."""
+        if not cls._beads_path(repository_root.expanduser().resolve()).is_file():
+            return r[tuple[Path, ...]].ok(())
         origin = cls._git_origin_url(repository_root)
         if origin.failure or cls._declared_provider_for_url(origin.value) is None:
             return r[tuple[Path, ...]].ok(())

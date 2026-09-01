@@ -399,6 +399,7 @@ Infra:
           - .benchmarks
           - .hypothesis
         root_dirs:
+          - .test-tmp
           - build
           - dist
           - htmlcov
@@ -621,6 +622,7 @@ Infra:
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
       - { name: .pytest_cache, source_scan_ignore: true }
+      - { name: .test-tmp, source_scan_ignore: true }
       - { name: .testmondata, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }
