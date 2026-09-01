@@ -33,7 +33,6 @@ class FlextInfraUtilitiesDiscovery(
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
-    @cache
     def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
         """Discover project roots once for a command-scoped workspace."""
         resolved_root = Path(workspace_root).resolve()
@@ -49,7 +48,6 @@ class FlextInfraUtilitiesDiscovery(
         return tuple(sorted({resolved_root, *nested_roots}))
 
     @staticmethod
-    @cache
     def _discover_project_root_from_path(file_path: str) -> str:
         """Discover the enclosing project root path cached by file path."""
         resolved = Path(file_path).resolve()
@@ -121,7 +119,6 @@ class FlextInfraUtilitiesDiscovery(
         return Path(project_root) if project_root else None
 
     @classmethod
-    @cache
     def _discover_package_from_path(cls, file_path: str) -> str:
         """Discover the package path cached by file path."""
         resolved = Path(file_path).resolve()
@@ -308,6 +305,8 @@ class FlextInfraUtilitiesDiscovery(
         """Return first segments of read-only external topology paths."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
+        if not (project_dir / c.Infra.BEADS_OVERRIDE_RELPATH).is_file():
+            return frozenset()
         excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
         if excluded.failure:
             msg = excluded.error or "workspace analysis scope is unavailable"
@@ -352,15 +351,15 @@ class FlextInfraUtilitiesDiscovery(
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
-        for candidate in (execution_dir, *execution_dir.parents):
-            if (candidate / c.Infra.GITMODULES).is_file():
-                return candidate.resolve()
         project_root = cls.project_root(resolved_root)
         if project_root is not None and (
             (project_root / c.Infra.PYPROJECT_FILENAME).is_file()
             or (project_root / c.Infra.GIT_DIR).exists()
         ):
             return project_root
+        for candidate in (execution_dir, *execution_dir.parents):
+            if (candidate / c.Infra.GITMODULES).is_file():
+                return candidate.resolve()
         return resolved_root
 
     @classmethod

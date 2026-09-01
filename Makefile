@@ -991,7 +991,7 @@ _builtin_clean_generated:
 
 
 	@set -eu; \
-	for target in "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
+	for target in "$(PROJECT_ROOT)/.test-tmp" "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
 		if [ -e "$$target" ]; then find "$$target" -depth -delete; \
 		elif [ -L "$$target" ]; then find "$$target" -depth -delete; fi; \
 	done
