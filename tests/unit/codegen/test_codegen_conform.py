@@ -1466,6 +1466,13 @@ class TestScriptDispatchMakefile:
             ],
         )
         tm.that("_require_apply" in gen_all_body, eq=True)
+        credential_preflight = "MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR"
+        tm.that(credential_preflight in gen_all_body, eq=True)
+        tm.that(
+            gen_all_body.index(credential_preflight)
+            < gen_all_body.index("codegen conform"),
+            eq=True,
+        )
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
