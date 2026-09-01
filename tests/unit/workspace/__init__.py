@@ -12,6 +12,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
+    from .test_beads_environment_sync import TestsBeadsEnvironmentSync, make_request
     from .test_detector_owns_no_project_registry import (
         TestsDetectorOwnsNoProjectRegistry,
     )
@@ -27,16 +28,21 @@ if TYPE_CHECKING:
     )
     from .test_facade_environment_sync import TestsFlextInfraFacadeEnvironmentSync
     from .test_main import TestsFlextInfraWorkspaceMain, workspace_main
+    from .test_provider_resolution_ssh_remotes import (
+        TestsProviderResolutionAcceptsSshRemotes,
+    )
     from .test_repository_local_topology import TestsRepositoryLocalTopology
     from .test_vscode import TestsFlextInfraCodegenVscode
     from .test_workspace_root_make_contract import TestsWorkspaceRootMakeContract
     from .worktree_fixture import WorktreeFixture
 __all__: tuple[str, ...] = (
+    "TestsBeadsEnvironmentSync",
     "TestsDetectorOwnsNoProjectRegistry",
     "TestsFlextInfraCodegenVscode",
     "TestsFlextInfraFacadeEnvironmentSync",
     "TestsFlextInfraWorkspaceEnvironmentProvenance",
     "TestsFlextInfraWorkspaceMain",
+    "TestsProviderResolutionAcceptsSshRemotes",
     "TestsRepositoryLocalTopology",
     "TestsWorkspaceRootMakeContract",
     "WorktreeFixture",
@@ -45,6 +51,7 @@ __all__: tuple[str, ...] = (
     "e",
     "h",
     "m",
+    "make_request",
     "p",
     "r",
     "s",
@@ -65,6 +72,10 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
+            ".test_beads_environment_sync": (
+                "TestsBeadsEnvironmentSync",
+                "make_request",
+            ),
             ".test_detector_owns_no_project_registry": (
                 "TestsDetectorOwnsNoProjectRegistry",
             ),
@@ -80,6 +91,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_facade_environment_sync": ("TestsFlextInfraFacadeEnvironmentSync",),
             ".test_main": ("TestsFlextInfraWorkspaceMain", "workspace_main"),
+            ".test_provider_resolution_ssh_remotes": (
+                "TestsProviderResolutionAcceptsSshRemotes",
+            ),
             ".test_repository_local_topology": ("TestsRepositoryLocalTopology",),
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),
             ".test_workspace_root_make_contract": ("TestsWorkspaceRootMakeContract",),

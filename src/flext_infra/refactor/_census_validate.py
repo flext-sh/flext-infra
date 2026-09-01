@@ -23,7 +23,9 @@ class FlextInfraRefactorCensusValidateMixin:
 
     if TYPE_CHECKING:
         dry_run: bool
-        fail_fast: bool
+
+        @property
+        def fail_fast(self) -> bool: ...
 
         @property
         def root(self) -> Path: ...

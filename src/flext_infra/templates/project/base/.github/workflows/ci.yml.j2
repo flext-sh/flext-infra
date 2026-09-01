@@ -181,7 +181,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout promoted head
-        uses: actions/checkout@3d3c42e5aac5bba805825da76410c181273ba90b1  # v7.0.1
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           fetch-depth: 1
       - name: Block WIP heads from protected integration branches

@@ -106,12 +106,22 @@ class TestCodegenCiMatrix:
         tm.that(script, has="for source_pr in $SOURCE_PRS")
         tm.that(script, lacks="MAX_DRAFT")
         tm.that(review_case, has="publish_receipt")
+        tm.that(review_case, has="require_review_pr_contract")
+        tm.that(review_case, has='gh pr ready "$PR"')
+        tm.that(review_case, has='gh pr checks "$PR" --watch --fail-fast')
+        tm.that(review_case, has='gh pr ready "$PR" --undo')
+        tm.that(
+            review_case.index("require_review_pr_contract")
+            < review_case.index("publish_receipt")
+            < review_case.index('gh pr ready "$PR"'),
+            eq=True,
+        )
         tm.that(
             review_case.index("git commit --allow-empty")
             < review_case.index("publish_receipt"),
             eq=True,
         )
-        tm.that(script, has='git merge --no-ff')
+        tm.that(script, has="git merge --no-ff")
         tm.that(script, lacks="run_local_gates")
         tm.that(script, lacks="git tag -s")
         tm.that(script, has="github attest-gates")
@@ -175,15 +185,16 @@ class TestCodegenCiMatrix:
         )
 
         tm.that(workflow, has="run: CI=Y make setup")
-        tm.that(workflow, has="run: CI=Y make gen WHAT=check")
-        tm.that(workflow, has="run: CI=Y make check")
+        tm.that(workflow, has="github verify-gates")
+        tm.that(workflow, lacks="run: CI=Y make gen WHAT=check")
+        tm.that(workflow, lacks="run: CI=Y make check")
         tm.that(workflow, lacks="run: CI=Y make test")
         tm.that(workflow, lacks="run: make test")
         tm.that(workflow, lacks="WHAT=apply")
         tm.that(workflow, lacks="APPLY=Y")
         tm.that(
             workflow.index("run: CI=Y make setup"),
-            lt=workflow.index("run: CI=Y make gen WHAT=check"),
+            lt=workflow.index("github verify-gates"),
         )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
@@ -210,7 +221,7 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: gh auth setup-git")
         tm.that(
             workflow.index("run: gh auth setup-git")
-            < workflow.index("run: CI=Y make gen WHAT=apply APPLY=Y"),
+            < workflow.index("github verify-gates"),
             eq=True,
         )
 

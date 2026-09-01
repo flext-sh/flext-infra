@@ -478,7 +478,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             represented.add(relative)
             completed.append(
                 file.model_copy(
-                    update={"owner": governed.owner, "policy": governed.policy}
+                    update={
+                        "owner": governed.owner,
+                        "policy": governed.policy,
+                        "executable": governed.executable,
+                    }
                 )
             )
         if not contract.complete_governed:
