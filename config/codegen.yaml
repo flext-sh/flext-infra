@@ -516,13 +516,18 @@ Infra:
           # checkout lock). accepts_apply unlocks the APPLY token only.
           accepts_apply: true
           apply_what: default
+        - name: work
+          default_what: status
+          whats: [help, status, start, land, finish]
+          apply_guarded: true
+          apply_what: start
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
           apply_guarded: false
         - name: checkpoint
           default_what: wip
-          whats: [wip, review, verify]
+          whats: [wip, merge, review, verify]
           apply_guarded: false
         - name: docs
           # `validate` is the read-only fixed-point after mutation (must differ

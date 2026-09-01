@@ -761,6 +761,9 @@ _builtin_status_diagnostics: _builtin_require_environment
 _builtin_checkpoint_wip: _builtin_require_environment
 	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" wip
 
+_builtin_checkpoint_merge: _builtin_require_environment
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" merge
+
 _builtin_checkpoint_review: _builtin_require_environment
 	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" review
 
@@ -952,3 +955,21 @@ _builtin_gen_all:
 	$(call _mise_artifacts_check)
 
 _builtin_gen_apply: _builtin_gen_all
+
+_builtin_work_status:
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)"
+
+_builtin_work_start:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+
+_builtin_work_land:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation land --bead "$(BEAD)" --apply
+
+_builtin_work_finish:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
+
+_builtin_work_help:
+	@printf '%s\n' 'make work WHAT=status|start|land|finish';

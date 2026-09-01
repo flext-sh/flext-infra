@@ -84,16 +84,23 @@ class TestCodegenCiMatrix:
         )
 
         tm.that(makefile, has="_builtin_checkpoint_wip:")
+        tm.that(makefile, has="_builtin_checkpoint_merge:")
         tm.that(makefile, has="_builtin_checkpoint_review:")
         tm.that(makefile, has="_builtin_checkpoint_verify:")
         tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
         tm.that(script, lacks="[skip ci]")
-        wip_case = script.split("  wip)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
+        wip_case = script.split("  wip)", maxsplit=1)[1].split("  merge)", maxsplit=1)[0]
+        merge_case = script.split("  merge)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
         review_case = script.split("  review)", maxsplit=1)[1].split("  verify)", maxsplit=1)[0]
         tm.that(wip_case, lacks="run_local_gates")
         tm.that(wip_case, lacks="publish_receipt")
         tm.that(wip_case, has="validation and attestation NOT SELECTED")
-        tm.that(review_case, has="aggregate_drafts")
+        tm.that(merge_case, has="aggregate_pull_requests")
+        tm.that(merge_case, has="close_transferred_drafts")
+        tm.that(script, has='gh pr close "$source_pr"')
+        tm.that(script, has="Transferred automatically to maintained PR #$PR")
+        tm.that(script, has="for source_pr in $SOURCE_PRS")
+        tm.that(script, lacks="MAX_DRAFT")
         tm.that(review_case, has="run_local_gates")
         tm.that(review_case, has="publish_receipt")
         tm.that(
@@ -104,8 +111,6 @@ class TestCodegenCiMatrix:
             review_case.index("run_local_gates"),
             lt(review_case.index("publish_receipt")),
         )
-        tm.that(script, has='type == "array" and length >= 1')
-        tm.that(script, lacks="MAX_DRAFT")
         tm.that(script, has='git merge --no-ff')
         tm.that(script, has="git tag -s")
         tm.that(script, has="bd update")
