@@ -414,7 +414,6 @@ Infra:
       work_in_progress:
         draft_pr: true
         attestation_tag_prefix: attest/gates/v1
-        attestation_allowed_signers_variable: GATE_ATTEST_ALLOWED_SIGNERS
         branch_patterns:
           - "^wip/"
           - WIP
@@ -1104,6 +1103,9 @@ Infra:
             - external-docs
 
     managed_files:
+      - path: cubic.yaml
+        owner: codegen
+        policy: full
       - path: .github/attestations/allowed_signers
         owner: codegen
         policy: full
@@ -1768,6 +1770,11 @@ Infra:
     templates:
       root: project
       entries:
+        - source: base/cubic.yaml.j2
+          destination: cubic.yaml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
         - source: base/.github/attestations/allowed_signers.j2
           destination: .github/attestations/allowed_signers
           profiles: [workspace, standalone]

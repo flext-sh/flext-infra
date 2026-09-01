@@ -19,9 +19,20 @@ jobs:
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
+      - name: Install mise toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
+        with:
+          version: {{ mise_version }}
+      - name: Set up uv
+        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
+        with:
+          version: {{ uv_version }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Prepare verifier runtime
+        run: make setup
       - name: Verify local signed receipt
         env:
-          GATE_ALLOWED_SIGNERS: {% raw %}${{ vars.{{ make.work_in_progress.attestation_allowed_signers_variable }} }}{% endraw %}
           GATE_RECEIPT_OUTPUT: {% raw %}${{ runner.temp }}/gate-receipt.json{% endraw %}
         run: |
           GATE_COMMIT_SHA=$(git rev-list -n 1 "$GITHUB_REF_NAME")

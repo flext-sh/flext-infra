@@ -122,6 +122,14 @@ class TestCodegenCiMatrix:
         tm.that(workflow, lacks="make check")
         tm.that(workflow, lacks="make test")
 
+    def test_github_apps_are_not_selected_for_draft_prs(self, tmp_path: Path) -> None:
+        """Versioned app policy reserves external review for non-Draft PRs."""
+        root = self._render_project(tmp_path / "apps-review-only")
+        cubic = (root / "cubic.yaml").read_text(encoding="utf-8")
+        tm.that(cubic, has="check_drafts: false")
+        tm.that(cubic, has="- WIP")
+        tm.that(cubic, has="generate: false")
+
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""
         root = self._render_project(tmp_path / "external")

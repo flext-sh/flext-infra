@@ -1184,10 +1184,6 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Immutable signed-tag namespace for local gate receipts"),
         ]
-        attestation_allowed_signers_variable: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="GitHub variable carrying the SSH allowed-signers policy"),
-        ]
         branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(

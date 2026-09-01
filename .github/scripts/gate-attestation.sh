@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-tag_prefix='{{ make.work_in_progress.attestation_tag_prefix }}'
+tag_prefix='attest/gates/v1'
 mode="${1:?usage: gate-attestation.sh wip|merge|review|verify}"
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
@@ -38,7 +38,7 @@ publish_receipt() {
     --workspace . --bead "$BEAD" --pull-request "$PR" \
     --integration-branch "$BASE" --signer "$signer" \
     --gates gen --gates check --gates test
-  gc bd update "$BEAD" --set-metadata "gc.work_branch=$(git branch --show-current)" \
+  bd update "$BEAD" --set-metadata "gc.work_branch=$(git branch --show-current)" \
     --set-metadata "gc.work_commit=$sha" --set-metadata "gc.work_pr=$PR" \
     --set-metadata 'gc.work_pr_state=review' \
     --append-notes "Automatic Review proof: SHA $sha, PR $PR, signed aggregate receipt $tag, local gates exit 0."
@@ -53,9 +53,9 @@ update_wip_tracker() {
 }
 
 update_shared_tracker() {
-  shared_child=$(gc bd show "$BEAD" --json | jq -er '.[0].metadata["gc.shared_child"]')
+  shared_child=$(bd show "$BEAD" --json | jq -er '.[0].metadata["gc.shared_child"]')
   city_path=$(gc status --json | jq -er .city_path)
-  (cd "$city_path" && gc bd update "$shared_child" --append-notes "$1")
+  (cd "$city_path" && bd update "$shared_child" --append-notes "$1")
 }
 
 source_bead() {
@@ -123,7 +123,7 @@ close_transferred_drafts() {
     source_work=$(printf '%s' "$source" | jq -r .bead)
     gh pr comment "$source_pr" --body "Transferred automatically to maintained PR #$PR at aggregate SHA $aggregate_sha; source SHA $source_sha; bead $source_work."
     gh pr close "$source_pr" --comment "Draft source closed after automatic transfer to maintained PR #$PR."
-    gc bd update "$source_work" --append-notes "Draft PR $source_pr transferred to maintained PR $PR at $aggregate_sha and closed automatically."
+    bd update "$source_work" --append-notes "Draft PR $source_pr transferred to maintained PR $PR at $aggregate_sha and closed automatically."
   done
 }
 

@@ -20,7 +20,9 @@ name: CI
 {%- for branch in ci_trigger_branches %}
       - {{ branch }}
 {%- endfor %}
-    types: [opened, synchronize, reopened, ready_for_review]
+    # Draft persistence produces no workflow run. A changed Review PR must be
+    # returned to Draft and promoted again, producing a new exact-SHA receipt.
+    types: [ready_for_review]
 # End SECTION: triggers
 
 # Why: one active run per workflow and branch prevents obsolete CI from consuming runners.
