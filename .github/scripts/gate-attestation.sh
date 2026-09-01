@@ -20,11 +20,16 @@ current_repository() {
 local_rig() {
   root=$(git rev-parse --show-toplevel)
   git_common=$(git rev-parse --path-format=absolute --git-common-dir)
-  (cd "$git_common" && gc status --json) | jq -er --arg root "$root" --arg git_common "$git_common" '
+  primary=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -n 1)
+  if core_worktree=$(git config --get core.worktree); then
+    primary=$(realpath "$git_common/$core_worktree")
+  fi
+  (cd "$git_common" && gc status --json) | jq -er --arg root "$root" --arg git_common "$git_common" --arg primary "$primary" '
     [.rigs[] | . as $rig
       | select(
         $root == $rig.path or ($root | startswith($rig.path + "/")) or
-        $git_common == $rig.path or ($git_common | startswith($rig.path + "/"))
+        $git_common == $rig.path or ($git_common | startswith($rig.path + "/")) or
+        $primary == $rig.path or ($primary | startswith($rig.path + "/"))
       )]
     | sort_by(.path | length) | last | .name'
 }
