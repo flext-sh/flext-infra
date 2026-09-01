@@ -1,17 +1,7 @@
 [
   {
     "bead": "flext-13z9y",
-    "head_sha": "ec6655b13885f4631cd8347b5bd02aae5f5dd822",
-    "pr": 518
-  },
-  {
-    "bead": "flext-13z9y",
-    "head_sha": "2054bb6b6b66dc3cac07fed2f9a3286a06ce5ff8",
-    "pr": 519
-  },
-  {
-    "bead": "flext-13z9y",
-    "head_sha": "af0a0744df4733c6962b9c888899e938d85cf8db",
-    "pr": 520
+    "head_sha": "370feb5a022d645c1ec4f7dc96e5e5894f65692e",
+    "pr": 521
   }
 ]
