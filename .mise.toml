@@ -30,6 +30,8 @@ ast-grep = "0.45"
 gitleaks = "8.30"
 tokei = "14.0"
 kubeconform = "0.8"
+# Terraform for workspace templates (coder) and infra modules.
+terraform = "1.13"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
 "github:qltysh/qlty" = "0.642"

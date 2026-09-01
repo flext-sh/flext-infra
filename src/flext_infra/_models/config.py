@@ -305,6 +305,9 @@ class FlextInfraConfigModels:
         kubeconform_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
         ]
+        terraform_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible terraform minor line")
+        ]
         go_version: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -2416,6 +2419,9 @@ class FlextInfraConfigModels:
         ]
         kubeconform_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
+        ]
+        terraform_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible terraform minor line")
         ]
         go_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Go runtime version")
