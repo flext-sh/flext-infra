@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from datetime import UTC, datetime
 import hashlib
+import os
+from pathlib import Path
 import re
 from typing import TYPE_CHECKING
 
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 _TAG_PREFIX = "attest/gates/v1"
 _SSH_SIGNATURE_MARKER = "\n-----BEGIN SSH SIGNATURE-----"
 _PROMOTION_MANIFEST = ".github/attestations/promotion-sources.json"
+_EXPECTED_COMMIT_ENV = "GATE_COMMIT_SHA"
 
 
 class FlextInfraUtilitiesGitAttestationMixin(
@@ -230,7 +232,12 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 f"allowed_signers file not found: {allowed}"
             )
         repo = cls._repo(repo_root)
-        tag = cls._attestation_tag(repo.head.commit.hexsha)
+        expected_commit = os.environ.get(_EXPECTED_COMMIT_ENV, "").strip()
+        if expected_commit:
+            expected_commit = repo.commit(expected_commit).hexsha
+        else:
+            expected_commit = repo.head.commit.hexsha
+        tag = cls._attestation_tag(expected_commit)
         verification = u.Cli.run_raw(
             [
                 "git", "-c", "gpg.format=ssh",
@@ -243,13 +250,15 @@ class FlextInfraUtilitiesGitAttestationMixin(
             return r[m.Infra.GateAttestationReport].fail(
                 verification.error or f"signature verification failed: {tag}"
             )
-        predicate_result = cls._predicate_from_tag(repo_root, tag)
+        predicate_result = cls._predicate_from_tag(repo_root, tag, expected_commit)
         if predicate_result.failure:
             return r[m.Infra.GateAttestationReport].fail(
                 predicate_result.error or "invalid attestation tag"
             )
         predicate = predicate_result.value
-        checked = cls._attestation_predicate_from_value(repo_root, predicate)
+        checked = cls._attestation_predicate_from_value(
+            repo_root, predicate, expected_commit
+        )
         if checked.failure:
             return r[m.Infra.GateAttestationReport].fail(
                 checked.error or "attestation identity mismatch"
@@ -285,7 +294,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _predicate_from_tag(
-        cls, repo_root: Path, tag: str
+        cls, repo_root: Path, tag: str, expected_commit: str
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         try:
             tag_ref = next(item for item in cls._repo(repo_root).tags if item.name == tag)
@@ -296,10 +305,10 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 f"attestation is not an annotated tag: {tag}"
             )
         target = tag_ref.commit.hexsha
-        head = cls._repo(repo_root).head.commit.hexsha
-        if target != head:
+        if target != expected_commit:
             return r[m.Infra.GateAttestationPredicate].fail(
-                f"attestation tag target does not equal HEAD: {target} != {head}"
+                "attestation tag target does not equal expected commit: "
+                f"{target} != {expected_commit}"
             )
         message = tag_ref.tag.message.split(_SSH_SIGNATURE_MARKER, maxsplit=1)[0]
         parsed = u.Cli.json_loads(message)
@@ -315,12 +324,17 @@ class FlextInfraUtilitiesGitAttestationMixin(
 
     @classmethod
     def _attestation_predicate_from_value(
-        cls, repo_root: Path, predicate: m.Infra.GateAttestationPredicate
+        cls,
+        repo_root: Path,
+        predicate: m.Infra.GateAttestationPredicate,
+        expected_commit: str,
     ) -> p.Result[bool]:
         identity = cls.git_identity(m.Infra.GitRepoRequest(repo_root=repo_root))
         if identity.failure:
             return r[bool].fail(identity.error or "failed to resolve Git identity")
-        tree_sha = cls._repo(repo_root).head.commit.tree.hexsha
+        repo = cls._repo(repo_root)
+        tree_sha = repo.commit(expected_commit).tree.hexsha
+        checkout_tree_sha = repo.head.commit.tree.hexsha
         sources = cls._promotion_sources(repo_root)
         if sources.failure:
             return r[bool].fail(sources.error or "invalid promotion source manifest")
@@ -330,8 +344,11 @@ class FlextInfraUtilitiesGitAttestationMixin(
             field
             for field, matches in (
                 ("repository", predicate.repository == actual_repository),
-                ("commit", predicate.commit_sha == identity.value.head_oid),
-                ("tree", predicate.tree_sha == tree_sha),
+                ("commit", predicate.commit_sha == expected_commit),
+                (
+                    "tree",
+                    predicate.tree_sha == tree_sha == checkout_tree_sha,
+                ),
                 ("toolchain", predicate.toolchain_digest == actual_toolchain),
                 ("sources", predicate.sources == sources.value),
             )

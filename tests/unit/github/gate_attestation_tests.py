@@ -109,6 +109,27 @@ def test_signed_gate_attestation_round_trip(tmp_path: Path) -> None:
     tm.that(verified.unwrap().sources[0].pr, eq=518)
 
 
+def test_gate_attestation_verifies_promoted_head_from_pull_request_merge_checkout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, _remote, allowed_signers = _signed_repository(tmp_path)
+    tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
+    promoted_head = repo.head.commit.hexsha
+    repo.index.commit("synthetic pull request merge checkout")
+    monkeypatch.setenv("GATE_COMMIT_SHA", promoted_head)
+
+    verified = u.Infra.git_verify_gate_attestation(
+        m.Infra.GateAttestationVerifyRequest(
+            workspace=str(tmp_path),
+            allowed_signers=str(allowed_signers),
+            expected_gates=("gen", "check", "test"),
+        )
+    )
+
+    tm.ok(verified)
+
+
 def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -> None:
     repo, remote, allowed_signers = _signed_repository(tmp_path)
     transport = remote.working_dir
