@@ -967,12 +967,19 @@ _builtin_work_finish:
 _builtin_checkpoint_review: _builtin_require_environment
 	$(call _require_apply)
 	@$(if $(BEAD),,$(error BEAD is required))
-	@$(if $(PR),,$(error PR is required))
-	@$(if $(INTEGRATION_BRANCH),,$(error INTEGRATION_BRANCH is required))
-	@$(if $(SIGNER),,$(error SIGNER is required))
-	@$(PROJECT_FLEXT_INFRA) github attest-gates \
-		--workspace "$(PROJECT_ROOT)" --bead "$(BEAD)" --pull-request "$(PR)" \
-		--integration-branch "$(INTEGRATION_BRANCH)" --signer "$(SIGNER)"{% for gate in gate_attestation.required_gates %} \
+	@set -eu; \
+	if git log -1 --format=%s | grep -q '^\[WIP\]'; then \
+		printf 'ERROR: Review checkpoint requires a non-WIP HEAD\n' >&2; exit 2; \
+	fi; \
+	if [ "$$(gh pr view --json isDraft --jq .isDraft)" != false ]; then \
+		printf 'ERROR: Review checkpoint requires a non-Draft PR\n' >&2; exit 2; \
+	fi; \
+	pr="$$(gh pr view --json number --jq .number)"; \
+	base="$$(gh pr view --json baseRefName --jq .baseRefName)"; \
+	signer="$$(git config --get user.email)"; \
+	$(PROJECT_FLEXT_INFRA) github attest-gates \
+		--workspace "$(PROJECT_ROOT)" --bead "$(BEAD)" --pull-request "$$pr" \
+		--integration-branch "$$base" --signer "$$signer"{% for gate in gate_attestation.required_gates %} \
 		--gates {{ gate }}{% endfor %}
 
 _builtin_checkpoint_verify: _builtin_require_environment
