@@ -2,5 +2,6 @@
 	runner,
 	command_prefix="@"
 ) %}
+	{{ command_prefix }}mkdir -p "$(PROJECT_ROOT)/.test-tmp"
 	{{ command_prefix }}{{ runner }}
 {%- endmacro %}

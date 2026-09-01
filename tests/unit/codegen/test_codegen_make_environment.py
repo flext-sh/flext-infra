@@ -315,6 +315,7 @@ class TestsCodegenMakeEnvironment:
             in makefile,
             eq=True,
         )
+        tm.that('mkdir -p "$(PROJECT_ROOT)/.test-tmp"' in makefile, eq=True)
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
