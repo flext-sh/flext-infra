@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
@@ -447,6 +448,7 @@ class FlextInfraWorkspaceDetector(
         return workspace.external_dependency_paths
 
     @classmethod
+    @cache
     def analysis_exclusion_paths(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
