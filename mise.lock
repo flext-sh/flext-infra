@@ -3,34 +3,34 @@
 lockfile_version = 1
 
 [[tools.ast-grep]]
-version = "0.45.2"
+version = "0.45.3"
 backend = "aqua:ast-grep/ast-grep"
 specifiers = ["0.45"]
 
 [tools.ast-grep."platforms.linux-arm64"]
-checksum = "sha256:e67ee2f5928b4d77a472114edf6e227d90fefe22fa47e7a78db187c55d206564"
-url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.2/app-aarch64-unknown-linux-gnu.zip"
-url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/526582046"
+checksum = "sha256:b39cfbc58da4b869a88b8a4bc57bd5deb0d24541e704cf7c257da7b53ec81c8f"
+url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.3/app-aarch64-unknown-linux-gnu.zip"
+url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537333400"
 
 [tools.ast-grep."platforms.linux-x64"]
-checksum = "sha256:67aff72dd2994bf152fcc3a8a09cf93b13193abe59f39393095167c729af2015"
-url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.2/app-x86_64-unknown-linux-gnu.zip"
-url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/526581269"
+checksum = "sha256:f8ac830881339d1edee6b2652f54798c0f4da5a827f2db38a08ee31117783ce8"
+url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.3/app-x86_64-unknown-linux-gnu.zip"
+url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537332692"
 
 [tools.ast-grep."platforms.macos-arm64"]
-checksum = "sha256:1fc21214234bf6f5a3f841d5b2493a4fc4b6087f69b055c9ad5f94f77c0ab76e"
-url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.2/app-aarch64-apple-darwin.zip"
-url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/526581149"
+checksum = "sha256:6d2279dea5bea2ad79c66ea93f5fe54ba926e398a8a26de76c56db68fe59eac6"
+url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.3/app-aarch64-apple-darwin.zip"
+url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537332514"
 
 [tools.ast-grep."platforms.macos-x64"]
-checksum = "sha256:037e5b4a9aed2ba03a2b4710e4fe3439d5d1154d1266d5e8f9f6df7452169181"
-url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.2/app-x86_64-apple-darwin.zip"
-url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/526582632"
+checksum = "sha256:b2ffd26f42810340326a9e8a084bdc3647a8795c1a3f21fc06bd7bef3c7c5b2c"
+url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.3/app-x86_64-apple-darwin.zip"
+url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537333391"
 
 [tools.ast-grep."platforms.windows-x64"]
-checksum = "sha256:e14c3e33c6813111a41b8e4307e13462ebb2fea783d17ae22fc50d32a04ea77d"
-url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.2/app-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/526584448"
+checksum = "sha256:3751b7d6be7fd39a80df1180ffe7e053903dcf92d3190e5a8336ff1746af9059"
+url = "https://github.com/ast-grep/ast-grep/releases/download/0.45.3/app-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/ast-grep/ast-grep/releases/assets/537334241"
 
 [[tools."github:marlon-costa-dc/beads"]]
 version = "1.2.2-fd1"
@@ -86,34 +86,34 @@ backend = "github:marlon-costa-dc/gascity"
 specifiers = ["1.4.1-fc2"]
 
 [tools."github:marlon-costa-dc/gascity"."platforms.linux-arm64"]
-checksum = "sha256:ed08744bf0ecf88f659de9cfeba860b632eab34f4972a0ea3e6c02baad5d0fcc"
-url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gc_1.4.1-fc2_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538510265"
+checksum = "sha256:3f2e869b890ff1bea4d25f336645fa6edf096d34e5187ebbe9d7a2d276db0531"
+url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gascity_1.4.1-fc2_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538755507"
 
 [tools."github:marlon-costa-dc/gascity"."platforms.linux-arm64-musl"]
-checksum = "sha256:ed08744bf0ecf88f659de9cfeba860b632eab34f4972a0ea3e6c02baad5d0fcc"
-url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gc_1.4.1-fc2_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538510265"
+checksum = "sha256:3f2e869b890ff1bea4d25f336645fa6edf096d34e5187ebbe9d7a2d276db0531"
+url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gascity_1.4.1-fc2_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538755507"
 
 [tools."github:marlon-costa-dc/gascity"."platforms.linux-x64"]
-checksum = "sha256:72f5c76f01f9a3cff2494d94ba91de31db2d42a88c1ab881794a532dcac38816"
-url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gc_1.4.1-fc2_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538510269"
+checksum = "sha256:ac1fa5edbaf944c4c9e221d18f320b3513dd304f887b143014967406b762a6d9"
+url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gascity_1.4.1-fc2_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538755527"
 
 [tools."github:marlon-costa-dc/gascity"."platforms.linux-x64-musl"]
-checksum = "sha256:72f5c76f01f9a3cff2494d94ba91de31db2d42a88c1ab881794a532dcac38816"
-url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gc_1.4.1-fc2_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538510269"
+checksum = "sha256:ac1fa5edbaf944c4c9e221d18f320b3513dd304f887b143014967406b762a6d9"
+url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gascity_1.4.1-fc2_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538755527"
 
 [tools."github:marlon-costa-dc/gascity"."platforms.macos-arm64"]
-checksum = "sha256:bcc96fb371095b725103aaec8b1868d9c266556cb4a107ff832e13eb9620ac03"
-url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gc_1.4.1-fc2_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538510267"
+checksum = "sha256:17b91338e5c3ed7274786b17a6169d6301dda7b36656d5cb6b915afd0eea0b8b"
+url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gascity_1.4.1-fc2_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538755508"
 
 [tools."github:marlon-costa-dc/gascity"."platforms.macos-x64"]
-checksum = "sha256:9c5d384fbcd87f11bd75eaad880394809c0941cb146d5079ff414b232ef16394"
-url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gc_1.4.1-fc2_darwin_amd64.tar.gz"
-url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538510262"
+checksum = "sha256:84f8dba0220b6381f26a1922a65e0e732e82524f390def16b027a6113207bdcb"
+url = "https://github.com/marlon-costa-dc/gascity/releases/download/v1.4.1-fc2/gascity_1.4.1-fc2_darwin_amd64.tar.gz"
+url_api = "https://api.github.com/repos/marlon-costa-dc/gascity/releases/assets/538755516"
 
 [[tools."github:qltysh/qlty"]]
 version = "0.642.0"
@@ -461,6 +461,39 @@ url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323116"
 checksum = "sha256:1615eed140039bd58e7089109883b1c434de5d6de8f64a993e6e8c80ca57bdf9"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-windows-x86_64.zip"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323062"
+
+[[tools.terraform]]
+version = "1.13.5"
+backend = "aqua:hashicorp/terraform"
+specifiers = ["1.13"]
+
+[tools.terraform."platforms.linux-arm64"]
+checksum = "sha256:fc1ddcb403fb57e25bdbdceb1ef2b1a102650c01b4d65dd3410082d2ef8b4417"
+url = "https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_linux_arm64.zip"
+
+[tools.terraform."platforms.linux-arm64-musl"]
+checksum = "sha256:fc1ddcb403fb57e25bdbdceb1ef2b1a102650c01b4d65dd3410082d2ef8b4417"
+url = "https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_linux_arm64.zip"
+
+[tools.terraform."platforms.linux-x64"]
+checksum = "sha256:0dbe3fcc268eb670801af6a6456799d1ae26e72e73797f6c6167e18aafd1fd9a"
+url = "https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_linux_amd64.zip"
+
+[tools.terraform."platforms.linux-x64-musl"]
+checksum = "sha256:0dbe3fcc268eb670801af6a6456799d1ae26e72e73797f6c6167e18aafd1fd9a"
+url = "https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_linux_amd64.zip"
+
+[tools.terraform."platforms.macos-arm64"]
+checksum = "sha256:1bf942231235e7e1a4c38c6d7b820e54f526ac487f87d19f0c4a425c6ddb62cb"
+url = "https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_darwin_arm64.zip"
+
+[tools.terraform."platforms.macos-x64"]
+checksum = "sha256:92f76865230cbe6bb747e49cb3dc5b44a054324bbdd1a080bb127b326b94c404"
+url = "https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_darwin_amd64.zip"
+
+[tools.terraform."platforms.windows-x64"]
+checksum = "sha256:73f97943c93f268ae2c645b2a737d552175aa64d00a5c8b8f5ccc5831c033c8a"
+url = "https://releases.hashicorp.com/terraform/1.13.5/terraform_1.13.5_windows_amd64.zip"
 
 [[tools.tokei]]
 version = "14.0.0"
