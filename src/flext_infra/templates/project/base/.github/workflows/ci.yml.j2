@@ -87,7 +87,7 @@ jobs:
       # unattended smoke cannot answer `direnv allow`. Any content change
       # re-blocks, so the allow MUST run after every render — including this one.
       - name: direnv allow (rendered .envrc)
-        run: direnv allow "${{ github.workspace }}/.envrc"
+        run: direnv allow "{% raw %}${{ github.workspace }}{% endraw %}/.envrc"
 
       - name: gen check (blocking)
         run: {{ make.ci.variable }}={{ make.ci.value }} make gen WHAT=check
