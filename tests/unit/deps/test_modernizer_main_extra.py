@@ -282,10 +282,16 @@ class TestsFlextInfraDepsModernizerMainExtra:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Keep default modernization inside the declared workspace boundary."""
-        workspace = tmp_path / "flext"
-        workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='flext'\n", encoding="utf-8"
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "flext",
+            pyproject=(
+                "[project]\n"
+                "name='flext'\n"
+                "version='0.1.0'\n"
+                "requires-python='>=3.13,<3.14'\n"
+                "dependencies=[]\n"
+            ),
         )
         external = tmp_path / "gruponos-data"
         (external / "src" / "gruponos_data").mkdir(parents=True)

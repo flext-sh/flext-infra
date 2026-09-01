@@ -291,6 +291,8 @@ skill-create-output/
 CLAUDE.local.md
 
 # Tracked managed artifacts
+!.github/attestations/
+!.github/attestations/allowed_signers
 !.github/ci-template/
 !.github/ci-template/ci.yml
 !.github/copilot-instructions.md

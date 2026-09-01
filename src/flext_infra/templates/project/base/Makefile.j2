@@ -962,6 +962,25 @@ _builtin_work_finish:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
 
+# Promotion checkpoint is the sole agent-facing attestation surface. It runs
+# the configured gates, signs the immutable HEAD receipt, and publishes its tag.
+_builtin_checkpoint_review: _builtin_require_environment
+	$(call _require_apply)
+	@$(if $(BEAD),,$(error BEAD is required))
+	@$(if $(PR),,$(error PR is required))
+	@$(if $(INTEGRATION_BRANCH),,$(error INTEGRATION_BRANCH is required))
+	@$(if $(SIGNER),,$(error SIGNER is required))
+	@$(PROJECT_FLEXT_INFRA) github attest-gates \
+		--workspace "$(PROJECT_ROOT)" --bead "$(BEAD)" --pull-request "$(PR)" \
+		--integration-branch "$(INTEGRATION_BRANCH)" --signer "$(SIGNER)"{% for gate in gate_attestation.required_gates %} \
+		--gates {{ gate }}{% endfor %}
+
+_builtin_checkpoint_verify: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) github verify-gates \
+		--workspace "$(PROJECT_ROOT)" \
+		--allowed-signers "$(PROJECT_ROOT)/.github/attestations/allowed_signers"{% for gate in gate_attestation.required_gates %} \
+		--expected-gates {{ gate }}{% endfor %}
+
 _builtin_work_help:
 	@printf "make work — lane lifecycle (git + beads + gh + worktree)\n"
 	@printf "\n"

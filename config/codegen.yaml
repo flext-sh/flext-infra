@@ -208,6 +208,14 @@ Infra:
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
 
+    # Managed Review CI verifies the exact local gates bound to HEAD instead
+    # of executing them again. Public signer keys are trust policy, not secret
+    # material. External forks are outside conform and do not select this.
+    gate_attestation:
+      allowed_signers:
+        - "marlon.costa@datacosmos.com.br ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDgoUn/cIPyxU66dG/1eQNfmeirx9KxbGbHIP8vFNhLQP3FP5Vmn51bEio5di+rt/QHN9lofZDd6F/UhIBKbWAFcAkDGBF6N1YK/xL1h20IAiBY5jGZYUKArNjHaM/G+eMvNtNzKkCeDvAbUC9MZ8MrMIOkzxNGYJuNjA/UconiF5ggcdt0JbgMMOMfBu1Q4sAPFOg1JYKMAoHEy+eY6nhQiNH4Sdn92XyLDSd2Iz4+o/6e5mMq5aYIrpKZoP/kyW9T3UzciXdFcbvLHRm9jMLeBZTTqJnBbPkBbV1IjxTRGG9teW7nIURbFtx2gqKE7YoSmenJQwKgOJ9iz/gbyjif"
+      required_gates: [gen, check, test]
+
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -519,6 +527,11 @@ Infra:
           # WHAT selected when callers set APPLY=Y without naming one explicitly.
           apply_guarded: true
           apply_what: start
+        - name: checkpoint
+          default_what: verify
+          whats: [review, verify]
+          apply_guarded: true
+          apply_what: review
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
@@ -1093,6 +1106,9 @@ Infra:
             - external-docs
 
     managed_files:
+      - path: .github/attestations/allowed_signers
+        owner: codegen
+        policy: full
       - path: .github/ci-template/ci.yml
         owner: codegen
         policy: full
@@ -1748,6 +1764,11 @@ Infra:
     templates:
       root: project
       entries:
+        - source: base/.github/attestations/allowed_signers.j2
+          destination: .github/attestations/allowed_signers
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
         - source: base/.github/ci-template/ci.yml.j2
           destination: .github/ci-template/ci.yml
           profiles: [workspace]

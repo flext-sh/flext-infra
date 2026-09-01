@@ -51,7 +51,9 @@ def test_lint_subcommand_writes_report(tmp_path: Path) -> None:
     tm.that(result, eq=0)
 
 
-def test_pr_subcommand_returns_nonzero_for_minimal_repo(tmp_path: Path) -> None:
+def test_pr_status_succeeds_for_minimal_repo_without_open_pull_request(
+    tmp_path: Path,
+) -> None:
     workspace = u.Tests.create_github_workspace(tmp_path, project_names=("flext-a",))
 
     result = main([
@@ -63,7 +65,7 @@ def test_pr_subcommand_returns_nonzero_for_minimal_repo(tmp_path: Path) -> None:
         "status",
     ])
 
-    tm.that(result, ne=0)
+    tm.that(result, eq=0)
     log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
     tm.that(log_path.is_file(), eq=True)
     tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")

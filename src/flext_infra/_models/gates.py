@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, ClassVar, Literal
+import re
+from datetime import UTC, datetime
+from typing import Annotated, ClassVar, Literal, Self
 
+from flext_cli import u
 from flext_core import m
 from flext_infra import t
 
@@ -42,6 +45,130 @@ class FlextInfraModelsGates:
         pyright_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Pyright")
         ] = ()
+
+    class GateCommandEvidence(m.ContractModel):
+        """One canonical Make invocation covered by an attestation."""
+
+        gate: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[a-z][a-z0-9-]*$",
+                description="Canonical Make gate name",
+            ),
+        ]
+        command: Annotated[t.NonEmptyStr, m.Field(description="Exact Make command")]
+        cwd: Annotated[t.NonEmptyStr, m.Field(description="Absolute working directory")]
+        exit_code: Annotated[Literal[0], m.Field(description="Successful exit code")]
+        result_digest: Annotated[
+            t.NonEmptyStr, m.Field(description="SHA-256 digest of the gate result")
+        ]
+        started_at: Annotated[t.NonEmptyStr, m.Field(description="UTC start timestamp")]
+        completed_at: Annotated[
+            t.NonEmptyStr, m.Field(description="UTC completion timestamp")
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_evidence(self) -> Self:
+            if not self.command.startswith(f"make {self.gate}"):
+                msg = "gate evidence command must use canonical make <gate>"
+                raise ValueError(msg)
+            if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.result_digest):
+                msg = "result_digest must be sha256:<64 lowercase hex>"
+                raise ValueError(msg)
+            started = datetime.fromisoformat(self.started_at)
+            completed = datetime.fromisoformat(self.completed_at)
+            if started.tzinfo != UTC or completed.tzinfo != UTC or completed < started:
+                msg = "gate timestamps must be ordered UTC timestamps"
+                raise ValueError(msg)
+            return self
+
+    class GateAttestationPredicate(m.ContractModel):
+        """Canonical signed statement for locally completed gates."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=False
+        )
+
+        schema_version: Annotated[
+            Literal["https://flext.sh/attestations/gates/v1"],
+            m.Field(description="Predicate schema identity"),
+        ]
+        repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
+        commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Full commit SHA")]
+        tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Full tree SHA")]
+        bead: Annotated[t.NonEmptyStr, m.Field(description="Owning Bead identifier")]
+        pull_request: Annotated[
+            t.PositiveInt, m.Field(description="GitHub pull request number")
+        ]
+        integration_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Protected integration branch")
+        ]
+        signer: Annotated[
+            t.NonEmptyStr, m.Field(description="Allowed-signers principal")
+        ]
+        toolchain_digest: Annotated[
+            t.NonEmptyStr, m.Field(description="SHA-256 toolchain digest")
+        ]
+        covered_gates: Annotated[
+            t.StrSequence, m.Field(min_length=1, description="Exactly covered gates")
+        ]
+        commands: Annotated[
+            tuple[FlextInfraModelsGates.GateCommandEvidence, ...],
+            m.Field(min_length=1, description="Successful canonical invocations"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_predicate(self) -> Self:
+            for name, value in (("commit_sha", self.commit_sha), ("tree_sha", self.tree_sha)):
+                if not re.fullmatch(r"[0-9a-f]{40}", value):
+                    msg = f"{name} must be a full lowercase Git SHA"
+                    raise ValueError(msg)
+            if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.toolchain_digest):
+                msg = "toolchain_digest must be sha256:<64 lowercase hex>"
+                raise ValueError(msg)
+            gates = tuple(item.gate for item in self.commands)
+            if len(gates) != len(set(gates)) or set(gates) != set(self.covered_gates):
+                msg = "covered_gates and command evidence must match one-to-one"
+                raise ValueError(msg)
+            return self
+
+    class GateAttestationCreateRequest(m.ContractModel):
+        """Run required gates and transparently create the signed HEAD proof."""
+
+        workspace: Annotated[str, m.Field(description="Git repository root")] = "."
+        bead: Annotated[t.NonEmptyStr, m.Field(description="Owning Bead identifier")]
+        pull_request: Annotated[
+            t.PositiveInt, m.Field(description="Review pull request number")
+        ]
+        integration_branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Protected integration branch")
+        ]
+        signer: Annotated[
+            t.NonEmptyStr, m.Field(description="Allowed-signers principal")
+        ]
+        gates: Annotated[
+            t.StrSequence, m.Field(min_length=1, description="Canonical Make gates")
+        ]
+
+    class GateAttestationVerifyRequest(m.ContractModel):
+        """Verify the signed attestation for the repository HEAD."""
+
+        workspace: Annotated[str, m.Field(description="Git repository root")] = "."
+        allowed_signers: Annotated[
+            t.NonEmptyStr, m.Field(description="OpenSSH allowed_signers file")
+        ]
+        expected_gates: Annotated[
+            t.StrSequence, m.Field(min_length=1, description="Required gate coverage")
+        ]
+
+    class GateAttestationReport(m.ContractModel):
+        """Verified or newly created signed gate attestation."""
+
+        tag: Annotated[t.NonEmptyStr, m.Field(description="Full attestation tag")]
+        commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested commit SHA")]
+        tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested tree SHA")]
+        signer: Annotated[t.NonEmptyStr, m.Field(description="Verified signer principal")]
+        covered_gates: Annotated[t.StrSequence, m.Field(description="Covered gates")]
 
 
 __all__: list[str] = ["FlextInfraModelsGates"]

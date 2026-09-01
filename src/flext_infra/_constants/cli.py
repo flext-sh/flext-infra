@@ -61,6 +61,12 @@ class FlextInfraConstantsCli:
         "--operation",
         "--branch",
         "--base",
+        "--bead",
+        "--pull-request",
+        "--integration-branch",
+        "--signer",
+        "--allowed-signers",
+        "--expected-gates",
     )
     SHARED_BOOL_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_BOOL_FLAG_VALUES)
     SHARED_VALUE_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_VALUE_FLAG_VALUES)

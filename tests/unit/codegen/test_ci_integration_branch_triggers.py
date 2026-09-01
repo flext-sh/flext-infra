@@ -30,6 +30,7 @@ def _render_ci(*, repository_branch: str) -> str:
         uv_version=codegen.toolchain.uv_version,
         dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
         github_actions=codegen.github_actions,
+        gate_attestation=codegen.gate_attestation,
         make=codegen.make,
         workspace_repositories=(),
         checkout_submodules=codegen.checkout_submodules,
