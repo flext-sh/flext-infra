@@ -57,10 +57,16 @@ publish_receipt() {
 
 update_wip_tracker() {
   sha=$(git rev-parse HEAD)
-  bd update "$BEAD" --set-metadata "gc.work_branch=$(git branch --show-current)" \
+  gc bd update "$BEAD" --set-metadata "gc.work_branch=$(git branch --show-current)" \
     --set-metadata "gc.work_commit=$sha" --set-metadata "gc.work_pr=$PR" \
     --set-metadata 'gc.work_pr_state=draft_wip' \
     --append-notes "[WIP] checkpoint: SHA $sha, PR $PR Draft/WIP; validation and attestation NOT SELECTED."
+}
+
+update_shared_tracker() {
+  shared_child=$(gc bd show "$BEAD" --json | jq -er '.[0].metadata["gc.shared_child"]')
+  city_path=$(gc status --json | jq -er .city_path)
+  (cd "$city_path" && gc bd update "$shared_child" --append-notes "$1")
 }
 
 source_bead() {
@@ -68,6 +74,7 @@ source_bead() {
 }
 
 aggregate_pull_requests() {
+  AGGREGATE_CHANGED=false
   target=$(gh pr view "$TARGET_PR" --json number,baseRefName,headRefName,isDraft)
   PR=$(printf '%s' "$target" | jq -r .number)
   BASE=$(printf '%s' "$target" | jq -r .baseRefName)
@@ -97,18 +104,26 @@ aggregate_pull_requests() {
     if test -n "$resume_sha" && test "$resume_sha" = "$source_sha"; then
       git commit --no-edit
       resume_sha=
+      AGGREGATE_CHANGED=true
     elif git merge-base --is-ancestor "$source_sha" HEAD; then
       :
     else
       git merge --no-ff "refs/remotes/origin/promotion-source-$source_pr" -m "chore(promotion): aggregate Draft PR #$source_pr"
+      AGGREGATE_CHANGED=true
     fi
     jq -cn --argjson pr "$source_pr" --arg head_sha "$source_sha" --arg bead "$source_work" \
       '{pr:$pr,head_sha:$head_sha,bead:$bead}' >>"$manifest_lines"
   done
   test -s "$manifest_lines"
-  install -d "$(dirname "$canonical_manifest")"
-  jq -sS . "$manifest_lines" >"$canonical_manifest"
-  git add -- "$canonical_manifest"
+  rendered_manifest=$(mktemp)
+  trap 'rm -f "$manifest_lines" "$rendered_manifest"' EXIT
+  jq -sS . "$manifest_lines" >"$rendered_manifest"
+  if ! test -f "$canonical_manifest" || ! cmp -s "$rendered_manifest" "$canonical_manifest"; then
+    install -d "$(dirname "$canonical_manifest")"
+    cp "$rendered_manifest" "$canonical_manifest"
+    git add -- "$canonical_manifest"
+    AGGREGATE_CHANGED=true
+  fi
 }
 
 close_transferred_drafts() {
@@ -119,7 +134,7 @@ close_transferred_drafts() {
     source_work=$(printf '%s' "$source" | jq -r .bead)
     gh pr comment "$source_pr" --body "Transferred automatically to maintained PR #$PR at aggregate SHA $aggregate_sha; source SHA $source_sha; bead $source_work."
     gh pr close "$source_pr" --comment "Draft source closed after automatic transfer to maintained PR #$PR."
-    bd update "$source_work" --append-notes "Draft PR $source_pr transferred to maintained PR $PR at $aggregate_sha and closed automatically."
+    gc bd update "$source_work" --append-notes "Draft PR $source_pr transferred to maintained PR $PR at $aggregate_sha and closed automatically."
   done
 }
 
@@ -146,9 +161,12 @@ case "$mode" in
     MESSAGE=${MESSAGE:-aggregate Draft pull requests}
     aggregate_pull_requests
     if test "$TARGET_IS_DRAFT" = true; then
-      git commit --allow-empty -m "[WIP] $MESSAGE ($BEAD)"
-      git push origin "HEAD:refs/heads/$(git branch --show-current)"
+      if test "$AGGREGATE_CHANGED" = true; then
+        git commit --allow-empty -m "[WIP] $MESSAGE ($BEAD)"
+        git push origin "HEAD:refs/heads/$(git branch --show-current)"
+      fi
       update_wip_tracker
+      update_shared_tracker "Automatic Draft aggregation persisted in PR $PR at $(git rev-parse HEAD); validation and attestation NOT SELECTED."
     else
       run_local_gates
       git commit --allow-empty -m "chore(review): $MESSAGE ($BEAD)"
