@@ -101,24 +101,24 @@ class TestCodegenCiMatrix:
         tm.that(script, has="Transferred automatically to maintained PR #$PR")
         tm.that(script, has="for source_pr in $SOURCE_PRS")
         tm.that(script, lacks="MAX_DRAFT")
-        tm.that(review_case, has="run_local_gates")
         tm.that(review_case, has="publish_receipt")
         tm.that(
-            review_case.index("run_local_gates"),
-            lt(review_case.index("git commit --allow-empty")),
-        )
-        tm.that(
-            review_case.index("run_local_gates"),
+            review_case.index("git commit --allow-empty"),
             lt(review_case.index("publish_receipt")),
         )
         tm.that(script, has='git merge --no-ff')
-        tm.that(script, has="git tag -s")
+        tm.that(script, lacks="run_local_gates")
+        tm.that(script, lacks="git tag -s")
+        tm.that(script, has="github attest-gates")
+        tm.that(script, has="github verify-gates")
+        tm.that(script, lacks="gc bd")
         tm.that(script, has="bd update")
         tm.that(workflow, has="id-token: write")
         tm.that(workflow, has="attestations: write")
         action = config.Infra.codegen.github_actions["attest"]
         tm.that(workflow, has=f"uses: {action.repository}@{action.sha}")
         tm.that(workflow, has=".github/scripts/gate-attestation.sh verify")
+        tm.that(workflow, has="run: make setup")
         tm.that(workflow, lacks="make check")
         tm.that(workflow, lacks="make test")
 
@@ -129,6 +129,9 @@ class TestCodegenCiMatrix:
         tm.that(cubic, has="check_drafts: false")
         tm.that(cubic, has="- WIP")
         tm.that(cubic, has="generate: false")
+        coderabbit = (root / ".coderabbit.yaml").read_text(encoding="utf-8")
+        tm.that(coderabbit, has="drafts: false")
+        tm.that(coderabbit, has='- "!WIP"')
 
     def test_ci_workflow_uses_immutable_action_catalog(self, tmp_path: Path) -> None:
         """Every generated action reference resolves from the typed action SSOT."""

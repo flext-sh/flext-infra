@@ -1103,6 +1103,9 @@ Infra:
             - external-docs
 
     managed_files:
+      - path: .coderabbit.yaml
+        owner: codegen
+        policy: full
       - path: cubic.yaml
         owner: codegen
         policy: full
@@ -1770,6 +1773,11 @@ Infra:
     templates:
       root: project
       entries:
+        - source: base/.coderabbit.yaml.j2
+          destination: .coderabbit.yaml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
         - source: base/cubic.yaml.j2
           destination: cubic.yaml
           profiles: [workspace, standalone]
