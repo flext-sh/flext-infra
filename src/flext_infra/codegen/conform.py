@@ -986,8 +986,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_render.error or "pyproject template render failed"
             )
-        prepared_result = u.Infra.pyproject_conform(
+        initial_tooling = modernizer.conform_source(
             pyproject_render.value,
+            path=pyproject,
+            format_source=False,
+            declared_python_dirs=declared_python_dirs,
+            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
+        )
+        if initial_tooling.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                initial_tooling.error or f"initial tooling conform failed: {pyproject}"
+            )
+        prepared_result = u.Infra.pyproject_conform(
+            initial_tooling.value,
             providers=codegen.providers,
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
@@ -1851,6 +1863,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                direnv_version=codegen.toolchain.direnv_version,
                 uv_version=codegen.toolchain.uv_version,
                 mise_version=codegen.toolchain.mise_version,
                 mise_lock_platforms=codegen.toolchain.mise_lock_platforms,

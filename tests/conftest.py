@@ -20,6 +20,17 @@ from tests import c, t, u
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
+@pytest.fixture(autouse=True)
+def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the checkout trigger from leaking into synthetic Git repositories.
+
+    Tests that exercise trigger anchoring opt in after constructing a commit in
+    their own repository. Every other fixture owns unrelated history, so the
+    outer GitHub Actions SHA is invalid input for it.
+    """
+    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
+
+
 @pytest.fixture
 def infra_public_root() -> Iterator[ModuleType]:
     """Reload the root public package after clearing lazy-export caches.
@@ -182,9 +193,7 @@ def infra_safe_command_output(
 
 
 @pytest.fixture
-def infra_git_repo(
-    infra_test_workspace: Path, monkeypatch: pytest.MonkeyPatch
-) -> Path:
+def infra_git_repo(infra_test_workspace: Path) -> Path:
     """Provide a provider-governed clone whose upstream is a local bare repo.
 
     Conformance reads this repository twice and both reads must agree. Detection
@@ -196,11 +205,6 @@ def infra_git_repo(
     bare origin through Git's own ``url.<base>.insteadOf`` mechanism. Fixture
     setup materializes the tracking ref once; conformance itself stays offline.
     """
-    # The fixture owns a synthetic repository whose commits are unrelated to
-    # the checkout running pytest.  A real GitHub Actions GITHUB_SHA therefore
-    # cannot describe this repository; tests that exercise the trigger anchor
-    # opt in explicitly with monkeypatch after creating their own commit.
-    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
     baseline_file = repo / ".infra-baseline"

@@ -272,6 +272,9 @@ class FlextInfraConfigModels:
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
         ]
+        direnv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
+        ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -2391,6 +2394,9 @@ class FlextInfraConfigModels:
         ]
         kind_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+        ]
+        direnv_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
         ]
         uv_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
