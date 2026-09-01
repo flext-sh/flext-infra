@@ -618,10 +618,8 @@ _builtin_help_usage:
 
 
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
-	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
-	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
-	@printf '  %-10s %s\n' 'KIND/NAME' 'GitFlow kind and slug for work start';
-	@printf '  %-10s %s\n' 'BASE' 'optional integration base override for work start';
+	@printf '  %-10s %s\n' 'BEAD' 'tracker item bound to a checkpoint';
+	@printf '  %-10s %s\n' 'BASE' 'integration branch used by checkpoint';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';

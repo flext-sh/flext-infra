@@ -330,6 +330,18 @@ class FlextInfraUtilitiesDiscovery(
         for candidate in candidates:
             if candidate.is_file():
                 return Path(candidate)
+        try:
+            installed = importlib_util.find_spec(package_name)
+        except c.EXC_OS_TYPE_VALUE:
+            return None
+        if (
+            installed is not None
+            and installed.submodule_search_locations is not None
+            and installed.origin
+        ):
+            installed_init = Path(installed.origin)
+            if installed_init.is_file():
+                return installed_init
         return None
 
     @staticmethod
@@ -452,7 +464,7 @@ class FlextInfraUtilitiesDiscovery(
             return ()
         project_root = cls.project_root(constants_file)
         if project_root is None:
-            return ()
+            project_root = constants_file.parent.parent
         cache_key = (str(constants_file.resolve()), return_module)
         if (cached := cls._PARENT_CONSTANTS_FLEXT_CACHE.get(cache_key)) is not None:
             return cached

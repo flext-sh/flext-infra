@@ -1,4 +1,4 @@
 version: 1
-workspace: flext
-database: flext
-issue_prefix: flext
+workspace: flext-infra
+database: flext_infra
+issue_prefix: finfra
