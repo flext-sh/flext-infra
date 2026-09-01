@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,7 +20,6 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @classmethod
-    @cache
     def _git_repo_root(cls, scope_root: str) -> str | None:
         """Return the nearest enclosing Git worktree root for ``scope_root``."""
         current = Path(scope_root).resolve()
@@ -34,7 +32,6 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
             current = parent
 
     @classmethod
-    @cache
     def _git_tracked_repo_relative_paths(cls, repo_root: str) -> t.StrSequence | None:
         """Return tracked and dirty paths relative to one Git repo root."""
         resolved_root = Path(repo_root).resolve()
@@ -64,7 +61,6 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
         return tuple(sorted(scope_paths))
 
     @classmethod
-    @cache
     def _git_tracked_scope_relative_paths(cls, scope_root: str) -> t.StrSequence | None:
         """Return tracked file paths relative to ``scope_root`` or ``None`` outside Git.
 
@@ -96,6 +92,12 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
             else:
                 scope_relative = repo_relative
             scope_paths.add(scope_relative.as_posix())
+        if not scope_paths and prefix_parts:
+            ignored_scope = cls._repo(repo_root).git.check_ignore(
+                "--", scope_prefix.as_posix(), with_exceptions=False
+            )
+            if ignored_scope.strip():
+                return None
         return tuple(sorted(scope_paths))
 
     @classmethod

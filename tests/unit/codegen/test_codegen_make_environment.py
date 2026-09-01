@@ -266,12 +266,14 @@ class TestsCodegenMakeEnvironment:
             runtime_python,
             (
                 "#!/bin/sh\n"
+                "test -z \"${PROJECT_ROOT+x}\" || exit 98\n"
                 f"command -v uv > '{tool_log}'\n"
                 f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),
         )
         active_env = {
             "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "PROJECT_ROOT": str(tmp_path / "hostile-project-root"),
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
@@ -305,12 +307,14 @@ class TestsCodegenMakeEnvironment:
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
                 "-u UV_PROJECT_ENVIRONMENT "
-                'PYTHONPATH="$(PROJECT_ROOT)/src" '
+                '-u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
             in makefile,
             eq=True,
         )
+        tm.that('test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"' in makefile, eq=True)
+        tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)

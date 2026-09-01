@@ -139,6 +139,12 @@ def modernizer_workspace(tmp_path: Path) -> Path:
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject(), encoding="utf-8"
     )
+    u.Tests.write_beads_project(
+        workspace,
+        workspace="workspace",
+        database="workspace",
+        issue_prefix="workspace",
+    )
     return workspace
 
 
@@ -147,12 +153,19 @@ def modernizer_workspace_with_projects(modernizer_workspace: Path) -> Path:
     (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject("selected", "ignored"), encoding="utf-8"
     )
-    _ = u.Tests.mk_project(
+    selected = u.Tests.mk_project(
         modernizer_workspace, "selected", pyproject=_modernizer_pyproject("selected")
     )
-    _ = u.Tests.mk_project(
+    ignored = u.Tests.mk_project(
         modernizer_workspace, "ignored", pyproject=_modernizer_pyproject("ignored")
     )
+    for project in (selected, ignored):
+        u.Tests.write_beads_project(
+            project,
+            workspace="workspace",
+            database=project.name,
+            issue_prefix=project.name,
+        )
     (modernizer_workspace / ".gitmodules").write_text(
         '[submodule "selected"]\n\tpath = selected\n'
         "\turl = https://github.com/flext-sh/selected.git\n"

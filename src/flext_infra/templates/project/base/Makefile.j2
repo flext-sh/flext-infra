@@ -330,7 +330,7 @@ ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 # PYTHONPATH would make `make test` in a linked worktree execute that primary
 # tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
 # always wins over the shared editable (terminus T4 / path-purity).
-UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT -u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
@@ -493,7 +493,7 @@ endif
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
-	@"$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
+	@env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
 		$(SELF_MAKE) _setup_lifecycle
 
 .PHONY: _setup_lifecycle
@@ -758,6 +758,21 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
+_builtin_checkpoint_wip: _builtin_require_environment
+	$(call _require_apply)
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" wip
+
+_builtin_checkpoint_merge: _builtin_require_environment
+	$(call _require_apply)
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" merge
+
+_builtin_checkpoint_review: _builtin_require_environment
+	$(call _require_apply)
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" review
+
+_builtin_checkpoint_verify: _builtin_require_environment
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" verify
+
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
@@ -820,7 +835,7 @@ define _mise_launcher_apply
 		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-		"$(SETUP_MISE)" -C "$$scratch" generate install-script \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" generate install-script \
 		--version "$(SETUP_MISE_VERSION)" \
 		--write "$$scratch/mise" --windows \
 		>"$$scratch/generate.log" 2>&1; then \
@@ -878,7 +893,7 @@ define _mise_lock_apply
 			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
 			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 			MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-			"$(SETUP_MISE)" -C "$$scratch" lock \
+			env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" lock \
 			--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
 			cat "$$scratch/lock.log"; \
 		else \
@@ -936,6 +951,7 @@ _builtin_gen_init:
 
 _builtin_gen_all:
 	$(call _require_apply)
+	@: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	$(call _generated_docs,--apply)
 	$(call _mise_launcher_apply)
@@ -943,41 +959,3 @@ _builtin_gen_all:
 	$(call _mise_artifacts_check)
 
 _builtin_gen_apply: _builtin_gen_all
-
-# The read-only default selector: reports lane/primary state without mutating,
-# so `make work` with no WHAT is safe and needs no APPLY.
-_builtin_work_status:
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)"
-
-_builtin_work_start:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
-
-_builtin_work_land:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation land --bead "$(BEAD)" --apply
-
-_builtin_work_finish:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
-
-_builtin_work_help:
-	@printf "make work — lane lifecycle (git + beads + gh + worktree)\n"
-	@printf "\n"
-	@printf "USAGE:\n"
-	@printf "  make work WHAT=status                                 show lanes + primary\n"
-	@printf "  make work WHAT=start KIND=<k> NAME=<s> BEAD=<id> APPLY=Y\n"
-	@printf "  make work WHAT=land BEAD=<id> APPLY=Y                   push + open PR\n"
-	@printf "  make work WHAT=finish BEAD=<id> APPLY=Y                 remove lane post-merge\n"
-	@printf "\n"
-	@printf "KIND:  feature | bugfix | hotfix | release\n"
-	@printf "NAME:  kebab-case slug (e.g. add-auth-validator)\n"
-	@printf "BEAD:  beads issue id (e.g. ai-hub-xzio.3.1)\n"
-	@printf "BASE:  optional override (default: config/workspace.yaml integration.branch)\n"
-	@printf "\n"
-	@printf "EXAMPLES:\n"
-	@printf "  make work WHAT=start KIND=feature NAME=add-hook BEAD=ai-hub-abc1 APPLY=Y\n"
-	@printf "  make work WHAT=status BEAD=ai-hub-abc1\n"
-	@printf "  make work WHAT=land BEAD=ai-hub-abc1 APPLY=Y\n"
-	@printf "  # review + merge PR, then:\n"
-	@printf "  make work WHAT=finish BEAD=ai-hub-abc1 APPLY=Y\n"

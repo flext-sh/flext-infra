@@ -45,9 +45,6 @@ class FlextInfraPytestRunner(s[int]):
     reports: Annotated[
         str, m.Field(min_length=1, description="Repository-relative test report root.")
     ]
-    fail_fast: Annotated[bool, m.Field(description="Stop after the first failure.")] = (
-        False
-    )
     verbose: Annotated[bool, m.Field(description="Expose child output live.")] = False
     diagnostic: Annotated[
         bool, m.Field(description="Use expanded pytest diagnostics.")
@@ -88,7 +85,6 @@ class FlextInfraPytestRunner(s[int]):
             what=cls._environment_value(c.Infra.PYTEST_ENV_WHAT) or None,
             target=cls._environment_value(c.Infra.PYTEST_ENV_TARGET),
             reports=cls._environment_value(c.Infra.PYTEST_ENV_REPORTS),
-            fail_fast=cls._environment_flag(c.Infra.PYTEST_ENV_FAIL_FAST),
             verbose=cls._environment_flag(c.Infra.PYTEST_ENV_VERBOSE),
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
         )

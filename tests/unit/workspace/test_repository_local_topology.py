@@ -115,10 +115,10 @@ class TestsRepositoryLocalTopology:
 
         tm.fail(result, has=field)
 
-    def test_only_own_gitmodules_classifies_a_repository_as_workspace(
+    def test_gitmodules_without_governed_members_remains_standalone(
         self, tmp_path: Path
     ) -> None:
-        """Classify from the repository's own live Git declaration."""
+        """Vendored or empty Git topology does not create a FLEXT workspace."""
         root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -132,8 +132,8 @@ class TestsRepositoryLocalTopology:
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
 
-        tm.that(mode, eq=c.Infra.MakeProfile.WORKSPACE)
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE)
+        tm.that(mode, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
 
     def test_parent_gitmodules_never_classifies_or_governs_a_child(
         self, tmp_path: Path
