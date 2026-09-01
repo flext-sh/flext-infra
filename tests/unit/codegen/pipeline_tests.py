@@ -20,6 +20,7 @@ from flext_infra.codegen import (
     FlextInfraCodegenPipeline,
     FlextInfraCodegenScaffolder,
 )
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_tests import tm
 
 from tests import t, u
@@ -178,6 +179,12 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     }
     tm.that(len(scaffold_by_project_second["project-a"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-b"].files_created), eq=0)
+    initial_namespace = tm.ok(
+        infra_u.Infra.parse_namespace_validation(
+            FlextInfraNamespaceValidator().validate_project(project_b)
+        )
+    )
+    tm.that(any(v.rule.startswith("NS-002") for v in initial_namespace), eq=True)
     fix_results = FlextInfraCodegenFixer.model_validate(payload).fix_workspace()
     fix_by_project = {result.project: result for result in fix_results}
     tm.that(fix_by_project, has="project-a")
@@ -186,7 +193,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     all_violations = list(project_b_fixed.violations_fixed) + list(
         project_b_fixed.violations_skipped
     )
-    tm.that(any(v.rule.startswith("NS-002") for v in all_violations), eq=True)
+    assert any(v.rule.startswith("NS-002") for v in all_violations), all_violations
     unmapped_count = FlextInfraCodegenLazyInit.model_validate(payload).generate_inits()
     tm.that(unmapped_count, gte=0)
     census_after = FlextInfraCodegenCensus.model_validate(payload).run()
