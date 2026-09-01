@@ -100,6 +100,7 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_setup_conform" in content, eq=False)
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
+        tm.that(content, has='direnv allow "$(PROJECT_ROOT)"')
         tm.that("_builtin_gen_check:" in content, eq=True)
         tm.that("_builtin_gen_apply:" in content, eq=True)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
