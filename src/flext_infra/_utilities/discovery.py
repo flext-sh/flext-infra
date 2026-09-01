@@ -34,14 +34,15 @@ class FlextInfraUtilitiesDiscovery(
     def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
         """Discover project roots once for a command-scoped workspace."""
         resolved_root = Path(workspace_root).resolve()
-        nested_roots = {
-            path.parent.resolve()
-            for path in resolved_root.rglob(c.Infra.PYPROJECT_FILENAME)
-            if not any(
-                part.startswith(".") or part in c.Infra.PYPROJECT_SKIP_DIRS
-                for part in path.relative_to(resolved_root).parts[:-1]
-            )
-        }
+        nested_roots: set[Path] = set()
+        for directory, child_names, file_names in resolved_root.walk(top_down=True):
+            child_names[:] = [
+                name
+                for name in child_names
+                if not name.startswith(".") and name not in c.Infra.PYPROJECT_SKIP_DIRS
+            ]
+            if c.Infra.PYPROJECT_FILENAME in file_names:
+                nested_roots.add(directory.resolve())
         return tuple(sorted({resolved_root, *nested_roots}))
 
     @staticmethod
