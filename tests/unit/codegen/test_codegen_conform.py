@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import tomllib
+from difflib import unified_diff
 from pathlib import Path
 
 import pytest
@@ -79,6 +80,26 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
             if path.is_file()
             and ".git" not in path.relative_to(root).parts
             and ".infra-baseline" not in path.relative_to(root).parts
+        )
+    )
+
+
+def _project_tree_diff(
+    expected: tuple[tuple[str, bytes], ...], actual: tuple[tuple[str, bytes], ...]
+) -> str:
+    """Render only differing generated files when a fixed-point contract fails."""
+    expected_files = dict(expected)
+    actual_files = dict(actual)
+    return "\n".join(
+        line
+        for path in sorted(expected_files.keys() | actual_files.keys())
+        if expected_files.get(path) != actual_files.get(path)
+        for line in unified_diff(
+            expected_files.get(path, b"").decode(errors="replace").splitlines(),
+            actual_files.get(path, b"").decode(errors="replace").splitlines(),
+            fromfile=f"created/{path}",
+            tofile=f"conformed/{path}",
+            lineterm="",
         )
     )
 
@@ -668,7 +689,10 @@ class TestCodegenConform:
             )
         )
         tm.ok(migrated)
-        tm.that(_project_tree(existing_root), eq=expected_tree)
+        actual_tree = _project_tree(existing_root)
+        assert actual_tree == expected_tree, _project_tree_diff(
+            expected_tree, actual_tree
+        )
 
     @pytest.mark.slow
     def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
