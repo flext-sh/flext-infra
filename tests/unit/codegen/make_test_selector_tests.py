@@ -274,5 +274,5 @@ class TestsMakeTestSelector:
             ],
             lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
         )
-        tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
+        tm.that(reporter, has=["{{ command_prefix }}set -eu;", "{{ runner }}"])
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])

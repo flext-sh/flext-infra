@@ -47,6 +47,12 @@ class TestsCodegenBeadsProjection:
         )
         return None if match is None else match.rendered
 
+    @staticmethod
+    def _write_metadata_marker(root: Path) -> None:
+        marker = root / c.Infra.BEADS_METADATA_RELPATH
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text("{}\n", encoding="utf-8")
+
     def test_local_identity_renders_only_declarative_beads_files(
         self, tmp_path: Path
     ) -> None:
@@ -56,6 +62,7 @@ class TestsCodegenBeadsProjection:
             issue_prefix="project-prefix",
         )
 
+        self._write_metadata_marker(root)
         plan = self._plan(root)
         rendered_config = self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH)
         rendered_metadata = self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH)
@@ -98,7 +105,8 @@ class TestsCodegenBeadsProjection:
         minted = "e9a551fc-a6f8-4e0e-a961-2505f49bc8a3"
         identity = root / ".beads" / "identity.toml"
         identity.parent.mkdir(parents=True, exist_ok=True)
-        identity.write_text(f'[project]\nid = "{minted}"\n')
+        identity.write_text(f'[project]\nid = "{minted}"\n', encoding="utf-8")
+        self._write_metadata_marker(root)
 
         rendered = self._rendered(self._plan(root), c.Infra.BEADS_METADATA_RELPATH)
         if rendered is None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,7 +28,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         py_file.write_text("VALUE = 1\n", encoding="utf-8")
         commands: list[tuple[str, ...]] = []
 
-        def _capture(command: object, **_kwargs: object) -> object:
+        def _capture(command: Sequence[object], **_kwargs: object) -> object:
             commands.append(tuple(str(part) for part in command))
             return r.ok(u.Tests.create_command_output())
 

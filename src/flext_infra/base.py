@@ -112,7 +112,6 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         """Canonical normalized workspace root."""
         return self.workspace_root
 
-    @override
     @property
     def fail_fast(self) -> bool:
         """Stop at the first failure as an invariant, never a CLI choice."""
