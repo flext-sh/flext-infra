@@ -133,6 +133,7 @@ class FlextInfraExtraPathsManager(
             return (source_root, *ordered)
         return tuple(ordered)
 
+    @override
     def mypy_search_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
         """Compute mypy search paths: like pyrefly but without the project root.
 
