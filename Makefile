@@ -889,7 +889,7 @@ _builtin_test_all: _builtin_require_environment
 		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
 		mkdir -p "$$test_tmp_parent"; \
 		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
-		cleanup_test_tmp() { rm -rf "$$test_tmp"; rmdir "$$test_tmp_parent" 2>/dev/null || true; }; \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
@@ -900,7 +900,7 @@ _builtin_test_cache-status: _builtin_require_environment
 		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
 		mkdir -p "$$test_tmp_parent"; \
 		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
-		cleanup_test_tmp() { rm -rf "$$test_tmp"; rmdir "$$test_tmp_parent" 2>/dev/null || true; }; \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
@@ -910,7 +910,7 @@ _builtin_test_cache-clear: _builtin_require_environment
 		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
 		mkdir -p "$$test_tmp_parent"; \
 		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
-		cleanup_test_tmp() { rm -rf "$$test_tmp"; rmdir "$$test_tmp_parent" 2>/dev/null || true; }; \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
@@ -920,7 +920,7 @@ _builtin_test_cache-checkpoint: _builtin_require_environment
 		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
 		mkdir -p "$$test_tmp_parent"; \
 		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
-		cleanup_test_tmp() { rm -rf "$$test_tmp"; rmdir "$$test_tmp_parent" 2>/dev/null || true; }; \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
@@ -1015,7 +1015,7 @@ _builtin_clean_generated:
 
 
 	@set -eu; \
-	for target in "$(PROJECT_ROOT)/.test-tmp" "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
+	for target in "$(PROJECT_ROOT)/.test-tmp" "$(PROJECT_ROOT)/.test-runtime" "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
 		if [ -e "$$target" ]; then find "$$target" -depth -delete; \
 		elif [ -L "$$target" ]; then find "$$target" -depth -delete; fi; \
 	done

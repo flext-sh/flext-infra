@@ -6,7 +6,7 @@
 		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
 		mkdir -p "$$test_tmp_parent"; \
 		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
-		cleanup_test_tmp() { rm -rf "$$test_tmp"; rmdir "$$test_tmp_parent" 2>/dev/null || true; }; \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
 		trap cleanup_test_tmp EXIT INT TERM; \
 		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" {{ runner }}
 {%- endmacro %}
