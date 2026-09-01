@@ -223,6 +223,22 @@ class TestBanditAndMarkdownGates:
 
         tm.that(runner.commands[0], has=str(project_owned.relative_to(project_dir)))
 
+    def test_markdown_excludes_tool_owned_test_scratch(self, tmp_path: Path) -> None:
+        """The canonical test scratch root is runtime data, never documentation."""
+        project_dir = u.Tests.mk_project(tmp_path, "markdown-test-scratch")
+        (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
+        scratch = project_dir / ".test-tmp" / "evidence.md"
+        scratch.parent.mkdir(parents=True)
+        scratch.write_text("runtime evidence", encoding="utf-8")
+        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+
+        _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
+            project_dir, self.make_ctx(tmp_path)
+        )
+
+        tm.that(runner.commands[0], has="README.md")
+        tm.that(runner.commands[0], lacks=str(scratch.relative_to(project_dir)))
+
     def test_markdown_uses_uv_managed_tool_with_sanitized_path(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -295,7 +295,7 @@ workspace = true
             dependencies,
             eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
-        uv = tu.Tests.toml_table_at(rendered, "tool", "uv")
-        workspace_table = tu.Tests.toml_table_at(rendered, "tool", "uv", "workspace")
-        tm.that(workspace_table.get("members"), eq=[])
-        tm.that("sources" in uv, eq=False)
+        parsed = u.Cli.toml_parse_text(rendered)
+        if parsed is None:
+            raise AssertionError("rendered dependency metadata is invalid TOML")
+        tm.that("tool" in parsed, eq=False)

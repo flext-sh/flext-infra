@@ -109,6 +109,7 @@ class FlextInfraExtraPathsManager(
             relative_path
             for relative_path in rules.project_shared_search_paths
             if (project_dir / relative_path).is_dir()
+            or relative_path in self.generated_python_roots
         ]
         # Why (cosmos-45hiv, 2026-08-31): the project root closes the chain for
         # cross-tree imports. `scripts/` is a checked env dir and owns
@@ -123,7 +124,9 @@ class FlextInfraExtraPathsManager(
         root_path = rules.project_root
         has_project_root = (project_dir / root_path).is_dir()
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
-        has_source_root = (project_dir / source_root).is_dir()
+        has_source_root = (
+            project_dir / source_root
+        ).is_dir() or source_root in self.generated_python_roots
         paths.discard(source_root)
         paths.discard(root_path)
         ordered = sorted(paths)
