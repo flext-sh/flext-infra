@@ -305,6 +305,7 @@ class TestsCodegenMakeEnvironment:
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
                 "-u UV_PROJECT_ENVIRONMENT "
+                'PROJECT_ROOT="$(PROJECT_ROOT)" '
                 'PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )

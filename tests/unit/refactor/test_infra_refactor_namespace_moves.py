@@ -49,6 +49,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceMoves:
                 "from typing import Protocol\n\n"
                 "class External(Protocol):\n"
                 "    def call(self) -> str:\n"
+                '        """Return the external value."""\n'
                 "        ...\n"
             ),
         )

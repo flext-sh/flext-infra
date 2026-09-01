@@ -60,11 +60,11 @@ def test_run_github_workspace_pull_requests_honors_fail_fast(tmp_path: Path) -> 
         tmp_path, project_names=("flext-a", "flext-b")
     )
 
-    result = u.Infra.run_github_workspace_pull_requests(
-        m.Infra.GithubPullRequestWorkspaceRequest(
-            workspace=str(workspace), fail_fast=True
-        )
+    request = m.Infra.GithubPullRequestWorkspaceRequest(
+        workspace=str(workspace), fail_fast=True
     )
+    tm.that(request.fail_fast, eq=True)
+    result = u.Infra.run_github_workspace_pull_requests(request)
 
     tm.ok(result)
     report = result.unwrap()

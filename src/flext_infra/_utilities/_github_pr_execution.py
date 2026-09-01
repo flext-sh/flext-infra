@@ -128,12 +128,18 @@ class FlextInfraUtilitiesGithubPrExecutionMixin:
         # partially initialized FlextCliUtilities instead of FlextInfraUtilities.
         from flext_infra import u as infra_u
 
-        result = infra_u.Infra.git_current_branch(
+        result = infra_u.Infra.git_identity(
             m.Infra.GitRepoRequest(repo_root=repo_root)
         )
         if result.failure:
             return r.fail(result.error or "failed to resolve current branch")
-        return r.ok(result.value.text)
+        if result.value.repo_root != repo_root.resolve():
+            return r.fail(
+                f"repository root is owned by an ancestor worktree: {repo_root}"
+            )
+        if result.value.branch is None:
+            return r.fail(f"repository has no active branch: {repo_root}")
+        return r.ok(result.value.branch)
 
     @classmethod
     def _github_pr_execute_create(

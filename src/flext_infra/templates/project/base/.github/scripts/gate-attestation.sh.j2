@@ -53,6 +53,48 @@ publish_receipt() {
     --append-notes "Automatic Review proof: SHA $sha, PR $PR, signed aggregate receipt $tag, local gates exit 0."
 }
 
+review_contract_json() {
+  repository=$(current_repository)
+  owner=${repository%%/*}
+  name=${repository#*/}
+  gh api graphql -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){isDraft bodyText reviewDecision reviewThreads(first:100){nodes{isResolved isOutdated}}}}}' \
+    -F owner="$owner" -F name="$name" -F number="$PR"
+}
+
+require_review_pr_contract() {
+  expected_draft=$1
+  review=$(review_contract_json)
+  printf '%s' "$review" | jq -e --argjson draft "$expected_draft" '
+    .data.repository.pullRequest as $pr
+    | $pr != null
+      and $pr.isDraft == $draft
+      and (($pr.bodyText | gsub("\\s"; "")) | length > 0)
+      and ($pr.bodyText | contains("Bead:"))
+      and ($pr.reviewDecision != "CHANGES_REQUESTED")
+      and ($pr.reviewThreads.nodes | all(.isResolved or .isOutdated))' >/dev/null
+}
+
+demote_failed_promotion() {
+  gh pr ready "$PR" --undo
+  gh pr edit "$PR" --add-label WIP
+  rig=$(local_rig)
+  gc bd update "$BEAD" --rig "$rig" --set-metadata 'gc.work_pr_state=draft_wip' \
+    --append-notes "Promotion failed for SHA $(git rev-parse HEAD); PR $PR returned automatically to Draft/WIP for fix-forward."
+}
+
+complete_transactional_promotion() {
+  gh pr edit "$PR" --remove-label WIP
+  gh pr ready "$PR"
+  if ! gh pr checks "$PR" --watch --fail-fast; then
+    demote_failed_promotion
+    return 1
+  fi
+  if ! require_review_pr_contract false; then
+    demote_failed_promotion
+    return 1
+  fi
+}
+
 update_wip_tracker() {
   sha=$(git rev-parse HEAD)
   rig=$(local_rig)
@@ -178,9 +220,9 @@ case "$mode" in
     git commit --allow-empty -m "chore(review): $MESSAGE ($BEAD)"
     PR=$(gh pr view --json number,isDraft --jq 'select(.isDraft == true) | .number')
     test -n "$PR"
+    require_review_pr_contract true
     publish_receipt
-    gh pr edit "$PR" --remove-label WIP
-    gh pr ready "$PR"
+    complete_transactional_promotion
     ;;
   verify)
     : "${GATE_COMMIT_SHA:?GATE_COMMIT_SHA is required}"; : "${GATE_RECEIPT_OUTPUT:?GATE_RECEIPT_OUTPUT is required}"

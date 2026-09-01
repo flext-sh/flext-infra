@@ -43,6 +43,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
         repos = [project.path for project in projects_result.value]
         if request.include_root:
             repos.append(workspace_root)
+        fail_fast = request.fail_fast
         outcomes: t.MutableSequenceOf[m.Infra.GithubPullRequestOutcome] = []
         context = m.Infra.GithubPullRequestWorkspaceContext(
             workspace_root=workspace_root, request=request, outcomes=outcomes
@@ -55,7 +56,7 @@ class FlextInfraUtilitiesGithubPr(FlextInfraUtilitiesGithubPrSingleMixin):
             failed = outcome_result.failure or outcome_result.unwrap().exit_code != 0
             if failed:
                 failures += 1
-                if request.fail_fast:
+                if fail_fast:
                     break
         return r[m.Infra.GithubPullRequestWorkspaceReport].ok(
             m.Infra.GithubPullRequestWorkspaceReport(

@@ -89,9 +89,7 @@ class TestCodegenManifestlessExisting:
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that(plans[required].changed, eq=True)
 
-        for file in initial_plan.files:
-            if file.changed:
-                tm.ok(u.Cli.atomic_write_text_file(file.path, file.rendered))
+        tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
         tm.that((root / ".env.example").exists(), eq=False)
         for relative, content in preserved.items():
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)

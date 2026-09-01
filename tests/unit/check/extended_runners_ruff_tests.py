@@ -105,7 +105,12 @@ class TestRealGateRunners:
         tm.that(source.read_text(encoding="utf-8"), eq="value = [1, 2, 3]\n")
 
     def test_pyright_reports_real_type_error(self, tmp_path: Path) -> None:
-        project_dir = u.Tests.mk_project(tmp_path, "pyright-project", with_src=True)
+        project_dir = u.Tests.mk_project(
+            tmp_path,
+            "pyright-project",
+            pyproject='[tool.pyright]\ninclude = ["src"]\ntypeCheckingMode = "strict"\n',
+            with_src=True,
+        )
         (project_dir / "src" / "demo.py").write_text(
             "value: str = 1\n", encoding="utf-8"
         )

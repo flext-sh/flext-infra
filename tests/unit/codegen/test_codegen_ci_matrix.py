@@ -107,13 +107,14 @@ class TestCodegenCiMatrix:
         tm.that(script, lacks="MAX_DRAFT")
         tm.that(review_case, has="publish_receipt")
         tm.that(review_case, has="require_review_pr_contract")
-        tm.that(review_case, has='gh pr ready "$PR"')
-        tm.that(review_case, has='gh pr checks "$PR" --watch --fail-fast')
-        tm.that(review_case, has='gh pr ready "$PR" --undo')
+        tm.that(review_case, has="complete_transactional_promotion")
+        tm.that(script, has='gh pr ready "$PR"')
+        tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
+        tm.that(script, has='gh pr ready "$PR" --undo')
         tm.that(
             review_case.index("require_review_pr_contract")
             < review_case.index("publish_receipt")
-            < review_case.index('gh pr ready "$PR"'),
+            < review_case.index("complete_transactional_promotion"),
             eq=True,
         )
         tm.that(
