@@ -182,7 +182,9 @@ def infra_safe_command_output(
 
 
 @pytest.fixture
-def infra_git_repo(infra_test_workspace: Path) -> Path:
+def infra_git_repo(
+    infra_test_workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> Path:
     """Provide a provider-governed clone whose upstream is a local bare repo.
 
     Conformance reads this repository twice and both reads must agree. Detection
@@ -194,6 +196,11 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
     bare origin through Git's own ``url.<base>.insteadOf`` mechanism. Fixture
     setup materializes the tracking ref once; conformance itself stays offline.
     """
+    # The fixture owns a synthetic repository whose commits are unrelated to
+    # the checkout running pytest.  A real GitHub Actions GITHUB_SHA therefore
+    # cannot describe this repository; tests that exercise the trigger anchor
+    # opt in explicitly with monkeypatch after creating their own commit.
+    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)
     baseline_file = repo / ".infra-baseline"
