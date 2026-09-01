@@ -516,7 +516,7 @@ class TestsFlextInfraRefactorMainCli:
         typings_source = typings_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="PayloadMap: TypeAlias = t.StrMapping")
         tm.that(service_source, has="from sample_pkg.typings import PayloadMap")
-        tm.that(typings_source, has="PayloadMap: TypeAlias = t.StrMapping")
+        tm.that(typings_source, has="type PayloadMap = t.StrMapping")
         tm.that(typings_source, has="from flext_core import t")
 
     def test_refactor_census_apply_rewrites_compatibility_alias(

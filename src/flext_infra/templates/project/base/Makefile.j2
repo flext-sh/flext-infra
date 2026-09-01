@@ -758,6 +758,15 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
+_builtin_checkpoint_wip: _builtin_require_environment
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" wip
+
+_builtin_checkpoint_review: _builtin_require_environment
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" review
+
+_builtin_checkpoint_verify: _builtin_require_environment
+	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" verify
+
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
@@ -943,41 +952,3 @@ _builtin_gen_all:
 	$(call _mise_artifacts_check)
 
 _builtin_gen_apply: _builtin_gen_all
-
-# The read-only default selector: reports lane/primary state without mutating,
-# so `make work` with no WHAT is safe and needs no APPLY.
-_builtin_work_status:
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)"
-
-_builtin_work_start:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
-
-_builtin_work_land:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation land --bead "$(BEAD)" --apply
-
-_builtin_work_finish:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
-
-_builtin_work_help:
-	@printf "make work — lane lifecycle (git + beads + gh + worktree)\n"
-	@printf "\n"
-	@printf "USAGE:\n"
-	@printf "  make work WHAT=status                                 show lanes + primary\n"
-	@printf "  make work WHAT=start KIND=<k> NAME=<s> BEAD=<id> APPLY=Y\n"
-	@printf "  make work WHAT=land BEAD=<id> APPLY=Y                   push + open PR\n"
-	@printf "  make work WHAT=finish BEAD=<id> APPLY=Y                 remove lane post-merge\n"
-	@printf "\n"
-	@printf "KIND:  feature | bugfix | hotfix | release\n"
-	@printf "NAME:  kebab-case slug (e.g. add-auth-validator)\n"
-	@printf "BEAD:  beads issue id (e.g. ai-hub-xzio.3.1)\n"
-	@printf "BASE:  optional override (default: config/workspace.yaml integration.branch)\n"
-	@printf "\n"
-	@printf "EXAMPLES:\n"
-	@printf "  make work WHAT=start KIND=feature NAME=add-hook BEAD=ai-hub-abc1 APPLY=Y\n"
-	@printf "  make work WHAT=status BEAD=ai-hub-abc1\n"
-	@printf "  make work WHAT=land BEAD=ai-hub-abc1 APPLY=Y\n"
-	@printf "  # review + merge PR, then:\n"
-	@printf "  make work WHAT=finish BEAD=ai-hub-abc1 APPLY=Y\n"

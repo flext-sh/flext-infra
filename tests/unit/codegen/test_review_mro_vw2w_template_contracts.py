@@ -72,23 +72,11 @@ class TestsReviewTemplateContracts:
         )
 
     def test_makefile_has_no_legacy_work_lifecycle(self) -> None:
-        """The lane lifecycle routes through the canonical CLI, not ad-hoc git.
-
-        Gas Town is retired, so its former ownership of the lane lifecycle no
-        longer removes ``work`` from the Make surface: ``work`` is a declared
-        verb in the codegen SSOT and rule 17 makes the Make verb the canonical
-        entry point. What must stay true is that each handler delegates to the
-        typed CLI instead of driving git/gh directly from the recipe.
-        """
+        """Gas City is the sole lane lifecycle owner."""
         text = _MAKEFILE.read_text(encoding="utf-8")
-        work_whats = config.Infra.codegen.make.handler_whats["work"]
-        for what in work_whats:
-            tm.that(text, has=f"_builtin_work_{what}:")
-        for operation in ("start", "land", "finish"):
-            tm.that(
-                text,
-                has=f'workspace work --workspace "$(WORKSPACE)" --operation {operation}',
-            )
+        tm.that("work" in config.Infra.codegen.make.handler_whats, eq=False)
+        tm.that(text, lacks="_builtin_work_")
+        tm.that(text, lacks="workspace work")
 
     def test_release_verifies_core_gitlink_after_setup(self) -> None:
         text = _RELEASE.read_text(encoding="utf-8")

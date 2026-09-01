@@ -36,7 +36,7 @@ Infra:
       tokei_version: "14.0"
       kubeconform_version: "0.8"
       qlty_version: "0.642"
-      mise_version: "2026.8.14"
+      mise_version: "2026.9.0"
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -207,6 +207,10 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+      attest:
+        repository: actions/attest
+        version: v4.1.0
+        sha: 59d89421af93a897026c735860bf21b6eb4f7b26
 
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
@@ -401,6 +405,8 @@ Infra:
       # ci.yml.j2 and .pre-commit-config.yaml.j2.
       work_in_progress:
         draft_pr: true
+        attestation_tag_prefix: attest/gates/v1
+        attestation_allowed_signers_variable: GATE_ATTEST_ALLOWED_SIGNERS
         branch_patterns:
           - "^wip/"
           - WIP
@@ -510,18 +516,13 @@ Infra:
           # checkout lock). accepts_apply unlocks the APPLY token only.
           accepts_apply: true
           apply_what: default
-        - name: work
-          default_what: status
-          whats: [help, status, start, land, finish]
-          # `work` mutates only for start/land/finish; status is the read-only
-          # fixed-point after mutation, so serialize-make can re-check without APPLY=Y.
-          # apply_what stays singular by model contract: it is only the implicit
-          # WHAT selected when callers set APPLY=Y without naming one explicitly.
-          apply_guarded: true
-          apply_what: start
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
+          apply_guarded: false
+        - name: checkpoint
+          default_what: wip
+          whats: [wip, review, verify]
           apply_guarded: false
         - name: docs
           # `validate` is the read-only fixed-point after mutation (must differ
@@ -1120,6 +1121,9 @@ Infra:
       - path: .github/scripts/install-git-hooks.sh
         owner: codegen
         policy: full
+      - path: .github/scripts/gate-attestation.sh
+        owner: codegen
+        policy: full
       - path: tests/fixtures/ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
@@ -1139,6 +1143,9 @@ Infra:
         owner: codegen
         policy: full
       - path: .github/workflows/ci.yml
+        owner: codegen
+        policy: full
+      - path: .github/workflows/gate-attestation.yml
         owner: codegen
         policy: full
       - path: .github/workflows/docs.yml
@@ -1793,6 +1800,11 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
+        - source: base/.github/scripts/gate-attestation.sh.j2
+          destination: .github/scripts/gate-attestation.sh
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
         # Multi-environment CI base: reusable ci-matrix workflow + per-distro
         # clean-machine images validating bootstrap and make verbs everywhere.
         - source: base/.github/workflows/ci-matrix.yml.j2
@@ -1803,6 +1815,11 @@ Infra:
           overwrite: false
         - source: base/.github/workflows/ci.yml.j2
           destination: .github/workflows/ci.yml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: false
+        - source: base/.github/workflows/gate-attestation.yml.j2
+          destination: .github/workflows/gate-attestation.yml
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false

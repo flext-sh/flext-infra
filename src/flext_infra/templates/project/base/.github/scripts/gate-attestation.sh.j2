@@ -1,0 +1,164 @@
+#!/bin/sh
+set -eu
+
+tag_prefix='{{ make.work_in_progress.attestation_tag_prefix }}'
+mode="${1:?usage: gate-attestation.sh wip|review|verify}"
+repository_root=$(git rev-parse --show-toplevel)
+cd "$repository_root"
+
+require_clean_commit() {
+  git diff --quiet
+  git diff --cached --quiet
+  test -z "$(git status --porcelain --untracked-files=no)"
+}
+
+run_local_gates() {
+  CI=N make gen WHAT=check
+  CI=N make check
+  CI=N make test
+}
+
+current_repository() {
+  git remote get-url origin | sed -E 's#^(https://github.com/|git@github.com:)##; s#\.git$##'
+}
+
+ensure_draft_pull_request() {
+  branch=$(git branch --show-current)
+  if pr_json=$(gh pr view "$branch" --json number,baseRefName,isDraft 2>/dev/null); then
+    :
+  else
+    gh label create WIP --color D4C5F9 --description 'Locally attested work in progress' --force
+    gh pr create --draft --base "$BASE" --head "$branch" --title "[WIP] $MESSAGE ($BEAD)" --body "Bead: $BEAD"
+    pr_json=$(gh pr view "$branch" --json number,baseRefName,isDraft)
+  fi
+  test "$(printf '%s' "$pr_json" | jq -r .baseRefName)" = "$BASE"
+  PR=$(printf '%s' "$pr_json" | jq -r .number)
+  if test "$(printf '%s' "$pr_json" | jq -r .isDraft)" != true; then
+    gh pr ready "$PR" --undo
+  fi
+  gh pr edit "$PR" --add-label WIP
+}
+
+ensure_review_pull_request() {
+  branch=$(git branch --show-current)
+  if pr_json=$(gh pr view "$branch" --json number,baseRefName,isDraft 2>/dev/null); then
+    test "$(printf '%s' "$pr_json" | jq -r .isDraft)" = false
+  else
+    gh pr create --base "$BASE" --head "$branch" \
+      --title "$MESSAGE ($BEAD)" --body "Promotion bead: $BEAD"
+    pr_json=$(gh pr view "$branch" --json number,baseRefName,isDraft)
+  fi
+  test "$(printf '%s' "$pr_json" | jq -r .baseRefName)" = "$BASE"
+  PR=$(printf '%s' "$pr_json" | jq -r .number)
+  labels=$(gh pr view "$PR" --json labels --jq '[.labels[].name]')
+  if printf '%s' "$labels" | jq -e 'index("WIP") != null' >/dev/null; then
+    gh pr edit "$PR" --remove-label WIP
+  fi
+}
+
+publish_receipt() {
+  sha=$(git rev-parse HEAD)
+  tree=$(git rev-parse HEAD^{tree})
+  toolchain=$(git hash-object uv.lock .mise.toml | sha256sum | awk '{print $1}')
+  repository=$(current_repository)
+  receipt=$(jq -cnS \
+    --arg repository "$repository" --arg sha "$sha" --arg tree "$tree" \
+    --arg bead "$BEAD" --arg pr "$PR" --arg base "$BASE" \
+    --arg toolchain "$toolchain" --slurpfile sources "$PROMOTION_MANIFEST" \
+    '{schema:"flext.gate-receipt.v1",repository:$repository,commit_sha:$sha,tree_sha:$tree,bead:$bead,pr:$pr,integration_branch:$base,sources:$sources[0],commands:["CI=N make gen WHAT=check","CI=N make check","CI=N make test"],exit_codes:[0,0,0],toolchain_digest:$toolchain}')
+  encoded=$(printf '%s' "$receipt" | base64 | tr -d '\n')
+  tag="$tag_prefix/$sha"
+  git tag -s -m "gate-receipt-v1 $encoded" "$tag" "$sha"
+  git push origin "HEAD:refs/heads/$(git branch --show-current)" "refs/tags/$tag"
+  bd update "$BEAD" \
+    --set-metadata "gc.work_branch=$(git branch --show-current)" \
+    --set-metadata "gc.work_commit=$sha" \
+    --set-metadata "gc.work_pr=$PR" \
+    --set-metadata 'gc.work_pr_state=review' \
+    --append-notes "Automatic Review proof: SHA $sha, PR $PR, signed aggregate receipt $tag, local gates exit 0."
+}
+
+update_wip_tracker() {
+  sha=$(git rev-parse HEAD)
+  bd update "$BEAD" \
+    --set-metadata "gc.work_branch=$(git branch --show-current)" \
+    --set-metadata "gc.work_commit=$sha" \
+    --set-metadata "gc.work_pr=$PR" \
+    --set-metadata 'gc.work_pr_state=draft_wip' \
+    --append-notes "[WIP] checkpoint: SHA $sha, PR $PR Draft/WIP; validation and attestation NOT SELECTED."
+}
+
+aggregate_drafts() {
+  jq -e 'type == "array" and length >= 1 and all(.[]; (.pr | type == "number") and (.head_sha | test("^[0-9a-f]{40}$")) and (.bead | length > 0))' "$PROMOTION_MANIFEST" >/dev/null
+  git fetch origin "$BASE"
+  git switch -C "$PROMOTION_BRANCH" "origin/$BASE"
+  jq -c '.[]' "$PROMOTION_MANIFEST" | while IFS= read -r source; do
+    source_pr=$(printf '%s' "$source" | jq -r .pr)
+    expected_sha=$(printf '%s' "$source" | jq -r .head_sha)
+    actual_sha=$(gh pr view "$source_pr" --json isDraft,headRefOid \
+      --jq 'select(.isDraft == true) | .headRefOid')
+    test "$actual_sha" = "$expected_sha"
+    git fetch origin "pull/$source_pr/head:refs/remotes/origin/promotion-source-$source_pr"
+    git merge --no-ff "refs/remotes/origin/promotion-source-$source_pr" \
+      -m "chore(promotion): aggregate Draft PR #$source_pr"
+  done
+}
+
+receipt_from_tag() {
+  tag=$1
+  subject=$(git for-each-ref --format='%(contents:subject)' "refs/tags/$tag")
+  case "$subject" in
+    'gate-receipt-v1 '*) ;;
+    *) printf 'ERROR: invalid gate receipt subject for %s\n' "$tag" >&2; exit 2 ;;
+  esac
+  printf '%s' "${subject#gate-receipt-v1 }" | base64 --decode
+}
+
+case "$mode" in
+  wip)
+    : "${BEAD:?BEAD is required}"
+    : "${BASE:?BASE is required}"
+    : "${PATHS:?PATHS is required}"
+    MESSAGE=${MESSAGE:-checkpoint}
+    git add -- $PATHS
+    git diff --cached --quiet && { printf 'ERROR: checkpoint has no staged changes\n' >&2; exit 2; }
+    git commit -m "[WIP] $MESSAGE ($BEAD)"
+    git push origin "HEAD:refs/heads/$(git branch --show-current)"
+    ensure_draft_pull_request
+    update_wip_tracker
+    ;;
+  review)
+    : "${BEAD:?BEAD is required}"
+    : "${BASE:?BASE is required}"
+    : "${PROMOTION_BRANCH:?PROMOTION_BRANCH is required}"
+    : "${PROMOTION_MANIFEST:?PROMOTION_MANIFEST is required}"
+    MESSAGE=${MESSAGE:-promote checkpoint to review}
+    require_clean_commit
+    aggregate_drafts
+    run_local_gates
+    git commit --allow-empty -m "chore(review): $MESSAGE ($BEAD)"
+    git push -u origin "$PROMOTION_BRANCH"
+    ensure_review_pull_request
+    publish_receipt
+    bd update "$BEAD" --set-metadata 'gc.work_pr_state=review' \
+      --append-notes "Automatic Review promotion: SHA $(git rev-parse HEAD), PR $PR ready, dual attestation relay selected."
+    ;;
+  verify)
+    : "${GATE_COMMIT_SHA:?GATE_COMMIT_SHA is required}"
+    : "${GATE_RECEIPT_OUTPUT:?GATE_RECEIPT_OUTPUT is required}"
+    : "${GATE_ALLOWED_SIGNERS:?GATE_ALLOWED_SIGNERS is required}"
+    tag="$tag_prefix/$GATE_COMMIT_SHA"
+    git fetch --force origin "refs/tags/$tag:refs/tags/$tag"
+    signers=$(mktemp)
+    trap 'rm -f "$signers"' EXIT
+    printf '%s\n' "$GATE_ALLOWED_SIGNERS" >"$signers"
+    git -c gpg.ssh.allowedSignersFile="$signers" verify-tag "$tag"
+    test "$(git rev-list -n 1 "$tag")" = "$GATE_COMMIT_SHA"
+    receipt_from_tag "$tag" >"$GATE_RECEIPT_OUTPUT"
+    repository=$(current_repository)
+    jq -e --arg sha "$GATE_COMMIT_SHA" --arg repository "$repository" \
+      '.schema == "flext.gate-receipt.v1" and .repository == $repository and .commit_sha == $sha and (.tree_sha | length == 40) and (.bead | length > 0) and (.pr | length > 0) and (.integration_branch | length > 0) and (.sources | type == "array" and length >= 1) and all(.sources[]; (.pr | type == "number") and (.head_sha | test("^[0-9a-f]{40}$")) and (.bead | length > 0)) and .commands == ["CI=N make gen WHAT=check","CI=N make check","CI=N make test"] and .exit_codes == [0,0,0] and (.toolchain_digest | length == 64)' \
+      "$GATE_RECEIPT_OUTPUT" >/dev/null
+    ;;
+  *) printf 'ERROR: unsupported gate attestation mode: %s\n' "$mode" >&2; exit 2 ;;
+esac
