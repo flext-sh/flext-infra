@@ -502,7 +502,7 @@ Infra:
           # Coverage is on unless CI=Y (no separate cov verb).
           # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
           # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, cache-status, cache-clear, cache-checkpoint]
+          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all

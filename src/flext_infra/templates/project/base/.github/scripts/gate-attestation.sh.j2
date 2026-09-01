@@ -36,11 +36,15 @@ city_path() {
 
 ensure_draft_pull_request() {
   branch=$(git branch --show-current)
-  if pr_json=$(gh pr view "$branch" --json number,baseRefName,isDraft 2>/dev/null); then :; else
+  repository=$(current_repository)
+  owner=${repository%%/*}
+  pr_json=$(gh pr list --state open --head "$owner:$branch" --json number,baseRefName,isDraft --limit 1 --jq '.[0]')
+  if test -n "$pr_json"; then :; else
     gh label create WIP --color D4C5F9 --description 'Draft persistence; validation and attestation are not selected' --force
     gh pr create --draft --base "$BASE" --head "$branch" --title "[WIP] $MESSAGE ($BEAD)" --body "Bead: $BEAD"
-    pr_json=$(gh pr view "$branch" --json number,baseRefName,isDraft)
+    pr_json=$(gh pr list --state open --head "$owner:$branch" --json number,baseRefName,isDraft --limit 1 --jq '.[0]')
   fi
+  test -n "$pr_json"
   test "$(printf '%s' "$pr_json" | jq -r .baseRefName)" = "$BASE"
   test "$(printf '%s' "$pr_json" | jq -r .isDraft)" = true
   PR=$(printf '%s' "$pr_json" | jq -r .number)
@@ -249,10 +253,10 @@ case "$mode" in
     MESSAGE=${MESSAGE:-promote checkpoint to review}
     require_clean_commit
     test -f "$canonical_manifest"
+    git commit --allow-empty -m "chore(review): $MESSAGE ($BEAD)"
     PR=$(gh pr view --json number,isDraft --jq 'select(.isDraft == true) | .number')
     test -n "$PR"
     require_review_pr_contract true
-    git commit --allow-empty -m "chore(review): $MESSAGE ($BEAD)"
     publish_receipt
     complete_transactional_promotion
     ;;
@@ -263,6 +267,7 @@ case "$mode" in
     .venv/bin/python -m flext_infra github verify-gates \
       --workspace . --allowed-signers .github/attestations/allowed_signers \
       --expected-gates gen --expected-gates check --expected-gates test \
+      --commit-sha "$GATE_COMMIT_SHA" \
       --output "$GATE_RECEIPT_OUTPUT"
     ;;
   *) printf 'ERROR: unsupported gate attestation mode: %s\n' "$mode" >&2; exit 2 ;;

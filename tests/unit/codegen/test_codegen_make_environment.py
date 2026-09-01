@@ -266,7 +266,7 @@ class TestsCodegenMakeEnvironment:
             runtime_python,
             (
                 "#!/bin/sh\n"
-                "test -z \"${PROJECT_ROOT+x}\" || exit 98\n"
+                'test -z "${PROJECT_ROOT+x}" || exit 98\n'
                 f"command -v uv > '{tool_log}'\n"
                 f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),

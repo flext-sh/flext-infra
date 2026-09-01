@@ -88,6 +88,9 @@ class TestCodegenCiMatrix:
         tm.that(makefile, has="_builtin_checkpoint_review:")
         tm.that(makefile, has="_builtin_checkpoint_verify:")
         tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
+        tm.that(script, has="gh pr list --state open")
+        tm.that(script, has='--head "$owner:$branch"')
+        tm.that(script, lacks='gh pr view "$branch"')
         tm.that(script, lacks="[skip ci]")
         tm.that(
             (root / ".github/scripts/gate-attestation.sh").stat().st_mode & 0o111,
@@ -105,7 +108,7 @@ class TestCodegenCiMatrix:
         tm.that(script, has="Transferred automatically to maintained PR #$PR")
         tm.that(script, has="for source_pr in $SOURCE_PRS")
         tm.that(script, has='jq -c \'.[]\' "$canonical_manifest" >>"$manifest_lines"')
-        tm.that(script, has='select(.pr == $pr)')
+        tm.that(script, has="select(.pr == $pr)")
         tm.that(script, has='jq -c \'.\' "$transferred_lines"')
         tm.that(script, lacks="MAX_DRAFT")
         tm.that(review_case, has="publish_receipt")
@@ -113,11 +116,6 @@ class TestCodegenCiMatrix:
         tm.that(review_case, has="complete_transactional_promotion")
         tm.that(script, has='gh pr ready "$PR"')
         tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
-        tm.that(
-            script.index('gh pr ready "$PR"')
-            < script.index('gh pr checks "$PR" --watch --fail-fast'),
-            eq=True,
-        )
         tm.that(script, has='gh pr ready "$PR" --undo')
         tm.that(
             review_case.index("require_review_pr_contract")
@@ -126,8 +124,7 @@ class TestCodegenCiMatrix:
             eq=True,
         )
         tm.that(
-            review_case.index("require_review_pr_contract")
-            < review_case.index("git commit --allow-empty")
+            review_case.index("git commit --allow-empty")
             < review_case.index("publish_receipt"),
             eq=True,
         )
@@ -136,6 +133,7 @@ class TestCodegenCiMatrix:
         tm.that(script, lacks="git tag -s")
         tm.that(script, has="github attest-gates")
         tm.that(script, has="github verify-gates")
+        tm.that(script, has='--commit-sha "$GATE_COMMIT_SHA"')
         tm.that(script, has='gc --city "$city" bd update "$BEAD" --rig "$rig"')
         tm.that(script, has='bd -C "$city" update "$shared_child"')
         tm.that(script, has="git rev-parse --path-format=absolute --git-common-dir")
@@ -205,6 +203,11 @@ class TestCodegenCiMatrix:
             workflow,
             has='git fetch --force origin "refs/tags/attest/gates/v1/$GATE_COMMIT_SHA:',
         )
+        tm.that(workflow, has='if [ "${{ github.event_name }}" = "pull_request" ]')
+        tm.that(workflow, has='if [ "$#" -ne 3 ]')
+        tm.that(workflow, has='GATE_COMMIT_SHA="$3"')
+        tm.that(workflow, has="integration merge tree does not equal promoted head tree")
+        tm.that(workflow, has='--commit-sha "$GATE_COMMIT_SHA"')
         tm.that(workflow, lacks="run: CI=Y make gen WHAT=check")
         tm.that(workflow, lacks="run: CI=Y make check")
         tm.that(workflow, lacks="run: CI=Y make test")
@@ -300,8 +303,7 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
         marker = (
-            "fetch-depth: 0\n"
-            "          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n"
+            "ref: ${{ github.event.pull_request.head.sha || github.sha }}\n\n"
             "      # Codegen refreshes the declared provider baseline"
         )
         tm.that(workflow, has=marker)

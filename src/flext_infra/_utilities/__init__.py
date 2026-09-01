@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
-    from ._git.remote import redact_origin_remote
+    from ._git.remote import canonical_origin_remote, redact_origin_remote
     from ._git.repo import FlextInfraUtilitiesGitRepo
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
     from ._git.semantic import FlextInfraUtilitiesGitSemanticMixin
@@ -222,6 +222,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorktreeProvisioning",
     "_git",
     "_rope",
+    "canonical_origin_remote",
     "collect_deferred_self_reference_findings",
     "collect_silent_failure_findings",
     "collect_silent_failure_fixes",
@@ -238,7 +239,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
-            "._git.remote": ("redact_origin_remote",),
+            "._git.remote": ("canonical_origin_remote", "redact_origin_remote"),
             "._git.repo": ("FlextInfraUtilitiesGitRepo",),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
             "._git.semantic": ("FlextInfraUtilitiesGitSemanticMixin",),
