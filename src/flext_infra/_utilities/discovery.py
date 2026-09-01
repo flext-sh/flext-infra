@@ -305,8 +305,6 @@ class FlextInfraUtilitiesDiscovery(
         """Return first segments of read-only external topology paths."""
         from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
-        if not (project_dir / c.Infra.BEADS_OVERRIDE_RELPATH).is_file():
-            return frozenset()
         excluded = FlextInfraWorkspaceDetector.analysis_exclusion_paths(project_dir)
         if excluded.failure:
             msg = excluded.error or "workspace analysis scope is unavailable"
