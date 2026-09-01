@@ -113,6 +113,11 @@ class TestCodegenCiMatrix:
         tm.that(review_case, has="complete_transactional_promotion")
         tm.that(script, has='gh pr ready "$PR"')
         tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
+        tm.that(
+            script.index('gh pr ready "$PR"')
+            < script.index('gh pr checks "$PR" --watch --fail-fast'),
+            eq=True,
+        )
         tm.that(script, has='gh pr ready "$PR" --undo')
         tm.that(
             review_case.index("require_review_pr_contract")
@@ -121,7 +126,8 @@ class TestCodegenCiMatrix:
             eq=True,
         )
         tm.that(
-            review_case.index("git commit --allow-empty")
+            review_case.index("require_review_pr_contract")
+            < review_case.index("git commit --allow-empty")
             < review_case.index("publish_receipt"),
             eq=True,
         )

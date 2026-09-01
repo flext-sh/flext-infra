@@ -249,10 +249,10 @@ case "$mode" in
     MESSAGE=${MESSAGE:-promote checkpoint to review}
     require_clean_commit
     test -f "$canonical_manifest"
-    git commit --allow-empty -m "chore(review): $MESSAGE ($BEAD)"
     PR=$(gh pr view --json number,isDraft --jq 'select(.isDraft == true) | .number')
     test -n "$PR"
     require_review_pr_contract true
+    git commit --allow-empty -m "chore(review): $MESSAGE ($BEAD)"
     publish_receipt
     complete_transactional_promotion
     ;;
