@@ -77,7 +77,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             f"({'check' if check_only else 'apply'}) for {self.workspace_root}"
         )
         lazy_init = config.Infra.tooling.lazy_init
-        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(
+            self.workspace_root, rope_workspace_root=self.workspace_root
+        ) as rope:
             workspace_index = rope.workspace_index
             resolved_workspace_root = self.workspace_root.resolve()
             indexed_package_dirs = tuple(

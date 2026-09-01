@@ -129,7 +129,6 @@ class FlextInfraAccessorMigrationOrchestrator(
             workspace_root=params.workspace_path,
             selected_projects=params.projects,
             apply_changes=params.apply,
-            fail_fast=params.fail_fast,
             target_module=params.module,
             target_namespace=params.namespace,
             preview_limit=params.preview_limit,

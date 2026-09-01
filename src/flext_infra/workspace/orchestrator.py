@@ -28,7 +28,6 @@ class FlextInfraOrchestratorService(
     """Infrastructure service for multi-project make orchestration."""
 
     verb: Annotated[str, m.Field(description="Make verb to execute")]
-    fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     make_arg: Annotated[
         t.StrSequence,
         m.Field(

@@ -66,7 +66,6 @@ class FlextInfraEnforcementFixerOrchestrator(
             rules=tuple(params.rules),
             safe_only=params.safe_only,
             check_after=params.check_after,
-            fail_fast=params.fail_fast,
         )
         return instance.execute()
 
