@@ -262,6 +262,7 @@ __pyrefly_virtual__/
 .pylance_cache/
 .pytest_cache/
 .test-tmp/
+.test-runtime/
 .testmondata
 .testmondata-wal
 .testmondata-shm

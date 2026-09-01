@@ -52,6 +52,7 @@ jobs:
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
+          ref: {% raw %}${{ github.event.pull_request.head.sha || github.sha }}{% endraw %}
 {%- include "_fragments/private_submodules_init.j2" %}
 
       # Codegen refreshes the declared provider baseline before comparison.
@@ -105,16 +106,19 @@ jobs:
       - name: direnv allow (rendered .envrc)
         run: direnv allow "{% raw %}${{ github.workspace }}{% endraw %}/.envrc"
 
-      # The signed tag is fetched by checkout (fetch-depth: 0). Verification
+      # Bind checkout and tag fetch to the exact promoted head. Verification
       # fails closed for missing, invalid, partial, wrong-repository, wrong-tree,
       # or wrong-HEAD evidence; covered gates are never executed again in CI.
       - name: Verify local gate attestation (blocking)
-        run: >-
-          .venv/bin/python -m flext_infra github verify-gates
-          --workspace .
-          --allowed-signers .github/attestations/allowed_signers
+        env:
+          GATE_COMMIT_SHA: {% raw %}${{ github.event.pull_request.head.sha || github.sha }}{% endraw %}
+        run: |
+          git fetch --force origin "refs/tags/{{ make.work_in_progress.attestation_tag_prefix }}/$GATE_COMMIT_SHA:refs/tags/{{ make.work_in_progress.attestation_tag_prefix }}/$GATE_COMMIT_SHA"
+          .venv/bin/python -m flext_infra github verify-gates \
+            --workspace . \
+            --allowed-signers .github/attestations/allowed_signers \
 {%- for gate in gate_attestation.required_gates %}
-          --expected-gates {{ gate }}
+            --expected-gates {{ gate }}{% if not loop.last %} \{% endif %}
 {%- endfor %}
 {%- endif %}
 {%- if step.verb == "check" %}

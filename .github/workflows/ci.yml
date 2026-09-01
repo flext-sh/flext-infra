@@ -54,6 +54,7 @@ jobs:
         with:
           submodules: false
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       # Codegen refreshes the declared provider baseline before comparison.
       # actions/checkout deliberately does not persist credentials, so install
@@ -111,17 +112,20 @@ jobs:
       - name: direnv allow (rendered .envrc)
         run: direnv allow "${{ github.workspace }}/.envrc"
 
-      # The signed tag is fetched by checkout (fetch-depth: 0). Verification
+      # Bind checkout and tag fetch to the exact promoted head. Verification
       # fails closed for missing, invalid, partial, wrong-repository, wrong-tree,
       # or wrong-HEAD evidence; covered gates are never executed again in CI.
       - name: Verify local gate attestation (blocking)
-        run: >-
-          .venv/bin/python -m flext_infra github verify-gates
-          --workspace .
-          --allowed-signers .github/attestations/allowed_signers
-          --expected-gates gen
-          --expected-gates check
-          --expected-gates test
+        env:
+          GATE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git fetch --force origin "refs/tags/attest/gates/v1/$GATE_COMMIT_SHA:refs/tags/attest/gates/v1/$GATE_COMMIT_SHA"
+          .venv/bin/python -m flext_infra github verify-gates \
+            --workspace . \
+            --allowed-signers .github/attestations/allowed_signers \
+            --expected-gates gen \
+            --expected-gates check \
+            --expected-gates test
 
 
       - name: Dump reports on failure

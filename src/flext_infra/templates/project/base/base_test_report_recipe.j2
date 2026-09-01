@@ -2,6 +2,11 @@
 	runner,
 	command_prefix="@"
 ) %}
-	{{ command_prefix }}mkdir -p "$(PROJECT_ROOT)/.test-tmp"
-	{{ command_prefix }}{{ runner }}
+	{{ command_prefix }}set -eu; \
+		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; rmdir "$$test_tmp_parent" 2>/dev/null || true; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" {{ runner }}
 {%- endmacro %}
