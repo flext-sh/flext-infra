@@ -64,7 +64,6 @@ _ALLOWED_WORKFLOWS: tuple[str, ...] = (
     "ci-matrix.yml",
     "ci.yml",
     "docs.yml",
-    "gate-attestation.yml",
     "release.yml",
 )
 

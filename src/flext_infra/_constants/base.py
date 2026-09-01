@@ -253,8 +253,6 @@ class FlextInfraConstantsBase(
     "uv-managed Markdown linter console script."
     OUTPUT_JSON: Final[str] = "json"
     "Common CLI output format flag value."
-    PR: Final[str] = "pr"
-    "GitHub pull request subcommand."
     SCAN: Final[str] = "scan"
     "ast-grep scan subcommand."
     MAKE: Final[str] = "make"

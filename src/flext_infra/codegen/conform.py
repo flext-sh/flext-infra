@@ -1468,11 +1468,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
-        if destination in {
-            ".coderabbit.yaml",
-            ".pre-commit-config.yaml",
-            "cubic.yaml",
-        }:
+        if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
@@ -1536,7 +1532,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         codegen.toolchain.dependency_cooldown_days
                     ),
                     github_actions=codegen.github_actions,
-                    gate_attestation=codegen.gate_attestation,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
                     # Why: dependabot.yml.j2 branches on this and the model
@@ -1580,7 +1575,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
-                    gate_attestation=codegen.gate_attestation,
                     dist=dist,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
@@ -1680,7 +1674,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
-                gate_attestation=codegen.gate_attestation,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,

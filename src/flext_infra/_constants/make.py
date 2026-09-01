@@ -193,12 +193,6 @@ class FlextInfraConstantsMake:
         ("GATES", ""),
         ("PROPAGATE", ""),
         ("FIX", ""),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
-        ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
         ("FILE", ""),
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
@@ -248,14 +242,6 @@ class FlextInfraConstantsMake:
         ("RELEASE_NEXT_DEV", "0"),
         ("RELEASE_NEXT_BUMP", "minor"),
         ("CREATE_BRANCHES", "1"),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
-        ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
-        ("PR_INCLUDE_ROOT", "1"),
-        ("PR_CHECKPOINT", "1"),
         ("DEPS_REPORT", "1"),
         ("VERBOSE", ""),
     )
@@ -302,11 +288,6 @@ class FlextInfraConstantsMake:
         "RULES=ENFORCE-XXX,...       Scope fix-enforcement to rules",
         "VERBOSE=1                   Show executed commands",
     )
-    PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (
-        "PR_ACTION=status|create",
-        "PR_BASE=<branch>  PR_HEAD=<branch>",
-        "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
-    )
     # Phase-set per verb for legacy CLI helpers. Make routing is owned by
     # the registry discovered from scripts/cmd through flext-tests.
     WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
@@ -347,9 +328,7 @@ class FlextInfraConstantsMake:
         ("setup", "Full standalone setup"),
         ("help", "Show this help"),
     )
-    STANDALONE_POST_SETUP_VERBS: Final[str] = (
-        "check, test, fmt, build, val, clean, docs, pr"
-    )
+    STANDALONE_POST_SETUP_VERBS: Final[str] = "check, test, fmt, build, val, clean, docs"
     PROJECT_SELECTION_CONFLICT_ERROR: Final[str] = (
         "ERROR: Cannot use PROJECT and PROJECTS together"
     )
