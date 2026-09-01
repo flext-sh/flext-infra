@@ -103,8 +103,9 @@ class TestCodegenCiMatrix:
         tm.that(script, lacks="MAX_DRAFT")
         tm.that(review_case, has="publish_receipt")
         tm.that(
-            review_case.index("git commit --allow-empty"),
-            lt(review_case.index("publish_receipt")),
+            review_case.index("git commit --allow-empty")
+            < review_case.index("publish_receipt"),
+            eq=True,
         )
         tm.that(script, has='git merge --no-ff')
         tm.that(script, lacks="run_local_gates")
