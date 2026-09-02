@@ -106,16 +106,18 @@ class WorktreeFixture:
         database: str,
         issue_prefix: str,
         custom_issue_types: tuple[str, ...] = (),
+        beads_owner: bool = True,
     ) -> Path:
         """Create one self-identifying governed project with a real Git origin."""
         pyproject = cls.write_python_project(root, distribution)
-        cls.write_beads_project(
-            root,
-            workspace=workspace,
-            database=database,
-            issue_prefix=issue_prefix,
-            custom_issue_types=custom_issue_types,
-        )
+        if beads_owner:
+            cls.write_beads_project(
+                root,
+                workspace=workspace,
+                database=database,
+                issue_prefix=issue_prefix,
+                custom_issue_types=custom_issue_types,
+            )
         u.Tests.initialize_git_repo(
             root, origin_url=cls.governed_repository_url(distribution)
         )

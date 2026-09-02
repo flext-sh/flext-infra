@@ -1849,9 +1849,10 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Ledger routing config: rendered only for the workspace root (owned
-        # ledger) and marker-attached standalones (routing-only); the engine
-        # planner skips every other profile/class (mro-z89e governance).
+        # Ledger routing config: rendered only for repositories that own a
+        # ledger. The workspace root owns the ledger shared by direct
+        # submodules, so the engine skips gitlink members; standalone roots
+        # keep their own marker-attached ledger.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace, standalone]

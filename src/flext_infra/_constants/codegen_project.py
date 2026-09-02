@@ -104,6 +104,7 @@ class FlextInfraConstantsCodegenProject:
         EXTERNAL = "external"
 
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
+    BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_VERSION: Final = 1
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3

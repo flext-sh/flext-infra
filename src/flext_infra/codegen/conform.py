@@ -927,6 +927,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
             if (
+                destination
+                in {
+                    c.Infra.BEADS_CONFIG_RELPATH,
+                    c.Infra.BEADS_METADATA_RELPATH,
+                }
+                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+            ):
+                # A direct gitlink is a workspace member. Its Beads ledger is
+                # inherited from the workspace root; planning any member-local
+                # projection would create a second tracker identity.
+                continue
+            if (
                 destination == c.Infra.BEADS_METADATA_RELPATH
                 and not (root / destination).is_file()
             ):
@@ -1275,6 +1287,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
+            if (
+                entry.destination
+                in {
+                    c.Infra.BEADS_CONFIG_RELPATH,
+                    c.Infra.BEADS_METADATA_RELPATH,
+                }
+                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+            ):
+                # Mirror the delegated-template path so both conform routes
+                # preserve the same single workspace-ledger ownership rule.
+                continue
             path = (root / relative).resolve()
             if (
                 entry.destination == c.Infra.BEADS_METADATA_RELPATH
@@ -1490,6 +1513,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         project_context: m.Infra.ProjectRenderContext | None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
+        if (
+            destination in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+            and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+        ):
+            return r[p.Model].fail(
+                "workspace member cannot own a Beads projection: "
+                f"{repository.name}; ledger is inherited from the workspace root"
+            )
         if destination == c.Infra.GITIGNORE:
             profile = target.make_profile
             sections = tuple(

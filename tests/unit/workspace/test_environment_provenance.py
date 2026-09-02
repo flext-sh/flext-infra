@@ -31,6 +31,7 @@ def _workspace(root: Path, distribution: str = "sample-member") -> Path:
         workspace=f"{distribution}-workspace",
         database=f"{distribution}-database",
         issue_prefix=f"{distribution}-prefix",
+        beads_owner=False,
     )
     WorktreeFixture.write_gitmodules(root, (distribution,))
     return root

@@ -292,7 +292,7 @@ class TestsRepositoryLocalTopology:
     def test_submodule_self_load_preserves_its_checkout_relationship(
         self, tmp_path: Path
     ) -> None:
-        """A child owns its identity without erasing the physical gitlink fact."""
+        """A member keeps the physical gitlink fact and inherits root identity."""
         child_source = tmp_path / "child-source"
         WorktreeFixture.initialize_governed_project(
             child_source,
@@ -300,6 +300,7 @@ class TestsRepositoryLocalTopology:
             workspace="member-workspace",
             database="member-database",
             issue_prefix="member-prefix",
+            beads_owner=False,
         )
         parent = tmp_path / "parent"
         WorktreeFixture.initialize_governed_project(
@@ -313,7 +314,7 @@ class TestsRepositoryLocalTopology:
         shutil.copytree(child_source, member)
         provider = u.Tests.provider()
         (parent / ".gitmodules").write_text(
-            "[submodule 'fixture-member']\n"
+            '[submodule "fixture-member"]\n'
             "\tpath = apps/member\n"
             f"\turl = {WorktreeFixture.governed_repository_url('fixture-member')}\n"
             f"\tbranch = {provider.branch}\n",
@@ -346,10 +347,10 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.repository.path, eq=Path())
         tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
 
-    def test_workspace_preserves_distinct_subproject_identities(
+    def test_workspace_members_inherit_a_single_ledger_identity(
         self, tmp_path: Path
     ) -> None:
-        """Accept local child identities without copying the root identity."""
+        """Reject member-local identities and retain exactly the root ledger."""
         root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -369,6 +370,7 @@ class TestsRepositoryLocalTopology:
                 workspace=identity[0],
                 database=identity[1],
                 issue_prefix=identity[2],
+                beads_owner=False,
             )
         WorktreeFixture.write_gitmodules(root, tuple(identities))
 
@@ -379,11 +381,9 @@ class TestsRepositoryLocalTopology:
             eq=tuple(identities),
         )
         tm.that(workspace.beads.workspace, eq="root-workspace")
-        for project_name, identity in identities.items():
-            beads = tm.ok(
-                FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
-            )
-            tm.that((beads.workspace, beads.database, beads.issue_prefix), eq=identity)
+        for project_name in identities:
+            tm.that((root / project_name / "config" / "beads.yaml").exists(), eq=False)
+            tm.that((root / project_name / ".beads").exists(), eq=False)
 
     def test_workspace_excludes_governed_non_python_gitlinks_from_codegen(
         self, tmp_path: Path
@@ -404,6 +404,7 @@ class TestsRepositoryLocalTopology:
             workspace="python-workspace",
             database="python-database",
             issue_prefix="python-prefix",
+            beads_owner=False,
         )
         service_project = "fixture-service"
         service_root = root / service_project
@@ -699,6 +700,7 @@ class TestsRepositoryLocalTopology:
             workspace="fixture-child",
             database="fixture_child",
             issue_prefix="fixture-child",
+            beads_owner=False,
         )
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
@@ -732,6 +734,7 @@ class TestsRepositoryLocalTopology:
             workspace="fixture-child",
             database="fixture_child",
             issue_prefix="fixture-child",
+            beads_owner=False,
         )
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
