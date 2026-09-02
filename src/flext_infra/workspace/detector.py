@@ -33,9 +33,12 @@ class FlextInfraWorkspaceDetector(
         """Return the optional, explicitly selected workspace manifest path."""
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
 
-    @staticmethod
+    @classmethod
     def _submodule_beads_route_error(
-        subproject_root: Path, workspace_root: Path
+        cls,
+        subproject_root: Path,
+        workspace_root: Path,
+        workspace_beads: m.Infra.BeadsProjectSpec,
     ) -> str | None:
         member_beads = subproject_root / c.Infra.BEADS_DIRNAME
         member_identity = (
@@ -43,16 +46,35 @@ class FlextInfraWorkspaceDetector(
             / c.CONFIG_DIR_NAME
             / c.Infra.BEADS_CONFIG_FILENAME
         )
-        workspace_beads = workspace_root / c.Infra.BEADS_DIRNAME
+        workspace_route = workspace_root / c.Infra.BEADS_DIRNAME
         if not member_beads.is_symlink():
             return f"missing required workspace Beads ledger route: {member_beads}"
-        if member_beads.resolve() != workspace_beads.resolve():
+        if member_beads.resolve() != workspace_route.resolve():
             return (
                 "workspace Beads ledger route must resolve to "
-                f"{workspace_beads}, got {member_beads.resolve()}"
+                f"{workspace_route}, got {member_beads.resolve()}"
             )
-        if member_identity.exists():
-            return f"forbidden member Beads identity input: {member_identity}"
+        if not member_identity.is_file():
+            return f"missing required member Beads routing identity: {member_identity}"
+        member_identity_result = cls.load_beads_spec(subproject_root)
+        if member_identity_result.failure:
+            return member_identity_result.error
+        member_identity = member_identity_result.value
+        member_key = (
+            member_identity.workspace,
+            member_identity.database,
+            member_identity.issue_prefix,
+        )
+        workspace_key = (
+            workspace_beads.workspace,
+            workspace_beads.database,
+            workspace_beads.issue_prefix,
+        )
+        if member_key != workspace_key:
+            return (
+                "member Beads routing identity differs from the workspace ledger: "
+                f"{member_key} != {workspace_key}"
+            )
         return None
 
     @staticmethod
@@ -390,7 +412,6 @@ class FlextInfraWorkspaceDetector(
         subprojects must resolve to a declared provider and integrate on the
         provider line or on the repository's published integration branch.
         """
-        del workspace_beads
         result_type = r[m.Infra.RepositoryRef | Path]
         if path.is_absolute() or not path.parts or ".." in path.parts:
             return result_type.fail(f"invalid .gitmodules path: {path.as_posix()}")
@@ -443,7 +464,7 @@ class FlextInfraWorkspaceDetector(
         if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return result_type.ok(path)
         route_error = cls._submodule_beads_route_error(
-            subproject_root, repository_root
+            subproject_root, repository_root, workspace_beads
         )
         if route_error is not None:
             return result_type.fail(

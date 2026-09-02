@@ -65,7 +65,13 @@ def _flext_workspace(tmp_path: Path) -> Path:
             issue_prefix=name,
             beads_owner=False,
         )
-        WorktreeFixture.link_member_beads(flext_root / name, flext_root)
+        WorktreeFixture.link_member_beads(
+            flext_root / name,
+            flext_root,
+            workspace_name="flext",
+            database="flext",
+            issue_prefix="flext",
+        )
     WorktreeFixture.write_gitmodules(flext_root, ("flext-core", "flext-cli"))
     return flext_root
 

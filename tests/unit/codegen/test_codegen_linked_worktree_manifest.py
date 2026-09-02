@@ -150,7 +150,13 @@ class TestCodegenLinkedWorktreeTopology:
                 issue_prefix="root-prefix",
                 beads_owner=False,
             )
-            WorktreeFixture.link_member_beads(root / project_name, root)
+            WorktreeFixture.link_member_beads(
+                root / project_name,
+                root,
+                workspace_name="root-workspace",
+                database="root-database",
+                issue_prefix="root-prefix",
+            )
         gitmodules = WorktreeFixture.write_gitmodules(root, project_names)
         u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, *project_names))
         u.Tests.git_bootstrap(
@@ -164,8 +170,13 @@ class TestCodegenLinkedWorktreeTopology:
             eq=project_names,
         )
         for project_name in project_names:
-            tm.that((root / project_name / "config" / "beads.yaml").exists(), eq=False)
-            tm.that((root / project_name / ".beads").exists(), eq=False)
+            beads = tm.ok(
+                FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
+            )
+            tm.that(beads.workspace, eq="root-workspace")
+            tm.that(beads.database, eq="root-database")
+            tm.that(beads.issue_prefix, eq="root-prefix")
+            tm.that((root / project_name / ".beads").is_symlink(), eq=True)
 
         applied = tm.ok(
             FlextInfraCodegenConform.execute_request(

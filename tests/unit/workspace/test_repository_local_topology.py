@@ -312,7 +312,13 @@ class TestsRepositoryLocalTopology:
         )
         member = parent / "apps" / "member"
         shutil.copytree(child_source, member)
-        WorktreeFixture.link_member_beads(member, parent)
+        WorktreeFixture.link_member_beads(
+            member,
+            parent,
+            workspace_name="parent-workspace",
+            database="parent-database",
+            issue_prefix="parent-prefix",
+        )
         provider = u.Tests.provider()
         (parent / ".gitmodules").write_text(
             '[submodule "fixture-member"]\n'
@@ -373,7 +379,13 @@ class TestsRepositoryLocalTopology:
                 issue_prefix=identity[2],
                 beads_owner=False,
             )
-            WorktreeFixture.link_member_beads(root / project_name, root)
+            WorktreeFixture.link_member_beads(
+                root / project_name,
+                root,
+                workspace_name="root-workspace",
+                database="root-database",
+                issue_prefix="root-prefix",
+            )
         WorktreeFixture.write_gitmodules(root, tuple(identities))
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
@@ -384,7 +396,12 @@ class TestsRepositoryLocalTopology:
         )
         tm.that(workspace.beads.workspace, eq="root-workspace")
         for project_name in identities:
-            tm.that((root / project_name / "config" / "beads.yaml").exists(), eq=False)
+            beads = tm.ok(
+                FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
+            )
+            tm.that(beads.workspace, eq="root-workspace")
+            tm.that(beads.database, eq="root-database")
+            tm.that(beads.issue_prefix, eq="root-prefix")
             tm.that((root / project_name / ".beads").is_symlink(), eq=True)
 
     def test_workspace_excludes_governed_non_python_gitlinks_from_codegen(
@@ -408,7 +425,13 @@ class TestsRepositoryLocalTopology:
             issue_prefix="python-prefix",
             beads_owner=False,
         )
-        WorktreeFixture.link_member_beads(root / python_project, root)
+        WorktreeFixture.link_member_beads(
+            root / python_project,
+            root,
+            workspace_name="root-workspace",
+            database="root-database",
+            issue_prefix="root-prefix",
+        )
         service_project = "fixture-service"
         service_root = root / service_project
         service_root.mkdir()
@@ -705,7 +728,13 @@ class TestsRepositoryLocalTopology:
             issue_prefix="fixture-child",
             beads_owner=False,
         )
-        WorktreeFixture.link_member_beads(child, root)
+        WorktreeFixture.link_member_beads(
+            child,
+            root,
+            workspace_name="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
@@ -740,7 +769,13 @@ class TestsRepositoryLocalTopology:
             issue_prefix="fixture-child",
             beads_owner=False,
         )
-        WorktreeFixture.link_member_beads(child, root)
+        WorktreeFixture.link_member_beads(
+            child,
+            root,
+            workspace_name="fixture-workspace",
+            database="fixture_workspace",
+            issue_prefix="fixture-workspace",
+        )
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'

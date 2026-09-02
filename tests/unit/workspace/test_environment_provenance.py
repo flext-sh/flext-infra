@@ -33,7 +33,13 @@ def _workspace(root: Path, distribution: str = "sample-member") -> Path:
         issue_prefix=f"{distribution}-prefix",
         beads_owner=False,
     )
-    WorktreeFixture.link_member_beads(member, root)
+    WorktreeFixture.link_member_beads(
+        member,
+        root,
+        workspace_name="sample-workspace",
+        database="sample-database",
+        issue_prefix="sample-prefix",
+    )
     WorktreeFixture.write_gitmodules(root, (distribution,))
     return root
 

@@ -52,7 +52,13 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             issue_prefix=f"{project_name}-prefix",
             beads_owner=False,
         )
-        WorktreeFixture.link_member_beads(project_root, workspace_root)
+        WorktreeFixture.link_member_beads(
+            project_root,
+            workspace_root,
+            workspace_name=root_repository.name,
+            database=root_repository.name,
+            issue_prefix=root_repository.name,
+        )
     gitmodules_path = WorktreeFixture.write_gitmodules(workspace_root, project_names)
     protected_paths = {
         gitmodules_path,

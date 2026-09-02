@@ -218,7 +218,13 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        WorktreeFixture.link_member_beads(member_checkout, workspace_root)
+        WorktreeFixture.link_member_beads(
+            member_checkout,
+            workspace_root,
+            workspace_name=root.name,
+            database=root.name,
+            issue_prefix=root.name,
+        )
         tm.ok(
             u.Cli.run_checked(
                 [

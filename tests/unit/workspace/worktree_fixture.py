@@ -74,12 +74,26 @@ class WorktreeFixture:
         provider = u.Tests.provider()
         return f"{provider.base_url.rstrip('/')}/{distribution}.git"
 
-    @staticmethod
-    def link_member_beads(member: Path, workspace: Path) -> Path:
+    @classmethod
+    def link_member_beads(
+        cls,
+        member: Path,
+        workspace: Path,
+        *,
+        workspace_name: str,
+        database: str,
+        issue_prefix: str,
+    ) -> Path:
         """Create the checked-in member route to the workspace-owned ledger."""
         member.mkdir(parents=True, exist_ok=True)
         route = member / ".beads"
         route.symlink_to(os.path.relpath(workspace / ".beads", member))
+        cls.write_beads_project(
+            member,
+            workspace=workspace_name,
+            database=database,
+            issue_prefix=issue_prefix,
+        )
         return route
 
     @staticmethod
