@@ -31,10 +31,11 @@ workspace validates each direct governed path declared by its own `.gitmodules`:
 - its branch follows the configured provider contract;
 - the workspace root's `config/beads.yaml` exists and validates.
 
-Direct governed submodules inherit the workspace Beads identity. A workspace
-never copies its ledger into member-local state, and conform rejects member
-`.beads` directories or member `config/beads.yaml` files. Standalone
-repositories remain ledger owners with their own local identity.
+Direct governed submodules inherit the workspace Beads identity through a
+checked-in `.beads` symlink to the workspace root's `.beads` directory. A
+workspace never copies its ledger into member-local state, and conform rejects
+member ledger data or member `config/beads.yaml` files. Standalone repositories
+remain ledger owners with their own local identity.
 External provider URLs remain read-only dependency paths.
 
 Missing, malformed, duplicate, escaping, or mismatched inputs fail before any

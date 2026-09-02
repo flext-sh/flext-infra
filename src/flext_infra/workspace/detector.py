@@ -34,18 +34,25 @@ class FlextInfraWorkspaceDetector(
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
 
     @staticmethod
-    def _submodule_beads_residue(subproject_root: Path) -> Path | None:
-        """Return the first forbidden member-local Beads state artifact."""
+    def _submodule_beads_route_error(
+        subproject_root: Path, workspace_root: Path
+    ) -> str | None:
         member_beads = subproject_root / c.Infra.BEADS_DIRNAME
         member_identity = (
             subproject_root
             / c.CONFIG_DIR_NAME
             / c.Infra.BEADS_CONFIG_FILENAME
         )
-        if member_beads.exists():
-            return member_beads
+        workspace_beads = workspace_root / c.Infra.BEADS_DIRNAME
+        if not member_beads.is_symlink():
+            return f"missing required workspace Beads ledger route: {member_beads}"
+        if member_beads.resolve() != workspace_beads.resolve():
+            return (
+                "workspace Beads ledger route must resolve to "
+                f"{workspace_beads}, got {member_beads.resolve()}"
+            )
         if member_identity.exists():
-            return member_identity
+            return f"forbidden member Beads identity input: {member_identity}"
         return None
 
     @staticmethod
@@ -435,11 +442,13 @@ class FlextInfraWorkspaceDetector(
             )
         if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return result_type.ok(path)
-        residue = cls._submodule_beads_residue(subproject_root)
-        if residue is not None:
+        route_error = cls._submodule_beads_route_error(
+            subproject_root, repository_root
+        )
+        if route_error is not None:
             return result_type.fail(
-                "workspace member must inherit the workspace Beads ledger; "
-                f"forbidden member state exists: {residue}"
+                "workspace member must inherit the workspace Beads ledger: "
+                f"{route_error}"
             )
         repository = cls._local_repository_ref(
             subproject_root,

@@ -150,6 +150,7 @@ class TestCodegenLinkedWorktreeTopology:
                 issue_prefix="root-prefix",
                 beads_owner=False,
             )
+            WorktreeFixture.link_member_beads(root / project_name, root)
         gitmodules = WorktreeFixture.write_gitmodules(root, project_names)
         u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, *project_names))
         u.Tests.git_bootstrap(

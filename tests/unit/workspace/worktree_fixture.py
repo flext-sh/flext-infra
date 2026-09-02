@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from flext_infra import c, t
@@ -72,6 +73,14 @@ class WorktreeFixture:
         """Build a fixture repository URL from the configured provider."""
         provider = u.Tests.provider()
         return f"{provider.base_url.rstrip('/')}/{distribution}.git"
+
+    @staticmethod
+    def link_member_beads(member: Path, workspace: Path) -> Path:
+        """Create the checked-in member route to the workspace-owned ledger."""
+        member.mkdir(parents=True, exist_ok=True)
+        route = member / ".beads"
+        route.symlink_to(os.path.relpath(workspace / ".beads", member))
+        return route
 
     @staticmethod
     def write_beads_project(

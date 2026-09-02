@@ -312,6 +312,7 @@ class TestsRepositoryLocalTopology:
         )
         member = parent / "apps" / "member"
         shutil.copytree(child_source, member)
+        WorktreeFixture.link_member_beads(member, parent)
         provider = u.Tests.provider()
         (parent / ".gitmodules").write_text(
             '[submodule "fixture-member"]\n'
@@ -372,6 +373,7 @@ class TestsRepositoryLocalTopology:
                 issue_prefix=identity[2],
                 beads_owner=False,
             )
+            WorktreeFixture.link_member_beads(root / project_name, root)
         WorktreeFixture.write_gitmodules(root, tuple(identities))
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
@@ -383,7 +385,7 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.beads.workspace, eq="root-workspace")
         for project_name in identities:
             tm.that((root / project_name / "config" / "beads.yaml").exists(), eq=False)
-            tm.that((root / project_name / ".beads").exists(), eq=False)
+            tm.that((root / project_name / ".beads").is_symlink(), eq=True)
 
     def test_workspace_excludes_governed_non_python_gitlinks_from_codegen(
         self, tmp_path: Path
@@ -406,6 +408,7 @@ class TestsRepositoryLocalTopology:
             issue_prefix="python-prefix",
             beads_owner=False,
         )
+        WorktreeFixture.link_member_beads(root / python_project, root)
         service_project = "fixture-service"
         service_root = root / service_project
         service_root.mkdir()
@@ -702,6 +705,7 @@ class TestsRepositoryLocalTopology:
             issue_prefix="fixture-child",
             beads_owner=False,
         )
+        WorktreeFixture.link_member_beads(child, root)
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
@@ -736,6 +740,7 @@ class TestsRepositoryLocalTopology:
             issue_prefix="fixture-child",
             beads_owner=False,
         )
+        WorktreeFixture.link_member_beads(child, root)
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
