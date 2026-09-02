@@ -42,9 +42,7 @@ class FlextInfraWorkspaceDetector(
     ) -> str | None:
         member_beads = subproject_root / c.Infra.BEADS_DIRNAME
         member_identity = (
-            subproject_root
-            / c.CONFIG_DIR_NAME
-            / c.Infra.BEADS_CONFIG_FILENAME
+            subproject_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
         )
         workspace_route = workspace_root / c.Infra.BEADS_DIRNAME
         if not member_beads.is_symlink():
@@ -267,10 +265,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail(
                 f"workspace manifest repository is not governed: {manifest_path}"
             )
-        if (
-            manifest.ledger_id is not None
-            and manifest.ledger_id != beads.database
-        ):
+        if manifest.ledger_id is not None and manifest.ledger_id != beads.database:
             return r[m.Infra.RepositoryRef].fail(
                 "workspace manifest ledger_id contradicts Beads identity "
                 f"({manifest_path}): {manifest.ledger_id!r} != {beads.database!r}"
@@ -463,9 +458,20 @@ class FlextInfraWorkspaceDetector(
             )
         if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return result_type.ok(path)
-        route_error = cls._submodule_beads_route_error(
-            subproject_root, repository_root, workspace_beads
+        route_error = (
+            cls._submodule_beads_route_error(
+                subproject_root, repository_root, workspace_beads
+            )
+            if (subproject_root / c.Infra.BEADS_DIRNAME).is_symlink()
+            else None
         )
+        if (
+            route_error is None
+            and not (subproject_root / c.Infra.BEADS_DIRNAME).is_symlink()
+        ):
+            beads = cls.load_beads_spec(subproject_root)
+            if beads.failure:
+                return result_type.fail(beads.error)
         if route_error is not None:
             return result_type.fail(
                 "workspace member must inherit the workspace Beads ledger: "
@@ -498,10 +504,13 @@ class FlextInfraWorkspaceDetector(
                 identity.error or "failed to resolve local Git identity"
             )
         beads_result = cls.load_beads_spec(resolved_root)
-        if beads_result.failure and identity.value.is_submodule:
+        member_beads = resolved_root / c.Infra.BEADS_DIRNAME
+        if identity.value.is_submodule and member_beads.is_symlink():
             superproject_root = identity.value.superproject_root
             if superproject_root is None:
-                return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
+                return r[m.Infra.WorkspaceSpec].fail(
+                    f"Git submodule has no superproject: {resolved_root}"
+                )
             inherited = cls.load_workspace_spec(superproject_root)
             if inherited.failure:
                 return r[m.Infra.WorkspaceSpec].fail(
@@ -521,6 +530,14 @@ class FlextInfraWorkspaceDetector(
                     "Git submodule is not declared as a governed workspace member: "
                     f"{resolved_root}"
                 )
+            route_error = cls._submodule_beads_route_error(
+                resolved_root, superproject_root, inherited.value.beads
+            )
+            if route_error is not None:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    "workspace member must inherit the workspace Beads ledger: "
+                    f"{route_error}"
+                )
             beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited.value.beads)
         if beads_result.failure:
             return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
@@ -535,9 +552,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
-        topology = cls._load_subprojects(
-            resolved_root, workspace_beads=beads.value
-        )
+        topology = cls._load_subprojects(resolved_root, workspace_beads=beads.value)
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
         subprojects, external = topology.value
