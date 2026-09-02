@@ -182,8 +182,8 @@ Infra:
         sha: c771a70e6277c0a99b617c7a806ffedaca235ff9
       mise:
         repository: jdx/mise-action
-        version: v4.2.3
-        sha: 9e7f7633ff6f6d6048a9418a68d48f288f50eb14
+        version: v4.3.0
+        sha: c2a87611a18de5b3828c5652fe268e992400cb5c
       kind:
         repository: helm/kind-action
         version: v1.14.0
@@ -1410,6 +1410,10 @@ Infra:
           patterns:
             - "!Makefile"
             - "!Makefile.flext-docker"
+            - "!*.mk"
+            # jscpd detector SSOT consumed by the committed `make duplication`
+            # target (flext-1sm3w); the deny-first root cannot swallow it.
+            - "!.jscpd.json"
             - "!*.mk"
             # The generated toolchain lock pins every tool to a checksum. A
             # clean CI checkout must receive it, so the deny-first root cannot
