@@ -497,6 +497,13 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.WorkspaceSpec].fail(
                 identity.error or "failed to resolve local Git identity"
             )
+        if identity.value.is_submodule:
+            residue = cls._submodule_beads_residue(resolved_root)
+            if residue is not None:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    "workspace member must inherit the workspace Beads ledger; "
+                    f"forbidden member state exists: {residue}"
+                )
         beads_result = cls.load_beads_spec(resolved_root)
         if beads_result.failure and identity.value.is_submodule:
             superproject_root = identity.value.superproject_root
