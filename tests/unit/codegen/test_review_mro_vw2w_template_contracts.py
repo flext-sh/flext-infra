@@ -19,6 +19,13 @@ _MAKEFILE = _TEMPLATES / "Makefile.j2"
 _RELEASE = _TEMPLATES / ".github" / "workflows" / "release.yml.j2"
 _CI = _TEMPLATES / ".github" / "workflows" / "ci.yml.j2"
 _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
+_PRIVATE_SUBMODULES = (
+    _TEMPLATES
+    / ".github"
+    / "workflows"
+    / "_fragments"
+    / "private_submodules_init.j2"
+)
 
 
 class TestsReviewTemplateContracts:
@@ -130,6 +137,12 @@ class TestsReviewTemplateContracts:
         tm.that(text, has="{% endfor %}")
         tm.that(text, has="  # End SECTION: ci job")
         tm.that("    # End SECTION: ci job" not in text.splitlines(), eq=True)
+
+    def test_private_submodule_commands_have_no_generated_trailing_space(self) -> None:
+        """Path lists join without appending whitespace after the last gitlink."""
+        text = _PRIVATE_SUBMODULES.read_text(encoding="utf-8")
+        tm.that(text, has='{{ private_submodules.paths | join(" ") }}')
+        tm.that(text, lacks="{% for p in private_submodules.paths %}")
 
     def test_docs_workflow_uses_public_cli_not_removed_make_verb(self) -> None:
         """CI drives docs through the canonical Make verb, never a phase flag.
