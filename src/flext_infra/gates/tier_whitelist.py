@@ -7,6 +7,7 @@ OWNERS-driven ``FlextInfraValidateTierWhitelist`` rope detector.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m

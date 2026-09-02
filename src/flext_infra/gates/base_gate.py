@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import sys
 import time
-from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 
@@ -14,7 +13,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraGate(ABC):
+class FlextInfraGate:
     """Abstract template implementing common check/fix execution flow for gates."""
 
     gate_id: ClassVar[str] = ""
@@ -98,7 +97,12 @@ class FlextInfraGate(ABC):
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
-            project_dir, passed, issues, self._raw_output(result), started, ctx
+            project_dir,
+            passed=passed,
+            issues=issues,
+            raw_output=self._raw_output(result),
+            started=started,
+            ctx=ctx,
         )
 
     def _build_check_gate_execution(
@@ -411,6 +415,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
 
     scan_error_message: ClassVar[str] = ""
 
+    @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
@@ -465,7 +470,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
         )
 
     def _detect_file_issues(
-        self, file_path: Path, project_dir: Path, rope_project: object
+        self, file_path: Path, project_dir: Path, rope_project: t.Infra.RopeProject
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Override in subclass to detect issues for a single file."""
         _ = file_path, project_dir, rope_project

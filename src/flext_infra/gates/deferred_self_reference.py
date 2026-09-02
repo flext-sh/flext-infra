@@ -17,9 +17,9 @@ as a resolved base-class attribute.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, u
+from flext_infra import m
 from flext_infra.detectors.deferred_self_reference_detector import (
     FlextInfraDeferredSelfReferenceDetector,
 )
@@ -39,11 +39,12 @@ class FlextInfraDeferredSelfReferenceGate(FlextInfraScannerGateMixin, FlextInfra
     tool_url: ClassVar[str] = "internal://flext-infra/deferred-self-reference"
     scan_error_message: ClassVar[str] = "deferred-self-reference scan failed"
 
+    @override
     def _detect_file_issues(
         self,
         file_path: Path,
         project_dir: Path,
-        rope_project: u.Infra.RopeProject,
+        rope_project: t.Infra.RopeProject,
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Detect deferred self-reference violations in a single file."""
         return FlextInfraDeferredSelfReferenceDetector.detect_file(
