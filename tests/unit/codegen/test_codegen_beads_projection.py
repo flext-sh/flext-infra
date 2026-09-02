@@ -122,6 +122,25 @@ class TestsCodegenBeadsProjection:
 
         tm.that(identity.read_bytes(), eq=before)
 
+    def test_shared_workspace_ledger_symlink_owns_all_beads_projections(
+        self, tmp_path: Path
+    ) -> None:
+        root = self._project(
+            tmp_path / "project",
+            database="project_database",
+            issue_prefix="project-prefix",
+        )
+        shared = tmp_path / "shared-beads"
+        shared.mkdir()
+        beads = root / ".beads"
+        beads.symlink_to(shared, target_is_directory=True)
+
+        plan = self._plan(root)
+
+        tm.that(self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH), none=True)
+        tm.that(self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH), none=True)
+        tm.that(tuple(shared.iterdir()), eq=())
+
     def test_codegen_exposes_no_beads_runtime_surface(self) -> None:
         forbidden_models = ("BeadsPlan", "BeadsTrackerDeclaration")
         forbidden_operations = (

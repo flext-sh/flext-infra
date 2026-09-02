@@ -1240,6 +1240,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ).resolve()
         planned: list[m.Infra.CodegenFilePlan] = []
         for managed in codegen.managed_files:
+            if (
+                managed.path.parts
+                and managed.path.parts[0] == ".beads"
+                and (root / ".beads").is_symlink()
+            ):
+                # Workspace members may route their tracker directly to the
+                # root ledger. That symlink is the complete ownership
+                # boundary: a member must neither resolve through it nor
+                # rewrite the workspace root's Beads projections.
+                continue
             if not target.ci_enabled and managed.path.parts[:2] == (
                 ".github",
                 "workflows",
