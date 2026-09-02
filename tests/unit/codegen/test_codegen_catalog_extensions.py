@@ -155,6 +155,7 @@ class TestsCodegenCatalogExtensions:
             workspace=member.name,
             database=member.name,
             issue_prefix=member.name,
+            beads_owner=False,
         )
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source)
@@ -217,6 +218,7 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
+        WorktreeFixture.link_member_beads(member_checkout, workspace_root)
         tm.ok(
             u.Cli.run_checked(
                 [

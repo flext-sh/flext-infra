@@ -50,12 +50,13 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             workspace=f"{project_name}-workspace",
             database=f"{project_name}-database",
             issue_prefix=f"{project_name}-prefix",
+            beads_owner=False,
         )
+        WorktreeFixture.link_member_beads(project_root, workspace_root)
     gitmodules_path = WorktreeFixture.write_gitmodules(workspace_root, project_names)
     protected_paths = {
         gitmodules_path,
         workspace_root / "config" / "beads.yaml",
-        *(workspace_root / name / "config" / "beads.yaml" for name in project_names),
     }
     # These tests assert what the generated Makefile contains, so the public
     # planning surface provides the exact artifacts without writing the fixture.
