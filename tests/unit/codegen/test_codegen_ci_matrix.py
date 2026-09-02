@@ -220,10 +220,17 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
+        marker = (
+            "fetch-depth: 0\n\n"
+            "      # actions/checkout fetches the PR merge ref without materializing"
+        )
         tm.that(workflow, has=marker)
         tm.that(
-            workflow, lacks=("fetch-depth: 0\n\n\n      - name: Install mise toolchain")
+            workflow,
+            lacks=(
+                'refs/remotes/origin/develop"\n\n\n'
+                "      - name: Install mise toolchain"
+            ),
         )
         root2 = self._render_project(tmp_path / "member-again")
         workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(

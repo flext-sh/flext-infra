@@ -64,4 +64,19 @@ def test_ci_triggers_deduplicate_integration_branch_against_baselines() -> None:
         tm.that(_branch_count(triggers, branch), eq=2)
 
 
+def test_ci_fetches_manifest_resolved_integration_baseline() -> None:
+    custom_branch = "feature/v0-4-0-multitenant-weaviate"
+
+    rendered = _render_ci(repository_branch=custom_branch)
+
+    tm.that(rendered, has="name: Fetch provider integration baseline")
+    tm.that(
+        rendered,
+        has=(
+            f'git fetch --no-tags origin "+refs/heads/{custom_branch}:'
+            f'refs/remotes/origin/{custom_branch}"'
+        ),
+    )
+
+
 __all__: tuple[str, ...] = ()

@@ -47,6 +47,13 @@ jobs:
         with:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
+
+      # actions/checkout fetches the PR merge ref without materializing the
+      # provider's remote-tracking integration ref. Codegen ancestry policy
+      # reads that exact ref, so establish the manifest-resolved authority
+      # explicitly before invoking any native gate.
+      - name: Fetch provider integration baseline
+        run: git fetch --no-tags origin "+refs/heads/{{ repository_branch }}:refs/remotes/origin/{{ repository_branch }}"
 {%- include "_fragments/private_submodules_init.j2" %}
 
       - name: Install mise toolchain

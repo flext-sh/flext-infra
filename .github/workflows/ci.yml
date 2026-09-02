@@ -50,6 +50,13 @@ jobs:
           submodules: false
           fetch-depth: 0
 
+      # actions/checkout fetches the PR merge ref without materializing the
+      # provider's remote-tracking integration ref. Codegen ancestry policy
+      # reads that exact ref, so establish the manifest-resolved authority
+      # explicitly before invoking any native gate.
+      - name: Fetch provider integration baseline
+        run: git fetch --no-tags origin "+refs/heads/0.12.0-dev:refs/remotes/origin/0.12.0-dev"
+
       - name: Install mise toolchain
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c  # v4.3.0
         with:
