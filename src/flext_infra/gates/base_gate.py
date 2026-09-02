@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 import time
-from abc import ABC, abstractmethod
+from abc import ABC
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -47,6 +47,77 @@ class FlextInfraGate(ABC):
         """Invoke a uv-managed console script from the active interpreter directory."""
         return (str(Path(sys.executable).with_name(tool)), *args)
 
+
+class FlextInfraScannerGateMixin:
+    """Mixin for gates that detect per-file issues via a rope-backed scanner.
+
+    Subclasses provide ``scan_error_message`` and implement
+    ``_detect_file_issues``.  The shared ``check`` method handles file
+    discovery, rope-project lifecycle, and result assembly.
+    """
+
+    scan_error_message: ClassVar[str] = ""
+
+    def check(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> m.Infra.GateExecution:
+        """Scan all Python files in ``project_dir`` and report detected issues."""
+        _ = ctx
+        started = time.monotonic()
+        files_result = u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(project_roots=(project_dir,))
+        )
+        if files_result.failure:
+            issue = m.Infra.Issue(
+                file=c.Infra.PYPROJECT_FILENAME,
+                line=1,
+                column=1,
+                code=self.gate_id,
+                message=files_result.error or self.scan_error_message,
+            )
+            return self._build_gate_result(
+                result=m.Infra.GateResult(
+                    gate=self.gate_id,
+                    project=project_dir.name,
+                    passed=False,
+                    errors=[issue.formatted],
+                    duration=round(time.monotonic() - started, 3),
+                ),
+                issues=[issue],
+                raw_output=issue.message,
+                ctx=ctx,
+            )
+        rope_project = u.Infra.init_rope_project(project_dir)
+        try:
+            issues = [
+                issue
+                for file_path in files_result.value
+                for issue in self._detect_file_issues(
+                    file_path, project_dir, rope_project
+                )
+            ]
+        finally:
+            rope_project.close()
+        return self._build_gate_result(
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=len(issues) == 0,
+                errors=[issue.formatted for issue in issues],
+                duration=round(time.monotonic() - started, 3),
+            ),
+            issues=issues,
+            raw_output="\n".join(issue.formatted for issue in issues),
+            ctx=ctx,
+        )
+
+    def _detect_file_issues(
+        self, file_path: Path, project_dir: Path, rope_project: object
+    ) -> t.SequenceOf[m.Infra.Issue]:
+        """Override in subclass to detect issues for a single file."""
+        _ = file_path, project_dir, rope_project
+        return ()
+
     # ------------------------------------------------------------------
     # Template method: check
     # ------------------------------------------------------------------
@@ -67,16 +138,8 @@ class FlextInfraGate(ABC):
             env=self._check_env(project_dir, ctx),
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=issues,
-            raw_output=self._raw_output(result),
+        return self._build_check_gate_execution(
+            project_dir, passed, issues, self._raw_output(result), started, ctx
         )
 
     def check_files(
@@ -101,6 +164,20 @@ class FlextInfraGate(ABC):
             env=self._check_env(project_dir, ctx),
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
+        return self._build_check_gate_execution(
+            project_dir, passed, issues, self._raw_output(result), started, ctx
+        )
+
+    def _build_check_gate_execution(
+        self,
+        project_dir: Path,
+        passed: bool,
+        issues: t.SequenceOf[m.Infra.Issue],
+        raw_output: str,
+        started: float,
+        ctx: m.Infra.GateContext | None = None,
+    ) -> m.Infra.GateExecution:
+        """Assemble a gate execution result from parsed check output."""
         return self._build_gate_result(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -110,7 +187,41 @@ class FlextInfraGate(ABC):
                 duration=round(time.monotonic() - started, 3),
             ),
             issues=issues,
-            raw_output=self._raw_output(result),
+            raw_output=raw_output,
+            ctx=ctx,
+        )
+
+    def _build_project_error_gate_result(
+        self,
+        project_dir: Path,
+        passed: bool,
+        errors: t.SequenceOf[str],
+        started: float,
+        ctx: m.Infra.GateContext,
+    ) -> m.Infra.GateExecution:
+        """Build a gate result from a list of error strings (namespace-style gates)."""
+        issues = [
+            m.Infra.Issue(
+                file=str(project_dir),
+                line=1,
+                column=1,
+                code=self.gate_id,
+                message=error,
+                severity="ERROR",
+            )
+            for error in errors
+        ]
+        return self._build_gate_result(
+            result=m.Infra.GateResult(
+                gate=self.gate_id,
+                project=project_dir.name,
+                passed=passed,
+                errors=[issue.formatted for issue in issues],
+                duration=round(time.monotonic() - started, 3),
+            ),
+            issues=issues,
+            raw_output="\n".join(errors),
+            ctx=ctx,
         )
 
     # ------------------------------------------------------------------
@@ -124,20 +235,19 @@ class FlextInfraGate(ABC):
         _ = ctx
         return self._dirs_with_py(project_dir, self._existing_check_dirs(project_dir))
 
-    @abstractmethod
     def _build_check_command(
         self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
-        """Build the tool CLI command."""
-        ...
+        """Build the tool CLI command. Default: none (check overridden directly)."""
+        _ = project_dir, ctx, check_dirs
+        return []
 
-    @abstractmethod
-    # flext-r3r8: every gate override consumes the structural p.Cli process contract.
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Parse tool output into (passed, issues)."""
-        ...
+        """Parse tool output into (passed, issues). Default: no-op (check overridden)."""
+        _ = result, project_dir, ctx
+        return True, ()
 
     def _check_timeout(self, project_dir: Path, ctx: m.Infra.GateContext) -> int:
         """Timeout for the check command. Override for long-running tools."""
@@ -324,4 +434,4 @@ class FlextInfraGate(ABC):
         )
 
 
-__all__: list[str] = ["FlextInfraGate"]
+__all__: list[str] = ["FlextInfraGate", "FlextInfraScannerGateMixin"]

@@ -21,7 +21,7 @@ from flext_infra.gates.base_gate import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import t
 
 
 class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
@@ -134,22 +134,6 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             message=message,
             severity="ERROR",
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — scanning happens in `check`."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — `check` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraAbstractionBoundaryGate"]

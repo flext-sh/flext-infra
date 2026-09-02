@@ -7,16 +7,11 @@ OWNERS-driven ``FlextInfraValidateTierWhitelist`` rope detector.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import ClassVar, override
 
 from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from flext_infra import p, t
 
 
 class FlextInfraTierWhitelistGate(FlextInfraGate):
@@ -66,22 +61,6 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
             raw_output="\n".join(errors),
             ctx=ctx,
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — execution happens in ``check``."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — ``check`` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraTierWhitelistGate"]

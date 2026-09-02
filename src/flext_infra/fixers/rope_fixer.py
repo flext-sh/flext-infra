@@ -51,6 +51,49 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Bind the workspace root used to open rope projects."""
         super().__init__(workspace_root)
 
+    @staticmethod
+    def _build_project_fix_result(
+        project_dir: Path,
+        fixed: list[m.Infra.FixedViolation],
+        previewed: list[m.Infra.PreviewedViolation],
+        skipped: list[m.Infra.SkippedViolation],
+        failed: list[m.Infra.FailedFix],
+        files_modified: set[str],
+    ) -> m.Infra.ProjectFixResult:
+        """Build the immutable ``ProjectFixResult`` from accumulated lists."""
+        return m.Infra.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            previewed=tuple(previewed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(files_modified),
+        )
+
+    def _record_file_fix_outcome(
+        self,
+        ctx: m.Infra.FixEnforcementCommand,
+        rule_id: str,
+        file_path: Path,
+        message: str,
+        fixed: list[m.Infra.FixedViolation],
+        previewed: list[m.Infra.PreviewedViolation],
+    ) -> None:
+        """Record a per-file fix outcome as fixed or previewed based on ``ctx.apply``."""
+        file_path_str = str(file_path)
+        if ctx.apply:
+            fixed.append(
+                m.Infra.FixedViolation(
+                    rule_id=rule_id, file_path=file_path_str, message=message
+                )
+            )
+        else:
+            previewed.append(
+                m.Infra.PreviewedViolation(
+                    rule_id=rule_id, file_path=file_path_str, message=message
+                )
+            )
+
     @override
     def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
@@ -92,13 +135,8 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             skipped.extend(result.skipped)
             failed.extend(result.failed)
             files_modified.update(result.files_modified)
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     def _target_dispatch(
@@ -303,25 +341,11 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 if ctx.apply:
                     files_modified.add(str(file_path))
                 message = change_message(len(selected), ctx.apply)
-                if ctx.apply:
-                    fixed.append(
-                        m.Infra.FixedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-                else:
-                    previewed.append(
-                        m.Infra.PreviewedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+                self._record_file_fix_outcome(
+                    ctx, rule_id, file_path, message, fixed, previewed
+                )
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     def _fix_silent_failure_sentinels(
@@ -377,25 +401,11 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     f"{'rewrote' if ctx.apply else 'would rewrite'} "
                     f"{len(changes)} silent sentinel fix(es)"
                 )
-                if ctx.apply:
-                    fixed.append(
-                        m.Infra.FixedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-                else:
-                    previewed.append(
-                        m.Infra.PreviewedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+                self._record_file_fix_outcome(
+                    ctx, rule_id, file_path, message, fixed, previewed
+                )
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     def _fix_compatibility_alias(
@@ -494,13 +504,8 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     rule_id=rule_id, file_path=str(file_path), message=message
                 )
             )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     def _fix_private_import_bypass(
@@ -581,25 +586,11 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     f"{'rewrote' if ctx.apply else 'would rewrite'} "
                     f"{len(auto_fixable)} private import bypass violation(s)"
                 )
-                if ctx.apply:
-                    fixed.append(
-                        m.Infra.FixedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-                else:
-                    previewed.append(
-                        m.Infra.PreviewedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+                self._record_file_fix_outcome(
+                    ctx, rule_id, file_path, message, fixed, previewed
+                )
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     def _fix_library_abstraction(
@@ -724,25 +715,11 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     f"{'hoisted' if ctx.apply else 'would hoist'} "
                     f"{len(changes)} inline import(s) for {target_action}"
                 )
-                if ctx.apply:
-                    fixed.append(
-                        m.Infra.FixedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-                else:
-                    previewed.append(
-                        m.Infra.PreviewedViolation(
-                            rule_id=rule_id, file_path=str(file_path), message=message
-                        )
-                    )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+                self._record_file_fix_outcome(
+                    ctx, rule_id, file_path, message, fixed, previewed
+                )
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     @classmethod
@@ -942,13 +919,8 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             )
                         )
 
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     def _fix_one_class_per_module(
@@ -1112,13 +1084,8 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                             reason="no classes could be moved",
                         )
                     )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     def _target_file_for_extra_class(
