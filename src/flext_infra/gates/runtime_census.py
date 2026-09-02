@@ -43,16 +43,11 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
             errors.append(result.error or "runtime census failed")
         elif not passed:
             errors.append(result.error or "runtime census found violations")
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=errors,
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=[],
-            raw_output="\n".join(errors),
+        return self._build_project_error_gate_result(
+            project_dir,
+            passed=passed,
+            errors=errors,
+            started=started,
             ctx=ctx,
         )
 

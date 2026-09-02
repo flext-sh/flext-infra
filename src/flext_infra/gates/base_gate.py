@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import sys
 import time
-from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 
@@ -14,7 +13,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraGate(ABC):
+class FlextInfraGate:
     """Abstract template implementing common check/fix execution flow for gates."""
 
     gate_id: ClassVar[str] = ""
@@ -98,7 +97,12 @@ class FlextInfraGate(ABC):
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
-            project_dir, passed, issues, self._raw_output(result), started, ctx
+            project_dir,
+            passed=passed,
+            issues=issues,
+            raw_output=self._raw_output(result),
+            started=started,
+            ctx=ctx,
         )
 
     def _build_check_gate_execution(
@@ -110,19 +114,51 @@ class FlextInfraGate(ABC):
         raw_output: str,
         started: float,
         ctx: m.Infra.GateContext | None = None,
+        errors: t.StrSequence | None = None,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution result from parsed check output."""
-        return self._build_gate_result(
+        """Assemble a gate execution from parsed check output.
+
+        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
+        marked passed so advisory enforcement gates do not fail the check
+        pipeline. ``errors`` overrides the default issue-derived report
+        lines (fix paths report applied changes there).
+        """
+        if (
+            ctx is not None
+            and getattr(ctx, "gate_mode", None) == "warn"
+            and not passed
+        ):
+            warn_issues = [
+                issue.model_copy(update={"severity": "WARNING"})
+                if hasattr(issue, "model_copy")
+                else issue
+                for issue in issues
+            ]
+            return m.Infra.GateExecution(
+                result=m.Infra.GateResult(
+                    gate=self.gate_id,
+                    project=project_dir.name,
+                    passed=True,
+                    errors=[],
+                    duration=round(time.monotonic() - started, 3),
+                ),
+                issues=tuple(warn_issues),
+                raw_output=raw_output,
+            )
+        return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
                 project=project_dir.name,
                 passed=passed,
-                errors=[issue.formatted for issue in issues],
+                errors=(
+                    list(errors)
+                    if errors is not None
+                    else [issue.formatted for issue in issues]
+                ),
                 duration=round(time.monotonic() - started, 3),
             ),
-            issues=issues,
+            issues=tuple(issues),
             raw_output=raw_output,
-            ctx=ctx,
         )
 
     def _build_project_error_gate_result(
@@ -134,7 +170,7 @@ class FlextInfraGate(ABC):
         started: float,
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
-        """Build a gate result from a list of error strings (namespace-style gates)."""
+        """Build a gate result from project-level error strings (no per-file issues)."""
         issues = [
             m.Infra.Issue(
                 file=str(project_dir),
@@ -146,16 +182,12 @@ class FlextInfraGate(ABC):
             )
             for error in errors
         ]
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=passed,
             issues=issues,
             raw_output="\n".join(errors),
+            started=started,
             ctx=ctx,
         )
 
@@ -178,16 +210,12 @@ class FlextInfraGate(ABC):
             message=message,
             severity="ERROR",
         )
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=[issue.formatted],
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=passed,
             issues=[issue],
             raw_output=issue.message,
+            started=started,
             ctx=ctx,
         )
 
@@ -238,16 +266,12 @@ class FlextInfraGate(ABC):
         if ctx.check_only or not ctx.apply_fixes:
             return self._check_only_fix_result(project_dir)
         if not self.can_fix:
-            return self._build_gate_result(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=0.0,
-                ),
-                issues=[],
+            return self._build_check_gate_execution(
+                project_dir,
+                passed=True,
+                issues=(),
                 raw_output=f"Gate {self.gate_id} does not support fix",
+                started=time.monotonic(),
             )
         started = time.monotonic()
         targets = self._get_fix_targets(project_dir, ctx)
@@ -255,30 +279,22 @@ class FlextInfraGate(ABC):
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=result.exit_code == 0,
-                errors=[],
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=[],
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=result.exit_code == 0,
+            issues=(),
             raw_output=self._fix_raw_output(result),
+            started=started,
         )
 
     def _check_only_fix_result(self, project_dir: Path) -> m.Infra.GateExecution:
         """Return a non-mutating fix preview for check-only gate contexts."""
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=True,
-                errors=[],
-                duration=0.0,
-            ),
-            issues=[],
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=True,
+            issues=(),
             raw_output=f"Gate {self.gate_id} fix preview only; no files written",
+            started=time.monotonic(),
         )
 
     # ------------------------------------------------------------------
@@ -327,46 +343,6 @@ class FlextInfraGate(ABC):
             )
         return result.value
 
-    def _build_gate_result(
-        self,
-        *,
-        result: m.Infra.GateResult,
-        issues: t.SequenceOf[m.Infra.Issue],
-        raw_output: str = "",
-        ctx: m.Infra.GateContext | None = None,
-    ) -> m.Infra.GateExecution:
-        """Build gate result.
-
-        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
-        marked passed so advisory enforcement gates do not fail the check
-        pipeline.
-        """
-        if (
-            ctx is not None
-            and getattr(ctx, "gate_mode", None) == "warn"
-            and not result.passed
-        ):
-            warn_issues = [
-                issue.model_copy(update={"severity": "WARNING"})
-                if hasattr(issue, "model_copy")
-                else issue
-                for issue in issues
-            ]
-            return m.Infra.GateExecution(
-                result=m.Infra.GateResult(
-                    gate=result.gate,
-                    project=result.project,
-                    passed=True,
-                    errors=[],
-                    duration=result.duration,
-                ),
-                issues=tuple(warn_issues),
-                raw_output=raw_output,
-            )
-        return m.Infra.GateExecution(
-            result=result, issues=tuple(issues), raw_output=raw_output
-        )
-
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
         """Return direct project-owned source directories only."""
         candidates = ("src", "tests")
@@ -388,16 +364,12 @@ class FlextInfraGate(ABC):
 
     def _skip_result(self, project_dir: Path, started: float) -> m.Infra.GateExecution:
         """Skip result."""
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=True,
-                errors=[],
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=[],
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=True,
+            issues=(),
             raw_output="",
+            started=started,
         )
 
 
@@ -411,6 +383,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
 
     scan_error_message: ClassVar[str] = ""
 
+    @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
@@ -421,23 +394,12 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
             m.Infra.SourceScanRequest(project_roots=(project_dir,))
         )
         if files_result.failure:
-            issue = m.Infra.Issue(
-                file=c.Infra.PYPROJECT_FILENAME,
-                line=1,
-                column=1,
-                code=self.gate_id,
-                message=files_result.error or self.scan_error_message,
-            )
-            return self._build_gate_result(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=False,
-                    errors=[issue.formatted],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=[issue],
-                raw_output=issue.message,
+            return self._build_single_issue_result(
+                project_dir,
+                Path(c.Infra.PYPROJECT_FILENAME),
+                files_result.error or self.scan_error_message,
+                passed=False,
+                started=started,
                 ctx=ctx,
             )
         rope_project = u.Infra.init_rope_project(project_dir)
@@ -451,21 +413,17 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
             ]
         finally:
             rope_project.close()
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=len(issues) == 0,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=len(issues) == 0,
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
+            started=started,
             ctx=ctx,
         )
 
     def _detect_file_issues(
-        self, file_path: Path, project_dir: Path, rope_project: object
+        self, file_path: Path, project_dir: Path, rope_project: t.Infra.RopeProject
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Override in subclass to detect issues for a single file."""
         _ = file_path, project_dir, rope_project

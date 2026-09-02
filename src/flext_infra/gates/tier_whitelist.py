@@ -7,6 +7,7 @@ OWNERS-driven ``FlextInfraValidateTierWhitelist`` rope detector.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m
@@ -28,7 +29,6 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Run the tier-whitelist scan scoped to ``project_dir``."""
-        _ = ctx
         started = time.monotonic()
         validator = FlextInfraValidateTierWhitelist(workspace_root=project_dir)
         result = validator.execute()
@@ -38,27 +38,11 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
             errors.append(result.error or "tier-whitelist validation failed")
         elif not passed:
             errors.append(result.error or "tier-whitelist violations found")
-        issues = [
-            m.Infra.Issue(
-                file=str(project_dir),
-                line=1,
-                column=1,
-                code=self.gate_id,
-                message=error,
-                severity="ERROR",
-            )
-            for error in errors
-        ]
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=issues,
-            raw_output="\n".join(errors),
+        return self._build_project_error_gate_result(
+            project_dir,
+            passed=passed,
+            errors=errors,
+            started=started,
             ctx=ctx,
         )
 

@@ -2086,42 +2086,6 @@ fix: |-
       The gate execution result for the requested files.
   """
 ---
-id: doc201-061-build-gate-result
-language: Python
-severity: warning
-message: Add the semantic Returns section for _build_gate_result.
-metadata:
-  source: "src/flext_infra/gates/base_gate.py#_build_gate_result"
-rule:
-  all:
-    - pattern: '"""$DOC"""'
-    - not:
-        regex: 'Returns:'
-    - inside:
-        stopBy: end
-        kind: expression_statement
-    - inside:
-        stopBy: end
-        kind: function_definition
-        has:
-          field: name
-          regex: "^_build_gate_result$"
-constraints:
-  DOC:
-    regex: "^Build gate result\\.(?:\\n|$)"
-transform:
-  CLEAN_DOC:
-    replace:
-      source: $DOC
-      replace: '\\s+$'
-      by: ''
-fix: |-
-  """$CLEAN_DOC
-
-  Returns:
-      The normalized gate execution with warning and error issues.
-  """
----
 id: doc201-062-files-over-cap
 language: Python
 severity: warning

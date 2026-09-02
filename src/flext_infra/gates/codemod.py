@@ -41,16 +41,12 @@ class FlextInfraCodemodGate(FlextInfraGate):
         started = time.monotonic()
         rules = discover_rules()
         if not rules:
-            return self._build_gate_result(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=[],
+            return self._build_check_gate_execution(
+                project_dir,
+                passed=True,
+                issues=(),
                 raw_output="no codemod rules discovered",
+                started=started,
             )
 
         issues: list[m.Infra.Issue] = []
@@ -62,16 +58,12 @@ class FlextInfraCodemodGate(FlextInfraGate):
             )
             issues.extend(self._issues_from_scan(scan, rule_path))
 
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=not issues,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=not issues,
             issues=issues,
             raw_output=f"{len(rules)} rules scanned, {len(issues)} violations",
+            started=started,
         )
 
     @staticmethod

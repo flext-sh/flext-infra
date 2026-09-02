@@ -53,17 +53,12 @@ class FlextInfraLayoutGate(FlextInfraGate):
         actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
         blocking = tuple(finding for finding in actionable if not warning)
         passed = warning or not blocking
-        errors: list[str] = [issue.formatted for issue in issues if not passed]
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=errors,
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=passed,
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
+            started=started,
             ctx=ctx,
         )
 
