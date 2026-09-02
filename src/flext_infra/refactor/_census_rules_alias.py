@@ -19,9 +19,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraRefactorCensusRulesAliasMixin(
-    FlextInfraRefactorCensusRulesSharedMixin
-):
+class FlextInfraRefactorCensusRulesAliasMixin(FlextInfraRefactorCensusRulesSharedMixin):
     """Runtime-alias + manual-typing-alias rule scanners for one module.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the

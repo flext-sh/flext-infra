@@ -81,10 +81,7 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
         toolchain = config.Infra.codegen.toolchain.model_copy(
             update={
-                "dependency_cooldown_exclusions": (
-                    "fleet-exempt",
-                    "repository-dated",
-                ),
+                "dependency_cooldown_exclusions": ("fleet-exempt", "repository-dated"),
                 "dependency_cooldown_overrides": {
                     "fleet-overridden": "2026-08-01T00:00:00Z"
                 },
@@ -96,13 +93,9 @@ class TestsFlextInfraCodegenPyprojectConform:
         )
 
         tm.that(
-            exclusions,
-            eq=("fleet-exempt", "repository-exempt", "fleet-overridden"),
+            exclusions, eq=("fleet-exempt", "repository-exempt", "fleet-overridden")
         )
-        tm.that(
-            overrides,
-            eq={"repository-dated": "2026-09-01T00:00:00Z"},
-        )
+        tm.that(overrides, eq={"repository-dated": "2026-09-01T00:00:00Z"})
 
     def test_workspace_root_uses_workspace_provenance(self) -> None:
         workspace = _workspace()
