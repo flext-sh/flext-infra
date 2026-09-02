@@ -3101,7 +3101,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Programmatic-only selection of generated beads-workspace "
                     ".envrc instead of the Python package environment"
-                )
+                ),
             ),
         ] = None
         allow_direnv: Annotated[

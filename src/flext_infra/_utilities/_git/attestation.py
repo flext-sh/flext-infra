@@ -87,15 +87,17 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 f"stdout={output.stdout}\nstderr={output.stderr}"
             )
             digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()
-            evidence.append(m.Infra.GateCommandEvidence(
-                gate=gate,
-                command=command,
-                cwd=str(repo_root),
-                exit_code=0,
-                result_digest=f"sha256:{digest}",
-                started_at=started.isoformat().replace("+00:00", "Z"),
-                completed_at=completed.isoformat().replace("+00:00", "Z"),
-            ))
+            evidence.append(
+                m.Infra.GateCommandEvidence(
+                    gate=gate,
+                    command=command,
+                    cwd=str(repo_root),
+                    exit_code=0,
+                    result_digest=f"sha256:{digest}",
+                    started_at=started.isoformat().replace("+00:00", "Z"),
+                    completed_at=completed.isoformat().replace("+00:00", "Z"),
+                )
+            )
         return r[tuple[m.Infra.GateCommandEvidence, ...]].ok(tuple(evidence))
 
     @classmethod
@@ -126,9 +128,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             )
         predicate = predicate_result.value
         tag = cls._attestation_tag(predicate.commit_sha)
-        serialized = u.Cli.json_dumps(
-            predicate.model_dump(mode="json"), sort_keys=True
-        )
+        serialized = u.Cli.json_dumps(predicate.model_dump(mode="json"), sort_keys=True)
         if serialized.failure:
             return r[m.Infra.GateAttestationReport].fail(
                 serialized.error or "failed to serialize attestation predicate"
@@ -161,9 +161,14 @@ class FlextInfraUtilitiesGitAttestationMixin(
         tag = cls._attestation_tag(commit_sha)
         verification = u.Cli.run_raw(
             [
-                "git", "-c", "gpg.format=ssh",
-                "-c", f"gpg.ssh.allowedSignersFile={allowed}",
-                "verify-tag", "--raw", tag,
+                "git",
+                "-c",
+                "gpg.format=ssh",
+                "-c",
+                f"gpg.ssh.allowedSignersFile={allowed}",
+                "verify-tag",
+                "--raw",
+                tag,
             ],
             cwd=repo_root,
         )
@@ -218,7 +223,9 @@ class FlextInfraUtilitiesGitAttestationMixin(
         cls, repo_root: Path, tag: str, commit_sha: str
     ) -> p.Result[m.Infra.GateAttestationPredicate]:
         try:
-            tag_ref = next(item for item in cls._repo(repo_root).tags if item.name == tag)
+            tag_ref = next(
+                item for item in cls._repo(repo_root).tags if item.name == tag
+            )
         except (OSError, StopIteration) as exc:
             return r[m.Infra.GateAttestationPredicate].fail(str(exc))
         if tag_ref.tag is None:

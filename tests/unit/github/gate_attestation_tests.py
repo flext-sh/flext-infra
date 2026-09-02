@@ -48,12 +48,16 @@ def _signed_repository(root: Path) -> tuple[Repo, Path]:
         "test:\n\t@printf 'test ok\\n'\n",
         encoding="utf-8",
     )
-    (root / "pyproject.toml").write_text("[project]\nname='fixture'\n", encoding="utf-8")
+    (root / "pyproject.toml").write_text(
+        "[project]\nname='fixture'\n", encoding="utf-8"
+    )
     repo.index.add(["Makefile", "pyproject.toml", "tracked.txt"])
     repo.index.commit("test: create base revision")
     allowed_signers = root / "allowed_signers"
     public_key = key_path.with_suffix(".pub").read_text(encoding="utf-8").strip()
-    allowed_signers.write_text(f"attester@example.test {public_key}\n", encoding="utf-8")
+    allowed_signers.write_text(
+        f"attester@example.test {public_key}\n", encoding="utf-8"
+    )
     return repo, allowed_signers
 
 
@@ -104,7 +108,9 @@ def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -
     )
 
 
-def test_gate_attestation_verifies_selected_commit_with_equal_tree(tmp_path: Path) -> None:
+def test_gate_attestation_verifies_selected_commit_with_equal_tree(
+    tmp_path: Path,
+) -> None:
     repo, allowed_signers = _signed_repository(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     selected_sha = repo.head.commit.hexsha
@@ -112,9 +118,7 @@ def test_gate_attestation_verifies_selected_commit_with_equal_tree(tmp_path: Pat
     repo.index.commit("test: later equal-tree commit")
     tm.that(repo.head.commit.tree.hexsha, eq=selected_tree)
 
-    verified = _verify(
-        tmp_path, allowed_signers, selected_sha, "gen", "check", "test"
-    )
+    verified = _verify(tmp_path, allowed_signers, selected_sha, "gen", "check", "test")
     tm.ok(verified)
     tm.that(verified.unwrap().commit_sha, eq=selected_sha)
 

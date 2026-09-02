@@ -64,7 +64,10 @@ class FlextInfraUtilitiesDiscovery(
                 continue
             if (current / c.Infra.DEFAULT_SRC_DIR).is_dir():
                 relative = candidate.relative_to(current)
-                if not relative.parts or relative.parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS:
+                if (
+                    not relative.parts
+                    or relative.parts[0] in c.Infra.ROOT_WRAPPER_SEGMENTS
+                ):
                     return str(current)
         return str(wrapper_root) if wrapper_root is not None else ""
 
@@ -365,18 +368,24 @@ class FlextInfraUtilitiesDiscovery(
         )
         discovered_root = cls.project_root(resolved_root)
         project_root = discovered_root
-        if resolved_root.is_dir() and not (
-            execution_dir / c.Infra.PYPROJECT_FILENAME
-        ).is_file():
+        if (
+            resolved_root.is_dir()
+            and not (execution_dir / c.Infra.PYPROJECT_FILENAME).is_file()
+        ):
             relative_parts = (
                 resolved_root.relative_to(discovered_root).parts
                 if discovered_root is not None
                 and resolved_root.is_relative_to(discovered_root)
                 else ()
             )
-            if not relative_parts or relative_parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS:
+            if (
+                not relative_parts
+                or relative_parts[0] not in c.Infra.ROOT_WRAPPER_SEGMENTS
+            ):
                 project_root = resolved_root
-        ownership_root = project_root.resolve() if project_root is not None else resolved_root
+        ownership_root = (
+            project_root.resolve() if project_root is not None else resolved_root
+        )
         from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
         for candidate in (execution_dir, *execution_dir.parents):
@@ -385,7 +394,9 @@ class FlextInfraUtilitiesDiscovery(
             declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(candidate)
             if declared.failure:
                 continue
-            member_roots = tuple((candidate / path).resolve() for path in declared.value)
+            member_roots = tuple(
+                (candidate / path).resolve() for path in declared.value
+            )
             if ownership_root == candidate or ownership_root in member_roots:
                 return candidate.resolve()
         if project_root is not None and (

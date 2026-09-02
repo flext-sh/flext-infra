@@ -501,7 +501,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_check_lint _builtin_check_pyrefly _builtin_check_mypy _builtin_check_pyright _builtin_check_security _builtin_check_markdown _builtin_check_smells _builtin_check_direnv _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
@@ -873,6 +873,33 @@ _builtin_check_all: _builtin_require_environment
 		exit 2; \
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+
+
+
+_builtin_check_lint: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=lint
+
+_builtin_check_pyrefly: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyrefly
+
+_builtin_check_mypy: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=mypy
+
+_builtin_check_pyright: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyright
+
+_builtin_check_security: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=security
+
+_builtin_check_markdown: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=markdown
+
+_builtin_check_smells: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=smells
+
+_builtin_check_direnv: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=direnv
+
 
 _builtin_test_all: _builtin_require_environment
 

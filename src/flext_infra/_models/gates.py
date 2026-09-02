@@ -52,8 +52,7 @@ class FlextInfraModelsGates:
         gate: Annotated[
             t.NonEmptyStr,
             m.Field(
-                pattern=r"^[a-z][a-z0-9-]*$",
-                description="Canonical Make gate name",
+                pattern=r"^[a-z][a-z0-9-]*$", description="Canonical Make gate name"
             ),
         ]
         command: Annotated[t.NonEmptyStr, m.Field(description="Exact Make command")]
@@ -112,7 +111,10 @@ class FlextInfraModelsGates:
 
         @u.model_validator(mode="after")
         def _validate_predicate(self) -> Self:
-            for name, value in (("commit_sha", self.commit_sha), ("tree_sha", self.tree_sha)):
+            for name, value in (
+                ("commit_sha", self.commit_sha),
+                ("tree_sha", self.tree_sha),
+            ):
                 if not re.fullmatch(r"[0-9a-f]{40}", value):
                     msg = f"{name} must be a full lowercase Git SHA"
                     raise ValueError(msg)
@@ -159,8 +161,7 @@ class FlextInfraModelsGates:
             t.StrSequence, m.Field(min_length=1, description="Required gate coverage")
         ]
         commit_sha: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact attested commit SHA"),
+            t.NonEmptyStr, m.Field(description="Exact attested commit SHA")
         ]
         output: Annotated[
             str | None,
@@ -183,7 +184,9 @@ class FlextInfraModelsGates:
         tag: Annotated[t.NonEmptyStr, m.Field(description="Full attestation tag")]
         commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested commit SHA")]
         tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested tree SHA")]
-        signer: Annotated[t.NonEmptyStr, m.Field(description="Verified signer principal")]
+        signer: Annotated[
+            t.NonEmptyStr, m.Field(description="Verified signer principal")
+        ]
         covered_gates: Annotated[t.StrSequence, m.Field(description="Covered gates")]
 
 

@@ -1366,10 +1366,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"marker={conflict_marker}"
                 )
             file_plan = self._file_plan(
-                root,
-                entry.destination,
-                rendered_content,
-                executable=managed.executable,
+                root, entry.destination, rendered_content, executable=managed.executable
             )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
