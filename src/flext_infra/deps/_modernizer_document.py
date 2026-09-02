@@ -129,7 +129,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Process one parsed pyproject state and collect changes."""
         path = state.pyproject_path

@@ -45,9 +45,6 @@ class FlextInfraPytestRunner(s[int]):
     reports: Annotated[
         str, m.Field(min_length=1, description="Repository-relative test report root.")
     ]
-    fail_fast: Annotated[bool, m.Field(description="Stop after the first failure.")] = (
-        False
-    )
     verbose: Annotated[bool, m.Field(description="Expose child output live.")] = False
     diagnostic: Annotated[
         bool, m.Field(description="Use expanded pytest diagnostics.")
@@ -88,7 +85,6 @@ class FlextInfraPytestRunner(s[int]):
             what=cls._environment_value(c.Infra.PYTEST_ENV_WHAT) or None,
             target=cls._environment_value(c.Infra.PYTEST_ENV_TARGET),
             reports=cls._environment_value(c.Infra.PYTEST_ENV_REPORTS),
-            fail_fast=cls._environment_flag(c.Infra.PYTEST_ENV_FAIL_FAST),
             verbose=cls._environment_flag(c.Infra.PYTEST_ENV_VERBOSE),
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
         )
@@ -141,8 +137,8 @@ class FlextInfraPytestRunner(s[int]):
         return raw == config.Infra.codegen.make.ci.value
 
     def _cov_enabled(self) -> bool:
-        """True when Make COV token requests a full coverage run (COV=Y)."""
-        return self._environment_flag(c.Infra.PYTEST_ENV_COV)
+        """True when COV=Y or WHAT=full selects the full coverage suite."""
+        return self.what == "full" or self._environment_flag(c.Infra.PYTEST_ENV_COV)
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -333,14 +329,6 @@ class FlextInfraPytestRunner(s[int]):
         """Execute pytest, profile it, and preserve reports under one deadline."""
         if self._is_cache_maintenance():
             return self._execute_cache_maintenance()
-        # Why (flext-v4p5): CI workflows must not run pytest. Fail loud if invoked
-        # under CI=Y so regenerated jobs cannot reintroduce make test silently.
-        if self._ci_disables_coverage():
-            return r[int].fail(
-                "make test is forbidden under CI=Y (flext-v4p5); "
-                "CI workflows must not execute pytest — run make test locally "
-                "without CI=Y"
-            )
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
         pre_run_digest = FlextInfraTestmonDbInspector.digest_file(

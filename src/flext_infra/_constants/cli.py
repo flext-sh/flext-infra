@@ -61,6 +61,11 @@ class FlextInfraConstantsCli:
         "--operation",
         "--branch",
         "--base",
+        "--signer",
+        "--allowed-signers",
+        "--expected-gates",
+        "--commit-sha",
+        "--output",
     )
     SHARED_BOOL_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_BOOL_FLAG_VALUES)
     SHARED_VALUE_FLAGS: Final[frozenset[str]] = frozenset(_SHARED_VALUE_FLAG_VALUES)
@@ -70,7 +75,7 @@ class FlextInfraConstantsCli:
         "validate": "Infrastructure validators and diagnostics",
         "deps": "Dependency detection and modernization",
         "docs": "Documentation audit, fix, build, generate, validate",
-        "github": "GitHub workflows, linting, and PR automation",
+        "github": "GitHub workflow synchronization and linting",
         "maintenance": "Python version enforcement",
         "refactor": "Declarative refactoring and modernization",
         "release": "Release orchestration",

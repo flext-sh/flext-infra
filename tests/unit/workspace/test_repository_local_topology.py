@@ -17,91 +17,132 @@ from tests.unit.workspace.worktree_fixture import WorktreeFixture
 class TestsRepositoryLocalTopology:
     """Prove each repository owns its topology and typed Beads identity."""
 
-    def test_repository_manifest_projects_declared_command_policy(
+    def test_selected_workspace_manifest_owns_repository_policy(
         self, tmp_path: Path
     ) -> None:
-        """Load local command extensions only after validating Git identity."""
-        root = tmp_path / "project"
+        """Preserve typed local policy after reconciling it with observed Git."""
+        root = tmp_path / "manifest-policy"
+        name = "fixture-manifest-policy"
         WorktreeFixture.initialize_governed_project(
             root,
-            "fixture-project",
-            workspace="fixture-workspace",
-            database="fixture-database",
-            issue_prefix="fixture-prefix",
+            name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
         )
-        manifest: dict[str, t.JsonValue] = {
-            "repository": {
-                "name": "fixture-project",
-                "distribution": "fixture-project",
-                "url": WorktreeFixture.governed_repository_url("fixture-project"),
-                "path": ".",
-                "role": "standalone",
-                "provider": u.Tests.provider().name,
-                "checkout": "root",
-                "codegen": "conform",
-                "package": True,
-                "editable": False,
-                "read_only": False,
-                "extra_verbs": [
-                    {
-                        "name": "charts",
-                        "default_what": "all",
-                        "whats": ["all", "template"],
-                    }
-                ],
-                "script_dispatch": {
-                    "dispatcher": "scripts/dispatch.py",
-                    "roots": ["scripts"],
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        declared = observed.repository.model_copy(
+            update={
+                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+                "uv_link_mode": "clone",
+                "dependency_cooldown_exclusions": ("fresh-package",),
+                "dependency_cooldown_overrides": {
+                    "dated-package": "2026-09-01T00:00:00Z"
                 },
             }
-        }
-        tm.ok(u.Cli.yaml_dump(root / "config" / "workspace.yaml", manifest))
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {
+                    "version": 3,
+                    "name": name,
+                    "repository": declared.model_dump(mode="json"),
+                },
+            )
+        )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
+        tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
+        tm.that(workspace.repository.uv_link_mode, eq="clone")
         tm.that(
-            tuple(verb.name for verb in workspace.repository.extra_verbs),
-            eq=("charts",),
+            workspace.repository.dependency_cooldown_exclusions, eq=("fresh-package",)
         )
         tm.that(
-            workspace.repository.script_dispatch,
-            eq=m.Infra.ScriptDispatchSpec(
-                dispatcher="scripts/dispatch.py", roots=("scripts",)
-            ),
+            workspace.repository.dependency_cooldown_overrides,
+            eq={"dated-package": "2026-09-01T00:00:00Z"},
         )
 
-    def test_repository_manifest_cannot_override_git_identity(
+    def test_selected_workspace_manifest_rejects_git_contradiction(
         self, tmp_path: Path
     ) -> None:
-        """Reject a local manifest naming a different canonical repository."""
-        root = tmp_path / "project"
+        """Fail closed when selected declarative identity disagrees with Git."""
+        root = tmp_path / "manifest-contradiction"
+        name = "fixture-manifest-contradiction"
         WorktreeFixture.initialize_governed_project(
             root,
-            "fixture-project",
-            workspace="fixture-workspace",
-            database="fixture-database",
-            issue_prefix="fixture-prefix",
+            name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
         )
-        manifest: dict[str, t.JsonValue] = {
-            "repository": {
-                "name": "different-project",
-                "distribution": "fixture-project",
-                "url": WorktreeFixture.governed_repository_url("fixture-project"),
-                "path": ".",
-                "role": "standalone",
-                "provider": u.Tests.provider().name,
-                "checkout": "root",
-                "codegen": "conform",
-                "package": True,
-                "editable": False,
-                "read_only": False,
-            }
-        }
-        tm.ok(u.Cli.yaml_dump(root / "config" / "workspace.yaml", manifest))
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        declared = observed.repository.model_copy(
+            update={"distribution": "different-distribution"}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {
+                    "version": 3,
+                    "name": name,
+                    "repository": declared.model_dump(mode="json"),
+                },
+            )
+        )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="repository manifest differs from Git identity: name")
+        tm.fail(result, has="workspace manifest contradicts Git")
+        tm.that(result.error or "", has="distribution")
+
+    @pytest.mark.parametrize(
+        ("overrides", "missing_field", "expected_error"),
+        [
+            pytest.param({"version": 4}, None, "version", id="unknown-version"),
+            pytest.param(
+                {"unknown_contract": True}, None, "unknown_contract", id="unknown-field"
+            ),
+            pytest.param({}, "name", "name", id="missing-name"),
+        ],
+    )
+    def test_selected_workspace_manifest_validates_the_complete_document(
+        self,
+        tmp_path: Path,
+        overrides: dict[str, t.JsonValue],
+        missing_field: str | None,
+        expected_error: str,
+    ) -> None:
+        """Reject incompatible or partial manifest envelopes before policy use."""
+        root = tmp_path / expected_error
+        name = f"fixture-{expected_error}"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
+        )
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        payload: dict[str, t.JsonValue] = {
+            "version": c.Infra.WORKSPACE_MANIFEST_VERSION,
+            "name": name,
+            "repository": observed.repository.model_dump(mode="json"),
+        }
+        payload.update(overrides)
+        if missing_field is not None:
+            del payload[missing_field]
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME, payload
+            )
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="workspace manifest model validation")
+        tm.fail(result, has=expected_error)
 
     def test_loads_typed_beads_identity_from_the_repository_itself(
         self, tmp_path: Path
@@ -201,10 +242,10 @@ class TestsRepositoryLocalTopology:
 
         tm.fail(result, has=field)
 
-    def test_only_own_gitmodules_classifies_a_repository_as_workspace(
+    def test_gitmodules_without_governed_members_remains_standalone(
         self, tmp_path: Path
     ) -> None:
-        """Classify from the repository's own live Git declaration."""
+        """Vendored or empty Git topology does not create a FLEXT workspace."""
         root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -218,8 +259,8 @@ class TestsRepositoryLocalTopology:
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(root))
         target = tm.ok(FlextInfraWorkspaceDetector.conform_target(root))
 
-        tm.that(mode, eq=c.Infra.MakeProfile.WORKSPACE)
-        tm.that(target.make_profile, eq=c.Infra.MakeProfile.WORKSPACE)
+        tm.that(mode, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(target.make_profile, eq=c.Infra.MakeProfile.STANDALONE)
 
     def test_parent_gitmodules_never_classifies_or_governs_a_child(
         self, tmp_path: Path

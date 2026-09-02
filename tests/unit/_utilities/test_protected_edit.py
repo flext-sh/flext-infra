@@ -14,6 +14,30 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraUtilitiesProtectedEdit:
+    def test_pyrefly_snapshot_uses_the_edited_projects_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Protected validation never inherits the orchestrator's Pyrefly config."""
+        project = tmp_path / "project"
+        source = project / "src" / "sample"
+        source.mkdir(parents=True)
+        config_path = project / "pyproject.toml"
+        config_path.write_text("[project]\nname = 'sample'\n", encoding="utf-8")
+        py_file = source / "module.py"
+        py_file.write_text("VALUE = 1\n", encoding="utf-8")
+        commands: list[tuple[str, ...]] = []
+
+        def _capture(command: tuple[str, ...], **_kwargs: object) -> object:
+            commands.append(command)
+            return r.ok(u.Tests.create_command_output())
+
+        monkeypatch.setattr(u.Cli, "run_raw", _capture)
+
+        _ = u.Infra.lint_snapshot(py_file, tmp_path, gates=("pyrefly",))
+
+        tm.that(commands[0], has="--config")
+        tm.that(commands[0], has=str(config_path))
+
     def test_preview_source_writes_restores_original_sources_after_preview(
         self, tmp_path: Path
     ) -> None:

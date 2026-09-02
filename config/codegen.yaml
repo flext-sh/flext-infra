@@ -30,13 +30,14 @@ Infra:
       kubectl_version: "1.32"
       helm_version: "3.19"
       kind_version: "0.31"
+      direnv_version: "2.37"
       taplo_version: "0.10"
       ast_grep_version: "0.45"
       gitleaks_version: "8.30"
       tokei_version: "14.0"
       kubeconform_version: "0.8"
       qlty_version: "0.642"
-      mise_version: "2026.8.14"
+      mise_version: "2026.9.0"
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -207,7 +208,6 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
-
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -349,8 +349,10 @@ Infra:
         # make fmt / make fix APPLY=Y only. This supersedes the earlier
         # check_gates_skip list, which could drift out of sync with the set it
         # was meant to complement.
-        # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
-        # full pytest+coverage; absent = testmon incremental.
+        # RULING 1: CI is ternary (Y/N/absent). CI=Y owns the Review workflow,
+        # including full pytest+coverage while attestation is not selected;
+        # CI=N owns the complementary local check gates; absent uses testmon
+        # for incremental developer runs.
         #
         # The set is the SLOW whole-program type checkers, matching
         # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
@@ -373,8 +375,9 @@ Infra:
         - { verb: fmt, apply: true, contexts: [local, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
-        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
-        - { verb: test, apply: false, contexts: [local, pre_push] }
+        # Review CI proves the complete native gate set. Draft PRs do not select
+        # the job, while attestation reuse is selected externally by AI Hub.
+        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -387,6 +390,8 @@ Infra:
           - .benchmarks
           - .hypothesis
         root_dirs:
+          - .test-tmp
+          - .test-runtime
           - build
           - dist
           - htmlcov
@@ -487,7 +492,7 @@ Infra:
           # Coverage is on unless CI=Y (no separate cov verb).
           # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
           # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, cache-status, cache-clear, cache-checkpoint]
+          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all
@@ -510,15 +515,6 @@ Infra:
           # checkout lock). accepts_apply unlocks the APPLY token only.
           accepts_apply: true
           apply_what: default
-        - name: work
-          default_what: status
-          whats: [help, status, start, land, finish]
-          # `work` mutates only for start/land/finish; status is the read-only
-          # fixed-point after mutation, so serialize-make can re-check without APPLY=Y.
-          # apply_what stays singular by model contract: it is only the implicit
-          # WHAT selected when callers set APPLY=Y without naming one explicitly.
-          apply_guarded: true
-          apply_what: start
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
@@ -611,6 +607,8 @@ Infra:
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
       - { name: .pytest_cache, source_scan_ignore: true }
+      - { name: .test-tmp, source_scan_ignore: true }
+      - { name: .test-runtime, source_scan_ignore: true }
       - { name: .testmondata, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }

@@ -11,7 +11,7 @@
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	fi; \
-	current=$$("$$mise" --version); \
+	current=$$(env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" --version); \
 	current=$${current%% *}; \
 	if [ "$$current" != "$$mise_version" ]; then \
 		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
@@ -31,12 +31,12 @@
 	mkdir -p "$$config_dir"; \
 	: > "$$global_config"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" trust "$$project_root/.mise.toml"; \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" trust "$$project_root/.mise.toml"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" install --locked --yes; \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" -C "$$project_root" install --locked --yes; \
 	uv_output=$$(MISE_CONFIG_DIR="$$config_dir" \
 		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" -C "$$project_root" \
 		exec -- uv --version); \
 	case "$$uv_output" in \
 		'uv '*) uv_actual=$${uv_output#uv }; uv_actual=$${uv_actual%% *} ;; \

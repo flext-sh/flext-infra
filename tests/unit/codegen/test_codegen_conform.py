@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import tomllib
+from difflib import unified_diff
 from pathlib import Path
 
 import pytest
@@ -83,6 +84,26 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
     )
 
 
+def _project_tree_diff(
+    expected: tuple[tuple[str, bytes], ...], actual: tuple[tuple[str, bytes], ...]
+) -> str:
+    """Render only differing generated files when a fixed-point contract fails."""
+    expected_files = dict(expected)
+    actual_files = dict(actual)
+    return "\n".join(
+        line
+        for path in sorted(expected_files.keys() | actual_files.keys())
+        if expected_files.get(path) != actual_files.get(path)
+        for line in unified_diff(
+            expected_files.get(path, b"").decode(errors="replace").splitlines(),
+            actual_files.get(path, b"").decode(errors="replace").splitlines(),
+            fromfile=f"created/{path}",
+            tofile=f"conformed/{path}",
+            lineterm="",
+        )
+    )
+
+
 def _seed_infra_package_tree(root: Path) -> None:
     """Seed the minimal flext-infra tree (pyproject, src package, tests package).
 
@@ -150,9 +171,10 @@ class TestCodegenConform:
         original = "existing generated makefile\n"
         target.write_text(original, encoding="utf-8")
 
-        rejected = self._conform_with_rendered_makefile(
-            root, monkeypatch, "\n<<<<<<< incoming\n"
-        )
+        with monkeypatch.context() as render_patch:
+            rejected = self._conform_with_rendered_makefile(
+                root, render_patch, "\n<<<<<<< incoming\n"
+            )
 
         tm.fail(rejected)
         tm.that(rejected.error, has="base/Makefile.j2")
@@ -160,7 +182,10 @@ class TestCodegenConform:
         tm.that(rejected.error, has=str(root))
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
-        monkeypatch.undo()
+        # The outer autouse fixture owns GITHUB_SHA isolation. Exiting the
+        # narrow render patch must not undo that fixture and restore a CI SHA
+        # that cannot belong to this synthetic repository.
+        tm.that(os.getenv(c.Infra.ENV_VAR_GITHUB_SHA), eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
@@ -668,7 +693,10 @@ class TestCodegenConform:
             )
         )
         tm.ok(migrated)
-        tm.that(_project_tree(existing_root), eq=expected_tree)
+        actual_tree = _project_tree(existing_root)
+        assert actual_tree == expected_tree, _project_tree_diff(
+            expected_tree, actual_tree
+        )
 
     @pytest.mark.slow
     def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
@@ -1466,6 +1494,13 @@ class TestScriptDispatchMakefile:
             ],
         )
         tm.that("_require_apply" in gen_all_body, eq=True)
+        credential_preflight = "MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR"
+        tm.that(credential_preflight in gen_all_body, eq=True)
+        tm.that(
+            gen_all_body.index(credential_preflight)
+            < gen_all_body.index("codegen conform"),
+            eq=True,
+        )
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
@@ -1547,27 +1582,20 @@ class TestScriptDispatchMakefile:
             ],
         )
 
-    def test_work_verb_projects_every_declared_what(self, tmp_path: Path) -> None:
-        """`work` is a declared verb, and the generated Make surface exposes it.
-
-        This contract predates Gas Town's retirement: when Gas Town owned the
-        lane lifecycle, `work` was deliberately absent from generated Make. The
-        codegen SSOT now declares `work` with its whats, and rule 17 makes the
-        Make verb the canonical entry point, so the generated surface must
-        project exactly what the SSOT declares — never a frozen absence.
-        """
+    def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
+        """Gas City owns lanes; generated repositories expose no second lifecycle."""
         make_config = config.Infra.codegen.make
         verb_names = {verb.name for verb in make_config.verbs}
-        tm.that("work" in verb_names, eq=True)
+        tm.that("work" in verb_names, eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
         )
         public_line = next(
             line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
-        tm.that(" work" in public_line, eq=True)
-        for what in make_config.handler_whats["work"]:
-            tm.that(rendered, has=f"_builtin_work_{what}:")
+        tm.that(" work" in public_line, eq=False)
+        tm.that(rendered, lacks="_builtin_work_")
+        tm.that(rendered, lacks="workspace work")
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

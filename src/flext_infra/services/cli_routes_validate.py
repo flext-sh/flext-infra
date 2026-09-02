@@ -1,11 +1,10 @@
-"""Documentation, GitHub, maintenance, and validation CLI route ownership."""
+"""Documentation, GitHub workflow, maintenance, and validation CLI route ownership."""
 
 from __future__ import annotations
 
 from typing import ClassVar
 
-from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import c, m, u
 from flext_infra.docs.auditor import FlextInfraDocAuditor
 from flext_infra.docs.builder import FlextInfraDocBuilder
 from flext_infra.docs.fixer import FlextInfraDocFixer
@@ -18,25 +17,7 @@ from flext_infra.services.cli_routes_validate_commands import ValidationCommandR
 
 
 class ValidationRoutes(ValidationCommandRoutes):
-    """Own documentation, GitHub, maintenance, and validation routes."""
-
-    @staticmethod
-    def _require_successful_pull_request_workspace(
-        report: m.Infra.GithubPullRequestWorkspaceReport,
-    ) -> p.Result[t.Cli.ResultValue]:
-        """Fail the CLI boundary when any repository operation failed."""
-        if report.fail:
-            return r.fail(report.message)
-        return r.ok(report)
-
-    @staticmethod
-    def _run_github_workspace_pull_requests(
-        params: m.Infra.GithubPullRequestWorkspaceRequest,
-    ) -> p.Result[t.Cli.ResultValue]:
-        """Run the workspace PR owner and reject a report containing failures."""
-        return u.Infra.run_github_workspace_pull_requests(params).flat_map(
-            ValidationRoutes._require_successful_pull_request_workspace
-        )
+    """Own documentation, GitHub workflow, maintenance, and validation routes."""
 
     validation_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_DOCS: tuple(
@@ -100,20 +81,6 @@ class ValidationRoutes(ValidationCommandRoutes):
                 help_text="Lint GitHub workflow files",
                 model_cls=m.Infra.GithubWorkflowLintRequest,
                 handler=u.Infra.lint_github_workflows,
-            ),
-            m.Cli.ResultCommandRoute(
-                name=c.Infra.PR,
-                help_text="Manage pull requests for a single project",
-                model_cls=m.Infra.GithubPullRequestRequest,
-                handler=ValidationCommandRoutes.result_handler(
-                    u.Infra.run_github_pull_request
-                ),
-            ),
-            m.Cli.ResultCommandRoute(
-                name="pr-workspace",
-                help_text="Manage pull requests across workspace projects",
-                model_cls=m.Infra.GithubPullRequestWorkspaceRequest,
-                handler=_run_github_workspace_pull_requests,
             ),
         ),
         c.Infra.CLI_GROUP_MAINTENANCE: (

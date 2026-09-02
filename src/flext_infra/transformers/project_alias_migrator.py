@@ -338,7 +338,10 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             )
         if file_path is None:
             return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
-        return FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
+        context: m.Infra.AliasMigrationContext = (
+            FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
+        )
+        return context
 
     @staticmethod
     def _is_private_facade_implementation(file_path: Path) -> bool:
