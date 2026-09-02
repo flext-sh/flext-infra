@@ -3286,8 +3286,25 @@ class FlextInfraConfigModels:
             m.Field(description="Local, remote, and worktree ancestry inventory"),
         ]
 
+    class WorkspaceEnvironmentCliRequest(_ConfigContract):
+        """CLI-safe request for one Python workspace environment sync."""
+
+        workspace_root: Annotated[
+            Path, m.Field(description="Workspace root receiving the sync")
+        ]
+        apply: Annotated[
+            bool, m.Field(description="Write changes instead of reporting them")
+        ] = True
+        force: Annotated[
+            bool, m.Field(description="Replace custom files with generated content")
+        ] = False
+        allow_direnv: Annotated[
+            bool,
+            m.Field(description="Authorize the rendered .envrc after an applied sync"),
+        ] = True
+
     class WorkspaceEnvironmentSyncRequest(_ConfigContract):
-        """Validated public request for one workspace environment sync."""
+        """Validated internal request for one workspace environment sync."""
 
         workspace_root: Annotated[
             Path, m.Field(description="Workspace root receiving the sync")

@@ -431,7 +431,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                             "profile-excluded projection planning failed"
                         )
                     )
-                files.extend(retired.value)
+                governed_paths = {item.path for item in governed.value}
+                files.extend(
+                    item for item in retired.value if item.path not in governed_paths
+                )
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -490,6 +493,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
+        represented_indexes: dict[Path, int] = {}
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)
@@ -497,15 +501,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 completed.append(file)
                 continue
             represented.add(relative)
-            completed.append(
-                file.model_copy(
-                    update={
-                        "owner": governed.owner,
-                        "policy": governed.policy,
-                        "executable": governed.executable,
-                    }
-                )
+            governed_file = file.model_copy(
+                update={
+                    "owner": governed.owner,
+                    "policy": governed.policy,
+                    "executable": governed.executable,
+                }
             )
+            if relative in represented_indexes:
+                completed[represented_indexes[relative]] = governed_file
+            else:
+                represented_indexes[relative] = len(completed)
+                completed.append(governed_file)
         if not contract.complete_governed:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
         for relative, governed in governed_by_path.items():
