@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 import time
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -14,7 +13,7 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-class FlextInfraGate(ABC):
+class FlextInfraGate:
     """Abstract template implementing common check/fix execution flow for gates."""
 
     gate_id: ClassVar[str] = ""
@@ -98,7 +97,12 @@ class FlextInfraGate(ABC):
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
-            project_dir, passed, issues, self._raw_output(result), started, ctx
+            project_dir,
+            passed=passed,
+            issues=issues,
+            raw_output=self._raw_output(result),
+            started=started,
+            ctx=ctx,
         )
 
     def _build_check_gate_execution(
