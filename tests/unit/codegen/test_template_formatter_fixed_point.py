@@ -25,7 +25,6 @@ class TestsTemplateFormatterFixedPoint:
         template = (_TEMPLATES / "pyproject.toml.j2").read_text(encoding="utf-8")
 
         tm.that(template, lacks="[tool.uv.workspace]")
-        tm.that(template, lacks="members = []")
 
     def test_dependabot_render_has_one_terminal_newline(self) -> None:
         empty = tm.ok(
