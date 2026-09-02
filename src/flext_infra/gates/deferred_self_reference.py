@@ -28,8 +28,6 @@ from flext_infra.gates.base_gate import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
-
 
 class FlextInfraDeferredSelfReferenceGate(FlextInfraGate):
     """Block deferred self-reference and recursive models in any Python project."""
@@ -96,22 +94,6 @@ class FlextInfraDeferredSelfReferenceGate(FlextInfraGate):
             raw_output="\n".join(issue.formatted for issue in issues),
             ctx=ctx,
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """Build check command."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Parse check output."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraDeferredSelfReferenceGate"]
