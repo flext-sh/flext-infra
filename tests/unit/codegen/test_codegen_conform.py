@@ -460,6 +460,74 @@ class TestCodegenConform:
         tm.that(current.ancestor, eq=True)
         tm.that(anchored.baseline_sha, eq=lane_point)
 
+    def test_branch_ancestry_skips_triggering_sha_in_submodule_context(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """GITHUB_SHA from the superproject must not break submodule ancestry.
+
+        In CI, GITHUB_SHA is the superproject's PR merge commit, which does
+            not exist inside a submodule's object database. ``git merge-base``
+            then fails with exit 128 ("Not a valid commit name"), breaking
+            ``gen check`` for every governed submodule (PR #187).
+
+        When triggering_sha does not resolve locally the gate must skip the
+        merge-base pin and fall back to the live baseline tip, the same
+            behavior a local (non-CI) checkout would use.
+        """
+        root = tmp_path / "repository"
+        root.mkdir()
+        u.Tests.initialize_git_repo(root)
+        lane_point = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "checkout", "-B", "0.12.0-dev", lane_point], cwd=root
+            )
+        )
+        (root / "ours.txt").write_text("ours\n", encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["git", "add", "ours.txt"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-m", "Our commit on the lane"], cwd=root
+            )
+        )
+        # GITHUB_SHA is a SHA that does NOT exist in this repo (simulating a
+        # superproject merge commit visible only at the workspace root).
+        foreign_sha = "9" * 40
+        tm.that(
+            u.Cli.run_raw(
+                ["git", "cat-file", "-t", foreign_sha], cwd=root
+            ).value.exit_code,
+            eq=128,
+        )
+        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, foreign_sha)
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path()}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
+            repository=repository,
+            project=u.Tests.project_spec(repository.name),
+        )
+        (root / "pyproject.toml").write_text(
+            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
+            encoding="utf-8",
+        )
+        package = root / "src" / repository.distribution.replace("-", "_")
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        )
+
+        anchored = tm.ok(service.plan(request)).branch_ancestry[0]
+        tm.that(anchored.baseline_sha, eq=lane_point)
+
     def test_branch_ancestry_skips_bare_main_worktree_entry(
         self, tmp_path: Path
     ) -> None:

@@ -2134,28 +2134,40 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # live tip remains the baseline, which is correct for a local checkout.
         triggering_sha = os.environ.get(c.Infra.ENV_VAR_GITHUB_SHA, "").strip()
         if triggering_sha:
-            merge_base_command = (
-                c.Infra.GIT,
-                "merge-base",
-                baseline_sha,
-                triggering_sha,
-            )
-            merge_base_result = u.Cli.run_raw(merge_base_command, cwd=root)
-            if merge_base_result.failure:
-                return r[m.Infra.BranchAncestryPlan].fail(
-                    "cannot anchor ancestry baseline to the triggering commit: "
-                    f"command={' '.join(merge_base_command)}; "
-                    f"error={merge_base_result.error}"
+            # GITHUB_SHA is the superproject's triggering commit (the PR
+            # merge commit actions/checkout synthesizes). Inside a submodule
+            # repo that SHA does not exist, so `git merge-base` fails with
+            # exit 128 ("Not a valid commit name") and breaks `gen check` in
+            # CI. Verify membership before anchoring the baseline through it:
+            # only pin to the merge base when triggering_sha actually resolves
+            # in the current repository (the workspace root). In a submodule
+            # context the gitlink position is the immutable reference and the
+            # live baseline tip remains the correct anchor.
+            verify_command = (c.Infra.GIT, "cat-file", "-t", triggering_sha)
+            verify_result = u.Cli.run_raw(verify_command, cwd=root)
+            if verify_result.success and verify_result.value.exit_code == 0:
+                merge_base_command = (
+                    c.Infra.GIT,
+                    "merge-base",
+                    baseline_sha,
+                    triggering_sha,
                 )
-            if merge_base_result.value.exit_code != 0:
-                return r[m.Infra.BranchAncestryPlan].fail(
-                    "triggering commit shares no history with the baseline: "
-                    f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
-                    f"command={' '.join(merge_base_command)}; "
-                    f"exit={merge_base_result.value.exit_code}; "
-                    f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
-                )
-            baseline_sha = merge_base_result.value.stdout.strip()
+                merge_base_result = u.Cli.run_raw(merge_base_command, cwd=root)
+                if merge_base_result.failure:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "cannot anchor ancestry baseline to the triggering commit: "
+                        f"command={' '.join(merge_base_command)}; "
+                        f"error={merge_base_result.error}"
+                    )
+                if merge_base_result.value.exit_code != 0:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "triggering commit shares no history with the baseline: "
+                        f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
+                        f"command={' '.join(merge_base_command)}; "
+                        f"exit={merge_base_result.value.exit_code}; "
+                        f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
+                    )
+                baseline_sha = merge_base_result.value.stdout.strip()
         pending_merge_result = u.Cli.run_raw(
             (
                 c.Infra.GIT,
