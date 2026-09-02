@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 
@@ -415,6 +415,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
 
     scan_error_message: ClassVar[str] = ""
 
+    @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
@@ -469,7 +470,7 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
         )
 
     def _detect_file_issues(
-        self, file_path: Path, project_dir: Path, rope_project: object
+        self, file_path: Path, project_dir: Path, rope_project: t.Infra.RopeProject
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Override in subclass to detect issues for a single file."""
         _ = file_path, project_dir, rope_project

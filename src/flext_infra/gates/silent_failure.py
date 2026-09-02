@@ -8,9 +8,9 @@ project-name allowlist exists.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import m, u
+from flext_infra import m
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
@@ -30,11 +30,12 @@ class FlextInfraSilentFailureGate(FlextInfraScannerGateMixin, FlextInfraGate):
     tool_url: ClassVar[str] = "internal://flext-infra/silent-failure"
     scan_error_message: ClassVar[str] = "silent-failure scan failed"
 
+    @override
     def _detect_file_issues(
         self,
         file_path: Path,
         project_dir: Path,
-        rope_project: u.Infra.RopeProject,
+        rope_project: t.Infra.RopeProject,
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Detect silent failure violations in a single file."""
         return FlextInfraSilentFailureDetector.detect_file(
