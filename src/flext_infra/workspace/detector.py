@@ -188,17 +188,20 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].ok(observed)
         loaded = u.Cli.config_load(manifest_path, expand_env=False)
         if loaded.failure:
+            error = loaded.error
+            if error is None:
+                msg = "workspace manifest load failed without an error"
+                raise RuntimeError(msg)
             return r[m.Infra.RepositoryRef].fail(
-                f"invalid workspace manifest ({manifest_path}): "
-                f"{loaded.error or 'configuration load failed'}"
+                f"invalid workspace manifest ({manifest_path}): {error}"
             )
-        raw_repository = loaded.value.data.get("repository")
         try:
-            declared = m.Infra.RepositoryRef.model_validate(raw_repository)
+            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
         except c.ValidationError as exc:
             return r[m.Infra.RepositoryRef].fail_op(
-                f"workspace repository model validation ({manifest_path})", exc
+                f"workspace manifest model validation ({manifest_path})", exc
             )
+        declared = manifest.repository
         contradictions = cls._manifest_git_contradictions(declared, observed)
         if contradictions:
             return r[m.Infra.RepositoryRef].fail(
