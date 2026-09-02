@@ -24,7 +24,10 @@ repository:
   dependency_cooldown_exclusions: {{ workspace_repository.dependency_cooldown_exclusions | list | tojson }}
 {%- endif %}
 {%- if workspace_repository.dependency_cooldown_overrides %}
-  dependency_cooldown_overrides: {{ workspace_repository.dependency_cooldown_overrides | tojson }}
+  dependency_cooldown_overrides:
+{%- for package, cutoff in workspace_repository.dependency_cooldown_overrides.items() %}
+    {{ package | tojson }}: {{ cutoff | tojson }}
+{%- endfor %}
 {%- endif %}
 {%- if workspace_repository.extra_verbs %}
   extra_verbs:
@@ -96,7 +99,10 @@ members:
     dependency_cooldown_exclusions: {{ repository.dependency_cooldown_exclusions | list | tojson }}
 {%- endif %}
 {%- if repository.dependency_cooldown_overrides %}
-    dependency_cooldown_overrides: {{ repository.dependency_cooldown_overrides | tojson }}
+    dependency_cooldown_overrides:
+{%- for package, cutoff in repository.dependency_cooldown_overrides.items() %}
+      {{ package | tojson }}: {{ cutoff | tojson }}
+{%- endfor %}
 {%- endif %}
 {%- if repository.extra_verbs %}
     extra_verbs:

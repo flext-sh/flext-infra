@@ -31,11 +31,7 @@ class FlextInfraWorkspaceDetector(
     @staticmethod
     def _workspace_manifest_path(repository_root: Path) -> Path:
         """Return the optional, explicitly selected workspace manifest path."""
-        return (
-            repository_root
-            / c.CONFIG_DIR_NAME
-            / c.Infra.WORKSPACE_MANIFEST_FILENAME
-        )
+        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
 
     @staticmethod
     def _provider_owns_url(provider: m.Infra.ProviderSpec, url: str) -> bool:
@@ -132,12 +128,53 @@ class FlextInfraWorkspaceDetector(
             )
         return r[m.Infra.ProviderSpec].ok(provider)
 
+    @staticmethod
+    def _manifest_git_contradictions(
+        declared: m.Infra.RepositoryRef, observed: m.Infra.RepositoryRef
+    ) -> list[str]:
+        """Describe every manifest identity or topology conflict with Git."""
+        comparisons = (
+            (
+                declared.name != observed.name,
+                f"name {declared.name!r} != {observed.name!r}",
+            ),
+            (
+                declared.distribution != observed.distribution,
+                f"distribution {declared.distribution!r} != {observed.distribution!r}",
+            ),
+            (
+                declared.provider != observed.provider,
+                f"provider {declared.provider!r} != {observed.provider!r}",
+            ),
+            (
+                declared.path != observed.path,
+                f"path {declared.path.as_posix()!r} != {observed.path.as_posix()!r}",
+            ),
+            (
+                declared.role is not observed.role,
+                f"role {declared.role.value!r} != {observed.role.value!r}",
+            ),
+        )
+        contradictions = [message for differs, message in comparisons if differs]
+        if u.Infra.git_remote_identity(declared.url) != u.Infra.git_remote_identity(
+            observed.url
+        ):
+            contradictions.append("url identity differs from Git origin")
+        allowed_checkout_kinds = (
+            {c.Infra.CheckoutKind.SUBMODULE}
+            if observed.checkout is c.Infra.CheckoutKind.SUBMODULE
+            else {c.Infra.CheckoutKind.ROOT, c.Infra.CheckoutKind.INDEPENDENT}
+        )
+        if declared.checkout not in allowed_checkout_kinds:
+            contradictions.append(
+                "checkout "
+                f"{declared.checkout.value!r} contradicts the observed topology"
+            )
+        return contradictions
+
     @classmethod
     def _manifest_repository_ref(
-        cls,
-        repository_root: Path,
-        *,
-        observed: m.Infra.RepositoryRef,
+        cls, repository_root: Path, *, observed: m.Infra.RepositoryRef
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Load a selected repository manifest and reconcile it with Git truth.
 
@@ -162,41 +199,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail_op(
                 f"workspace repository model validation ({manifest_path})", exc
             )
-        contradictions: list[str] = []
-        if declared.name != observed.name:
-            contradictions.append(f"name {declared.name!r} != {observed.name!r}")
-        if declared.distribution != observed.distribution:
-            contradictions.append(
-                "distribution "
-                f"{declared.distribution!r} != {observed.distribution!r}"
-            )
-        if (
-            u.Infra.git_remote_identity(declared.url)
-            != u.Infra.git_remote_identity(observed.url)
-        ):
-            contradictions.append("url identity differs from Git origin")
-        if declared.provider != observed.provider:
-            contradictions.append(
-                f"provider {declared.provider!r} != {observed.provider!r}"
-            )
-        if declared.path != observed.path:
-            contradictions.append(
-                f"path {declared.path.as_posix()!r} != {observed.path.as_posix()!r}"
-            )
-        if declared.role is not observed.role:
-            contradictions.append(
-                f"role {declared.role.value!r} != {observed.role.value!r}"
-            )
-        allowed_checkout_kinds = (
-            {c.Infra.CheckoutKind.SUBMODULE}
-            if observed.checkout is c.Infra.CheckoutKind.SUBMODULE
-            else {c.Infra.CheckoutKind.ROOT, c.Infra.CheckoutKind.INDEPENDENT}
-        )
-        if declared.checkout not in allowed_checkout_kinds:
-            contradictions.append(
-                "checkout "
-                f"{declared.checkout.value!r} contradicts the observed topology"
-            )
+        contradictions = cls._manifest_git_contradictions(declared, observed)
         if contradictions:
             return r[m.Infra.RepositoryRef].fail(
                 f"workspace manifest contradicts Git ({manifest_path}): "
