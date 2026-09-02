@@ -208,6 +208,12 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         REFACTOR_RULE_ITERATIONS: Final[int] = 100
         REFACTOR_RULE_MAX_SECONDS: Final[float] = 0.1
 
+        # flext-perf.4: gen pipeline performance thresholds (lazy-init stage).
+        GEN_PIPELINE_PROJECT_COUNT: Final[int] = 20
+        GEN_PIPELINE_MODULES_PER_PROJECT: Final[int] = 5
+        GEN_PIPELINE_MAX_SECONDS: Final[float] = 30.0
+        GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
+
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
         RELEASE_VERSION_SELECTED: Final[str] = "1.2.0"
         RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
