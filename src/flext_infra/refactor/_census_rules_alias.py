@@ -9,14 +9,19 @@ from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
 )
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
+from flext_infra.refactor._census_rules_shared import (
+    FlextInfraRefactorCensusRulesSharedMixin,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
-class FlextInfraRefactorCensusRulesAliasMixin:
+class FlextInfraRefactorCensusRulesAliasMixin(
+    FlextInfraRefactorCensusRulesSharedMixin
+):
     """Runtime-alias + manual-typing-alias rule scanners for one module.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
@@ -25,34 +30,6 @@ class FlextInfraRefactorCensusRulesAliasMixin:
 
     if TYPE_CHECKING:
 
-        @staticmethod
-        def _detector_context(
-            rope: p.Infra.RopeWorkspaceDsl,
-            file_path: Path,
-            *,
-            convention: m.Infra.RopeModuleConvention | None = None,
-            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
-            | None = None,
-        ) -> m.Infra.DetectorContext: ...
-        @staticmethod
-        def _raw_violation(
-            *,
-            project: str,
-            object_name: str,
-            object_kind: str,
-            kind: str,
-            file_path: Path,
-            line: int,
-            description: str,
-            fixable: bool = False,
-            fix_action: str = "",
-        ) -> m.Infra.Census.Violation: ...
-        @staticmethod
-        def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
-        @staticmethod
-        def _named_object(
-            objects: tuple[m.Infra.Census.Object, ...], name: str
-        ) -> m.Infra.Census.Object | None: ...
         @staticmethod
         def _runtime_alias_target(
             convention: m.Infra.RopeModuleConvention,
