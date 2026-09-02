@@ -65,7 +65,13 @@ def canonical_origin_remote(url: str) -> str:
     parsed = urlsplit(value)
     if parsed.scheme in {"git", "git+ssh", "http", "https", "ssh"} and parsed.netloc:
         path = parsed.path.rstrip("/").removesuffix(".git")
-        return urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment))
+        return urlunsplit((
+            parsed.scheme,
+            parsed.netloc,
+            path,
+            parsed.query,
+            parsed.fragment,
+        ))
     if "@" in value.partition(":")[0]:
         return value.rstrip("/").removesuffix(".git")
     return value

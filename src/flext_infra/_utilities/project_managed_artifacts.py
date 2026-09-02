@@ -49,18 +49,18 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         )
         if not config_dir.is_dir():
             return r[m.Infra.ProjectManagedArtifactsResolution].ok(empty)
-        loaded = u.Cli.config_load_dir(config_dir)
-        if loaded.failure:
-            return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                loaded.error or f"project config load failed: {config_dir}"
-            )
         ruff_ignores: dict[str, set[str]] = {}
         mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: dict[str, Path] = {}
         gitignore_patterns: list[str] = []
         fleet_platforms = frozenset(config.Infra.codegen.toolchain.mise_lock_platforms)
-        for document in loaded.value.values():
-            managed = document.data.get("ManagedArtifacts")
+        for source in sorted(config_dir.glob("*.yaml")):
+            loaded = u.Cli.yaml_safe_load(source)
+            if loaded.failure:
+                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
+                    loaded.error or f"project config load failed: {source}"
+                )
+            managed = loaded.value.get("ManagedArtifacts")
             if not managed:
                 continue
             project_config = m.Infra.ProjectConfigDocument.model_validate({
@@ -72,11 +72,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             for pattern in artifacts.Gitignore.patterns:
                 if pattern not in gitignore_patterns:
                     gitignore_patterns.append(pattern)
-            if document.source_path is None:
-                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                    "project configuration document has no source path"
-                )
-            source = Path(document.source_path)
             for selector, tool in artifacts.Mise.tools.items():
                 previous = mise_sources.get(selector)
                 if previous is not None:

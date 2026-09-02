@@ -44,6 +44,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             raise TypeError(msg)
         return link_mode
 
+    @staticmethod
+    def _dependency_cooldown_policy(
+        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
+    ) -> tuple[tuple[str, ...], dict[str, str]]:
+        """Compose fleet defaults with the repository's narrower policy."""
+        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
+        overrides = dict(toolchain.dependency_cooldown_overrides)
+        for package in repository.dependency_cooldown_exclusions:
+            overrides.pop(package, None)
+            exclusions[package] = None
+        for package, cutoff in repository.dependency_cooldown_overrides.items():
+            exclusions.pop(package, None)
+            overrides[package] = cutoff
+        return tuple(exclusions), overrides
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -807,6 +822,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=tooling_root, skip_check=True
         )
+        analysis_exclusions = tuple(
+            path.as_posix()
+            for path in (
+                *target.external_dependency_paths,
+                *workspace.external_dependency_paths,
+            )
+        )
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
         )
@@ -820,6 +842,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -991,11 +1014,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             format_source=False,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 initial_tooling.error or f"initial tooling conform failed: {pyproject}"
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
             providers=codegen.providers,
@@ -1004,6 +1031,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1015,6 +1044,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1100,13 +1130,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
+        analysis_exclusions = tuple(
+            path.as_posix() for path in target.external_dependency_paths
+        )
+        generated_python_roots = self._scaffold_python_dirs(
+            codegen.templates.entries, target.make_profile
+        )
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=generated_python_roots,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1122,6 +1157,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_context.value,
                 contract=contract,
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             providers=codegen.providers,
@@ -1130,6 +1168,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1144,9 +1184,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_result = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
-            generated_python_roots=self._scaffold_python_dirs(
-                codegen.templates.entries, target.make_profile
-            ),
+            generated_python_roots=generated_python_roots,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1359,10 +1398,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"marker={conflict_marker}"
                 )
             file_plan = self._file_plan(
-                root,
-                entry.destination,
-                rendered_content,
-                executable=managed.executable,
+                root, entry.destination, rendered_content, executable=managed.executable
             )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1475,11 +1511,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
-        if destination in {
-            ".coderabbit.yaml",
-            ".pre-commit-config.yaml",
-            "cubic.yaml",
-        }:
+        if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
@@ -1543,7 +1575,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         codegen.toolchain.dependency_cooldown_days
                     ),
                     github_actions=codegen.github_actions,
-                    gate_attestation=codegen.gate_attestation,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
                     # Why: dependabot.yml.j2 branches on this and the model
@@ -1584,10 +1615,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     gitlinks.error or "managed Gitlink resolution failed"
                 )
+            cooldown_exclusions, cooldown_overrides = (
+                self._dependency_cooldown_policy(repository, codegen.toolchain)
+            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
-                    gate_attestation=codegen.gate_attestation,
                     dist=dist,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
@@ -1607,12 +1640,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mise_version=codegen.toolchain.mise_version,
                     mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                    dependency_cooldown_exclusions=(
-                        codegen.toolchain.dependency_cooldown_exclusions
-                    ),
-                    dependency_cooldown_overrides=(
-                        codegen.toolchain.dependency_cooldown_overrides
-                    ),
+                    dependency_cooldown_exclusions=cooldown_exclusions,
+                    dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -1684,10 +1713,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.MakeRenderContext].fail(
                 gitlinks.error or "managed Gitlink resolution failed"
             )
+        cooldown_exclusions, cooldown_overrides = (
+            FlextInfraCodegenConform._dependency_cooldown_policy(
+                repository, codegen.toolchain
+            )
+        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
-                gate_attestation=codegen.gate_attestation,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1705,12 +1738,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository, codegen.toolchain
                 ),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=(
-                    codegen.toolchain.dependency_cooldown_exclusions
-                ),
-                dependency_cooldown_overrides=(
-                    codegen.toolchain.dependency_cooldown_overrides
-                ),
+                dependency_cooldown_exclusions=cooldown_exclusions,
+                dependency_cooldown_overrides=cooldown_overrides,
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
@@ -1863,6 +1892,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                direnv_version=codegen.toolchain.direnv_version,
                 uv_version=codegen.toolchain.uv_version,
                 mise_version=codegen.toolchain.mise_version,
                 mise_lock_platforms=codegen.toolchain.mise_lock_platforms,

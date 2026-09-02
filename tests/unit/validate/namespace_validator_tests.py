@@ -406,7 +406,10 @@ class TestFlextInfraNamespaceValidator:
 
         tm.ok(result)
         tm.that(
-            any("TypeVar 'T' belongs in typings.py" in violation for violation in result.value.violations),
+            any(
+                "TypeVar 'T' belongs in typings.py" in violation
+                for violation in result.value.violations
+            ),
             eq=True,
         )
 

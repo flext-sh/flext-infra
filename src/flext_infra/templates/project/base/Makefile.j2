@@ -297,7 +297,8 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 			$(UV) venv "$(RUNTIME_VENV)"; \
 		fi; \
 		$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
-	fi
+	fi; \
+	direnv allow "$(PROJECT_ROOT)"
 
 # A delegated runtime lives in another checkout, so this project has no local
 # environment of its own. Generated tooling still addresses the environment by
@@ -455,7 +456,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
+.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in make.handler_whats[verb.name] %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
@@ -513,12 +514,6 @@ _builtin_help_usage:
 {% for verb in make.verbs %}
 {% if verb.name == "setup" %}
 	@printf '  %-10s\n' 'setup';
-{% elif verb.name == "work" %}
-{# The generic line appends APPLY=Y to every apply-guarded verb, which reads as
-   if the read-only default selector also demanded mutation authority. Only the
-   lane-mutating selectors call _require_apply, so work states that itself. #}
-	@printf '  %-10s WHAT=%s\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-	@printf '  %-10s %s\n' '' '{{ verb.default_what }} is read-only; other WHATs require APPLY=Y';
 {% else %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' "$$(printf '%s' '$(_ALLOWED_WHATS_{{ verb.name }})' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 {% endif %}
@@ -526,10 +521,8 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endfor %}
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
-	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
-	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
-	@printf '  %-10s %s\n' 'KIND/NAME' 'GitFlow kind and slug for work start';
-	@printf '  %-10s %s\n' 'BASE' 'optional integration base override for work start';
+	@printf '  %-10s %s\n' 'BEAD' 'tracker item bound to a checkpoint';
+	@printf '  %-10s %s\n' 'BASE' 'integration branch used by checkpoint';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -709,6 +702,16 @@ _builtin_check_all: _builtin_require_environment
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
+{# `handler_whats` deliberately publishes every check gate as a WHAT selector
+   in both profiles. A standalone Makefile must therefore translate the public
+   selector to the one internal gate input, exactly as the workspace profile
+   does before delegating to a member. Keeping `_builtin_check_all` as the sole
+   executor preserves CHECK_GATES as the implementation SSOT. #}
+{% for gate in make.check_gates_allowed %}
+_builtin_check_{{ gate }}: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES={{ gate }}
+{% endfor %}
+
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(
     "$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry",
@@ -757,21 +760,6 @@ _builtin_status_diagnostics: _builtin_require_environment
 		$(UV) pip check --python "$(RUNTIME_VENV)"; \
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
-
-_builtin_checkpoint_wip: _builtin_require_environment
-	$(call _require_apply)
-	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" wip
-
-_builtin_checkpoint_merge: _builtin_require_environment
-	$(call _require_apply)
-	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" merge
-
-_builtin_checkpoint_review: _builtin_require_environment
-	$(call _require_apply)
-	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" review
-
-_builtin_checkpoint_verify: _builtin_require_environment
-	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" verify
 
 _builtin_docs_all:
 	@set -eu; \

@@ -28,8 +28,8 @@ class TestsFlextInfraUtilitiesProtectedEdit:
         py_file.write_text("VALUE = 1\n", encoding="utf-8")
         commands: list[tuple[str, ...]] = []
 
-        def _capture(command: Sequence[object], **_kwargs: object) -> object:
-            commands.append(tuple(str(part) for part in command))
+        def _capture(command: tuple[str, ...], **_kwargs: object) -> object:
+            commands.append(command)
             return r.ok(u.Tests.create_command_output())
 
         monkeypatch.setattr(u.Cli, "run_raw", _capture)
