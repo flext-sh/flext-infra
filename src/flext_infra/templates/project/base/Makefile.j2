@@ -456,7 +456,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in verb.whats %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
+.PHONY: $(PUBLIC_VERBS){% for verb in make.verbs %}{% for what in make.handler_whats[verb.name] %} _builtin_{{ verb.name }}_{{ what }}{% endfor %}{% endfor %}
 
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
@@ -701,6 +701,16 @@ _builtin_check_all: _builtin_require_environment
 		exit 2; \
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
+
+{# `handler_whats` deliberately publishes every check gate as a WHAT selector
+   in both profiles. A standalone Makefile must therefore translate the public
+   selector to the one internal gate input, exactly as the workspace profile
+   does before delegating to a member. Keeping `_builtin_check_all` as the sole
+   executor preserves CHECK_GATES as the implementation SSOT. #}
+{% for gate in make.check_gates_allowed %}
+_builtin_check_{{ gate }}: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES={{ gate }}
+{% endfor %}
 
 _builtin_test_all: _builtin_require_environment
 {{ test_report_recipe(

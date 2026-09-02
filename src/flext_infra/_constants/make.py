@@ -328,7 +328,9 @@ class FlextInfraConstantsMake:
         ("setup", "Full standalone setup"),
         ("help", "Show this help"),
     )
-    STANDALONE_POST_SETUP_VERBS: Final[str] = "check, test, fmt, build, val, clean, docs"
+    STANDALONE_POST_SETUP_VERBS: Final[str] = (
+        "check, test, fmt, build, val, clean, docs"
+    )
     PROJECT_SELECTION_CONFLICT_ERROR: Final[str] = (
         "ERROR: Cannot use PROJECT and PROJECTS together"
     )

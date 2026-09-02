@@ -321,6 +321,61 @@ class TestsCodegenMakeEnvironment:
         tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
 
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+    )
+    def test_every_published_check_selector_has_a_generated_handler(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Every WHAT advertised by the typed Make owner resolves in both profiles."""
+        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        phony_targets = tuple(
+            token
+            for line in makefile.splitlines()
+            if line.startswith(".PHONY:")
+            for token in line.removeprefix(".PHONY:").split()
+        )
+
+        for gate in config.Infra.codegen.make.check_gates_allowed:
+            handler = f"_builtin_check_{gate}"
+            tm.that(makefile, has=f"{handler}: _builtin_require_environment")
+            tm.that(phony_targets, has=handler)
+
+    def test_standalone_check_selector_executes_its_exact_gate(
+        self, tmp_path: Path
+    ) -> None:
+        """Translate public WHAT once and run the sole CHECK_GATES executor."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        invocation_log = tmp_path / "check-invocation.log"
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(
+            runtime_python, f"#!/bin/sh\nprintf '%s\\n' \"$*\" > '{invocation_log}'\n"
+        )
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "check",
+                    f"{config.Infra.codegen.make.selector}=lint",
+                    f"UV={uv}",
+                ],
+                cwd=project_root,
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        invocation = invocation_log.read_text(encoding="utf-8")
+        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(invocation, has="--gates lint --projects .")
+
     def test_dependency_upgrade_selects_only_one_distribution(
         self, tmp_path: Path
     ) -> None:
