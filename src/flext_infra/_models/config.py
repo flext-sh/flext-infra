@@ -1760,6 +1760,13 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
+        @u.field_serializer("dependency_cooldown_overrides", when_used="json")
+        def _serialize_dependency_cooldown_overrides(
+            self, value: t.StrMapping
+        ) -> dict[str, str]:
+            """Project the immutable mapping through JSON/template boundaries."""
+            return dict(value)
+
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
 

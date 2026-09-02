@@ -6,6 +6,7 @@ import tomllib
 from pathlib import Path
 
 from flext_infra import c, config, m, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
@@ -63,6 +64,46 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
+    def test_repository_cooldown_policy_composes_with_fleet_policy(self) -> None:
+        """A local exemption/override narrows the fleet map without replacing it."""
+        repository = _repository(
+            "external-consumer", role=c.Infra.MakeProfile.STANDALONE, path="."
+        ).model_copy(
+            update={
+                "dependency_cooldown_exclusions": (
+                    "repository-exempt",
+                    "fleet-overridden",
+                ),
+                "dependency_cooldown_overrides": {
+                    "repository-dated": "2026-09-01T00:00:00Z"
+                },
+            }
+        )
+        toolchain = config.Infra.codegen.toolchain.model_copy(
+            update={
+                "dependency_cooldown_exclusions": (
+                    "fleet-exempt",
+                    "repository-dated",
+                ),
+                "dependency_cooldown_overrides": {
+                    "fleet-overridden": "2026-08-01T00:00:00Z"
+                },
+            }
+        )
+
+        exclusions, overrides = FlextInfraCodegenConform._dependency_cooldown_policy(  # ruff:ignore[private-member-access]
+            repository, toolchain
+        )
+
+        tm.that(
+            exclusions,
+            eq=("fleet-exempt", "repository-exempt", "fleet-overridden"),
+        )
+        tm.that(
+            overrides,
+            eq={"repository-dated": "2026-09-01T00:00:00Z"},
+        )
+
     def test_workspace_root_uses_workspace_provenance(self) -> None:
         workspace = _workspace()
         result = u.Infra.pyproject_dependencies_conform(

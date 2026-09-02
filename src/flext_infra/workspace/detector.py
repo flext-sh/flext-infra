@@ -204,7 +204,11 @@ class FlextInfraWorkspaceDetector(
             )
         provider = cls._provider_for_url(observed.url)
         if provider.failure:
-            return r[m.Infra.RepositoryRef].fail(provider.error)
+            error = provider.error
+            if error is None:
+                msg = "repository owner resolution failed without an error"
+                raise RuntimeError(msg)
+            return r[m.Infra.RepositoryRef].fail(error)
         if not cls.repository_is_governed(declared, provider.value):
             return r[m.Infra.RepositoryRef].fail(
                 f"workspace manifest repository is not governed: {manifest_path}"

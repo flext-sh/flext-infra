@@ -17,6 +17,87 @@ from tests.unit.workspace.worktree_fixture import WorktreeFixture
 class TestsRepositoryLocalTopology:
     """Prove each repository owns its topology and typed Beads identity."""
 
+    def test_selected_workspace_manifest_owns_repository_policy(
+        self, tmp_path: Path
+    ) -> None:
+        """Preserve typed local policy after reconciling it with observed Git."""
+        root = tmp_path / "manifest-policy"
+        name = "fixture-manifest-policy"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
+        )
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        declared = observed.repository.model_copy(
+            update={
+                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+                "uv_link_mode": "clone",
+                "dependency_cooldown_exclusions": ("fresh-package",),
+                "dependency_cooldown_overrides": {
+                    "dated-package": "2026-09-01T00:00:00Z"
+                },
+            }
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {
+                    "version": 3,
+                    "name": name,
+                    "repository": declared.model_dump(mode="json"),
+                },
+            )
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+
+        tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
+        tm.that(workspace.repository.uv_link_mode, eq="clone")
+        tm.that(
+            workspace.repository.dependency_cooldown_exclusions,
+            eq=("fresh-package",),
+        )
+        tm.that(
+            workspace.repository.dependency_cooldown_overrides,
+            eq={"dated-package": "2026-09-01T00:00:00Z"},
+        )
+
+    def test_selected_workspace_manifest_rejects_git_contradiction(
+        self, tmp_path: Path
+    ) -> None:
+        """Fail closed when selected declarative identity disagrees with Git."""
+        root = tmp_path / "manifest-contradiction"
+        name = "fixture-manifest-contradiction"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
+        )
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        declared = observed.repository.model_copy(
+            update={"distribution": "different-distribution"}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {
+                    "version": 3,
+                    "name": name,
+                    "repository": declared.model_dump(mode="json"),
+                },
+            )
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="workspace manifest contradicts Git")
+        tm.that(result.error or "", has="distribution")
+
     def test_loads_typed_beads_identity_from_the_repository_itself(
         self, tmp_path: Path
     ) -> None:
