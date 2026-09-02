@@ -18,6 +18,15 @@ _TEMPLATES = (
 
 
 class TestsTemplateFormatterFixedPoint:
+    def test_standalone_pyproject_template_does_not_declare_empty_workspace(
+        self,
+    ) -> None:
+        """Keep standalone projects eligible for a real parent uv workspace."""
+        template = (_TEMPLATES / "pyproject.toml.j2").read_text(encoding="utf-8")
+
+        tm.that(template, lacks="[tool.uv.workspace]")
+        tm.that(template, lacks="members = []")
+
     def test_dependabot_render_has_one_terminal_newline(self) -> None:
         empty = tm.ok(
             u.Cli.template_render(
