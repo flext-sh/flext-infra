@@ -7,7 +7,7 @@ Imports every ``flext_*`` module in the selected project and runs
 from __future__ import annotations
 
 import time
-from typing import ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m
 from flext_infra.gates.base_gate import FlextInfraGate
