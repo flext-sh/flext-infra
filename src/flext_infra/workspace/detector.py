@@ -29,6 +29,15 @@ class FlextInfraWorkspaceDetector(
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
 
     @staticmethod
+    def _workspace_manifest_path(repository_root: Path) -> Path:
+        """Return the optional, explicitly selected workspace manifest path."""
+        return (
+            repository_root
+            / c.CONFIG_DIR_NAME
+            / c.Infra.WORKSPACE_MANIFEST_FILENAME
+        )
+
+    @staticmethod
     def _provider_owns_url(provider: m.Infra.ProviderSpec, url: str) -> bool:
         """Require the remote identity to name this provider's organization.
 
@@ -122,6 +131,85 @@ class FlextInfraWorkspaceDetector(
                 "repository owner must resolve exactly once"
             )
         return r[m.Infra.ProviderSpec].ok(provider)
+
+    @classmethod
+    def _manifest_repository_ref(
+        cls,
+        repository_root: Path,
+        *,
+        observed: m.Infra.RepositoryRef,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Load a selected repository manifest and reconcile it with Git truth.
+
+        A checkout without ``config/workspace.yaml`` remains a valid observed
+        repository. Once the manifest exists, however, its complete typed
+        ``repository`` record is authoritative for repository policy and must
+        agree with the immutable identity and topology observed from Git.
+        """
+        manifest_path = cls._workspace_manifest_path(repository_root)
+        if not manifest_path.is_file():
+            return r[m.Infra.RepositoryRef].ok(observed)
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            return r[m.Infra.RepositoryRef].fail(
+                f"invalid workspace manifest ({manifest_path}): "
+                f"{loaded.error or 'configuration load failed'}"
+            )
+        raw_repository = loaded.value.data.get("repository")
+        try:
+            declared = m.Infra.RepositoryRef.model_validate(raw_repository)
+        except c.ValidationError as exc:
+            return r[m.Infra.RepositoryRef].fail_op(
+                f"workspace repository model validation ({manifest_path})", exc
+            )
+        contradictions: list[str] = []
+        if declared.name != observed.name:
+            contradictions.append(f"name {declared.name!r} != {observed.name!r}")
+        if declared.distribution != observed.distribution:
+            contradictions.append(
+                "distribution "
+                f"{declared.distribution!r} != {observed.distribution!r}"
+            )
+        if (
+            u.Infra.git_remote_identity(declared.url)
+            != u.Infra.git_remote_identity(observed.url)
+        ):
+            contradictions.append("url identity differs from Git origin")
+        if declared.provider != observed.provider:
+            contradictions.append(
+                f"provider {declared.provider!r} != {observed.provider!r}"
+            )
+        if declared.path != observed.path:
+            contradictions.append(
+                f"path {declared.path.as_posix()!r} != {observed.path.as_posix()!r}"
+            )
+        if declared.role is not observed.role:
+            contradictions.append(
+                f"role {declared.role.value!r} != {observed.role.value!r}"
+            )
+        allowed_checkout_kinds = (
+            {c.Infra.CheckoutKind.SUBMODULE}
+            if observed.checkout is c.Infra.CheckoutKind.SUBMODULE
+            else {c.Infra.CheckoutKind.ROOT, c.Infra.CheckoutKind.INDEPENDENT}
+        )
+        if declared.checkout not in allowed_checkout_kinds:
+            contradictions.append(
+                "checkout "
+                f"{declared.checkout.value!r} contradicts the observed topology"
+            )
+        if contradictions:
+            return r[m.Infra.RepositoryRef].fail(
+                f"workspace manifest contradicts Git ({manifest_path}): "
+                + "; ".join(contradictions)
+            )
+        provider = cls._provider_for_url(observed.url)
+        if provider.failure:
+            return r[m.Infra.RepositoryRef].fail(provider.error)
+        if not cls.repository_is_governed(declared, provider.value):
+            return r[m.Infra.RepositoryRef].fail(
+                f"workspace manifest repository is not governed: {manifest_path}"
+            )
+        return r[m.Infra.RepositoryRef].ok(declared)
 
     @staticmethod
     def _gitmodule_contract(
@@ -338,7 +426,7 @@ class FlextInfraWorkspaceDetector(
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
         subprojects, external = topology.value
-        repository_ref = repository.value.model_copy(
+        observed_repository = repository.value.model_copy(
             update={
                 "role": (
                     c.Infra.MakeProfile.WORKSPACE
@@ -347,6 +435,12 @@ class FlextInfraWorkspaceDetector(
                 )
             }
         )
+        declared_repository = cls._manifest_repository_ref(
+            resolved_root, observed=observed_repository
+        )
+        if declared_repository.failure:
+            return r[m.Infra.WorkspaceSpec].fail(declared_repository.error)
+        repository_ref = declared_repository.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=beads.value.workspace,
