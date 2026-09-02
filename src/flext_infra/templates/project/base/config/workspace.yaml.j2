@@ -20,6 +20,12 @@ repository:
 {%- if workspace_repository.uv_link_mode %}
   uv_link_mode: {{ workspace_repository.uv_link_mode | tojson }}
 {%- endif %}
+{%- if workspace_repository.dependency_cooldown_exclusions %}
+  dependency_cooldown_exclusions: {{ workspace_repository.dependency_cooldown_exclusions | list | tojson }}
+{%- endif %}
+{%- if workspace_repository.dependency_cooldown_overrides %}
+  dependency_cooldown_overrides: {{ workspace_repository.dependency_cooldown_overrides | tojson }}
+{%- endif %}
 {%- if workspace_repository.extra_verbs %}
   extra_verbs:
 {%- for verb in workspace_repository.extra_verbs %}
@@ -85,6 +91,12 @@ members:
     read_only: {{ repository.read_only | tojson }}
 {%- if repository.uv_link_mode %}
     uv_link_mode: {{ repository.uv_link_mode | tojson }}
+{%- endif %}
+{%- if repository.dependency_cooldown_exclusions %}
+    dependency_cooldown_exclusions: {{ repository.dependency_cooldown_exclusions | list | tojson }}
+{%- endif %}
+{%- if repository.dependency_cooldown_overrides %}
+    dependency_cooldown_overrides: {{ repository.dependency_cooldown_overrides | tojson }}
 {%- endif %}
 {%- if repository.extra_verbs %}
     extra_verbs:

@@ -1703,6 +1703,25 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Repository-scoped packages explicitly exempted from the "
+                    "fleet dependency cooldown"
+                )
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Repository-scoped package cutoffs projected to uv "
+                    "exclude-newer-package"
+                ),
+            ),
+        ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
@@ -1721,6 +1740,25 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+
+        @u.model_validator(mode="after")
+        def _validate_dependency_cooldown_policy(self) -> Self:
+            """Reject duplicate or contradictory repository cooldown entries."""
+            if len(set(self.dependency_cooldown_exclusions)) != len(
+                self.dependency_cooldown_exclusions
+            ):
+                msg = "repository dependency cooldown exclusions must be unique"
+                raise ValueError(msg)
+            overlap = set(self.dependency_cooldown_exclusions).intersection(
+                self.dependency_cooldown_overrides
+            )
+            if overlap:
+                msg = (
+                    "repository dependency cooldown package cannot be both excluded "
+                    f"and overridden: {', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            return self
 
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""

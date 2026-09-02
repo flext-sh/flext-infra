@@ -44,6 +44,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             raise TypeError(msg)
         return link_mode
 
+    @staticmethod
+    def _dependency_cooldown_policy(
+        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
+    ) -> tuple[tuple[str, ...], dict[str, str]]:
+        """Compose fleet defaults with the repository's narrower policy."""
+        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
+        overrides = dict(toolchain.dependency_cooldown_overrides)
+        for package in repository.dependency_cooldown_exclusions:
+            overrides.pop(package, None)
+            exclusions[package] = None
+        for package, cutoff in repository.dependency_cooldown_overrides.items():
+            exclusions.pop(package, None)
+            overrides[package] = cutoff
+        return tuple(exclusions), overrides
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -998,6 +1013,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 initial_tooling.error or f"initial tooling conform failed: {pyproject}"
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
             providers=codegen.providers,
@@ -1006,6 +1024,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1130,6 +1150,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_context.value,
                 contract=contract,
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             providers=codegen.providers,
@@ -1138,6 +1161,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1583,6 +1608,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     gitlinks.error or "managed Gitlink resolution failed"
                 )
+            cooldown_exclusions, cooldown_overrides = (
+                self._dependency_cooldown_policy(repository, codegen.toolchain)
+            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
@@ -1605,12 +1633,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     mise_version=codegen.toolchain.mise_version,
                     mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                    dependency_cooldown_exclusions=(
-                        codegen.toolchain.dependency_cooldown_exclusions
-                    ),
-                    dependency_cooldown_overrides=(
-                        codegen.toolchain.dependency_cooldown_overrides
-                    ),
+                    dependency_cooldown_exclusions=cooldown_exclusions,
+                    dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -1682,6 +1706,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.MakeRenderContext].fail(
                 gitlinks.error or "managed Gitlink resolution failed"
             )
+        cooldown_exclusions, cooldown_overrides = (
+            FlextInfraCodegenConform._dependency_cooldown_policy(
+                repository, codegen.toolchain
+            )
+        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
@@ -1702,12 +1731,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository, codegen.toolchain
                 ),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=(
-                    codegen.toolchain.dependency_cooldown_exclusions
-                ),
-                dependency_cooldown_overrides=(
-                    codegen.toolchain.dependency_cooldown_overrides
-                ),
+                dependency_cooldown_exclusions=cooldown_exclusions,
+                dependency_cooldown_overrides=cooldown_overrides,
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
