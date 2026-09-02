@@ -34,6 +34,8 @@ class FlextInfraUtilitiesPyprojectConform:
         required_dev_dependencies: t.StrSequence,
         uv_link_mode: str | None = None,
         uv_exclude_newer: str | None = None,
+        dependency_cooldown_exclusions: t.StrSequence | None = None,
+        dependency_cooldown_overrides: t.StrMapping | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace.
@@ -87,8 +89,16 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
             link_mode=uv_link_mode or toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
-            exclude_newer_packages=toolchain.dependency_cooldown_exclusions,
-            exclude_newer_overrides=toolchain.dependency_cooldown_overrides,
+            exclude_newer_packages=(
+                toolchain.dependency_cooldown_exclusions
+                if dependency_cooldown_exclusions is None
+                else dependency_cooldown_exclusions
+            ),
+            exclude_newer_overrides=(
+                toolchain.dependency_cooldown_overrides
+                if dependency_cooldown_overrides is None
+                else dependency_cooldown_overrides
+            ),
             exclude_dependencies=uv_exclude_dependencies,
             uv_environments=toolchain.uv_environments,
         )

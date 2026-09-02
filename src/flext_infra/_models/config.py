@@ -1703,6 +1703,25 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Repository-scoped packages explicitly exempted from the "
+                    "fleet dependency cooldown"
+                )
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Repository-scoped package cutoffs projected to uv "
+                    "exclude-newer-package"
+                ),
+            ),
+        ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
@@ -1721,6 +1740,32 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+
+        @u.model_validator(mode="after")
+        def _validate_dependency_cooldown_policy(self) -> Self:
+            """Reject duplicate or contradictory repository cooldown entries."""
+            if len(set(self.dependency_cooldown_exclusions)) != len(
+                self.dependency_cooldown_exclusions
+            ):
+                msg = "repository dependency cooldown exclusions must be unique"
+                raise ValueError(msg)
+            overlap = set(self.dependency_cooldown_exclusions).intersection(
+                self.dependency_cooldown_overrides
+            )
+            if overlap:
+                msg = (
+                    "repository dependency cooldown package cannot be both excluded "
+                    f"and overridden: {', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            return self
+
+        @u.field_serializer("dependency_cooldown_overrides", when_used="json")
+        def _serialize_dependency_cooldown_overrides(
+            self, value: t.StrMapping
+        ) -> dict[str, str]:
+            """Project the immutable mapping through JSON/template boundaries."""
+            return dict(value)
 
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -2467,6 +2512,165 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
+
+    class WorkspaceBeadsServerSpec(_ConfigContract):
+        """Optional Dolt connection declared by a versioned workspace manifest."""
+
+        backend: Annotated[
+            Literal["dolt"], m.Field(description="Workspace ledger storage engine")
+        ]
+        mode: Annotated[
+            Literal["server"], m.Field(description="Workspace ledger connection mode")
+        ]
+        shared_server: Annotated[
+            Literal[False],
+            m.Field(description="Workspace ledger uses an external Dolt endpoint"),
+        ] = False
+        host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
+        port: Annotated[
+            int, m.Field(ge=1, le=65535, description="Dolt server TCP port")
+        ]
+        user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
+        auto_commit: Annotated[
+            Literal["off", "on", "batch"],
+            m.Field(description="Dolt auto-commit policy"),
+        ]
+
+    class WorkspaceIntegrationSpec(_ConfigContract):
+        """Workspace overlay for one provider integration branch."""
+
+        provider: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured provider key")
+        ]
+        branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace integration branch")
+        ]
+        organization: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional provider organization override"),
+        ] = None
+        base_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional provider base URL override"),
+        ] = None
+
+    class RepositoryPolicyOverlaySpec(_ConfigContract):
+        """Bounded per-project policy declared by a workspace manifest."""
+
+        project: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical project distribution")
+        ]
+        beads_enabled: Annotated[
+            bool, m.Field(description="Whether the repository participates in Beads")
+        ] = False
+        ci_enabled: Annotated[
+            bool, m.Field(description="Whether conform owns the CI surface")
+        ] = True
+        ci_matrix_auto_run: Annotated[
+            bool, m.Field(description="Whether the CI matrix runs automatically")
+        ] = False
+        extra_ignored_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Repository-local generated ignore patterns"),
+        ] = ()
+
+    class WorkspaceExclusionSpec(_ConfigContract):
+        """One explicitly excluded workspace-relative path."""
+
+        path: Annotated[Path, m.Field(description="Workspace-relative path")]
+        reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
+
+    class WorkspaceManifestSpec(_ConfigContract):
+        """Complete versioned input contract for ``config/workspace.yaml``."""
+
+        version: Annotated[
+            int,
+            m.Field(
+                ge=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
+                le=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
+                description="Workspace manifest schema version",
+            ),
+        ]
+        name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
+        ledger_id: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional workspace ledger database identity"),
+        ] = None
+        ledger_prefix: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional workspace issue-prefix identity"),
+        ] = None
+        beads_server: Annotated[
+            FlextInfraConfigModels.WorkspaceBeadsServerSpec | None,
+            m.Field(description="Optional workspace-local Dolt connection"),
+        ] = None
+        repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(description="Root repository declaration"),
+        ]
+        project: Annotated[
+            FlextInfraConfigModels.ProjectSpec | None,
+            m.Field(description="Optional project creation metadata"),
+        ] = None
+        members: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Declared member repository contracts"),
+        ] = ()
+        external_dependency_paths: Annotated[
+            tuple[Path, ...], m.Field(description="Declared external dependency paths")
+        ] = ()
+        content_only: Annotated[
+            tuple[Path, ...], m.Field(description="Content-only Gitlink paths")
+        ] = ()
+        exclusions: Annotated[
+            tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
+            m.Field(description="Explicit workspace exclusions"),
+        ] = ()
+        integration: Annotated[
+            FlextInfraConfigModels.WorkspaceIntegrationSpec | None,
+            m.Field(description="Optional integration provider overlay"),
+        ] = None
+        repository_policy_overlays: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
+            m.Field(description="Repository-local policy overlays"),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_references(self) -> Self:
+            """Reject ambiguous paths and policy references in the full document."""
+            external_paths = (*self.external_dependency_paths, *self.content_only)
+            invalid_paths = tuple(
+                path
+                for path in external_paths
+                if path.is_absolute() or not path.parts or ".." in path.parts
+            )
+            if invalid_paths:
+                msg = "workspace dependency paths must be relative: " + ", ".join(
+                    path.as_posix() for path in invalid_paths
+                )
+                raise ValueError(msg)
+            member_paths = tuple(item.path for item in self.members)
+            if len(set(member_paths)) != len(member_paths):
+                msg = "workspace member paths must be unique"
+                raise ValueError(msg)
+            if set(member_paths).intersection(external_paths):
+                msg = "workspace members cannot also be external dependencies"
+                raise ValueError(msg)
+            projects = tuple(item.project for item in self.repository_policy_overlays)
+            if len(set(projects)) != len(projects):
+                msg = "repository policy overlays must be unique"
+                raise ValueError(msg)
+            repository_names = {
+                item.distribution for item in (self.repository, *self.members)
+            }
+            unknown_projects = set(projects).difference(repository_names)
+            if unknown_projects:
+                msg = (
+                    "repository policy overlays reference unknown projects: "
+                    + ", ".join(sorted(unknown_projects))
+                )
+                raise ValueError(msg)
+            return self
 
     class WorkspaceSpec(_ConfigContract):
         """Local identity plus topology read from this repository's Git inputs."""

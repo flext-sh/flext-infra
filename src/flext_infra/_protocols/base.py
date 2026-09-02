@@ -184,6 +184,16 @@ class FlextInfraProtocolsBase(Protocol):
             """Whether generated mutations are forbidden."""
             ...
 
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from cooldown for this repository."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package cooldown cutoffs for this repository."""
+            ...
+
     @runtime_checkable
     class ProjectSpec(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""

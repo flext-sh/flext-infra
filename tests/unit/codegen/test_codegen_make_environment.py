@@ -197,7 +197,7 @@ class TestsCodegenMakeEnvironment:
             [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
         )
 
         process = tm.ok(result)
@@ -228,7 +228,7 @@ class TestsCodegenMakeEnvironment:
                 [c.Infra.MAKE, "--no-print-directory", "setup"],
                 cwd=project_root,
                 env={"PATH": f"{tool_bin}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
             )
         )
 
@@ -282,7 +282,7 @@ class TestsCodegenMakeEnvironment:
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
             )
         )
 
@@ -367,7 +367,7 @@ class TestsCodegenMakeEnvironment:
                     f"UV={uv}",
                 ],
                 cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -406,7 +406,7 @@ class TestsCodegenMakeEnvironment:
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
                 env={"UV": str(uv), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -444,7 +444,7 @@ class TestsCodegenMakeEnvironment:
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -466,7 +466,7 @@ class TestsCodegenMakeEnvironment:
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
