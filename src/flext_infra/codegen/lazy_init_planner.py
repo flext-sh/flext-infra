@@ -144,6 +144,32 @@ class FlextInfraCodegenLazyInitPlanner(
         )
         is_facade_root = is_public_project_root or is_test_facade_root
         export_names = {*lazy_map, *eager_dunders}
+        if not is_facade_root:
+            # flext-udpm5: a nested package's own modules commonly consume
+            # the project root's already-published facade aliases directly
+            # (``from <root> import c, m, p, ...``) without defining any
+            # local class of their own under that alias. _resolve_aliases
+            # then inherits the ROOT's own alias entry (package_name ==
+            # this package's own project root) into lazy_map so internal
+            # code can still resolve it, but republishing it as part of
+            # THIS package's own __all__/TYPE_CHECKING contract is a pure
+            # upstream re-export, not a local owner: it is redundant with
+            # the root's own contract and, being an absolute self-import of
+            # the project root, fails the relative-owner validation in
+            # generate_type_checking. Exclude only that exact self-pointing
+            # case (an alias whose target is literally the project root
+            # under its own name) here, at the one place that decides the
+            # publishable contract; every alias with a genuine local or
+            # foreign-parent owner (module path does not equal the bare
+            # root package) stays published exactly as before.
+            root_pkg_name = context.current_pkg.split(".", maxsplit=1)[0]
+            if root_pkg_name and root_pkg_name != context.current_pkg:
+                export_names = {
+                    name
+                    for name in export_names
+                    if name not in c.Infra.ALIAS_NAMES
+                    or lazy_map.get(name) != (root_pkg_name, name)
+                }
         if is_public_project_root:
             package_alias = u.Infra.package_alias(package_name=context.current_pkg)
             if (

@@ -467,5 +467,63 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(check_result.success, eq=True)
         tm.that(init_path.read_bytes(), eq=applied_init)
 
+    # flext-udpm5: reproduces flext_ldif.servers._base's exact shape -- a
+    # doubly-nested package whose modules import the project root's own
+    # already-published facade aliases directly (``from <root> import m``)
+    # via a local ``constants.py``, without aliasing any local class under
+    # that same letter. _resolve_aliases inherits the root's own alias
+    # entry into this package's lazy_map; before the fix that redundant
+    # self-import reached the TYPE_CHECKING renderer as an unrenderable
+    # absolute import and crashed both check and apply with "expected a
+    # relative owner" (converting it to a relative import is not an option
+    # either -- member projects that write every local import absolutely,
+    # like flext-ldif, ban parent-relative imports in their own Ruff
+    # config). Check and apply must now agree and neither may error.
+    def test_nested_package_consuming_only_inherited_root_alias(
+        self, tmp_path: Path
+    ) -> None:
+        """A nested package inheriting a root alias plans without error."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        nested_root = package_root / "servers" / "_base"
+        nested_root.mkdir(parents=True)
+        nested_root.joinpath(c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        nested_root.joinpath("constants.py").write_text(
+            '"""Base constants consumer."""\n\n'
+            "from __future__ import annotations\n\n"
+            "from typing import TYPE_CHECKING\n\n"
+            "if TYPE_CHECKING:\n"
+            "    from flext_test_project import m\n\n"
+            "class FlextTestsBaseConstants:\n"
+            '    """Base constants class."""\n\n'
+            '    VALUE: str = ""\n\n\n'
+            '__all__: list[str] = ["FlextTestsBaseConstants"]\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        init_path = nested_root / c.Infra.INIT_PY
+        apply_service = u.Tests.create_lazy_init_service(workspace_root)
+        apply_service.target_module = "flext_test_project.servers._base"
+        apply_service.apply_changes = True
+
+        apply_result = apply_service.execute()
+        applied_init = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_service.target_module = "flext_test_project.servers._base"
+        check_service.check_only = True
+
+        check_result = check_service.execute()
+
+        tm.that(apply_result.success, eq=True)
+        tm.that(check_result.success, eq=True)
+        tm.that(check_service.modified_files, eq=())
+        tm.that(applied_init, contains="FlextTestsBaseConstants")
+        # The inherited root alias is a redundant upstream re-export, not a
+        # local owner of this nested package: it stays out of __all__.
+        tm.that(applied_init, lacks='"m",')
+
 
 __all__: list[str] = ["TestsFlextInfraCodegenLazyInitService"]
