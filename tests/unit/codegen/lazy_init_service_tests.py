@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 from flext_tests import tm
 from tests import c, u
 
@@ -435,6 +436,36 @@ class TestsFlextInfraCodegenLazyInitService:
         ])
         tm.that(ruff_check.success, eq=True)
         tm.that(ruff_check.value.exit_code, eq=0)
+
+    # flext-udpm5: `codegen lazy-init` (wired into `make gen WHAT=check|apply`)
+    # dispatches through the same `execute_command` classmethod contract every
+    # other codegen CLI route uses; prove it end to end without mocks.
+    def test_execute_command_matches_public_cli_route_contract(
+        self, tmp_path: Path
+    ) -> None:
+        """The `codegen lazy-init` CLI route applies through execute_command."""
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        init_path = package_root / c.Infra.INIT_PY
+        original_init = init_path.read_bytes()
+        apply_service = u.Tests.create_lazy_init_service(workspace_root)
+        apply_service.target_module = "flext_test_project"
+        apply_service.apply_changes = True
+
+        apply_result = FlextInfraCodegenLazyInit.execute_command(apply_service)
+        applied_init = init_path.read_bytes()
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_service.target_module = "flext_test_project"
+        check_service.check_only = True
+
+        check_result = FlextInfraCodegenLazyInit.execute_command(check_service)
+
+        tm.that(apply_result.success, eq=True)
+        tm.that(applied_init, ne=original_init)
+        tm.that(check_result.success, eq=True)
+        tm.that(init_path.read_bytes(), eq=applied_init)
 
 
 __all__: list[str] = ["TestsFlextInfraCodegenLazyInitService"]
