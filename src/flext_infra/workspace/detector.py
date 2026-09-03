@@ -485,14 +485,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.fail(repository.error)
-        declared_repository = cls._manifest_repository_ref(
-            subproject_root,
-            observed=repository.value,
-            beads=workspace_beads,
-        )
-        if declared_repository.failure:
-            return result_type.fail(declared_repository.error)
-        return result_type.ok(declared_repository.value)
+        return result_type.ok(repository.value)
 
     @classmethod
     def load_workspace_spec(
