@@ -302,8 +302,8 @@ class FlextInfraConfigModels:
         gitleaks_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
         ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        scc_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
@@ -2476,8 +2476,8 @@ class FlextInfraConfigModels:
         gitleaks_version: Annotated[
             t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
         ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        scc_version: Annotated[
+            t.NonEmptyStr, m.Field(description="Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
             t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")

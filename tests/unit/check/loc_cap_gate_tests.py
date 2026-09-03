@@ -1,6 +1,6 @@
 """Tests for the module-cap SUPREME LAW (§3.1) gate.
 
-The gate flags any module whose tokei `code` line count exceeds the owned cap
+The gate flags any module whose scc `Code` line count exceeds the owned cap
 ``c.Infra.LOC_CAP_MAX`` and accepts modules under it, exercised through the
 public gate runner. Fixtures derive from that constant so a legitimate cap
 change never silently inverts these assertions (UNIVERSAL_CORE P0).
@@ -31,15 +31,15 @@ _OVER_CAP = (
     + "\n"
 )
 _UNDER_CAP = "from __future__ import annotations\n\nx = 1\n"
-_TOKEI_OVER_CAP = (
-    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":'
+_SCC_OVER_CAP = (
+    '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
     f"{_OVER_CAP_LOC}"
-    "}}]}}"
+    "}]}]"
 )
-_TOKEI_UNDER_CAP = (
-    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":'
+_SCC_UNDER_CAP = (
+    '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
     f"{_UNDER_CAP_LOC}"
-    "}}]}}"
+    "}]}]"
 )
 
 
@@ -60,9 +60,7 @@ class TestLocCapGate:
 
     def test_over_cap_module_is_flagged(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_OVER_CAP)
-        runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.stub_run(stdout=_TOKEI_OVER_CAP))
-        ])
+        runner = u.Tests.SequenceRunner([r.ok(u.Tests.stub_run(stdout=_SCC_OVER_CAP))])
 
         result = u.Tests.run_gate_check(
             FlextInfraLocCapGate, tmp_path, project, runner=runner
@@ -73,9 +71,7 @@ class TestLocCapGate:
 
     def test_under_cap_module_passes(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
-        runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.stub_run(stdout=_TOKEI_UNDER_CAP))
-        ])
+        runner = u.Tests.SequenceRunner([r.ok(u.Tests.stub_run(stdout=_SCC_UNDER_CAP))])
 
         result = u.Tests.run_gate_check(
             FlextInfraLocCapGate, tmp_path, project, runner=runner
@@ -85,7 +81,7 @@ class TestLocCapGate:
 
     def test_tool_execution_failure_is_not_silenced(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
-        runner = u.Tests.SequenceRunner([r.fail("tokei is unavailable")])
+        runner = u.Tests.SequenceRunner([r.fail("scc is unavailable")])
 
         result = u.Tests.run_gate_check(
             FlextInfraLocCapGate, tmp_path, project, runner=runner

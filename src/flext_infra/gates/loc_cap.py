@@ -1,8 +1,8 @@
 """FLEXT module-cap SUPREME LAW (§3.1) quality gate.
 
-Enforces the per-module logical-LOC ceiling using tokei's code-line count.
+Enforces the per-module logical-LOC ceiling using scc's code-line count.
 Per-class / per-method / per-function caps require AST and are out of scope
-for this tool-driven gate (tokei reports at file granularity only).
+for this tool-driven gate (scc reports at file granularity only).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraLocCapGate(FlextInfraGate):
-    """Flag any module whose tokei `code` LOC exceeds ``c.Infra.LOC_CAP_MAX``."""
+    """Flag any module whose scc `Code` LOC exceeds ``c.Infra.LOC_CAP_MAX``."""
 
     gate_id: ClassVar[str] = "loc-cap"
     gate_name: ClassVar[str] = "MODULE-LOC SUPREME LAW"
@@ -32,60 +32,60 @@ class FlextInfraLocCapGate(FlextInfraGate):
     def _build_check_command(
         self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
-        """Run tokei over the project's Python directories, emitting JSON."""
+        """Run scc over the project's Python directories, emitting per-file JSON."""
         _ = project_dir, ctx
-        return [c.Infra.TOKEI_BINARY, "--output", "json", *check_dirs]
+        return [c.Infra.SCC_BINARY, "--format", "json", "--by-file", *check_dirs]
 
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Parse tokei JSON into one Issue per over-cap module."""
+        """Parse scc JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
         if result.exit_code != 0:
             return (
                 False,
                 (
                     m.Infra.Issue(
-                        file="<tokei>",
+                        file="<scc>",
                         line=0,
                         column=0,
                         code="LOC_CAP_EXEC",
-                        message=result.stderr or "tokei execution failed",
+                        message=result.stderr or "scc execution failed",
                         severity="ERROR",
                     ),
                 ),
             )
-        issues = self._files_over_cap(result.stdout or "{}", c.Infra.LOC_CAP_MAX)
+        issues = self._files_over_cap(result.stdout or "[]", c.Infra.LOC_CAP_MAX)
         return len(issues) == 0, issues
 
     @classmethod
-    def _files_over_cap(cls, tokei_json: str, cap: int) -> tuple[m.Infra.Issue, ...]:
-        """Extract over-cap modules from a tokei `--output json` payload.
+    def _files_over_cap(cls, scc_json: str, cap: int) -> tuple[m.Infra.Issue, ...]:
+        """Extract over-cap modules from an `scc --format json --by-file` payload.
 
         Pure function (no subprocess) so the cap logic is unit-testable against
-        a literal tokei fixture.
+        a literal scc fixture.
         """
-        parsed = u.Cli.json_parse(tokei_json or "{}")
-        empty: t.JsonValue = {}
+        parsed = u.Cli.json_parse(scc_json or "[]")
+        empty: t.JsonValue = []
         data = parsed.unwrap() if parsed.success else empty
-        if not isinstance(data, Mapping):
+        if not isinstance(data, list):
             return ()
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        for language, payload in data.items():
-            if language != c.Infra.TOKEI_PYTHON_LANG or not isinstance(
-                payload, Mapping
-            ):
+        for language_entry in data:
+            if not isinstance(language_entry, Mapping):
                 continue
-            reports = payload.get("reports")
-            if not isinstance(reports, list):
+            if language_entry.get("Name") != c.Infra.SCC_PYTHON_LANG:
                 continue
-            for report in reports:
-                if not isinstance(report, Mapping):
+            files = language_entry.get("Files")
+            if not isinstance(files, list):
+                continue
+            for file_entry in files:
+                if not isinstance(file_entry, Mapping):
                     continue
-                code = u.Cli.json_nested_int(report, "stats", "code")
+                code = u.Cli.json_pick_int(file_entry, "Code")
                 if code > cap:
-                    name = u.Cli.json_pick_str(report, "name", "?")
+                    name = u.Cli.json_pick_str(file_entry, "Location", "?")
                     issues.append(
                         m.Infra.Issue(
                             file=name,
