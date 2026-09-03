@@ -59,6 +59,57 @@ class FlextInfraLocCapGate(FlextInfraGate):
         issues = self._files_over_cap(result.stdout or "[]", c.Infra.LOC_CAP_MAX)
         return len(issues) == 0, issues
 
+    @staticmethod
+    def _file_code_line(file_entry: t.JsonValue) -> tuple[str, int] | None:
+        """Return one scc by-file entry's ``(path, code)`` pair, or ``None``."""
+        if not isinstance(file_entry, Mapping):
+            return None
+        code = u.Cli.json_pick_int(file_entry, "Code")
+        name = u.Cli.json_pick_str(file_entry, "Location", "?")
+        return name, code
+
+    @classmethod
+    def _python_language_files(
+        cls, language_entry: t.JsonValue
+    ) -> t.SequenceOf[tuple[str, int]]:
+        """Return every ``(path, code)`` pair from one scc language entry.
+
+        Yields nothing for a non-Python entry or one carrying no file list.
+        """
+        if not isinstance(language_entry, Mapping):
+            return ()
+        if language_entry.get("Name") != c.Infra.SCC_PYTHON_LANG:
+            return ()
+        files = language_entry.get("Files")
+        if not isinstance(files, list):
+            return ()
+        picked = (cls._file_code_line(file_entry) for file_entry in files)
+        return tuple(pair for pair in picked if pair is not None)
+
+    @classmethod
+    def _python_file_code_lines(
+        cls, data: t.JsonValue
+    ) -> t.SequenceOf[tuple[str, int]]:
+        """Return every Python file's ``(path, code)`` pair across an scc payload."""
+        if not isinstance(data, list):
+            return ()
+        pairs: t.MutableSequenceOf[tuple[str, int]] = []
+        for language_entry in data:
+            pairs.extend(cls._python_language_files(language_entry))
+        return tuple(pairs)
+
+    @staticmethod
+    def _issue_for_over_cap(path: str, code: int, cap: int) -> m.Infra.Issue:
+        """Build the ``LOC_CAP`` issue for one module past the SUPREME LAW cap."""
+        return m.Infra.Issue(
+            file=path,
+            line=code,
+            column=0,
+            code="LOC_CAP",
+            message=f"{code} code LOC exceeds {cap}-line SUPREME LAW",
+            severity="ERROR",
+        )
+
     @classmethod
     def _files_over_cap(cls, scc_json: str, cap: int) -> tuple[m.Infra.Issue, ...]:
         """Extract over-cap modules from an `scc --format json --by-file` payload.
@@ -69,34 +120,11 @@ class FlextInfraLocCapGate(FlextInfraGate):
         parsed = u.Cli.json_parse(scc_json or "[]")
         empty: t.JsonValue = []
         data = parsed.unwrap() if parsed.success else empty
-        if not isinstance(data, list):
-            return ()
-        issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        for language_entry in data:
-            if not isinstance(language_entry, Mapping):
-                continue
-            if language_entry.get("Name") != c.Infra.SCC_PYTHON_LANG:
-                continue
-            files = language_entry.get("Files")
-            if not isinstance(files, list):
-                continue
-            for file_entry in files:
-                if not isinstance(file_entry, Mapping):
-                    continue
-                code = u.Cli.json_pick_int(file_entry, "Code")
-                if code > cap:
-                    name = u.Cli.json_pick_str(file_entry, "Location", "?")
-                    issues.append(
-                        m.Infra.Issue(
-                            file=name,
-                            line=code,
-                            column=0,
-                            code="LOC_CAP",
-                            message=f"{code} code LOC exceeds {cap}-line SUPREME LAW",
-                            severity="ERROR",
-                        )
-                    )
-        return tuple(issues)
+        return tuple(
+            cls._issue_for_over_cap(path, code, cap)
+            for path, code in cls._python_file_code_lines(data)
+            if code > cap
+        )
 
 
 __all__: list[str] = ["FlextInfraLocCapGate"]
