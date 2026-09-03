@@ -1355,14 +1355,10 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!scripts/"
-            - "!scripts/cmd/"
-            - "!scripts/cmd/**"
             - "scripts/*.py"
             - "scripts/*.sh"
             - "scripts/*.md"
             - "scripts/maintenance/"
-            - "!scripts/dispatch.py"
-            - "!scripts/__init__.py"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
           profiles: [workspace, standalone]
           patterns:
@@ -1546,7 +1542,6 @@ Infra:
             - "**/*.egg-info/"
             - "**/dist/"
             - "**/build/"
-            - "!scripts/cmd/build/"
             - "**/.eggs/"
         - name: "Skill validation temporary reports"
           patterns:

@@ -63,7 +63,6 @@
 **/*.egg-info/
 **/dist/
 **/build/
-!scripts/cmd/build/
 **/.eggs/
 
 # Skill validation temporary reports

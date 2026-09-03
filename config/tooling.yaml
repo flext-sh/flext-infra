@@ -169,12 +169,6 @@ Infra:
             # under `.venv`, which `exclude` already removes from the lint
             # surface. A vendored generated file that ever becomes tracked gets
             # its rules named here, per UNIVERSAL_CORE r19.
-            # Command surfaces are dispatched by FILE NAME, not imported as
-            # modules, so a hyphenated command (loc-cap.py) is the correct CLI
-            # spelling rather than an invalid module name. Scoped to the
-            # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
-            # justified per rule, never a blanket mask).
-            "scripts/cmd/**/*.py": [invalid-module-name, shebang-not-executable]
             # Examples are executable documentation loaded by path, not
             # importable modules, so module-name and shebang rules do not apply.
             "**/examples/**/*.py": [invalid-module-name, shebang-not-executable]
