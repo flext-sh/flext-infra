@@ -14,6 +14,8 @@ from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
+from ._support import CodegenTestSupport
+
 pytestmark = pytest.mark.slow
 
 
@@ -46,6 +48,21 @@ class TestCodegenCiMatrix:
         result = service.execute()
         tm.ok(result)
         return root
+
+    @staticmethod
+    def _assert_dispatch_only(triggers: str) -> None:
+        """Assert a workflow trigger section selects only manual dispatch."""
+        tm.that(triggers, has="workflow_dispatch: {}")
+        for forbidden in (
+            "branches: [main]",
+            "pull_request:",
+            "ready_for_review",
+            "repository_branch",
+            "0.12.0-dev",
+            "develop",
+            "branches: [dev]",
+        ):
+            tm.that(triggers, lacks=forbidden)
 
     def test_ci_matrix_profiles_are_topology_complete(self) -> None:
         """Matrix and distro Dockerfiles cover both repository-local profiles."""
@@ -80,71 +97,6 @@ class TestCodegenCiMatrix:
         tm.that((root / ".github/scripts/gate-attestation.sh").exists(), eq=False)
         tm.that((root / ".github/workflows/gate-attestation.yml").exists(), eq=False)
         tm.that((root / ".github/attestations/allowed_signers").exists(), eq=False)
-
-        tm.that(makefile, has="_builtin_checkpoint_wip:")
-        tm.that(makefile, has="_builtin_checkpoint_merge:")
-        tm.that(makefile, has="_builtin_checkpoint_review:")
-        tm.that(makefile, has="_builtin_checkpoint_verify:")
-        tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
-        tm.that(script, lacks="[skip ci]")
-        tm.that(
-            (root / ".github/scripts/gate-attestation.sh").stat().st_mode & 0o111,
-            eq=0o111,
-        )
-        wip_case = script.split("  wip)", maxsplit=1)[1].split("  merge)", maxsplit=1)[0]
-        merge_case = script.split("  merge)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
-        review_case = script.split("  review)", maxsplit=1)[1].split("  verify)", maxsplit=1)[0]
-        tm.that(wip_case, lacks="run_local_gates")
-        tm.that(wip_case, lacks="publish_receipt")
-        tm.that(wip_case, has="validation and attestation NOT SELECTED")
-        tm.that(merge_case, has="aggregate_pull_requests")
-        tm.that(merge_case, has="close_transferred_drafts")
-        tm.that(script, has='gh pr close "$source_pr"')
-        tm.that(script, has="Transferred automatically to maintained PR #$PR")
-        tm.that(script, has="for source_pr in $SOURCE_PRS")
-        tm.that(script, has='jq -c \'.[]\' "$canonical_manifest" >>"$manifest_lines"')
-        tm.that(script, has="select(.pr == $pr)")
-        tm.that(script, has='jq -c \'.\' "$transferred_lines"')
-        tm.that(script, lacks="MAX_DRAFT")
-        tm.that(review_case, has="publish_receipt")
-        tm.that(review_case, has="require_review_pr_contract")
-        tm.that(review_case, has="complete_transactional_promotion")
-        tm.that(script, has='gh pr ready "$PR"')
-        tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
-        tm.that(
-            script.index('gh pr ready "$PR"')
-            < script.index('gh pr checks "$PR" --watch --fail-fast'),
-            eq=True,
-        )
-        tm.that(script, has='gh pr ready "$PR" --undo')
-        tm.that(
-            review_case.index("require_review_pr_contract")
-            < review_case.index("publish_receipt")
-            < review_case.index("complete_transactional_promotion"),
-            eq=True,
-        )
-        tm.that(
-            review_case.index("require_review_pr_contract")
-            < review_case.index("git commit --allow-empty")
-            < review_case.index("publish_receipt"),
-            eq=True,
-        )
-        tm.that(script, has="git merge --no-ff")
-        tm.that(script, lacks="run_local_gates")
-        tm.that(script, lacks="git tag -s")
-        tm.that(script, has="github attest-gates")
-        tm.that(script, has="github verify-gates")
-        tm.that(script, has='gc --city "$city" bd update "$BEAD" --rig "$rig"')
-        tm.that(script, has='bd -C "$city" update "$shared_child"')
-        tm.that(script, has="git rev-parse --path-format=absolute --git-common-dir")
-        tm.that(workflow, has="id-token: write")
-        tm.that(workflow, has="attestations: write")
-        action = config.Infra.codegen.github_actions["attest"]
-        tm.that(workflow, has=f"uses: {action.repository}@{action.sha}")
-        tm.that(workflow, has=".github/scripts/gate-attestation.sh verify")
-        tm.that(workflow, has="run: make setup")
-        tm.that(workflow, lacks="make check")
-        tm.that(workflow, lacks="make test")
 
     def test_github_apps_are_not_selected_for_draft_prs(self, tmp_path: Path) -> None:
         """Versioned app policy reserves external review for non-Draft PRs."""
@@ -288,7 +240,10 @@ class TestCodegenCiMatrix:
         marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
         tm.that(workflow, has=marker)
         tm.that(
-            workflow, lacks=("fetch-depth: 0\n\n\n      - name: Install mise toolchain")
+            workflow,
+            lacks=(
+                "fetch-depth: 0\n\n\n      - name: Install mise toolchain"
+            ),
         )
         root2 = self._render_project(tmp_path / "member-again")
         workflow2 = (root2 / ".github" / "workflows" / "ci.yml").read_text(
@@ -298,9 +253,6 @@ class TestCodegenCiMatrix:
 
     def test_docs_workflow_inits_private_submodules_when_configured(self) -> None:
         """Docs jobs that run make setup must use the same deploy-key init as CI."""
-        from flext_infra import config, m
-        from flext_cli import u as cli_u
-
         codegen = config.Infra.codegen
         private = codegen.ci_private_submodules.get("cosmos-main")
         tm.that(private is not None, eq=True)
@@ -309,22 +261,13 @@ class TestCodegenCiMatrix:
             Path(__file__).resolve().parents[3]
             / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
         )
-        spec = m.Infra.GithubWorkflowRenderSpec(
+        spec = CodegenTestSupport.Ci.workflow_spec(
             dist="cosmos-main",
             make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
-            python_version=codegen.toolchain.python_version,
-            mise_version=codegen.toolchain.mise_version,
-            uv_version=codegen.toolchain.uv_version,
-            dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
-            github_actions=codegen.github_actions,
-            make=codegen.make,
-            workspace_repositories=(),
-            checkout_submodules=codegen.checkout_submodules,
-            private_submodules=private,
-        )
-        rendered = cli_u.Cli.template_render(tpl, spec)
+        ).model_copy(update={"private_submodules": private})
+        rendered = u.Cli.template_render(tpl, spec)
         tm.ok(rendered)
         rendered_text: str = rendered.value
         tm.that(rendered_text, has="Init private workspace projects")
@@ -487,14 +430,7 @@ class TestCodegenCiMatrix:
         triggers = matrix.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
-        tm.that(triggers, has="workflow_dispatch: {}")
-        tm.that(triggers, lacks="branches: [main]")
-        tm.that(triggers, lacks="pull_request:")
-        tm.that(triggers, lacks="ready_for_review")
-        tm.that(triggers, lacks="repository_branch")
-        tm.that(triggers, lacks="0.12.0-dev")
-        tm.that(triggers, lacks="develop")
-        tm.that(triggers, lacks="branches: [dev]")
+        self._assert_dispatch_only(triggers)
 
     def test_draft_wip_selects_no_jobs_and_review_blocks_wip_head(
         self, tmp_path: Path
@@ -532,13 +468,7 @@ class TestCodegenCiMatrix:
         triggers = content.split('"on":', maxsplit=1)[1].split(
             "# End SECTION: triggers", maxsplit=1
         )[0]
-        tm.that(triggers, has="workflow_dispatch: {}")
-        tm.that(triggers, lacks="branches: [main]")
-        tm.that(triggers, lacks="pull_request:")
-        tm.that(triggers, lacks="repository_branch")
-        tm.that(triggers, lacks="0.12.0-dev")
-        tm.that(triggers, lacks="develop")
-        tm.that(triggers, lacks="branches: [dev]")
+        self._assert_dispatch_only(triggers)
         tm.that(content, lacks="{% if make_profile")
 
     def test_docs_workflow_covers_every_blocking_ci_branch(

@@ -350,7 +350,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail(
                 f"repository is not governed by provider {provider.name}: {effective_url}"
             )
-        return cls._apply_repository_manifest(repository_root, repository)
+        return r[m.Infra.RepositoryRef].ok(repository)
 
     @classmethod
     def _load_subprojects(
@@ -485,7 +485,14 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return result_type.fail(repository.error)
-        return result_type.ok(repository.value)
+        declared_repository = cls._manifest_repository_ref(
+            subproject_root,
+            observed=repository.value,
+            beads=workspace_beads,
+        )
+        if declared_repository.failure:
+            return result_type.fail(declared_repository.error)
+        return result_type.ok(declared_repository.value)
 
     @classmethod
     def load_workspace_spec(
