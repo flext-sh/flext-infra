@@ -1934,7 +1934,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
-                tokei_version=codegen.toolchain.tokei_version,
+                scc_version=codegen.toolchain.scc_version,
                 kubeconform_version=codegen.toolchain.kubeconform_version,
                 go_version=codegen.toolchain.go_version,
                 author_name=project.author_name,

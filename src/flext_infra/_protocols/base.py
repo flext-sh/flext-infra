@@ -385,8 +385,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def tokei_version(self) -> str:
-            """Exact Tokei analyzer version."""
+        def scc_version(self) -> str:
+            """Exact scc code-counter version."""
             ...
 
         @property

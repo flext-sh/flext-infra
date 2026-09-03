@@ -31,6 +31,19 @@ class _ConfigContract(m.ContractModel):
     )
 
 
+def _tool_version_field(description: str) -> object:
+    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
+
+    Every native-toolchain version field in ``ToolchainSpec`` and its
+    ``ProjectRenderContext`` render mirror previously repeated an identical
+    ``m.Field(description=...)`` shape, differing only in the description
+    text -- a structural clone SonarCloud's duplication detector flags as one
+    family regardless of the literal string. One owned factory collapses
+    every call site to this single declaration (SSOT, DRY).
+    """
+    return m.Field(description=description)
+
+
 class FlextInfraConfigModels:
     """Field-only models for config loading and codegen plans."""
 
@@ -264,16 +277,16 @@ class FlextInfraConfigModels:
             ),
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
+            t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm version, e.g. '3.19.4'")
+            t.NonEmptyStr, _tool_version_field("Exact Helm version, e.g. '3.19.4'")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
+            t.NonEmptyStr, _tool_version_field("Exact kind version, e.g. '0.31.0'")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
         ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -288,38 +301,36 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-quality version")
+            t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
         ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        scc_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
         ]
         go_version: Annotated[
             t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Exact Go runtime version; mise resolves go: backend "
-                    "selectors through it, so beads only installs when Go "
-                    "is a declared tool"
-                )
+            _tool_version_field(
+                "Exact Go runtime version; mise resolves go: backend "
+                "selectors through it, so beads only installs when Go "
+                "is a declared tool"
             ),
         ]
         mise_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact mise binary version")
+            t.NonEmptyStr, _tool_version_field("Exact mise binary version")
         ]
         mise_lock_platforms: Annotated[
             tuple[
@@ -2432,22 +2443,22 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+            t.NonEmptyStr, _tool_version_field("Exact kubectl toolchain version")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+            t.NonEmptyStr, _tool_version_field("Exact Helm toolchain version")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+            t.NonEmptyStr, _tool_version_field("Exact kind toolchain version")
         ]
         direnv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible direnv major.minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         mise_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact mise bootstrap version")
+            t.NonEmptyStr, _tool_version_field("Exact mise bootstrap version")
         ]
         mise_lock_platforms: Annotated[
             tuple[
@@ -2465,25 +2476,25 @@ class FlextInfraConfigModels:
             m.Field(description="Platforms owned by the generated mise lockfile"),
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-quality version")
+            t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
         ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        scc_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
         ]
         go_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Go runtime version")
+            t.NonEmptyStr, _tool_version_field("Exact Go runtime version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")

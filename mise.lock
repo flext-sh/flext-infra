@@ -2,6 +2,46 @@
 
 lockfile_version = 1
 
+[[tools."aqua:boyter/scc"]]
+version = "4.0.0"
+backend = "aqua:boyter/scc"
+specifiers = ["4.0"]
+
+[tools."aqua:boyter/scc"."platforms.linux-arm64"]
+checksum = "sha256:a73d5378017abb1d86da8c19a73ede2878c3f7369e9ea6987827cd710aa14657"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904408"
+
+[tools."aqua:boyter/scc"."platforms.linux-arm64-musl"]
+checksum = "sha256:a73d5378017abb1d86da8c19a73ede2878c3f7369e9ea6987827cd710aa14657"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904408"
+
+[tools."aqua:boyter/scc"."platforms.linux-x64"]
+checksum = "sha256:b8535fb0714dd33c5434c24de181e4d1a632e6a1f869e1985bbd10ad8b838545"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904413"
+
+[tools."aqua:boyter/scc"."platforms.linux-x64-musl"]
+checksum = "sha256:b8535fb0714dd33c5434c24de181e4d1a632e6a1f869e1985bbd10ad8b838545"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904413"
+
+[tools."aqua:boyter/scc"."platforms.macos-arm64"]
+checksum = "sha256:02cfdfcaf5baf7f6595746efdfcc6301fce89cfc6a5bf8b52ed78064937fd933"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904411"
+
+[tools."aqua:boyter/scc"."platforms.macos-x64"]
+checksum = "sha256:8ee6d4ed42a89d9e5f71fe3e06a48d575050d264d48cbf33babbcac0a32d7ac5"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Darwin_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904409"
+
+[tools."aqua:boyter/scc"."platforms.windows-x64"]
+checksum = "sha256:bfd4f956f6c23917fee3a0ed0d950b80ee914fb4555effe9c6abbe0c30f1ec2f"
+url = "https://github.com/boyter/scc/releases/download/v4.0.0/scc_Windows_x86_64.zip"
+url_api = "https://api.github.com/repos/boyter/scc/releases/assets/526904412"
+
 [[tools.ast-grep]]
 version = "0.45.3"
 backend = "aqua:ast-grep/ast-grep"
@@ -501,11 +541,6 @@ url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323116"
 checksum = "sha256:1615eed140039bd58e7089109883b1c434de5d6de8f64a993e6e8c80ca57bdf9"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-windows-x86_64.zip"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323062"
-
-[[tools.tokei]]
-version = "14.0.0"
-backend = "cargo:tokei"
-specifiers = ["14.0"]
 
 [[tools.uv]]
 version = "0.12.9"

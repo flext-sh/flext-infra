@@ -2108,7 +2108,7 @@ rule:
           regex: "^_files_over_cap$"
 constraints:
   DOC:
-    regex: "^Extract over-cap modules from a tokei `--output json` payload\\.(?:\\n|$)"
+    regex: "^Extract over-cap modules from an `scc --format json --by-file` payload\\.(?:\\n|$)"
 transform:
   CLEAN_DOC:
     replace:
