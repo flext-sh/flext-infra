@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import marshal
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -41,9 +42,10 @@ def _dump_real_profile(path: Path) -> None:
 class TestsFlextInfraPytestRunner:
     @pytest.fixture(autouse=True)
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Local argv contracts assume CI/COV unset unless a test sets them."""
+        """Local argv contracts assume opt-in tokens unset unless a test sets them."""
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
         monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_PROFILE, raising=False)
 
     """Prove exact argv, hard deadline propagation, and durable artifacts."""
 
@@ -84,7 +86,9 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
-    def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
+    def test_full_argv_is_config_derived_without_default_profiling(
+        self, tmp_path: Path
+    ) -> None:
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
         policy = config.Infra.tooling.tools.pytest
@@ -95,13 +99,9 @@ class TestsFlextInfraPytestRunner:
             command,
             has=[
                 "-m",
-                "cProfile",
-                "-m",
                 "pytest",
                 "--testmon",
                 "--no-cov",
-                "-n",
-                str(policy.parallel_workers),
                 "--dist",
                 policy.parallel_distribution,
                 f"--timeout={policy.case_timeout_seconds}",
@@ -109,7 +109,59 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
+        tm.that(command, lacks="cProfile")
+        tm.that(command, lacks="pytest.pstats")
         tm.that(command, lacks="--cov-report")
+
+    def test_full_workers_are_cpu_and_memory_bounded(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        policy = config.Infra.tooling.tools.pytest
+        monkeypatch.setattr(
+            FlextInfraPytestRunner,
+            "_memory_gb",
+            staticmethod(lambda: 16),
+        )
+
+        workers = runner.parallel_worker_budget(policy)
+
+        tm.that(
+            workers,
+            eq=min(
+                policy.parallel_workers,
+                os.cpu_count() or 1,
+                16 // policy.parallel_worker_memory_gb,
+            ),
+        )
+        tm.that(runner.build_command(report_dir), has=("-n", str(workers)))
+
+    def test_profile_requires_explicit_opt_in(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        default_command = runner.build_command(report_dir)
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_PROFILE, "Y")
+        opt_in_runner = FlextInfraPytestRunner.from_environment(
+            started_at_monotonic=runner.started_at_monotonic
+        )
+
+        opt_in_command = opt_in_runner.build_command(report_dir)
+
+        tm.that(default_command, lacks="cProfile")
+        tm.that(
+            opt_in_command,
+            has=[
+                "-m",
+                "cProfile",
+                "-o",
+                str(report_dir / "pytest.pstats"),
+                "-m",
+                "pytest",
+            ],
+        )
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -170,7 +222,8 @@ class TestsFlextInfraPytestRunner:
             deadline: p.Cli.ProcessDeadline | None = None,
         ) -> p.Result[int]:
             del cwd, timeout, input_data, remove_env_keys
-            tm.that(cmd, has=["-m", "cProfile", "-m", "pytest"])
+            tm.that(cmd, has=["-m", "pytest"])
+            tm.that(cmd, lacks="cProfile")
             tm.that(deadline is not None, eq=True)
             if deadline is not None:
                 captured["deadline"] = deadline

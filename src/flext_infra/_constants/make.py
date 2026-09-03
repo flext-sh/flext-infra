@@ -177,6 +177,7 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
     PYTEST_ENV_COV: Final[str] = "FLEXT_PYTEST_COV_RAW"
+    PYTEST_ENV_PROFILE: Final[str] = "FLEXT_PYTEST_PROFILE_RAW"
     PYTEST_ENV_CI: Final[str] = "CI"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",

@@ -76,7 +76,8 @@ override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
 override PYTEST_PROGRESS_ARGS := --verbose
 override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
-override PYTEST_PARALLEL_WORKERS := 2
+override PYTEST_PARALLEL_WORKERS := 16
+override PYTEST_PARALLEL_WORKER_MEMORY_GB := 2
 override PYTEST_PARALLEL_DISTRIBUTION := worksteal
 override PYTEST_PROFILE_SORT := cumulative
 override PYTEST_PROFILE_LIMIT := 50
@@ -91,7 +92,9 @@ override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
 override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 override export FLEXT_PYTEST_COV_RAW := $(value COV)
+override export FLEXT_PYTEST_PROFILE_RAW := $(value PROFILE)
 WHAT ?=
+PROFILE ?=
 # End SECTION: user overrides
 
 # === SECTION: derived paths (managed) ===
