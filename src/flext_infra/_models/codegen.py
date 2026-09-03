@@ -73,9 +73,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Module skeleton definitions"),
         ]
         test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
-        inherit_project_facade: Annotated[
-            bool,
-            m.Field(description="Whether generated classes inherit project facade"),
+        base_module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Explicit module owning every generated base class"),
         ]
         dry_run: Annotated[
             bool, m.Field(description="Whether to report creations without writing")
