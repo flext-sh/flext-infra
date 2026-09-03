@@ -289,10 +289,9 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.subprojects, empty=True)
         tm.that(resolved, eq=child.resolve())
 
-    def test_submodule_self_load_preserves_its_checkout_relationship(
-        self, tmp_path: Path
-    ) -> None:
-        """A member keeps the physical gitlink fact and inherits root identity."""
+    @staticmethod
+    def _attached_member(tmp_path: Path) -> Path:
+        """Attach a governed member to a parent workspace and return its path."""
         child_source = tmp_path / "child-source"
         WorktreeFixture.initialize_governed_project(
             child_source,
@@ -348,11 +347,75 @@ class TestsRepositoryLocalTopology:
                 [c.Infra.GIT, "commit", "--quiet", "-m", "attach member"], cwd=parent
             )
         )
+        return member
+
+    def test_submodule_self_load_preserves_its_checkout_relationship(
+        self, tmp_path: Path
+    ) -> None:
+        """A member keeps the physical gitlink fact and inherits root identity."""
+        member = self._attached_member(tmp_path)
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
         tm.that(workspace.repository.path, eq=Path())
         tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
+
+    def test_submodule_self_load_accepts_a_self_coordinate_manifest(
+        self, tmp_path: Path
+    ) -> None:
+        """A member manifest declares its own checkout; Git keeps the gitlink fact."""
+        member = self._attached_member(tmp_path)
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
+        declared = observed.repository.model_copy(
+            update={"checkout": c.Infra.CheckoutKind.ROOT}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                member / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {
+                    "version": 3,
+                    "name": declared.name,
+                    "repository": declared.model_dump(mode="json"),
+                },
+            )
+        )
+
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
+
+        tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
+        tm.that(workspace.repository.path, eq=Path())
+
+    def test_standalone_rejects_a_manifest_that_claims_to_be_a_submodule(
+        self, tmp_path: Path
+    ) -> None:
+        """A standalone checkout cannot declare a submodule relationship."""
+        root = tmp_path / "manifest-submodule-claim"
+        name = "fixture-manifest-submodule-claim"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
+        )
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        declared = observed.repository.model_copy(
+            update={"checkout": c.Infra.CheckoutKind.SUBMODULE}
+        )
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {
+                    "version": 3,
+                    "name": name,
+                    "repository": declared.model_dump(mode="json"),
+                },
+            )
+        )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="checkout 'submodule' contradicts the observed topology")
 
     def test_workspace_members_inherit_a_single_ledger_identity(
         self, tmp_path: Path
