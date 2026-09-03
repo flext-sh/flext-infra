@@ -86,6 +86,19 @@ class FlextInfraCodegenLazyInitPlanner(
     ) -> m.Infra.LazyInitPlan:
         """Build the lazy-init render plan for one package directory."""
         context = self.context(pkg_dir)
+        if self._shadows_stdlib_module(pkg_dir):
+            # flext-mh7g4: no generated content can repair a package name that
+            # shadows a stdlib module, so the plan removes generator-owned
+            # residue and otherwise skips the directory. The ALL_SCAN_PATTERNS
+            # contract is unchanged: every surface is still scanned; only
+            # directories that cannot legally be packages are not rendered,
+            # and _merge_children applies the same predicate to the parent.
+            residue_action = (
+                c.Infra.LazyInitAction.REMOVE
+                if context.generated_init
+                else c.Infra.LazyInitAction.SKIP
+            )
+            return m.Infra.LazyInitPlan(context=context, action=residue_action)
         is_test_child_package = (
             context.surface == c.Infra.DIR_TESTS
             and context.current_pkg != c.Infra.DIR_TESTS

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 from flext_infra import c
@@ -61,6 +62,12 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
             # inline map that replaces them.
             if child_dir.name in c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES:
                 continue
+            # flext-mh7g4: a child that can never be a legal package (its leaf
+            # name shadows a stdlib module) is removed or skipped by build_plan;
+            # the parent inventory must agree in the same pass so check and
+            # apply converge without a second run.
+            if self._shadows_stdlib_module(child_dir):
+                continue
             resolved_child_dir = child_dir.resolve()
             child_init = child_dir / c.Infra.INIT_PY
             if not child_init.is_file():
@@ -99,6 +106,17 @@ class FlextInfraCodegenLazyInitPlannerChildrenMixin:
                 ):
                     self._add(lazy_map, name, (module_name, attr))
         return tuple(sorted(direct))
+
+    @staticmethod
+    def _shadows_stdlib_module(pkg_dir: Path) -> bool:
+        """Return True when the directory name would shadow a stdlib module.
+
+        A generated ``__init__`` there would publish a package named like the
+        stdlib module (for example ``tests/typing/``), shadowing it for every
+        consumer with the surface root on ``sys.path``; the generator's own
+        Ruff gate rejects the render with ``stdlib-module-shadowing``.
+        """
+        return pkg_dir.name in sys.stdlib_module_names
 
     @staticmethod
     def _is_fixture_package(pkg_dir: Path) -> bool:

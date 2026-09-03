@@ -525,5 +525,50 @@ class TestsFlextInfraCodegenLazyInitService:
         # local owner of this nested package: it stays out of __all__.
         tm.that(applied_init, lacks='"m",')
 
+    # flext-mh7g4: a tests category directory named like a stdlib module
+    # (``tests/typing/``) can never be a legal generated package: the render
+    # would shadow the stdlib module and the generator's own Ruff gate rejects
+    # it (stdlib-module-shadowing). Apply must remove generator-owned residue,
+    # never write a new initializer, drop the child from the parent inventory
+    # in the same pass, and a following check must be a byte fixed point.
+    def test_stdlib_shadowing_directory_is_never_a_generated_package(
+        self, tmp_path: Path
+    ) -> None:
+        """A stdlib-named tests directory is skipped and its residue removed."""
+        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        tests_root = workspace_root / c.Infra.DIR_TESTS
+        tests_root.mkdir()
+        tests_init = tests_root / c.Infra.INIT_PY
+        tests_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+        shadowing_root = tests_root / "typing"
+        shadowing_root.mkdir()
+        residue_init = shadowing_root / c.Infra.INIT_PY
+        residue_init.write_text(
+            f'{c.Infra.AUTOGEN_HEADER}\n"""Tests.typing package."""\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        shadowing_root.joinpath("test_contracts.py").write_text(
+            'class TestsTypingContracts:\n    """Collected test class."""\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+        apply_service = u.Tests.create_lazy_init_service(workspace_root)
+        apply_service.target_module = c.Infra.DIR_TESTS
+        apply_service.apply_changes = True
+
+        apply_result = apply_service.execute()
+        generated_tests_init = tests_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_service.target_module = c.Infra.DIR_TESTS
+        check_service.check_only = True
+
+        check_result = check_service.execute()
+
+        tm.that(apply_result.success, eq=True)
+        tm.that(residue_init.exists(), eq=False)
+        tm.that(generated_tests_init, lacks=".typing")
+        tm.that(generated_tests_init, lacks='"typing"')
+        tm.that(check_result.success, eq=True)
+        tm.that(check_service.modified_files, eq=())
+
 
 __all__: list[str] = ["TestsFlextInfraCodegenLazyInitService"]

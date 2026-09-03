@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from . import discovery as discovery
     from . import docs as docs
     from . import github as github
-    from . import io as io
     from . import refactor as refactor
     from . import release as release
     from . import transformers as transformers
@@ -178,7 +177,6 @@ __all__: tuple[str, ...] = (
     "e",
     "github",
     "h",
-    "io",
     "m",
     "models_resource",
     "modernizer_workspace",
@@ -247,7 +245,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".fixtures_git": ("real_git_repo",),
             ".github": ("github",),
-            ".io": ("io",),
             ".refactor": ("refactor",),
             ".release": ("release",),
             ".runner_service": ("RealSubprocessRunner",),
