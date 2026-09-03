@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from flext_infra import c, t
@@ -73,6 +74,28 @@ class WorktreeFixture:
         provider = u.Tests.provider()
         return f"{provider.base_url.rstrip('/')}/{distribution}.git"
 
+    @classmethod
+    def link_member_beads(
+        cls,
+        member: Path,
+        workspace: Path,
+        *,
+        workspace_name: str,
+        database: str,
+        issue_prefix: str,
+    ) -> Path:
+        """Create the checked-in member route to the workspace-owned ledger."""
+        member.mkdir(parents=True, exist_ok=True)
+        route = member / ".beads"
+        route.symlink_to(os.path.relpath(workspace / ".beads", member))
+        cls.write_beads_project(
+            member,
+            workspace=workspace_name,
+            database=database,
+            issue_prefix=issue_prefix,
+        )
+        return route
+
     @staticmethod
     def write_beads_project(
         root: Path,
@@ -106,16 +129,18 @@ class WorktreeFixture:
         database: str,
         issue_prefix: str,
         custom_issue_types: tuple[str, ...] = (),
+        beads_owner: bool = True,
     ) -> Path:
         """Create one self-identifying governed project with a real Git origin."""
         pyproject = cls.write_python_project(root, distribution)
-        cls.write_beads_project(
-            root,
-            workspace=workspace,
-            database=database,
-            issue_prefix=issue_prefix,
-            custom_issue_types=custom_issue_types,
-        )
+        if beads_owner:
+            cls.write_beads_project(
+                root,
+                workspace=workspace,
+                database=database,
+                issue_prefix=issue_prefix,
+                custom_issue_types=custom_issue_types,
+            )
         u.Tests.initialize_git_repo(
             root, origin_url=cls.governed_repository_url(distribution)
         )

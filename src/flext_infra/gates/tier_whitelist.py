@@ -39,11 +39,7 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
         elif not passed:
             errors.append(result.error or "tier-whitelist violations found")
         return self._build_project_error_gate_result(
-            project_dir,
-            passed=passed,
-            errors=errors,
-            started=started,
-            ctx=ctx,
+            project_dir, passed=passed, errors=errors, started=started, ctx=ctx
         )
 
 

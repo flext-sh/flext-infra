@@ -58,9 +58,7 @@ class FlextInfraGate:
         check_dirs = self._get_check_dirs(project_dir, ctx)
         if not check_dirs:
             return self._skip_result(project_dir, started)
-        return self._execute_check_command(
-            project_dir, ctx, check_dirs, started
-        )
+        return self._execute_check_command(project_dir, ctx, check_dirs, started)
 
     def check_files(
         self, files: t.SequenceOf[Path], project_dir: Path, ctx: m.Infra.GateContext
@@ -76,9 +74,7 @@ class FlextInfraGate:
         file_strs = [str(f.relative_to(project_dir)) for f in files if f.exists()]
         if not file_strs:
             return self._skip_result(project_dir, started)
-        return self._execute_check_command(
-            project_dir, ctx, file_strs, started
-        )
+        return self._execute_check_command(project_dir, ctx, file_strs, started)
 
     def _execute_check_command(
         self,
@@ -123,11 +119,7 @@ class FlextInfraGate:
         pipeline. ``errors`` overrides the default issue-derived report
         lines (fix paths report applied changes there).
         """
-        if (
-            ctx is not None
-            and getattr(ctx, "gate_mode", None) == "warn"
-            and not passed
-        ):
+        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not passed:
             warn_issues = [
                 issue.model_copy(update={"severity": "WARNING"})
                 if hasattr(issue, "model_copy")
@@ -365,11 +357,7 @@ class FlextInfraGate:
     def _skip_result(self, project_dir: Path, started: float) -> m.Infra.GateExecution:
         """Skip result."""
         return self._build_check_gate_execution(
-            project_dir,
-            passed=True,
-            issues=(),
-            raw_output="",
-            started=started,
+            project_dir, passed=True, issues=(), raw_output="", started=started
         )
 
 

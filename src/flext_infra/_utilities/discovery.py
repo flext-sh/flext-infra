@@ -318,7 +318,7 @@ class FlextInfraUtilitiesDiscovery(
 
     @staticmethod
     def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
-        """Resolve a package anywhere inside the selected Rope scan root."""
+        """Resolve a package in the selected workspace or managed environment."""
         package_parts = Path(*package_name.split("."))
         resolved_root = workspace_root.resolve()
         project_roots = FlextInfraUtilitiesDiscovery._workspace_project_roots(

@@ -59,6 +59,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             overrides[package] = cutoff
         return tuple(exclusions), overrides
 
+    @staticmethod
+    def _member_beads_is_linked(repository_root: Path) -> bool:
+        """Return whether this gitlink routes an inherited workspace ledger."""
+        route: Path = repository_root / c.Infra.BEADS_DIRNAME
+        return route.is_symlink()
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -425,7 +431,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                             "profile-excluded projection planning failed"
                         )
                     )
-                files.extend(retired.value)
+                governed_paths = {item.path for item in governed.value}
+                files.extend(
+                    item for item in retired.value if item.path not in governed_paths
+                )
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -484,6 +493,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
+        represented_indexes: dict[Path, int] = {}
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)
@@ -491,15 +501,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 completed.append(file)
                 continue
             represented.add(relative)
-            completed.append(
-                file.model_copy(
-                    update={
-                        "owner": governed.owner,
-                        "policy": governed.policy,
-                        "executable": governed.executable,
-                    }
-                )
+            governed_file = file.model_copy(
+                update={
+                    "owner": governed.owner,
+                    "policy": governed.policy,
+                    "executable": governed.executable,
+                }
             )
+            if relative in represented_indexes:
+                completed[represented_indexes[relative]] = governed_file
+            else:
+                represented_indexes[relative] = len(completed)
+                completed.append(governed_file)
         if not contract.complete_governed:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
         for relative, governed in governed_by_path.items():
@@ -927,6 +940,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
             if (
+                destination
+                in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+                and self._member_beads_is_linked(root)
+            ):
+                # A linked gitlink inherits the workspace ledger; planning a
+                # member-local projection would create a second identity.
+                continue
+            if (
                 destination == c.Infra.BEADS_METADATA_RELPATH
                 and not (root / destination).is_file()
             ):
@@ -1285,6 +1307,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
+            if (
+                entry.destination
+                in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+                and self._member_beads_is_linked(root)
+            ):
+                # Mirror the delegated-template path so both conform routes
+                # preserve the same inherited-ledger ownership rule.
+                continue
             path = (root / relative).resolve()
             if (
                 entry.destination == c.Infra.BEADS_METADATA_RELPATH
@@ -1500,6 +1531,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         project_context: m.Infra.ProjectRenderContext | None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
+        if (
+            destination
+            in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+            and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+            and self._member_beads_is_linked(repository_root)
+        ):
+            return r[p.Model].fail(
+                "linked workspace member cannot own a Beads projection: "
+                f"{repository.name}; ledger is inherited from the workspace root"
+            )
         if destination == c.Infra.GITIGNORE:
             profile = target.make_profile
             sections = tuple(
@@ -1618,8 +1659,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     gitlinks.error or "managed Gitlink resolution failed"
                 )
-            cooldown_exclusions, cooldown_overrides = (
-                self._dependency_cooldown_policy(repository, codegen.toolchain)
+            cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+                repository, codegen.toolchain
             )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(

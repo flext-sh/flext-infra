@@ -81,8 +81,73 @@ class TestCodegenCiMatrix:
         tm.that((root / ".github/workflows/gate-attestation.yml").exists(), eq=False)
         tm.that((root / ".github/attestations/allowed_signers").exists(), eq=False)
 
-    def test_github_app_policy_is_not_owned_by_flext(self, tmp_path: Path) -> None:
-        """AI Hub, not FLEXT codegen, owns external GitHub app selection."""
+        tm.that(makefile, has="_builtin_checkpoint_wip:")
+        tm.that(makefile, has="_builtin_checkpoint_merge:")
+        tm.that(makefile, has="_builtin_checkpoint_review:")
+        tm.that(makefile, has="_builtin_checkpoint_verify:")
+        tm.that(script, has='git commit -m "[WIP] $MESSAGE ($BEAD)"')
+        tm.that(script, lacks="[skip ci]")
+        tm.that(
+            (root / ".github/scripts/gate-attestation.sh").stat().st_mode & 0o111,
+            eq=0o111,
+        )
+        wip_case = script.split("  wip)", maxsplit=1)[1].split("  merge)", maxsplit=1)[0]
+        merge_case = script.split("  merge)", maxsplit=1)[1].split("  review)", maxsplit=1)[0]
+        review_case = script.split("  review)", maxsplit=1)[1].split("  verify)", maxsplit=1)[0]
+        tm.that(wip_case, lacks="run_local_gates")
+        tm.that(wip_case, lacks="publish_receipt")
+        tm.that(wip_case, has="validation and attestation NOT SELECTED")
+        tm.that(merge_case, has="aggregate_pull_requests")
+        tm.that(merge_case, has="close_transferred_drafts")
+        tm.that(script, has='gh pr close "$source_pr"')
+        tm.that(script, has="Transferred automatically to maintained PR #$PR")
+        tm.that(script, has="for source_pr in $SOURCE_PRS")
+        tm.that(script, has='jq -c \'.[]\' "$canonical_manifest" >>"$manifest_lines"')
+        tm.that(script, has="select(.pr == $pr)")
+        tm.that(script, has='jq -c \'.\' "$transferred_lines"')
+        tm.that(script, lacks="MAX_DRAFT")
+        tm.that(review_case, has="publish_receipt")
+        tm.that(review_case, has="require_review_pr_contract")
+        tm.that(review_case, has="complete_transactional_promotion")
+        tm.that(script, has='gh pr ready "$PR"')
+        tm.that(script, has='gh pr checks "$PR" --watch --fail-fast')
+        tm.that(
+            script.index('gh pr ready "$PR"')
+            < script.index('gh pr checks "$PR" --watch --fail-fast'),
+            eq=True,
+        )
+        tm.that(script, has='gh pr ready "$PR" --undo')
+        tm.that(
+            review_case.index("require_review_pr_contract")
+            < review_case.index("publish_receipt")
+            < review_case.index("complete_transactional_promotion"),
+            eq=True,
+        )
+        tm.that(
+            review_case.index("require_review_pr_contract")
+            < review_case.index("git commit --allow-empty")
+            < review_case.index("publish_receipt"),
+            eq=True,
+        )
+        tm.that(script, has="git merge --no-ff")
+        tm.that(script, lacks="run_local_gates")
+        tm.that(script, lacks="git tag -s")
+        tm.that(script, has="github attest-gates")
+        tm.that(script, has="github verify-gates")
+        tm.that(script, has='gc --city "$city" bd update "$BEAD" --rig "$rig"')
+        tm.that(script, has='bd -C "$city" update "$shared_child"')
+        tm.that(script, has="git rev-parse --path-format=absolute --git-common-dir")
+        tm.that(workflow, has="id-token: write")
+        tm.that(workflow, has="attestations: write")
+        action = config.Infra.codegen.github_actions["attest"]
+        tm.that(workflow, has=f"uses: {action.repository}@{action.sha}")
+        tm.that(workflow, has=".github/scripts/gate-attestation.sh verify")
+        tm.that(workflow, has="run: make setup")
+        tm.that(workflow, lacks="make check")
+        tm.that(workflow, lacks="make test")
+
+    def test_github_apps_are_not_selected_for_draft_prs(self, tmp_path: Path) -> None:
+        """Versioned app policy reserves external review for non-Draft PRs."""
         root = self._render_project(tmp_path / "apps-review-only")
         tm.that((root / "cubic.yaml").exists(), eq=False)
         tm.that((root / ".coderabbit.yaml").exists(), eq=False)
