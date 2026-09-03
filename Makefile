@@ -48,6 +48,10 @@ APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
+# Y forces `deps upgrade` to refresh cached uv source metadata for DEPENDENCY
+# (--refresh-package <DEPENDENCY>), or for every package when DEPENDENCY is
+# empty (--refresh); any other non-N value is an error.
+DEPS_REFRESH ?= N
 FAIL_FAST ?= 0
 FILE ?=
 MATCH ?=
@@ -620,6 +624,8 @@ _builtin_help_usage:
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BEAD' 'tracker item bound to a checkpoint';
 	@printf '  %-10s %s\n' 'BASE' 'integration branch used by checkpoint';
+	@printf '  %-10s %s\n' 'DEPENDENCY' 'deps upgrade: one distribution name (default: every package)';
+	@printf '  %-10s %s\n' 'DEPS_REFRESH' 'Y refreshes uv source cache on deps upgrade';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -820,8 +826,12 @@ _builtin_deps_upgrade: _builtin_require_environment
 				printf 'ERROR: DEPENDENCY must be one normalized distribution name\n' >&2; \
 				exit 2 ;; \
 		esac; \
-	fi
-	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade))
+	fi; \
+	case "$(strip $(DEPS_REFRESH))" in \
+		N|Y) ;; \
+		*) printf 'ERROR: DEPS_REFRESH must be Y when set\n' >&2; exit 2 ;; \
+	esac
+	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade)$(if $(filter Y,$(DEPS_REFRESH)),$(if $(strip $(DEPENDENCY)), --refresh-package "$(strip $(DEPENDENCY))", --refresh)))
 	@set -eu; \
 	selected="$(strip $(SELECTED_PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
