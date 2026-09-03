@@ -1546,6 +1546,19 @@ class TestScriptDispatchMakefile:
             lacks=["$(FLEXT_INFRA_BOOTSTRAP)", "codegen init", "deps modernize"],
         )
         tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
+        # flext-udpm5: continuous gen check regenerates lazy inits (drift check),
+        # distinct from the bootstrap-only `codegen init`/`_builtin_gen_init`
+        # selector above, and runs after conform / before the docs check.
+        tm.that(
+            gen_check_body,
+            has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --check',
+        )
+        tm.that(
+            gen_check_body.index("codegen conform")
+            < gen_check_body.index("codegen lazy-init")
+            < gen_check_body.index("_generated_docs"),
+            eq=True,
+        )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
@@ -1567,6 +1580,18 @@ class TestScriptDispatchMakefile:
         tm.that(
             gen_all_body.index(credential_preflight)
             < gen_all_body.index("codegen conform"),
+            eq=True,
+        )
+        # flext-udpm5: continuous gen apply regenerates lazy inits after conform
+        # and before the generated-docs write, so config drift never lands stale.
+        tm.that(
+            gen_all_body,
+            has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply',
+        )
+        tm.that(
+            gen_all_body.index("codegen conform")
+            < gen_all_body.index("codegen lazy-init")
+            < gen_all_body.index("_generated_docs"),
             eq=True,
         )
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]

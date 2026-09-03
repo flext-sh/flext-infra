@@ -12,7 +12,7 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from .abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from .bandit import FlextInfraBanditGate
-    from .base_gate import FlextInfraGate
+    from .base_gate import FlextInfraGate, FlextInfraScannerGateMixin
     from .canonical_alias import FlextInfraCanonicalAliasGate
     from .deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .direnv import FlextInfraDirenvGate
@@ -46,6 +46,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
     "FlextInfraRuntimeCensusGate",
+    "FlextInfraScannerGateMixin",
     "FlextInfraSilentFailureGate",
     "FlextInfraSmellsGate",
     "FlextInfraTierWhitelistGate",
@@ -56,7 +57,7 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".bandit": ("FlextInfraBanditGate",),
-            ".base_gate": ("FlextInfraGate",),
+            ".base_gate": ("FlextInfraGate", "FlextInfraScannerGateMixin"),
             ".canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".direnv": ("FlextInfraDirenvGate",),

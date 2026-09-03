@@ -46,6 +46,9 @@ if TYPE_CHECKING:
     from .test_codegen_hook_conformance import TestGitHookConformance
     from .test_codegen_linked_worktree_manifest import TestCodegenLinkedWorktreeTopology
     from .test_codegen_make_environment import TestsCodegenMakeEnvironment
+    from .test_codegen_pipeline_performance import (
+        TestsFlextInfraCodegenPipelinePerformance,
+    )
     from .test_codegen_pyproject_conform import TestsFlextInfraCodegenPyprojectConform
     from .test_codegen_uv_exclude_newer_overlay import TestCodegenUvExcludeNewerOverlay
     from .test_managed_conflicts import TestsFlextInfraCodegenManagedConflicts
@@ -73,6 +76,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenGeneration",
     "TestsFlextInfraCodegenLazyInitService",
     "TestsFlextInfraCodegenManagedConflicts",
+    "TestsFlextInfraCodegenPipelinePerformance",
     "TestsFlextInfraCodegenPyprojectConform",
     "TestsFlextInfraLazyInitBootstrapPackage",
     "TestsFlextInfraLazyInitCleanup",
@@ -146,6 +150,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestCodegenLinkedWorktreeTopology",
             ),
             ".test_codegen_make_environment": ("TestsCodegenMakeEnvironment",),
+            ".test_codegen_pipeline_performance": (
+                "TestsFlextInfraCodegenPipelinePerformance",
+            ),
             ".test_codegen_pyproject_conform": (
                 "TestsFlextInfraCodegenPyprojectConform",
             ),
