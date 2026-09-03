@@ -551,6 +551,17 @@ class TestsFlextInfraCodegenLazyInitService:
             'class TestsTypingContracts:\n    """Collected test class."""\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
+        # A stdlib-named directory that is NOT first-level under the source
+        # root imports as ``unit.io`` and is a legal generated package.
+        nested_io_root = tests_root / "unit" / "io"
+        nested_io_root.mkdir(parents=True)
+        tests_root.joinpath("unit", c.Infra.INIT_PY).write_text(
+            "", encoding=c.Cli.ENCODING_DEFAULT
+        )
+        nested_io_root.joinpath("test_streams.py").write_text(
+            'class TestsIoStreams:\n    """Collected test class."""\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
         apply_service = u.Tests.create_lazy_init_service(workspace_root)
         apply_service.target_module = c.Infra.DIR_TESTS
         apply_service.apply_changes = True
@@ -567,6 +578,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(residue_init.exists(), eq=False)
         tm.that(generated_tests_init, lacks=".typing")
         tm.that(generated_tests_init, lacks='"typing"')
+        tm.that((nested_io_root / c.Infra.INIT_PY).exists(), eq=True)
         tm.that(check_result.success, eq=True)
         tm.that(check_service.modified_files, eq=())
 

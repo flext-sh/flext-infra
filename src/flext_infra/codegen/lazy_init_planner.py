@@ -98,7 +98,9 @@ class FlextInfraCodegenLazyInitPlanner(
                 if context.generated_init
                 else c.Infra.LazyInitAction.SKIP
             )
-            return m.Infra.LazyInitPlan(context=context, action=residue_action)
+            return self._publish_plan(
+                m.Infra.LazyInitPlan(context=context, action=residue_action)
+            )
         is_test_child_package = (
             context.surface == c.Infra.DIR_TESTS
             and context.current_pkg != c.Infra.DIR_TESTS
@@ -113,7 +115,9 @@ class FlextInfraCodegenLazyInitPlanner(
             )
         )
         if not context.importable:
-            return m.Infra.LazyInitPlan(context=context, action=empty_action)
+            return self._publish_plan(
+                m.Infra.LazyInitPlan(context=context, action=empty_action)
+            )
         lazy_map = self._package_exports(context)
         version_map = self._module_exports(
             context.pkg_dir / self._version_module_name,
@@ -238,12 +242,22 @@ class FlextInfraCodegenLazyInitPlanner(
             child_packages_for_lazy=child_lazy,
             excluded_lazy_names=excluded_lazy_names,
         )
-        # flext-pulj (codex): publish the dependency-complete bottom-up plan so
-        # later alias resolution never rebuilds this package without children.
-        self._source_plan_cache[str(context.pkg_dir.resolve())] = plan
         self._source_exports_cache[context.current_pkg] = frozenset(plan.exports)
+        return self._publish_plan(plan)
+
+    def _publish_plan(self, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitPlan:
+        """Publish one bottom-up plan so parents follow it in the same pass.
+
+        flext-pulj (codex): later alias resolution never rebuilds a package
+        without its children. flext-mh7g4: every plan, including REMOVE and
+        SKIP decided before rendering, is published so the parent inventory in
+        ``_merge_children`` sees the child's action instead of the on-disk
+        initializer.
+        """
+        self._source_plan_cache[str(plan.context.pkg_dir.resolve())] = plan
         return plan
 
+    @override
     def context(self, pkg_dir: Path) -> m.Infra.LazyInitPackageContext:
         """Return the lazy-init package context for the requested package directory."""
         return self.rope_workspace.package_context(pkg_dir)
