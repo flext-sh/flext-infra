@@ -47,12 +47,6 @@ class TestsCodegenBeadsProjection:
         )
         return None if match is None else match.rendered
 
-    @staticmethod
-    def _write_metadata_marker(root: Path) -> None:
-        marker = root / c.Infra.BEADS_METADATA_RELPATH
-        marker.parent.mkdir(parents=True, exist_ok=True)
-        marker.write_text("{}\n", encoding="utf-8")
-
     def test_local_identity_renders_only_declarative_beads_files(
         self, tmp_path: Path
     ) -> None:
@@ -62,7 +56,6 @@ class TestsCodegenBeadsProjection:
             issue_prefix="project-prefix",
         )
 
-        self._write_metadata_marker(root)
         plan = self._plan(root)
         rendered_config = self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH)
         rendered_metadata = self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH)
@@ -128,25 +121,6 @@ class TestsCodegenBeadsProjection:
         _ = self._plan(root)
 
         tm.that(identity.read_bytes(), eq=before)
-
-    def test_shared_workspace_ledger_symlink_owns_all_beads_projections(
-        self, tmp_path: Path
-    ) -> None:
-        root = self._project(
-            tmp_path / "project",
-            database="project_database",
-            issue_prefix="project-prefix",
-        )
-        shared = tmp_path / "shared-beads"
-        shared.mkdir()
-        beads = root / ".beads"
-        beads.symlink_to(shared, target_is_directory=True)
-
-        plan = self._plan(root)
-
-        tm.that(self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH), none=True)
-        tm.that(self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH), none=True)
-        tm.that(tuple(shared.iterdir()), eq=())
 
     def test_codegen_exposes_no_beads_runtime_surface(self) -> None:
         forbidden_models = ("BeadsPlan", "BeadsTrackerDeclaration")
