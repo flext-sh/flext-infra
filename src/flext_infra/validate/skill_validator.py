@@ -73,7 +73,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         bl_counts: t.MutableIntMapping = {}
         for key_obj, val_obj in bl_counts_raw_map.items():
             if isinstance(val_obj, int):
-                bl_counts[key_obj] = int(val_obj)
+                bl_counts[key_obj] = val_obj
         if strategy == c.Infra.RK_TOTAL:
             baseline_allows_total: bool = total <= sum(bl_counts.values())
             return baseline_allows_total
