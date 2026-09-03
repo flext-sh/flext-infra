@@ -202,12 +202,17 @@ class FlextInfraWorkspaceDetector(
             observed.url
         ):
             contradictions.append("url identity differs from Git origin")
-        allowed_checkout_kinds = (
-            {c.Infra.CheckoutKind.SUBMODULE}
-            if observed.checkout is c.Infra.CheckoutKind.SUBMODULE
-            else {c.Infra.CheckoutKind.ROOT, c.Infra.CheckoutKind.INDEPENDENT}
-        )
-        if declared.checkout not in allowed_checkout_kinds:
+        # Why (cosmos-d0qn4): a repository-local manifest carries the
+        # repository's own coordinates. Whether that repository is currently
+        # checked out as a submodule is a fact of the parent's Git tree, not of
+        # the manifest, so the same manifest must load both standalone (its own
+        # CI observes root) and inside a workspace (the parent's conform
+        # observes submodule). Only a manifest that claims to be a submodule
+        # while Git shows a standalone checkout contradicts reality.
+        if (
+            declared.checkout is c.Infra.CheckoutKind.SUBMODULE
+            and observed.checkout is not c.Infra.CheckoutKind.SUBMODULE
+        ):
             contradictions.append(
                 "checkout "
                 f"{declared.checkout.value!r} contradicts the observed topology"
@@ -278,6 +283,11 @@ class FlextInfraWorkspaceDetector(
                 "workspace manifest ledger_prefix contradicts Beads identity "
                 f"({manifest_path}): {manifest.ledger_prefix!r} != "
                 f"{beads.issue_prefix!r}"
+            )
+        if observed.checkout is c.Infra.CheckoutKind.SUBMODULE:
+            # Git owns the checkout relationship; the manifest owns policy.
+            return r[m.Infra.RepositoryRef].ok(
+                declared.model_copy(update={"checkout": observed.checkout})
             )
         return r[m.Infra.RepositoryRef].ok(declared)
 
