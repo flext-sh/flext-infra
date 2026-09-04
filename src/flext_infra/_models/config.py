@@ -15,6 +15,7 @@ from flext_cli import m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
+from flext_infra._constants.release import FlextInfraConstantsRelease
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
@@ -2052,85 +2053,6 @@ class FlextInfraConfigModels:
             ),
         ]
 
-    class ReleaseAutomationOverrideSpec(_ConfigContract):
-        """One distribution's deviation from the shared release contract."""
-
-        release_branch: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(default=None, description="Branch that produces releases"),
-        ] = None
-        build_command: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(default=None, description="Command that produces the artifacts"),
-        ] = None
-        version_variables: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Extra file:variable version anchors"),
-        ] = ()
-
-    class ReleaseAutomationSpec(_ConfigContract):
-        """Automated semantic versioning, owned by the market tool.
-
-        Why: bump_version/parse_semver and the release orchestrator already
-        existed, but nothing DERIVED the bump -- a human passed
-        ``bump=minor`` by hand, which is exactly the judgement the commit
-        history already encodes and the one a human gets wrong. Conventional
-        Commits plus python-semantic-release replace that judgement with a
-        rule, and replace local implementation with a maintained dependency.
-
-        Declared once here so every generated pyproject carries the same
-        contract. A project that genuinely differs is expressed in
-        ``overrides``, never by editing its own pyproject.
-        """
-
-        tool: Annotated[
-            t.NonEmptyStr, m.Field(description="Release automation distribution")
-        ]
-        runner: Annotated[
-            t.NonEmptyStr, m.Field(description="Command runner that invokes the tool")
-        ]
-        commit_parser: Annotated[
-            t.NonEmptyStr, m.Field(description="Commit convention driving the bump")
-        ]
-        release_branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Branch that produces releases")
-        ]
-        version_variables: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="file:variable anchors the tool rewrites"),
-        ]
-        version_toml: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="file:tomlpath anchors the tool rewrites"),
-        ]
-        build_command: Annotated[
-            t.NonEmptyStr, m.Field(description="Command that produces the artifacts")
-        ]
-        tag_format: Annotated[
-            t.NonEmptyStr, m.Field(description="Tag shape, shared with the workflow")
-        ]
-        changelog_file: Annotated[
-            t.NonEmptyStr, m.Field(description="Generated changelog destination")
-        ]
-        overrides: Annotated[
-            Mapping[
-                t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
-            ],
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description="Per-distribution deviations from the shared contract",
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_anchors(self) -> Self:
-            """Every anchor must name a target, or the tool rewrites nothing."""
-            for anchor in (*self.version_variables, *self.version_toml):
-                if ":" not in anchor:
-                    msg = f"release version anchor must be '<file>:<target>': {anchor}"
-                    raise ValueError(msg)
-            return self
-
     class SgconfigRenderSpec(_ConfigContract):
         """Typed input for the generated ast-grep project config.
 
@@ -2186,7 +2108,6 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Project description")
         ]
-        version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -2829,14 +2750,6 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.SgconfigRenderSpec,
             m.Field(description="Canonical ast-grep project contract for every repo"),
         ]
-        release: Annotated[
-            FlextInfraConfigModels.ReleaseAutomationSpec,
-            m.Field(
-                description=(
-                    "Automated semantic-release contract shared by every project"
-                )
-            ),
-        ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
@@ -3172,21 +3085,27 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Ordered static-analysis rules"),
         ]
 
-    class ReleaseEligibilitySpec(_ConfigContract):
-        """Which projects a release may build and publish.
+    class ReleasePolicySpec(_ConfigContract):
+        """The release protocol's declared data: who publishes, what bumps, where.
 
         Why (aihub-ioijy.9): `ReleaseOrchestrator._build_targets` hardcoded
         `project.name.startswith("flext-")`, so any consumer of this release
         engine whose distribution is not named `flext-*` resolved zero targets
-        and died with "release build selected no publishable projects" — the
-        version phase had already rewritten pyproject.toml by then. Publishable
-        membership is project policy, not a naming convention baked into the
-        orchestrator.
+        and died with "release build selected no publishable projects".
+        Publishable membership is project policy, not a naming convention.
 
-        An empty `publishable_prefixes` means "no prefix filter": every resolved
-        project is a candidate. That is the correct default for a single-project
-        repository and keeps the engine reusable outside this workspace.
+        `bump_types` maps a Conventional Commits type found in a merged
+        pull-request title to the bump it earns; a type absent from the map
+        releases nothing, and `!` in the title always earns a major bump. The
+        Conventional Commits defaults are the typed default, so a consumer
+        repository declares only what differs.
         """
+
+        # The bump map is consumed as enum members by the strict release plan,
+        # so the contract base's value coercion is switched off here.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", use_enum_values=False
+        )
 
         publishable_prefixes: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -3198,6 +3117,24 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        bump_types: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump],
+            m.Field(
+                default_factory=lambda: {
+                    "feat": FlextInfraConstantsRelease.VersionBump.MINOR,
+                    "fix": FlextInfraConstantsRelease.VersionBump.PATCH,
+                    "perf": FlextInfraConstantsRelease.VersionBump.PATCH,
+                },
+                description="Conventional Commits type -> semantic version bump",
+            ),
+        ]
+        publish_url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="https://upload.pypi.org/legacy/",
+                description="Package index upload endpoint for verified artifacts",
+            ),
+        ]
 
     # This
     # field-only namespace is the sole validated owner exposed as config.Infra.
@@ -3205,8 +3142,14 @@ class FlextInfraConfigModels:
         """Complete flext-infra configuration namespace."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
-        version: Annotated[
-            t.NonEmptyStr, m.Field(description="Project release version")
+        initial_project_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Version seeded into a newly scaffolded project's pyproject; "
+                    "from then on the release protocol is the only writer"
+                )
+            ),
         ]
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,
@@ -3221,13 +3164,8 @@ class FlextInfraConfigModels:
             m.Field(description="Production-only source discovery contract"),
         ]
         release: Annotated[
-            FlextInfraConfigModels.ReleaseEligibilitySpec,
-            m.Field(
-                default_factory=lambda: FlextInfraConfigModels.ReleaseEligibilitySpec(
-                    publishable_prefixes=()
-                ),
-                description="Release build and publish eligibility contract",
-            ),
+            FlextInfraConfigModels.ReleasePolicySpec,
+            m.Field(description="Release protocol policy: eligibility, bumps, index"),
         ]
         # Static policy is validated data, never detector code.
         enforcement: Annotated[
