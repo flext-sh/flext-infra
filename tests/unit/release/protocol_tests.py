@@ -214,6 +214,24 @@ class TestsFlextInfraReleaseProtocol:
                 cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
             ).strip()
             tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
+            # The docs projections render the version; the release commit
+            # carries them regenerated, so the lane is a `gen check` fixed point.
+            committed = tm.ok(
+                cli.capture(
+                    [c.Infra.GIT, "show", "--name-only", "--format=", c.Infra.GIT_HEAD],
+                    cwd=workspace,
+                )
+            )
+            tm.that(committed, has=["pyproject.toml", "docs/index.md"])
+            tm.that(
+                (workspace / "docs" / "index.md").read_text(encoding="utf-8"),
+                has=f"`{c.Tests.RELEASE_VERSION_BASE}`",
+            )
+            tm.that(
+                u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=workspace))
+                .value.dirty,
+                eq=False,
+            )
             tm.that(
                 tm.ok(
                     cli.capture([c.Infra.GIT, "branch", "--show-current"], cwd=workspace)
@@ -230,6 +248,38 @@ class TestsFlextInfraReleaseProtocol:
             recorded = gh_log.read_text(encoding="utf-8")
             tm.that(recorded, has=f"pr create --base {integration} --head {c.Infra.RELEASE_BRANCH}")
             tm.that(recorded, has="--title chore(release): v0.1.0")
+
+        @staticmethod
+        def test_rerun_continues_the_lane_without_a_second_commit(
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
+            """A retry from the integration branch is idempotent on the open lane."""
+            workspace = _release_lane_workspace(tmp_path)
+            u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
+            monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+            integration = u.Tests.integration_branch(workspace)
+            tm.that(
+                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
+                eq=0,
+            )
+            tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
+
+            result = u.Tests.run_release_main(
+                workspace, "--phase", "version", "--apply"
+            )
+
+            tm.that(result, eq=0)
+            lane_commits = tm.ok(
+                cli.capture(
+                    [c.Infra.GIT, "rev-list", "--count", f"{integration}..{c.Infra.RELEASE_BRANCH}"],
+                    cwd=workspace,
+                )
+            ).strip()
+            tm.that(lane_commits, eq="1")
+            head = tm.ok(
+                cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
+            ).strip()
+            tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
 
         @staticmethod
         def test_dry_run_changes_nothing(tmp_path: Path) -> None:

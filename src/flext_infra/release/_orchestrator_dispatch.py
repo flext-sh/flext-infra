@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
+from flext_infra.docs.generator import FlextInfraDocGenerator
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -201,15 +202,24 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         base_version = base_match.group(1) if base_match else ""
         if base_version == version:
             return r[bool].ok(True)
-        head = self._head_subject(root)
-        if head.failure:
-            return r[bool].fail(head.error or "HEAD subject failed")
-        if head.value == c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version):
+        # Why: CI checks out the pull request's synthetic merge commit, and an
+        # open release lane may carry integration merges above its release
+        # commit; the protocol's commit is therefore looked up in the whole
+        # base..HEAD range, not only at HEAD.
+        subjects = u.Cli.capture(
+            [c.Infra.GIT, "log", "--format=%s", f"{base_oid}..{c.Infra.GIT_HEAD}"],
+            cwd=root,
+        )
+        if subjects.failure:
+            return r[bool].fail(subjects.error or "git log failed")
+        release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
+        if release_subject in subjects.value.splitlines():
             return r[bool].ok(True)
         return r[bool].fail(
             f"{c.Infra.PYPROJECT_FILENAME} version changed outside the release "
             f"protocol: {base_version} -> {version} (HEAD {head_oid.value.strip()[:12]} "
-            f"{head.value!r}); run `make release WHAT=version APPLY=Y` instead"
+            f"carries no {release_subject!r}); run `make release WHAT=version APPLY=Y` "
+            "instead"
         )
 
     # --------------------------------------------------------------- version
@@ -273,22 +283,34 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
     def _switch_release_branch(self, root: Path, integration: str) -> p.Result[bool]:
         """Continue the open release lane when it exists, else start it from HEAD."""
         remote_ref = f"refs/remotes/{c.Infra.GIT_ORIGIN}/{c.Infra.RELEASE_BRANCH}"
+        # Why: a rerun (CI retry, or a local run after a first attempt) must
+        # continue the same lane, whether it already exists locally or only
+        # on the remote, and never fail on "branch already exists".
+        local = u.Cli.capture(
+            [c.Infra.GIT, "rev-parse", "--verify", "--quiet", f"refs/heads/{c.Infra.RELEASE_BRANCH}"],
+            cwd=root,
+        )
         fetch = u.Cli.run_checked(
             [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN, c.Infra.RELEASE_BRANCH], cwd=root
         )
-        if fetch.success:
+        if local.success:
+            switched = u.Cli.run_checked(
+                [c.Infra.GIT, "switch", c.Infra.RELEASE_BRANCH], cwd=root
+            )
+        elif fetch.success:
             switched = u.Cli.run_checked(
                 [c.Infra.GIT, "switch", "--create", c.Infra.RELEASE_BRANCH, remote_ref],
                 cwd=root,
             )
-            if switched.failure:
-                return switched
-            return u.Infra.git_merge_no_edit(
-                m.Infra.GitCommitishRequest(repo_root=root, commitish=integration)
-            ).map(lambda _report: True)
-        return u.Cli.run_checked(
-            [c.Infra.GIT, "switch", "--create", c.Infra.RELEASE_BRANCH], cwd=root
-        )
+        else:
+            return u.Cli.run_checked(
+                [c.Infra.GIT, "switch", "--create", c.Infra.RELEASE_BRANCH], cwd=root
+            )
+        if switched.failure:
+            return switched
+        return u.Infra.git_merge_no_edit(
+            m.Infra.GitCommitishRequest(repo_root=root, commitish=integration)
+        ).map(lambda _report: True)
 
     def _stamp_release(
         self, ctx: m.Infra.ReleasePhaseDispatchConfig, plan: m.Infra.ReleasePlan
@@ -315,14 +337,38 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
         if notes.failure:
             return notes
-        return u.Infra.update_changelog(root, plan.next, plan.tag, notes_path)
+        changelog = u.Infra.update_changelog(root, plan.next, plan.tag, notes_path)
+        if changelog.failure:
+            return changelog
+        # Why: README, docs/index and the API overview render the version, and
+        # the docs generator owns them; the stamp regenerates its projections
+        # so `make gen WHAT=check` stays a fixed point on the release lane.
+        return FlextInfraDocGenerator(
+            workspace=root, projects=ctx.project_names or None, apply=True
+        ).execute()
 
     def _commit_release(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
-        """Commit exactly the protocol-owned files with the protocol subject."""
+        """Commit the stamped SSOT and every projection regenerated from it.
+
+        Preflight proved the checkout clean, so every path the status now
+        lists was produced by the stamp; those exact paths are staged. A
+        rerun stamps the bytes the lane already carries and commits nothing.
+        """
+        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        if status.failure:
+            return r[bool].fail(status.error or "git status failed")
+        # The status code and the path are whitespace-separated; the first
+        # line arrives without its leading status padding.
+        produced = tuple(
+            line.split(maxsplit=1)[1]
+            for line in status.value.porcelain.splitlines()
+            if line.strip()
+        )
+        if not produced:
+            self.logger.info("release_version_unchanged", version=plan.next)
+            return r[bool].ok(True)
         staged = u.Infra.git_add_paths(
-            m.Infra.GitPathsRequest(
-                repo_root=root, paths=(c.Infra.PYPROJECT_FILENAME, c.Infra.DIR_DOCS)
-            )
+            m.Infra.GitPathsRequest(repo_root=root, paths=produced)
         )
         if staged.failure:
             return r[bool].fail(staged.error or "git add failed")
