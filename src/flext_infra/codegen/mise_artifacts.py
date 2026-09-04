@@ -378,9 +378,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[bool].fail(f"Mise launcher checksum missing: {checksum_name}")
         windows_checksums = ("sum_x64", "sum_arm64")
         for checksum_name in windows_checksums:
-            if not cls._is_sha256(
-                cls._assignment(windows_source.value, checksum_name)
-            ):
+            if not cls._is_sha256(cls._assignment(windows_source.value, checksum_name)):
                 return r[bool].fail(
                     f"Mise launcher checksum missing: windows-{checksum_name.removeprefix('sum_')}"
                 )
