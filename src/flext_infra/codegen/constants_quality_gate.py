@@ -37,11 +37,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
     def build_report(self) -> p.Result[t.JsonMapping]:
         """Execute quality gate and return structured report payload."""
         FlextInfraCodegenLazyInit(workspace_root=self.workspace_root).generate_inits()
-        census_report = FlextInfraRefactorCensus(
-            workspace_root=self.workspace_root,
+        census = FlextInfraRefactorCensus(
             include_local_scopes=False,
             kinds=("constant",),
-        ).build_report()
+        ).model_copy(update={"workspace_root": self.workspace_root})
+        census_report = census.build_report()
         modified_files = self.modified_python_files(self.workspace_root)
         pyrefly_check, ruff_check = self._run_static_checks(
             self.workspace_root, modified_files
