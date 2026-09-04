@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c
 
@@ -104,6 +105,7 @@ class TestsFlextInfraReleaseOrchestration:
         """Next-development version behavior."""
 
         @staticmethod
+        @pytest.mark.slow
         def test_next_dev_updates_workspace_after_release(tmp_path: Path) -> None:
             """Apply the configured next development version after release."""
             workspace = u.Tests.create_release_workspace(tmp_path)

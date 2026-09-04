@@ -98,12 +98,6 @@ jobs:
             exit 1
           fi
 
-      - name: Install mise toolchain
-        uses: {% endraw %}{{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}{% raw %}
-{% endraw %}{% if mise_version != "latest" %}{% raw %}        with:
-          version: {% endraw %}{{ mise_version }}{% raw %}
-{% endraw %}{% endif %}{% raw %}
-
       - name: Install system dependencies
         shell: bash
         run: |
@@ -237,12 +231,6 @@ jobs:
           fi
           CORE_OID="$(git rev-parse "${RELEASE_ROOT_SHA}:flext-core")"
           echo "core_oid=$CORE_OID" >> "$GITHUB_OUTPUT"
-
-      - name: Install mise toolchain
-        uses: {% endraw %}{{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}{% raw %}
-{% endraw %}{% if mise_version != "latest" %}{% raw %}        with:
-          version: {% endraw %}{{ mise_version }}{% raw %}
-{% endraw %}{% endif %}{% raw %}
 
       - name: Install system dependencies
         shell: bash

@@ -12,6 +12,38 @@
 	fi
 {%- endmacro %}
 
+{% macro mise_latest_runtime_bootstrap(project_root, mise) -%}
+	scratch_parent="{{ project_root }}/.test-tmp"; \
+	mkdir -p "$$scratch_parent"; \
+	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
+	mkdir -p "$$scratch/receipt/bin" "$$scratch/data" "$$scratch/cache" \
+		"$$scratch/state" "$$scratch/tmp" "$$scratch/config" \
+		"$$scratch/system-config"; \
+	: > "$$scratch/global-config.toml"; \
+	{{ mise_release_resolution("latest", mise) }}; \
+	if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+		MISE_CONFIG_DIR="$$scratch/config" MISE_DATA_DIR="$$scratch/data" \
+		MISE_CACHE_DIR="$$scratch/cache" MISE_STATE_DIR="$$scratch/state" \
+		TMPDIR="$$scratch/tmp" MISE_CEILING_PATHS="$$scratch_parent" \
+		MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "{{ mise }}" \
+		-C "$$scratch" generate install-script --version "$$mise_version" \
+		--write "$$scratch/receipt/bin/mise" --windows \
+		>"$$scratch/generate.log" 2>&1; then \
+		cat "$$scratch/generate.log"; \
+	else \
+		status=$$?; cat "$$scratch/generate.log"; exit "$$status"; \
+	fi; \
+	if grep -Fq 'mise WARN' "$$scratch/generate.log"; then \
+		printf 'ERROR: Mise launcher generation emitted warnings\n' >&2; exit 2; \
+	else \
+		status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
+	fi; \
+	chmod +x "$$scratch/receipt/bin/mise"; \
+	latest_mise="$$scratch/receipt/bin/mise"; \
+	env -u MISE_INSTALL_PATH -u MISE_VERSION "$$latest_mise" --version >/dev/null
+{%- endmacro %}
+
 {% macro tool_bootstrap_recipe(target, project_root, mise, uv_version) -%}
 .PHONY: {{ target }}
 
