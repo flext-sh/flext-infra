@@ -86,16 +86,23 @@ class TestsReviewTemplateContracts:
         tm.that(text, lacks="_builtin_work_")
         tm.that(text, lacks="workspace work")
 
-    def test_release_verifies_core_gitlink_after_setup(self) -> None:
+    def test_release_workflow_only_selects_protocol_phases(self) -> None:
+        """The workflow routes to `make release` phases and decides nothing itself.
+
+        Tag precedes build, build precedes publish, and the package index is
+        reached only from the workspace profile through trusted publishing.
+        """
         text = _RELEASE.read_text(encoding="utf-8")
-        job = text.split("testpypi:", 1)[1]
-        boot = job.index("Boot workspace")
-        verify = job.index("Verify immutable flext-core gitlink")
-        root_verify = job.index("Verify immutable canary root")
-        tm.that(root_verify < boot, eq=True)
-        tm.that(boot < verify, eq=True)
-        pre = job[:boot]
-        tm.that(pre, lacks="git -C flext-core rev-parse HEAD")
+        publish = text.split("  publish:", 1)[1]
+        tag = publish.index("make release WHAT=tag")
+        build = publish.index("make release WHAT=build")
+        upload = publish.index("make release WHAT=publish")
+        tm.that(tag < build < upload, eq=True)
+        tm.that(publish, has='{% if make_profile == "workspace" %} INDEX=Y{% endif %}')
+        tm.that(publish, has="id-token: write")
+        tm.that(text, has="make release WHAT=version")
+        tm.that(text, lacks="uv publish")
+        tm.that(text, lacks="gh release")
 
     def test_ci_upload_excludes_raw_report_logs(self) -> None:
         text = _CI.read_text(encoding="utf-8")

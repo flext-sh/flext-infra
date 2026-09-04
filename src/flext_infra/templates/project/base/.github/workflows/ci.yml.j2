@@ -149,6 +149,40 @@ jobs:
           retention-days: 7
   # End SECTION: ci job
 
+  # === SECTION: release-plan job (managed) ===
+  # The release protocol's read-only decision on every pull request: the title
+  # must be a Conventional Commits title (it becomes the merge commit subject
+  # the next release is derived from), and no pyproject version may change
+  # outside the protocol's own release commit.
+  release-plan:
+    name: release-plan
+    permissions:
+      contents: read
+    if: {% raw %}${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}{% endraw %}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      {{ make.ci.variable }}: {{ make.ci.value }}
+    steps:
+      - name: Checkout
+        uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
+        with:
+          fetch-depth: 0
+          submodules: {{ checkout_submodules }}
+{%- include "_fragments/private_submodules_init.j2" %}
+      - name: Install mise toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
+{% if mise_version != "latest" %}        with:
+          version: {{ mise_version }}
+{% endif %}
+      - name: Boot
+        run: make setup
+      - name: Release plan and guard
+        env:
+          PR_TITLE: {% raw %}${{ github.event.pull_request.title }}{% endraw %}
+        run: make release WHAT=plan PR_TITLE="$PR_TITLE"
+  # End SECTION: release-plan job
+
   # === SECTION: merge-guard job (managed) ===
   merge-guard:
     name: merge-guard
