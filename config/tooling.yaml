@@ -550,13 +550,14 @@ Infra:
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
-        # The runner computes the live budget from CPU and physical memory.
-        # This ceiling remains typed so an extraordinary host cannot scale
-        # beyond the tested process topology.
-        parallel-workers: 16
-        # Subprocess-heavy generation tests exhausted memory repeatedly on a
-        # loaded multi-lane host. Physical memory per worker, not a global
-        # fixed worker count, owns that measured limit.
+        # The full suite nests Make, Git, and Python subprocesses. Four workers
+        # previously exhausted that process topology, and a 16-worker run on a
+        # 20-CPU/63-GiB host produced six independent item timeouts. Two is the
+        # highest measured stable ceiling; live CPU and memory remain stricter
+        # additional bounds on smaller hosts.
+        parallel-workers: 2
+        # Reserve physical memory for each xdist worker and its child process
+        # tree; this bound may reduce the tested ceiling on smaller hosts.
         parallel-worker-memory-gb: 2
         # Work stealing drains uneven codegen/subprocess tails without the
         # serialized 99% tail measured under loadscope.
