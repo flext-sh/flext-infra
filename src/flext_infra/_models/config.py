@@ -3135,6 +3135,34 @@ class FlextInfraConfigModels:
                 description="Package index upload endpoint for verified artifacts",
             ),
         ]
+        build_constraints: Annotated[
+            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Hash-pinned build-backend requirements every release artifact "
+                    "is built with; projected to config/build-constraints.txt"
+                ),
+            ),
+        ]
+
+    class BuildConstraintSpec(_ConfigContract):
+        """One hash-pinned build requirement (``uv build --require-hashes``)."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
+        hashes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Accepted sha256 digests"),
+        ]
+
+    class ReleasePolicyRenderSpec(_ConfigContract):
+        """Typed input consumed by the generated release policy files."""
+
+        build_constraints: Annotated[
+            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            m.Field(min_length=1, description="Pins rendered into the constraints"),
+        ]
 
     # This
     # field-only namespace is the sole validated owner exposed as config.Infra.
