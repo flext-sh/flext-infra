@@ -321,6 +321,14 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
+        # Why: the lock records the project's own version, so the stamp
+        # refreshes it the way `make deps WHAT=lock APPLY=Y` does; otherwise
+        # `make deps` (uv lock --check) is red on the release lane.
+        locked = u.Cli.run_checked(
+            [c.Infra.UV, "lock", "--project", str(root)], cwd=root
+        )
+        if locked.failure:
+            return locked
         notes_path = (
             u.Cli.resolve_report_dir(root, c.Infra.PROJECT, c.Infra.RK_RELEASE)
             / plan.tag

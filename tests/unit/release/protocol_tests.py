@@ -255,7 +255,11 @@ class TestsFlextInfraReleaseProtocol:
                     cwd=workspace,
                 )
             )
-            tm.that(committed, has=["pyproject.toml", "docs/index.md"])
+            tm.that(committed, has=["pyproject.toml", "uv.lock", "docs/index.md"])
+            tm.that(
+                (workspace / "uv.lock").read_text(encoding="utf-8"),
+                has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',
+            )
             tm.that(
                 (workspace / "docs" / "index.md").read_text(encoding="utf-8"),
                 has=f"`{c.Tests.RELEASE_VERSION_BASE}`",
