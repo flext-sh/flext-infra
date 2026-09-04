@@ -96,10 +96,16 @@ class TestsFlextInfraReleaseDag:
                 tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
             )
             constraints_path = workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH
-            first_record = "\n".join(
-                constraints_path.read_text(encoding="utf-8").splitlines()[:3]
-            )
-            constraints_path.write_text(first_record + "\n", encoding="utf-8")
+            # Keep exactly the first pin record: comment lines are skipped and a
+            # record spans every line that ends with a continuation.
+            first_record: list[str] = []
+            for line in constraints_path.read_text(encoding="utf-8").splitlines():
+                if not line.strip() or line.lstrip().startswith("#"):
+                    continue
+                first_record.append(line)
+                if not line.rstrip().endswith("\\"):
+                    break
+            constraints_path.write_text("\n".join(first_record) + "\n", encoding="utf-8")
 
             result = u.Tests.run_release_main(
                 workspace,
@@ -225,6 +231,35 @@ class TestsFlextInfraReleaseDag:
             ).read_text(encoding="utf-8")
             tm.that(result, eq=1)
             tm.that(build_log, has="sensitive staged source path: .gitleaks.toml")
+
+        @staticmethod
+        def test_codegen_owned_env_example_is_accepted(tmp_path: Path) -> None:
+            """A file codegen owns is a projection, never a secret, whatever its name.
+
+            Every generated repository carries `.env.example`; rejecting it by
+            its `.env.` prefix blocked the build phase fleet-wide.
+            """
+            project_name = "flext-a"
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+            )
+            project = workspace / project_name
+            (project / ".env.example").write_text("FLEXT_A_LOG_LEVEL=INFO\n", encoding="utf-8")
+            u.Tests.commit_git_changes(project, "add the generated environment example")
+
+            _ = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--projects",
+                project_name,
+                "--apply",
+            )
+
+            build_log = u.Tests.release_build_log(
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+            ).read_text(encoding="utf-8")
+            tm.that(build_log, lacks="sensitive staged source path")
 
     class TestsCommittedSource:
         """Immutable committed-source behavior."""

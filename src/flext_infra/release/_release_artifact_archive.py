@@ -10,6 +10,7 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from flext_core import r
+from flext_infra import config
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,6 +27,10 @@ class FlextInfraReleaseArtifactArchiveMixin:
         path = PurePosixPath(name)
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe staged source path: {name}"
+        # Why: a file codegen owns (`.env.example`) is a projection of the
+        # fleet template, never a secret; only its name matches the pattern.
+        if any(name == item.path.as_posix() for item in config.Infra.codegen.managed_files):
+            return ""
         blocked_suffixes = (".jks", ".key", ".keystore", ".p12", ".pem", ".pfx")
         for part in path.parts:
             normalized = part.casefold()
