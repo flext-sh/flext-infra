@@ -29,10 +29,13 @@ workspace validates each direct governed path declared by its own `.gitmodules`:
 - the checkout exists and remains below the workspace root;
 - its origin matches the URL declared by `.gitmodules`;
 - its branch follows the configured provider contract;
-- its own `config/beads.yaml` exists and validates.
+- the workspace root's `config/beads.yaml` exists and validates.
 
-Subprojects keep independent Beads identities. A workspace never copies its
-identity into a subproject and never overwrites a subproject's source config.
+Direct governed submodules have exactly one ledger mode. A checked-in `.beads`
+symlink inherits the workspace root's ledger and requires a routing-only
+`config/beads.yaml` naming the same identity. A real `.beads` directory makes
+the member an independent ledger owner and requires its own local identity.
+Standalone repositories are ledger owners with their own local identity.
 External provider URLs remain read-only dependency paths.
 
 Missing, malformed, duplicate, escaping, or mismatched inputs fail before any
@@ -46,11 +49,13 @@ the requested checkout. `subprojects` and `all` are valid only from a workspace
 whose own `.gitmodules` declares governed direct subprojects.
 
 The generated `.beads/config.yaml` and `.beads/metadata.json` are projections of
-the selected repository's local Beads identity plus the fleet-owned Gas City
-contract. Rigs declare `inherited_city` and never copy a city host or port;
-Gas City owns endpoint resolution and its compatibility mirror. The custom-type
-projection preserves project extensions first and appends the required Gas City
-baseline. Generation never starts, stops, initializes, probes, or mutates Dolt.
+the selected repository's owned Beads identity plus the fleet-owned Gas City
+contract. Workspace root owns the shared ledger, direct submodules inherit it,
+and standalone repositories own theirs. Rigs declare `inherited_city` and never
+copy a city host or port; Gas City owns endpoint resolution and its
+compatibility mirror. The custom-type projection preserves project extensions
+first and appends the required Gas City baseline. Generation never starts,
+stops, initializes, probes, or mutates Dolt.
 
 The generated Makefile preserves the same boundary: workspace orchestration may
 fan out to direct local subprojects, while standalone repositories and linked

@@ -140,10 +140,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
         _modernizer_workspace_pyproject(), encoding="utf-8"
     )
     u.Tests.write_beads_project(
-        workspace,
-        workspace="workspace",
-        database="workspace",
-        issue_prefix="workspace",
+        workspace, workspace="workspace", database="workspace", issue_prefix="workspace"
     )
     return workspace
 

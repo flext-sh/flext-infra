@@ -77,16 +77,13 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 changes.extend(fix_changes)
         for issue in issues:
             warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=True,
-                errors=changes,
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=True,
             issues=issues,
             raw_output="\n".join(changes) if changes else scan.stderr,
+            started=started,
+            errors=changes,
         )
 
     @staticmethod
@@ -110,16 +107,12 @@ class FlextInfraSmellsGate(FlextInfraGate):
         for issue in issues:
             warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
         passed = c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.WARN or not issues
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=passed,
             issues=issues,
             raw_output=scan.stderr,
+            started=started,
         )
 
     @override

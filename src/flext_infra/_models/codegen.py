@@ -16,6 +16,106 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
+    class MiseToolchainProjectState(m.ArbitraryTypesModel):
+        """Immutable source snapshot for one project in a Mise transaction."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace-relative project selector")
+        ]
+        root: Annotated[Path, m.Field(description="Resolved project root")]
+        config_bytes: Annotated[
+            bytes, m.Field(description="Exact committed .mise.toml bytes")
+        ]
+        launcher_bytes: Annotated[
+            bytes, m.Field(description="Exact committed Unix launcher bytes")
+        ]
+        windows_launcher_bytes: Annotated[
+            bytes, m.Field(description="Exact committed Windows launcher bytes")
+        ]
+        lock_bytes: Annotated[
+            bytes, m.Field(description="Exact committed mise.lock bytes")
+        ]
+
+    class MiseToolchainPublication(m.ArbitraryTypesModel):
+        """One guarded replacement belonging to the current Mise transaction."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        path: Annotated[Path, m.Field(description="Live artifact destination")]
+        expected_bytes: Annotated[
+            bytes, m.Field(description="Exact bytes observed during preflight")
+        ]
+        replacement_bytes: Annotated[
+            bytes, m.Field(description="Fully validated staged replacement bytes")
+        ]
+
+    class MiseToolchainJournalSource(m.ArbitraryTypesModel):
+        """One immutable source identity guarded by a Mise transaction journal."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Workspace-relative committed source path"),
+        ]
+        sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Exact source-byte SHA-256 identity",
+            ),
+        ]
+
+    class MiseToolchainJournalEntry(m.ArbitraryTypesModel):
+        """Recoverable before/after identity for one published Mise artifact."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        path: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Workspace-relative live artifact destination"),
+        ]
+        original_backup: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Transaction-relative original-byte backup"),
+        ]
+        original_sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Exact original-byte SHA-256 identity",
+            ),
+        ]
+        replacement_sha256: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Exact replacement-byte SHA-256 identity",
+            ),
+        ]
+
+    class MiseToolchainJournal(m.ArbitraryTypesModel):
+        """Persisted recovery contract for one workspace-wide Mise publication."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        version: Literal[1] = 1
+        state: Literal["prepared", "committed"] = "prepared"
+        sources: tuple[FlextInfraModelsCodegen.MiseToolchainJournalSource, ...] = ()
+        entries: tuple[FlextInfraModelsCodegen.MiseToolchainJournalEntry, ...] = ()
+
     class CensusViolation(mm.RequiredNonNegativeLineMixin, m.ArbitraryTypesModel):
         """A single namespace violation detected by the census service."""
 
@@ -73,9 +173,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Module skeleton definitions"),
         ]
         test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
-        inherit_project_facade: Annotated[
-            bool,
-            m.Field(description="Whether generated classes inherit project facade"),
+        base_module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Explicit module owning every generated base class"),
         ]
         dry_run: Annotated[
             bool, m.Field(description="Whether to report creations without writing")

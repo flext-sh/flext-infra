@@ -41,7 +41,7 @@ class FlextInfraConstantsCheck:
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
-        "loc-cap": ("Tokei", "https://github.com/XAMPPRocky/tokei"),
+        "loc-cap": ("scc", "https://github.com/boyter/scc"),
         "boundary": (
             "Flext Abstraction Boundary Auditor",
             "internal://flext-infra/abstraction-boundary",
@@ -178,11 +178,10 @@ class FlextInfraConstantsCheck:
     # literal, so the cap stays a single owned value.
     LOC_CAP_MAX: Final[int] = 1000
     "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
-    TOKEI_BINARY: Final[str] = "tokei"
+    SCC_BINARY: Final[str] = "scc"
     CLI_DIRENV: Final[str] = "direnv"
-    TOKEI_TOTAL_KEY: Final[str] = "Total"
-    TOKEI_PYTHON_LANG: Final[str] = "Python"
-    "tokei language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
+    SCC_PYTHON_LANG: Final[str] = "Python"
+    "scc language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
@@ -304,7 +303,7 @@ repos:
         always_run: false
         types: [python]
       - id: flext-loc-cap
-        name: MODULE-LOC SUPREME LAW (§3.1) — module cap via tokei
+        name: MODULE-LOC SUPREME LAW (§3.1) — module cap via scc
         entry: uv run --all-packages python scripts/hooks/check_changed_projects.py loc-cap
         language: system
         pass_filenames: true

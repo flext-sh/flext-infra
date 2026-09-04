@@ -44,6 +44,27 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             raise TypeError(msg)
         return link_mode
 
+    @staticmethod
+    def _dependency_cooldown_policy(
+        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
+    ) -> tuple[tuple[str, ...], dict[str, str]]:
+        """Compose fleet defaults with the repository's narrower policy."""
+        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
+        overrides = dict(toolchain.dependency_cooldown_overrides)
+        for package in repository.dependency_cooldown_exclusions:
+            overrides.pop(package, None)
+            exclusions[package] = None
+        for package, cutoff in repository.dependency_cooldown_overrides.items():
+            exclusions.pop(package, None)
+            overrides[package] = cutoff
+        return tuple(exclusions), overrides
+
+    @staticmethod
+    def _member_beads_is_linked(repository_root: Path) -> bool:
+        """Return whether this gitlink routes an inherited workspace ledger."""
+        route: Path = repository_root / c.Infra.BEADS_DIRNAME
+        return route.is_symlink()
+
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -410,7 +431,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                             "profile-excluded projection planning failed"
                         )
                     )
-                files.extend(retired.value)
+                governed_paths = {item.path for item in governed.value}
+                files.extend(
+                    item for item in retired.value if item.path not in governed_paths
+                )
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
@@ -469,6 +493,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         governed_by_path = {item.path: item for item in codegen.managed_files}
         completed: list[m.Infra.CodegenFilePlan] = []
         represented: set[Path] = set()
+        represented_indexes: dict[Path, int] = {}
         for file in planned:
             relative = file.path.relative_to(root)
             governed = governed_by_path.get(relative)
@@ -476,15 +501,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 completed.append(file)
                 continue
             represented.add(relative)
-            completed.append(
-                file.model_copy(
-                    update={
-                        "owner": governed.owner,
-                        "policy": governed.policy,
-                        "executable": governed.executable,
-                    }
-                )
+            governed_file = file.model_copy(
+                update={
+                    "owner": governed.owner,
+                    "policy": governed.policy,
+                    "executable": governed.executable,
+                }
             )
+            if relative in represented_indexes:
+                completed[represented_indexes[relative]] = governed_file
+            else:
+                represented_indexes[relative] = len(completed)
+                completed.append(governed_file)
         if not contract.complete_governed:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
         for relative, governed in governed_by_path.items():
@@ -800,6 +828,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=tooling_root, skip_check=True
         )
+        analysis_exclusions = tuple(
+            path.as_posix()
+            for path in (
+                *target.external_dependency_paths,
+                *workspace.external_dependency_paths,
+            )
+        )
         declared_python_dirs = self._scaffold_python_dirs(
             codegen.templates.entries, profile
         )
@@ -813,6 +848,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -904,6 +940,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
             if (
+                destination
+                in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+                and self._member_beads_is_linked(root)
+            ):
+                # A linked gitlink inherits the workspace ledger; planning a
+                # member-local projection would create a second identity.
+                continue
+            if (
                 destination == c.Infra.BEADS_METADATA_RELPATH
                 and not (root / destination).is_file()
             ):
@@ -984,11 +1029,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             format_source=False,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if initial_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 initial_tooling.error or f"initial tooling conform failed: {pyproject}"
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
             providers=codegen.providers,
@@ -997,6 +1046,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1008,6 +1059,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             path=pyproject,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+            analysis_exclusions=analysis_exclusions,
         )
         if final_tooling.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1093,13 +1145,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         modernizer = FlextInfraPyprojectModernizer(
             workspace_root=workspace_root, skip_check=True
         )
+        analysis_exclusions = tuple(
+            path.as_posix() for path in target.external_dependency_paths
+        )
+        generated_python_roots = self._scaffold_python_dirs(
+            codegen.templates.entries, target.make_profile
+        )
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
             path=pyproject,
-            declared_python_dirs=(
-                config.Infra.tooling.tools.pyright.path_rules.source_dir,
-            ),
+            declared_python_dirs=generated_python_roots,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_context.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1115,6 +1172,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_runtime=tooling_context.value,
                 contract=contract,
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             providers=codegen.providers,
@@ -1123,6 +1183,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1137,9 +1199,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         tooling_result = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
-            generated_python_roots=self._scaffold_python_dirs(
-                codegen.templates.entries, target.make_profile
-            ),
+            generated_python_roots=generated_python_roots,
+            analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1236,6 +1297,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
+            if (
+                entry.destination
+                in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+                and self._member_beads_is_linked(root)
+            ):
+                # Mirror the delegated-template path so both conform routes
+                # preserve the same inherited-ledger ownership rule.
+                continue
             path = (root / relative).resolve()
             if (
                 entry.destination == c.Infra.BEADS_METADATA_RELPATH
@@ -1352,10 +1422,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"marker={conflict_marker}"
                 )
             file_plan = self._file_plan(
-                root,
-                entry.destination,
-                rendered_content,
-                executable=managed.executable,
+                root, entry.destination, rendered_content, executable=managed.executable
             )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1454,6 +1521,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         project_context: m.Infra.ProjectRenderContext | None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
+        if (
+            destination
+            in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+            and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
+            and self._member_beads_is_linked(repository_root)
+        ):
+            return r[p.Model].fail(
+                "linked workspace member cannot own a Beads projection: "
+                f"{repository.name}; ledger is inherited from the workspace root"
+            )
         if destination == c.Infra.GITIGNORE:
             profile = target.make_profile
             sections = tuple(
@@ -1468,11 +1545,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # Why (ai-hub-qwoc): the ast-grep contract is identical for every
             # governed repository, so it renders straight from the codegen SSOT.
             return r[p.Model].ok(codegen.sgconfig)
-        if destination in {
-            ".coderabbit.yaml",
-            ".pre-commit-config.yaml",
-            "cubic.yaml",
-        }:
+        if destination == ".pre-commit-config.yaml":
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
@@ -1530,13 +1603,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         dict.fromkeys(("dev", "develop", "0.12.0-dev", branch, "main"))
                     ),
                     python_version=codegen.toolchain.python_version,
-                    mise_version=codegen.toolchain.mise_version,
-                    uv_version=codegen.toolchain.uv_version,
                     dependency_cooldown_days=(
                         codegen.toolchain.dependency_cooldown_days
                     ),
                     github_actions=codegen.github_actions,
-                    gate_attestation=codegen.gate_attestation,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
                     # Why: dependabot.yml.j2 branches on this and the model
@@ -1577,10 +1647,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     gitlinks.error or "managed Gitlink resolution failed"
                 )
+            cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+                repository, codegen.toolchain
+            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
-                    gate_attestation=codegen.gate_attestation,
                     dist=dist,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
@@ -1597,15 +1669,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
-                    mise_version=codegen.toolchain.mise_version,
-                    mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                    dependency_cooldown_exclusions=(
-                        codegen.toolchain.dependency_cooldown_exclusions
-                    ),
-                    dependency_cooldown_overrides=(
-                        codegen.toolchain.dependency_cooldown_overrides
-                    ),
+                    dependency_cooldown_exclusions=cooldown_exclusions,
+                    dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -1677,10 +1743,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.MakeRenderContext].fail(
                 gitlinks.error or "managed Gitlink resolution failed"
             )
+        cooldown_exclusions, cooldown_overrides = (
+            FlextInfraCodegenConform._dependency_cooldown_policy(
+                repository, codegen.toolchain
+            )
+        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
-                gate_attestation=codegen.gate_attestation,
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -1698,12 +1768,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository, codegen.toolchain
                 ),
                 uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
-                dependency_cooldown_exclusions=(
-                    codegen.toolchain.dependency_cooldown_exclusions
-                ),
-                dependency_cooldown_overrides=(
-                    codegen.toolchain.dependency_cooldown_overrides
-                ),
+                dependency_cooldown_exclusions=cooldown_exclusions,
+                dependency_cooldown_overrides=cooldown_overrides,
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.
@@ -1801,6 +1867,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
         )
+        # The repository's own pyproject.toml is the version SSOT; the release
+        # protocol is its only writer, so conform reads it and never syncs it.
+        # A tree that has no pyproject yet is being created: it starts at the
+        # typed initial version and the protocol owns every change after that.
+        version_result = (
+            u.Infra.current_workspace_version(repository_root)
+            if (repository_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            else r[str].ok(config.Infra.initial_project_version)
+        )
+        if version_result.failure:
+            return r[m.Infra.ProjectRenderContext].fail(
+                version_result.error or f"project version unresolved: {repository_root}"
+            )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -1829,10 +1908,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads_tool_selector=codegen.toolchain.beads.selector,
                 beads_tool_version=codegen.toolchain.beads.version,
-                # prerelease is load-bearing: the fleet bd is a suffixed tag
-                # (v1.2.2-fd1) and mise refuses to resolve it unless told the
-                # release is a prerelease. Omitting it silently pinned every
-                # rig to upstream v1.2.2, which lacks the bd list cycle guard.
+                # prerelease is load-bearing: every fork release of bd carries a
+                # suffixed tag (-fdN) and mise refuses to resolve one unless
+                # told the release is a prerelease. Omitting it silently pinned
+                # every rig to upstream, which lacks the bd list cycle guard.
                 beads_tool_prerelease=codegen.toolchain.beads.prerelease,
                 beads_tool_minimum_release_age=(
                     codegen.toolchain.beads.minimum_release_age
@@ -1850,20 +1929,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 upstream=project.upstream,
                 inherited_facets=project.inherited_facets,
                 description=project.description,
-                version=project.version,
+                version=version_result.value,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
+                direnv_version=codegen.toolchain.direnv_version,
                 uv_version=codegen.toolchain.uv_version,
-                mise_version=codegen.toolchain.mise_version,
-                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 qlty_version=codegen.toolchain.qlty_version,
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,
-                tokei_version=codegen.toolchain.tokei_version,
+                scc_version=codegen.toolchain.scc_version,
                 kubeconform_version=codegen.toolchain.kubeconform_version,
                 go_version=codegen.toolchain.go_version,
                 author_name=project.author_name,
@@ -2104,28 +2182,40 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # live tip remains the baseline, which is correct for a local checkout.
         triggering_sha = os.environ.get(c.Infra.ENV_VAR_GITHUB_SHA, "").strip()
         if triggering_sha:
-            merge_base_command = (
-                c.Infra.GIT,
-                "merge-base",
-                baseline_sha,
-                triggering_sha,
-            )
-            merge_base_result = u.Cli.run_raw(merge_base_command, cwd=root)
-            if merge_base_result.failure:
-                return r[m.Infra.BranchAncestryPlan].fail(
-                    "cannot anchor ancestry baseline to the triggering commit: "
-                    f"command={' '.join(merge_base_command)}; "
-                    f"error={merge_base_result.error}"
+            # GITHUB_SHA is the superproject's triggering commit (the PR
+            # merge commit actions/checkout synthesizes). Inside a submodule
+            # repo that SHA does not exist, so `git merge-base` fails with
+            # exit 128 ("Not a valid commit name") and breaks `gen check` in
+            # CI. Verify membership before anchoring the baseline through it:
+            # only pin to the merge base when triggering_sha actually resolves
+            # in the current repository (the workspace root). In a submodule
+            # context the gitlink position is the immutable reference and the
+            # live baseline tip remains the correct anchor.
+            verify_command = (c.Infra.GIT, "cat-file", "-t", triggering_sha)
+            verify_result = u.Cli.run_raw(verify_command, cwd=root)
+            if verify_result.success and verify_result.value.exit_code == 0:
+                merge_base_command = (
+                    c.Infra.GIT,
+                    "merge-base",
+                    baseline_sha,
+                    triggering_sha,
                 )
-            if merge_base_result.value.exit_code != 0:
-                return r[m.Infra.BranchAncestryPlan].fail(
-                    "triggering commit shares no history with the baseline: "
-                    f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
-                    f"command={' '.join(merge_base_command)}; "
-                    f"exit={merge_base_result.value.exit_code}; "
-                    f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
-                )
-            baseline_sha = merge_base_result.value.stdout.strip()
+                merge_base_result = u.Cli.run_raw(merge_base_command, cwd=root)
+                if merge_base_result.failure:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "cannot anchor ancestry baseline to the triggering commit: "
+                        f"command={' '.join(merge_base_command)}; "
+                        f"error={merge_base_result.error}"
+                    )
+                if merge_base_result.value.exit_code != 0:
+                    return r[m.Infra.BranchAncestryPlan].fail(
+                        "triggering commit shares no history with the baseline: "
+                        f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
+                        f"command={' '.join(merge_base_command)}; "
+                        f"exit={merge_base_result.value.exit_code}; "
+                        f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
+                    )
+                baseline_sha = merge_base_result.value.stdout.strip()
         pending_merge_result = u.Cli.run_raw(
             (
                 c.Infra.GIT,

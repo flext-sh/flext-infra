@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, config, m, p, t
+from flext_infra import c, config, m
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -53,35 +53,14 @@ class FlextInfraLayoutGate(FlextInfraGate):
         actionable: tuple[m.Infra.LayoutFinding, ...] = report.actionable
         blocking = tuple(finding for finding in actionable if not warning)
         passed = warning or not blocking
-        errors: list[str] = [issue.formatted for issue in issues if not passed]
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=errors,
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=passed,
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
+            started=started,
             ctx=ctx,
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — execution happens in ``check``."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — ``check`` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraLayoutGate"]

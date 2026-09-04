@@ -23,6 +23,7 @@ class FlextInfraRefactorCensusProjectMixin:
     """
 
     if TYPE_CHECKING:
+
         @property
         def fail_fast(self) -> bool: ...
 

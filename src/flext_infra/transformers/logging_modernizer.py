@@ -16,9 +16,8 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, override
 
-from flext_infra import c, u
 from flext_infra.transformers._rewrite import (
     FlextInfraSourceRewrite,
     FlextInfraSourceRewriter,
@@ -33,8 +32,6 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
     """AST-driven transformer for logging anti-patterns."""
 
     _description = "migrate logging usage to u.fetch_logger"
-
-    _CORE_PKG: ClassVar[str] = c.Infra.PKG_CORE_UNDERSCORE
 
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
@@ -77,24 +74,6 @@ class FlextInfraRefactorLoggingModernizer(FlextInfraRopeTransformer):
             self._record_change(change)
 
         return updated, list(self.changes)
-
-    @classmethod
-    def _ensure_u_import(cls, source: str) -> str:
-        """Ensure ``from flext_core import u`` is present."""
-        pkg_match = re.search(
-            r"^from\s+flext_core\s+import\s+([^\n]+)", source, re.MULTILINE
-        )
-        if pkg_match:
-            names = pkg_match.group(1).strip()
-            name_set = {n.strip() for n in names.split(",")}
-            if "u" in name_set:
-                return source
-            new_names = names + ", u"
-            return source[: pkg_match.start(1)] + new_names + source[pkg_match.end(1) :]
-        lines = source.splitlines(keepends=True)
-        insert_idx = u.Infra.find_import_insert_position(lines, past_existing=False)
-        lines.insert(insert_idx, f"from {cls._CORE_PKG} import u\n")
-        return "".join(lines)
 
     @staticmethod
     def _rewrite_from_import_node(node: ast.ImportFrom) -> tuple[str | None, str]:

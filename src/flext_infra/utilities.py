@@ -28,7 +28,6 @@ from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.github import FlextInfraUtilitiesGithub
-from flext_infra._utilities.github_pr import FlextInfraUtilitiesGithubPr
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_analysis import (
@@ -123,7 +122,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,
         FlextInfraUtilitiesGithub,
-        FlextInfraUtilitiesGithubPr,
         FlextInfraUtilitiesDependencies,
         FlextInfraUtilitiesGit,
         FlextInfraUtilitiesIteration,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -419,7 +420,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 alias=u.Infra.package_alias(package_name=package_name),
                 environment_prefix=f"{package_name.upper()}_",
                 description=f"{class_stem} test project",
-                version="0.1.0",
                 license=config.Infra.codegen.scaffold.project.supported_licenses[0],
                 author_name="FLEXT Team",
                 author_email="team@flext.dev",
@@ -438,18 +438,26 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def write_beads_project(
             repository: Path, *, workspace: str, database: str, issue_prefix: str
         ) -> Path:
-            """Write the typed repository-local Beads identity fixture."""
+            """Write the typed repository-local Beads identity fixture.
+
+            The bytes mirror the managed ``config/beads.yaml.j2`` render for
+            the same spec, so a planned regeneration of an existing fixture
+            file is never reported as drift.
+            """
             path = repository / "config" / "beads.yaml"
-            tm.ok(
-                u.Cli.yaml_dump(
-                    path,
-                    m.Infra.BeadsProjectSpec(
-                        version=c.Infra.BEADS_CONFIG_VERSION,
-                        workspace=workspace,
-                        database=database,
-                        issue_prefix=issue_prefix,
-                    ).model_dump(mode="json"),
-                )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            spec = m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=workspace,
+                database=database,
+                issue_prefix=issue_prefix,
+            )
+            path.write_text(
+                f"version: {spec.version}\n"
+                f"workspace: {json.dumps(spec.workspace)}\n"
+                f"database: {json.dumps(spec.database)}\n"
+                f"issue_prefix: {json.dumps(spec.issue_prefix)}\n\n",
+                encoding="utf-8",
             )
             return path
 
@@ -766,12 +774,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             root: Path,
             *,
             project_names: t.StrSequence = (),
-            root_validate_exit_code: str = "0",
-            project_validate_exit_codes: t.StrMapping | None = None,
+            version: str = "0.1.0",
             initialize_root_git: bool = True,
             initialize_project_git: bool = False,
         ) -> Path:
-            """Create a release workflow workspace fixture."""
+            """Create a release workflow workspace fixture.
+
+            ``version`` seeds the root ``pyproject.toml``, the version SSOT the
+            release protocol reads and is the only writer of.
+            """
             workspace = root / "workspace"
             workspace.mkdir(parents=True, exist_ok=True)
             TestsFlextInfraUtilities.Tests.write_project_beads_config(
@@ -781,14 +792,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 (
                     "[project]\n"
                     'name = "workspace"\n'
-                    'version = "0.1.0"\n'
-                    'dependencies = ["flext-core>=0.1.0"]\n'
+                    f'version = "{version}"\n'
+                    "dependencies = []\n"
                 ),
                 encoding="utf-8",
             )
-            (workspace / "Makefile").write_text(
-                f"val:\n\t@exit {root_validate_exit_code}\n", encoding="utf-8"
-            )
+            # Generated repositories ignore their report tree; the protocol's
+            # plan receipt must never count as a dirty checkout.
+            (workspace / ".gitignore").write_text(".reports/\n", encoding="utf-8")
             policy_paths = (
                 c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
                 c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
@@ -800,7 +811,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(policy_source, policy_target)
-            validate_exit_codes = dict(project_validate_exit_codes or {})
             for name in project_names:
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)
@@ -843,10 +853,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir = project / "src" / package_name
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
-                validate_exit_code = validate_exit_codes.get(name, "0")
-                (project / "Makefile").write_text(
-                    f"val:\n\t@exit {validate_exit_code}\n", encoding="utf-8"
-                )
                 TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
             if project_names:
                 TestsFlextInfraUtilities.Tests.declare_workspace_projects(
@@ -871,6 +877,73 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 str(workspace_root),
                 *arguments,
             ])
+
+        @staticmethod
+        def integration_branch(repo_root: Path) -> str:
+            """Resolve the integration branch the fixture publishes, as production does."""
+            return tm.ok(
+                u.Infra.repository_baseline_branch(
+                    repo_root,
+                    preference=tuple(
+                        config.Infra.codegen.branch_policy.integration_branch_preference
+                    ),
+                )
+            )
+
+        @staticmethod
+        def checkout_integration(repo_root: Path) -> str:
+            """Move the fixture onto its integration branch and return its name."""
+            branch = TestsFlextInfraUtilities.Tests.integration_branch(repo_root)
+            tm.ok(
+                cli_facade.run_checked(
+                    [c.Infra.GIT, "switch", "--create", branch], cwd=repo_root
+                )
+            )
+            return branch
+
+        @staticmethod
+        def merge_pull_request(repo_root: Path, subject: str) -> None:
+            """Land one pull request the way GitHub does: a merge commit titled ``subject``."""
+            branch = f"pr/{abs(hash(subject))}"
+            current = tm.ok(
+                u.Infra.git_current_branch(m.Infra.GitRepoRequest(repo_root=repo_root))
+            ).text
+            run = cli_facade.run_checked
+            tm.ok(run([c.Infra.GIT, "switch", "--create", branch], cwd=repo_root))
+            change = repo_root / "CHANGES.md"
+            with change.open("a", encoding="utf-8") as handle:
+                handle.write(f"{subject}\n")
+            tm.ok(run([c.Infra.GIT, "add", "CHANGES.md"], cwd=repo_root))
+            tm.ok(run([c.Infra.GIT, "commit", "-m", f"work: {subject}"], cwd=repo_root))
+            tm.ok(run([c.Infra.GIT, "switch", current], cwd=repo_root))
+            tm.ok(
+                run(
+                    [c.Infra.GIT, "merge", "--no-ff", "-m", subject, branch],
+                    cwd=repo_root,
+                )
+            )
+
+        @staticmethod
+        def cli_shim(bin_dir: Path, name: str) -> Path:
+            """Provide an executable that records its arguments instead of reaching a service.
+
+            ``gh`` and ``uv publish`` talk to GitHub and to a package index; a
+            unit test proves the protocol's command contract against a recorded
+            invocation, never against the real remote.
+            """
+            bin_dir.mkdir(parents=True, exist_ok=True)
+            log = bin_dir / f"{name}.log"
+            shim = bin_dir / name
+            # A ``view`` of a release or pull request answers "absent" (exit 1),
+            # the state every first publication starts from.
+            shim.write_text(
+                "#!/bin/sh\n"
+                f'printf "%s\\n" "$*" >> "{log}"\n'
+                'case "$2" in view) exit 1 ;; esac\n',
+                encoding="utf-8",
+            )
+            shim.chmod(0o755)
+            return log
 
         @staticmethod
         def release_report_dir(workspace_root: Path, version: str) -> Path:

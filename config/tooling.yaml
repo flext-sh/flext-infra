@@ -169,12 +169,6 @@ Infra:
             # under `.venv`, which `exclude` already removes from the lint
             # surface. A vendored generated file that ever becomes tracked gets
             # its rules named here, per UNIVERSAL_CORE r19.
-            # Command surfaces are dispatched by FILE NAME, not imported as
-            # modules, so a hyphenated command (loc-cap.py) is the correct CLI
-            # spelling rather than an invalid module name. Scoped to the
-            # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
-            # justified per rule, never a blanket mask).
-            "scripts/cmd/**/*.py": [invalid-module-name, shebang-not-executable]
             # Examples are executable documentation loaded by path, not
             # importable modules, so module-name and shebang rules do not apply.
             "**/examples/**/*.py": [invalid-module-name, shebang-not-executable]
@@ -556,10 +550,15 @@ Infra:
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
-        # Subprocess-heavy generation tests exhausted memory repeatedly with
-        # four workers on a loaded multi-lane host. Two keeps parallel coverage
-        # while bounding concurrent imports and nested interpreters.
+        # The full suite nests Make, Git, and Python subprocesses. Four workers
+        # previously exhausted that process topology, and a 16-worker run on a
+        # 20-CPU/63-GiB host produced six independent item timeouts. Two is the
+        # highest measured stable ceiling; live CPU and memory remain stricter
+        # additional bounds on smaller hosts.
         parallel-workers: 2
+        # Reserve physical memory for each xdist worker and its child process
+        # tree; this bound may reduce the tested ceiling on smaller hosts.
+        parallel-worker-memory-gb: 2
         # Work stealing drains uneven codegen/subprocess tails without the
         # serialized 99% tail measured under loadscope.
         parallel-distribution: worksteal

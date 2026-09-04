@@ -19,6 +19,13 @@ _MAKEFILE = _TEMPLATES / "Makefile.j2"
 _RELEASE = _TEMPLATES / ".github" / "workflows" / "release.yml.j2"
 _CI = _TEMPLATES / ".github" / "workflows" / "ci.yml.j2"
 _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
+_PRIVATE_SUBMODULES = (
+    _TEMPLATES
+    / ".github"
+    / "workflows"
+    / "_fragments"
+    / "private_submodules_init.j2"
+)
 
 
 class TestsReviewTemplateContracts:
@@ -79,16 +86,23 @@ class TestsReviewTemplateContracts:
         tm.that(text, lacks="_builtin_work_")
         tm.that(text, lacks="workspace work")
 
-    def test_release_verifies_core_gitlink_after_setup(self) -> None:
+    def test_release_workflow_only_selects_protocol_phases(self) -> None:
+        """The workflow routes to `make release` phases and decides nothing itself.
+
+        Tag precedes build, build precedes publish, and the package index is
+        reached only from the workspace profile through trusted publishing.
+        """
         text = _RELEASE.read_text(encoding="utf-8")
-        job = text.split("testpypi:", 1)[1]
-        boot = job.index("Boot workspace")
-        verify = job.index("Verify immutable flext-core gitlink")
-        root_verify = job.index("Verify immutable canary root")
-        tm.that(root_verify < boot, eq=True)
-        tm.that(boot < verify, eq=True)
-        pre = job[:boot]
-        tm.that(pre, lacks="git -C flext-core rev-parse HEAD")
+        publish = text.split("  publish:", 1)[1]
+        tag = publish.index("make release WHAT=tag")
+        build = publish.index("make release WHAT=build")
+        upload = publish.index("make release WHAT=publish")
+        tm.that(tag < build < upload, eq=True)
+        tm.that(publish, has='{% if make_profile == "workspace" %} INDEX=Y{% endif %}')
+        tm.that(publish, has="id-token: write")
+        tm.that(text, has="make release WHAT=version")
+        tm.that(text, lacks="uv publish")
+        tm.that(text, lacks="gh release")
 
     def test_ci_upload_excludes_raw_report_logs(self) -> None:
         text = _CI.read_text(encoding="utf-8")
@@ -130,6 +144,12 @@ class TestsReviewTemplateContracts:
         tm.that(text, has="{% endfor %}")
         tm.that(text, has="  # End SECTION: ci job")
         tm.that("    # End SECTION: ci job" not in text.splitlines(), eq=True)
+
+    def test_private_submodule_commands_have_no_generated_trailing_space(self) -> None:
+        """Path lists join without appending whitespace after the last gitlink."""
+        text = _PRIVATE_SUBMODULES.read_text(encoding="utf-8")
+        tm.that(text, has='{{ private_submodules.paths | join(" ") }}')
+        tm.that(text, lacks="{% for p in private_submodules.paths %}")
 
     def test_docs_workflow_uses_public_cli_not_removed_make_verb(self) -> None:
         """CI drives docs through the canonical Make verb, never a phase flag.

@@ -59,8 +59,10 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         if errors > 0:
             return r[bool].fail(f"init failed in {errors} package directories")
         if effective_dry_run and self._modified_files:
+            drifted_files = ", ".join(sorted(self._modified_files))
             return r[bool].fail(
-                f"init drift detected in {len(self._modified_files)} generated artifacts"
+                f"init drift detected in {len(self._modified_files)} "
+                f"generated artifacts: {drifted_files}"
             )
         return r[bool].ok(True)
 

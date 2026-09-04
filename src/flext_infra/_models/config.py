@@ -15,6 +15,7 @@ from flext_cli import m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
+from flext_infra._constants.release import FlextInfraConstantsRelease
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 from flext_infra._models._defaults import immutable_empty_mapping
 from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
@@ -29,6 +30,19 @@ class _ConfigContract(m.ContractModel):
     model_config = m.ConfigDict(
         strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
     )
+
+
+def _tool_version_field(description: str) -> object:
+    """Shared ``Annotated[t.NonEmptyStr, ...]`` metadata for one tool version.
+
+    Every native-toolchain version field in ``ToolchainSpec`` and its
+    ``ProjectRenderContext`` render mirror previously repeated an identical
+    ``m.Field(description=...)`` shape, differing only in the description
+    text -- a structural clone SonarCloud's duplication detector flags as one
+    family regardless of the literal string. One owned factory collapses
+    every call site to this single declaration (SSOT, DRY).
+    """
+    return m.Field(description=description)
 
 
 class FlextInfraConfigModels:
@@ -264,13 +278,16 @@ class FlextInfraConfigModels:
             ),
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl version, e.g. '1.32.0'")
+            t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm version, e.g. '3.19.4'")
+            t.NonEmptyStr, _tool_version_field("Exact Helm version, e.g. '3.19.4'")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind version, e.g. '0.31.0'")
+            t.NonEmptyStr, _tool_version_field("Exact kind version, e.g. '0.31.0'")
+        ]
+        direnv_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
         ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -285,38 +302,33 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-quality version")
+            t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
         ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        scc_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
         ]
         go_version: Annotated[
             t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Exact Go runtime version; mise resolves go: backend "
-                    "selectors through it, so beads only installs when Go "
-                    "is a declared tool"
-                )
+            _tool_version_field(
+                "Exact Go runtime version; mise resolves go: backend "
+                "selectors through it, so beads only installs when Go "
+                "is a declared tool"
             ),
-        ]
-        mise_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact mise binary version")
         ]
         mise_lock_platforms: Annotated[
             tuple[
@@ -537,10 +549,6 @@ class FlextInfraConfigModels:
                 description="GitHub Actions secret name holding the deploy key PEM"
             ),
         ]
-        host_alias: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="SSH Host alias written into ~/.ssh/config"),
-        ]
         submodule: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -550,12 +558,24 @@ class FlextInfraConfigModels:
         path: Annotated[
             t.NonEmptyStr, m.Field(description="Checkout-relative submodule path")
         ]
-        ssh_url: Annotated[
-            t.NonEmptyStr, m.Field(description="SSH clone URL using the Host alias")
+        remote: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git$",
+                description="Canonical GitHub SSH clone URL without a Host alias",
+            ),
         ]
 
     class CiPrivateSubmodulesSpec(_ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
+
+        known_hosts: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Pinned official SSH host-key lines used only in runner temp",
+            ),
+        ]
 
         paths: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -568,17 +588,32 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
 
-    class GateAttestationSpec(_ConfigContract):
-        """SSH trust and exact gate coverage for managed repositories."""
-
-        allowed_signers: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="OpenSSH allowed_signers lines"),
-        ]
-        required_gates: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Gates CI requires from local proof"),
-        ]
+        @u.model_validator(mode="after")
+        def _validate_private_submodule_identity(self) -> Self:
+            """Keep path, key, and host identities complete and unambiguous."""
+            key_paths = tuple(key.path for key in self.deploy_keys)
+            if key_paths != self.paths:
+                msg = "private submodule deploy-key paths must exactly match paths"
+                raise ValueError(msg)
+            for field, values in (
+                ("secret", tuple(key.secret for key in self.deploy_keys)),
+                ("submodule", tuple(key.submodule for key in self.deploy_keys)),
+                ("remote", tuple(key.remote for key in self.deploy_keys)),
+                ("known_hosts", self.known_hosts),
+            ):
+                if len(set(values)) != len(values):
+                    msg = f"private submodule {field} values must be unique"
+                    raise ValueError(msg)
+            for line in self.known_hosts:
+                fields = line.split()
+                if (
+                    len(fields) != 3
+                    or fields[0] != "github.com"
+                    or fields[1] != "ssh-ed25519"
+                ):
+                    msg = "private submodule known_hosts must pin github.com ssh-ed25519"
+                    raise ValueError(msg)
+            return self
 
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
@@ -600,19 +635,6 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
-        mise_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact mise action version")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Compatible uv major.minor line from the toolchain SSOT; "
-                    "feeds the CI setup-uv step so local (mise) and CI "
-                    "(setup-uv) resolve the same tool line"
-                )
-            ),
-        ]
         dependency_cooldown_days: Annotated[
             int,
             m.Field(
@@ -622,10 +644,6 @@ class FlextInfraConfigModels:
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
-        ]
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -1180,10 +1198,6 @@ class FlextInfraConfigModels:
         draft_pr: Annotated[
             bool, m.Field(description="Treat GitHub draft PRs as work-in-progress")
         ]
-        attestation_tag_prefix: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Immutable signed-tag namespace for local gate receipts"),
-        ]
         branch_patterns: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -1720,6 +1734,25 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Repository-scoped packages explicitly exempted from the "
+                    "fleet dependency cooldown"
+                )
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Repository-scoped package cutoffs projected to uv "
+                    "exclude-newer-package"
+                ),
+            ),
+        ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
@@ -1738,6 +1771,32 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+
+        @u.model_validator(mode="after")
+        def _validate_dependency_cooldown_policy(self) -> Self:
+            """Reject duplicate or contradictory repository cooldown entries."""
+            if len(set(self.dependency_cooldown_exclusions)) != len(
+                self.dependency_cooldown_exclusions
+            ):
+                msg = "repository dependency cooldown exclusions must be unique"
+                raise ValueError(msg)
+            overlap = set(self.dependency_cooldown_exclusions).intersection(
+                self.dependency_cooldown_overrides
+            )
+            if overlap:
+                msg = (
+                    "repository dependency cooldown package cannot be both excluded "
+                    f"and overridden: {', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            return self
+
+        @u.field_serializer("dependency_cooldown_overrides", when_used="json")
+        def _serialize_dependency_cooldown_overrides(
+            self, value: t.StrMapping
+        ) -> dict[str, str]:
+            """Project the immutable mapping through JSON/template boundaries."""
+            return dict(value)
 
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -1846,11 +1905,6 @@ class FlextInfraConfigModels:
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
-        ]
-
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -1876,14 +1930,6 @@ class FlextInfraConfigModels:
         uv_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="mise-owned uv version used by bootstrap validation"),
-        ]
-        mise_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact mise version required by generated launchers"),
-        ]
-        mise_lock_platforms: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Platforms included in the generated mise lockfile"),
         ]
         uv_exclude_newer: Annotated[
             t.NonEmptyStr,
@@ -2018,85 +2064,6 @@ class FlextInfraConfigModels:
             ),
         ]
 
-    class ReleaseAutomationOverrideSpec(_ConfigContract):
-        """One distribution's deviation from the shared release contract."""
-
-        release_branch: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(default=None, description="Branch that produces releases"),
-        ] = None
-        build_command: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(default=None, description="Command that produces the artifacts"),
-        ] = None
-        version_variables: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Extra file:variable version anchors"),
-        ] = ()
-
-    class ReleaseAutomationSpec(_ConfigContract):
-        """Automated semantic versioning, owned by the market tool.
-
-        Why: bump_version/parse_semver and the release orchestrator already
-        existed, but nothing DERIVED the bump -- a human passed
-        ``bump=minor`` by hand, which is exactly the judgement the commit
-        history already encodes and the one a human gets wrong. Conventional
-        Commits plus python-semantic-release replace that judgement with a
-        rule, and replace local implementation with a maintained dependency.
-
-        Declared once here so every generated pyproject carries the same
-        contract. A project that genuinely differs is expressed in
-        ``overrides``, never by editing its own pyproject.
-        """
-
-        tool: Annotated[
-            t.NonEmptyStr, m.Field(description="Release automation distribution")
-        ]
-        runner: Annotated[
-            t.NonEmptyStr, m.Field(description="Command runner that invokes the tool")
-        ]
-        commit_parser: Annotated[
-            t.NonEmptyStr, m.Field(description="Commit convention driving the bump")
-        ]
-        release_branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Branch that produces releases")
-        ]
-        version_variables: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="file:variable anchors the tool rewrites"),
-        ]
-        version_toml: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="file:tomlpath anchors the tool rewrites"),
-        ]
-        build_command: Annotated[
-            t.NonEmptyStr, m.Field(description="Command that produces the artifacts")
-        ]
-        tag_format: Annotated[
-            t.NonEmptyStr, m.Field(description="Tag shape, shared with the workflow")
-        ]
-        changelog_file: Annotated[
-            t.NonEmptyStr, m.Field(description="Generated changelog destination")
-        ]
-        overrides: Annotated[
-            Mapping[
-                t.NonEmptyStr, FlextInfraConfigModels.ReleaseAutomationOverrideSpec
-            ],
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description="Per-distribution deviations from the shared contract",
-            ),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_anchors(self) -> Self:
-            """Every anchor must name a target, or the tool rewrites nothing."""
-            for anchor in (*self.version_variables, *self.version_toml):
-                if ":" not in anchor:
-                    msg = f"release version anchor must be '<file>:<target>': {anchor}"
-                    raise ValueError(msg)
-            return self
-
     class SgconfigRenderSpec(_ConfigContract):
         """Typed input for the generated ast-grep project config.
 
@@ -2152,7 +2119,6 @@ class FlextInfraConfigModels:
         description: Annotated[
             t.NonEmptyStr, m.Field(description="Project description")
         ]
-        version: Annotated[t.NonEmptyStr, m.Field(description="Project version")]
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -2188,11 +2154,6 @@ class FlextInfraConfigModels:
 
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
-
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
-        ]
 
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -2414,55 +2375,40 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         kubectl_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kubectl toolchain version")
+            t.NonEmptyStr, _tool_version_field("Exact kubectl toolchain version")
         ]
         helm_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Helm toolchain version")
+            t.NonEmptyStr, _tool_version_field("Exact Helm toolchain version")
         ]
         kind_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact kind toolchain version")
+            t.NonEmptyStr, _tool_version_field("Exact kind toolchain version")
+        ]
+        direnv_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
         ]
         uv_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible uv major.minor line")
-        ]
-        mise_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact mise bootstrap version")
-        ]
-        mise_lock_platforms: Annotated[
-            tuple[
-                Literal[
-                    "linux-x64",
-                    "linux-arm64",
-                    "linux-x64-musl",
-                    "linux-arm64-musl",
-                    "macos-x64",
-                    "macos-arm64",
-                    "windows-x64",
-                ],
-                ...,
-            ],
-            m.Field(description="Platforms owned by the generated mise lockfile"),
+            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact qlty code-quality version")
+            t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
         ]
         taplo_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Taplo formatter version")
+            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact ast-grep analyzer version")
+            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Gitleaks scanner version")
+            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
         ]
-        tokei_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Tokei analyzer version")
+        scc_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Compatible kubeconform minor line")
+            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
         ]
         go_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact Go runtime version")
+            t.NonEmptyStr, _tool_version_field("Exact Go runtime version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -2491,6 +2437,165 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Canonical repository Git branch")
         ]
         year: Annotated[int, m.Field(description="Copyright year")]
+
+    class WorkspaceBeadsServerSpec(_ConfigContract):
+        """Optional Dolt connection declared by a versioned workspace manifest."""
+
+        backend: Annotated[
+            Literal["dolt"], m.Field(description="Workspace ledger storage engine")
+        ]
+        mode: Annotated[
+            Literal["server"], m.Field(description="Workspace ledger connection mode")
+        ]
+        shared_server: Annotated[
+            Literal[False],
+            m.Field(description="Workspace ledger uses an external Dolt endpoint"),
+        ] = False
+        host: Annotated[t.NonEmptyStr, m.Field(description="Dolt server host")]
+        port: Annotated[
+            int, m.Field(ge=1, le=65535, description="Dolt server TCP port")
+        ]
+        user: Annotated[t.NonEmptyStr, m.Field(description="Dolt server user")]
+        auto_commit: Annotated[
+            Literal["off", "on", "batch"],
+            m.Field(description="Dolt auto-commit policy"),
+        ]
+
+    class WorkspaceIntegrationSpec(_ConfigContract):
+        """Workspace overlay for one provider integration branch."""
+
+        provider: Annotated[
+            t.NonEmptyStr, m.Field(description="Configured provider key")
+        ]
+        branch: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace integration branch")
+        ]
+        organization: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional provider organization override"),
+        ] = None
+        base_url: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional provider base URL override"),
+        ] = None
+
+    class RepositoryPolicyOverlaySpec(_ConfigContract):
+        """Bounded per-project policy declared by a workspace manifest."""
+
+        project: Annotated[
+            t.NonEmptyStr, m.Field(description="Canonical project distribution")
+        ]
+        beads_enabled: Annotated[
+            bool, m.Field(description="Whether the repository participates in Beads")
+        ] = False
+        ci_enabled: Annotated[
+            bool, m.Field(description="Whether conform owns the CI surface")
+        ] = True
+        ci_matrix_auto_run: Annotated[
+            bool, m.Field(description="Whether the CI matrix runs automatically")
+        ] = False
+        extra_ignored_patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Repository-local generated ignore patterns"),
+        ] = ()
+
+    class WorkspaceExclusionSpec(_ConfigContract):
+        """One explicitly excluded workspace-relative path."""
+
+        path: Annotated[Path, m.Field(description="Workspace-relative path")]
+        reason: Annotated[t.NonEmptyStr, m.Field(description="Exclusion rationale")]
+
+    class WorkspaceManifestSpec(_ConfigContract):
+        """Complete versioned input contract for ``config/workspace.yaml``."""
+
+        version: Annotated[
+            int,
+            m.Field(
+                ge=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
+                le=FlextInfraConstantsCodegenProject.WORKSPACE_MANIFEST_VERSION,
+                description="Workspace manifest schema version",
+            ),
+        ]
+        name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
+        ledger_id: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional workspace ledger database identity"),
+        ] = None
+        ledger_prefix: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Optional workspace issue-prefix identity"),
+        ] = None
+        beads_server: Annotated[
+            FlextInfraConfigModels.WorkspaceBeadsServerSpec | None,
+            m.Field(description="Optional workspace-local Dolt connection"),
+        ] = None
+        repository: Annotated[
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(description="Root repository declaration"),
+        ]
+        project: Annotated[
+            FlextInfraConfigModels.ProjectSpec | None,
+            m.Field(description="Optional project creation metadata"),
+        ] = None
+        members: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryRef, ...],
+            m.Field(description="Declared member repository contracts"),
+        ] = ()
+        external_dependency_paths: Annotated[
+            tuple[Path, ...], m.Field(description="Declared external dependency paths")
+        ] = ()
+        content_only: Annotated[
+            tuple[Path, ...], m.Field(description="Content-only Gitlink paths")
+        ] = ()
+        exclusions: Annotated[
+            tuple[FlextInfraConfigModels.WorkspaceExclusionSpec, ...],
+            m.Field(description="Explicit workspace exclusions"),
+        ] = ()
+        integration: Annotated[
+            FlextInfraConfigModels.WorkspaceIntegrationSpec | None,
+            m.Field(description="Optional integration provider overlay"),
+        ] = None
+        repository_policy_overlays: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
+            m.Field(description="Repository-local policy overlays"),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_references(self) -> Self:
+            """Reject ambiguous paths and policy references in the full document."""
+            external_paths = (*self.external_dependency_paths, *self.content_only)
+            invalid_paths = tuple(
+                path
+                for path in external_paths
+                if path.is_absolute() or not path.parts or ".." in path.parts
+            )
+            if invalid_paths:
+                msg = "workspace dependency paths must be relative: " + ", ".join(
+                    path.as_posix() for path in invalid_paths
+                )
+                raise ValueError(msg)
+            member_paths = tuple(item.path for item in self.members)
+            if len(set(member_paths)) != len(member_paths):
+                msg = "workspace member paths must be unique"
+                raise ValueError(msg)
+            if set(member_paths).intersection(external_paths):
+                msg = "workspace members cannot also be external dependencies"
+                raise ValueError(msg)
+            projects = tuple(item.project for item in self.repository_policy_overlays)
+            if len(set(projects)) != len(projects):
+                msg = "repository policy overlays must be unique"
+                raise ValueError(msg)
+            repository_names = {
+                item.distribution for item in (self.repository, *self.members)
+            }
+            unknown_projects = set(projects).difference(repository_names)
+            if unknown_projects:
+                msg = (
+                    "repository policy overlays reference unknown projects: "
+                    + ", ".join(sorted(unknown_projects))
+                )
+                raise ValueError(msg)
+            return self
 
     class WorkspaceSpec(_ConfigContract):
         """Local identity plus topology read from this repository's Git inputs."""
@@ -2600,10 +2705,6 @@ class FlextInfraConfigModels:
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
         ]
-        gate_attestation: Annotated[
-            FlextInfraConfigModels.GateAttestationSpec,
-            m.Field(description="Managed local-gate attestation policy"),
-        ]
         checkout_submodules: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -2641,14 +2742,6 @@ class FlextInfraConfigModels:
         sgconfig: Annotated[
             FlextInfraConfigModels.SgconfigRenderSpec,
             m.Field(description="Canonical ast-grep project contract for every repo"),
-        ]
-        release: Annotated[
-            FlextInfraConfigModels.ReleaseAutomationSpec,
-            m.Field(
-                description=(
-                    "Automated semantic-release contract shared by every project"
-                )
-            ),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
@@ -2985,21 +3078,27 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Ordered static-analysis rules"),
         ]
 
-    class ReleaseEligibilitySpec(_ConfigContract):
-        """Which projects a release may build and publish.
+    class ReleasePolicySpec(_ConfigContract):
+        """The release protocol's declared data: who publishes, what bumps, where.
 
         Why (aihub-ioijy.9): `ReleaseOrchestrator._build_targets` hardcoded
         `project.name.startswith("flext-")`, so any consumer of this release
         engine whose distribution is not named `flext-*` resolved zero targets
-        and died with "release build selected no publishable projects" — the
-        version phase had already rewritten pyproject.toml by then. Publishable
-        membership is project policy, not a naming convention baked into the
-        orchestrator.
+        and died with "release build selected no publishable projects".
+        Publishable membership is project policy, not a naming convention.
 
-        An empty `publishable_prefixes` means "no prefix filter": every resolved
-        project is a candidate. That is the correct default for a single-project
-        repository and keeps the engine reusable outside this workspace.
+        `bump_types` maps a Conventional Commits type found in a merged
+        pull-request title to the bump it earns; a type absent from the map
+        releases nothing, and `!` in the title always earns a major bump. The
+        Conventional Commits defaults are the typed default, so a consumer
+        repository declares only what differs.
         """
+
+        # The bump map is consumed as enum members by the strict release plan,
+        # so the contract base's value coercion is switched off here.
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", use_enum_values=False
+        )
 
         publishable_prefixes: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -3011,6 +3110,24 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        bump_types: Annotated[
+            Mapping[t.NonEmptyStr, FlextInfraConstantsRelease.VersionBump],
+            m.Field(
+                default_factory=lambda: {
+                    "feat": FlextInfraConstantsRelease.VersionBump.MINOR,
+                    "fix": FlextInfraConstantsRelease.VersionBump.PATCH,
+                    "perf": FlextInfraConstantsRelease.VersionBump.PATCH,
+                },
+                description="Conventional Commits type -> semantic version bump",
+            ),
+        ]
+        publish_url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                default="https://upload.pypi.org/legacy/",
+                description="Package index upload endpoint for verified artifacts",
+            ),
+        ]
 
     # This
     # field-only namespace is the sole validated owner exposed as config.Infra.
@@ -3018,8 +3135,14 @@ class FlextInfraConfigModels:
         """Complete flext-infra configuration namespace."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Project distribution name")]
-        version: Annotated[
-            t.NonEmptyStr, m.Field(description="Project release version")
+        initial_project_version: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description=(
+                    "Version seeded into a newly scaffolded project's pyproject; "
+                    "from then on the release protocol is the only writer"
+                )
+            ),
         ]
         codegen: Annotated[
             FlextInfraConfigModels.CodegenConfigSpec,
@@ -3034,13 +3157,8 @@ class FlextInfraConfigModels:
             m.Field(description="Production-only source discovery contract"),
         ]
         release: Annotated[
-            FlextInfraConfigModels.ReleaseEligibilitySpec,
-            m.Field(
-                default_factory=lambda: FlextInfraConfigModels.ReleaseEligibilitySpec(
-                    publishable_prefixes=()
-                ),
-                description="Release build and publish eligibility contract",
-            ),
+            FlextInfraConfigModels.ReleasePolicySpec,
+            m.Field(description="Release protocol policy: eligibility, bumps, index"),
         ]
         # Static policy is validated data, never detector code.
         enforcement: Annotated[
@@ -3110,8 +3228,25 @@ class FlextInfraConfigModels:
             m.Field(description="Local, remote, and worktree ancestry inventory"),
         ]
 
+    class WorkspaceEnvironmentCliRequest(_ConfigContract):
+        """CLI-safe request for one Python workspace environment sync."""
+
+        workspace_root: Annotated[
+            Path, m.Field(description="Workspace root receiving the sync")
+        ]
+        apply: Annotated[
+            bool, m.Field(description="Write changes instead of reporting them")
+        ] = True
+        force: Annotated[
+            bool, m.Field(description="Replace custom files with generated content")
+        ] = False
+        allow_direnv: Annotated[
+            bool,
+            m.Field(description="Authorize the rendered .envrc after an applied sync"),
+        ] = True
+
     class WorkspaceEnvironmentSyncRequest(_ConfigContract):
-        """Validated public request for one workspace environment sync."""
+        """Validated internal request for one workspace environment sync."""
 
         workspace_root: Annotated[
             Path, m.Field(description="Workspace root receiving the sync")
@@ -3129,7 +3264,7 @@ class FlextInfraConfigModels:
                 description=(
                     "Programmatic-only selection of generated beads-workspace "
                     ".envrc instead of the Python package environment"
-                )
+                ),
             ),
         ] = None
         allow_direnv: Annotated[

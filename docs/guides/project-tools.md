@@ -16,7 +16,7 @@ never grows a field for a single project's requirement.
 
 | Layer | Declared by | Produced by | Reached through |
 |---|---|---|---|
-| Fleet toolchain (python, uv, kubectl, helm, kind, taplo, ast-grep, gitleaks, tokei, kubeconform, qlty, go, beads) | `config/codegen.yaml` `toolchain:` | `make gen` → `.mise.toml`, `mise.lock`, `bin/mise` | direnv activation of the project root |
+| Fleet toolchain (python, uv, kubectl, helm, kind, taplo, ast-grep, gitleaks, scc, kubeconform, qlty, go, beads) | `config/codegen.yaml` `toolchain:` | `make gen` → `.mise.toml`, `mise.lock`, `bin/mise` | direnv activation of the project root |
 | Project tools | `<project>/config/*.yaml` `ManagedArtifacts.Mise.tools` | the same `make gen`, composed after the fleet template | the same activation |
 | Project development dependencies (linters, type checkers, test runners) | `pyproject.toml`, from `dependency_profiles` | `make setup` → `.venv` | `PATH_add .venv/bin` in the activation |
 | Host runtime tools shared by every shell and service | the host tool owner's registry, outside this repository | the host tool owner's generator into the user Mise registry | global Mise shims |
@@ -38,7 +38,9 @@ ManagedArtifacts:
         platforms: [linux-x64, linux-arm64, macos-x64, macos-arm64, windows-x64]
 ```
 
-- `version` is exact. `latest` and ranges are rejected by the lock validator.
+- Tool versions are validated against the declared selector. Moving selectors
+  such as `latest` remain moving; `mise.lock` records the exact resolved tool
+  artifacts and checksums used by the generated project.
 - `platforms` is optional. Absent means the tool publishes assets for every
   fleet lock platform. A subset records, in the project that owns the tool, the
   platforms its backend cannot lock; the lock validator then expects exactly

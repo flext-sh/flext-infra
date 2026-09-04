@@ -52,8 +52,7 @@ class FlextInfraModelsGates:
         gate: Annotated[
             t.NonEmptyStr,
             m.Field(
-                pattern=r"^[a-z][a-z0-9-]*$",
-                description="Canonical Make gate name",
+                pattern=r"^[a-z][a-z0-9-]*$", description="Canonical Make gate name"
             ),
         ]
         command: Annotated[t.NonEmptyStr, m.Field(description="Exact Make command")]
@@ -82,26 +81,6 @@ class FlextInfraModelsGates:
                 raise ValueError(msg)
             return self
 
-    class GatePromotionSource(m.ContractModel):
-        """One exact Draft head incorporated into the promoted aggregate."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            extra="forbid", frozen=True
-        )
-
-        pr: Annotated[t.PositiveInt, m.Field(description="Source Draft PR number")]
-        head_sha: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact source Draft head SHA")
-        ]
-        bead: Annotated[t.NonEmptyStr, m.Field(description="Source work Bead")]
-
-        @u.model_validator(mode="after")
-        def _validate_source(self) -> Self:
-            if not re.fullmatch(r"[0-9a-f]{40}", self.head_sha):
-                msg = "promotion source head_sha must be a full lowercase Git SHA"
-                raise ValueError(msg)
-            return self
-
     class GateAttestationPredicate(m.ContractModel):
         """Canonical signed statement for locally completed gates."""
 
@@ -116,17 +95,6 @@ class FlextInfraModelsGates:
         repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
         commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Full commit SHA")]
         tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Full tree SHA")]
-        bead: Annotated[t.NonEmptyStr, m.Field(description="Owning Bead identifier")]
-        pull_request: Annotated[
-            t.PositiveInt, m.Field(description="GitHub pull request number")
-        ]
-        integration_branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Protected integration branch")
-        ]
-        sources: Annotated[
-            tuple[FlextInfraModelsGates.GatePromotionSource, ...],
-            m.Field(min_length=1, description="Complete ordered Draft source manifest"),
-        ]
         signer: Annotated[
             t.NonEmptyStr, m.Field(description="Allowed-signers principal")
         ]
@@ -143,7 +111,10 @@ class FlextInfraModelsGates:
 
         @u.model_validator(mode="after")
         def _validate_predicate(self) -> Self:
-            for name, value in (("commit_sha", self.commit_sha), ("tree_sha", self.tree_sha)):
+            for name, value in (
+                ("commit_sha", self.commit_sha),
+                ("tree_sha", self.tree_sha),
+            ):
                 if not re.fullmatch(r"[0-9a-f]{40}", value):
                     msg = f"{name} must be a full lowercase Git SHA"
                     raise ValueError(msg)
@@ -159,23 +130,12 @@ class FlextInfraModelsGates:
             ):
                 msg = "covered_gates and command evidence must match one-to-one"
                 raise ValueError(msg)
-            source_prs = tuple(item.pr for item in self.sources)
-            if len(source_prs) != len(set(source_prs)):
-                msg = "promotion source PRs must be unique"
-                raise ValueError(msg)
             return self
 
     class GateAttestationCreateRequest(m.ContractModel):
         """Run required gates and transparently create the signed HEAD proof."""
 
         workspace: Annotated[str, m.Field(description="Git repository root")] = "."
-        bead: Annotated[t.NonEmptyStr, m.Field(description="Owning Bead identifier")]
-        pull_request: Annotated[
-            t.PositiveInt, m.Field(description="Review pull request number")
-        ]
-        integration_branch: Annotated[
-            t.NonEmptyStr, m.Field(description="Protected integration branch")
-        ]
         signer: Annotated[
             t.NonEmptyStr, m.Field(description="Allowed-signers principal")
         ]
@@ -201,8 +161,7 @@ class FlextInfraModelsGates:
             t.StrSequence, m.Field(min_length=1, description="Required gate coverage")
         ]
         commit_sha: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Exact attested commit SHA"),
+            t.NonEmptyStr, m.Field(description="Exact attested commit SHA")
         ]
         output: Annotated[
             str | None,
@@ -225,12 +184,10 @@ class FlextInfraModelsGates:
         tag: Annotated[t.NonEmptyStr, m.Field(description="Full attestation tag")]
         commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested commit SHA")]
         tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Attested tree SHA")]
-        signer: Annotated[t.NonEmptyStr, m.Field(description="Verified signer principal")]
-        covered_gates: Annotated[t.StrSequence, m.Field(description="Covered gates")]
-        sources: Annotated[
-            tuple[FlextInfraModelsGates.GatePromotionSource, ...],
-            m.Field(description="Attested Draft source manifest"),
+        signer: Annotated[
+            t.NonEmptyStr, m.Field(description="Verified signer principal")
         ]
+        covered_gates: Annotated[t.StrSequence, m.Field(description="Covered gates")]
 
 
 __all__: list[str] = ["FlextInfraModelsGates"]
