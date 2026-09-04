@@ -51,8 +51,9 @@ jobs:
 
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
+{% if mise_version != "latest" %}        with:
           version: {{ mise_version }}
+{% endif %}
 
       # Why: the official uv cache must never be reused across differently
       # resolved projects — cache identity is owned ONLY by uv.lock. The uv
