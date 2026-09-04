@@ -18,15 +18,21 @@ class TestsCodegenMiseArtifacts:
         return "a" * 64
 
     @classmethod
-    def _write_launchers(cls, root: Path, *, version: str | None = None) -> None:
-        resolved = version or config.Infra.codegen.toolchain.mise_version
+    def _write_launchers(
+        cls,
+        root: Path,
+        *,
+        version: str = "2026.9.1",
+        windows_version: str | None = None,
+    ) -> None:
+        resolved_windows = windows_version or version
         checksum = cls._launcher_checksum()
         launchers = root / "bin"
         launchers.mkdir(parents=True, exist_ok=True)
         (launchers / "mise").write_text(
             "\n".join((
                 "#!/usr/bin/env bash",
-                f'local mise_version="${{MISE_VERSION:-{resolved}}}"',
+                f'local mise_version="${{MISE_VERSION:-{version}}}"',
                 f'checksum_linux_x86_64="{checksum}"',
                 f'checksum_linux_x86_64_musl="{checksum}"',
                 f'checksum_linux_arm64="{checksum}"',
@@ -41,7 +47,7 @@ class TestsCodegenMiseArtifacts:
         (launchers / "mise.cmd").write_text(
             "\n".join((
                 "@echo off",
-                f'set "pinned_version={resolved}"',
+                f'set "pinned_version={resolved_windows}"',
                 f'set "sum_x64={checksum}"',
                 "",
             )),
@@ -218,7 +224,7 @@ class TestsCodegenMiseArtifacts:
 
     def test_launcher_version_drift_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project")
-        self._write_launchers(root, version="2000.1.1")
+        self._write_launchers(root, windows_version="2000.1.1")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "workspace_root": root,

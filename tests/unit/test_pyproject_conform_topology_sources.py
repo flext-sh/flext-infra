@@ -1,8 +1,9 @@
 """Tests for canonical dependency source selection by topology role.
 
-The workspace root owns the local ``workspace = true`` overlay. Publishable
-projects retain their catalog Git provenance so the same package metadata works
-outside the workspace; uv applies the root overlay when resolving them locally.
+The workspace root owns the local ``workspace = true`` overlay. Publishable and
+standalone projects retain unversioned FLEXT requirements so uv resolves the
+newest published release outside the workspace and applies the root overlay
+locally.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -113,7 +114,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         tm.that(group, eq=("flext-core",))
         tm.that(runtime, eq=("flext-core",))
 
-    def test_external_consumer_keeps_remote_branch_source(self) -> None:
+    def test_external_consumer_tracks_latest_published_release(self) -> None:
         workspace = _workspace()
         external = (
             '[project]\nname = "acme-platform"\nversion = "0.1.0"\n'
@@ -130,15 +131,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
 
-        # The expected specifier is derived from the same declared repository
-        # contract the generator reads - never a hardcoded URL or branch.
         project = workspace.subprojects[0]
-        tm.that(
-            dependencies,
-            eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
-        )
+        tm.that(dependencies, eq=(project.distribution,))
 
-    def test_publishable_project_keeps_catalog_git_provenance(self) -> None:
+    def test_publishable_project_tracks_latest_published_release(self) -> None:
         workspace = _workspace_with_consumer()
         provider = workspace.subprojects[0]
         publishable_project = (
@@ -156,18 +152,10 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
-        tm.that(
-            dependencies,
-            eq=(
-                (
-                    f"{provider.distribution} @ git+{provider.url}@"
-                    f"{_PROVIDER_SPEC.branch}"
-                ),
-            ),
-        )
+        tm.that(dependencies, eq=(provider.distribution,))
 
-    def test_publishable_project_pins_unmapped_provider_source_to_branch(self) -> None:
-        """Derive the declared branch for a provider absent from subprojects."""
+    def test_publishable_project_removes_frozen_unmapped_git_source(self) -> None:
+        """An internal requirement absent from topology still tracks releases."""
         workspace = _workspace_with_consumer()
         consumer = workspace.subprojects[1]
         result = u.Infra.pyproject_dependencies_conform(
@@ -184,15 +172,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
-        tm.that(
-            dependencies,
-            eq=(
-                (
-                    "flext-unmapped @ git+https://github.com/flext-sh/"
-                    f"flext-unmapped.git@{_PROVIDER_SPEC.branch}"
-                ),
-            ),
-        )
+        tm.that(dependencies, eq=("flext-unmapped",))
 
     def test_root_workspace_overlay_resolves_publishable_project_with_uv(
         self, tmp_path: Path
@@ -278,7 +258,7 @@ workspace = true
         tm.that(provider_source.get("editable"), eq=provider.path.as_posix())
         tm.that("git" in provider_source, eq=False)
 
-    def test_standalone_replaces_workspace_source_with_git_requirement(self) -> None:
+    def test_standalone_replaces_workspace_source_with_latest_requirement(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(
@@ -291,10 +271,7 @@ workspace = true
         project = workspace.subprojects[0]
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
-        tm.that(
-            dependencies,
-            eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
-        )
+        tm.that(dependencies, eq=(project.distribution,))
         parsed = u.Cli.toml_parse_text(rendered)
         if parsed is None:
             message = "rendered dependency metadata is invalid TOML"

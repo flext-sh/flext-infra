@@ -11,19 +11,6 @@ from flext_tests import tm
 from tests import WorktreeFixture, u as test_u
 
 
-def _is_immutable_selector(version: str) -> bool:
-    """Exact release tag (fork/prerelease suffix allowed) or full commit sha.
-
-    A suffixed tag such as ``1.2.2-fd1`` names one published artifact just as
-    exactly as ``1.2.2``; only a moving ref (``latest``, a branch, a range) is
-    mutable, and those never match the shapes below.
-    """
-    if len(version) == 40 and all(char in "0123456789abcdef" for char in version):
-        return True
-    core = version.partition("-")[0].split(".")
-    return len(core) == 3 and all(part.isdecimal() for part in core)
-
-
 def _repository(
     name: str, *, path: str, role: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryRef:
@@ -72,18 +59,25 @@ class TestsCodegenCatalogExtensions:
         tm.that(duplicate_result.error, has="must resolve exactly once")
 
     def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
-        tm.that(
-            _is_immutable_selector(config.Infra.codegen.toolchain.beads.version),
-            eq=True,
-        )
+        tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
-    def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
+    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
         toolchain = config.Infra.codegen.toolchain
 
-        mise_parts = toolchain.mise_version.split(".")
-        tm.that(len(mise_parts), eq=3)
-        tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
-        tm.that(_is_immutable_selector(toolchain.beads.version), eq=True)
+        tm.that(toolchain.mise_version, eq="latest")
+
+    def test_flext_dependencies_have_no_frozen_version_or_git_ref(self) -> None:
+        dependencies = (
+            dependency
+            for profile in config.Infra.codegen.scaffold.project.dependency_profiles
+            for dependency in (*profile.runtime, *profile.codegen)
+            if dependency.startswith("flext-")
+        )
+
+        tm.that(
+            all(not any(marker in dependency for marker in "@<>=~!") for dependency in dependencies),
+            eq=True,
+        )
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -105,6 +99,13 @@ class TestsCodegenCatalogExtensions:
         tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
         tm.that("_builtin_gen_check:" in content, eq=True)
         tm.that("_builtin_gen_apply:" in content, eq=True)
+        bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
+            encoding="utf-8"
+        )
+        tm.that(bootstrap, has='"{{ mise }}" latest mise')
+        tm.that("curl " in bootstrap, eq=False)
+        tm.that(bootstrap, lacks="self-update")
+        tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
 

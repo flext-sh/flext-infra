@@ -411,7 +411,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def mise_version(self) -> str:
-            """Exact mise binary version."""
+            """Mise release selector."""
             ...
 
         @property

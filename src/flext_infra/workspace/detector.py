@@ -530,8 +530,7 @@ class FlextInfraWorkspaceDetector(
                 (
                     item
                     for item in inherited.value.subprojects
-                    if item.path is not None
-                    and (superproject_root / item.path).resolve() == resolved_root
+                    if (superproject_root / item.path).resolve() == resolved_root
                 ),
                 None,
             )

@@ -118,9 +118,8 @@ workspace = true
         tm.that(document["project"]["dependencies"], eq=["flext-core"])
         tm.that(document["dependency-groups"]["workspace"], eq=["flext-core"])
 
-    def test_standalone_uses_catalog_git_provenance(self) -> None:
+    def test_standalone_tracks_the_latest_published_dependency(self) -> None:
         workspace = _workspace()
-        member = workspace.subprojects[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
@@ -128,10 +127,7 @@ workspace = true
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
         document = tomllib.loads(tm.ok(result))
-        tm.that(
-            document["project"]["dependencies"],
-            eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
-        )
+        tm.that(document["project"]["dependencies"], eq=["flext-core"])
 
     def test_dependency_conformance_removes_only_legacy_uv_constraint(self) -> None:
         workspace = _workspace()
@@ -186,7 +182,9 @@ constraint-dependencies = ["uv>=0"]
         tm.that(uv_config["link-mode"], eq="copy")
         tm.that("constraint-dependencies" not in uv_config, eq=True)
 
-    def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
+    def test_standalone_does_not_project_catalog_transport_into_requirement(
+        self,
+    ) -> None:
         workspace = _workspace()
         member = workspace.subprojects[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
@@ -198,7 +196,8 @@ constraint-dependencies = ["uv>=0"]
             workspace=invalid_workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
-        tm.that(result.failure, eq=True)
+        document = tomllib.loads(tm.ok(result))
+        tm.that(document["project"]["dependencies"], eq=["flext-core"])
 
     def test_workspace_rejects_conflicting_direct_source(self) -> None:
         workspace = _workspace()
@@ -287,23 +286,23 @@ python-interpreter-path = "../.venv/bin/python"
         # StopIteration and the test failed for a reason unrelated to what it
         # measures. The expectation now derives from the same SSOT sequence
         # production reads, so it survives any legitimate change to that set.
-        # A declared floor reaches the rendered group verbatim UNLESS it names a
-        # workspace project, which dependency provenance rewrites to its pinned
-        # git requirement (measured: "flext-tests" renders as
-        # "flext-tests @ git+.../flext-tests.git@<branch>"). Asserting by
-        # package name keeps both shapes in scope without re-encoding either.
+        # A declared floor reaches the rendered group verbatim. Asserting by
+        # package name keeps the shape in scope without re-encoding it.
         rendered_names = {
             u.Infra.dep_name(requirement)
             for requirement in document["dependency-groups"]["dev"]
         }
         for requirement in required_dev:
             tm.that(u.Infra.dep_name(requirement) in rendered_names, eq=True)
+        # Operator order 2026-09-04: a flext dependency carries no frozen
+        # version and no git ref. Provenance used to rewrite a workspace
+        # project to "<dist> @ git+<url>@<branch>", which pinned every member
+        # to one branch and blocked the update it is supposed to receive.
+        # Measured after the change: the rendered requirement is the bare
+        # distribution name.
         tm.that(
             document["project"]["dependencies"][0],
-            eq=(
-                f"{workspace.subprojects[0].distribution} @ "
-                f"git+{workspace.subprojects[0].url}@{_PROVIDER_SPEC.branch}"
-            ),
+            eq=workspace.subprojects[0].distribution,
         )
 
     def test_declared_manifest_version_is_projected_onto_project_table(self) -> None:

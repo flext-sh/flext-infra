@@ -306,7 +306,8 @@ class FlextInfraUtilitiesPyprojectConform:
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace_dependencies: frozenset[str],
     ) -> p.Result[str]:
-        """Render one internal requirement from its local topology reference."""
+        """Keep internal requirements on the newest published release."""
+        del repositories, providers
         dependency_name = FlextInfraUtilitiesDependencies.dep_name(requirement)
         if dependency_name is None or not dependency_name.startswith("flext-"):
             return r[str].ok(requirement.strip())
@@ -316,35 +317,12 @@ class FlextInfraUtilitiesPyprojectConform:
             return r[str].fail(f"invalid internal requirement: {requirement}")
         head = head_match.group("head").strip()
         marker_text = marker.strip()
-        if dependency_name in workspace_dependencies:
-            if "@" in requirement_part:
-                return r[str].fail(
-                    "workspace dependency declares a conflicting direct source: "
-                    f"{dependency_name}"
-                )
-            return r[str].ok(
-                f"{head}; {marker_text}" if separator and marker_text else head
-            )
-        reference_result = cls._repository_reference(
-            dependency_name, repositories=repositories, providers=providers
-        )
-        if reference_result.failure:
+        if dependency_name in workspace_dependencies and "@" in requirement_part:
             return r[str].fail(
-                reference_result.error
-                or f"repository resolution failed: {dependency_name}"
+                "workspace dependency declares a conflicting direct source: "
+                f"{dependency_name}"
             )
-        reference = reference_result.value
-        provider = FlextInfraUtilitiesRepository.repository_provider(
-            reference, providers
-        )
-        if provider.failure:
-            return r[str].fail(
-                provider.error or "repository provider resolution failed"
-            )
-        git_url = cls._git_requirement_url(reference.url)
-        if git_url.failure:
-            return r[str].fail(git_url.error or "repository URL validation failed")
-        canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
+        canonical = head
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
         )
@@ -383,15 +361,6 @@ class FlextInfraUtilitiesPyprojectConform:
                 f"repository catalog conflicts for distribution: {distribution}"
             )
         return r.ok(reference)
-
-    @staticmethod
-    def _git_requirement_url(url: str) -> p.Result[str]:
-        """Render the configured HTTPS clone URL as a PEP 508 Git URL."""
-        if not url.startswith("https://"):
-            return r[str].fail(
-                f"repository URL must use the configured HTTPS transport: {url}"
-            )
-        return r[str].ok(f"git+{url}")
 
     @classmethod
     def _sync_dependency_groups(
@@ -817,7 +786,8 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[bool]:
-        """Require one internal dependency provenance for the active topology."""
+        """Reject frozen sources for internal published dependencies."""
+        del project_name, workspace_mode
         payload = u.Cli.toml_as_mapping(document)
         if payload is None:
             return r[bool].fail("pyproject document is not a TOML mapping")
@@ -828,11 +798,6 @@ class FlextInfraUtilitiesPyprojectConform:
         project = payload.get(c.Infra.PROJECT)
         if not isinstance(project, Mapping):
             return r[bool].fail("pyproject content must define [project]")
-        workspace_context_root = cls._is_workspace_context_root(
-            project_name=project_name,
-            workspace=workspace,
-            workspace_mode=workspace_mode,
-        )
         for key in (c.Infra.DEPENDENCIES, c.Infra.OPTIONAL_DEPENDENCIES):
             value = project.get(key)
             if isinstance(value, Mapping):
@@ -849,14 +814,9 @@ class FlextInfraUtilitiesPyprojectConform:
             if dependency_name not in member_names:
                 continue
             has_direct_source = "@" in requirement.partition(";")[0]
-            if workspace_context_root and has_direct_source:
+            if has_direct_source:
                 return r[bool].fail(
-                    "workspace dependency declares a conflicting direct source: "
-                    f"{dependency_name}"
-                )
-            if not workspace_context_root and not has_direct_source:
-                return r[bool].fail(
-                    "publishable dependency lacks configured Git source: "
+                    "internal dependency retains a frozen direct source: "
                     f"{dependency_name}"
                 )
         return r[bool].ok(True)
