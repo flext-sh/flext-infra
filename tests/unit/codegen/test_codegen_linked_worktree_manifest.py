@@ -77,7 +77,7 @@ class TestCodegenLinkedWorktreeTopology:
             all(path.is_relative_to(lane) for path in applied.written_files), eq=True
         )
         tm.that(
-            tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(lane)),
+            tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(lane)),
             eq=lane.resolve(),
         )
         tm.that(lane_beads.read_bytes(), eq=lane_beads_bytes)
@@ -127,10 +127,10 @@ class TestCodegenLinkedWorktreeTopology:
         tm.fail(result, has=expected_error)
         tm.that(WorktreeFixture.repository_snapshot(root), eq=before)
 
-    def test_workspace_members_inherit_identity_and_topology_inputs_are_never_rewritten(
+    def test_declared_repositories_inherit_identity_and_inputs_are_never_rewritten(
         self, tmp_path: Path
     ) -> None:
-        """Conform subprojects without creating member-local ledger identity."""
+        """Conform declared repositories without a member-local ledger identity."""
         root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -139,7 +139,6 @@ class TestCodegenLinkedWorktreeTopology:
             database="root-database",
             issue_prefix="root-prefix",
         )
-        project_names = ("fixture-alpha", "fixture-beta")
         project_names = ("fixture-alpha", "fixture-beta")
         for project_name in project_names:
             WorktreeFixture.initialize_governed_project(
@@ -160,13 +159,15 @@ class TestCodegenLinkedWorktreeTopology:
         gitmodules = WorktreeFixture.write_gitmodules(root, project_names)
         u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, *project_names))
         u.Tests.git_bootstrap(
-            root, ("commit", "-m", "fixture: declare workspace subprojects")
+            root, ("commit", "-m", "fixture: declare governed repositories")
         )
         protected_bytes = {gitmodules: gitmodules.read_bytes()}
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(
-            tuple(project.path.as_posix() for project in workspace.subprojects),
+            tuple(
+                project.path.as_posix() for project in workspace.declared_repositories
+            ),
             eq=project_names,
         )
         for project_name in project_names:
@@ -182,7 +183,7 @@ class TestCodegenLinkedWorktreeTopology:
             FlextInfraCodegenConform.execute_request(
                 m.Infra.CodegenConformRequest(
                     root=root,
-                    scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                    scope=c.Infra.CodegenConformScope.DECLARED,
                     mode=c.Infra.CodegenConformMode.APPLY,
                 )
             )
@@ -200,10 +201,8 @@ class TestCodegenLinkedWorktreeTopology:
             empty=True,
         )
 
-    def test_declared_subproject_cannot_escape_through_a_linked_path(
-        self, tmp_path: Path
-    ) -> None:
-        """Reject a declared subproject whose path resolves outside its owner."""
+    def test_declared_cannot_escape_through_a_linked_path(self, tmp_path: Path) -> None:
+        """Reject a declared declared_repository whose path resolves outside its owner."""
         root = tmp_path / "workspace"
         outside = tmp_path / "outside-project"
         WorktreeFixture.initialize_governed_project(
@@ -228,10 +227,10 @@ class TestCodegenLinkedWorktreeTopology:
             m.Infra.CodegenConformRequest(
                 root=root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SUBPROJECTS,
+                scope=c.Infra.CodegenConformScope.DECLARED,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )
         )
 
-        tm.fail(result, has="escapes workspace root")
+        tm.fail(result, has="escapes repository root")
         tm.that(WorktreeFixture.repository_snapshot(outside), eq=outside_snapshot)

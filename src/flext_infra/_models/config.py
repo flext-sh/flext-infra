@@ -568,7 +568,7 @@ class FlextInfraConfigModels:
         ]
 
     class CiPrivateSubmoduleDeployKeySpec(_ConfigContract):
-        """One read-only deploy key that unlocks a private workspace subproject in CI."""
+        """One read-only deploy key that unlocks a private workspace declared_repository in CI."""
 
         secret: Annotated[
             t.NonEmptyStr,
@@ -683,7 +683,7 @@ class FlextInfraConfigModels:
             m.Field(
                 default=(),
                 description=(
-                    "Governed subproject repositories consumed by workspace-scoped "
+                    "Governed declared_repository repositories consumed by workspace-scoped "
                     "workflow templates (docs paths, dependabot directories)"
                 ),
             ),
@@ -731,7 +731,7 @@ class FlextInfraConfigModels:
             m.Field(
                 default=None,
                 description=(
-                    "Optional private-subproject deploy-key init for this "
+                    "Optional private-declared_repository deploy-key init for this "
                     "distribution; None means the workflow skips the step"
                 ),
             ),
@@ -1515,14 +1515,14 @@ class FlextInfraConfigModels:
 
             The base policy states the strictest contract (private handlers
             only). A profile whose custom surface legitimately owns more --
-            a workspace root orchestrating its subprojects -- declares only the
+            a repository root orchestrating its declared_repositories -- declares only the
             fields it relaxes, so the engine never has to know which project
             it is conforming.
             """
             base = self.custom_handler_policy
             overrides = self.custom_handler_profile_overrides
             # Keys are normalised to the profile's string value: MakeProfile is a
-            # StrEnum, so a raw YAML key and its enum subproject must land on the SAME
+            # StrEnum, so a raw YAML key and its enum declared_repository must land on the SAME
             # entry. Mixing both would make a lookup silently miss and fall back to
             # the strict base policy.
             return {
@@ -1683,9 +1683,9 @@ class FlextInfraConfigModels:
                 description=(
                     "Make profiles this section applies to; empty means every "
                     "profile (universal). Sections that only make sense at the "
-                    "superproject root (subproject-directory allowlists, workspace "
+                    "superproject root (declared_repository-directory allowlists, workspace "
                     "manifest, submodule/Beads coordination) declare "
-                    "[workspace] so subprojects and standalone projects never "
+                    "[workspace] so declared_repositories and standalone projects never "
                     "receive the phantom entries."
                 )
             ),
@@ -1733,7 +1733,7 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical GitHub clone URL ending in .git"),
         ]
         path: Annotated[
-            Path, m.Field(description="POSIX path relative to its workspace root")
+            Path, m.Field(description="POSIX path relative to its repository root")
         ]
         role: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -1949,11 +1949,12 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr, m.Field(description="Relative workspace root path")
+        repository_root_rel: Annotated[
+            t.NonEmptyStr, m.Field(description="Relative repository root path")
         ]
-        workspace_subprojects: Annotated[
-            tuple[str, ...], m.Field(description="Declared workspace subproject paths")
+        declared_repositories: Annotated[
+            tuple[str, ...],
+            m.Field(description="Declared workspace declared_repository paths"),
         ] = ()
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
@@ -2005,7 +2006,7 @@ class FlextInfraConfigModels:
         orchestrated_verbs: Annotated[
             tuple[str, ...],
             m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
+                description="Repository-root gate verbs routed through orchestration"
             ),
         ] = ()
         workspace_cli_group: Annotated[
@@ -2185,9 +2186,9 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Declared relative path to the workspace root"),
+            m.Field(description="Declared relative path to the repository root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
@@ -2264,9 +2265,9 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Relative path to the declared workspace root"),
+            m.Field(description="Relative path to the declared repository root"),
         ]
         makefile_custom_include: Annotated[
             str,
@@ -2275,12 +2276,13 @@ class FlextInfraConfigModels:
                 description=("Make directive that includes the custom Make surface"),
             ),
         ]
-        workspace_subprojects: Annotated[
-            tuple[str, ...], m.Field(description="Ordered workspace subproject paths")
+        declared_repositories: Annotated[
+            tuple[str, ...],
+            m.Field(description="Ordered workspace declared_repository paths"),
         ] = ()
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
-            m.Field(description="Ordered workspace subproject records"),
+            m.Field(description="Ordered workspace declared_repository records"),
         ] = ()
         workspace_gitlinks: Annotated[
             tuple[FlextInfraConfigModels.ManagedGitlinkSpec, ...],
@@ -2298,7 +2300,7 @@ class FlextInfraConfigModels:
             tuple[str, ...],
             m.Field(
                 description=(
-                    "Gate verbs a workspace Makefile fans out across subprojects "
+                    "Gate verbs a workspace Makefile fans out across declared_repositories "
                     "through the generic workspace orchestrate primitive"
                 )
             ),
@@ -2652,7 +2654,7 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ProjectSpec | None,
             m.Field(description="Metadata required only when materializing a new tree"),
         ] = None
-        subprojects: Annotated[
+        declared_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Direct governed repositories from local .gitmodules"),
         ] = ()
@@ -2680,14 +2682,14 @@ class FlextInfraConfigModels:
             ):
                 msg = "external dependency paths must be unique"
                 raise ValueError(msg)
-            subproject_paths = {item.path for item in self.subprojects}
-            if len(subproject_paths) != len(self.subprojects):
-                msg = "subproject paths must be unique"
+            declared_paths = {item.path for item in self.declared_repositories}
+            if len(declared_paths) != len(self.declared_repositories):
+                msg = "declared_repository paths must be unique"
                 raise ValueError(msg)
-            overlap = subproject_paths.intersection(self.external_dependency_paths)
+            overlap = declared_paths.intersection(self.external_dependency_paths)
             if overlap:
                 msg = (
-                    "external dependencies cannot also be governed subprojects: "
+                    "external dependencies cannot also be governed declared_repositories: "
                     f"{', '.join(sorted(path.as_posix() for path in overlap))}"
                 )
                 raise ValueError(msg)
@@ -2764,7 +2766,7 @@ class FlextInfraConfigModels:
                 default_factory=immutable_empty_mapping,
                 description=(
                     "Per-distribution override of checkout_submodules, for "
-                    "projects that really do exercise their subprojects in CI"
+                    "projects that really do exercise their declared_repositories in CI"
                 ),
             ),
         ]
@@ -3328,8 +3330,8 @@ class FlextInfraConfigModels:
     class WorkspaceEnvironmentCliRequest(_ConfigContract):
         """CLI-safe request for one Python workspace environment sync."""
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+        repository_root: Annotated[
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
@@ -3455,7 +3457,7 @@ class FlextInfraConfigModels:
     class CodegenConformRequest(_ConfigContract):
         """Validated public request for ``flext-infra codegen conform``."""
 
-        root: Annotated[Path, m.Field(description="Repository or workspace root")]
+        root: Annotated[Path, m.Field(description="Repository or repository root")]
         what: Annotated[
             FlextInfraConstantsCodegenProject.CodegenConformSurface,
             m.Field(description="Managed file selection"),

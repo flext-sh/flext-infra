@@ -79,7 +79,7 @@ class TestsFlextInfraCodegenVscode:
     def test_search_paths_are_independent_from_repository_topology(
         self, tmp_path: Path
     ) -> None:
-        """Keep opened-folder settings canonical for roots and subprojects."""
+        """Keep opened-folder settings canonical for roots and declared_repositories."""
         project_root = tmp_path / "workspace"
         project_root.mkdir()
         provider = u.Tests.provider()

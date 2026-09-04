@@ -99,11 +99,13 @@ class FlextInfraCodegenLayoutGitignoreMixin:
     @staticmethod
     def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
         """Make profile when the project is governed by a workspace."""
-        workspace_root = FlextInfraWorkspaceDetector.resolve_workspace_root(project_dir)
-        if workspace_root.failure:
+        repository_root = FlextInfraWorkspaceDetector.resolve_repository_root(
+            project_dir
+        )
+        if repository_root.failure:
             return None
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            workspace_root.value
+            repository_root.value
         )
         if workspace.failure:
             return None

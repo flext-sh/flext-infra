@@ -21,7 +21,7 @@
 #                     (default: dry-run — validate only, never touch workspace)
 set -euo pipefail
 
-# This script lives at .github/scripts/flext-law-loop.sh; the workspace root
+# This script lives at .github/scripts/flext-law-loop.sh; the composition root
 # is therefore two levels up.
 WORKSPACE_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
 cd "${WORKSPACE_ROOT}"

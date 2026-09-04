@@ -55,7 +55,7 @@ class FlextInfraLocDeltaValidator(s[bool]):
     def execute(self) -> p.Result[bool]:
         """Evaluate the workspace HEAD commit's labelled net-LOC delta."""
         report = u.Infra.git_head_numstat(
-            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
+            m.Infra.GitRepoRequest(repo_root=self.repository_root)
         )
         if report.failure:
             return r[bool].fail(report.error or "git numstat read failed")

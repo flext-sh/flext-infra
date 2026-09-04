@@ -30,7 +30,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
     ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
         """Run actionlint on the repository and return results."""
         actionlint = shutil.which("actionlint")
-        workspace_root = request.workspace_path
+        repository_root = request.workspace_path
         if actionlint is None:
             payload_skipped = m.Infra.GithubWorkflowLintOutcome(
                 status=c.Infra.WorkflowLintStatus.SKIPPED.value,
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
                     m.Cli.JsonWriteOptions(sort_keys=True),
                 )
             return r[m.Infra.GithubWorkflowLintOutcome].ok(payload_skipped)
-        result = u.Cli.run_raw([actionlint], cwd=workspace_root)
+        result = u.Cli.run_raw([actionlint], cwd=repository_root)
         if result.success:
             output = result.value
             payload = m.Infra.GithubWorkflowLintOutcome(
@@ -73,8 +73,8 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
         cls, request: m.Infra.GithubWorkflowSyncRequest
     ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
         """Sync workflows across all workspace projects."""
-        workspace_root = request.workspace_path
-        source_result = cls._github_resolve_source_workflow(workspace_root, None)
+        repository_root = request.workspace_path
+        source_result = cls._github_resolve_source_workflow(repository_root, None)
         if source_result.failure:
             return r[m.Infra.GithubWorkflowSyncReport].fail(
                 source_result.error or "source resolution failed"
@@ -85,7 +85,7 @@ class FlextInfraUtilitiesGithub(FlextInfraUtilitiesGithubSyncMixin):
                 template_result.error or "template render failed"
             )
         projects_result = FlextInfraUtilitiesDocsScope.resolve_projects(
-            workspace_root, list(request.projects or [])
+            repository_root, list(request.projects or [])
         )
         if projects_result.failure:
             return r[m.Infra.GithubWorkflowSyncReport].fail(

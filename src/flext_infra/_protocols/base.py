@@ -141,7 +141,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def path(self) -> Path:
-            """Repository path relative to its workspace root."""
+            """Repository path relative to its repository root."""
             ...
 
         @property
@@ -251,7 +251,9 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+        def declared_repositories(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Direct governed repositories declared by local .gitmodules."""
             ...
 
@@ -289,7 +291,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Read-only workspace environment validation request."""
 
         @property
-        def workspace_root(self) -> Path:
+        def repository_root(self) -> Path:
             """Workspace whose active interpreter provenance must be validated."""
             ...
 
@@ -501,9 +503,9 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for project discovery services."""
 
         def discover_projects(
-            self, workspace_root: Path
+            self, repository_root: Path
         ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-            """Discover projects in a workspace root."""
+            """Discover projects in a repository root."""
             ...
 
     @runtime_checkable
@@ -578,9 +580,9 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
-            """Discover project paths in workspace root."""
+            """Discover project paths in repository root."""
             ...
 
         def run_deptry(
@@ -620,7 +622,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self, workspace_root: Path, venv_bin: Path
+            self, repository_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -686,7 +688,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run(
             self,
-            workspace_root: Path | None = None,
+            repository_root: Path | None = None,
             *,
             output_format: str = "json",
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,

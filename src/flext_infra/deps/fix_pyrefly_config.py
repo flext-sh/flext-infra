@@ -19,17 +19,17 @@ logger = u.fetch_logger(__name__)
 class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
-    _workspace_root: Path
+    _repository_root: Path
 
     def __init__(
-        self, workspace_root: Path | None = None, *, workspace: Path | None = None
+        self, repository_root: Path | None = None, *, workspace: Path | None = None
     ) -> None:
         """Initialize pyrefly settings fixer."""
-        resolved_workspace = u.Infra.resolve_workspace_root_or_cwd(
-            workspace_root or workspace
+        resolved_workspace = u.Infra.resolve_repository_root_or_cwd(
+            repository_root or workspace
         )
-        super().__init__(workspace_root=resolved_workspace)
-        self._workspace_root = self.workspace_root
+        super().__init__(repository_root=resolved_workspace)
+        self._repository_root = self.repository_root
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -39,7 +39,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
     @classmethod
     def execute_payload(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
         """Execute pyrefly config repair from the canonical check command payload."""
-        fixer = cls(workspace_root=params.workspace_path)
+        fixer = cls(repository_root=params.workspace_path)
         fix_result = fixer.run(
             projects=params.project_names or [],
             dry_run=params.dry_run,
@@ -78,7 +78,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         original_pyrefly: t.JsonMapping = dict(pyrefly)
         all_fixes: t.MutableSequenceOf[str] = []
         project_dir = path.parent
-        is_root = project_dir == self._workspace_root
+        is_root = project_dir == self._repository_root
         search_result = self._sync_search_path(pyrefly, project_dir, is_root=is_root)
         if search_result.failure:
             return search_result
@@ -127,13 +127,13 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             (
                 project_path
                 if project_path.is_absolute()
-                else (self._workspace_root / project_path)
+                else (self._repository_root / project_path)
             ).resolve()
             for project in projects
             for project_path in [Path(project)]
         ]
         files_result = u.Infra.find_all_pyproject_files(
-            self._workspace_root, project_paths=project_paths or None
+            self._repository_root, project_paths=project_paths or None
         )
         if files_result.failure:
             return r[t.StrSequence].fail(
@@ -154,7 +154,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             total_fixes += len(fixes)
             if verbose:
                 try:
-                    rel = path.relative_to(self._workspace_root)
+                    rel = path.relative_to(self._repository_root)
                 except ValueError:
                     rel = path
                 for fix in fixes:

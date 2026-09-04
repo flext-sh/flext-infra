@@ -104,7 +104,7 @@ def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
 
     result = FlextInfraDocGenerator().generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=True
         )
     )
 

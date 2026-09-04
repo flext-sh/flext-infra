@@ -37,15 +37,15 @@ class FlextInfraModernizeOrchestrator:
         self, params: m.Infra.ModernizeInput
     ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
         """Run modernize across selected projects."""
-        workspace_root = params.workspace_path
-        project_roots = self._resolve_projects(workspace_root, params.projects)
+        repository_root = params.workspace_path
+        project_roots = self._resolve_projects(repository_root, params.projects)
         if not project_roots:
             return r[t.SequenceOf[m.Infra.Result]].fail(
                 "No projects selected", error_code="MODERNIZE_NO_PROJECTS"
             )
 
         results: list[m.Infra.Result] = []
-        with u.Infra.open_project(workspace_root) as rope_project:
+        with u.Infra.open_project(repository_root) as rope_project:
             for project_root in project_roots:
                 project_results = self._modernize_project(
                     rope_project=rope_project,
@@ -79,10 +79,10 @@ class FlextInfraModernizeOrchestrator:
         return r[t.Cli.ResultValue].ok(True)
 
     def _resolve_projects(
-        self, workspace_root: Path, project_names: t.StrSequence | None
+        self, repository_root: Path, project_names: t.StrSequence | None
     ) -> t.SequenceOf[Path]:
         """Resolve project roots, optionally filtered by name."""
-        project_roots = u.Infra.discover_project_roots(workspace_root=workspace_root)
+        project_roots = u.Infra.discover_project_roots(repository_root=repository_root)
         if project_names:
             name_set = set(project_names)
             project_roots = [p for p in project_roots if p.name in name_set]

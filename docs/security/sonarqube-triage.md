@@ -683,10 +683,10 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        28      """Private candidate enumeration for workspace project discovery."""
        29  
        30      @classmethod
->>>    31      def discover_external_workspace_roots(
-       32          cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
+>>>    31      def discover_external_repository_roots(
+       32          cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
        33      ) -> t.SequenceOf[Path]:
-       34          """Return explicitly configured workspace roots outside ``workspace_root``.
+       34          """Return explicitly configured repository roots outside ``repository_root``.
        35
 ```
 **Decisão**:
@@ -703,7 +703,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       120      @classmethod
 >>>   121      def discover_project_candidates(
       122          cls,
-      123          workspace_root: Path,
+      123          repository_root: Path,
       124          *,
       125          scan_dirs: frozenset[str] | None = None,
 ```
@@ -900,7 +900,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       274  
       275      @staticmethod
 >>>   276      def find_all_pyproject_files(
-      277          workspace_root: Path,
+      277          repository_root: Path,
       278          *,
       279          skip_dirs: frozenset[str] | None = None,
       280          project_paths: t.SequenceOf[Path] | None = None,
@@ -1064,7 +1064,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 >>>    21      def scan_workspace(
        22          cls,
        23          *,
-       24          workspace_root: Path,
+       24          repository_root: Path,
        25          target: str,
 ```
 **Decisão**:
@@ -1530,10 +1530,10 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       169  
       170      @classmethod
 >>>   171      def index_rope_workspace(
-      172          cls, rope_project: t.Infra.RopeProject, workspace_root: Path
+      172          cls, rope_project: t.Infra.RopeProject, repository_root: Path
       173      ) -> m.Infra.RopeWorkspaceIndex:
       174          """Build a generic Rope workspace index for package-oriented planning."""
-      175          resolved_root = workspace_root.resolve()
+      175          resolved_root = repository_root.resolve()
 ```
 **Decisão**:
 
@@ -2017,7 +2017,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        84      @classmethod
 >>>    85      def _create_complete_worktree(
        86          cls,
-       87          workspace_root: Path,
+       87          repository_root: Path,
        88          worktree_root: Path,
        89          transaction_id: str,
 ```
@@ -2066,7 +2066,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```python
 30      if TYPE_CHECKING:
-       31          workspace_root: Path
+       31          repository_root: Path
        32          _modified_files: t.Infra.StrSet
        33  
 >>>    34      def _generate_all_inits(
@@ -2162,7 +2162,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 >>>    96      def execute(self) -> p.Result[m.Infra.CodegenResult]:
        97          """Run check or apply and require a verified fixed point."""
        98          request = self.request or m.Infra.CodegenConformRequest(
-       99              root=self.workspace_root
+       99              root=self.repository_root
       100          )
 ```
 **Decisão**:
@@ -2271,7 +2271,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
      1040          self,
      1041          *,
      1042          root: Path,
-     1043          workspace_root: Path,
+     1043          repository_root: Path,
 ```
 **Decisão**:
 
@@ -2317,9 +2317,9 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.
 
 ```python
-1560          workspace_root_rel = FlextInfraCodegenConform._workspace_root_rel(workspace)
+1560          repository_root_rel = FlextInfraCodegenConform._repository_root_rel(workspace)
      1561          local_path: Path = local.path
-     1562          return (Path(workspace_root_rel) / local_path).as_posix()
+     1562          return (Path(repository_root_rel) / local_path).as_posix()
      1563  
 >>>  1564      def _artifact_render_context(
      1565          self,
@@ -2865,7 +2865,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       379          self,
       380          *,
       381          is_root: bool,
-      382          workspace_root: Path | None = None,
+      382          repository_root: Path | None = None,
 ```
 **Decisão**:
 
@@ -3153,7 +3153,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       259                      ),
       260                  ),
       261              )
-      262          with u.Infra.open_project(self._workspace_root) as rope_project:
+      262          with u.Infra.open_project(self._repository_root) as rope_project:
 ```
 **Decisão**:
 
@@ -3420,7 +3420,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
        27  
        28      @classmethod
 >>>    29      def _build_parent_inventory(
-       30          cls, workspace_root: Path
+       30          cls, repository_root: Path
        31      ) -> t.MappingKV[str, t.StrSequence]:
        32          """Inventory governed-package alias top-level facade names.
        33
@@ -3667,9 +3667,9 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 > Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.
 
 ```python
-32      def __init__(self, *, workspace_root: Path) -> None:
-       33          """Create migration service bound to a workspace root."""
-       34          self._workspace_root = workspace_root.resolve()
+32      def __init__(self, *, repository_root: Path) -> None:
+       33          """Create migration service bound to a repository root."""
+       34          self._repository_root = repository_root.resolve()
        35  
 >>>    36      def run(
        37          self,
@@ -3798,7 +3798,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       241  
       242      @staticmethod
 >>>   243      def _resolve_list_setting(
-      244          key: str, base_entries: tuple[str, ...], *, workspace_root: Path
+      244          key: str, base_entries: tuple[str, ...], *, repository_root: Path
       245      ) -> tuple[str, ...]:
       246          """Resolve one canonical list, deriving extra globs from the topology."""
       247          if key != c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY:
@@ -3870,7 +3870,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
       127  
       128      @classmethod
 >>>   129      def transaction_scoped_paths(
-      130          cls, args: t.StrSequence, workspace_root: Path
+      130          cls, args: t.StrSequence, repository_root: Path
       131      ) -> tuple[Path, ...]:
       132          """Derive workspace-relative paths the command can touch.
       133
@@ -4137,7 +4137,7 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 ```python
 272          """Compose the existing JUnit/log diagnostic owner in-process."""
       273          extractor = FlextInfraPytestDiagExtractor(
-      274              workspace_root=self.root,
+      274              repository_root=self.root,
       275              junit=report_dir / "junit.xml",
 >>>   276              log_path=report_dir / "pytest.log",
       277          )
@@ -4316,14 +4316,14 @@ Cada issue traz a **mensagem do SonarQube** (descreve o problema e o impacto), o
 
 ```python
 27          """Validate one CLI request without mutating the environment."""
-       28          return cls.validate(request.workspace_root)
+       28          return cls.validate(request.repository_root)
        29  
        30      @classmethod
 >>>    31      def validate(
-       32          cls, workspace_root: Path, *, metadata_paths: t.StrSequence | None = None
+       32          cls, repository_root: Path, *, metadata_paths: t.StrSequence | None = None
        33      ) -> p.Result[int]:
        34          """Validate PEP 610 and editable path metadata for active members."""
-       35          resolved_root = workspace_root.resolve()
+       35          resolved_root = repository_root.resolve()
 ```
 **Decisão**:
 
@@ -5958,7 +5958,7 @@ there is no active source block to triage.
 > Remove the unused function parameter "project_names".
 
 ```python
-20      _workspace_root: Path
+20      _repository_root: Path
        21      _rope_project: t.Infra.RopeProject
        22  
        23      def _resolve_project_roots(
@@ -6036,7 +6036,7 @@ there is no active source block to triage.
        37      def __init__(
 >>>    38          self,
        39          *,
-       40          workspace_root: Path | None = None,
+       40          repository_root: Path | None = None,
        41          apply_changes: bool = False,
        42          check_only: bool = False,
 ```
@@ -6703,7 +6703,7 @@ there is no active source block to triage.
        46      )
        47      def test_file_rejects_non_normalized_or_control_text(self, file: str) -> None:
 >>>    48          with pytest.raises(c.ValidationError, match="file must"):
-       49              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), file=file)
+       49              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), file=file)
        50  
        51      def test_what_accepts_only_canonical_test_modes(self) -> None:
        52          validator = FlextInfraPytestSelectorValidator(
@@ -6717,12 +6717,12 @@ there is no active source block to triage.
 
 ```python
 58                  FlextInfraPytestSelectorValidator(
-       59                      workspace_root=Path.cwd(), what=what
+       59                      repository_root=Path.cwd(), what=what
        60                  ).execute()
        61              )
 >>>    62          with pytest.raises(c.ValidationError, match="what must be"):
        63              FlextInfraPytestSelectorValidator(
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
        66          with pytest.raises(c.ValidationError, match="what must be"):
 ```
@@ -6736,10 +6736,10 @@ there is no active source block to triage.
 ```python
 62          with pytest.raises(c.ValidationError, match="what must be"):
        63              FlextInfraPytestSelectorValidator(
-       64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+       64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
 >>>    66          with pytest.raises(c.ValidationError, match="what must be"):
-       67              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+       67              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), what="cov")
        68          with pytest.raises(
        69              c.ValidationError, match="cache-status rejects FILE and MATCH"
        70          ):
@@ -6752,15 +6752,15 @@ there is no active source block to triage.
 > Refactor this exception test to have only one invocation possibly throwing an exception.
 
 ```python
-64                  workspace_root=Path.cwd(), what="$(shell touch marker)"
+64                  repository_root=Path.cwd(), what="$(shell touch marker)"
        65              )
        66          with pytest.raises(c.ValidationError, match="what must be"):
-       67              FlextInfraPytestSelectorValidator(workspace_root=Path.cwd(), what="cov")
+       67              FlextInfraPytestSelectorValidator(repository_root=Path.cwd(), what="cov")
 >>>    68          with pytest.raises(
        69              c.ValidationError, match="cache-status rejects FILE and MATCH"
        70          ):
        71              FlextInfraPytestSelectorValidator(
-       72                  workspace_root=Path.cwd(), what="cache-status", match="x"
+       72                  repository_root=Path.cwd(), what="cache-status", match="x"
 ```
 **Decisão**:
 

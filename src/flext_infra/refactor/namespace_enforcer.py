@@ -26,12 +26,12 @@ class FlextInfraNamespaceEnforcer(
 ):
     """Orchestrate namespace enforcement across a workspace."""
 
-    def __init__(self, *, workspace_root: Path) -> None:
-        """Initialize with the workspace root path."""
+    def __init__(self, *, repository_root: Path) -> None:
+        """Initialize with the repository root path."""
         super().__init__()
-        self._workspace_root = workspace_root.resolve()
+        self._repository_root = repository_root.resolve()
         self._rope_project: t.Infra.RopeProject = u.Infra.init_rope_project(
-            self._workspace_root
+            self._repository_root
         )
 
     @override
@@ -61,7 +61,7 @@ class FlextInfraNamespaceEnforcer(
             )
             project_reports.append(report)
         return m.Infra.WorkspaceEnforcementReport.from_projects(
-            workspace=str(self._workspace_root), projects=project_reports
+            workspace=str(self._repository_root), projects=project_reports
         )
 
     @override
@@ -70,7 +70,7 @@ class FlextInfraNamespaceEnforcer(
     ) -> t.SequenceOf[Path]:
         """Discover and optionally filter project roots."""
         project_roots = u.Infra.discover_project_roots(
-            workspace_root=self._workspace_root
+            repository_root=self._repository_root
         )
         project_roots = [
             project_root
@@ -147,7 +147,7 @@ class FlextInfraNamespaceEnforcer(
         cls, params: m.Infra.RefactorNamespaceEnforceInput
     ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
-        enforcer = cls(workspace_root=params.workspace_path)
+        enforcer = cls(repository_root=params.workspace_path)
         report = enforcer.enforce(
             apply=params.apply, project_names=params.project_names, gates=params.gates
         )

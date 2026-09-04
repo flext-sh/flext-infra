@@ -155,10 +155,10 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
         return url, branch
 
     @classmethod
-    def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
+    def git_submodule_paths(cls, repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Resolve every initialized recursive submodule path."""
         try:
-            repo = cls._repo(workspace_root)
+            repo = cls._repo(repository_root)
             status = repo.git.submodule("status", "--recursive")
         except GitCommandError as exc:
             return r[t.SequenceOf[Path]].fail(str(exc))
@@ -178,7 +178,7 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
             except ValueError:
                 continue
             relative_path = Path(relative_path_text)
-            if (workspace_root / relative_path / ".git").exists():
+            if (repository_root / relative_path / ".git").exists():
                 paths.append(relative_path)
         return r[t.SequenceOf[Path]].ok(tuple(sorted(paths, key=path_depth_then_text)))
 

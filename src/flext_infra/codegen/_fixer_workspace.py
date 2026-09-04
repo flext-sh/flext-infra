@@ -19,7 +19,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
     """Private project iteration for codegen fixer composition."""
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
         dry_run: bool
         rules_only: bool
 
@@ -65,7 +65,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.repository_root)
             discovered = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )

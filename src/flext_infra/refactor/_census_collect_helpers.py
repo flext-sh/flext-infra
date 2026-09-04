@@ -194,7 +194,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             module_parts = module_parts[:-1]
         module_name = ".".join(module_parts)
         package_name = module_parts[0] if module_parts else project_root.name
-        resource_path = str(stub_path.relative_to(rope.rope_workspace_root))
+        resource_path = str(stub_path.relative_to(rope.rope_repository_root))
         return m.Infra.RopeModuleIndexEntry(
             file_path=stub_path,
             resource_path=resource_path,

@@ -493,7 +493,8 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                 return r[bool].fail(f"release tag {tag} already points elsewhere")
             return r[bool].ok(True)
         return u.Cli.run_checked(
-            [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"], cwd=workspace_root
+            [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"],
+            cwd=repository_root,
         )
 
     # --------------------------------------------------------------- helpers

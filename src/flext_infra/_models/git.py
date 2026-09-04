@@ -55,7 +55,7 @@ class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path, m.Field(description="Workspace or superproject root")
         ]
 

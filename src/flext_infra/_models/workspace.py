@@ -24,8 +24,8 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        workspace_root: Annotated[
-            Path, m.Field(alias="workspace", description="Workspace root path")
+        repository_root: Annotated[
+            Path, m.Field(alias="workspace", description="Repository root path")
         ]
 
     class FlextBindingRequest(m.ContractModel):
@@ -33,7 +33,7 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path, m.Field(alias="workspace", description="Consumer project root")
         ]
         flext_root: Annotated[
