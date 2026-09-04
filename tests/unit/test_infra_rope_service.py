@@ -48,6 +48,43 @@ class TestsFlextInfraInfraRopeService:
         finally:
             rope.close()
 
+    def test_script_guard_bindings_are_not_exports(self, tmp_path: Path) -> None:
+        """A name bound under ``if __name__ == "__main__":`` is not a module export.
+
+        flext-core's examples bound ``result`` and ``msg`` in their script
+        blocks; the regenerated package facade re-exported them and every
+        importer failed with a missing module attribute.
+        """
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        module_path = package_root / "demo.py"
+        module_path.write_text(
+            '"""Demo."""\n\n'
+            "LIMIT = 3\n\n\n"
+            "def run() -> int:\n"
+            '    """Run."""\n'
+            "    return LIMIT\n\n\n"
+            'if __name__ == "__main__":\n'
+            "    result = run()\n"
+            "    if result != LIMIT:\n"
+            '        msg = "unexpected"\n'
+            "        raise RuntimeError(msg)\n",
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        rope = FlextInfraRopeWorkspace.open_workspace(workspace_root)
+        try:
+            exports = rope.exports(
+                module_path,
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_assignments": True,
+                    "allow_functions": True,
+                }),
+            )
+        finally:
+            rope.close()
+
+        tm.that(exports, has=["LIMIT", "run"], lacks=["result", "msg"])
+
     def test_open_workspace_indexes_declared_wrapper_packages(
         self, tmp_path: Path
     ) -> None:

@@ -77,6 +77,13 @@ class TestsFlextInfraReleaseHelpers:
 
             tm.ok(result)
             tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+            # The markdown gate (MD012) rejects a trailing blank line, so a
+            # first changelog ends with exactly one newline.
+            changelog = (workspace / "docs" / "CHANGELOG.md").read_text(
+                encoding="utf-8"
+            )
+            tm.that(changelog.endswith("\n"), eq=True)
+            tm.that(changelog.endswith("\n\n"), eq=False)
             tm.that((workspace / "docs" / "releases" / "latest.md").is_file(), eq=True)
             tm.that(
                 (

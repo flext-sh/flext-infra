@@ -168,9 +168,14 @@ class FlextInfraUtilitiesRelease:
         if heading in existing:
             return existing
         marker = "# Changelog\n\n"
-        if marker in existing:
-            return existing.replace(marker, marker + section, 1)
-        return "# Changelog\n\n" + section + existing
+        updated = (
+            existing.replace(marker, marker + section, 1)
+            if marker in existing
+            else marker + section + existing
+        )
+        # Why: a first changelog ended with the section's blank line, and the
+        # markdown gate (MD012) rejected the release lane for it.
+        return updated.rstrip("\n") + "\n"
 
     @classmethod
     def release_publish_waves(
