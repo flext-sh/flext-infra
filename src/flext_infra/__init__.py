@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from .codegen.layout import FlextInfraCodegenLayout
     from .codegen.lazy_init import FlextInfraCodegenLazyInit
     from .codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+    from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
     from .codegen.managed_conflicts_bootstrap import (
         ManagedConflictBootstrapError,
@@ -329,6 +330,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenLazyInitPlanner",
+    "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenManagedConflicts",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
@@ -582,6 +584,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.layout": ("FlextInfraCodegenLayout",),
             ".codegen.lazy_init": ("FlextInfraCodegenLazyInit",),
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
+            ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
             ".codegen.managed_conflicts_bootstrap": (
                 "ManagedConflictBootstrapError",

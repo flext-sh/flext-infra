@@ -221,9 +221,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path)
         )
         changes.extend(
-            FlextInfraEnsureRuffConfigPhase(config.Infra.tooling).apply_payload(
-                payload, path=path
-            )
+            FlextInfraEnsureRuffConfigPhase(
+                config.Infra.tooling, self.managed_artifacts
+            ).apply_payload(payload, path=path)
         )
         changes.extend(
             FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
