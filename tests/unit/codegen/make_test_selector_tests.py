@@ -186,7 +186,10 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             uv_log.read_text(encoding="utf-8"),
-            has=[f"venv {engine_root / '.venv'}", f"sync --project {engine_root}"],
+            has=[
+                f"venv {engine_root / '.venv'}",
+                f"sync --frozen --project {engine_root}",
+            ],
         )
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
