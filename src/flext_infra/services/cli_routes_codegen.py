@@ -93,6 +93,20 @@ class CodegenRoutes(CliRouteBase):
                         "init complete",
                     ),
                     (
+                        "lazy-init",
+                        (
+                            "Regenerate PEP 562 lazy-import __init__.py files as "
+                            "part of the continuous gen check/apply cycle (unlike "
+                            "`init`, which only bootstraps a fresh, unprovisioned "
+                            "repository)"
+                        ),
+                        FlextInfraCodegenLazyInit,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenLazyInit.execute_command
+                        ),
+                        "lazy-init complete",
+                    ),
+                    (
                         "census",
                         "Count namespace violations across workspace projects",
                         FlextInfraCodegenCensus,

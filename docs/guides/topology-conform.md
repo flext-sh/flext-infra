@@ -8,6 +8,13 @@
 <!-- TOC END -->
 
 ## Authorities
+<!-- TOC START -->
+- [Effective topology](#effective-topology)
+- [Scoped projection isolation](#scoped-projection-isolation)
+- [Full refactor workflow](#full-refactor-workflow)
+- [Synchronization and setup](#synchronization-and-setup)
+- [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
+<!-- TOC END -->
 
 Each governed repository has exactly two local inputs:
 
@@ -31,8 +38,34 @@ workspace validates each direct governed path declared by its own `.gitmodules`:
 - its branch follows the configured provider contract;
 - its own `config/beads.yaml` exists and validates.
 
-Subprojects keep independent Beads identities. A workspace never copies its
-identity into a subproject and never overwrites a subproject's source config.
+## Scoped projection isolation
+
+`codegen conform --what makefile --scope self` is a declaration-only
+projection. It reads the target repository's `config/workspace.yaml`, PEP 621
+metadata, the packaged codegen configuration and Makefile template, and the
+current destination content needed for the fixed-point comparison. It does not
+inspect Beads state, Git remotes, branch ancestry, registered worktrees, sibling
+checkouts, or environment-manager state.
+
+Apply mode plans the projection twice before publication and requires identical
+destination, content digest, content and removal intent. A planning failure or
+nondeterministic result therefore leaves a pre-existing Makefile byte- and
+inode-identical; the validated candidate is then promoted with one atomic write.
+
+The Makefile projection requires a repository-local workspace declaration and
+rejects broader scopes. `--what all` remains the operational conformance route:
+it validates live topology, Beads, environments, and ancestry in addition to
+planning every governed artifact.
+
+## Full refactor workflow
+=======
+- the workspace root's `config/beads.yaml` exists and validates.
+
+Direct governed submodules have exactly one ledger mode. A checked-in `.beads`
+symlink inherits the workspace root's ledger and requires a routing-only
+`config/beads.yaml` naming the same identity. A real `.beads` directory makes
+the member an independent ledger owner and requires its own local identity.
+Standalone repositories are ledger owners with their own local identity.
 External provider URLs remain read-only dependency paths.
 
 Missing, malformed, duplicate, escaping, or mismatched inputs fail before any
@@ -46,11 +79,13 @@ the requested checkout. `subprojects` and `all` are valid only from a workspace
 whose own `.gitmodules` declares governed direct subprojects.
 
 The generated `.beads/config.yaml` and `.beads/metadata.json` are projections of
-the selected repository's local Beads identity plus the fleet-owned Gas City
-contract. Rigs declare `inherited_city` and never copy a city host or port;
-Gas City owns endpoint resolution and its compatibility mirror. The custom-type
-projection preserves project extensions first and appends the required Gas City
-baseline. Generation never starts, stops, initializes, probes, or mutates Dolt.
+the selected repository's owned Beads identity plus the fleet-owned Gas City
+contract. Workspace root owns the shared ledger, direct submodules inherit it,
+and standalone repositories own theirs. Rigs declare `inherited_city` and never
+copy a city host or port; Gas City owns endpoint resolution and its
+compatibility mirror. The custom-type projection preserves project extensions
+first and appends the required Gas City baseline. Generation never starts,
+stops, initializes, probes, or mutates Dolt.
 
 The generated Makefile preserves the same boundary: workspace orchestration may
 fan out to direct local subprojects, while standalone repositories and linked

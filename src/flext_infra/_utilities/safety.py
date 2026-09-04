@@ -30,9 +30,13 @@ class FlextInfraUtilitiesSafety:
         result: p.Result[str]
         checkpoint_label = label.strip() or "checkpoint"
         repo_check = u.Cli.run_raw(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=repo
+            [c.Infra.GIT, "rev-parse", "--show-toplevel"], cwd=repo
         )
-        if repo_check.failure or repo_check.value.exit_code != 0:
+        if (
+            repo_check.failure
+            or repo_check.value.exit_code != 0
+            or Path(repo_check.value.stdout.strip()).resolve() != repo.resolve()
+        ):
             result = r[str].ok("")
         else:
             status_result = u.Cli.run_raw(
@@ -58,9 +62,13 @@ class FlextInfraUtilitiesSafety:
         if not checkpoint:
             return r[bool].ok(True)
         repo_check = u.Cli.run_raw(
-            [c.Infra.GIT, "rev-parse", "--is-inside-work-tree"], cwd=repo
+            [c.Infra.GIT, "rev-parse", "--show-toplevel"], cwd=repo
         )
-        if repo_check.failure or repo_check.value.exit_code != 0:
+        if (
+            repo_check.failure
+            or repo_check.value.exit_code != 0
+            or Path(repo_check.value.stdout.strip()).resolve() != repo.resolve()
+        ):
             return r[bool].ok(True)
         return r[bool].fail(
             "repository-wide checkpoint rollback is unsupported; "

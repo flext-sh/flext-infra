@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra import config, m
 from flext_tests import tm
 
 _TEMPLATES = (
@@ -18,22 +19,45 @@ _MAKEFILE = _TEMPLATES / "Makefile.j2"
 _RELEASE = _TEMPLATES / ".github" / "workflows" / "release.yml.j2"
 _CI = _TEMPLATES / ".github" / "workflows" / "ci.yml.j2"
 _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
+_PRIVATE_SUBMODULES = (
+    _TEMPLATES / ".github" / "workflows" / "_fragments" / "private_submodules_init.j2"
+)
 
 
 class TestsReviewTemplateContracts:
     """Lock the SSOT fixes for bootstrap pin, PROJECT selection, TestPyPI order."""
 
     def test_makefile_bootstrap_uses_configured_branch_without_git_probe(self) -> None:
+        """Bootstrap pins its toolchain declaratively, never by probing git.
+
+        The original defect was a bootstrap that resolved flext-infra by running
+        ``git rev-parse`` against the caller's checkout, so the pin depended on
+        whatever tree invoked make. That probe stays banned. The pip/``git+``
+        install it once required is gone: ``infra_repository`` is no longer part
+        of ``ProjectRenderContext``, and provisioning now runs through the
+        tracked mise launcher pinned to a config-owned version.
+        """
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(text, lacks="FLEXT_INFRA_BOOTSTRAP_REF")
         tm.that(text, lacks='rev-parse "HEAD:{{ infra_repository.path }}"')
         tm.that(
-            text,
-            has=(
-                "{{ infra_repository.distribution }} @ git+"
-                "{{ infra_repository.url }}@{{ infra_repository_branch }}"
-            ),
+            "infra_repository" in m.Infra.ProjectRenderContext.model_fields, eq=False
         )
+        tm.that(text, has="SETUP_MISE_VERSION := {{ mise_version }}")
+        tm.that(text, has="setup: _bootstrap_setup_tools")
+        tm.that(text, has="env -u MISE_INSTALL_PATH -u MISE_VERSION")
+
+    def test_makefile_setup_installs_the_lock_without_writing_it(self) -> None:
+        """Setup provisions exactly the committed lock and never mutates it.
+
+        Why (flext-1wjg1.16): a plain `uv sync` re-resolved a stale lock on the
+        release runner and left the checkout dirty, so the release protocol's
+        clean-checkout preflight failed. Lock refresh is `make deps`' change.
+        """
+        text = _MAKEFILE.read_text(encoding="utf-8")
+        tm.that(text, has='$(UV) sync --frozen --project "$(PROJECT_ROOT)"')
+        ci = _CI.read_text(encoding="utf-8")
+        tm.that(ci.index("make gen WHAT=check") < ci.index("make deps"), eq=True)
 
     def test_makefile_deps_modernize_uses_selected_projects(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
@@ -64,20 +88,29 @@ class TestsReviewTemplateContracts:
         )
 
     def test_makefile_has_no_legacy_work_lifecycle(self) -> None:
-        """Gas Town is the sole lane lifecycle owner."""
+        """Gas City is the sole lane lifecycle owner."""
         text = _MAKEFILE.read_text(encoding="utf-8")
-        tm.that(text, lacks=["_builtin_work_", "make work", "work start"])
+        tm.that("work" in config.Infra.codegen.make.handler_whats, eq=False)
+        tm.that(text, lacks="_builtin_work_")
+        tm.that(text, lacks="workspace work")
 
-    def test_release_verifies_core_gitlink_after_setup(self) -> None:
+    def test_release_workflow_only_selects_protocol_phases(self) -> None:
+        """The workflow routes to `make release` phases and decides nothing itself.
+
+        Tag precedes build, build precedes publish, and the package index is
+        reached only from the workspace profile through trusted publishing.
+        """
         text = _RELEASE.read_text(encoding="utf-8")
-        job = text.split("testpypi:", 1)[1]
-        boot = job.index("Boot workspace")
-        verify = job.index("Verify immutable flext-core gitlink")
-        root_verify = job.index("Verify immutable canary root")
-        tm.that(root_verify < boot, eq=True)
-        tm.that(boot < verify, eq=True)
-        pre = job[:boot]
-        tm.that(pre, lacks="git -C flext-core rev-parse HEAD")
+        publish = text.split("  publish:", 1)[1]
+        tag = publish.index("make release WHAT=tag")
+        build = publish.index("make release WHAT=build")
+        upload = publish.index("make release WHAT=publish")
+        tm.that(tag < build < upload, eq=True)
+        tm.that(publish, has='{% if make_profile == "workspace" %} INDEX=Y{% endif %}')
+        tm.that(publish, has="id-token: write")
+        tm.that(text, has="make release WHAT=version")
+        tm.that(text, lacks="uv publish")
+        tm.that(text, lacks="gh release")
 
     def test_ci_upload_excludes_raw_report_logs(self) -> None:
         text = _CI.read_text(encoding="utf-8")
@@ -120,14 +153,26 @@ class TestsReviewTemplateContracts:
         tm.that(text, has="  # End SECTION: ci job")
         tm.that("    # End SECTION: ci job" not in text.splitlines(), eq=True)
 
+    def test_private_submodule_commands_have_no_generated_trailing_space(self) -> None:
+        """Path lists join without appending whitespace after the last gitlink."""
+        text = _PRIVATE_SUBMODULES.read_text(encoding="utf-8")
+        tm.that(text, has='{{ private_submodules.paths | join(" ") }}')
+        tm.that(text, lacks="{% for p in private_submodules.paths %}")
+
     def test_docs_workflow_uses_public_cli_not_removed_make_verb(self) -> None:
+        """CI drives docs through the canonical Make verb, never a phase flag.
+
+        ``DOCS_PHASE`` was a private knob and stays banned. ``docs`` itself is a
+        declared verb in the codegen SSOT, so rule 17 makes ``make docs
+        WHAT=<what>`` the canonical CI entry point; the workflow must reach the
+        documented surface rather than invoking the module directly.
+        """
         text = _DOCS.read_text(encoding="utf-8")
+        docs_whats = config.Infra.codegen.make.handler_whats["docs"]
         tm.that(text, lacks="DOCS_PHASE=")
-        tm.that(text, lacks="make docs")
-        tm.that(text, has="python -m flext_infra docs audit")
-        tm.that(text, has="python -m flext_infra docs generate")
-        tm.that(text, has="python -m flext_infra docs validate")
-        tm.that(text, has="python -m flext_infra docs build")
+        for what in ("audit", "validate", "build"):
+            tm.that(what in docs_whats, eq=True)
+            tm.that(text, has=f"make docs WHAT={what}")
 
     def test_docs_pages_environment_avoids_static_schema_enum(self) -> None:
         text = _DOCS.read_text(encoding="utf-8")

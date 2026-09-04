@@ -33,7 +33,7 @@ class FlextInfraEnsureRuffConfigPhase:
             if (
                 project.package_name
                 and project.package_name.isidentifier()
-                and (project.workspace_role == c.Infra.WorkspaceProjectRole.SUBPROJECT)
+                and project.declared_subproject
             )
         })
 
@@ -124,15 +124,21 @@ class FlextInfraEnsureRuffConfigPhase:
         stale_patterns: t.StrSequence,
         per_file_ignores: t.MappingKV[str, t.StrSequence],
         include_handler: bool,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         effective_src = sorted(ruff_cfg.src)
+        workspace_exclusions = (
+            self._workspace_exclusion_globs(path.parent)
+            if analysis_exclusions is None
+            else ()
+        )
+        provided_exclusions = () if analysis_exclusions is None else analysis_exclusions
         effective_exclude = sorted({
             *ruff_cfg.exclude,
-            *self._workspace_exclusion_globs(path.parent),
-            *analysis_exclusions,
+            *workspace_exclusions,
+            *provided_exclusions,
         })
         # Models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
@@ -220,7 +226,7 @@ class FlextInfraEnsureRuffConfigPhase:
         doc: t.Cli.TomlDocument,
         *,
         path: Path,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply canonical Ruff tables with namespace-aware first-party detection."""
         effective_ignores = self._per_file_ignores(path.parent)
@@ -255,7 +261,7 @@ class FlextInfraEnsureRuffConfigPhase:
         payload: t.MutableJsonMapping,
         *,
         path: Path,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply canonical Ruff settings directly to one normalized payload."""
         effective_ignores = self._per_file_ignores(path.parent)

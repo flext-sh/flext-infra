@@ -89,6 +89,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                         py_file,
                         convention.module_name,
                         export_options=m.Infra.ExportOptions(
+                            allow_main=True,
                             allow_assignments=True,
                             allow_functions=True,
                             require_explicit_all=True,

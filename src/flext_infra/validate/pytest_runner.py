@@ -20,7 +20,10 @@ from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidat
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 if TYPE_CHECKING:
+    from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
     from flext_infra import p, t
+
+    PytestPolicy = FlextInfraModelsDepsToolSettings.PytestConfig
 
 
 class FlextInfraPytestRunner(s[int]):
@@ -45,12 +48,12 @@ class FlextInfraPytestRunner(s[int]):
     reports: Annotated[
         str, m.Field(min_length=1, description="Repository-relative test report root.")
     ]
-    fail_fast: Annotated[bool, m.Field(description="Stop after the first failure.")] = (
-        False
-    )
     verbose: Annotated[bool, m.Field(description="Expose child output live.")] = False
     diagnostic: Annotated[
         bool, m.Field(description="Use expanded pytest diagnostics.")
+    ] = False
+    profile: Annotated[
+        bool, m.Field(description="Wrap the child pytest process in cProfile.")
     ] = False
 
     @staticmethod
@@ -88,9 +91,9 @@ class FlextInfraPytestRunner(s[int]):
             what=cls._environment_value(c.Infra.PYTEST_ENV_WHAT) or None,
             target=cls._environment_value(c.Infra.PYTEST_ENV_TARGET),
             reports=cls._environment_value(c.Infra.PYTEST_ENV_REPORTS),
-            fail_fast=cls._environment_flag(c.Infra.PYTEST_ENV_FAIL_FAST),
             verbose=cls._environment_flag(c.Infra.PYTEST_ENV_VERBOSE),
             diagnostic=cls._environment_flag(c.Infra.PYTEST_ENV_DIAG),
+            profile=cls._environment_flag(c.Infra.PYTEST_ENV_PROFILE),
         )
 
     @u.model_validator(mode="after")
@@ -135,14 +138,30 @@ class FlextInfraPytestRunner(s[int]):
         "cache-checkpoint",
     })
 
+    @staticmethod
+    def _memory_gb() -> int:
+        """Read physical memory from the operating-system owner."""
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        physical_pages = os.sysconf("SC_PHYS_PAGES")
+        if page_size <= 0 or physical_pages <= 0:
+            msg = "physical memory capacity is unavailable"
+            raise ValueError(msg)
+        return max(1, (page_size * physical_pages) // (1024 * 1024 * 1024))
+
+    def parallel_worker_budget(self, policy: PytestPolicy) -> int:
+        """Derive one bounded xdist budget from typed CPU and memory owners."""
+        cpu_budget = os.cpu_count() or 1
+        memory_budget = max(1, self._memory_gb() // policy.parallel_worker_memory_gb)
+        return max(1, min(policy.parallel_workers, cpu_budget, memory_budget))
+
     def _ci_disables_coverage(self) -> bool:
         """True when Make CI token is exact make.ci.value (CI=Y)."""
         raw = self._environment_value(c.Infra.PYTEST_ENV_CI)
         return raw == config.Infra.codegen.make.ci.value
 
     def _cov_enabled(self) -> bool:
-        """True when Make COV token requests a full coverage run (COV=Y)."""
-        return self._environment_flag(c.Infra.PYTEST_ENV_COV)
+        """True when COV=Y or WHAT=full selects the full coverage suite."""
+        return self.what == "full" or self._environment_flag(c.Infra.PYTEST_ENV_COV)
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -208,7 +227,7 @@ class FlextInfraPytestRunner(s[int]):
             if focused
             else (
                 "-n",
-                str(pytest.parallel_workers),
+                str(self.parallel_worker_budget(pytest)),
                 "--dist",
                 pytest.parallel_distribution,
                 # pytest-benchmark disables itself under xdist and warns while
@@ -229,14 +248,21 @@ class FlextInfraPytestRunner(s[int]):
             *(("-k", self.match) if self.match is not None else ()),
             *(("-x",) if self.fail_fast else ()),
         )
+        python_argv = (
+            (
+                sys.executable,
+                "-m",
+                "cProfile",
+                "-o",
+                str(report_dir / "pytest.pstats"),
+                "-m",
+                "pytest",
+            )
+            if self.profile
+            else (sys.executable, "-m", "pytest")
+        )
         return (
-            sys.executable,
-            "-m",
-            "cProfile",
-            "-o",
-            str(report_dir / "pytest.pstats"),
-            "-m",
-            "pytest",
+            *python_argv,
             target,
             *pytest.progress_args,
             *report_args,
@@ -333,14 +359,6 @@ class FlextInfraPytestRunner(s[int]):
         """Execute pytest, profile it, and preserve reports under one deadline."""
         if self._is_cache_maintenance():
             return self._execute_cache_maintenance()
-        # Why (flext-v4p5): CI workflows must not run pytest. Fail loud if invoked
-        # under CI=Y so regenerated jobs cannot reintroduce make test silently.
-        if self._ci_disables_coverage():
-            return r[int].fail(
-                "make test is forbidden under CI=Y (flext-v4p5); "
-                "CI workflows must not execute pytest — run make test locally "
-                "without CI=Y"
-            )
         pytest = config.Infra.tooling.tools.pytest
         report_dir = self._report_directory()
         pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
@@ -375,15 +393,16 @@ class FlextInfraPytestRunner(s[int]):
         if run_result.failure:
             return r[int].fail(run_result.error or "pytest process execution failed")
         exit_code = run_result.value
-        profile_result = FlextInfraCProfileReport(
-            workspace_root=self.root,
-            profile=report_dir / "pytest.pstats",
-            output=report_dir / "pytest-profile.txt",
-            sort=pytest.profile_sort,
-            limit=pytest.profile_limit,
-        ).execute()
-        if profile_result.failure and exit_code == 0:
-            return r[int].fail(profile_result.error or "cProfile report failed")
+        if self.profile:
+            profile_result = FlextInfraCProfileReport(
+                workspace_root=self.root,
+                profile=report_dir / "pytest.pstats",
+                output=report_dir / "pytest-profile.txt",
+                sort=pytest.profile_sort,
+                limit=pytest.profile_limit,
+            ).execute()
+            if profile_result.failure and exit_code == 0:
+                return r[int].fail(profile_result.error or "cProfile report failed")
         diagnostics_result = self._extract_diagnostics(report_dir)
         if diagnostics_result.failure:
             return r[int].fail(

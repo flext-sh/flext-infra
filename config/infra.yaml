@@ -1,6 +1,44 @@
 Infra:
   name: flext-infra
-  version: "0.12.0-dev"
+  # Seeded into a new project's pyproject by `codegen new`; every later change
+  # goes through `make release` (the protocol is the only version writer).
+  initial_project_version: "0.1.0"
+  # Release protocol policy (declared data, aihub-ioijy.9). This workspace
+  # publishes the flext-* member distributions; a consumer repository leaves the
+  # tuple empty and every resolved project becomes a candidate. `bump_types` and
+  # `publish_url` keep their Conventional Commits / PyPI typed defaults.
+  release:
+    publishable_prefixes:
+      - flext-
+    # Hash-pinned build backend for the isolated release build
+    # (`uv build --build-constraints … --require-hashes`); projected into every
+    # repository as config/build-constraints.txt (flext-to3n7).
+    build_constraints:
+      - name: hatchling
+        version: 1.31.0
+        hashes:
+          - 6b48ad4068a482ed7239b3a8215bc55b47aad3345d58dfc94e553c5d2d46211b
+          - aac80bec8b6fe35e8480f1c335be8910fa210a0e6f735a139be205dadcacb544
+      - name: packaging
+        version: "26.2"
+        hashes:
+          - 5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+          - ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661
+      - name: pathspec
+        version: 1.1.1
+        hashes:
+          - 17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a
+          - a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
+      - name: pluggy
+        version: 1.6.0
+        hashes:
+          - 7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3
+          - e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
+      - name: trove-classifiers
+        version: 2026.6.1.19
+        hashes:
+          - ab4c4ec93cc4a4e7815fa759906e05e6bb3f2fbd92ea0f897288c6a43efd15b3
+          - c5132b4b61a829d11cfbd2d72e97f20a45ed6edb95e45c5efdeb5e00836b2745
   source_scan:
     roots:
       - src

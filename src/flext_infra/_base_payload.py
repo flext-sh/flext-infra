@@ -18,7 +18,7 @@ class FlextInfraCommandPayloadMixin:
         apply_changes: bool
         check_only: bool
         dry_run: bool
-        fail_fast: bool
+
         output_format: str
         project_filter: str | None
         report_path: Path | None
@@ -31,7 +31,6 @@ class FlextInfraCommandPayloadMixin:
             "apply_changes": self.apply_changes,
             "check_only": self.check_only,
             "dry_run": self.dry_run,
-            "fail_fast": self.fail_fast,
             "output_format": self.output_format,
         }
         if self.project_filter is not None:

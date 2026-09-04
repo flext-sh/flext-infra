@@ -5,17 +5,20 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import WorktreeFixture, u as test_u
 
+pytestmark = pytest.mark.slow
+
 
 def _repository(
-    name: str, *, path: str, role: c.Infra.RepositoryRole
+    name: str, *, path: str, role: c.Infra.MakeProfile
 ) -> m.Infra.RepositoryRef:
     reference = test_u.Tests.repository_ref(name, path=Path(path), role=role)
-    is_standalone = role is c.Infra.RepositoryRole.STANDALONE
+    is_standalone = role is c.Infra.MakeProfile.STANDALONE
     return reference.model_copy(
         update={"package": is_standalone, "editable": is_standalone}
     )
@@ -58,33 +61,13 @@ class TestsCodegenCatalogExtensions:
         tm.that(duplicate_result.failure, eq=True)
         tm.that(duplicate_result.error, has="must resolve exactly once")
 
-    def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
-        selector = config.Infra.codegen.toolchain.beads.version
+    def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
+        tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
-        version_parts = selector.split(".")
-        is_semver = len(version_parts) == 3 and all(
-            part.isdecimal() for part in version_parts
-        )
-        is_commit = len(selector) == 40 and all(
-            char in "0123456789abcdef" for char in selector
-        )
-        tm.that(is_semver or is_commit, eq=True)
-
-    def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
+    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
         toolchain = config.Infra.codegen.toolchain
 
-        mise_parts = toolchain.mise_version.split(".")
-        tm.that(len(mise_parts), eq=3)
-        tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
-        beads_version = toolchain.beads.version
-        beads_parts = beads_version.split(".")
-        beads_is_semver = len(beads_parts) == 3 and all(
-            part.isdecimal() for part in beads_parts
-        )
-        beads_is_commit = len(beads_version) == 40 and all(
-            char in "0123456789abcdef" for char in beads_version
-        )
-        tm.that(beads_is_semver or beads_is_commit, eq=True)
+        tm.that(toolchain.mise_version, eq="latest")
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -101,8 +84,18 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_setup_conform" in content, eq=False)
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
+        tm.that(content, has='direnv allow "$(PROJECT_ROOT)"')
+        mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
+        tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
         tm.that("_builtin_gen_check:" in content, eq=True)
         tm.that("_builtin_gen_apply:" in content, eq=True)
+        bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
+            encoding="utf-8"
+        )
+        tm.that(bootstrap, has="https://github.com/jdx/mise/releases/latest")
+        tm.that(bootstrap, has="curl -fsSIL")
+        tm.that(bootstrap, lacks="self-update")
+        tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
 
@@ -133,10 +126,10 @@ class TestsCodegenCatalogExtensions:
         self, tmp_path: Path
     ) -> None:
         root = _repository(
-            "acme-platform", path=".", role=c.Infra.RepositoryRole.WORKSPACE
+            "acme-platform", path=".", role=c.Infra.MakeProfile.WORKSPACE
         )
         member = _repository(
-            "acme-charts", path="acme-charts", role=c.Infra.RepositoryRole.STANDALONE
+            "acme-charts", path="acme-charts", role=c.Infra.MakeProfile.STANDALONE
         )
         workspace = m.Infra.WorkspaceSpec(
             name=root.name,
@@ -153,6 +146,7 @@ class TestsCodegenCatalogExtensions:
             workspace=member.name,
             database=member.name,
             issue_prefix=member.name,
+            beads_owner=False,
         )
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source)
@@ -215,6 +209,13 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
+        WorktreeFixture.link_member_beads(
+            member_checkout,
+            workspace_root,
+            workspace_name=root.name,
+            database=root.name,
+            issue_prefix=root.name,
+        )
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -274,9 +275,12 @@ class TestsCodegenCatalogExtensions:
             if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(root_makefile.rendered, has=f"WORKSPACE_SUBPROJECTS := {member.name}")
-        tm.that(
-            any(file.path.name == c.Infra.GITMODULES for file in plan.files), eq=False
+        gitmodules_plan = next(
+            file for file in plan.files if file.path == gitmodules.resolve()
         )
+        tm.that(gitmodules_plan.policy, eq="manual")
+        tm.that(gitmodules_plan.changed, eq=False)
+        tm.that(gitmodules_plan.rendered.encode(), eq=declared_gitmodules)
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 

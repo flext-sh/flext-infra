@@ -29,11 +29,13 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
         uv_link_mode: str | None = None,
         uv_exclude_newer: str | None = None,
+        dependency_cooldown_exclusions: t.StrSequence | None = None,
+        dependency_cooldown_overrides: t.StrMapping | None = None,
         uv_exclude_dependencies: t.SequenceOf[p.Model] = (),
     ) -> p.Result[str]:
         """Return canonical TOML with autonomous dependencies and root workspace.
@@ -54,9 +56,6 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
-        if workspace.project is not None:
-            u.Cli.toml_sync_value(project, c.Infra.VERSION, workspace.project.version)
-
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -87,9 +86,18 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
             link_mode=uv_link_mode or toolchain.uv_link_mode,
             exclude_newer=uv_exclude_newer or toolchain.uv_exclude_newer,
-            exclude_newer_packages=toolchain.dependency_cooldown_exclusions,
-            exclude_newer_overrides=toolchain.dependency_cooldown_overrides,
+            exclude_newer_packages=(
+                toolchain.dependency_cooldown_exclusions
+                if dependency_cooldown_exclusions is None
+                else dependency_cooldown_exclusions
+            ),
+            exclude_newer_overrides=(
+                toolchain.dependency_cooldown_overrides
+                if dependency_cooldown_overrides is None
+                else dependency_cooldown_overrides
+            ),
             exclude_dependencies=uv_exclude_dependencies,
+            uv_environments=toolchain.uv_environments,
         )
         if sources_result.failure:
             return r[str].fail(sources_result.error or "uv source conformance failed")
@@ -116,7 +124,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[str]:
         """Conform only internal requirements and their root workspace overlay."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -193,7 +201,7 @@ class FlextInfraUtilitiesPyprojectConform:
         project_name: str,
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         canonicalize_all: bool,
     ) -> p.Result[bool]:
         """Render internal requirements for root workspace or detached operation."""
@@ -389,7 +397,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         required_dev_dependencies: t.StrSequence,
     ) -> None:
         """Migrate optional dev dependencies and normalize declared groups."""
@@ -451,7 +459,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> None:
         """Keep the generated workspace dependency group only at the root."""
         workspace_root = cls._is_workspace_context_root(
@@ -492,11 +500,11 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> bool:
         """Identify the root only when the active topology is a workspace."""
         return (
-            workspace_mode is c.Infra.WorkspaceMode.WORKSPACE
+            workspace_mode is c.Infra.MakeProfile.WORKSPACE
             and cls._is_workspace_root(project_name=project_name, workspace=workspace)
         )
 
@@ -565,13 +573,14 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
         link_mode: str | None = None,
         exclude_newer: str | None = None,
         exclude_newer_packages: t.StrSequence | None = None,
         exclude_newer_overrides: t.StrMapping | None = None,
         constraint_dependencies: t.SequenceOf[str] | None = None,
         exclude_dependencies: t.SequenceOf[p.Model] | None = None,
+        uv_environments: t.StrSequence | None = None,
     ) -> p.Result[bool]:
         """Keep managed uv sources only as the root local-workspace overlay."""
         workspace_root = cls._is_workspace_context_root(
@@ -625,6 +634,19 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "link-mode", link_mode)
         if exclude_newer is not None:
             u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
+        # Environments come from the fleet toolchain SSOT: an empty declaration
+        # removes the key so uv resolves every environment, and a declared
+        # sequence skips the splits the fleet does not support (win32 resolves
+        # meltano's structlog cap against flext-core's floor and is
+        # unsatisfiable).
+        if uv_environments is not None and uv_environments:
+            # Declared as list[JsonValue], not list[str]: `list` is invariant,
+            # so the narrower element type is not assignable to the writer's
+            # parameter even though every element is a valid JsonValue.
+            environments: list[t.JsonValue] = list(uv_environments)
+            u.Cli.toml_sync_value(uv, "environments", environments)
+        elif uv_environments is not None:
+            u.Cli.toml_remove_key_if_present(uv, "environments")
         # Two shapes share this uv key. A bare exemption is `false` (waive the
         # cooldown entirely, for a reviewed security floor). An override is a
         # timestamp, needed when the shared cutoff predates a floor the project
@@ -666,15 +688,16 @@ class FlextInfraUtilitiesPyprojectConform:
                 u.Cli.toml_sync_value(uv, "exclude-dependencies", exclude_payload)
             else:
                 u.Cli.toml_remove_key_if_present(uv, "exclude-dependencies")
-        if workspace_root:
+        member_paths = tuple(member.path.as_posix() for member in workspace.subprojects)
+        # A uv workspace with no members is not an empty workspace, it is a
+        # declaration: uv reads the table's presence, not its contents, so an
+        # empty one makes this project a *nested* workspace and refuses to set
+        # up any parent that lists it as a member.
+        if workspace_root and member_paths:
             workspace_table = u.Cli.toml_table_child(uv, "workspace")
             if workspace_table is None:
                 workspace_table = u.Cli.toml_ensure_table(uv, "workspace")
-            u.Cli.toml_sync_string_list(
-                workspace_table,
-                "members",
-                tuple(member.path.as_posix() for member in workspace.subprojects),
-            )
+            u.Cli.toml_sync_string_list(workspace_table, "members", member_paths)
         else:
             u.Cli.toml_remove_key_if_present(uv, "workspace")
         sources = u.Cli.toml_table_child(uv, "sources")
@@ -789,7 +812,7 @@ class FlextInfraUtilitiesPyprojectConform:
         *,
         project_name: str,
         workspace: p.Infra.WorkspaceSpec,
-        workspace_mode: c.Infra.WorkspaceMode,
+        workspace_mode: c.Infra.MakeProfile,
     ) -> p.Result[bool]:
         """Require one internal dependency provenance for the active topology."""
         payload = u.Cli.toml_as_mapping(document)

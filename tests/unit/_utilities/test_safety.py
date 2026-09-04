@@ -66,7 +66,7 @@ class TestsFlextInfraUtilitiessafety:
         )
 
     def test_rollback_to_checkpoint_succeeds_for_non_repo(self, tmp_path: Path) -> None:
-        result = u.Infra.rollback_to_checkpoint(tmp_path)
+        result = u.Infra.rollback_to_checkpoint(tmp_path, "checkpoint-ref")
 
         tm.ok(result)
         tm.that(result.value, eq=True)

@@ -22,7 +22,9 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     apply/dry-run toggles, output formatting, and project filtering.
     """
 
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        validate_by_name=True, validate_by_alias=True
+    )
 
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
@@ -50,7 +52,6 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     )
     check_only: bool = m.Field(default=False, alias="check", description="Check mode")
     dry_run: Annotated[bool, m.Field(description="Dry-run mode")] = False
-    fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = False
     output_format: Annotated[
         str,
         m.Field(description="Output format (json|text)"),
@@ -112,6 +113,11 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     def root(self) -> Path:
         """Canonical normalized workspace root."""
         return self.workspace_root
+
+    @property
+    def fail_fast(self) -> bool:
+        """Stop at the first failure as an invariant, never a CLI choice."""
+        return True
 
     @m.computed_field
     @property

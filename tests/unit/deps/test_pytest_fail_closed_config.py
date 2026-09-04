@@ -39,7 +39,7 @@ testpaths = ["architecture", "guides", "tests"]
             has=(
                 "filterwarnings = [\n"
                 '    "error",\n'
-                '    "module::flext_core._constants.enforcement.FlextSmellViolation",\n'
+                '    "module::flext_core._constants.enforcement.FlextMroViolation",\n'
                 "]"
             ),
         )

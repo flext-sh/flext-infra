@@ -4,16 +4,13 @@ from __future__ import annotations
 
 from collections.abc import MutableSet
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
-from flext_infra import c, t
+from flext_infra import c, p, t
 from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-
-if TYPE_CHECKING:
-    from flext_infra import p
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
@@ -76,9 +73,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Module skeleton definitions"),
         ]
         test_prefix: Annotated[str, m.Field(description="Generated test class prefix")]
-        inherit_project_facade: Annotated[
-            bool,
-            m.Field(description="Whether generated classes inherit project facade"),
+        base_module: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Explicit module owning every generated base class"),
         ]
         dry_run: Annotated[
             bool, m.Field(description="Whether to report creations without writing")
