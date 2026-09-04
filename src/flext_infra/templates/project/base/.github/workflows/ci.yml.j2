@@ -62,6 +62,12 @@ jobs:
 {%- if step.verb == "setup" %}
       - name: gen check (blocking)
         run: {{ make.ci.variable }}={{ make.ci.value }} make gen WHAT=check
+
+      # Setup installs the committed lock as-is (`uv sync --frozen`); a stale
+      # lock is a reviewed change through `make deps`, so CI proves it here
+      # instead of letting a runner rewrite it.
+      - name: deps check (blocking)
+        run: {{ make.ci.variable }}={{ make.ci.value }} make deps
 {%- endif %}
 {%- if step.verb == "check" %}
 
