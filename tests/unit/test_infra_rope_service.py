@@ -195,6 +195,23 @@ class TestsFlextInfraInfraRopeService:
             tm.that(rope.module(sibling_module_path), none=True)
             tm.that(sibling_root in rope.rope_repository_root.parents, eq=False)
 
+    def test_unrelated_ancestor_workspace_does_not_capture_project(
+        self, tmp_path: Path
+    ) -> None:
+        """An ancestor workspace owns only the projects it declares."""
+        ancestor = tmp_path / "ancestor"
+        ancestor.mkdir()
+        declared_root, _ = u.Tests.create_lazy_init_workspace(
+            ancestor, project_name="declared", package_name="declared"
+        )
+        project_root, package_root = u.Tests.create_lazy_init_workspace(
+            ancestor / "scratch", project_name="standalone", package_name="standalone"
+        )
+        u.Tests.declare_workspace_projects(ancestor, (declared_root.name,))
+
+        with flext_infra.infra.rope_workspace(package_root) as rope:
+            tm.that(rope.rope_workspace_root, eq=project_root.resolve())
+
     def test_unowned_ancestor_src_does_not_expand_rope_scope(
         self, tmp_path: Path
     ) -> None:
@@ -463,6 +480,7 @@ class TestsFlextInfraInfraRopeService:
             ),
         ):
             rope.name_index()
+        monkeypatch.undo()
 
     def test_workspace_objects_raise_on_indexed_resource_lookup_error(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

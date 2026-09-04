@@ -831,6 +831,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 src_dir.mkdir(parents=True, exist_ok=True)
                 (src_dir / "__init__.py").write_text("", encoding="utf-8")
                 TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
+                TestsFlextInfraUtilities.Tests.initialize_git_repo(project)
             if project_names:
                 TestsFlextInfraUtilities.Tests.declare_workspace_projects(
                     workspace, project_names

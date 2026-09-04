@@ -293,6 +293,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
                 "dependencies=[]\n"
             ),
         )
+        u.Tests.write_project_beads_config(workspace, "flext")
         external = tmp_path / "gruponos-data"
         (external / "src" / "gruponos_data").mkdir(parents=True)
         external_pyproject = external / c.Infra.PYPROJECT_FILENAME

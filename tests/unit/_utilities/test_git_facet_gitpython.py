@@ -19,6 +19,57 @@ def _no_executable(_name: str) -> str | None:
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
+    def test_tracked_scope_refreshes_after_filesystem_mutation(
+        self, tmp_path: Path
+    ) -> None:
+        """Tracked-scope discovery must not retain a stale dirty-file inventory."""
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        scope = repository / "src"
+        scope.mkdir()
+
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[])
+        created = scope / "created.py"
+        created.write_text("VALUE = 1\n", encoding="utf-8")
+
+        tm.that(u.Infra.git_tracked_scope_paths(scope), eq=[created])
+
+    def test_invalid_nested_git_marker_does_not_borrow_parent_index(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicit invalid Git boundary falls back to filesystem discovery."""
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        project = repository / "project"
+        project.mkdir()
+        (project / ".git").mkdir()
+        source = project / "src" / "package"
+        source.mkdir(parents=True)
+        created = source / "module.py"
+        created.write_text("VALUE = 1\n", encoding="utf-8")
+
+        tracked = u.Infra.git_tracked_scope_paths(project / "src")
+
+        tm.that(tracked, eq=None)
+
+    def test_tracked_scope_does_not_borrow_an_ignoring_parent_repository(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicitly selected ignored scope owns its filesystem contents."""
+        repository = tmp_path / "repository"
+        repository.mkdir()
+        test_u.Tests.initialize_git_repo(repository)
+        (repository / ".gitignore").write_text("scratch/\n", encoding="utf-8")
+        ignored_scope = repository / "scratch" / "project"
+        ignored_scope.mkdir(parents=True)
+        (ignored_scope / "README.md").write_text("# Project\n", encoding="utf-8")
+
+        tracked = u.Infra.git_tracked_scope_paths(ignored_scope)
+
+        tm.that(tracked, eq=None)
+
     def test_merge_no_edit_requires_a_non_fast_forward_merge(
         self, tmp_path: Path
     ) -> None:

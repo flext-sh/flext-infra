@@ -25,7 +25,15 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
         current = Path(scope_root).resolve()
         while True:
             if (current / ".git").exists():
-                return str(current)
+                try:
+                    repo = cls._repo(current)
+                except (OSError, ValueError):
+                    return None
+                working_tree_dir = repo.working_tree_dir
+                if working_tree_dir is None:
+                    return None
+                resolved_worktree = Path(working_tree_dir).resolve()
+                return str(current) if resolved_worktree == current else None
             parent = current.parent
             if parent == current:
                 return None
@@ -33,7 +41,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
 
     @classmethod
     def _git_tracked_repo_relative_paths(cls, repo_root: str) -> t.StrSequence | None:
-        """Return tracked and dirty paths relative to one Git repo root."""
+        """Return current tracked and dirty paths relative to one Git repo root."""
         resolved_root = Path(repo_root).resolve()
         try:
             repo = cls._repo(resolved_root)
@@ -62,7 +70,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
 
     @classmethod
     def _git_tracked_scope_relative_paths(cls, scope_root: str) -> t.StrSequence | None:
-        """Return tracked file paths relative to ``scope_root`` or ``None`` outside Git.
+        """Return current tracked paths relative to ``scope_root`` or ``None`` outside Git.
 
         ``git ls-files <scope_prefix>`` emits paths relative to the **repo root**.
         Callers join the result back onto ``scope_root``, so this function
@@ -81,6 +89,16 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
             scope_prefix = resolved_root.resolve().relative_to(repo_root)
         except ValueError:
             return None
+        if scope_prefix.parts:
+            try:
+                repo = cls._repo(repo_root)
+                ignored_scope = repo.git.check_ignore(
+                    "--", scope_prefix.as_posix(), with_exceptions=False
+                )
+            except (OSError, ValueError):
+                return None
+            if ignored_scope.strip():
+                return None
         prefix_parts = scope_prefix.parts
         scope_paths: set[str] = set()
         for repo_relative_text in repo_relative_paths:
