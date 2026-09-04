@@ -877,19 +877,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "makefile conformance requires scope=self"
             )
         root = request.root.expanduser().resolve()
+        # Why (flext-1wjg1.16.34): the merged tip referenced projection loaders
+        # written against a vocabulary this tree never had (RepositoryRole,
+        # WorkspaceSpec.members); the local identity loader and conform target
+        # are the live owners of the same contract.
         workspace_result = (
             r[m.Infra.WorkspaceSpec].ok(self.initial_workspace)
             if self.initial_workspace is not None
-            else FlextInfraWorkspaceDetector.load_projection_workspace_spec(root)
+            else FlextInfraWorkspaceDetector.load_workspace_spec(root)
         )
         if workspace_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 workspace_result.error or "declared workspace manifest load failed"
             )
         workspace = workspace_result.value
-        target_result = FlextInfraWorkspaceDetector.declared_conform_target(
-            root, workspace
-        )
+        target_result = FlextInfraWorkspaceDetector.conform_target(root, workspace)
         if target_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 target_result.error or "declared conformance target is invalid"

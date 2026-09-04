@@ -97,6 +97,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 else dependency_cooldown_overrides
             ),
             exclude_dependencies=uv_exclude_dependencies,
+            constraint_dependencies=toolchain.dependency_constraints,
             uv_environments=toolchain.uv_environments,
         )
         if sources_result.failure:
@@ -588,35 +589,37 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace,
             workspace_mode=workspace_mode,
         )
+        nothing_to_write = (
+            not workspace_root
+            and link_mode is None
+            and exclude_newer is None
+            and not exclude_newer_packages
+            and not exclude_dependencies
+            and not constraint_dependencies
+        )
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         if tool is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
+            if nothing_to_write:
                 return r[bool].ok(True)
             tool = u.Cli.toml_ensure_table(document, c.Infra.TOOL)
         uv = u.Cli.toml_table_child(tool, "uv")
         if uv is None:
-            if (
-                not workspace_root
-                and link_mode is None
-                and exclude_newer is None
-                and not exclude_newer_packages
-                and not exclude_dependencies
-            ):
+            if nothing_to_write:
                 return r[bool].ok(True)
             uv = u.Cli.toml_ensure_table(tool, "uv")
         u.Cli.toml_remove_key_if_present(uv, "required-version")
+        # The fleet toolchain SSOT owns the constraints of every generated
+        # pyproject, root and member alike, so each lock resolves inside the
+        # range every sibling can install (flext-yoxv7: the floor rewrite raised
+        # flext-core's structlog floor to its own lock and broke every meltano
+        # consumer). The dependencies-only conform carries no toolchain and
+        # keeps what the file declares.
         existing_constraints = u.Cli.toml_as_string_list(
             u.Cli.toml_value(uv, "constraint-dependencies")
         )
         selected_constraints = (
             tuple(constraint_dependencies)
-            if workspace_root and constraint_dependencies is not None
+            if constraint_dependencies is not None
             else existing_constraints
         )
         retained_constraints = tuple(
@@ -636,9 +639,7 @@ class FlextInfraUtilitiesPyprojectConform:
             u.Cli.toml_sync_value(uv, "exclude-newer", exclude_newer)
         # Environments come from the fleet toolchain SSOT: an empty declaration
         # removes the key so uv resolves every environment, and a declared
-        # sequence skips the splits the fleet does not support (win32 resolves
-        # meltano's structlog cap against flext-core's floor and is
-        # unsatisfiable).
+        # sequence skips the splits the fleet does not deploy to.
         if uv_environments is not None and uv_environments:
             # Declared as list[JsonValue], not list[str]: `list` is invariant,
             # so the narrower element type is not assignable to the writer's

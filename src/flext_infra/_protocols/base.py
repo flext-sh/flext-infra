@@ -325,6 +325,11 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def dependency_constraints(self) -> t.StrSequence:
+            """Fleet-wide resolution constraints projected to every lock."""
+            ...
+
+        @property
         def dependency_cooldown_days(self) -> int:
             """Supply-chain cooldown shared by dependency update tools."""
             ...

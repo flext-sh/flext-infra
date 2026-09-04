@@ -179,6 +179,53 @@ constraint-dependencies = ["uv>=0"]
         tm.that(uv_config["link-mode"], eq="copy")
         tm.that("constraint-dependencies" not in uv_config, eq=True)
 
+    def test_full_conformance_projects_fleet_dependency_constraints(self) -> None:
+        # Why (flext-yoxv7): the fleet ceiling is owned by the toolchain SSOT and
+        # replaces whatever a member declares by hand; an empty declaration
+        # removes the key. Expectations derive from the toolchain given, never
+        # from today's configured constraint list.
+        workspace = _workspace()
+        required_dev = config.Infra.codegen.scaffold.project.dev
+        declared = ("requests<3", "structlog<26")
+        toolchain = config.Infra.codegen.toolchain.model_copy(
+            update={"dependency_constraints": declared}
+        )
+        source = """[project]
+name = "external-consumer"
+dependencies = ["requests>=2"]
+
+[tool.uv]
+constraint-dependencies = ["uv>=0", "urllib3<3"]
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
+                toolchain=toolchain,
+                required_dev_dependencies=required_dev,
+            )
+        )
+        tm.that(
+            tomllib.loads(conformed)["tool"]["uv"]["constraint-dependencies"],
+            eq=list(declared),
+        )
+        cleared = tm.ok(
+            u.Infra.pyproject_conform(
+                conformed,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
+                toolchain=toolchain.model_copy(update={"dependency_constraints": ()}),
+                required_dev_dependencies=required_dev,
+            )
+        )
+        tm.that(
+            "constraint-dependencies" not in tomllib.loads(cleared)["tool"]["uv"],
+            eq=True,
+        )
+
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
         member = workspace.subprojects[0].model_copy(

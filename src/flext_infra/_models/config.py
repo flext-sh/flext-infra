@@ -240,6 +240,20 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
+        dependency_constraints: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Fleet-wide PEP 508 resolution constraints projected to "
+                    "[tool.uv] constraint-dependencies of every generated "
+                    "pyproject. A member's own lock then resolves inside the "
+                    "range every sibling can install, so the floor rewrite "
+                    "(which raises floors to the locked version) can never "
+                    "raise a floor above a cap another member declares. Empty "
+                    "removes the key."
+                )
+            ),
+        ] = ()
         dependency_cooldown_days: Annotated[
             int,
             m.Field(
@@ -496,7 +510,9 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
-<<<<<<< HEAD
+        # Why (flext-1wjg1.16.34): both fields are live — the CI/docs templates
+        # iterate ci_trigger_branches and the release/baseline resolution reads
+        # integration_branch_preference — so the merge keeps both.
         ci_trigger_branches: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -504,7 +520,6 @@ class FlextInfraConfigModels:
                 description="Fleet branches receiving blocking generated CI triggers",
             ),
         ]
-=======
         integration_branch_preference: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -520,7 +535,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
->>>>>>> origin/0.12.0-dev
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
@@ -2830,9 +2844,6 @@ class FlextInfraConfigModels:
             ),
         ]
 
-<<<<<<< HEAD
-        @m.computed_field
-=======
         @u.model_validator(mode="after")
         def _validate_infrastructure_provider(self) -> Self:
             """Require the tool distribution owner to resolve exactly once."""
@@ -2849,8 +2860,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field()
->>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
+        @m.computed_field
         @property
         def vscode_files_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.exclude`` entries from the artifact SSOT."""

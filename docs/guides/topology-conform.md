@@ -3,18 +3,12 @@
 <!-- TOC START -->
 - [Authorities](#authorities)
 - [Validation boundary](#validation-boundary)
+- [Makefile bootstrap projection](#makefile-bootstrap-projection)
 - [Selection and projections](#selection-and-projections)
 - [uv project boundaries](#uv-project-boundaries)
 <!-- TOC END -->
 
 ## Authorities
-<!-- TOC START -->
-- [Effective topology](#effective-topology)
-- [Scoped projection isolation](#scoped-projection-isolation)
-- [Full refactor workflow](#full-refactor-workflow)
-- [Synchronization and setup](#synchronization-and-setup)
-- [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
-<!-- TOC END -->
 
 Each governed repository has exactly two local inputs:
 
@@ -38,28 +32,26 @@ workspace validates each direct governed path declared by its own `.gitmodules`:
 - its branch follows the configured provider contract;
 - its own `config/beads.yaml` exists and validates.
 
-## Scoped projection isolation
+- the workspace root's `config/beads.yaml` exists and validates.
 
-`codegen conform --what makefile --scope self` is a declaration-only
-projection. It reads the target repository's `config/workspace.yaml`, PEP 621
-metadata, the packaged codegen configuration and Makefile template, and the
-current destination content needed for the fixed-point comparison. It does not
-inspect Beads state, Git remotes, branch ancestry, registered worktrees, sibling
-checkouts, or environment-manager state.
+## Makefile bootstrap projection
+
+`codegen conform --what makefile --scope self` (the route `make setup` uses to
+refresh a stale generated dispatcher) plans exactly one artifact. It loads the
+same repository-local identity every other selection uses — `.gitmodules`,
+`config/beads.yaml`, the checkout's own Git identity and PEP 621 metadata — plus
+the packaged codegen configuration and Makefile template, and the current
+destination content needed for the fixed-point comparison. It does not run the
+environment, ancestry, or dependency validations that `--what all` performs.
 
 Apply mode plans the projection twice before publication and requires identical
 destination, content digest, content and removal intent. A planning failure or
 nondeterministic result therefore leaves a pre-existing Makefile byte- and
 inode-identical; the validated candidate is then promoted with one atomic write.
 
-The Makefile projection requires a repository-local workspace declaration and
-rejects broader scopes. `--what all` remains the operational conformance route:
-it validates live topology, Beads, environments, and ancestry in addition to
-planning every governed artifact.
-
-## Full refactor workflow
-=======
-- the workspace root's `config/beads.yaml` exists and validates.
+The Makefile projection rejects broader scopes. `--what all` remains the
+operational conformance route: it validates live topology, Beads, environments,
+and ancestry in addition to planning every governed artifact.
 
 Direct governed submodules have exactly one ledger mode. A checked-in `.beads`
 symlink inherits the workspace root's ledger and requires a routing-only
