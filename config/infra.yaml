@@ -1,6 +1,15 @@
 Infra:
   name: flext-infra
-  version: "0.12.0-dev"
+  # Seeded into a new project's pyproject by `codegen new`; every later change
+  # goes through `make release` (the protocol is the only version writer).
+  initial_project_version: "0.1.0"
+  # Release protocol policy (declared data, aihub-ioijy.9). This workspace
+  # publishes the flext-* member distributions; a consumer repository leaves the
+  # tuple empty and every resolved project becomes a candidate. `bump_types` and
+  # `publish_url` keep their Conventional Commits / PyPI typed defaults.
+  release:
+    publishable_prefixes:
+      - flext-
   source_scan:
     roots:
       - src

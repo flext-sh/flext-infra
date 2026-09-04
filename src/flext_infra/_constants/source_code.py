@@ -57,6 +57,7 @@ class FlextInfraConstantsSourceCode:
         ".cursor",
         ".gemini",
         ".opencode",
+        ".test-tmp",
         ".beads",
         "reports",
         ".agents",

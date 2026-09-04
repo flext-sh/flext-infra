@@ -24,6 +24,7 @@ class FlextInfraExtraPathsSyncMixin:
         _workspace_project_names: t.Infra.StrSet
         pyright_extra_paths: Callable[..., t.StrSequence]
         pyrefly_search_paths: Callable[..., t.StrSequence]
+        mypy_search_paths: Callable[..., t.StrSequence]
 
     def resolve_transitive_dependency_names(
         self, direct_names: t.StrSequence
@@ -80,9 +81,14 @@ class FlextInfraExtraPathsSyncMixin:
             pyright_table["extraPaths"] = expected
             changes.append("synchronized pyright extraPaths")
         if mypy_table is not None:
-            # Same import graph as Pyrefly: mypy needs the path dependencies
-            # that pyright_extra_paths omits (see sync_payload).
-            expected_mypy = self.pyrefly_search_paths(
+            # NOT the pyrefly search path any more (cosmos-45hiv, 2026-08-31).
+            # mypy enumerates every search-path root as a package root, so a
+            # root that re-spells an already-rooted module makes it report the
+            # same file twice ("Source file found twice under different module
+            # names") and abort repo-wide. pyrefly resolves first-match and
+            # tolerates what mypy cannot. mypy gets source + shared config
+            # paths only; the project root stays a pyrefly-only resolution aid.
+            expected_mypy = self.mypy_search_paths(
                 project_dir=project_dir, is_root=is_root
             )
             mypy_path_item = u.Cli.toml_item_child(mypy_table, "mypy_path")
@@ -103,13 +109,13 @@ class FlextInfraExtraPathsSyncMixin:
     ) -> t.StrSequence:
         """Apply computed extra paths to one normalized TOML payload."""
         expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
-        tool_table = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
+        tool_table = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL,))
         if tool_table is None:
             return list[str]()
-        pyright_table = u.Cli.toml_mapping_child(tool_table, c.Infra.PYRIGHT)
+        pyright_table = u.Cli.toml_mapping_path(tool_table, (c.Infra.PYRIGHT,))
         if pyright_table is None:
             return list[str]()
-        mypy_table = u.Cli.toml_mapping_child(tool_table, c.Infra.MYPY)
+        mypy_table = u.Cli.toml_mapping_path(tool_table, (c.Infra.MYPY,))
         changes: t.MutableSequenceOf[str] = []
         if u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT)),
@@ -120,10 +126,14 @@ class FlextInfraExtraPathsSyncMixin:
         # Mypy resolves the same import graph as Pyrefly, so it needs the same
         # roots. pyright_extra_paths omits path dependencies, which left sibling
         # packages unresolvable and degraded every symbol they export to Any.
+        # It does NOT take pyrefly_search_paths any more (cosmos-45hiv): mypy
+        # enumerates each root as a package root and aborts repo-wide when two
+        # roots re-spell one file (source-file-found-twice). First-match
+        # resolution is pyrefly-only.
         if mypy_table is not None and u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.MYPY)),
             "mypy_path",
-            self.pyrefly_search_paths(project_dir=project_dir, is_root=is_root),
+            self.mypy_search_paths(project_dir=project_dir, is_root=is_root),
         ):
             changes.append("synchronized mypy mypy_path")
         return changes

@@ -49,7 +49,7 @@ class TestsMiseDistributionPolicy:
         config_dir.mkdir()
         selector = _alternate_selector()
         (config_dir / "tools.yaml").write_text(
-            f'ManagedArtifacts:\n  Mise:\n    tools:\n      "{selector}": "1.0.0"\n',
+            f'ManagedArtifacts:\n  Mise:\n    tools:\n      "{selector}":\n        version: "1.0.0"\n',
             encoding="utf-8",
         )
 
@@ -62,7 +62,7 @@ class TestsMiseDistributionPolicy:
         config_dir = root / "config"
         config_dir.mkdir()
         (config_dir / "tools.yaml").write_text(
-            'ManagedArtifacts:\n  Mise:\n    tools:\n      beads: "1.2.2"\n',
+            'ManagedArtifacts:\n  Mise:\n    tools:\n      beads:\n        version: "1.2.2"\n',
             encoding="utf-8",
         )
 
@@ -79,7 +79,7 @@ class TestsMiseDistributionPolicy:
         beads = config.Infra.codegen.toolchain.beads
         (config_dir / "tools.yaml").write_text(
             "ManagedArtifacts:\n  Mise:\n    tools:\n"
-            f'      "{beads.selector}": "{beads.version}.divergent"\n',
+            f'      "{beads.selector}":\n        version: "{beads.version}.divergent"\n',
             encoding="utf-8",
         )
 
@@ -114,7 +114,7 @@ class TestsMiseDistributionPolicy:
             "tools"
         ]
         tm.that(tools[beads.selector]["version"], eq=beads.version)
-        tm.that(tools[beads.selector]["prerelease"], eq=False)
+        tm.that(tools[beads.selector]["prerelease"], eq=beads.prerelease)
         tm.that(tools["node"], eq="22")
 
 

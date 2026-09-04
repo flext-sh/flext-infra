@@ -22,8 +22,9 @@ class TestsDocsWorkflowProfile:
     """Every checkout that owns a docs gate also owns the workflow that runs it.
 
     The docs workflow calls ``uv sync``; the generated projection is what
-    installs uv beforehand. Both closed topology profiles receive the same
-    generated workflow, so no checkout retains a hand-written copy.
+    installs uv beforehand. Restricting the projection to ``workspace`` left
+    standalone projects with a stale hand-written copy that never installed uv, so
+    the job died with "uv: command not found" (exit 127).
     """
 
     def test_docs_workflow_reaches_every_profile_that_ci_reaches(self) -> None:
@@ -33,11 +34,11 @@ class TestsDocsWorkflowProfile:
 
         tm.that(sorted(docs.profiles), eq=sorted(ci.profiles))
 
-    def test_docs_workflow_uses_only_the_closed_topology_profiles(self) -> None:
-        """Docs projection accepts exactly workspace and standalone."""
+    def test_docs_workflow_is_projected_to_standalone_projects(self) -> None:
+        """A standalone project receives the generated docs workflow."""
         docs = _artifact(_DOCS_DESTINATION)
 
-        tm.that(set(docs.profiles), eq={"workspace", "standalone"})
+        tm.that("standalone" in docs.profiles, eq=True)
 
 
 __all__: tuple[str, ...] = ()

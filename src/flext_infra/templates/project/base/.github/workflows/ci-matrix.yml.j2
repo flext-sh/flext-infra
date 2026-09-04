@@ -19,7 +19,6 @@ name: ci-matrix
 # End SECTION: triggers
 
 
-
 # === SECTION: permissions (managed) ===
 # Source: template (minimal read-only permissions)
 permissions:
@@ -84,8 +83,9 @@ jobs:
           persist-credentials: false
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
+{% if mise_version != "latest" %}        with:
           version: {{ mise_version }}
+{% endif %}
       - name: Bootstrap
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
@@ -112,8 +112,9 @@ jobs:
           persist-credentials: false
       - name: Install mise toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
+{% if mise_version != "latest" %}        with:
           version: {{ mise_version }}
+{% endif %}
       - name: Bootstrap
         shell: bash
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
@@ -126,4 +127,4 @@ jobs:
       - name: Canonical check
         shell: bash
         run: {{ make.ci.variable }}={{ make.ci.value }} make check
-  # End SECTION: windows
+# End SECTION: windows

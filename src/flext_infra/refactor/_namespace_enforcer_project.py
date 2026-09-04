@@ -51,6 +51,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
 
     if TYPE_CHECKING:
         _workspace_root: Path
+        _rope_project: t.Infra.RopeProject
 
         def _detect_and_apply[V](
             self,
@@ -82,14 +83,13 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         gates: t.StrSequence | None = None,
     ) -> m.Infra.ProjectEnforcementReport:
         """Enforce project."""
-        with u.Infra.open_project(project_root) as rope_project:
-            return self._enforce_project_with_rope(
-                project_root=project_root,
-                project_name=project_name,
-                apply=apply,
-                gates=gates,
-                rope_project=rope_project,
-            )
+        return self._enforce_project_with_rope(
+            project_root=project_root,
+            project_name=project_name,
+            apply=apply,
+            gates=gates,
+            rope_project=self._rope_project,
+        )
 
     @staticmethod
     def _detector_context(

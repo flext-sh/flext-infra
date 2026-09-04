@@ -40,7 +40,9 @@ def test_make_workspace_root_ignores_foreign_env_leak(tmp_path: Path) -> None:
     """A poisoned environment WORKSPACE_ROOT never wins over the checkout."""
     env = dict(os.environ, WORKSPACE_ROOT=str(tmp_path / "foreign-checkout"))
     resolved = _make_database_workspace_root(env=env)
-    expected = _git_root("--show-toplevel")
+    expected = _git_root("--show-superproject-working-tree") or _git_root(
+        "--show-toplevel"
+    )
     tm.that(resolved, eq=expected)
 
 

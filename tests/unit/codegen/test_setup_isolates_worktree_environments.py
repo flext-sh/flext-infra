@@ -28,18 +28,12 @@ def _recipe(name: str) -> str:
     return body[1].split("\n\n", 1)[0]
 
 
-def test_provisioning_replaces_only_a_foreign_environment_symlink() -> None:
+def test_provisioning_preserves_a_borrowed_environment_symlink() -> None:
     recipe = _recipe("SETUP_ENVIRONMENT_RECIPE")
     assert '[ -L "$(RUNTIME_VENV)" ]' in recipe
-    assert 'rm "$(RUNTIME_VENV)"' in recipe
+    assert 'rm -f "$(RUNTIME_VENV)"' not in recipe
+    assert "borrowed environment" in recipe
     assert '[ ! -x "$(RUNTIME_PYTHON)" ]' in recipe
-
-
-def test_each_checkout_owns_its_project_local_runtime() -> None:
-    template = _template_text()
-    assert "RUNTIME_ROOT := $(PROJECT_ROOT)" in template
-    assert "BORROW_RUNTIME_VENV_RECIPE" not in template
-    assert 'if [ "$(RUNTIME_ROOT)" = "$(PROJECT_ROOT)" ]' not in template
 
 
 def test_uv_run_prefers_project_src() -> None:

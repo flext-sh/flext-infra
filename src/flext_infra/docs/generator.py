@@ -55,7 +55,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
             m.Infra.DocsPhaseReport(
                 phase="generate",
                 scope=scope.name,
-                source="workspace-root-aggregate-ssot",
+                source="workspace-aggregate-ssot",
                 result=c.Infra.ResultStatus.OK,
                 reason="aggregate-root-owner",
                 passed=True,

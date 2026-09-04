@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -70,6 +71,8 @@ class TestExtendedRunnerExtras:
             eq=(
                 "-m",
                 c.Infra.PYRIGHT,
+                "--pythonpath",
+                sys.executable,
                 c.Infra.PYRIGHT_PROJECT_ARG,
                 c.Infra.PYRIGHT_PROJECT_CONFIG_TARGET,
                 "--outputjson",

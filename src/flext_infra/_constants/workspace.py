@@ -86,21 +86,6 @@ class FlextInfraConstantsWorkspace:
         "nova-branch",
     })
 
-    @unique
-    class WorkspaceMode(StrEnum):
-        """Workspace execution mode enumeration."""
-
-        WORKSPACE = "workspace"
-        STANDALONE = "standalone"
-
-    @unique
-    class WorkspaceProjectRole(StrEnum):
-        """Relationship of one discovered project to an aggregate workspace."""
-
-        WORKSPACE_ROOT = "workspace-root"
-        SUBPROJECT = "subproject"
-        STANDALONE = "standalone"
-
     EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
         ".ai-hub",
         "algar-*",
@@ -115,7 +100,7 @@ class FlextInfraConstantsWorkspace:
     })
     "Persistent-state artifact basenames owned by the local repository."
 
-    # The .gitignore body is derived from the artifact SSOT
+    # NOTE (flext-jnm1.2): the .gitignore body is derived from the artifact SSOT
     # (config/codegen.yaml artifacts -> CodegenConfigSpec.gitignore_sections)
     # and written only by codegen conform; the old REQUIRED_GITIGNORE_ENTRIES,
     # GITIGNORE_REMOVE_EXACT and GITIGNORE_MANAGED_HEADER append-paths were

@@ -45,13 +45,21 @@ class FlextInfraUtilitiesGitRepo:
 
     @classmethod
     def _open_repo(cls, repo_root: Path) -> p.Result[Repo]:
-        """Open one non-bare worktree repository at ``repo_root``."""
+        """Open the non-bare worktree repository containing ``repo_root``.
+
+        The path may name the checkout root, a directory inside it, or a file
+        inside it; the repository is the one that contains it. Callers depend
+        on that -- ``git_is_work_tree`` and ``git_semantic_identity`` already
+        open with the same contract, and one of them documents it as "the same
+        nested-path contract as git_open_repo" -- but this opener had lost it,
+        so every nested path failed with "cannot open git repository".
+        """
         resolved = repo_root.expanduser().resolve()
         try:
             refreshed = cls.refresh_binary()
             if refreshed.failure:
                 return r[Repo].fail(refreshed.error or "git binary unavailable")
-            repo = Repo(resolved)
+            repo = Repo(resolved, search_parent_directories=True)
         except (
             GitCommandNotFound,
             ImportError,
@@ -78,9 +86,4 @@ class FlextInfraUtilitiesGitRepo:
         return opened.value
 
 
-def git_refresh_binary() -> p.Result[bool]:
-    """Refresh GitPython's binary path using the canonical repository helper."""
-    return FlextInfraUtilitiesGitRepo.refresh_binary()
-
-
-__all__: list[str] = ["FlextInfraUtilitiesGitRepo", "git_refresh_binary"]
+__all__: list[str] = ["FlextInfraUtilitiesGitRepo"]

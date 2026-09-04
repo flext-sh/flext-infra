@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import flext_infra
-from flext_infra import c, config, u
+from flext_infra import config, u
 from flext_tests import tm
 from tests import u as test_u
 
@@ -187,16 +186,9 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             uv_log.read_text(encoding="utf-8"),
-            has=[f"venv {engine_root / '.venv'}", f"sync --project {engine_root}"],
-        )
-        tm.that(
-            uv_log.read_text(encoding="utf-8"),
             has=[
-                "run --no-project --with",
-                "-m flext_infra codegen conform",
-                f"--root {engine_root}",
-                "--scope self",
-                "--mode check",
+                f"venv {engine_root / '.venv'}",
+                f"sync --frozen --project {engine_root}",
             ],
         )
 
@@ -285,33 +277,6 @@ class TestsMakeTestSelector:
             ],
             lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
         )
-        tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
+        tm.that(reporter, has="{{ command_prefix }}set -eu; \\\n")
+        tm.that(reporter, has='TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" {{ runner }}')
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])
-
-    def test_generated_owner_keeps_gen_on_the_makefile(self) -> None:
-        """The generated Makefile owns ``gen`` while custom.mk stays private."""
-        template = _makefile_template().read_text(encoding="utf-8")
-        custom = (
-            Path(flext_infra.__file__).resolve().parents[2]
-            / c.Infra.CUSTOM_MAKE_FILENAME
-        ).read_text(encoding="utf-8")
-
-        tm.that(template, has="_builtin_gen_apply")
-        tm.that(template, lacks="_builtin_build_gen")
-        tm.that(custom, has="only pre/post hooks")
-
-    def test_gen_is_the_only_make_owner_of_generated_docs(self) -> None:
-        """Route documentation projection writes only through make gen."""
-        template = _makefile_template().read_text(encoding="utf-8")
-
-        tm.that(template, lacks="_builtin_docs_generate:")
-        tm.that(
-            template,
-            has=[
-                "_builtin_gen_check:",
-                "docs generate --workspace",
-                "--check",
-                "_builtin_gen_all:",
-                "--apply",
-            ],
-        )

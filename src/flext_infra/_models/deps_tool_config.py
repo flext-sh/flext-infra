@@ -133,7 +133,19 @@ class FlextInfraModelsDepsToolSettings(
                 alias="parallel-workers",
                 gt=0,
                 le=16,
-                description="Fixed pytest-xdist worker budget for full runs.",
+                description="Upper pytest-xdist worker ceiling for full runs.",
+            ),
+        ]
+        parallel_worker_memory_gb: Annotated[
+            int,
+            m.Field(
+                alias="parallel-worker-memory-gb",
+                gt=0,
+                le=64,
+                description=(
+                    "Physical-memory reservation per xdist worker; the runner "
+                    "also bounds workers by available CPU."
+                ),
             ),
         ]
         parallel_distribution: Annotated[

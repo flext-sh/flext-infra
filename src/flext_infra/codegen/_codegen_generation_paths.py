@@ -136,7 +136,19 @@ class FlextInfraCodegenGenerationPathsMixin:
     def _reject_noncanonical_type_checking_import(
         mod: str, local_package_root: str | None, items: t.StrPairSequence
     ) -> None:
-        """Reject relative imports without a package and unnormalized local owners."""
+        """Reject a relative TYPE_CHECKING import with no local package context.
+
+        flext-udpm5: an absolute import that shares the current package's own
+        project root but is not one of its descendants (an ancestor, sibling,
+        or cousin package, e.g. flext-ldif's ``servers._oid`` importing
+        ``servers.rfc``) is intentionally left absolute by
+        ``_normalize_type_checking_module_path`` and accepted here rather
+        than rejected: converting it to a relative import would require more
+        than one leading dot, which the member project's own Ruff
+        configuration (``ban-relative-imports = "parents"``) forbids. Only a
+        descendant import lacking any local package context at all -- which
+        cannot be resolved to any owner -- is rejected.
+        """
         if mod.startswith(".") and not local_package_root:
             exports = ", ".join(name for name, _ in items)
             msg = (
@@ -144,18 +156,6 @@ class FlextInfraCodegenGenerationPathsMixin:
                 f"(exports: {exports})"
             )
             raise ValueError(msg)
-        if not local_package_root or mod.startswith("."):
-            return
-        root_pkg = local_package_root.split(".", maxsplit=1)[0]
-        first_segment = mod.split(".", maxsplit=1)[0]
-        if first_segment != root_pkg:
-            return
-        exports = ", ".join(name for name, _ in items)
-        msg = (
-            f"absolute local TYPE_CHECKING import {mod!r} in package "
-            f"{local_package_root!r} (exports: {exports}); expected a relative owner"
-        )
-        raise ValueError(msg)
 
     @staticmethod
     def _format_root_package_docstring(current_pkg: str) -> str:

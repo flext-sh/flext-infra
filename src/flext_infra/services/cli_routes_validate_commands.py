@@ -30,7 +30,10 @@ class ValidationCommandRoutes(CliRouteBase):
 
     validate_command_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = tuple(
         m.Cli.ResultCommandRoute(
-            name=route_name, help_text=help_text, model_cls=model_cls, handler=handler
+            name=route_name,
+            help_text=help_text,
+            model_cls=model_cls,
+            handler=CliRouteBase.result_handler(handler),
         )
         for route_name, help_text, model_cls, handler in (
             (

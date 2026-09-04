@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
-from typing import override
+from types import MappingProxyType
+from typing import Any, Never, override
 
 
 class ImmutableEmptyMapping[K, V](Mapping[K, V]):
-    """Fully typed immutable empty mapping used as a field factory."""
+    """Fully typed immutable empty mapping used as a field factory.
+
+    Kept beside the ``immutable_empty_mapping`` factory: every consumer
+    imported on 0.12.0-dev still binds the class directly.
+    """
 
     @override
     def __getitem__(self, key: K) -> V:
@@ -23,6 +28,12 @@ class ImmutableEmptyMapping[K, V](Mapping[K, V]):
     def __len__(self) -> int:
         """Return the invariant empty size."""
         return 0
+
+
+def immutable_empty_mapping() -> Mapping[Any, Never]:
+    """Return a fresh immutable empty mapping."""
+    empty: dict[Any, Never] = {}
+    return MappingProxyType(empty)
 
 
 # Internal owner: direct module imports are intentional; no facade ABI is published.

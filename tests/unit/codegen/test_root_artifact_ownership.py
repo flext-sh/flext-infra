@@ -163,21 +163,12 @@ class TestsRootArtifactOwnership:
 
 
 class TestsAncestryNetworkBoundary:
-    """The ancestry plan must never block indefinitely on a remote."""
+    """The ancestry plan is a repository-local, offline inventory."""
 
-    def test_origin_fetch_is_time_boxed(
+    def test_ancestry_plan_never_fetches_origin(
         self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Refreshing the baseline from origin runs under a declared timeout.
-
-        The ancestry plan shells `git fetch origin` whenever a remote is
-        configured. Without a timeout, a slow or unreachable remote
-        therefore blocked conform for as long as git waited -- measured at 7.44s
-        cumulative in one unit test whose fixture pointed origin at a real
-        GitHub URL, the single largest cost in the suite. Every other bounded
-        subprocess in this codebase states c.Infra.TIMEOUT_SHORT; the network
-        call, the one most able to hang, stated nothing.
-        """
+        """Planning consumes the existing origin ref without network access."""
         root = infra_git_repo
         dist = u.Tests.repository_ref(config.Infra.name).distribution
         u.Tests.write_project_beads_config(root, dist)
@@ -227,9 +218,7 @@ class TestsAncestryNetworkBoundary:
         )
 
         fetches = [entry for entry in recorded if "fetch" in entry[0]]
-        tm.that(bool(fetches), eq=True)
-        for _command, timeout in fetches:
-            tm.that(timeout, eq=c.Infra.TIMEOUT_SHORT)
+        tm.that(fetches, empty=True)
 
 
 __all__: list[str] = []

@@ -18,6 +18,14 @@ _TEMPLATES = (
 
 
 class TestsTemplateFormatterFixedPoint:
+    def test_standalone_pyproject_template_does_not_declare_empty_workspace(
+        self,
+    ) -> None:
+        """Keep standalone projects eligible for a real parent uv workspace."""
+        template = (_TEMPLATES / "pyproject.toml.j2").read_text(encoding="utf-8")
+
+        tm.that(template, lacks="[tool.uv.workspace]")
+
     def test_dependabot_render_has_one_terminal_newline(self) -> None:
         empty = tm.ok(
             u.Cli.template_render(
@@ -82,11 +90,6 @@ class TestsTemplateFormatterFixedPoint:
         tm.that(with_devcontainer, has="package-ecosystem: devcontainers")
         for rendered in (without, with_devcontainer):
             tm.that(rendered, has="package-ecosystem: pip")
-
-    def test_makefile_empty_infra_source_root_has_no_trailing_space(self) -> None:
-        rendered = (_TEMPLATES.parents[4] / "Makefile").read_text(encoding="utf-8")
-
-        tm.that(rendered, has="FLEXT_INFRA_SOURCE_ROOT_REL :=\n")
 
     def test_sgconfig_render_has_one_terminal_newline(self) -> None:
         populated = tm.ok(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import marshal
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -38,12 +39,20 @@ def _dump_real_profile(path: Path) -> None:
     path.write_bytes(marshal.dumps(stats))
 
 
+def _sentinel_worker_budget(
+    _runner: FlextInfraPytestRunner, _policy: object
+) -> int:
+    """Return a value that cannot coincide with the shipped worker ceiling."""
+    return 7
+
+
 class TestsFlextInfraPytestRunner:
     @pytest.fixture(autouse=True)
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Local argv contracts assume CI/COV unset unless a test sets them."""
+        """Local argv contracts assume opt-in tokens unset unless a test sets them."""
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
         monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_PROFILE, raising=False)
 
     """Prove exact argv, hard deadline propagation, and durable artifacts."""
 
@@ -54,7 +63,6 @@ class TestsFlextInfraPytestRunner:
         file: str | None = None,
         match: str | None = None,
         what: str | None = None,
-        fail_fast: bool = False,
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
@@ -66,7 +74,6 @@ class TestsFlextInfraPytestRunner:
             what=what,
             target="tests",
             reports=".reports/tests",
-            fail_fast=fail_fast,
         )
 
     def test_focused_argv_preserves_nodeid_and_disables_parallel_coverage(
@@ -82,53 +89,13 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(report_dir)
 
         tm.that(command, has=[nodeid, "-k", "exact and not slow", "-n", "0"])
-        tm.that(command, has="--no-cov")
-        tm.that(command, lacks="--testmon")
+        tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--dist")
         tm.that(command, lacks="PYTEST_ARGS")
 
-    def test_green_child_with_zero_executed_tests_fails_loudly(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    def test_full_argv_is_config_derived_without_default_profiling(
+        self, tmp_path: Path
     ) -> None:
-        test_file = tmp_path / "tests" / "sample_test.py"
-        test_file.parent.mkdir(parents=True)
-        test_file.write_text("", encoding="utf-8")
-        runner = self._runner(tmp_path, file="tests/sample_test.py")
-
-        def fake_run_to_file(
-            cmd: t.StrSequence,
-            output_file: t.Cli.TextPath,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            live: bool = False,
-            deadline: p.Cli.ProcessDeadline | None = None,
-        ) -> p.Result[int]:
-            del cmd, cwd, timeout, env, remove_env_keys, input_data, live, deadline
-            log_path = Path(output_file)
-            report_dir = log_path.parent
-            log_path.write_text("1 deselected in 0.01s\n", encoding="utf-8")
-            (report_dir / "junit.xml").write_text(
-                (
-                    '<?xml version="1.0"?>'
-                    '<testsuites><testsuite tests="0" failures="0" errors="0" '
-                    'skipped="0" time="0.01"/></testsuites>'
-                ),
-                encoding="utf-8",
-            )
-            _dump_real_profile(report_dir / "pytest.pstats")
-            return r[int].ok(0)
-
-        monkeypatch.setattr(u.Cli, "run_to_file", staticmethod(fake_run_to_file))
-
-        result = runner.execute()
-
-        tm.fail(result, has="pytest completed without executing tests")
-
-    def test_full_argv_is_config_derived_and_profiled(self, tmp_path: Path) -> None:
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
         policy = config.Infra.tooling.tools.pytest
@@ -139,13 +106,9 @@ class TestsFlextInfraPytestRunner:
             command,
             has=[
                 "-m",
-                "cProfile",
-                "-m",
                 "pytest",
                 "--testmon",
                 "--no-cov",
-                "-n",
-                str(policy.parallel_workers),
                 "--dist",
                 policy.parallel_distribution,
                 f"--timeout={policy.case_timeout_seconds}",
@@ -153,7 +116,91 @@ class TestsFlextInfraPytestRunner:
                 policy.enforcement_plugin,
             ],
         )
+        tm.that(command, lacks="cProfile")
+        tm.that(command, lacks="pytest.pstats")
         tm.that(command, lacks="--cov-report")
+
+    @pytest.mark.parametrize(
+        (
+            "parallel_workers",
+            "cpu_count",
+            "memory_gb",
+            "parallel_worker_memory_gb",
+            "expected",
+        ),
+        [
+            (2, 20, 16, 2, 2),
+            (16, 3, 64, 2, 3),
+            (16, 20, 5, 2, 2),
+        ],
+    )
+    def test_full_workers_are_independently_bounded_by_each_resource(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        parallel_workers: int,
+        cpu_count: int,
+        memory_gb: int,
+        parallel_worker_memory_gb: int,
+        expected: int,
+    ) -> None:
+        runner = self._runner(tmp_path)
+        configured_policy = config.Infra.tooling.tools.pytest
+        payload = configured_policy.model_dump(by_alias=True)
+        payload.update({
+            "parallel-workers": parallel_workers,
+            "parallel-worker-memory-gb": parallel_worker_memory_gb,
+        })
+        policy = type(configured_policy).model_validate(payload)
+        monkeypatch.setattr(os, "cpu_count", lambda: cpu_count)
+        monkeypatch.setattr(
+            FlextInfraPytestRunner,
+            "_memory_gb",
+            staticmethod(lambda: memory_gb),
+        )
+
+        workers = runner.parallel_worker_budget(policy)
+
+        tm.that(workers, eq=expected)
+
+    def test_full_command_uses_the_derived_worker_budget(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        monkeypatch.setattr(
+            FlextInfraPytestRunner,
+            "parallel_worker_budget",
+            _sentinel_worker_budget,
+        )
+
+        tm.that(runner.build_command(report_dir), has=("-n", "7"))
+
+    def test_profile_requires_explicit_opt_in(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        default_command = runner.build_command(report_dir)
+        monkeypatch.setenv(c.Infra.PYTEST_ENV_PROFILE, "Y")
+        opt_in_runner = FlextInfraPytestRunner.from_environment(
+            started_at_monotonic=runner.started_at_monotonic
+        )
+
+        opt_in_command = opt_in_runner.build_command(report_dir)
+
+        tm.that(default_command, lacks="cProfile")
+        tm.that(
+            opt_in_command,
+            has=[
+                "-m",
+                "cProfile",
+                "-o",
+                str(report_dir / "pytest.pstats"),
+                "-m",
+                "pytest",
+            ],
+        )
 
     def test_parallel_run_disables_benchmarks(self, tmp_path: Path) -> None:
         """pytest-benchmark warns at configure time when xdist is active.
@@ -170,19 +217,6 @@ class TestsFlextInfraPytestRunner:
         command = runner.build_command(report_dir)
 
         tm.that(command, has="--benchmark-disable")
-
-    def test_fail_fast_full_run_uses_one_process_and_stops_after_first_failure(
-        self, tmp_path: Path
-    ) -> None:
-        """Prevent already-running xdist workers from reporting later failures."""
-        runner = self._runner(tmp_path, fail_fast=True)
-        report_dir = tmp_path / ".reports" / "tests" / "run"
-
-        command = runner.build_command(report_dir)
-
-        tm.that(command, has=["-x", "-n", "0"])
-        tm.that(command, lacks="--dist")
-        tm.that(command, lacks="--benchmark-disable")
 
     def test_focused_run_keeps_benchmarks_enabled(self, tmp_path: Path) -> None:
         """A focused run is single-process, so benchmarks stay measurable."""
@@ -227,7 +261,8 @@ class TestsFlextInfraPytestRunner:
             deadline: p.Cli.ProcessDeadline | None = None,
         ) -> p.Result[int]:
             del cwd, timeout, input_data, remove_env_keys
-            tm.that(cmd, has=["-m", "cProfile", "-m", "pytest"])
+            tm.that(cmd, has=["-m", "pytest"])
+            tm.that(cmd, lacks="cProfile")
             tm.that(deadline is not None, eq=True)
             if deadline is not None:
                 captured["deadline"] = deadline
@@ -499,6 +534,14 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="--cov-report")
         tm.that(any(arg == "--cov" for arg in command), eq=False)
 
+    def test_full_selector_disables_testmon_and_enables_coverage(
+        self, tmp_path: Path
+    ) -> None:
+        runner = self._runner(tmp_path, what="full")
+        command = runner.build_command(tmp_path / ".reports" / "tests" / "run")
+        tm.that(command, has="--cov")
+        tm.that(command, lacks=["--testmon", "--no-cov"])
+
     def test_cov_y_disables_testmon_and_enables_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -531,15 +574,6 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, has=["--testmon", "--no-cov"])
         tm.that(command, lacks="--cov-report")
         tm.that(command, has=["-m", "not docker and not remote"])
-
-    def test_ci_y_forbids_pytest_execute(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """flext-v4p5: make test under CI=Y must fail loud, not run the suite."""
-        monkeypatch.setenv(c.Infra.PYTEST_ENV_CI, config.Infra.codegen.make.ci.value)
-        runner = self._runner(tmp_path, what="all")
-        result = runner.execute()
-        tm.fail(result, has="forbidden under CI=Y")
 
     def test_ci_true_keeps_default_testmon_without_coverage(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

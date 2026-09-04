@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -22,7 +23,7 @@ class TestsCodegenMakeEnvironment:
     def _render_makefile(
         tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
     ) -> tuple[Path, Path]:
-        role = c.Infra.RepositoryRole(profile.value)
+        role = c.Infra.MakeProfile(profile.value)
         repository = test_u.Tests.repository_ref(
             "fixture-project", role=role
         ).model_copy(update={"editable": True})
@@ -64,7 +65,7 @@ class TestsCodegenMakeEnvironment:
         )
         workspace = m.Infra.WorkspaceSpec(
             name="fixture-project",
-            beads=beads,
+            beads=test_u.Tests.beads_project("fixture-project"),
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
             subprojects=local_subprojects,
@@ -88,27 +89,6 @@ class TestsCodegenMakeEnvironment:
             u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
         )
         return project_root, workspace_root
-
-    @staticmethod
-    def _write_mise_setup_fixture(project_root: Path) -> None:
-        toolchain = config.Infra.codegen.toolchain
-        test_u.Tests.write_executable(
-            project_root / "bin" / "mise",
-            (
-                "#!/bin/sh\n"
-                'if [ "$1" = "--version" ]; then\n'
-                f"  printf '%s\\n' '{toolchain.mise_version}'\n"
-                "  exit 0\n"
-                "fi\n"
-                'case "$*" in\n'
-                f"  *'exec -- uv --version'*) printf '%s\\n' 'uv {toolchain.uv_version}.0'; exit 0 ;;\n"
-                "esac\n"
-                'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
-                'if [ "$#" -gt 0 ]; then shift; exec "$@"; fi\n'
-                "exit 0\n"
-            ),
-        )
-        (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
@@ -179,7 +159,6 @@ class TestsCodegenMakeEnvironment:
     ) -> None:
         """Setup creates the venv and syncs dependencies before any runtime use."""
         project_root, _workspace_root = self._render_makefile(tmp_path, profile)
-        self._write_mise_setup_fixture(project_root)
         hostile_venv = tmp_path / "hostile" / ".venv"
         hostile_bin = hostile_venv / "bin"
         hostile_bin.mkdir(parents=True)
@@ -202,7 +181,7 @@ class TestsCodegenMakeEnvironment:
             encoding="utf-8",
         )
         provisioned_uv.chmod(0o755)
-        mise = test_u.Tests.write_mise_stub(tmp_path / "mise")
+        test_u.Tests.write_mise_stub(project_root / "bin" / "mise")
         (project_root / "mise.lock").touch()
 
         clean_env = {
@@ -215,166 +194,49 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
         result = u.Cli.run_raw(
-            [c.Infra.MAKE, "--no-print-directory", "setup", f"SETUP_MISE={mise}"],
+            [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
         )
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
-        tm.that(commands[1], has="sync --project")
+        tm.that(commands[1], has="sync --frozen --project")
         if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
-    def test_setup_bootstraps_before_the_tracked_mise_launcher_exists(
+    def test_setup_fails_when_the_tracked_mise_launcher_is_missing(
         self, tmp_path: Path
     ) -> None:
-        """Bootstrap locally without selecting tools from a parent umbrella."""
+        """Never substitute a system Mise for the generated launcher owner."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
-        (project_root / ".mise.toml").write_text(
-            '[tools]\nuv = "0.12"\n', encoding="utf-8"
-        )
-        umbrella_config = project_root.parent / ".mise.toml"
-        umbrella_config.write_text(
-            '[tools]\n"github:gastownhall/beads" = "1.2.2"\n', encoding="utf-8"
-        )
         (project_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
         tool_bin = tmp_path / "managed-tools" / "bin"
-        real_mise = test_u.Tests.write_mise_stub(tool_bin / "mise-real")
-        mise_env_log = tmp_path / "mise-env.log"
-        beads_selection_log = tmp_path / "beads-selection.log"
-        expected_ceiling = project_root.parent
+        mise_log = tmp_path / "mise.log"
         mise = tool_bin / "mise"
         test_u.Tests.write_executable(
-            mise,
-            "#!/bin/sh\n"
-            f"if [ \"$1\" != '--version' ] && "
-            f"[ \"$MISE_CEILING_PATHS\" != '{expected_ceiling}' ]; then\n"
-            f"  printf '%s\\n' '{umbrella_config}' >> '{beads_selection_log}'\n"
-            "  exit 91\n"
-            "fi\n"
-            f"printf '%s|%s|%s\\n' \"$MISE_GLOBAL_CONFIG_FILE\" "
-            f'"$MISE_CONFIG_DIR" "$MISE_CEILING_PATHS" >> \'{mise_env_log}\'\n'
-            f"exec '{real_mise}' \"$@\"\n",
+            mise, f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{mise_log}'\nexit 0\n"
         )
-        uv = tool_bin / "uv"
-        test_u.Tests.write_executable(
-            uv,
-            "#!/bin/sh\n"
-            'if [ "$1" = "--version" ]; then '
-            f"printf 'uv {config.Infra.codegen.toolchain.uv_version}.0\\n'; exit; fi\n"
-            'if [ "$1" = "venv" ]; then\n'
-            '  mkdir -p "$2/bin"\n'
-            "  printf '#!/bin/sh\\nexit 0\\n' > \"$2/bin/python\"\n"
-            '  chmod +x "$2/bin/python"\n'
-            "fi\n"
-            "exit 0\n",
-        )
-        hostile_global_config = tmp_path / "hostile-global-config.toml"
-        hostile_global_config.write_text(
-            '[tools]\n"github:foreign/tool" = "1.0.0"\n', encoding="utf-8"
-        )
-        env = {
-            "MISE_GLOBAL_CONFIG_FILE": str(hostile_global_config),
-            "PATH": f"{tool_bin}:{os.environ['PATH']}",
-        }
 
         process = tm.ok(
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "setup"],
                 cwd=project_root,
-                env=env,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
-            )
-        )
-
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
-        tm.that(mise.is_file(), eq=True)
-        tm.that((project_root / ".venv" / "bin" / "python").is_file(), eq=True)
-        tm.that(
-            any(
-                "/.test-tmp/mise-setup." in value and value.endswith("/config")
-                for line in mise_env_log.read_text(encoding="utf-8").splitlines()
-                for value in (line.split("|", 2)[1],)
-            ),
-            eq=True,
-        )
-        setup_ceilings = {
-            line.split("|", 2)[2]
-            for line in mise_env_log.read_text(encoding="utf-8").splitlines()
-            if "/.test-tmp/mise-setup." in line
-        }
-        assert setup_ceilings == {str(project_root.parent)}
-        tm.that(beads_selection_log.exists(), eq=False)
-
-    def test_gen_lock_failure_has_zero_repository_effect(self, tmp_path: Path) -> None:
-        """Fail lock staging before conform, docs, launcher, or lock publication."""
-        project_root, _workspace_root = self._render_makefile(
-            tmp_path, c.Infra.MakeProfile.STANDALONE
-        )
-        (project_root / ".mise.toml").write_text(
-            '[tool_config]\nlocked = true\n\n[tools]\nuv = "0.12"\n', encoding="utf-8"
-        )
-        (project_root / "mise.lock").write_text("# original lock\n", encoding="utf-8")
-        (project_root / ".gitignore").write_text(
-            "# original ignore\n", encoding="utf-8"
-        )
-        mise = tmp_path / "mise-fails-lock"
-        test_u.Tests.write_executable(
-            mise,
-            "#!/bin/sh\n"
-            'case "$*" in\n'
-            '  *"generate install-script"*)\n'
-            "    output=\n"
-            '    while [ "$#" -gt 0 ]; do\n'
-            '      if [ "$1" = "--write" ]; then shift; output="$1"; fi\n'
-            "      shift\n"
-            "    done\n"
-            "    printf '#!/bin/sh\\nexit 0\\n' > \"$output\"\n"
-            "    printf '@exit /b 0\\n' > \"$output.cmd\"\n"
-            "    exit 0\n"
-            "    ;;\n"
-            "  *\" lock \"*) printf 'fixture lock failure\\n' >&2; exit 86 ;;\n"
-            "esac\n"
-            "exit 0\n",
-        )
-        owned_paths = tuple(
-            project_root / relative
-            for relative in (".gitignore", "mise.lock", "bin/mise", "bin/mise.cmd")
-        )
-        before = {
-            path: path.read_bytes() if path.is_file() else None for path in owned_paths
-        }
-
-        process = tm.ok(
-            u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "_builtin_gen_all",
-                    "APPLY=Y",
-                    f"SETUP_MISE={mise}",
-                ],
-                cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                env={"PATH": f"{tool_bin}:{os.environ['PATH']}"},
+                remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
             )
         )
 
         tm.that(process.exit_code, ne=0)
-        tm.that(process.stdout + process.stderr, has="fixture lock failure")
-        after = {
-            path: path.read_bytes() if path.is_file() else None for path in owned_paths
-        }
-        tm.that(after, eq=before)
-        transaction_dirs = tuple(
-            (project_root / ".test-tmp").glob("mise-transaction.*")
-        )
-        tm.that(transaction_dirs, eq=())
+        tm.that(process.stdout + process.stderr, has="missing generated mise launcher")
+        tm.that(mise.is_file(), eq=True)
+        tm.that(mise_log.exists(), eq=False)
+        tm.that((project_root / ".venv").exists(), eq=False)
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -391,7 +253,6 @@ class TestsCodegenMakeEnvironment:
         fixture_tool = "managed-tool"
         runtime_python = project_root / ".venv" / "bin" / "python"
         tool_log = tmp_path / "tools.log"
-        uv_environment_log = tmp_path / "uv-environment.log"
         for bin_root in (hostile_bin, provisioned_bin):
             test_u.Tests.write_executable(
                 bin_root / fixture_tool,
@@ -399,23 +260,20 @@ class TestsCodegenMakeEnvironment:
             )
         test_u.Tests.write_executable(hostile_bin / "uv", "#!/bin/sh\nexit 99\n")
         test_u.Tests.write_executable(
-            provisioned_bin / "uv",
-            (
-                "#!/bin/sh\n"
-                f"printf '%s\\n' \"$UV_PROJECT_ENVIRONMENT\" > '{uv_environment_log}'\n"
-                f"exec '{runtime_python}'\n"
-            ),
+            provisioned_bin / "uv", f"#!/bin/sh\nexec '{runtime_python}'\n"
         )
         test_u.Tests.write_executable(
             runtime_python,
             (
                 "#!/bin/sh\n"
+                'test -z "${PROJECT_ROOT+x}" || exit 98\n'
                 f"command -v uv > '{tool_log}'\n"
                 f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),
         )
         active_env = {
             "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "PROJECT_ROOT": str(tmp_path / "hostile-project-root"),
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
@@ -424,7 +282,7 @@ class TestsCodegenMakeEnvironment:
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
             )
         )
 
@@ -432,10 +290,6 @@ class TestsCodegenMakeEnvironment:
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
-        )
-        tm.that(
-            uv_environment_log.read_text(encoding="utf-8").strip(),
-            eq=str(project_root / ".venv"),
         )
 
     def test_generated_operations_bind_uv_to_runtime_root(self, tmp_path: Path) -> None:
@@ -453,18 +307,74 @@ class TestsCodegenMakeEnvironment:
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
                 "-u UV_PROJECT_ENVIRONMENT "
-                'UV_PROJECT_ENVIRONMENT="$(RUNTIME_VENV)" '
-                'PYTHONPATH="$(PROJECT_ROOT)/src" '
+                '-u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
             in makefile,
             eq=True,
         )
+        tm.that('test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"' in makefile, eq=True)
+        tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
-        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) sync --frozen --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+    )
+    def test_every_published_check_selector_has_a_generated_handler(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Every WHAT advertised by the typed Make owner resolves in both profiles."""
+        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        phony_targets = tuple(
+            token
+            for line in makefile.splitlines()
+            if line.startswith(".PHONY:")
+            for token in line.removeprefix(".PHONY:").split()
+        )
+
+        for gate in config.Infra.codegen.make.check_gates_allowed:
+            handler = f"_builtin_check_{gate}"
+            tm.that(makefile, has=f"{handler}: _builtin_require_environment")
+            tm.that(phony_targets, has=handler)
+
+    def test_standalone_check_selector_executes_its_exact_gate(
+        self, tmp_path: Path
+    ) -> None:
+        """Translate public WHAT once and run the sole CHECK_GATES executor."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        invocation_log = tmp_path / "check-invocation.log"
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(
+            runtime_python, f"#!/bin/sh\nprintf '%s\\n' \"$*\" > '{invocation_log}'\n"
+        )
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "check",
+                    f"{config.Infra.codegen.make.selector}=lint",
+                    f"UV={uv}",
+                ],
+                cwd=project_root,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        invocation = invocation_log.read_text(encoding="utf-8")
+        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(invocation, has="--gates lint --projects .")
 
     def test_dependency_upgrade_selects_only_one_distribution(
         self, tmp_path: Path
@@ -495,12 +405,8 @@ class TestsCodegenMakeEnvironment:
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
-                env={
-                    "PROJECT": config.Infra.name,
-                    "UV": str(uv),
-                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
-                },
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                env={"UV": str(uv), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -538,7 +444,7 @@ class TestsCodegenMakeEnvironment:
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -560,7 +466,7 @@ class TestsCodegenMakeEnvironment:
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -579,7 +485,7 @@ class TestsCodegenMakeEnvironment:
         for required in (
             "UV ?= uv",
             '$(UV) venv "$(RUNTIME_VENV)"',
-            '$(UV) sync --project "$(PROJECT_ROOT)"',
+            '$(UV) sync --frozen --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$superproject" submodule update --init -- "$$child_path"',
             'git -C "$$child_root" branch --show-current',
@@ -594,9 +500,14 @@ class TestsCodegenMakeEnvironment:
             "--no-install-project",
             '--editable "$(PROJECT_ROOT)"',
             "pip install",
-            "git checkout",
         ):
             tm.that(makefile, lacks=forbidden)
+        checkout_command = re.search(
+            r"(?:^|[;&|]\s*)git(?:\s+-C\s+\S+)?\s+checkout(?:\s|$)",
+            makefile,
+            flags=re.MULTILINE,
+        )
+        tm.that(checkout_command is None, eq=True)
 
     def test_generated_dependency_upgrade_projects_lock_floors(
         self, tmp_path: Path

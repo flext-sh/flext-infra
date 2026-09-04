@@ -20,6 +20,17 @@ from tests import c, t, u
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
+@pytest.fixture(autouse=True)
+def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the checkout trigger from leaking into synthetic Git repositories.
+
+    Tests that exercise trigger anchoring opt in after constructing a commit in
+    their own repository. Every other fixture owns unrelated history, so the
+    outer GitHub Actions SHA is invalid input for it.
+    """
+    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
+
+
 @pytest.fixture
 def infra_public_root() -> Iterator[ModuleType]:
     """Reload the root public package after clearing lazy-export caches.
@@ -187,12 +198,12 @@ def infra_git_repo(infra_test_workspace: Path) -> Path:
 
     Conformance reads this repository twice and both reads must agree. Detection
     only accepts a remote whose host and organization match the provider, while
-    baseline ancestry resolves the provider branch by fetching that same remote.
+    baseline ancestry resolves the already materialized provider tracking ref.
     Declaring the real upstream URL satisfies detection but grades the fixture
     against the live repository; declaring a local path fails detection outright.
     The fixture therefore declares the provider URL and rewrites it to a local
-    bare origin through Git's own ``url.<base>.insteadOf`` mechanism, so the two
-    reads observe one self-consistent topology without any network access.
+    bare origin through Git's own ``url.<base>.insteadOf`` mechanism. Fixture
+    setup materializes the tracking ref once; conformance itself stays offline.
     """
     repo = infra_test_workspace / "repo"
     repo.mkdir(parents=True, exist_ok=True)

@@ -78,17 +78,11 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         )
         """Environment inherited from an outer Make invocation to discard in tests."""
 
-        RELEASE_PHASE_VALIDATE: Final[str] = c.Infra.VERB_VALIDATE
-        RELEASE_PHASE_VERSION: Final[str] = c.Infra.VERSION
-        RELEASE_PHASE_BUILD: Final[str] = c.Infra.DIR_BUILD
-        RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.VERB_PUBLISH
-
-        ALL_PHASES: Final[t.StrSequence] = (
-            RELEASE_PHASE_VALIDATE,
-            RELEASE_PHASE_VERSION,
-            RELEASE_PHASE_BUILD,
-            RELEASE_PHASE_PUBLISH,
-        )
+        RELEASE_PHASE_PLAN: Final[str] = c.Infra.ReleasePhase.PLAN
+        RELEASE_PHASE_VERSION: Final[str] = c.Infra.ReleasePhase.VERSION
+        RELEASE_PHASE_TAG: Final[str] = c.Infra.ReleasePhase.TAG
+        RELEASE_PHASE_BUILD: Final[str] = c.Infra.ReleasePhase.BUILD
+        RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.ReleasePhase.PUBLISH
 
         LOG_NOISE_LINES: Final[t.StrSequence] = (
             "make[1]: Nothing to be done",
@@ -208,23 +202,27 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         REFACTOR_RULE_ITERATIONS: Final[int] = 100
         REFACTOR_RULE_MAX_SECONDS: Final[float] = 0.1
 
+        # flext-perf.4: gen pipeline performance thresholds (lazy-init stage).
+        GEN_PIPELINE_PROJECT_COUNT: Final[int] = 20
+        GEN_PIPELINE_MODULES_PER_PROJECT: Final[int] = 5
+        GEN_PIPELINE_MAX_SECONDS: Final[float] = 30.0
+        GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
+
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
-        RELEASE_VERSION_SELECTED: Final[str] = "1.2.0"
-        RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
-        RELEASE_VERSION_NEXT_DEV: Final[str] = "1.1.0.dev0"
-        RELEASE_BUMP_MINOR: Final[str] = "minor"
+        RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
         RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
+        # Fixture members depend on these siblings, so a release build must see
+        # them to pin their declared versions.
+        RELEASE_INTERNAL_DEPENDENCIES: Final[tuple[str, str]] = (
+            "flext-core",
+            "flext-tests",
+        )
         RELEASE_TAG_TARGET: Final[str] = "v1.0.0"
-        RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
+        RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
         RELEASE_NOTES_HEADING: Final[str] = "# Release v1.0.0"
-        RELEASE_NOTES_CHANGE_LINE: Final[str] = "- abc123 fix release flow"
+        RELEASE_NOTES_CHANGE_LINE: Final[str] = "- fix: release flow"
         RELEASE_INITIAL_CHANGE_LINE: Final[str] = "- Initial tagged release"
         RELEASE_CHANGELOG_HEADER: Final[str] = "# Changelog\n\n"
-        RELEASE_VERIFICATION_LINES: Final[t.StrSequence] = (
-            "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all",
-            "- make val VALIDATE_SCOPE=workspace",
-            "- make build",
-        )
 
 
 c = TestsFlextInfraConstants
