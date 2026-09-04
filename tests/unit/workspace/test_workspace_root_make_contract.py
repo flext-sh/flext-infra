@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 
@@ -60,8 +61,14 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     # These tests assert what the generated Makefile contains, so the public
     # planning surface provides the exact artifacts without writing the fixture.
     # Generation is runtime-independent and never invokes tracker services.
+    # Project-owned artifacts render only for a spec carrying scaffold
+    # metadata, so the aggregate workspace is injected the same way every
+    # other conform test provides it.
+    workspace = tm.ok(
+        FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
+    ).model_copy(update={"project": u.Tests.project_spec("fixture-workspace")})
     planned = tm.ok(
-        FlextInfraCodegenConform().plan(
+        FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=workspace_root,
                 scope=c.Infra.CodegenConformScope.SELF,
