@@ -395,5 +395,5 @@ exclude-newer = "{{ uv_exclude_newer }}"
    requirement unsatisfiable and names this key as the remedy, so the cutoff has
    to move to an instant rather than be switched off. #}
 {% if dependency_cooldown_exclusions or dependency_cooldown_overrides %}
-exclude-newer-package = { {% for package in dependency_cooldown_exclusions %}{% if package not in dependency_cooldown_overrides %}{{ package }} = false, {% endif %}{% endfor %}{% for package, cutoff in dependency_cooldown_overrides | dictsort %}{{ package }} = "{{ cutoff }}"{% if not loop.last %}, {% endif %}{% endfor %} }
+{% set cooldown_entries = [] %}{% for package in dependency_cooldown_exclusions if package not in dependency_cooldown_overrides %}{% set _ = cooldown_entries.append(package ~ " = false") %}{% endfor %}{% for package, cutoff in dependency_cooldown_overrides | dictsort %}{% set _ = cooldown_entries.append(package ~ ' = "' ~ cutoff ~ '"') %}{% endfor %}exclude-newer-package = { {{ cooldown_entries | join(", ") }} }
 {% endif %}

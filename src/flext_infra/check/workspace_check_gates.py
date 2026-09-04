@@ -17,6 +17,7 @@ from flext_infra.gates.codemod import FlextInfraCodemodGate
 from flext_infra.gates.deferred_self_reference import (
     FlextInfraDeferredSelfReferenceGate,
 )
+from flext_infra.gates.direnv import FlextInfraDirenvGate
 from flext_infra.gates.layout import FlextInfraLayoutGate
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -63,6 +64,7 @@ class FlextInfraGateRegistry:
             FlextInfraTierWhitelistGate,
             FlextInfraSmellsGate,
             FlextInfraCodemodGate,
+            FlextInfraDirenvGate,
         )
 
     def get(self, gate_id: str) -> type[FlextInfraGate] | None:

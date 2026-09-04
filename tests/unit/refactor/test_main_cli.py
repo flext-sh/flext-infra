@@ -63,14 +63,16 @@ class TestsFlextInfraRefactorMainCli:
         TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
         TestsFlextInfraRefactorMainCli._write(
             workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
+            "from __future__ import annotations\n\n"
+            "from sample_pkg.service import consume\n\n"
+            '__all__: list[str] = ["consume"]\n',
         )
         service_file = workspace / "src" / "sample_pkg" / "service.py"
         TestsFlextInfraRefactorMainCli._write(
             service_file,
             "from __future__ import annotations\n"
-            "from collections.abc import Mapping\n"
             "from typing import TypeAlias\n\n"
+            "from flext_core import t\n\n"
             '__all__: list[str] = ["consume"]\n\n'
             "PayloadMap: TypeAlias = t.StrMapping\n"
             "def consume(payload: PayloadMap) -> PayloadMap:\n"
@@ -329,7 +331,8 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_accepts_workspace_before_subcommand(
         self, tmp_path: Path
     ) -> None:
-        workspace = self._build_basic_workspace(tmp_path)[0]
+        workspace = tmp_path / "workspace"
+        self._write_workspace_pyproject(workspace)
         result = self._refactor_main("--workspace", str(workspace), "census")
         tm.that(result, eq=0)
 
@@ -516,7 +519,7 @@ class TestsFlextInfraRefactorMainCli:
         typings_source = typings_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="PayloadMap: TypeAlias = t.StrMapping")
         tm.that(service_source, has="from sample_pkg.typings import PayloadMap")
-        tm.that(typings_source, has="PayloadMap: TypeAlias = t.StrMapping")
+        tm.that(typings_source, has="type PayloadMap = t.StrMapping")
         tm.that(typings_source, has="from flext_core import t")
 
     def test_refactor_census_apply_rewrites_compatibility_alias(

@@ -19,7 +19,7 @@ class FlextInfraUtilitiesRepository:
         distribution: str,
         *,
         provider: m.Infra.ProviderSpec,
-        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.STANDALONE,
+        role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
         checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.SUBMODULE,
     ) -> m.Infra.RepositoryRef:
         """Derive one repository reference from generic provider policy.

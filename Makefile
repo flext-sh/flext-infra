@@ -12,10 +12,28 @@
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
+ifeq ($(filter command line override,$(origin GEN_INIT_ONLY)),)
+ifeq ($(filter gen,$(MAKECMDGOALS)),gen)
+ifeq ($(strip $(WHAT)),init)
+GEN_INIT_ONLY := Y
+# _dispatch re-invokes this Makefile through SELF_MAKE, and a derived (non
+# command-line) variable is not inherited by that sub-make, so the bypass would
+# silently switch off exactly where the recipes run.
+export GEN_INIT_ONLY
+endif
+endif
+endif
+ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
+ifneq ($(filter setup,$(MAKECMDGOALS)),)
+SETUP_BOOTSTRAP_ONLY := Y
+export SETUP_BOOTSTRAP_ONLY
+endif
+endif
+
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
-MAKE_PROFILE := workspace-member
+MAKE_PROFILE := standalone
 WORKSPACE_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
@@ -36,6 +54,10 @@ APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
+# Y forces `deps upgrade` to refresh cached uv source metadata for DEPENDENCY
+# (--refresh-package <DEPENDENCY>), or for every package when DEPENDENCY is
+# empty (--refresh); any other non-N value is an error.
+DEPS_REFRESH ?= N
 FAIL_FAST ?= 0
 FILE ?=
 MATCH ?=
@@ -47,20 +69,21 @@ BRANCH ?=
 PYTEST_ARGS ?=
 PYTEST_DIAG_ARGS ?= -rA --durations=0 --tb=long --showlocals
 PYTEST_REPORT_ARGS ?= -ra --durations=25 --durations-min=0.001 --tb=short
-PYTEST_PROCESS_TIMEOUT_SECONDS ?= 125
-# mro-99ae: the pytest process inherits a hard wall-clock boundary, mirroring
-# MYPY_BOUNDED, so a hung run is terminated even if the typed runner stalls.
+PYTEST_PROCESS_TIMEOUT_SECONDS ?= 660
+# mro-99ae: the pytest process inherits a hard wall-clock boundary, so a hung
+# run is terminated even if the runner itself stalls.
 PYTEST_BOUNDED = timeout --signal=TERM --kill-after=5s "$(PYTEST_PROCESS_TIMEOUT_SECONDS)s"
 PYTEST_REPORTS_DIR ?= .reports/tests
 override PYTEST_CASE_TIMEOUT_SECONDS := 10
-override PYTEST_RUN_TIMEOUT_SECONDS := 120
+override PYTEST_RUN_TIMEOUT_SECONDS := 600
 override PYTEST_TERMINATION_GRACE_SECONDS := 2
 override PYTEST_TIMEOUT_EXIT_CODE := 124
 override PYTEST_ENFORCEMENT_PLUGIN := flext_tests_enforcement
 override PYTEST_PROGRESS_ARGS := --verbose
 override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=short
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
-override PYTEST_PARALLEL_WORKERS := 4
+override PYTEST_PARALLEL_WORKERS := 2
+override PYTEST_PARALLEL_WORKER_MEMORY_GB := 2
 override PYTEST_PARALLEL_DISTRIBUTION := worksteal
 override PYTEST_PROFILE_SORT := cumulative
 override PYTEST_PROFILE_LIMIT := 50
@@ -75,7 +98,9 @@ override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
 override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 override export FLEXT_PYTEST_COV_RAW := $(value COV)
+override export FLEXT_PYTEST_PROFILE_RAW := $(value PROFILE)
 WHAT ?=
+PROFILE ?=
 # End SECTION: user overrides
 
 # === SECTION: derived paths (managed) ===
@@ -90,7 +115,7 @@ SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
-SETUP_MISE_VERSION := 2026.8.14
+SETUP_MISE_VERSION := latest
 ifeq ($(OS),Windows_NT)
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else
@@ -101,17 +126,6 @@ MISE_LOCK_PLATFORMS := linux-x64,linux-arm64,linux-x64-musl,linux-arm64-musl,mac
 MISE_LOCK_PROJECTS := .
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# make work targets a member checkout when PROJECT names a workspace member and
-# WORKSPACE was not overridden on the command line. PROJECT alone used to keep
-# WORKSPACE at the workspace root, so finish looked up lanes in the wrong git
-# primary and failed with "worktree branch is not registered".
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
-override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
-endif
-endif
-endif
 # === SECTION: WORKSPACE_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
 # Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
@@ -120,8 +134,14 @@ endif
 # must never redirect verbs to another working tree. The git queries therefore
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
+# `gen WHAT=init` (GEN_INIT_ONLY) must probe NO external tool — the checkout may
+# have no git metadata yet.
+ifeq ($(GEN_INIT_ONLY),Y)
+WORKSPACE_ROOT := $(PROJECT_ROOT)
+else
 ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
 WORKSPACE_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
+endif
 endif
 # End SECTION: WORKSPACE_ROOT isolation
 # A workspace lane is always registered at the workspace root. Other verbs may
@@ -130,7 +150,7 @@ endif
 ifneq ($(filter work,$(MAKECMDGOALS)),work)
 ifeq ($(filter command line override,$(origin WORKSPACE)),)
 ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_MEMBERS)),)
+ifneq ($(filter $(PROJECT),$(WORKSPACE_SUBPROJECTS)),)
 override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
 endif
 endif
@@ -159,15 +179,15 @@ _ALLOWED_WHATS_help := usage
 _ALLOWED_WHATS_setup := environment
 _ALLOWED_WHATS_deps := check lock upgrade
 _ALLOWED_WHATS_build := artifacts
-_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells
-_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint
+_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells direnv
+_ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint
 _ALLOWED_WHATS_fmt := check all apply
 _ALLOWED_WHATS_fix := check all apply
 _ALLOWED_WHATS_run := default
 _ALLOWED_WHATS_status := diagnostics
-_ALLOWED_WHATS_docs := all fix audit build validate
+_ALLOWED_WHATS_docs := all generate fix audit build validate
 _ALLOWED_WHATS_clean := status generated
-_ALLOWED_WHATS_release := status
+_ALLOWED_WHATS_release := plan version tag build publish
 _ALLOWED_WHATS_gen := check all apply init
 _ALLOWED_WHATS_mod := check all apply
 else
@@ -175,21 +195,21 @@ _ALLOWED_WHATS_help := usage $(patsubst _custom_help_%,%,$(filter _custom_help_%
 _ALLOWED_WHATS_setup := environment $(patsubst _custom_setup_%,%,$(filter _custom_setup_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_deps := check lock upgrade $(patsubst _custom_deps_%,%,$(filter _custom_deps_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_build := artifacts $(patsubst _custom_build_%,%,$(filter _custom_build_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_test := all cache-status cache-clear cache-checkpoint $(patsubst _custom_test_%,%,$(filter _custom_test_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells direnv $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint $(patsubst _custom_test_%,%,$(filter _custom_test_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fmt := check all apply $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fix := check all apply $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_run := default $(patsubst _custom_run_%,%,$(filter _custom_run_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_status := diagnostics $(patsubst _custom_status_%,%,$(filter _custom_status_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_docs := all fix audit build validate $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_docs := all generate fix audit build validate $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_clean := status generated $(patsubst _custom_clean_%,%,$(filter _custom_clean_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_release := status $(patsubst _custom_release_%,%,$(filter _custom_release_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_release := plan version tag build publish $(patsubst _custom_release_%,%,$(filter _custom_release_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_gen := check all apply init $(patsubst _custom_gen_%,%,$(filter _custom_gen_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_mod := check all apply $(patsubst _custom_mod_%,%,$(filter _custom_mod_%,$(CUSTOM_DECLARED_TARGETS)))
 endif
-CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells
-CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells
- DOCS_ACTIONS := fix audit build validate
+CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells direnv
+CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells direnv
+ DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
 
 # === SECTION: lint/type paths (managed) ===
@@ -206,16 +226,6 @@ CALLER_PATH := $(PATH)
 CALLER_VIRTUAL_ENV := $(patsubst %/,%,$(VIRTUAL_ENV))
 # End SECTION: project tool owner
 
-# === MYPY RESOURCE LIMIT ===
-# mro-0ftd.3.11: every Mypy process inherits validated memory and time caps.
-MYPY_MEMORY_LIMIT_MB ?= 6144
-MYPY_TIMEOUT_SECONDS ?= 600
-MYPY_BOUNDED = timeout --signal=TERM --kill-after=5s "$(MYPY_TIMEOUT_SECONDS)s" prlimit --as=$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )):$$(( $(MYPY_MEMORY_LIMIT_MB) * 1024 * 1024 )) --
-VALIDATE_MYPY_LIMITS = case "$(MYPY_MEMORY_LIMIT_MB)" in ""|*[!0-9]*) echo "ERROR: MYPY_MEMORY_LIMIT_MB must be a positive integer"; exit 2;; esac; [ "$(MYPY_MEMORY_LIMIT_MB)" -gt 0 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be greater than zero"; exit 2; }; [ "$(MYPY_MEMORY_LIMIT_MB)" -le 6144 ] || { echo "ERROR: MYPY_MEMORY_LIMIT_MB must be less than or equal to 6144"; exit 2; }; case "$(MYPY_TIMEOUT_SECONDS)" in ""|*[!0-9]*) echo "ERROR: MYPY_TIMEOUT_SECONDS must be a positive integer"; exit 2;; esac; [ "$(MYPY_TIMEOUT_SECONDS)" -gt 0 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be greater than zero"; exit 2; }; [ "$(MYPY_TIMEOUT_SECONDS)" -le 600 ] || { echo "ERROR: MYPY_TIMEOUT_SECONDS must be less than or equal to 600"; exit 2; }; command -v timeout >/dev/null 2>&1 || { echo "ERROR: required executable not found: timeout"; exit 2; }; command -v prlimit >/dev/null 2>&1 || { echo "ERROR: required executable not found: prlimit"; exit 2; }
-REPORT_MYPY_FAILURE = code=$$?; signal=none; if [ "$$code" -ge 128 ]; then signal=$$(( $$code - 128 )); fi; if [ "$$code" -eq 124 ] || [ "$$signal" != none ]; then reason="resource limit triggered"; else reason="type check failed under enforced limits"; fi; echo "ERROR: Mypy $$reason: memory_limit=$(MYPY_MEMORY_LIMIT_MB) MiB; timeout=$(MYPY_TIMEOUT_SECONDS)s; exit=$$code; signal=$$signal" >&2
-export MYPY_MEMORY_LIMIT_MB MYPY_TIMEOUT_SECONDS
-
-
 _DEFAULT_help := usage
 _DEFAULT_deps := check
 _DEFAULT_build := artifacts
@@ -227,7 +237,7 @@ _DEFAULT_run := default
 _DEFAULT_status := diagnostics
 _DEFAULT_docs := validate
 _DEFAULT_clean := status
-_DEFAULT_release := status
+_DEFAULT_release := plan
 _DEFAULT_gen := check
 _DEFAULT_mod := check
 
@@ -238,25 +248,19 @@ _APPLY_WHAT_fix := apply
 _APPLY_WHAT_run := default
 _APPLY_WHAT_docs := generate
 _APPLY_WHAT_clean := generated
+_APPLY_WHAT_release := version
 _APPLY_WHAT_gen := apply
 _APPLY_WHAT_mod := apply
-_DEFAULT_basemk := generate
 
 
 # === SECTION: profile routing (managed) ===
-# Source: config:workspace manifest (role), computed (WORKSPACE_ROOT)
-# Rule: workspace-member delegates runtime to the principal (RUNTIME_ROOT is
-# the governing workspace root); workspace-root and standalone own their
-# runtime locally. An attached member is never promoted to a local runtime.
-ifneq ($(filter $(MAKE_PROFILE),workspace-root workspace-member standalone),$(MAKE_PROFILE))
+# Source: repository topology. workspace has .gitmodules; standalone does not.
+# Both own their runtime in PROJECT_ROOT.
+ifneq ($(filter $(MAKE_PROFILE),workspace standalone),$(MAKE_PROFILE))
 $(error Invalid MAKE_PROFILE '$(MAKE_PROFILE)')
 endif
 
-ifeq ($(MAKE_PROFILE),workspace-member)
-RUNTIME_ROOT := $(WORKSPACE_ROOT)
-else
 RUNTIME_ROOT := $(PROJECT_ROOT)
-endif
 # End SECTION: profile routing
 
 RUNTIME_VENV := $(RUNTIME_ROOT)/.venv
@@ -313,19 +317,12 @@ _bootstrap_setup_tools:
 	@set -eu; \
 	project_root="$(PROJECT_ROOT)"; \
 	mise="$(SETUP_MISE)"; \
-	mise_version="$(SETUP_MISE_VERSION)"; \
 	uv_required="0.12"; \
 	if [ ! -f "$$mise" ]; then \
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	fi; \
-	current=$$("$$mise" --version); \
-	current=$${current%% *}; \
-	if [ "$$current" != "$$mise_version" ]; then \
-		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
-			"$$mise_version" "$$current" >&2; \
-		exit 2; \
-	fi; \
+	env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" --version >/dev/null; \
 	if [ ! -f "$$project_root/mise.lock" ]; then \
 		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
 		exit 2; \
@@ -339,12 +336,12 @@ _bootstrap_setup_tools:
 	mkdir -p "$$config_dir"; \
 	: > "$$global_config"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" trust "$$project_root/.mise.toml"; \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" trust "$$project_root/.mise.toml"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" install --locked --yes; \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" -C "$$project_root" install --locked --yes; \
 	uv_output=$$(MISE_CONFIG_DIR="$$config_dir" \
 		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" -C "$$project_root" \
 		exec -- uv --version); \
 	case "$$uv_output" in \
 		'uv '*) uv_actual=$${uv_output#uv }; uv_actual=$${uv_actual%% *} ;; \
@@ -354,11 +351,21 @@ _bootstrap_setup_tools:
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
 			"$$uv_required" "$$uv_actual" >&2; exit 2 ;; \
-	esac
+	esac; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then \
+		managed_path=$$(MISE_CONFIG_DIR="$$config_dir" \
+			MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+			env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" \
+			-C "$$project_root" exec -- sh -c 'printf %s "$$PATH"'); \
+		printf '%s\n' "$$project_root/bin" >> "$$GITHUB_PATH"; \
+		old_ifs=$$IFS; IFS=:; \
+		for bin_dir in $$managed_path; do printf '%s\n' "$$bin_dir" >> "$$GITHUB_PATH"; done; \
+		IFS=$$old_ifs; \
+	fi
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(WORKSPACE_MEMBERS)
+ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)
 else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
@@ -382,8 +389,9 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
 			$(UV) venv "$(RUNTIME_VENV)"; \
 		fi; \
-		$(UV) sync --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
-	fi
+		$(UV) sync --frozen --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
+	fi; \
+	direnv allow "$(PROJECT_ROOT)"
 
 # A delegated runtime lives in another checkout, so this project has no local
 # environment of its own. Generated tooling still addresses the environment by
@@ -414,7 +422,7 @@ ORCHESTRATED_VERBS := build check clean docs fmt fix scan test val
 # PYTHONPATH would make `make test` in a linked worktree execute that primary
 # tree instead of this checkout. Prefer PROJECT_ROOT/src so the Makefile owner
 # always wins over the shared editable (terminus T4 / path-purity).
-UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
+UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT -u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" $(UV) run --project "$(RUNTIME_ROOT)" --no-sync
 PROJECT_INFRA_PYTHONPATH ?= $(MAKEFILE_ROOT)/src
 PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: FLEXT_INFRA_PYTHON must name an executable managed Python\n' >&2; exit 2; fi; env -u PYTHONPATH -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT -u UV_PROJECT_ENVIRONMENT PATH="$(dir $(FLEXT_INFRA_PYTHON)):$(SANITIZED_CALLER_PATH)" PYTHONPATH="$(PROJECT_INFRA_PYTHONPATH)" $(FLEXT_INFRA_PYTHON) -m flext_infra
 # Scaffold dev tools live in the validated optional dev
@@ -436,28 +444,11 @@ endif
 endif
 
 
-# mro-ga9q (custom.mk blacklist): member projects may define ANY custom
-# verb/WHAT through _custom_<verb>_<what> handlers and (pre|post)-<verb>[-<what>]
-# hooks EXCEPT the reserved verbs/WHATs below, which stay a flext-infra
-# monopoly. Parse-time guard: every make invocation fails loud when custom.mk
-# redefines a reserved target; every other target is permitted.
-# R12 moved the public verbs out of base.mk into this projection, but the guard
-# stayed behind — and a generated project never includes base.mk, so the
-# monopoly was unenforced in every real checkout. The guard belongs with the
-# verbs it protects.
-CUSTOM_MK_RESERVED_TARGETS := _custom_build_artifacts _custom_check_all _custom_clean_generated _custom_clean_status _custom_deps_check _custom_deps_lock _custom_deps_upgrade _custom_fix_all _custom_fix_apply _custom_fix_check _custom_fmt_all _custom_fmt_apply _custom_fmt_check _custom_gen_all _custom_gen_apply _custom_gen_check _custom_help_usage _custom_mod_all _custom_mod_apply _custom_mod_check _custom_release_rel _custom_release_status _custom_run_default _custom_setup_environment _custom_status_diagnostics _custom_test_all _custom_test_cache-checkpoint _custom_test_cache-clear _custom_test_cache-status _custom_test_full _custom_test_profile build check clean deps fix fmt gen help mod release run setup status test
-ifneq ($(wildcard custom.mk),)
-# Target definitions at column 0, excluding assignments (=) and dot-directives.
-# $(shell) converts the newline-separated results to space-separated lists.
-_CUSTOM_MK_DEFINED := $(shell awk '/^[A-Za-z_][A-Za-z0-9_-]*([ \t]+[A-Za-z_][A-Za-z0-9_-]*)*[ \t]*:/ && index($$0, "=") == 0 { line = $$0; sub(/:.*/, "", line); count = split(line, names, /[ \t]+/); for (i = 1; i <= count; i++) print names[i] }' custom.mk | sort -u)
-_CUSTOM_MK_OFFENDERS := $(shell printf '%s\n' $(_CUSTOM_MK_DEFINED) | grep -xF $(foreach target,$(CUSTOM_MK_RESERVED_TARGETS),-e $(target)))
-ifneq ($(_CUSTOM_MK_OFFENDERS),)
-$(error custom.mk redefines reserved flext-infra target(s): $(_CUSTOM_MK_OFFENDERS) - reserved verbs/WHATs are a flext-infra monopoly; use _custom_<verb>_<what> with a non-reserved WHAT or (pre|post)-<verb>[-<what>] hooks)
-endif
-endif
 
+ifneq ($(GEN_INIT_ONLY),Y)
 -include custom.mk
-SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
+endif
+SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)" $(if $(filter Y,$(GEN_INIT_ONLY)),GEN_INIT_ONLY=Y)
 
 define _dispatch
 	@set -eu; \
@@ -527,92 +518,45 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_test_all _builtin_test_full _builtin_test_profile _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_clean_status _builtin_clean_generated _builtin_release_status _builtin_release_rel _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_check_lint _builtin_check_pyrefly _builtin_check_mypy _builtin_check_pyright _builtin_check_security _builtin_check_markdown _builtin_check_smells _builtin_check_direnv _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_plan _builtin_release_version _builtin_release_tag _builtin_release_build _builtin_release_publish _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
-# Every public verb dispatches straight into its private builtin. The verbs
-# that used to round-trip through the Python serializer keep the environment
-# prerequisite that round-trip carried.
-#
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
-# makes an unprovisioned checkout undiscoverable. Both still dispatch — they
-# only drop the prerequisite.
+# makes an unprovisioned checkout undiscoverable. `gen WHAT=init` scaffolds a
+# repository that has no environment yet — it is the verb that MAKES the tree
+# provisionable, so requiring a provisioned tree first is circular. All three
+# still dispatch; they only drop the prerequisite.
+# `gen WHAT=init` bootstraps a repository that may not even have an
+# environment, so it is excluded from the require-environment fan-out
+# outright, and its own target runs the init selector directly instead of
+# going through _dispatch (which re-enters make and re-parses everything the
+# init bypass exists to skip).
+ifeq ($(filter gen,$(PUBLIC_VERBS)),gen)
+$(filter-out setup gen,$(PUBLIC_VERBS)): _builtin_require_environment
+	$(call _dispatch,$@)
+
+# The hermetic bootstrap route for WHAT=init: run the init selector directly,
+# never through _dispatch (which re-enters make and re-parses every surface
+# the init bypass exists to skip). Any other WHAT dispatches normally.
+gen:
+ifeq ($(strip $(WHAT)),init)
+	@$(SELF_MAKE) _builtin_gen_init APPLY=$(APPLY)
+else
+	$(call _dispatch,$@)
+endif
+else
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
-$(filter-out setup $(SERIALIZED_VERBS),$(PUBLIC_VERBS)):
+help:
 	$(call _dispatch,$@)
-
-
-check: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_check WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_check:
-	$(call _dispatch,check)
-
-
-test: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_test WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_test:
-	$(call _dispatch,test)
-
-
-gen: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_gen WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_gen:
-	$(call _dispatch,gen)
-
-
-fmt: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_fmt WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_fmt:
-	$(call _dispatch,fmt)
-
-
-fix: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_fix WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_fix:
-	$(call _dispatch,fix)
-
-
-deps: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_deps WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_deps:
-	$(call _dispatch,deps)
-
-
-clean: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_clean WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_clean:
-	$(call _dispatch,clean)
-
-
-work: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_work WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_work:
-	$(call _dispatch,work)
-
-
-docs: _builtin_require_environment
-	@$(SELF_MAKE) _serialized_docs WHAT="$(WHAT)" APPLY="$(APPLY)"
-
-_serialized_docs:
-	$(call _dispatch,docs)
-
-
+endif
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
 # declaring them in the custom handler surface is actually honoured.
 setup: _bootstrap_setup_tools
-	@"$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
+	@env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$(PROJECT_ROOT)" exec -- \
 		$(SELF_MAKE) _setup_lifecycle
 
 .PHONY: _setup_lifecycle
@@ -628,7 +572,7 @@ _setup_lifecycle:
 	esac
 
 _builtin_help_usage:
-	@printf '%s\n' 'flext-infra [workspace-member]' '';
+	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
 	@printf '  %-10s WHAT=%s\n' 'help' "$$(printf '%s' '$(_ALLOWED_WHATS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
@@ -679,7 +623,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'release' "$$(printf '%s' '$(_ALLOWED_WHATS_release)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'release' "$$(printf '%s' '$(_ALLOWED_WHATS_release)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
@@ -690,13 +634,11 @@ _builtin_help_usage:
 	@printf '  %-10s WHAT=%s APPLY=Y\n' 'mod' "$$(printf '%s' '$(_ALLOWED_WHATS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
-	@printf '  %-10s WHAT=%s\n' 'basemk' 'generate';
-
 	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
-	@printf '  %-10s %s\n' 'PROJECT' 'member checkout for work when WORKSPACE unset';
-	@printf '  %-10s %s\n' 'BEAD' 'lane-root bead id for work start/land/finish';
-	@printf '  %-10s %s\n' 'KIND/NAME' 'GitFlow kind and slug for work start';
-	@printf '  %-10s %s\n' 'BASE' 'optional integration base override for work start';
+	@printf '  %-10s %s\n' 'BEAD' 'tracker item bound to a checkpoint';
+	@printf '  %-10s %s\n' 'BASE' 'integration branch used by checkpoint';
+	@printf '  %-10s %s\n' 'DEPENDENCY' 'deps upgrade: one distribution name (default: every package)';
+	@printf '  %-10s %s\n' 'DEPS_REFRESH' 'Y refreshes uv source cache on deps upgrade';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
 	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
@@ -714,7 +656,7 @@ _builtin_help_usage:
 
 # === SECTION: submodule setup (managed) ===
 # Source: template (submodule_setup_recipe.j2)
-# Computed: workspace-root uses WORKSPACE_MEMBERS from config; standalone discovers
+# Computed: workspace uses WORKSPACE_SUBPROJECTS from config; standalone discovers
 #           submodules with flext-managed=true from .gitmodules at runtime.
 # Rule: setup PROVISIONS an absent governed gitlink and VERIFIES a present one.
 #       An absent checkout holds no work, so setup initializes it at the recorded
@@ -731,8 +673,8 @@ _builtin_setup_submodules:
 	root="$(PROJECT_ROOT)"; \
 	if [ ! -f "$$root/.gitmodules" ]; then exit 0; fi; \
 	profile="$(MAKE_PROFILE)"; \
-	if [ "$$profile" = "workspace-root" ]; then \
-		managed="$(WORKSPACE_MEMBERS)"; \
+	if [ "$$profile" = "workspace" ]; then \
+		managed="$(MANAGED_GITLINKS)"; \
 	else \
 		managed=""; \
 		keys=""; \
@@ -758,19 +700,6 @@ _builtin_setup_submodules:
 	fi; \
 	managed=$$(printf '%s' "$$managed" | tr ' ' '\n' | sort -u | tr '\n' ' '); \
 	if [ -z "$$managed" ]; then exit 0; fi; \
-	attach_branch_at_head() { \
-		child_root="$$1"; \
-		branch="$$2"; \
-		git -C "$$child_root" branch --quiet -f "$$branch" HEAD || { \
-			printf 'ERROR: %s: could not create branch %s at HEAD\n' "$$child_root" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		git -C "$$child_root" symbolic-ref HEAD "refs/heads/$$branch" || { \
-			printf 'ERROR: %s: could not attach HEAD to %s without moving the tree\n' "$$child_root" "$$branch" >&2; \
-			exit 1; \
-		}; \
-		git -C "$$child_root" branch --quiet --set-upstream-to "origin/$$branch" "$$branch" >/dev/null 2>&1 || :; \
-	}; \
 	validate_submodule() { \
 		superproject="$$1"; \
 		child_path="$$2"; \
@@ -805,8 +734,9 @@ _builtin_setup_submodules:
 			printf 'ERROR: governed gitlink has no declared branch: %s\n' "$$child_path" >&2; \
 			exit 2; \
 		fi; \
+		super_branch=$$(git -C "$$superproject" branch --show-current); \
 		if [ "$$branch" = "." ]; then \
-			branch=$$(git -C "$$superproject" branch --show-current); \
+			branch="$$super_branch"; \
 			if [ -z "$$branch" ]; then \
 				printf 'ERROR: %s: branch = . requires a named superproject branch\n' "$$child_path" >&2; \
 				exit 1; \
@@ -865,10 +795,15 @@ _builtin_setup_submodules:
 	done
 
 _builtin_require_environment:
+# Documenting the interface (`make help`) must not require the interpreter it
+# tells the operator how to provision. Only `make help` with no other goal
+# skips the check; any combined goal still demands the environment.
+ifneq ($(MAKECMDGOALS),help)
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then \
 		printf 'ERROR: missing environment interpreter %s; make setup creates it\n' "$(RUNTIME_PYTHON)" >&2; \
 		exit 2; \
 	fi
+endif
 
 # === SECTION: setup environment (managed) ===
 # Source: computed (MAKE_PROFILE routing) + operator contract (mro-e9j0.6 C7)
@@ -878,6 +813,7 @@ _builtin_require_environment:
 # Setup always reconciles directly from the lock. The venv is created when
 # missing and is never cleared while present, because a concurrent lane may be
 # running against it.
+ifeq ($(MAKE_PROFILE),workspace)
 _builtin_setup_environment: _builtin_setup_submodules
 	@$(SETUP_ENVIRONMENT_RECIPE)
 	@$(UV) pip check --python "$(RUNTIME_VENV)"
@@ -903,15 +839,19 @@ _builtin_deps_upgrade: _builtin_require_environment
 				printf 'ERROR: DEPENDENCY must be one normalized distribution name\n' >&2; \
 				exit 2 ;; \
 		esac; \
-	fi
-	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade))
+	fi; \
+	case "$(strip $(DEPS_REFRESH))" in \
+		N|Y) ;; \
+		*) printf 'ERROR: DEPS_REFRESH must be Y when set\n' >&2; exit 2 ;; \
+	esac
+	$(call _run_for_selected_projects,$(if $(strip $(DEPENDENCY)),--upgrade-package "$(strip $(DEPENDENCY))",--upgrade)$(if $(filter Y,$(DEPS_REFRESH)),$(if $(strip $(DEPENDENCY)), --refresh-package "$(strip $(DEPENDENCY))", --refresh)))
 	@set -eu; \
 	selected="$(strip $(SELECTED_PROJECTS))"; \
 	if [ -z "$$selected" ]; then selected="."; fi; \
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
 	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
-		--apply --rewrite-constraints --skip-check "$$@"
+		--apply $(if $(strip $(DEPENDENCY)),,--rewrite-constraints) --skip-check "$$@"
 	$(call _run_for_selected_projects,)
 
 
@@ -922,7 +862,8 @@ _builtin_build_artifacts:
 # by `make fix APPLY=Y` and formatting by `make fmt APPLY=Y`, both run BEFORE
 # check. APPLY here made the same tools run twice with conflicting intents,
 # so it is rejected instead of silently honoured; FIX=1 became the `fix` verb.
-# CI=Y omits make.ci.check_gates_skip (ruff + pyrefly).
+# CI=Y keeps make.ci.check_gates, the strict complement of
+# make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
 	gates="$(strip $(CHECK_GATES))"; \
@@ -931,16 +872,19 @@ _builtin_check_all: _builtin_require_environment
 	if [ "$(strip $(CI))" = "Y" ]; then \
 		filtered=""; \
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
-			skip=0; \
-			if [ "$$gate" = "lint" ]; then skip=1; fi; \
-			if [ "$$gate" = "format" ]; then skip=1; fi; \
-			if [ "$$gate" = "pyrefly" ]; then skip=1; fi; \
-			if [ "$$skip" -eq 0 ]; then \
+			keep=0; \
+			if [ "$$gate" = "lint" ]; then keep=1; fi; \
+			if [ "$$gate" = "pyright" ]; then keep=1; fi; \
+			if [ "$$gate" = "security" ]; then keep=1; fi; \
+			if [ "$$gate" = "markdown" ]; then keep=1; fi; \
+			if [ "$$gate" = "smells" ]; then keep=1; fi; \
+			if [ "$$gate" = "direnv" ]; then keep=1; fi; \
+			if [ "$$keep" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y omits check gates: lint format pyrefly\n'; \
+		printf 'INFO: CI=Y runs check gates: lint pyright security markdown smells direnv\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -953,22 +897,83 @@ _builtin_check_all: _builtin_require_environment
 	fi; \
 	$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$gates" --projects .
 
+
+
+_builtin_check_lint: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=lint
+
+_builtin_check_pyrefly: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyrefly
+
+_builtin_check_mypy: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=mypy
+
+_builtin_check_pyright: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyright
+
+_builtin_check_security: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=security
+
+_builtin_check_markdown: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=markdown
+
+_builtin_check_smells: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=smells
+
+_builtin_check_direnv: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=direnv
+
+
 _builtin_test_all: _builtin_require_environment
 
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
+
+_builtin_test_full: _builtin_require_environment
+
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
 _builtin_test_cache-status: _builtin_require_environment
 
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
 _builtin_test_cache-clear: _builtin_require_environment
 
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
 _builtin_test_cache-checkpoint: _builtin_require_environment
 
-	@$(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
+	@set -eu; \
+		test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"; \
+		mkdir -p "$$test_tmp_parent"; \
+		test_tmp=$$(mktemp -d "$$test_tmp_parent/invocation.XXXXXX"); \
+		cleanup_test_tmp() { rm -rf "$$test_tmp"; }; \
+		trap cleanup_test_tmp EXIT INT TERM; \
+		TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" $(PYTEST_BOUNDED) $(UV_RUN) python -m flext_infra._pytest_entry
 
 
 # One tool, one verb: `fmt` only formats, `check` only lints (--no-fix) and
@@ -983,8 +988,9 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-# Read-only fixed-point after `make fix APPLY=Y` (serialize-make strips APPLY and
-# re-runs default_what=check). Dual of `ruff check --fix` — never mutate here.
+# Read-only fixed point: plain `make fix` re-checks via its config-owned default
+# WHAT (mutations require explicit APPLY=Y). Dual of `ruff check --fix` — never
+# mutate here.
 _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check $(RUFF_PATHS)
 
@@ -998,12 +1004,9 @@ _builtin_fix_apply: _builtin_fix_all
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)
 
-# workspace-member Make files attach to the governing workspace root; report
-# the member path so status diagnostics stay meaningful after profile routing.
-ATTACHED_MEMBER := $(if $(filter workspace-member,$(MAKE_PROFILE)),$(PROJECT_ROOT),)
 _builtin_status_diagnostics: _builtin_require_environment
-	@printf 'profile=%s\nattached=%s\nproject=%s\nruntime=%s\n' \
-		'$(MAKE_PROFILE)' '$(ATTACHED_MEMBER)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
+	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
+		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
@@ -1014,13 +1017,13 @@ _builtin_status_diagnostics: _builtin_require_environment
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
-		case "$$action" in generate|fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
+		case "$$action" in fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
 		$(PROJECT_FLEXT_INFRA) docs "$$action" --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
 
 _builtin_docs_generate:
-	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(if $(filter Y,$(APPLY)),--apply,--check) $(DOCS_PROJECT_ARGS)
+	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $(DOCS_PROJECT_ARGS)
 
 
 _builtin_docs_fix:
@@ -1042,13 +1045,14 @@ _builtin_docs_validate:
 
 _builtin_clean_generated:
 	$(call _require_apply)
+
 	@find "$(PROJECT_ROOT)" -type d \
 		\( -name __pycache__ -o -name .mypy_cache -o -name .pytest_cache -o -name .ruff_cache -o -name .pyrefly_cache -o -name .benchmarks -o -name .hypothesis \) \
 		-prune -exec sh -eu -c 'for target do find "$$target" -depth -delete; done' sh {} +
 
 
 	@set -eu; \
-	for target in "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
+	for target in "$(PROJECT_ROOT)/.test-tmp" "$(PROJECT_ROOT)/.test-runtime" "$(PROJECT_ROOT)/build" "$(PROJECT_ROOT)/dist" "$(PROJECT_ROOT)/htmlcov" "$(PROJECT_ROOT)/.reports"; do \
 		if [ -e "$$target" ]; then find "$$target" -depth -delete; \
 		elif [ -L "$$target" ]; then find "$$target" -depth -delete; fi; \
 	done
@@ -1066,31 +1070,63 @@ _builtin_clean_generated:
 		-delete
 
 
-_builtin_release_status: _builtin_require_environment
-	@$(UV) lock --project "$(PROJECT_ROOT)" --check
-	@git -C "$(PROJECT_ROOT)" diff --quiet
-	@git -C "$(PROJECT_ROOT)" diff --cached --quiet
+# Release protocol. `plan` derives the next version from merged pull-request
+# titles and guards against any version change made outside the protocol;
+# `version` opens the release pull request; `tag` marks the merged release
+# commit; `build` writes the artifact receipt; `publish` uploads exactly what
+# the receipt attests (INDEX=Y adds the package index).
+_builtin_release_plan: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) release run --workspace "$(PROJECT_ROOT)" --phase plan $(if $(strip $(PR_TITLE)),--pr-title "$(PR_TITLE)")
+
+_builtin_release_version: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) release run --workspace "$(PROJECT_ROOT)" --phase version --apply
+
+_builtin_release_tag: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) release run --workspace "$(PROJECT_ROOT)" --phase tag --apply
+
+_builtin_release_build: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) release run --workspace "$(PROJECT_ROOT)" --phase build --apply
+
+_builtin_release_publish: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) release run --workspace "$(PROJECT_ROOT)" --phase publish --apply $(if $(filter Y,$(INDEX)),--index)
 
 # Generation has one owner. Conform preserves the caller's scope and applies
 # the complete dependency/tooling projection before it verifies its fixed point.
 # Dependency upgrades remain a separate explicit verb because they rewrite lock
 # floors; gen must never run a second pyproject writer over conform's result.
-define _mise_launcher_apply
+define _mise_toolchain_apply
 	@set -eu; \
+	: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"; \
+	credential_command="$$MISE_GITHUB_CREDENTIAL_COMMAND"; \
 	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
 	mkdir -p "$$scratch_parent"; \
-	scratch=$$(mktemp -d "$$scratch_parent/mise-launcher.XXXXXX"); \
-	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/data" "$$scratch/cache" "$$scratch/state" "$$scratch/tmp"; \
+	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
+	mkdir -p "$$scratch/receipt/bin" "$$scratch/data" "$$scratch/cache" \
+		"$$scratch/state" "$$scratch/tmp" "$$scratch/config" \
+		"$$scratch/system-config"; \
 	: > "$$scratch/global-config.toml"; \
+	mise_version="latest"; \
+	if [ "$$mise_version" = latest ]; then \
+		mise_release_url=$$(curl -fsSIL -o /dev/null -w '%{url_effective}' \
+			https://github.com/jdx/mise/releases/latest); \
+		mise_version=$${mise_release_url##*/v}; \
+		case "$$mise_version" in \
+			[0-9]*.[0-9]*.[0-9]*) ;; \
+			*) printf 'ERROR: invalid Mise latest release redirect: %s\n' \
+				"$$mise_release_url" >&2; exit 2 ;; \
+		esac; \
+	fi; \
 	if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-		XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-		"$(SETUP_MISE)" -C "$$scratch" generate install-script \
-		--version "$(SETUP_MISE_VERSION)" \
-		--write "$$scratch/mise" --windows \
+		MISE_CONFIG_DIR="$$scratch/config" MISE_DATA_DIR="$$scratch/data" \
+		MISE_CACHE_DIR="$$scratch/cache" MISE_STATE_DIR="$$scratch/state" \
+		TMPDIR="$$scratch/tmp" MISE_CEILING_PATHS="$$scratch_parent" \
+		MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" \
+		-C "$$scratch" generate install-script --version "$$mise_version" \
+		--write "$$scratch/receipt/bin/mise" --windows \
 		>"$$scratch/generate.log" 2>&1; then \
 		cat "$$scratch/generate.log"; \
 	else \
@@ -1101,69 +1137,165 @@ define _mise_launcher_apply
 	else \
 		status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
 	fi; \
+	chmod +x "$$scratch/receipt/bin/mise"; \
+	latest_mise="$$scratch/receipt/bin/mise"; \
+	env -u MISE_INSTALL_PATH -u MISE_VERSION "$$latest_mise" --version >/dev/null; \
+	stage_projects="$$scratch/projects"; \
+	original_projects="$$scratch/original"; \
+	mkdir -p "$$stage_projects" "$$original_projects"; \
+	publish_started=N; \
+	publish_complete=N; \
+	cleanup_mise_transaction() { \
+		transaction_status=$$?; \
+		rollback_failed=N; \
+		if [ "$$publish_started" = Y ] && [ "$$publish_complete" != Y ]; then \
+			for project in $(MISE_LOCK_PROJECTS); do \
+				if [ "$$project" = . ]; then \
+					project_root="$(PROJECT_ROOT)"; stage_key=.root; \
+				else \
+					project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project"; \
+				fi; \
+				original="$$original_projects/$$stage_key"; \
+				if cp -p "$$original/bin/mise" "$$project_root/bin/.mise.restore.$$$$" \
+					&& mv -f "$$project_root/bin/.mise.restore.$$$$" "$$project_root/bin/mise"; then :; \
+				else rollback_failed=Y; fi; \
+				if cp -p "$$original/bin/mise.cmd" "$$project_root/bin/.mise.cmd.restore.$$$$" \
+					&& mv -f "$$project_root/bin/.mise.cmd.restore.$$$$" "$$project_root/bin/mise.cmd"; then :; \
+				else rollback_failed=Y; fi; \
+				if cp -p "$$original/mise.lock" "$$project_root/.mise.lock.restore.$$$$" \
+					&& mv -f "$$project_root/.mise.lock.restore.$$$$" "$$project_root/mise.lock"; then :; \
+				else rollback_failed=Y; fi; \
+			done; \
+		fi; \
+		for project in $(MISE_LOCK_PROJECTS); do \
+			if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+			else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+			rm -f -- "$$project_root/bin/.mise.new.$$$$" \
+				"$$project_root/bin/.mise.cmd.new.$$$$" \
+				"$$project_root/.mise.lock.new.$$$$" \
+				"$$project_root/bin/.mise.restore.$$$$" \
+				"$$project_root/bin/.mise.cmd.restore.$$$$" \
+				"$$project_root/.mise.lock.restore.$$$$"; \
+		done; \
+		find "$$scratch" -depth -delete; \
+		trap - EXIT INT TERM; \
+		if [ "$$rollback_failed" = Y ]; then \
+			printf 'ERROR: Mise artifact transaction rollback failed; original_status=%s\n' \
+				"$$transaction_status" >&2; \
+			if [ "$$transaction_status" -eq 0 ]; then exit 99; fi; \
+		fi; \
+		exit "$$transaction_status"; \
+	}; \
+	trap cleanup_mise_transaction EXIT INT TERM; \
+	root_stage=; \
 	for project in $(MISE_LOCK_PROJECTS); do \
-		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
-		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		if [ ! -f "$$project_root/.mise.toml" ]; then \
-			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
+		case "$$project" in \
+			.) project_root="$(PROJECT_ROOT)"; stage_key=.root ;; \
+			/*|..|..'/'*|*/..'/'*|*/..|*[!A-Za-z0-9._/-]*) \
+				printf 'ERROR: unsafe Mise project selector: %s\n' "$$project" >&2; exit 2 ;; \
+			*) project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project" ;; \
+		esac; \
+		if [ ! -f "$$project_root/.mise.toml" ] \
+			|| [ ! -f "$$project_root/mise.lock" ] \
+			|| [ ! -f "$$project_root/bin/mise" ] \
+			|| [ ! -f "$$project_root/bin/mise.cmd" ]; then \
+			printf 'ERROR: incomplete committed Mise artifact set in %s\n' "$$project_root" >&2; \
+			exit 2; \
 		fi; \
-		mkdir -p "$$project_root/bin"; \
-		shell_tmp="$$project_root/bin/.mise.new.$$$$"; \
-		windows_tmp="$$project_root/bin/.mise.cmd.new.$$$$"; \
-		cp "$$scratch/mise" "$$shell_tmp"; \
-		cp "$$scratch/mise.cmd" "$$windows_tmp"; \
-		chmod +x "$$shell_tmp"; \
-		mv -f "$$shell_tmp" "$$project_root/bin/mise"; \
-		mv -f "$$windows_tmp" "$$project_root/bin/mise.cmd"; \
-	done
-endef
-
-define _mise_lock_apply
-	@set -eu; \
-	: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"; \
-	credential_command="$$MISE_GITHUB_CREDENTIAL_COMMAND"; \
-	for project in $(MISE_LOCK_PROJECTS); do \
-		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
-		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		if [ ! -f "$$project_root/.mise.toml" ]; then \
-			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
+		project_stage="$$stage_projects/$$stage_key"; \
+		original="$$original_projects/$$stage_key"; \
+		mkdir -p "$$project_stage/bin" "$$original/bin"; \
+		cp "$$project_root/.mise.toml" "$$project_stage/.mise.toml"; \
+		cp "$$project_root/mise.lock" "$$project_stage/mise.lock"; \
+		cp "$$scratch/receipt/bin/mise" "$$project_stage/bin/mise"; \
+		cp "$$scratch/receipt/bin/mise.cmd" "$$project_stage/bin/mise.cmd"; \
+		chmod +x "$$project_stage/bin/mise"; \
+		cp -p "$$project_root/bin/mise" "$$original/bin/mise"; \
+		cp -p "$$project_root/bin/mise.cmd" "$$original/bin/mise.cmd"; \
+		cp -p "$$project_root/mise.lock" "$$original/mise.lock"; \
+		cp -p "$$project_root/.mise.toml" "$$original/.mise.toml"; \
+		if [ -d "$$project_root/config" ]; then \
+			mkdir -p "$$project_stage/config"; \
+			cp -R "$$project_root/config/." "$$project_stage/config"; \
 		fi; \
-		scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
-		scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
-		trap 'find "$$scratch" -depth -delete' EXIT; \
-		cp "$$project_root/.mise.toml" "$$scratch/.mise.toml"; \
-		locked_count=$$(awk '$$0 == "locked = true" { count++ } END { print count + 0 }' "$$scratch/.mise.toml"); \
-		if [ "$$locked_count" -ne 1 ]; then \
-			printf 'ERROR: expected one locked tool_config setting in %s\n' "$$project_root/.mise.toml" >&2; exit 2; \
-		fi; \
-		sed -i 's/^locked = true$$/locked = false/' "$$scratch/.mise.toml"; \
-		mkdir -p "$$scratch/data" "$$scratch/cache" \
-			"$$scratch/state" "$$scratch/tmp"; \
-		: > "$$scratch/global-config.toml"; \
-		if MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
-			MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-			XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-			MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-			"$(SETUP_MISE)" -C "$$scratch" lock \
-			--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
-			cat "$$scratch/lock.log"; \
+		if [ "$$project" != . ] \
+			&& cmp "$(PROJECT_ROOT)/.mise.toml" "$$project_root/.mise.toml" >/dev/null 2>&1; then \
+			if [ -z "$$root_stage" ]; then \
+				printf 'ERROR: root Mise artifacts must be staged first\n' >&2; exit 2; \
+			fi; \
+			cp "$$root_stage/mise.lock" "$$project_stage/mise.lock"; \
 		else \
-			status=$$?; cat "$$scratch/lock.log"; exit "$$status"; \
-		fi; \
-		if grep -Fq 'mise WARN' "$$scratch/lock.log"; then \
-			printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
-		else \
-			status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
+			stage_parent=$${project_stage%/*}; \
+			if env -u MISE_INSTALL_PATH -u MISE_VERSION -u MISE_INSTALLS_DIR \
+				-u MISE_SHIMS_DIR -u XDG_DATA_HOME -u MISE_ENV_FILE \
+				-u MISE_DEFAULT_CONFIG_FILENAME MISE_SAFE=1 \
+				MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
+				MISE_DATA_DIR="$$scratch/data" MISE_CONFIG_DIR="$$scratch/config" \
+				MISE_CACHE_DIR="$$scratch/cache" MISE_STATE_DIR="$$scratch/state" \
+				MISE_TMP_DIR="$$scratch/tmp" \
+				MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+				MISE_GLOBAL_CONFIG_ROOT="$$scratch" \
+				MISE_SYSTEM_CONFIG_DIR="$$scratch/system-config" \
+				MISE_SYSTEM_DIR="$$scratch/system-config" TMPDIR="$$scratch/tmp" \
+				MISE_CEILING_PATHS="$$stage_parent" \
+				MISE_TRUSTED_CONFIG_PATHS="$$project_stage" \
+				"$$latest_mise" -C "$$project_stage" lock --bump \
+				--platform "$(MISE_LOCK_PLATFORMS)" \
+				>"$$project_stage/lock.log" 2>&1; then \
+				cat "$$project_stage/lock.log"; \
+			else \
+				status=$$?; cat "$$project_stage/lock.log"; exit "$$status"; \
+			fi; \
+			if grep -Fq 'mise WARN' "$$project_stage/lock.log"; then \
+				printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; \
+				exit 2; \
+			fi; \
+			$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+				--workspace "$$project_stage" --apply; \
 		fi; \
 		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
-			--workspace "$$scratch" --apply; \
-		lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
-		cp "$$scratch/mise.lock" "$$lock_tmp"; \
-		mv -f "$$lock_tmp" "$$project_root/mise.lock"; \
-		find "$$scratch" -depth -delete; trap - EXIT; \
-	done
+			--workspace "$$project_stage" --check; \
+		if [ "$$project" = . ]; then root_stage="$$project_stage"; fi; \
+	done; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then \
+			project_root="$(PROJECT_ROOT)"; stage_key=.root; \
+		else \
+			project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project"; \
+		fi; \
+		project_stage="$$stage_projects/$$stage_key"; \
+		original="$$original_projects/$$stage_key"; \
+		if ! cmp "$$original/bin/mise" "$$project_root/bin/mise" >/dev/null 2>&1 \
+			|| ! cmp "$$original/bin/mise.cmd" "$$project_root/bin/mise.cmd" >/dev/null 2>&1 \
+			|| ! cmp "$$original/mise.lock" "$$project_root/mise.lock" >/dev/null 2>&1 \
+			|| ! cmp "$$original/.mise.toml" "$$project_root/.mise.toml" >/dev/null 2>&1; then \
+			printf 'ERROR: live Mise artifacts changed during generation: %s\n' "$$project_root" >&2; \
+			exit 2; \
+		fi; \
+		cp "$$project_stage/bin/mise" "$$project_root/bin/.mise.new.$$$$"; \
+		chmod +x "$$project_root/bin/.mise.new.$$$$"; \
+		cp "$$project_stage/bin/mise.cmd" "$$project_root/bin/.mise.cmd.new.$$$$"; \
+		cp "$$project_stage/mise.lock" "$$project_root/.mise.lock.new.$$$$"; \
+	done; \
+	publish_started=Y; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		mv -f "$$project_root/bin/.mise.new.$$$$" "$$project_root/bin/mise"; \
+		mv -f "$$project_root/bin/.mise.cmd.new.$$$$" "$$project_root/bin/mise.cmd"; \
+		mv -f "$$project_root/.mise.lock.new.$$$$" "$$project_root/mise.lock"; \
+	done; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+			--workspace "$$project_root" --check; \
+		if [ "$$project" != . ]; then \
+			cmp "$(PROJECT_ROOT)/bin/mise" "$$project_root/bin/mise"; \
+			cmp "$(PROJECT_ROOT)/bin/mise.cmd" "$$project_root/bin/mise.cmd"; \
+		fi; \
+	done; \
+	publish_complete=Y
 endef
 
 define _mise_artifacts_check
@@ -1194,42 +1326,22 @@ endef
 
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
+	@$(PROJECT_FLEXT_INFRA) codegen lazy-init --workspace "$(PROJECT_ROOT)" --check
 	$(call _generated_docs,--check)
 	$(call _mise_artifacts_check)
 
-_builtin_work_start:
+_builtin_gen_init:
 	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
-_builtin_work_land:
+_builtin_gen_all:
 	$(call _require_apply)
+	@: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
+	@$(PROJECT_FLEXT_INFRA) codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply
 	$(call _generated_docs,--apply)
-	$(call _mise_launcher_apply)
-	$(call _mise_lock_apply)
+	$(call _mise_toolchain_apply)
 	$(call _mise_artifacts_check)
 
-_builtin_work_finish:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
-
-_builtin_work_help:
-	@printf "make work — lane lifecycle (git + beads + gh + worktree)\n"
-	@printf "\n"
-	@printf "USAGE:\n"
-	@printf "  make work WHAT=status                                 show lanes + primary\n"
-	@printf "  make work WHAT=start KIND=<k> NAME=<s> BEAD=<id> APPLY=Y\n"
-	@printf "  make work WHAT=land BEAD=<id> APPLY=Y                   push + open PR\n"
-	@printf "  make work WHAT=finish BEAD=<id> APPLY=Y                 remove lane post-merge\n"
-	@printf "\n"
-	@printf "KIND:  feature | bugfix | hotfix | release\n"
-	@printf "NAME:  kebab-case slug (e.g. add-auth-validator)\n"
-	@printf "BEAD:  beads issue id (e.g. ai-hub-xzio.3.1)\n"
-	@printf "BASE:  optional override (default: config/workspace.yaml integration.branch)\n"
-	@printf "\n"
-	@printf "EXAMPLES:\n"
-	@printf "  make work WHAT=start KIND=feature NAME=add-hook BEAD=ai-hub-abc1 APPLY=Y\n"
-	@printf "  make work WHAT=status BEAD=ai-hub-abc1\n"
-	@printf "  make work WHAT=land BEAD=ai-hub-abc1 APPLY=Y\n"
-	@printf "  # review + merge PR, then:\n"
-	@printf "  make work WHAT=finish BEAD=ai-hub-abc1 APPLY=Y\n"
+_builtin_gen_apply: _builtin_gen_all

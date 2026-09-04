@@ -22,7 +22,7 @@ class FlextInfraModelsCodegenRender:
 
         class_name: t.NonEmptyStr = m.Field(description="Generated class name.")
         base_class: t.NonEmptyStr = m.Field(description="Generated base class name.")
-        base_import_block: str = m.Field(description="Rendered base import block.")
+        base_module: t.NonEmptyStr = m.Field(description="Module owning base_class.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
 
     # NOTE (multi-agent, flext-p4s3.2 / agent: uv_overlay_owner): the docs

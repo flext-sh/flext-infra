@@ -23,7 +23,7 @@ class TestsCodegenMakeEnvironment:
     def _render_makefile(
         tmp_path: Path, profile: c.Infra.MakeProfile, *, local_infra: bool = False
     ) -> tuple[Path, Path]:
-        role = c.Infra.RepositoryRole(profile.value)
+        role = c.Infra.MakeProfile(profile.value)
         repository = test_u.Tests.repository_ref(
             "fixture-project", role=role
         ).model_copy(update={"editable": True})
@@ -197,14 +197,14 @@ class TestsCodegenMakeEnvironment:
             [c.Infra.MAKE, "--no-print-directory", "setup"],
             cwd=project_root,
             env=clean_env,
-            remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
         )
 
         process = tm.ok(result)
         tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
-        tm.that(commands[1], has="sync --project")
+        tm.that(commands[1], has="sync --frozen --project")
         if profile == c.Infra.MakeProfile.WORKSPACE:
             tm.that(commands[2], has="pip check")
 
@@ -228,7 +228,7 @@ class TestsCodegenMakeEnvironment:
                 [c.Infra.MAKE, "--no-print-directory", "setup"],
                 cwd=project_root,
                 env={"PATH": f"{tool_bin}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
             )
         )
 
@@ -266,12 +266,14 @@ class TestsCodegenMakeEnvironment:
             runtime_python,
             (
                 "#!/bin/sh\n"
+                'test -z "${PROJECT_ROOT+x}" || exit 98\n'
                 f"command -v uv > '{tool_log}'\n"
                 f"command -v {fixture_tool} >> '{tool_log}'\n"
             ),
         )
         active_env = {
             "PATH": f"{hostile_bin}:{provisioned_bin}:{os.environ['PATH']}",
+            "PROJECT_ROOT": str(tmp_path / "hostile-project-root"),
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
@@ -280,7 +282,7 @@ class TestsCodegenMakeEnvironment:
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+                remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
             )
         )
 
@@ -305,17 +307,74 @@ class TestsCodegenMakeEnvironment:
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
                 "-u UV_PROJECT_ENVIRONMENT "
-                'PYTHONPATH="$(PROJECT_ROOT)/src" '
+                '-u PROJECT_ROOT PYTHONPATH="$(PROJECT_ROOT)/src" '
                 '$(UV) run --project "$(RUNTIME_ROOT)" --no-sync'
             )
             in makefile,
             eq=True,
         )
+        tm.that('test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"' in makefile, eq=True)
+        tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
-        tm.that('$(UV) sync --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        tm.that('$(UV) sync --frozen --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+
+    @pytest.mark.parametrize(
+        "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
+    )
+    def test_every_published_check_selector_has_a_generated_handler(
+        self, tmp_path: Path, profile: c.Infra.MakeProfile
+    ) -> None:
+        """Every WHAT advertised by the typed Make owner resolves in both profiles."""
+        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        makefile = (project_root / "Makefile").read_text(encoding="utf-8")
+        phony_targets = tuple(
+            token
+            for line in makefile.splitlines()
+            if line.startswith(".PHONY:")
+            for token in line.removeprefix(".PHONY:").split()
+        )
+
+        for gate in config.Infra.codegen.make.check_gates_allowed:
+            handler = f"_builtin_check_{gate}"
+            tm.that(makefile, has=f"{handler}: _builtin_require_environment")
+            tm.that(phony_targets, has=handler)
+
+    def test_standalone_check_selector_executes_its_exact_gate(
+        self, tmp_path: Path
+    ) -> None:
+        """Translate public WHAT once and run the sole CHECK_GATES executor."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        invocation_log = tmp_path / "check-invocation.log"
+        runtime_python = project_root / ".venv" / "bin" / "python"
+        test_u.Tests.write_executable(
+            runtime_python, f"#!/bin/sh\nprintf '%s\\n' \"$*\" > '{invocation_log}'\n"
+        )
+        uv = tmp_path / "bin" / "uv"
+        test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "check",
+                    f"{config.Infra.codegen.make.selector}=lint",
+                    f"UV={uv}",
+                ],
+                cwd=project_root,
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            )
+        )
+
+        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        invocation = invocation_log.read_text(encoding="utf-8")
+        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(invocation, has="--gates lint --projects .")
 
     def test_dependency_upgrade_selects_only_one_distribution(
         self, tmp_path: Path
@@ -347,7 +406,7 @@ class TestsCodegenMakeEnvironment:
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
                 env={"UV": str(uv), "PATH": f"{bin_dir}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -385,7 +444,7 @@ class TestsCodegenMakeEnvironment:
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -407,7 +466,7 @@ class TestsCodegenMakeEnvironment:
             u.Cli.run_raw(
                 [c.Infra.MAKE, "--no-print-directory", "test"],
                 cwd=project_root,
-                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS"),
+                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
@@ -425,8 +484,13 @@ class TestsCodegenMakeEnvironment:
 
         for required in (
             "UV ?= uv",
+            "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
+            "SETUP_BOOTSTRAP_ONLY := Y",
+            'if [ -n "$${GITHUB_PATH:-}" ]; then',
+            'managed_path=$$(MISE_CONFIG_DIR="$$config_dir"',
+            "for bin_dir in $$managed_path; do",
             '$(UV) venv "$(RUNTIME_VENV)"',
-            '$(UV) sync --project "$(PROJECT_ROOT)"',
+            '$(UV) sync --frozen --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
             'git -C "$$superproject" submodule update --init -- "$$child_path"',
             'git -C "$$child_root" branch --show-current',

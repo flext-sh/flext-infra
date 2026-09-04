@@ -54,18 +54,16 @@ class FlextInfraConstantsCodegenProject:
 
     @unique
     class MakeProfile(StrEnum):
-        """Generated Makefile profile for one repository."""
+        """Generated Makefile profile for one repository.
+
+        Topology is proven by the repository itself: a checkout that declares
+        ``.gitmodules`` is a workspace, and one that does not is standalone.
+        This mirrors ``MakeProfile``, which the detector returns, so the two
+        vocabularies cannot drift.
+        """
 
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
-
-    @unique
-    class RepositoryRole(StrEnum):
-        """Repository role proven by its own topology input."""
-
-        WORKSPACE = "workspace"
-        STANDALONE = "standalone"
-        EXCLUDED = "excluded"
 
     @unique
     class RepositoryState(StrEnum):
@@ -106,7 +104,10 @@ class FlextInfraConstantsCodegenProject:
         EXTERNAL = "external"
 
     BEADS_CONFIG_FILENAME: Final[str] = "beads.yaml"
+    BEADS_DIRNAME: Final[str] = ".beads"
     BEADS_CONFIG_VERSION: Final = 1
+    WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
+    WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"

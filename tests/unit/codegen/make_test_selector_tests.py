@@ -186,16 +186,9 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             uv_log.read_text(encoding="utf-8"),
-            has=[f"venv {engine_root / '.venv'}", f"sync --project {engine_root}"],
-        )
-        tm.that(
-            uv_log.read_text(encoding="utf-8"),
             has=[
-                "run --no-project --with",
-                "-m flext_infra codegen conform",
-                f"--root {engine_root}",
-                "--scope self",
-                "--mode check",
+                f"venv {engine_root / '.venv'}",
+                f"sync --frozen --project {engine_root}",
             ],
         )
 
@@ -284,5 +277,6 @@ class TestsMakeTestSelector:
             ],
             lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
         )
-        tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
+        tm.that(reporter, has="{{ command_prefix }}set -eu; \\\n")
+        tm.that(reporter, has='TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" {{ runner }}')
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])

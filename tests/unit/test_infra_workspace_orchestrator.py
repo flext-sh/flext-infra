@@ -7,7 +7,7 @@ from typing import override
 
 import pytest
 
-from flext_infra import c, r, u
+from flext_infra import c, config, r, u
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 from tests import m, p, t
@@ -209,6 +209,33 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
                 str(system_bin),
             )),
         )
+
+    def test_run_project_removes_what_selector_from_child_environment(self) -> None:
+        """Never leak the parent's WHAT dispatch selector into a member make.
+
+        flext-zykgh: the root Makefile owns per-gate targets
+        (``_builtin_check_lint`` and siblings) whose only job is to translate
+        ``WHAT=<gate>`` into ``--make-arg CHECK_GATES=<gate>`` before delegating
+        to the member. The member's standalone profile selects gates through
+        ``CHECK_GATES`` and deliberately emits only ``_builtin_check_all``.
+
+        When ``WHAT`` survived into the child environment it overrode that
+        translation: the member re-dispatched ``_builtin_check_<gate>``, hit
+        ``No rule to make target``, and died in ~34ms while the orchestrator
+        reported ``FAIL ... 0 errors`` -- a missing-target failure wearing the
+        costume of a clean gate run.
+
+        ``PROJECT`` and ``PROJECTS`` are sanitized for exactly this reason;
+        the selector belongs with them because it is the same kind of value: a
+        dispatch selector owned by whichever Makefile is currently running.
+
+        The expected name is read from the same config SSOT the generator uses
+        (``codegen.make.selector``), so renaming the selector fails this test
+        instead of silently restoring the leak.
+        """
+        selector = config.Infra.codegen.make.selector
+
+        tm.that(selector in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, eq=True)
 
     def test_run_project_surfaces_process_lifecycle_failure(
         self,

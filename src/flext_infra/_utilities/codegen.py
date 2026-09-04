@@ -22,21 +22,15 @@ class FlextInfraUtilitiesCodegen:
 
     @staticmethod
     def generate_module_skeleton(
-        *, class_name: str, base_class: str, docstring: str
+        *, class_name: str, base_class: str, base_module: str, docstring: str
     ) -> str:
         """Render one module skeleton through the cli template engine (ADR-005).
 
         The body lives in ``templates/module_skeleton.py.j2``; this method only
-        builds the context (base-import block) and renders fail-closed via
+        builds the context (explicit base module) and renders fail-closed via
         ``u.Cli.template_render``. A render failure is a real incident and
         surfaces via ``unwrap`` (no silent fallback).
         """
-        if base_class.startswith("FlextTests"):
-            base_import_block = f"from flext_tests import {base_class}\n\n"
-        elif base_class.startswith("Flext"):
-            base_import_block = f"from flext_core import {base_class}\n\n"
-        else:
-            base_import_block = ""
         template_path = (
             Path(__file__).resolve().parent.parent
             / "templates"
@@ -47,7 +41,7 @@ class FlextInfraUtilitiesCodegen:
         context = m.Infra.ModuleSkeletonRenderContext(
             class_name=class_name,
             base_class=base_class,
-            base_import_block=base_import_block,
+            base_module=base_module,
             docstring=docstring,
         )
         rendered: p.Result[str] = u.Cli.template_render(template_path, context)

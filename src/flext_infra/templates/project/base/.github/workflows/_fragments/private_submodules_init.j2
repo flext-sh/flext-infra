@@ -24,11 +24,11 @@
 {% endfor %}
           } >> ~/.ssh/config
           chmod 600 ~/.ssh/config
-          git submodule sync -- {% for p in private_submodules.paths %}{{ p }} {% endfor %}
+          git submodule sync -- {{ private_submodules.paths | join(" ") }}
 {% for key in private_submodules.deploy_keys %}
           git config submodule.{{ key.submodule }}.url {{ key.ssh_url }}
 {% endfor %}
-          git submodule update --init --depth 1 --jobs 2 -- {% for p in private_submodules.paths %}{{ p }} {% endfor %}
+          git submodule update --init --depth 1 --jobs 2 -- {{ private_submodules.paths | join(" ") }}
 {% for key in private_submodules.deploy_keys %}
           git -C {{ key.path }} remote set-url origin {{ key.ssh_url }}
 {% endfor %}

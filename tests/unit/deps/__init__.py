@@ -46,6 +46,8 @@ if TYPE_CHECKING:
     from .test_modernizer_pytest import TestsFlextInfraDepsModernizerPytest
     from .test_modernizer_tooling import TestsFlextInfraDepsModernizerTooling
     from .test_modernizer_workspace import TestsFlextInfraDepsModernizerWorkspace
+    from .test_project_gitignore_patterns import TestsProjectGitignorePatterns
+    from .test_project_mise_tools import TestsProjectMiseTools
     from .test_pytest_fail_closed_config import TestsFlextInfraPytestFailClosedConfig
     from .test_pytest_timeout_config import TestsFlextInfraPytestTimeoutConfig
 __all__: tuple[str, ...] = (
@@ -82,6 +84,8 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraModernizerPyrefly",
     "TestsFlextInfraPytestFailClosedConfig",
     "TestsFlextInfraPytestTimeoutConfig",
+    "TestsProjectGitignorePatterns",
+    "TestsProjectMiseTools",
     "c",
     "d",
     "doc",
@@ -145,6 +149,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_modernizer_pytest": ("TestsFlextInfraDepsModernizerPytest",),
             ".test_modernizer_tooling": ("TestsFlextInfraDepsModernizerTooling",),
             ".test_modernizer_workspace": ("TestsFlextInfraDepsModernizerWorkspace",),
+            ".test_project_gitignore_patterns": ("TestsProjectGitignorePatterns",),
+            ".test_project_mise_tools": ("TestsProjectMiseTools",),
             ".test_pytest_fail_closed_config": (
                 "TestsFlextInfraPytestFailClosedConfig",
             ),

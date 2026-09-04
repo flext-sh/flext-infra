@@ -13,6 +13,7 @@ import subprocess  # ruff:ignore[suspicious-subprocess-import]  Why: public CLI 
 import sys
 import time
 import tomllib
+from difflib import unified_diff
 from pathlib import Path
 
 import pytest
@@ -88,6 +89,26 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
     )
 
 
+def _project_tree_diff(
+    expected: tuple[tuple[str, bytes], ...], actual: tuple[tuple[str, bytes], ...]
+) -> str:
+    """Render only differing generated files when a fixed-point contract fails."""
+    expected_files = dict(expected)
+    actual_files = dict(actual)
+    return "\n".join(
+        line
+        for path in sorted(expected_files.keys() | actual_files.keys())
+        if expected_files.get(path) != actual_files.get(path)
+        for line in unified_diff(
+            expected_files.get(path, b"").decode(errors="replace").splitlines(),
+            actual_files.get(path, b"").decode(errors="replace").splitlines(),
+            fromfile=f"created/{path}",
+            tofile=f"conformed/{path}",
+            lineterm="",
+        )
+    )
+
+
 def _seed_infra_package_tree(root: Path) -> None:
     """Seed the minimal flext-infra tree (pyproject, src package, tests package).
 
@@ -158,9 +179,10 @@ class TestCodegenConform:
         original = "existing generated makefile\n"
         target.write_text(original, encoding="utf-8")
 
-        rejected = self._conform_with_rendered_makefile(
-            root, monkeypatch, "\n<<<<<<< incoming\n"
-        )
+        with monkeypatch.context() as render_patch:
+            rejected = self._conform_with_rendered_makefile(
+                root, render_patch, "\n<<<<<<< incoming\n"
+            )
 
         tm.fail(rejected)
         tm.that(rejected.error, has="base/Makefile.j2")
@@ -168,7 +190,10 @@ class TestCodegenConform:
         tm.that(rejected.error, has=str(root))
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
-        monkeypatch.undo()
+        # The outer autouse fixture owns GITHUB_SHA isolation. Exiting the
+        # narrow render patch must not undo that fixture and restore a CI SHA
+        # that cannot belong to this synthetic repository.
+        tm.that(os.getenv(c.Infra.ENV_VAR_GITHUB_SHA), eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
@@ -330,6 +355,186 @@ class TestCodegenConform:
         )
 
         tm.that(merging_current.ancestor, eq=True)
+
+    def test_branch_ancestry_anchors_baseline_to_triggering_commit(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A concurrent publisher on the lane must not fail a linear commit.
+
+        flext-9ehwb (run 31218338222). ``refs/remotes/origin/<lane>`` is the
+        remote's LIVE tip: ``actions/checkout`` fetches at job start, so the tip
+        advances whenever another actor publishes while this run waits in the
+        queue. Gating against it asks whether the commit already absorbed work
+        published AFTER it was written -- false by construction for a perfectly
+        linear commit, which then fails with "does not descend from".
+
+        The baseline is therefore anchored to ``merge-base(live_tip,
+        GITHUB_SHA)``: the lane point the triggering commit actually knew.
+        Concurrent publishers move the tip; they never move that merge base.
+
+        The repository here reproduces the race exactly: HEAD is linear on top
+        of the lane, and the remote tip then advances by one unrelated commit.
+        """
+        root = tmp_path / "repository"
+        root.mkdir()
+        u.Tests.initialize_git_repo(root)
+        lane_point = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "checkout", "-B", "0.12.0-dev", lane_point], cwd=root
+            )
+        )
+        # Our commit: written linearly on top of the lane as it existed.
+        (root / "ours.txt").write_text("ours\n", encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["git", "add", "ours.txt"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-m", "Our linear commit on the lane"], cwd=root
+            )
+        )
+        triggering_sha = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        # A concurrent actor publishes to the same lane while our run queues,
+        # so the fetched remote tip moves past the point we branched from.
+        empty_tree = tm.ok(u.Cli.capture(["git", "mktree"], cwd=root))
+        concurrent_tip = tm.ok(
+            u.Cli.capture(
+                [
+                    "git",
+                    "commit-tree",
+                    empty_tree,
+                    "-p",
+                    lane_point,
+                    "-m",
+                    "Concurrent publisher advances the lane",
+                ],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "update-ref", "refs/remotes/origin/0.12.0-dev", concurrent_tip],
+                cwd=root,
+            )
+        )
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "remote", "set-url", "origin", str(tmp_path / "missing")],
+                cwd=root,
+            )
+        )
+        # The live tip is genuinely NOT an ancestor of our commit: this is the
+        # exact state the old gate rejected.
+        live_tip_check = tm.ok(
+            u.Cli.run_raw(
+                ["git", "merge-base", "--is-ancestor", concurrent_tip, triggering_sha],
+                cwd=root,
+            )
+        )
+        tm.that(live_tip_check.exit_code, eq=1)
+
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path()}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
+            repository=repository,
+            project=u.Tests.project_spec(repository.name),
+        )
+        (root / "pyproject.toml").write_text(
+            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
+            encoding="utf-8",
+        )
+        package = root / "src" / repository.distribution.replace("-", "_")
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        )
+
+        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
+        anchored = tm.ok(service.plan(request)).branch_ancestry[0]
+
+        current = next(
+            reference
+            for reference in anchored.references
+            if reference.reference == "refs/heads/0.12.0-dev"
+        )
+        tm.that(current.ancestor, eq=True)
+        tm.that(anchored.baseline_sha, eq=lane_point)
+
+    def test_branch_ancestry_skips_triggering_sha_in_submodule_context(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """GITHUB_SHA from the superproject must not break submodule ancestry.
+
+        In CI, GITHUB_SHA is the superproject's PR merge commit, which does
+            not exist inside a submodule's object database. ``git merge-base``
+            then fails with exit 128 ("Not a valid commit name"), breaking
+            ``gen check`` for every governed submodule (PR #187).
+
+        When triggering_sha does not resolve locally the gate must skip the
+        merge-base pin and fall back to the live baseline tip, the same
+            behavior a local (non-CI) checkout would use.
+        """
+        root = tmp_path / "repository"
+        root.mkdir()
+        u.Tests.initialize_git_repo(root)
+        lane_point = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "checkout", "-B", "0.12.0-dev", lane_point], cwd=root
+            )
+        )
+        (root / "ours.txt").write_text("ours\n", encoding="utf-8")
+        tm.ok(u.Cli.run_checked(["git", "add", "ours.txt"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-m", "Our commit on the lane"], cwd=root
+            )
+        )
+        # GITHUB_SHA is a SHA that does NOT exist in this repo (simulating a
+        # superproject merge commit visible only at the workspace root).
+        foreign_sha = "9" * 40
+        tm.that(
+            u.Cli.run_raw(
+                ["git", "cat-file", "-t", foreign_sha], cwd=root
+            ).value.exit_code,
+            eq=128,
+        )
+        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, foreign_sha)
+        repository = u.Tests.repository_ref("flext-infra").model_copy(
+            update={"path": Path()}
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            name=repository.name,
+            beads=u.Tests.beads_project(repository.name),
+            repository=repository,
+            project=u.Tests.project_spec(repository.name),
+        )
+        (root / "pyproject.toml").write_text(
+            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
+            encoding="utf-8",
+        )
+        package = root / "src" / repository.distribution.replace("-", "_")
+        package.mkdir(parents=True)
+        (package / "__init__.py").write_text("", encoding="utf-8")
+        request = m.Infra.CodegenConformRequest(
+            root=root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        service = FlextInfraCodegenConform(
+            workspace_root=root, request=request, initial_workspace=workspace
+        )
+
+        anchored = tm.ok(service.plan(request)).branch_ancestry[0]
+        tm.that(anchored.baseline_sha, eq=lane_point)
 
     def test_branch_ancestry_skips_bare_main_worktree_entry(
         self, tmp_path: Path
@@ -564,7 +769,10 @@ class TestCodegenConform:
             )
         )
         tm.ok(migrated)
-        tm.that(_project_tree(existing_root), eq=expected_tree)
+        actual_tree = _project_tree(existing_root)
+        assert actual_tree == expected_tree, _project_tree_diff(
+            expected_tree, actual_tree
+        )
 
     @pytest.mark.slow
     def test_python_root_outside_env_dirs_still_reaches_a_fixed_point(
@@ -649,7 +857,7 @@ class TestCodegenConform:
     ) -> None:
         root = infra_git_repo
         repository = u.Tests.repository_ref(
-            config.Infra.name, role=c.Infra.RepositoryRole.STANDALONE
+            config.Infra.name, role=c.Infra.MakeProfile.STANDALONE
         )
         local_repository = repository.model_copy(update={"path": Path()})
         create_only = {
@@ -758,7 +966,7 @@ class TestCodegenConform:
                 "distribution": "arbitrary-root",
                 "url": f"{provider.base_url}/arbitrary-root.git",
                 "path": Path(),
-                "role": c.Infra.RepositoryRole.WORKSPACE,
+                "role": c.Infra.MakeProfile.WORKSPACE,
                 "package": False,
                 "editable": False,
             }
@@ -960,6 +1168,7 @@ class TestCodegenConform:
             tuple(file.path.name for file in planned.value.files),
             eq=("pyproject.toml",),
         )
+        tm.that(tuple(file.changed for file in planned.value.files), eq=(False,))
         exit_code = main([
             "codegen",
             "conform",
@@ -1182,7 +1391,7 @@ class TestScriptDispatchMakefile:
             url=f"{provider.base_url}/demo-root.git",
             path=Path(),
             # Script dispatch is a generic capability: exercise it on standalone.
-            role=c.Infra.RepositoryRole.STANDALONE,
+            role=c.Infra.MakeProfile.STANDALONE,
             provider=provider.name,
             checkout=c.Infra.CheckoutKind.ROOT,
             codegen=c.Infra.CodegenKind.CONFORM,
@@ -1345,6 +1554,19 @@ class TestScriptDispatchMakefile:
             lacks=["$(FLEXT_INFRA_BOOTSTRAP)", "codegen init", "deps modernize"],
         )
         tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
+        # flext-udpm5: continuous gen check regenerates lazy inits (drift check),
+        # distinct from the bootstrap-only `codegen init`/`_builtin_gen_init`
+        # selector above, and runs after conform / before the docs check.
+        tm.that(
+            gen_check_body,
+            has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --check',
+        )
+        tm.that(
+            gen_check_body.index("codegen conform")
+            < gen_check_body.index("codegen lazy-init")
+            < gen_check_body.index("_generated_docs"),
+            eq=True,
+        )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
         tm.that(gen_all_body.count("codegen conform"), eq=1)
@@ -1361,6 +1583,25 @@ class TestScriptDispatchMakefile:
             ],
         )
         tm.that("_require_apply" in gen_all_body, eq=True)
+        credential_preflight = "MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR"
+        tm.that(credential_preflight in gen_all_body, eq=True)
+        tm.that(
+            gen_all_body.index(credential_preflight)
+            < gen_all_body.index("codegen conform"),
+            eq=True,
+        )
+        # flext-udpm5: continuous gen apply regenerates lazy inits after conform
+        # and before the generated-docs write, so config drift never lands stale.
+        tm.that(
+            gen_all_body,
+            has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply',
+        )
+        tm.that(
+            gen_all_body.index("codegen conform")
+            < gen_all_body.index("codegen lazy-init")
+            < gen_all_body.index("_generated_docs"),
+            eq=True,
+        )
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]
@@ -1736,6 +1977,8 @@ class TestScriptDispatchMakefile:
 
     def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
         """Gas Town owns lifecycle; generated Make exposes no work command."""
+    def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
+        """Gas City owns lanes; generated repositories expose no second lifecycle."""
         make_config = config.Infra.codegen.make
         verb_names = {verb.name for verb in make_config.verbs}
         tm.that("work" in verb_names, eq=False)
@@ -1746,7 +1989,8 @@ class TestScriptDispatchMakefile:
             line for line in rendered.splitlines() if line.startswith("PUBLIC_VERBS :=")
         )
         tm.that(" work" in public_line, eq=False)
-        tm.that(rendered, lacks=["_builtin_work_", "make work", "work start"])
+        tm.that(rendered, lacks="_builtin_work_")
+        tm.that(rendered, lacks="workspace work")
 
     # A test asserting a downstream consumer's verbs from this
     # engine's catalog was removed. The engine is consumer-agnostic: a consumer

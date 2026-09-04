@@ -16,8 +16,6 @@ from flext_infra.validate.runtime_census import FlextInfraRuntimeCensusValidator
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
-
 
 class FlextInfraRuntimeCensusGate(FlextInfraGate):
     """Post-import runtime enforcement census gate."""
@@ -45,34 +43,9 @@ class FlextInfraRuntimeCensusGate(FlextInfraGate):
             errors.append(result.error or "runtime census failed")
         elif not passed:
             errors.append(result.error or "runtime census found violations")
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=passed,
-                errors=errors,
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=[],
-            raw_output="\n".join(errors),
-            ctx=ctx,
+        return self._build_project_error_gate_result(
+            project_dir, passed=passed, errors=errors, started=started, ctx=ctx
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — execution happens in ``check``."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — ``check`` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraRuntimeCensusGate"]
