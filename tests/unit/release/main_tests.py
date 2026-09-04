@@ -36,6 +36,4 @@ class TestsFlextInfraReleaseCli:
             """A phase outside the protocol never reaches execution."""
             workspace = u.Tests.create_release_workspace(tmp_path)
 
-            tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "deploy"), ne=0
-            )
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "deploy"), ne=0)

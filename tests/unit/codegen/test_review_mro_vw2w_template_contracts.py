@@ -20,11 +20,7 @@ _RELEASE = _TEMPLATES / ".github" / "workflows" / "release.yml.j2"
 _CI = _TEMPLATES / ".github" / "workflows" / "ci.yml.j2"
 _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
 _PRIVATE_SUBMODULES = (
-    _TEMPLATES
-    / ".github"
-    / "workflows"
-    / "_fragments"
-    / "private_submodules_init.j2"
+    _TEMPLATES / ".github" / "workflows" / "_fragments" / "private_submodules_init.j2"
 )
 
 

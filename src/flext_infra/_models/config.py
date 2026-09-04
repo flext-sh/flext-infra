@@ -496,6 +496,15 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+<<<<<<< HEAD
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Fleet branches receiving blocking generated CI triggers",
+            ),
+        ]
+=======
         integration_branch_preference: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -511,6 +520,7 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
+>>>>>>> origin/0.12.0-dev
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
@@ -520,6 +530,9 @@ class FlextInfraConfigModels:
                     "technical branch patterns must equal the canonical GitHub/Dolt "
                     f"set: {', '.join(self.REQUIRED_TECHNICAL_PATTERNS)}"
                 )
+                raise ValueError(msg)
+            if len(set(self.ci_trigger_branches)) != len(self.ci_trigger_branches):
+                msg = "CI trigger branches must be unique"
                 raise ValueError(msg)
             return self
 
@@ -709,6 +722,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = None
+        system_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Runner packages this distribution's tests need; empty "
+                    "means the workflow renders no install step"
+                ),
+            ),
+        ] = ()
 
     class MakeWorkflowRenderSpec(_ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
@@ -2741,6 +2764,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_system_packages: Annotated[
+            Mapping[str, tuple[t.NonEmptyStr, ...]],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-distribution runner packages (Ubuntu apt names) the "
+                    "generated CI installs before the gates run"
+                ),
+            ),
+        ]
         sgconfig: Annotated[
             FlextInfraConfigModels.SgconfigRenderSpec,
             m.Field(description="Canonical ast-grep project contract for every repo"),
@@ -2756,6 +2789,10 @@ class FlextInfraConfigModels:
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
+        ]
+        infrastructure_provider: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Provider key owning the flext-infra distribution"),
         ]
         branch_policy: Annotated[
             FlextInfraConfigModels.BranchPolicySpec,
@@ -2793,7 +2830,27 @@ class FlextInfraConfigModels:
             ),
         ]
 
+<<<<<<< HEAD
         @m.computed_field
+=======
+        @u.model_validator(mode="after")
+        def _validate_infrastructure_provider(self) -> Self:
+            """Require the tool distribution owner to resolve exactly once."""
+            matches = tuple(
+                provider
+                for provider in self.providers
+                if provider.name == self.infrastructure_provider
+            )
+            if len(matches) != 1:
+                msg = (
+                    "infrastructure_provider must resolve exactly once in providers: "
+                    f"{self.infrastructure_provider}"
+                )
+                raise ValueError(msg)
+            return self
+
+        @m.computed_field()
+>>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
         @property
         def vscode_files_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.exclude`` entries from the artifact SSOT."""
@@ -3129,6 +3186,34 @@ class FlextInfraConfigModels:
                 default="https://upload.pypi.org/legacy/",
                 description="Package index upload endpoint for verified artifacts",
             ),
+        ]
+        build_constraints: Annotated[
+            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Hash-pinned build-backend requirements every release artifact "
+                    "is built with; projected to config/build-constraints.txt"
+                ),
+            ),
+        ]
+
+    class BuildConstraintSpec(_ConfigContract):
+        """One hash-pinned build requirement (``uv build --require-hashes``)."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
+        hashes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Accepted sha256 digests"),
+        ]
+
+    class ReleasePolicyRenderSpec(_ConfigContract):
+        """Typed input consumed by the generated release policy files."""
+
+        build_constraints: Annotated[
+            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            m.Field(min_length=1, description="Pins rendered into the constraints"),
         ]
 
     # This

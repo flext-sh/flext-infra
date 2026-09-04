@@ -23,8 +23,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     """
 
     model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-        validate_by_name=True,
-        validate_by_alias=True,
+        validate_by_name=True, validate_by_alias=True
     )
 
     @classmethod

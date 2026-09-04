@@ -291,6 +291,79 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
 
             @override
+            def run_raw(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
+            ) -> p.Result[p.Cli.CommandOutput]:
+                """Provide the typed test helper `run_raw`."""
+                self.commands.append(tuple(cmd))
+                del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
+                result = self._next_result()
+                if result.failure:
+                    return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
+                return r[p.Cli.CommandOutput].ok(result.value)
+
+            @override
+            def run(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
+            ) -> p.Result[p.Cli.CommandOutput]:
+                """Provide the typed test helper `run`."""
+                self.commands.append(tuple(cmd))
+                del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
+                result = self._next_result()
+                if result.failure:
+                    return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
+                output = result.value
+                if output.exit_code != 0:
+                    return r[p.Cli.CommandOutput].fail(
+                        output.stderr or output.stdout or "Command failed"
+                    )
+                return r[p.Cli.CommandOutput].ok(output)
+
+            @override
+            def run_bytes(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+            ) -> p.Result[p.Cli.CommandBytesOutput]:
+                """Replay one command result while preserving byte-exact streams."""
+                self.commands.append(tuple(cmd))
+                del cmd, cwd, timeout, env, remove_env_keys, input_data
+                result = self._next_result()
+                if result.failure:
+                    return r[p.Cli.CommandBytesOutput].fail(
+                        result.error or "Command failed"
+                    )
+                output = result.value
+                return r[p.Cli.CommandBytesOutput].ok(
+                    m.Cli.CommandBytesOutput(
+                        stdout=output.stdout.encode(),
+                        stderr=output.stderr.encode(),
+                        exit_code=output.exit_code,
+                        duration=output.duration,
+                    )
+                )
+
+            @override
             def _command_result(self) -> p.Result[m.Cli.CommandOutput]:
                 """Replay the next stored result instead of a single one."""
                 return self._next_result()
@@ -766,8 +839,21 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def release_policy_root() -> Path:
-            """Return the repository-owned isolated release policy fixture."""
-            return Path(__file__).resolve().parent / "fixtures" / "release"
+            """Return the packaged template root that owns the release policies.
+
+            The build-constraints and Gitleaks policies are codegen templates
+            projected into every repository; the release fixtures copy the same
+            bytes so the test workspace carries exactly what a generated
+            repository carries.
+            """
+            return (
+                Path(__file__).resolve().parents[1]
+                / "src"
+                / "flext_infra"
+                / "templates"
+                / "project"
+                / "base"
+            )
 
         @staticmethod
         def create_release_workspace(
@@ -804,13 +890,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
                 c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
             )
+            # The policies are rendered exactly as codegen projects them into
+            # a generated repository: same template, same typed pins.
+            policy_context = m.Infra.ReleasePolicyRenderSpec(
+                build_constraints=config.Infra.release.build_constraints
+            )
             for policy_path in policy_paths:
-                policy_source = (
-                    TestsFlextInfraUtilities.Tests.release_policy_root() / policy_path
+                policy_source = TestsFlextInfraUtilities.Tests.release_policy_root() / (
+                    f"{policy_path}.j2"
                 )
+                rendered = u.Cli.template_render(policy_source, policy_context)
+                if rendered.failure:
+                    msg = rendered.error or f"release policy render failed: {policy_path}"
+                    raise RuntimeError(msg)
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(policy_source, policy_target)
+                policy_target.write_text(rendered.value, encoding="utf-8")
             for name in project_names:
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)
@@ -902,7 +997,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return branch
 
         @staticmethod
-        def merge_pull_request(repo_root: Path, subject: str) -> None:
+        def merge_pull_request(
+            repo_root: Path, subject: str, *, body: str = ""
+        ) -> None:
             """Land one pull request the way GitHub does: a merge commit titled ``subject``."""
             branch = f"pr/{abs(hash(subject))}"
             current = tm.ok(
@@ -918,7 +1015,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             tm.ok(run([c.Infra.GIT, "switch", current], cwd=repo_root))
             tm.ok(
                 run(
-                    [c.Infra.GIT, "merge", "--no-ff", "-m", subject, branch],
+                    [
+                        c.Infra.GIT,
+                        "merge",
+                        "--no-ff",
+                        "-m",
+                        subject,
+                        *(["-m", body] if body else []),
+                        branch,
+                    ],
                     cwd=repo_root,
                 )
             )

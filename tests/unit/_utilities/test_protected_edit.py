@@ -82,9 +82,7 @@ class TestsFlextInfraUtilitiesProtectedEdit:
     ) -> None:
         tests_dir = tmp_path / "tests"
         tests_dir.mkdir()
-        self._assert_protected_source_write(
-            tests_dir / "test_placeholder.py", tmp_path
-        )
+        self._assert_protected_source_write(tests_dir / "test_placeholder.py", tmp_path)
 
     def test_protected_source_writes_applies_request_options(
         self, tmp_path: Path

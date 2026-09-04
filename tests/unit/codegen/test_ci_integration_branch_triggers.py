@@ -27,9 +27,7 @@ class TestsCiIntegrationBranchTriggers:
             make_profile=c.Infra.MakeProfile.STANDALONE,
             repository_branch=repository_branch,
             ci_trigger_branches=tuple(
-                dict.fromkeys(
-                    (*cls.baseline_branches[:-1], repository_branch, "main")
-                )
+                dict.fromkeys((*cls.baseline_branches[:-1], repository_branch, "main"))
             ),
         )
         return tm.ok(u.Cli.template_render(cls.ci_template, spec))
@@ -54,12 +52,8 @@ class TestsCiIntegrationBranchTriggers:
         for baseline in self.baseline_branches:
             tm.that(self._branch_count(triggers, baseline), eq=2)
 
-    def test_ci_triggers_deduplicate_integration_branch_against_baselines(
-        self,
-    ) -> None:
-        triggers = self._trigger_section(
-            self._render_ci(repository_branch="develop")
-        )
+    def test_ci_triggers_deduplicate_integration_branch_against_baselines(self) -> None:
+        triggers = self._trigger_section(self._render_ci(repository_branch="develop"))
 
         for branch in self.baseline_branches:
             tm.that(self._branch_count(triggers, branch), eq=2)

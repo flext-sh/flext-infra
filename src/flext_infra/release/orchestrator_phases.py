@@ -65,13 +65,20 @@ class FlextInfraReleaseOrchestratorPhases(
         Each repository versions independently, so release metadata pins a
         sibling to what the sibling's ``pyproject.toml`` declares. The root
         project is included so a workspace may depend on its own distribution.
+        A sibling consumed through a pinned git ref (a standalone repository's
+        internal dependency) is what the committed ``uv.lock`` resolved for it:
+        the version that sibling declared at the pinned commit.
         """
         projects = u.Infra.resolve_projects(workspace_root, ())
         if projects.failure:
             return r[t.StrMapping].fail(
                 projects.error or "internal version resolution failed"
             )
-        versions: dict[str, str] = {}
+        versions: dict[str, str] = dict(
+            u.Infra.locked_dependency_versions(
+                workspace_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
+            )
+        )
         for project in projects.value:
             declared = u.Infra.current_workspace_version(project.path)
             if declared.failure:
@@ -98,7 +105,8 @@ class FlextInfraReleaseOrchestratorPhases(
             build_constraints_path=Path(policy.build_constraints_path),
             gitleaks_config_path=Path(policy.gitleaks_policy_path),
             version=(
-                ctx.version if path.resolve() == ctx.workspace_root.resolve()
+                ctx.version
+                if path.resolve() == ctx.workspace_root.resolve()
                 else versions[name]
             ),
             versions=versions,

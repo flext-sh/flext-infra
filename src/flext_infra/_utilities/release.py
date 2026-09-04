@@ -18,8 +18,7 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def plan_bump(
-        subjects: t.StrSequence,
-        bump_types: Mapping[str, c.Infra.VersionBump],
+        subjects: t.StrSequence, bump_types: Mapping[str, c.Infra.VersionBump]
     ) -> p.Result[c.Infra.VersionBump]:
         """Derive the release bump from the merged pull-request subjects.
 
@@ -49,6 +48,16 @@ class FlextInfraUtilitiesRelease:
             if order.index(candidate) > order.index(bump):
                 bump = candidate
         return r[c.Infra.VersionBump].ok(bump)
+
+    @staticmethod
+    def is_release_subject(subject: str, version: str) -> bool:
+        """Whether ``subject`` is the protocol's release commit for ``version``.
+
+        Matches the commit as the lane wrote it and as GitHub merged it, which
+        appends the pull-request number to the subject.
+        """
+        match = c.Infra.RELEASE_COMMIT_SUBJECT_RE.match(subject)
+        return match is not None and match.group("version") == version
 
     @staticmethod
     def generate_notes(
@@ -155,12 +164,17 @@ class FlextInfraUtilitiesRelease:
             f"{heading}{date}\n\n- Release tag: `{tag}`\n\n"
             f"Full notes: `docs/releases/{tag}.md`\n\n"
         )
-        if heading in existing:
-            return existing
         marker = "# Changelog\n\n"
-        if marker in existing:
-            return existing.replace(marker, marker + section, 1)
-        return "# Changelog\n\n" + section + existing
+        if heading in existing:
+            updated = existing
+        elif marker in existing:
+            updated = existing.replace(marker, marker + section, 1)
+        else:
+            updated = marker + section + existing
+        # Why: a changelog ending with the section's blank line failed the
+        # markdown gate (MD012); the normalization applies on every stamp, so a
+        # rerun on an open release lane repairs a changelog written before it.
+        return updated.rstrip("\n") + "\n"
 
     @classmethod
     def release_publish_waves(
