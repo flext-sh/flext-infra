@@ -357,7 +357,7 @@ _bootstrap_setup_tools:
 			MISE_GLOBAL_CONFIG_FILE="$$global_config" \
 			env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" \
 			-C "$$project_root" which uv); \
-		printf '%s\n' "$${uv_path%/*}" >> "$$GITHUB_PATH"; \
+		printf '%s\n' "$$project_root/bin" "$${uv_path%/*}" >> "$$GITHUB_PATH"; \
 	fi
 
 ifeq ($(MAKE_PROFILE),workspace)

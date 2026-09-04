@@ -487,7 +487,7 @@ class TestsCodegenMakeEnvironment:
             "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
             "SETUP_BOOTSTRAP_ONLY := Y",
             'if [ -n "$${GITHUB_PATH:-}" ]; then',
-            'printf \'%s\\n\' "$${uv_path%/*}" >> "$$GITHUB_PATH"',
+            'printf \'%s\\n\' "$$project_root/bin" "$${uv_path%/*}" >> "$$GITHUB_PATH"',
             '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
