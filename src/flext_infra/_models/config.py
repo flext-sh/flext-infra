@@ -569,6 +569,8 @@ class FlextInfraConfigModels:
     class CiPrivateSubmodulesSpec(_ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
+        _KNOWN_HOSTS_FIELD_COUNT: ClassVar[int] = 3
+
         known_hosts: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -607,7 +609,7 @@ class FlextInfraConfigModels:
             for line in self.known_hosts:
                 fields = line.split()
                 if (
-                    len(fields) != 3
+                    len(fields) != self._KNOWN_HOSTS_FIELD_COUNT
                     or fields[0] != "github.com"
                     or fields[1] != "ssh-ed25519"
                 ):
@@ -3372,6 +3374,17 @@ class FlextInfraConfigModels:
             m.Field(description="Read-only check or atomic apply"),
         ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
 
+    class CodegenArtifactComposition(_ConfigContract):
+        """Rendered artifact plus the exact source states used to compose it."""
+
+        rendered: Annotated[
+            str, m.Field(description="Fully composed managed-file content")
+        ]
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(description="Ordered immutable sources consumed by composition"),
+        ] = ()
+
     class CodegenFilePlan(_ConfigContract):
         """Expected content and current state for one managed file."""
 
@@ -3380,6 +3393,13 @@ class FlextInfraConfigModels:
         expected_sha256: Annotated[
             t.NonEmptyStr, m.Field(description="SHA-256 of expected content")
         ]
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True,
+                description="Exact source states that produced rendered content",
+            ),
+        ] = ()
         owner: Annotated[
             str,
             m.Field(description="Canonical artifact owner, empty for scaffold files"),

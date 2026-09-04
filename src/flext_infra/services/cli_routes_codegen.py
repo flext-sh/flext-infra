@@ -13,6 +13,7 @@ from flext_infra.codegen.constants_quality_gate import FlextInfraCodegenQualityG
 from flext_infra.codegen.fixer import FlextInfraCodegenFixer
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
+from flext_infra.codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.pipeline import FlextInfraCodegenPipeline
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
@@ -85,12 +86,12 @@ class CodegenRoutes(CliRouteBase):
                     ),
                     (
                         "init",
-                        "Generate/refresh PEP 562 lazy-import __init__.py files",
-                        FlextInfraCodegenLazyInit,
+                        "Bootstrap only the canonical generated Makefile",
+                        FlextInfraCodegenMakeBootstrap,
                         CliRouteBase.result_handler(
-                            FlextInfraCodegenLazyInit.execute_command
+                            FlextInfraCodegenMakeBootstrap.execute_command
                         ),
-                        "init complete",
+                        "Makefile bootstrap complete",
                     ),
                     (
                         "lazy-init",
@@ -180,7 +181,7 @@ class CodegenRoutes(CliRouteBase):
                     ),
                     (
                         "mise-artifacts",
-                        "Resolve, publish, or validate the generated Mise receipt",
+                        "Validate the generated Mise bundle read-only",
                         FlextInfraCodegenMiseArtifacts,
                         CliRouteBase.result_handler(
                             FlextInfraCodegenMiseArtifacts.execute_command

@@ -16,8 +16,26 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
-    class MiseToolchainProjectState(m.ArbitraryTypesModel):
-        """Immutable source snapshot for one project in a Mise transaction."""
+    class MiseToolchainArtifactPaths(m.ArbitraryTypesModel):
+        """Canonical live toolchain-bundle destinations for one project."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        config: Annotated[
+            Path, m.Field(description="Generated Mise configuration destination")
+        ]
+        unix_launcher: Annotated[
+            Path, m.Field(description="Unix launcher destination")
+        ]
+        windows_launcher: Annotated[
+            Path, m.Field(description="Windows launcher destination")
+        ]
+        lock: Annotated[Path, m.Field(description="Project Mise lock destination")]
+
+    class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
+        """Stable paths needed to validate and recover one project."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
             frozen=True, extra="forbid"
@@ -27,18 +45,147 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             t.NonEmptyStr, m.Field(description="Workspace-relative project selector")
         ]
         root: Annotated[Path, m.Field(description="Resolved project root")]
-        config_bytes: Annotated[
-            bytes, m.Field(description="Exact committed .mise.toml bytes")
+        transaction_root: Annotated[
+            Path,
+            m.Field(description="Persistent transaction root on this project filesystem"),
         ]
-        launcher_bytes: Annotated[
-            bytes, m.Field(description="Exact committed Unix launcher bytes")
+        artifacts: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainArtifactPaths,
+            m.Field(description="Canonical artifact destinations"),
         ]
-        windows_launcher_bytes: Annotated[
-            bytes, m.Field(description="Exact committed Windows launcher bytes")
+
+    class MiseToolchainWorkspaceLayout(m.ArbitraryTypesModel):
+        """Stable recovery topology independent of mutable source contents."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        scope_root: Annotated[Path, m.Field(description="Resolved transaction scope")]
+        state_root: Annotated[
+            Path, m.Field(description="Persistent common lock and journal directory")
         ]
-        lock_bytes: Annotated[
-            bytes, m.Field(description="Exact committed mise.lock bytes")
+        projects: Annotated[
+            tuple[FlextInfraModelsCodegen.MiseToolchainProjectLayout, ...],
+            m.Field(min_length=1, description="Ordered complete workspace topology"),
         ]
+
+    class MiseToolchainConfigState(m.ArbitraryTypesModel):
+        """Current destination plus the exact planned Mise configuration."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Exact preflight state of the live configuration"),
+        ]
+        replacement_content: Annotated[
+            bytes,
+            m.Field(
+                min_length=1,
+                strict=True,
+                description="Exact rendered bytes to stage and publish",
+            ),
+        ]
+        replacement_mode: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Exact permission mode to stage and publish",
+            ),
+        ]
+        sources: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(description="Ordered YAML states that produced the replacement"),
+        ] = ()
+
+    class MiseToolchainProjectState(m.ArbitraryTypesModel):
+        """Immutable source and destination snapshot for one project layout."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        layout: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainProjectLayout,
+            m.Field(description="Stable project layout owning this snapshot"),
+        ]
+        config: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainConfigState,
+            m.Field(description="Planned generated Mise configuration state"),
+        ]
+        artifacts: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainArtifactSet,
+            m.Field(description="Named launcher and lock states"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_destination_paths(self) -> Self:
+            """Bind every captured state to its declared live destination."""
+            expected = (
+                self.layout.artifacts.config,
+                self.layout.artifacts.unix_launcher,
+                self.layout.artifacts.windows_launcher,
+                self.layout.artifacts.lock,
+            )
+            observed = (
+                self.config.before.path,
+                self.artifacts.unix_launcher.path,
+                self.artifacts.windows_launcher.path,
+                self.artifacts.lock.path,
+            )
+            if observed != expected:
+                msg = "Mise project states differ from declared destinations"
+                raise ValueError(msg)
+            return self
+
+    class MiseToolchainArtifactSet(m.ArbitraryTypesModel):
+        """Named file states that prevent artifact-order ambiguity."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        unix_launcher: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Observed Unix launcher state"),
+        ]
+        windows_launcher: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Observed Windows launcher state"),
+        ]
+        lock: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Observed project Mise lock state"),
+        ]
+
+    class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
+        """One stable layout plus a coherent mutable-state snapshot."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        layout: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainWorkspaceLayout,
+            m.Field(description="Stable workspace topology"),
+        ]
+        projects: Annotated[
+            tuple[FlextInfraModelsCodegen.MiseToolchainProjectState, ...],
+            m.Field(min_length=1, description="Ordered complete workspace topology"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_project_layouts(self) -> Self:
+            """Bind every mutable project snapshot to the exact stable layout."""
+            if tuple(project.layout for project in self.projects) != self.layout.projects:
+                msg = "Mise project snapshots differ from workspace layout"
+                raise ValueError(msg)
+            return self
 
     class MiseToolchainPublication(m.ArbitraryTypesModel):
         """One guarded replacement belonging to the current Mise transaction."""
@@ -47,13 +194,22 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             frozen=True, extra="forbid"
         )
 
-        path: Annotated[Path, m.Field(description="Live artifact destination")]
-        expected_bytes: Annotated[
-            bytes, m.Field(description="Exact bytes observed during preflight")
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Exact destination state observed during preflight"),
         ]
-        replacement_bytes: Annotated[
-            bytes, m.Field(description="Fully validated staged replacement bytes")
+        replacement: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Exact caller-owned staged replacement state"),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_replacement_present(self) -> Self:
+            """Require every publication to own a materialized staged file."""
+            if self.replacement.content is None or self.replacement.mode is None:
+                msg = "Mise publication replacement must be present"
+                raise ValueError(msg)
+            return self
 
     class MiseToolchainJournalSource(m.ArbitraryTypesModel):
         """One immutable source identity guarded by a Mise transaction journal."""
@@ -73,6 +229,15 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 description="Exact source-byte SHA-256 identity",
             ),
         ]
+        mode: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Exact source permission bits",
+            ),
+        ]
 
     class MiseToolchainJournalEntry(m.ArbitraryTypesModel):
         """Recoverable before/after identity for one published Mise artifact."""
@@ -85,23 +250,84 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             t.NonEmptyStr,
             m.Field(description="Workspace-relative live artifact destination"),
         ]
-        original_backup: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Transaction-relative original-byte backup"),
-        ]
-        original_sha256: Annotated[
-            str,
+        original_exists: Annotated[
+            bool,
             m.Field(
-                pattern=r"^[0-9a-f]{64}$",
-                description="Exact original-byte SHA-256 identity",
+                strict=True,
+                description="Whether the destination existed at preflight",
             ),
         ]
+        original_backup: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Workspace-relative original-byte backup"),
+        ] = None
+        original_sha256: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[0-9a-f]{64}$",
+                description="Exact original-byte SHA-256 identity when present",
+            ),
+        ] = None
+        original_mode: Annotated[
+            int | None,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Exact original permission bits when present",
+            ),
+        ] = None
         replacement_sha256: Annotated[
             str,
             m.Field(
                 pattern=r"^[0-9a-f]{64}$",
                 description="Exact replacement-byte SHA-256 identity",
             ),
+        ]
+        replacement_mode: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Replacement permission bits",
+            ),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_original_tuple(self) -> Self:
+            """Require complete recovery identity exactly when original existed."""
+            original = (
+                self.original_backup,
+                self.original_sha256,
+                self.original_mode,
+            )
+            populated = tuple(value is not None for value in original)
+            if (self.original_exists and not all(populated)) or (
+                not self.original_exists and any(populated)
+            ):
+                msg = "Mise journal original recovery tuple is inconsistent"
+                raise ValueError(msg)
+            return self
+
+    class MiseToolchainRecoveryAction(m.ArbitraryTypesModel):
+        """One preclassified recovery decision with no live effect applied."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            frozen=True, extra="forbid"
+        )
+
+        entry: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainJournalEntry,
+            m.Field(description="Journal entry owning the recovery decision"),
+        ]
+        current: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Exact live target state used for classification"),
+        ]
+        operation: Annotated[
+            Literal["noop", "delete", "restore"],
+            m.Field(description="Only authorized recovery effect for the target"),
         ]
 
     class MiseToolchainJournal(m.ArbitraryTypesModel):
@@ -111,10 +337,54 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             frozen=True, extra="forbid"
         )
 
-        version: Literal[1] = 1
-        state: Literal["prepared", "committed"] = "prepared"
-        sources: tuple[FlextInfraModelsCodegen.MiseToolchainJournalSource, ...] = ()
-        entries: tuple[FlextInfraModelsCodegen.MiseToolchainJournalEntry, ...] = ()
+        version: Annotated[
+            Literal[3], m.Field(description="Exact journal schema version")
+        ]
+        state: Annotated[
+            Literal["staging", "prepared", "committed"],
+            m.Field(description="Durable publication transition state"),
+        ]
+        projects: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Ordered project selectors owned by this transaction",
+            ),
+        ]
+        sources: Annotated[
+            tuple[FlextInfraModelsCodegen.MiseToolchainJournalSource, ...],
+            m.Field(description="Source identities used by staging"),
+        ]
+        entries: Annotated[
+            tuple[FlextInfraModelsCodegen.MiseToolchainJournalEntry, ...],
+            m.Field(description="Recoverable artifact transitions"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_lifecycle(self) -> Self:
+            """Bind staging and publication payloads to one safe project set."""
+            if self.projects[0] != "." and "." in self.projects:
+                msg = "Mise root selector must be first when present"
+                raise ValueError(msg)
+            if len(set(self.projects)) != len(self.projects):
+                msg = "Mise journal project selectors must be unique"
+                raise ValueError(msg)
+            for selector in self.projects:
+                relative = Path(selector)
+                if (
+                    relative.is_absolute()
+                    or relative.as_posix() != selector
+                    or ".." in relative.parts
+                ):
+                    msg = f"unsafe Mise journal project selector: {selector}"
+                    raise ValueError(msg)
+            if self.state == "staging" and self.entries:
+                msg = "staging Mise journal must not authorize live transitions"
+                raise ValueError(msg)
+            if self.state != "staging" and not self.entries:
+                msg = "published Mise journal must contain recovery entries"
+                raise ValueError(msg)
+            return self
 
     class CensusViolation(mm.RequiredNonNegativeLineMixin, m.ArbitraryTypesModel):
         """A single namespace violation detected by the census service."""

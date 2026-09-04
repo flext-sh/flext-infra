@@ -1,12 +1,8 @@
 """Workspace environment sync owner for the public ``infra`` facade.
 
-This is the single canonical in-process surface for keeping one workspace's
-direnv/mise files (``.envrc``, ``.mise.toml``) aligned with the codegen SSOT.
-It renders the same ``templates/project/base`` Jinja templates that
-``codegen conform`` owns, from the same ``config.Infra.codegen.toolchain``
-spec, so both paths produce identical governed content. Custom (non-generated)
-files are preserved unless forced; custom ``.mise.toml`` documents are merged
-tool-by-tool with the canonical pins and pruned of forbidden tools.
+This is the canonical in-process surface for keeping one workspace's direnv
+activation aligned with the codegen SSOT. ``codegen conform`` exclusively owns
+``.mise.toml`` so environment sync cannot race toolchain publication.
 
 Consumers must reach this through ``from flext_infra import infra`` — the
 module itself stays private service composition.
@@ -18,10 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, config, m, t, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import c, config, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -42,16 +35,8 @@ class FlextInfraWorkspaceEnvironmentMixin:
         envrc_result = cls._sync_envrc(request)
         if envrc_result.failure:
             return r[result_type].fail(envrc_result.error or ".envrc sync failed")
-        mise_result = cls._sync_mise_toml(request)
-        if mise_result.failure:
-            return r[result_type].fail(mise_result.error or ".mise.toml sync failed")
         changed = (
-            *((workspace_root / c.Infra.ENVRC_FILENAME,) if envrc_result.value else ()),
-            *(
-                (workspace_root / c.Infra.MISE_TOML_FILENAME,)
-                if mise_result.value
-                else ()
-            ),
+            (workspace_root / c.Infra.ENVRC_FILENAME,) if envrc_result.value else ()
         )
         return r[result_type].ok(result_type(changed_files=changed))
 
@@ -69,54 +54,6 @@ class FlextInfraWorkspaceEnvironmentMixin:
             apply=request.apply,
             force=request.force,
         )
-
-    @classmethod
-    def _sync_mise_toml(
-        cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
-    ) -> p.Result[bool]:
-        """Render or merge canonical tool pins into ``.mise.toml``."""
-        workspace_root = request.workspace_root
-        apply = request.apply
-        force = request.force
-        target_path = workspace_root / c.Infra.MISE_TOML_FILENAME
-        rendered = cls._render_mise_toml(workspace_root)
-        if rendered.failure:
-            return r[bool].fail(rendered.error or ".mise.toml render failed")
-        if not target_path.is_file() or force:
-            return cls._write_generated_text(
-                target_path, rendered.value, apply=apply, force=force
-            )
-        read = u.Cli.files_read_text(target_path)
-        if read.failure:
-            return r[bool].fail(read.error or ".mise.toml read failed")
-        current = read.value
-        if cls._is_generated_environment_text(current):
-            return cls._write_text_if_different(
-                target_path, rendered.value, apply=apply
-            )
-        return cls._merge_custom_mise_toml(
-            target_path, current, workspace_root, apply=apply
-        )
-
-    @classmethod
-    def _render_mise_toml(cls, workspace_root: Path) -> p.Result[str]:
-        """Render canonical ``.mise.toml`` content for one workspace."""
-        rendered = cls._render_environment_template(c.Infra.MISE_TOML_FILENAME)
-        if rendered.failure:
-            return r[str].fail(rendered.error or ".mise.toml template render failed")
-        composed = FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
-            workspace_root, rendered.value
-        )
-        if composed.failure:
-            return r[str].fail(composed.error or "project Mise composition failed")
-        doc = u.Cli.toml_parse_text(composed.value)
-        if doc is None:
-            return r[str].fail("canonical .mise.toml template is invalid")
-        python_version = cls._workspace_python_version(workspace_root)
-        if python_version is not None:
-            tools = u.Cli.toml_ensure_table(doc, "tools")
-            tools["python"] = python_version
-        return r[str].ok(u.Cli.toml_dumps(doc))
 
     @classmethod
     def _render_environment_template(
@@ -137,94 +74,6 @@ class FlextInfraWorkspaceEnvironmentMixin:
             m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.ToolchainSpec
         ) = context if context is not None else config.Infra.codegen.toolchain
         return u.Cli.template_render(template_path, render_context)
-
-    @classmethod
-    def _merge_custom_mise_toml(
-        cls, target_path: Path, current: str, workspace_root: Path, *, apply: bool
-    ) -> p.Result[bool]:
-        """Merge canonical tool pins into a custom ``.mise.toml``."""
-        doc = u.Cli.toml_read(target_path)
-        if doc is None:
-            return r[bool].fail(f"{target_path}: invalid TOML")
-        tool_pins_result = cls._mise_tool_pins(workspace_root)
-        if tool_pins_result.failure:
-            return r[bool].fail(tool_pins_result.error or ".mise.toml pins failed")
-        tools = u.Cli.toml_ensure_table(doc, "tools")
-        valid_identities = (
-            FlextInfraUtilitiesProjectManagedArtifacts.validate_mise_tool_selectors(
-                tuple(tools), source=target_path
-            )
-        )
-        if valid_identities.failure:
-            return r[bool].fail(
-                valid_identities.error or "custom .mise.toml identity validation failed"
-            )
-        if not cls._merge_mise_tools(tools, tool_pins_result.value):
-            return r[bool].ok(False)
-        rendered = u.Cli.toml_dumps(doc)
-        if rendered == current:
-            return r[bool].ok(False)
-        if not apply:
-            return r[bool].ok(True)
-        write_result = u.Cli.files_write_text(target_path, rendered)
-        if write_result.failure:
-            return r[bool].fail(write_result.error or f"{target_path}: write failed")
-        return r[bool].ok(True)
-
-    @staticmethod
-    def _merge_mise_tools(tools: t.Cli.TomlTable, pins: dict[str, t.JsonValue]) -> bool:
-        """Converge the governed portion of one custom Mise tool table."""
-        changed = False
-        for name, value in pins.items():
-            if u.Cli.toml_value(tools, name) == value:
-                continue
-            tools[name] = value
-            changed = True
-        for name in c.Infra.WORKSPACE_MISE_REMOVED_TOOLS:
-            if name not in tools:
-                continue
-            del tools[name]
-            changed = True
-        return changed
-
-    @classmethod
-    def _mise_tool_pins(cls, workspace_root: Path) -> p.Result[dict[str, t.JsonValue]]:
-        """Return canonical mise tool pins for one workspace."""
-        rendered = cls._render_mise_toml(workspace_root)
-        if rendered.failure:
-            return r[dict[str, t.JsonValue]].fail(
-                rendered.error or "canonical .mise.toml render failed"
-            )
-        mapping = u.Cli.toml_mapping_from_text(rendered.value)
-        if mapping is None:
-            return r[dict[str, t.JsonValue]].fail(
-                "canonical .mise.toml template is invalid"
-            )
-        tools = u.Cli.toml_mapping_child(mapping, "tools")
-        if tools is None:
-            return r[dict[str, t.JsonValue]].fail(
-                "canonical .mise.toml template lacks [tools]"
-            )
-        pins: dict[str, t.JsonValue] = {}
-        for name, value in tools.items():
-            if not isinstance(value, (str, dict)):
-                return r[dict[str, t.JsonValue]].fail(
-                    f"canonical .mise.toml [tools].{name} must be a string or table"
-                )
-            pins[name] = value
-        return r[dict[str, t.JsonValue]].ok(pins)
-
-    @staticmethod
-    def _workspace_python_version(workspace_root: Path) -> str | None:
-        """Return the Python minor version declared by ``pyproject.toml``."""
-        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
-        if not pyproject.is_file():
-            return None
-        read = u.Cli.files_read_text(pyproject)
-        if read.failure:
-            return None
-        match = c.Infra.REQUIRES_PYTHON_RE.search(read.value)
-        return f"{match.group(1)}.{match.group(2)}" if match else None
 
     @classmethod
     def _remove_generated_environment_files(

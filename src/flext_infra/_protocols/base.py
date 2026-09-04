@@ -696,25 +696,35 @@ class FlextInfraProtocolsBase(Protocol):
         workspace_root: Path
 
         @classmethod
-        def _validate_launchers(cls, root: Path) -> p.Result[bool]:
+        def validate_launchers(cls, root: Path) -> p.Result[bool]:
             """Validate one generated launcher receipt."""
             ...
 
         @classmethod
-        def _launcher_release(cls, root: Path) -> p.Result[str]:
+        def validate_seed(cls, path: Path) -> p.Result[str]:
+            """Validate one staged native launcher seed without executing it."""
+            ...
+
+        @classmethod
+        def launcher_release(cls, root: Path) -> p.Result[str]:
             """Return the release embedded identically by both launchers."""
             ...
 
         @staticmethod
-        def _is_mise_release(value: str | None) -> bool:
+        def is_mise_release(value: str | None) -> bool:
             """Return whether a runtime identity is an exact Mise release."""
             ...
 
-        def _hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
+        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
             """Hydrate missing checksums in one staged lock."""
             ...
 
-        def _validate_artifacts(self, project_root: Path) -> p.Result[bool]:
+        def validate_artifacts(
+            self,
+            project_root: Path,
+            *,
+            config_sources: tuple[m.Cli.AtomicFileState, ...],
+        ) -> p.Result[bool]:
             """Validate one complete project artifact set."""
             ...
 
