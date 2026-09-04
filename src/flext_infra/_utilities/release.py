@@ -165,16 +165,16 @@ class FlextInfraUtilitiesRelease:
             f"{heading}{date}\n\n- Release tag: `{tag}`\n\n"
             f"Full notes: `docs/releases/{tag}.md`\n\n"
         )
-        if heading in existing:
-            return existing
         marker = "# Changelog\n\n"
-        updated = (
-            existing.replace(marker, marker + section, 1)
-            if marker in existing
-            else marker + section + existing
-        )
-        # Why: a first changelog ended with the section's blank line, and the
-        # markdown gate (MD012) rejected the release lane for it.
+        if heading in existing:
+            updated = existing
+        elif marker in existing:
+            updated = existing.replace(marker, marker + section, 1)
+        else:
+            updated = marker + section + existing
+        # Why: a changelog ending with the section's blank line failed the
+        # markdown gate (MD012); the normalization applies on every stamp, so a
+        # rerun on an open release lane repairs a changelog written before it.
         return updated.rstrip("\n") + "\n"
 
     @classmethod

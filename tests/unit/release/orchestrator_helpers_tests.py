@@ -123,6 +123,43 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - "), eq=1)
 
         @staticmethod
+        def test_update_changelog_normalizes_an_existing_trailing_blank_line(
+            tmp_path: Path,
+        ) -> None:
+            """A rerun repairs a changelog written before the newline normalization.
+
+            The release lane keeps the changelog a previous stamp wrote; the
+            markdown gate (MD012) rejects its trailing blank line, so the rerun
+            must rewrite it even though the release section already exists.
+            """
+            workspace = tmp_path / "workspace"
+            docs_dir = workspace / "docs"
+            docs_dir.mkdir(parents=True, exist_ok=True)
+            (docs_dir / "CHANGELOG.md").write_text(
+                f"# Changelog\n\n## {c.Tests.RELEASE_VERSION_TARGET} - 2026-01-01\n\n"
+                f"- Release tag: `{c.Tests.RELEASE_TAG_TARGET}`\n\n"
+                f"Full notes: `docs/releases/{c.Tests.RELEASE_TAG_TARGET}.md`\n\n\n",
+                encoding="utf-8",
+            )
+            notes_path = workspace / "notes.md"
+            notes_path.write_text(
+                c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8"
+            )
+
+            result = u.Infra.update_changelog(
+                workspace,
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                notes_path,
+            )
+
+            changelog = (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
+            tm.ok(result)
+            tm.that(changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - "), eq=1)
+            tm.that(changelog.endswith("\n"), eq=True)
+            tm.that(changelog.endswith("\n\n"), eq=False)
+
+        @staticmethod
         def test_update_changelog_adds_default_header(tmp_path: Path) -> None:
             """Add the canonical header when an existing file lacks it."""
             workspace = tmp_path / "workspace"
