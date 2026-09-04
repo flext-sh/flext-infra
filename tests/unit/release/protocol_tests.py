@@ -190,6 +190,39 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(plan.next, eq="0.1.1")
             tm.that(plan.releasable, eq=False)
 
+        @staticmethod
+        def test_merged_release_commit_awaits_its_tag_from_any_head(
+            tmp_path: Path,
+        ) -> None:
+            """GitHub's merged form of the release commit, below HEAD, ends the plan.
+
+            The merge appends the pull-request number to the subject, and CI plans
+            on a synthetic merge commit above it; neither may reopen the release
+            nor consult the titles merged before it.
+            """
+            workspace = _released_workspace(tmp_path)
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge pull request #7 from legacy/lane"],
+                    cwd=workspace,
+                )
+            )
+            tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
+            merged_subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.1')} (#8)"
+            tm.ok(cli.run_checked([c.Infra.GIT, "commit", "-am", merged_subject], cwd=workspace))
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge abc123 into def456"],
+                    cwd=workspace,
+                )
+            )
+
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            plan = _plan(workspace)
+            tm.that(plan.next, eq="0.1.1")
+            tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
+            tm.that(plan.releasable, eq=False)
+
     class TestsVersion:
         """The release pull request."""
 
@@ -344,7 +377,9 @@ class TestsFlextInfraReleaseProtocol:
             monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
             integration = u.Tests.integration_branch(workspace)
             tm.that(u.Tests.run_release_main(workspace, "--phase", "version", "--apply"), eq=0)
-            subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0")
+            # GitHub merges the release pull request under its title plus the
+            # pull-request number.
+            subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.0')} (#1)"
             tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
             tm.ok(
                 cli.run_checked(

@@ -117,12 +117,16 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self, root: Path, current: str, latest_tag: str
     ) -> p.Result[m.Infra.ReleasePlan]:
         """Apply the protocol's decision rules to the repository state."""
-        head = self._head_subject(root)
-        if head.failure:
-            return r[m.Infra.ReleasePlan].fail(head.error or "HEAD subject failed")
-        release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=current)
+        # Why: the merged release commit is not always HEAD (CI plans on the
+        # pull request's synthetic merge commit), so it is looked up in the
+        # whole history since the last tag.
+        history = self._subjects(root, latest_tag, merges_only=False)
+        if history.failure:
+            return r[m.Infra.ReleasePlan].fail(history.error or "history log failed")
         current_tag = c.Infra.TAG_FORMAT.format(version=current)
-        if head.value == release_subject and latest_tag != current_tag:
+        if latest_tag != current_tag and any(
+            u.Infra.is_release_subject(subject, current) for subject in history.value
+        ):
             # The release commit is merged and awaits its tag: nothing to bump.
             return r[m.Infra.ReleasePlan].ok(
                 m.Infra.ReleasePlan(
@@ -148,7 +152,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                     previous_tag=latest_tag or None,
                 )
             )
-        merges = self._merged_subjects(root, latest_tag)
+        merges = self._subjects(root, latest_tag, merges_only=True)
         if merges.failure:
             return r[m.Infra.ReleasePlan].fail(merges.error or "merge log failed")
         bump = u.Infra.plan_bump(merges.value, config.Infra.release.bump_types)
@@ -206,15 +210,12 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         # open release lane may carry integration merges above its release
         # commit; the protocol's commit is therefore looked up in the whole
         # base..HEAD range, not only at HEAD.
-        subjects = u.Cli.capture(
-            [c.Infra.GIT, "log", "--format=%s", f"{base_oid}..{c.Infra.GIT_HEAD}"],
-            cwd=root,
-        )
+        subjects = self._subjects(root, base_oid, merges_only=False)
         if subjects.failure:
             return r[bool].fail(subjects.error or "git log failed")
-        release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
-        if release_subject in subjects.value.splitlines():
+        if any(u.Infra.is_release_subject(subject, version) for subject in subjects.value):
             return r[bool].ok(True)
+        release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
         return r[bool].fail(
             f"{c.Infra.PYPROJECT_FILENAME} version changed outside the release "
             f"protocol: {base_version} -> {version} (HEAD {head_oid.value.strip()[:12]} "
@@ -427,7 +428,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         if head.failure:
             return r[bool].fail(head.error or "HEAD subject failed")
         expected = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=ctx.version)
-        if head.value != expected:
+        if not u.Infra.is_release_subject(head.value, ctx.version):
             return r[bool].fail(
                 f"release tag requires HEAD to be the release commit {expected!r}, "
                 f"found {head.value!r}"
@@ -496,15 +497,21 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return r[str].ok(next((line for line in tags.value.splitlines() if line), ""))
 
     @staticmethod
-    def _merged_subjects(root: Path, since_tag: str) -> p.Result[t.StrSequence]:
-        """Return the subjects of every merge commit reachable since ``since_tag``."""
+    def _subjects(
+        root: Path, since: str, *, merges_only: bool
+    ) -> p.Result[t.StrSequence]:
+        """Return commit subjects reachable from HEAD since ``since`` (all when empty).
+
+        Merge commits carry the pull-request titles the bump is derived from;
+        the full history is what the release commit is looked up in.
+        """
         log = u.Cli.capture(
             [
                 c.Infra.GIT,
                 "log",
-                "--merges",
+                *(("--merges",) if merges_only else ()),
                 "--format=%s",
-                f"{since_tag}..{c.Infra.GIT_HEAD}",
+                f"{since}..{c.Infra.GIT_HEAD}",
             ],
             cwd=root,
         )
