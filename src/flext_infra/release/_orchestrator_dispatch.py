@@ -249,7 +249,10 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         if status.failure:
             return r[bool].fail(status.error or "git status failed")
         if status.value.dirty:
-            return r[bool].fail(f"release version requires a clean checkout: {root}")
+            return r[bool].fail(
+                f"release version requires a clean checkout: {root}\n"
+                f"{status.value.porcelain}"
+            )
         branch = self._integration_branch(root)
         if branch.failure:
             return r[bool].fail(branch.error or "integration branch unresolved")
