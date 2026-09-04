@@ -23,6 +23,12 @@ export GEN_INIT_ONLY
 endif
 endif
 endif
+ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
+ifneq ($(filter setup,$(MAKECMDGOALS)),)
+SETUP_BOOTSTRAP_ONLY := Y
+export SETUP_BOOTSTRAP_ONLY
+endif
+endif
 
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
@@ -1156,7 +1162,7 @@ define _mise_toolchain_apply
 	for project in $(MISE_LOCK_PROJECTS); do \
 		case "$$project" in \
 			.) project_root="$(PROJECT_ROOT)"; stage_key=.root ;; \
-			/*|..|../*|*/../*|*/..|*[!A-Za-z0-9._/-]*) \
+			/*|..|..'/'*|*/..'/'*|*/..|*[!A-Za-z0-9._/-]*) \
 				printf 'ERROR: unsafe Mise project selector: %s\n' "$$project" >&2; exit 2 ;; \
 			*) project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project" ;; \
 		esac; \

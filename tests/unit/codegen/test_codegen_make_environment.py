@@ -484,6 +484,8 @@ class TestsCodegenMakeEnvironment:
 
         for required in (
             "UV ?= uv",
+            "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
+            "SETUP_BOOTSTRAP_ONLY := Y",
             '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
