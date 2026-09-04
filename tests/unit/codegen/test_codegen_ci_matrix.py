@@ -247,12 +247,12 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        marker = "fetch-depth: 0\n\n      - name: Install mise toolchain"
+        marker = "fetch-depth: 0\n\n      # make setup is the only toolchain installer."
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                "fetch-depth: 0\n\n\n      - name: Install mise toolchain"
+                "fetch-depth: 0\n\n\n      # make setup is the only toolchain installer."
             ),
         )
         root2 = self._render_project(tmp_path / "member-again")
@@ -351,7 +351,7 @@ class TestCodegenCiMatrix:
                 tm.that(content, has="bash")
                 tm.that(content, has="build-base")
             tm.that(content, has="USER runner")
-            tm.that(content, has="./bin/mise install --locked --yes")
+            tm.that(content, lacks="./bin/mise install --locked --yes")
             tm.that(content, has="RUN --mount=type=bind,source=.,target=/source,ro")
             tm.that(content, has="cp -R /source/. /workspace/")
             tm.that(content, lacks="COPY")

@@ -331,7 +331,10 @@ class FlextInfraConfigModels:
             ),
         ]
         mise_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Mise release selector")
+            Literal["latest"],
+            _tool_version_field(
+                "Mandatory moving Mise selector; generated launchers carry the exact receipt"
+            ),
         ]
         mise_lock_platforms: Annotated[
             tuple[
@@ -602,19 +605,6 @@ class FlextInfraConfigModels:
         ]
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
-        ]
-        mise_version: Annotated[
-            t.NonEmptyStr, m.Field(description="Exact mise action version")
-        ]
-        uv_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                description=(
-                    "Compatible uv major.minor line from the toolchain SSOT; "
-                    "feeds the CI setup-uv step so local (mise) and CI "
-                    "(setup-uv) resolve the same tool line"
-                )
-            ),
         ]
         dependency_cooldown_days: Annotated[
             int,

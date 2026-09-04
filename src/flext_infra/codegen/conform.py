@@ -1603,8 +1603,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         dict.fromkeys(("dev", "develop", "0.12.0-dev", branch, "main"))
                     ),
                     python_version=codegen.toolchain.python_version,
-                    mise_version=codegen.toolchain.mise_version,
-                    uv_version=codegen.toolchain.uv_version,
                     dependency_cooldown_days=(
                         codegen.toolchain.dependency_cooldown_days
                     ),

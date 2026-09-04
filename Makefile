@@ -23,6 +23,12 @@ export GEN_INIT_ONLY
 endif
 endif
 endif
+ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
+ifneq ($(filter setup,$(MAKECMDGOALS)),)
+SETUP_BOOTSTRAP_ONLY := Y
+export SETUP_BOOTSTRAP_ONLY
+endif
+endif
 
 # === SECTION: project identity (managed) ===
 # Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
@@ -345,7 +351,17 @@ _bootstrap_setup_tools:
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
 			"$$uv_required" "$$uv_actual" >&2; exit 2 ;; \
-	esac
+	esac; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then \
+		managed_path=$$(MISE_CONFIG_DIR="$$config_dir" \
+			MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+			env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" \
+			-C "$$project_root" exec -- sh -c 'printf %s "$$PATH"'); \
+		printf '%s\n' "$$project_root/bin" >> "$$GITHUB_PATH"; \
+		old_ifs=$$IFS; IFS=:; \
+		for bin_dir in $$managed_path; do printf '%s\n' "$$bin_dir" >> "$$GITHUB_PATH"; done; \
+		IFS=$$old_ifs; \
+	fi
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -1081,9 +1097,18 @@ _builtin_release_publish: _builtin_require_environment
 # the complete dependency/tooling projection before it verifies its fixed point.
 # Dependency upgrades remain a separate explicit verb because they rewrite lock
 # floors; gen must never run a second pyproject writer over conform's result.
-define _mise_launcher_apply
+define _mise_toolchain_apply
 	@set -eu; \
-	mise_version="$(SETUP_MISE_VERSION)"; \
+	: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"; \
+	credential_command="$$MISE_GITHUB_CREDENTIAL_COMMAND"; \
+	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
+	mkdir -p "$$scratch_parent"; \
+	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
+	mkdir -p "$$scratch/receipt/bin" "$$scratch/data" "$$scratch/cache" \
+		"$$scratch/state" "$$scratch/tmp" "$$scratch/config" \
+		"$$scratch/system-config"; \
+	: > "$$scratch/global-config.toml"; \
+	mise_version="latest"; \
 	if [ "$$mise_version" = latest ]; then \
 		mise_release_url=$$(curl -fsSIL -o /dev/null -w '%{url_effective}' \
 			https://github.com/jdx/mise/releases/latest); \
@@ -1094,20 +1119,14 @@ define _mise_launcher_apply
 				"$$mise_release_url" >&2; exit 2 ;; \
 		esac; \
 	fi; \
-	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
-	mkdir -p "$$scratch_parent"; \
-	scratch=$$(mktemp -d "$$scratch_parent/mise-launcher.XXXXXX"); \
-	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/data" "$$scratch/cache" "$$scratch/state" "$$scratch/tmp"; \
-	: > "$$scratch/global-config.toml"; \
 	if MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-		XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-		MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" generate install-script \
-		--version "$$mise_version" \
-		--write "$$scratch/mise" --windows \
+		MISE_CONFIG_DIR="$$scratch/config" MISE_DATA_DIR="$$scratch/data" \
+		MISE_CACHE_DIR="$$scratch/cache" MISE_STATE_DIR="$$scratch/state" \
+		TMPDIR="$$scratch/tmp" MISE_CEILING_PATHS="$$scratch_parent" \
+		MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
+		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" \
+		-C "$$scratch" generate install-script --version "$$mise_version" \
+		--write "$$scratch/receipt/bin/mise" --windows \
 		>"$$scratch/generate.log" 2>&1; then \
 		cat "$$scratch/generate.log"; \
 	else \
@@ -1118,74 +1137,165 @@ define _mise_launcher_apply
 	else \
 		status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
 	fi; \
-	for project in $(MISE_LOCK_PROJECTS); do \
-		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
-		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		if [ ! -f "$$project_root/.mise.toml" ]; then \
-			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
+	chmod +x "$$scratch/receipt/bin/mise"; \
+	latest_mise="$$scratch/receipt/bin/mise"; \
+	env -u MISE_INSTALL_PATH -u MISE_VERSION "$$latest_mise" --version >/dev/null; \
+	stage_projects="$$scratch/projects"; \
+	original_projects="$$scratch/original"; \
+	mkdir -p "$$stage_projects" "$$original_projects"; \
+	publish_started=N; \
+	publish_complete=N; \
+	cleanup_mise_transaction() { \
+		transaction_status=$$?; \
+		rollback_failed=N; \
+		if [ "$$publish_started" = Y ] && [ "$$publish_complete" != Y ]; then \
+			for project in $(MISE_LOCK_PROJECTS); do \
+				if [ "$$project" = . ]; then \
+					project_root="$(PROJECT_ROOT)"; stage_key=.root; \
+				else \
+					project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project"; \
+				fi; \
+				original="$$original_projects/$$stage_key"; \
+				if cp -p "$$original/bin/mise" "$$project_root/bin/.mise.restore.$$$$" \
+					&& mv -f "$$project_root/bin/.mise.restore.$$$$" "$$project_root/bin/mise"; then :; \
+				else rollback_failed=Y; fi; \
+				if cp -p "$$original/bin/mise.cmd" "$$project_root/bin/.mise.cmd.restore.$$$$" \
+					&& mv -f "$$project_root/bin/.mise.cmd.restore.$$$$" "$$project_root/bin/mise.cmd"; then :; \
+				else rollback_failed=Y; fi; \
+				if cp -p "$$original/mise.lock" "$$project_root/.mise.lock.restore.$$$$" \
+					&& mv -f "$$project_root/.mise.lock.restore.$$$$" "$$project_root/mise.lock"; then :; \
+				else rollback_failed=Y; fi; \
+			done; \
 		fi; \
-		mkdir -p "$$project_root/bin"; \
-		shell_tmp="$$project_root/bin/.mise.new.$$$$"; \
-		windows_tmp="$$project_root/bin/.mise.cmd.new.$$$$"; \
-		cp "$$scratch/mise" "$$shell_tmp"; \
-		cp "$$scratch/mise.cmd" "$$windows_tmp"; \
-		chmod +x "$$shell_tmp"; \
-		mv -f "$$shell_tmp" "$$project_root/bin/mise"; \
-		mv -f "$$windows_tmp" "$$project_root/bin/mise.cmd"; \
-	done
-endef
-
-define _mise_lock_apply
-	@set -eu; \
-	: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"; \
-	credential_command="$$MISE_GITHUB_CREDENTIAL_COMMAND"; \
-	for project in $(MISE_LOCK_PROJECTS); do \
-		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
-		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
-		if [ ! -f "$$project_root/.mise.toml" ]; then \
-			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
+		for project in $(MISE_LOCK_PROJECTS); do \
+			if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+			else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+			rm -f -- "$$project_root/bin/.mise.new.$$$$" \
+				"$$project_root/bin/.mise.cmd.new.$$$$" \
+				"$$project_root/.mise.lock.new.$$$$" \
+				"$$project_root/bin/.mise.restore.$$$$" \
+				"$$project_root/bin/.mise.cmd.restore.$$$$" \
+				"$$project_root/.mise.lock.restore.$$$$"; \
+		done; \
+		find "$$scratch" -depth -delete; \
+		trap - EXIT INT TERM; \
+		if [ "$$rollback_failed" = Y ]; then \
+			printf 'ERROR: Mise artifact transaction rollback failed; original_status=%s\n' \
+				"$$transaction_status" >&2; \
+			if [ "$$transaction_status" -eq 0 ]; then exit 99; fi; \
 		fi; \
-		if [ "$$project" != . ] && cmp "$(PROJECT_ROOT)/.mise.toml" "$$project_root/.mise.toml" >/dev/null 2>&1; then \
-			$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
-				--project "$$project" --from-root --apply; \
+		exit "$$transaction_status"; \
+	}; \
+	trap cleanup_mise_transaction EXIT INT TERM; \
+	root_stage=; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		case "$$project" in \
+			.) project_root="$(PROJECT_ROOT)"; stage_key=.root ;; \
+			/*|..|..'/'*|*/..'/'*|*/..|*[!A-Za-z0-9._/-]*) \
+				printf 'ERROR: unsafe Mise project selector: %s\n' "$$project" >&2; exit 2 ;; \
+			*) project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project" ;; \
+		esac; \
+		if [ ! -f "$$project_root/.mise.toml" ] \
+			|| [ ! -f "$$project_root/mise.lock" ] \
+			|| [ ! -f "$$project_root/bin/mise" ] \
+			|| [ ! -f "$$project_root/bin/mise.cmd" ]; then \
+			printf 'ERROR: incomplete committed Mise artifact set in %s\n' "$$project_root" >&2; \
+			exit 2; \
+		fi; \
+		project_stage="$$stage_projects/$$stage_key"; \
+		original="$$original_projects/$$stage_key"; \
+		mkdir -p "$$project_stage/bin" "$$original/bin"; \
+		cp "$$project_root/.mise.toml" "$$project_stage/.mise.toml"; \
+		cp "$$project_root/mise.lock" "$$project_stage/mise.lock"; \
+		cp "$$scratch/receipt/bin/mise" "$$project_stage/bin/mise"; \
+		cp "$$scratch/receipt/bin/mise.cmd" "$$project_stage/bin/mise.cmd"; \
+		chmod +x "$$project_stage/bin/mise"; \
+		cp -p "$$project_root/bin/mise" "$$original/bin/mise"; \
+		cp -p "$$project_root/bin/mise.cmd" "$$original/bin/mise.cmd"; \
+		cp -p "$$project_root/mise.lock" "$$original/mise.lock"; \
+		cp -p "$$project_root/.mise.toml" "$$original/.mise.toml"; \
+		if [ -d "$$project_root/config" ]; then \
+			mkdir -p "$$project_stage/config"; \
+			cp -R "$$project_root/config/." "$$project_stage/config"; \
+		fi; \
+		if [ "$$project" != . ] \
+			&& cmp "$(PROJECT_ROOT)/.mise.toml" "$$project_root/.mise.toml" >/dev/null 2>&1; then \
+			if [ -z "$$root_stage" ]; then \
+				printf 'ERROR: root Mise artifacts must be staged first\n' >&2; exit 2; \
+			fi; \
+			cp "$$root_stage/mise.lock" "$$project_stage/mise.lock"; \
 		else \
-			scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
-			scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
-			trap 'find "$$scratch" -depth -delete' EXIT; \
-			cp "$$project_root/.mise.toml" "$$scratch/.mise.toml"; \
-			locked_count=$$(awk '$$0 == "locked = true" { count++ } END { print count + 0 }' "$$scratch/.mise.toml"); \
-			if [ "$$locked_count" -ne 1 ]; then \
-				printf 'ERROR: expected one locked tool_config setting in %s\n' "$$project_root/.mise.toml" >&2; exit 2; \
-			fi; \
-			sed -i 's/^locked = true$$/locked = false/' "$$scratch/.mise.toml"; \
-			mkdir -p "$$scratch/data" "$$scratch/cache" \
-				"$$scratch/state" "$$scratch/tmp"; \
-			: > "$$scratch/global-config.toml"; \
-			if MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
+			stage_parent=$${project_stage%/*}; \
+			if env -u MISE_INSTALL_PATH -u MISE_VERSION -u MISE_INSTALLS_DIR \
+				-u MISE_SHIMS_DIR -u XDG_DATA_HOME -u MISE_ENV_FILE \
+				-u MISE_DEFAULT_CONFIG_FILENAME MISE_SAFE=1 \
+				MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
+				MISE_DATA_DIR="$$scratch/data" MISE_CONFIG_DIR="$$scratch/config" \
+				MISE_CACHE_DIR="$$scratch/cache" MISE_STATE_DIR="$$scratch/state" \
+				MISE_TMP_DIR="$$scratch/tmp" \
 				MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-				XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-				MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-				MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-				MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-				env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" lock \
-				--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
-				cat "$$scratch/lock.log"; \
+				MISE_GLOBAL_CONFIG_ROOT="$$scratch" \
+				MISE_SYSTEM_CONFIG_DIR="$$scratch/system-config" \
+				MISE_SYSTEM_DIR="$$scratch/system-config" TMPDIR="$$scratch/tmp" \
+				MISE_CEILING_PATHS="$$stage_parent" \
+				MISE_TRUSTED_CONFIG_PATHS="$$project_stage" \
+				"$$latest_mise" -C "$$project_stage" lock --bump \
+				--platform "$(MISE_LOCK_PLATFORMS)" \
+				>"$$project_stage/lock.log" 2>&1; then \
+				cat "$$project_stage/lock.log"; \
 			else \
-				status=$$?; cat "$$scratch/lock.log"; exit "$$status"; \
+				status=$$?; cat "$$project_stage/lock.log"; exit "$$status"; \
 			fi; \
-			if grep -Fq 'mise WARN' "$$scratch/lock.log"; then \
-				printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
-			else \
-				status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
+			if grep -Fq 'mise WARN' "$$project_stage/lock.log"; then \
+				printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; \
+				exit 2; \
 			fi; \
 			$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
-				--workspace "$$scratch" --apply; \
-			lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
-			cp "$$scratch/mise.lock" "$$lock_tmp"; \
-			mv -f "$$lock_tmp" "$$project_root/mise.lock"; \
-			find "$$scratch" -depth -delete; trap - EXIT; \
+				--workspace "$$project_stage" --apply; \
 		fi; \
-	done
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+			--workspace "$$project_stage" --check; \
+		if [ "$$project" = . ]; then root_stage="$$project_stage"; fi; \
+	done; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then \
+			project_root="$(PROJECT_ROOT)"; stage_key=.root; \
+		else \
+			project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project"; \
+		fi; \
+		project_stage="$$stage_projects/$$stage_key"; \
+		original="$$original_projects/$$stage_key"; \
+		if ! cmp "$$original/bin/mise" "$$project_root/bin/mise" >/dev/null 2>&1 \
+			|| ! cmp "$$original/bin/mise.cmd" "$$project_root/bin/mise.cmd" >/dev/null 2>&1 \
+			|| ! cmp "$$original/mise.lock" "$$project_root/mise.lock" >/dev/null 2>&1 \
+			|| ! cmp "$$original/.mise.toml" "$$project_root/.mise.toml" >/dev/null 2>&1; then \
+			printf 'ERROR: live Mise artifacts changed during generation: %s\n' "$$project_root" >&2; \
+			exit 2; \
+		fi; \
+		cp "$$project_stage/bin/mise" "$$project_root/bin/.mise.new.$$$$"; \
+		chmod +x "$$project_root/bin/.mise.new.$$$$"; \
+		cp "$$project_stage/bin/mise.cmd" "$$project_root/bin/.mise.cmd.new.$$$$"; \
+		cp "$$project_stage/mise.lock" "$$project_root/.mise.lock.new.$$$$"; \
+	done; \
+	publish_started=Y; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		mv -f "$$project_root/bin/.mise.new.$$$$" "$$project_root/bin/mise"; \
+		mv -f "$$project_root/bin/.mise.cmd.new.$$$$" "$$project_root/bin/mise.cmd"; \
+		mv -f "$$project_root/.mise.lock.new.$$$$" "$$project_root/mise.lock"; \
+	done; \
+	for project in $(MISE_LOCK_PROJECTS); do \
+		if [ "$$project" = . ]; then project_root="$(PROJECT_ROOT)"; \
+		else project_root="$(PROJECT_ROOT)/$$project"; fi; \
+		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+			--workspace "$$project_root" --check; \
+		if [ "$$project" != . ]; then \
+			cmp "$(PROJECT_ROOT)/bin/mise" "$$project_root/bin/mise"; \
+			cmp "$(PROJECT_ROOT)/bin/mise.cmd" "$$project_root/bin/mise.cmd"; \
+		fi; \
+	done; \
+	publish_complete=Y
 endef
 
 define _mise_artifacts_check
@@ -1231,8 +1341,7 @@ _builtin_gen_all:
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 	@$(PROJECT_FLEXT_INFRA) codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply
 	$(call _generated_docs,--apply)
-	$(call _mise_launcher_apply)
-	$(call _mise_lock_apply)
+	$(call _mise_toolchain_apply)
 	$(call _mise_artifacts_check)
 
 _builtin_gen_apply: _builtin_gen_all
