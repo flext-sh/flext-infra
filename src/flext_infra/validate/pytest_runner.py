@@ -20,9 +20,7 @@ from flext_infra.validate.pytest_selector import FlextInfraPytestSelectorValidat
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 if TYPE_CHECKING:
-    from flext_infra._models.deps_tool_config import (
-        FlextInfraModelsDepsToolSettings,
-    )
+    from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
     from flext_infra import p, t
 
     PytestPolicy = FlextInfraModelsDepsToolSettings.PytestConfig
@@ -154,10 +152,7 @@ class FlextInfraPytestRunner(s[int]):
         """Derive one bounded xdist budget from typed CPU and memory owners."""
         cpu_budget = os.cpu_count() or 1
         memory_budget = max(1, self._memory_gb() // policy.parallel_worker_memory_gb)
-        return max(
-            1,
-            min(policy.parallel_workers, cpu_budget, memory_budget),
-        )
+        return max(1, min(policy.parallel_workers, cpu_budget, memory_budget))
 
     def _ci_disables_coverage(self) -> bool:
         """True when Make CI token is exact make.ci.value (CI=Y)."""

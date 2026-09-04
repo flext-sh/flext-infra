@@ -381,12 +381,16 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     def _member_project_root(self) -> p.Result[Path]:
         """Resolve the one declared workspace member selected for propagation."""
         if self.project_filter is None:
-            return r[Path].fail("--from-root propagation requires exactly one --project")
+            return r[Path].fail(
+                "--from-root propagation requires exactly one --project"
+            )
         selectors = [
             selector for selector in self.project_filter.split(",") if selector.strip()
         ]
         if len(selectors) != 1:
-            return r[Path].fail("--from-root propagation requires exactly one --project")
+            return r[Path].fail(
+                "--from-root propagation requires exactly one --project"
+            )
         selector = selectors[0].strip()
         if (
             not selector
@@ -470,9 +474,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         root_lock = u.Cli.files_read_text(self.workspace_root / "mise.lock")
         if root_lock.failure:
             return r[bool].fail(root_lock.error or "cannot read root mise.lock")
-        write = u.Cli.atomic_write_text_file(
-            member_root / "mise.lock", root_lock.value
-        )
+        write = u.Cli.atomic_write_text_file(member_root / "mise.lock", root_lock.value)
         if write.failure:
             return r[bool].fail(write.error or "cannot propagate root mise.lock")
         propagated_lock = u.Cli.files_read_text(member_root / "mise.lock")
@@ -483,7 +485,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             )
         if propagated_config.failure:
             return r[bool].fail(
-                propagated_config.error or "cannot verify propagated .mise.toml identity"
+                propagated_config.error
+                or "cannot verify propagated .mise.toml identity"
             )
         if propagated_lock.value != root_lock.value:
             return r[bool].fail("member mise.lock diverged after atomic propagation")

@@ -268,9 +268,7 @@ class TestsCodegenMiseArtifacts:
         (member / "mise.lock").write_text("lockfile_version = 0\n", encoding="utf-8")
         return member
 
-    def test_from_root_applies_byte_identical_member_lock(
-        self, tmp_path: Path
-    ) -> None:
+    def test_from_root_applies_byte_identical_member_lock(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "root")
         member = self._member(root, "member-identical", identical=True)
         expected_lock = (root / "mise.lock").read_text(encoding="utf-8")
@@ -300,10 +298,7 @@ class TestsCodegenMiseArtifacts:
         }).execute()
 
         tm.fail(result, has="not identical")
-        tm.that(
-            (member / "mise.lock").read_text(encoding="utf-8"),
-            eq=unchanged_lock,
-        )
+        tm.that((member / "mise.lock").read_text(encoding="utf-8"), eq=unchanged_lock)
 
     def test_from_root_requires_explicit_apply(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "root")

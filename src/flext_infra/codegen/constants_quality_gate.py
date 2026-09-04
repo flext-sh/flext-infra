@@ -38,8 +38,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         """Execute quality gate and return structured report payload."""
         FlextInfraCodegenLazyInit(workspace_root=self.workspace_root).generate_inits()
         census = FlextInfraRefactorCensus(
-            include_local_scopes=False,
-            kinds=("constant",),
+            include_local_scopes=False, kinds=("constant",)
         ).model_copy(update={"workspace_root": self.workspace_root})
         census_report = census.build_report()
         modified_files = self.modified_python_files(self.workspace_root)

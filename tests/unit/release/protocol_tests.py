@@ -151,6 +151,19 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
 
         @staticmethod
+        def test_default_github_merge_uses_recorded_pr_title(tmp_path: Path) -> None:
+            """The first merge-body line is GitHub's authoritative PR title."""
+            workspace = _released_workspace(tmp_path)
+            u.Tests.merge_pull_request(
+                workspace,
+                "Merge pull request #7 from x/y",
+                body="feat(core): recorded title",
+            )
+
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            tm.that(_plan(workspace).next, eq="0.2.0")
+
+        @staticmethod
         def test_pull_request_title_is_validated_when_given(tmp_path: Path) -> None:
             """A CI check passes a title; only a Conventional title is accepted."""
             workspace = u.Tests.create_release_workspace(tmp_path)
@@ -173,7 +186,11 @@ class TestsFlextInfraReleaseProtocol:
             """A hand-edited pyproject version fails the plan, naming the commit."""
             workspace = _released_workspace(tmp_path)
             tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
-            tm.ok(cli.run_checked([c.Infra.GIT, "commit", "-am", "chore: bump"], cwd=workspace))
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "-am", "chore: bump"], cwd=workspace
+                )
+            )
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
 
@@ -183,7 +200,9 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _released_workspace(tmp_path)
             tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
             subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.1")
-            tm.ok(cli.run_checked([c.Infra.GIT, "commit", "-am", subject], cwd=workspace))
+            tm.ok(
+                cli.run_checked([c.Infra.GIT, "commit", "-am", subject], cwd=workspace)
+            )
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
             plan = _plan(workspace)
@@ -200,7 +219,9 @@ class TestsFlextInfraReleaseProtocol:
             """Stamp, commit on the release lane, push it, and open the pull request."""
             workspace = _release_lane_workspace(tmp_path)
             gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+            monkeypatch.setenv(
+                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
+            )
             integration = u.Tests.integration_branch(workspace)
 
             result = u.Tests.run_release_main(
@@ -208,7 +229,10 @@ class TestsFlextInfraReleaseProtocol:
             )
 
             tm.that(result, eq=0)
-            tm.ok(u.Infra.current_workspace_version(workspace), eq=c.Tests.RELEASE_VERSION_BASE)
+            tm.ok(
+                u.Infra.current_workspace_version(workspace),
+                eq=c.Tests.RELEASE_VERSION_BASE,
+            )
             tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
             head = tm.ok(
                 cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
@@ -216,7 +240,9 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
             tm.that(
                 tm.ok(
-                    cli.capture([c.Infra.GIT, "branch", "--show-current"], cwd=workspace)
+                    cli.capture(
+                        [c.Infra.GIT, "branch", "--show-current"], cwd=workspace
+                    )
                 ).strip(),
                 eq=c.Infra.RELEASE_BRANCH,
             )
@@ -228,7 +254,10 @@ class TestsFlextInfraReleaseProtocol:
             ).strip()
             tm.that(len(remote_ref), eq=40)
             recorded = gh_log.read_text(encoding="utf-8")
-            tm.that(recorded, has=f"pr create --base {integration} --head {c.Infra.RELEASE_BRANCH}")
+            tm.that(
+                recorded,
+                has=f"pr create --base {integration} --head {c.Infra.RELEASE_BRANCH}",
+            )
             tm.that(recorded, has="--title chore(release): v0.1.0")
 
         @staticmethod
@@ -277,7 +306,12 @@ class TestsFlextInfraReleaseProtocol:
                 eq=0,
             )
             tm.that(
-                tm.ok(cli.capture([c.Infra.GIT, "branch", "--list", c.Infra.RELEASE_BRANCH], cwd=workspace)).strip(),
+                tm.ok(
+                    cli.capture(
+                        [c.Infra.GIT, "branch", "--list", c.Infra.RELEASE_BRANCH],
+                        cwd=workspace,
+                    )
+                ).strip(),
                 eq="",
             )
 
@@ -291,14 +325,26 @@ class TestsFlextInfraReleaseProtocol:
             """After the release pull request merges, HEAD earns its tag once."""
             workspace = _release_lane_workspace(tmp_path)
             u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
+            monkeypatch.setenv(
+                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
+            )
             integration = u.Tests.integration_branch(workspace)
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "version", "--apply"), eq=0)
+            tm.that(
+                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
+                eq=0,
+            )
             subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0")
             tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
             tm.ok(
                 cli.run_checked(
-                    [c.Infra.GIT, "merge", "--no-ff", "-m", subject, c.Infra.RELEASE_BRANCH],
+                    [
+                        c.Infra.GIT,
+                        "merge",
+                        "--no-ff",
+                        "-m",
+                        subject,
+                        c.Infra.RELEASE_BRANCH,
+                    ],
                     cwd=workspace,
                 )
             )
@@ -309,7 +355,9 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(first, eq=0)
             tm.that(second, eq=0)
             tm.that(
-                tm.ok(cli.capture([c.Infra.GIT, "tag", "-l", "v0.1.0"], cwd=workspace)).strip(),
+                tm.ok(
+                    cli.capture([c.Infra.GIT, "tag", "-l", "v0.1.0"], cwd=workspace)
+                ).strip(),
                 eq="v0.1.0",
             )
             tm.that(

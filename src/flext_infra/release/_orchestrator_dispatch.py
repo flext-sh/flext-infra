@@ -243,7 +243,9 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self.logger.info("release_version_pull_request", version=plan.value.next)
         return r[bool].ok(True)
 
-    def _preflight_version(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
+    def _preflight_version(
+        self, root: Path, plan: m.Infra.ReleasePlan
+    ) -> p.Result[bool]:
         """Require a clean checkout on the integration branch and a free tag."""
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
         if status.failure:
@@ -451,22 +453,38 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     @staticmethod
     def _merged_subjects(root: Path, since_tag: str) -> p.Result[t.StrSequence]:
-        """Return the subjects of every merge commit reachable since ``since_tag``."""
+        """Return each merged PR title reachable since ``since_tag``.
+
+        GitHub's default merge subject contains only the PR number and branch;
+        its first body line carries the actual PR title. Preserve a subject
+        without such a line so ``plan_bump`` still fails loud instead of
+        guessing release intent.
+        """
         log = u.Cli.capture(
             [
                 c.Infra.GIT,
                 "log",
                 "--merges",
-                "--format=%s",
+                "--format=%s%x1f%b%x1e",
                 f"{since_tag}..{c.Infra.GIT_HEAD}",
             ],
             cwd=root,
         )
         if log.failure:
             return r[t.StrSequence].fail(log.error or "merge log failed")
-        return r[t.StrSequence].ok(
-            tuple(line for line in log.value.splitlines() if line.strip())
-        )
+        titles: list[str] = []
+        for record in log.value.split("\x1e"):
+            if not record.strip():
+                continue
+            subject, _, body = record.strip().partition("\x1f")
+            if c.Infra.PULL_REQUEST_MERGE_SUBJECT_RE.match(subject):
+                title = next(
+                    (line.strip() for line in body.splitlines() if line.strip()), ""
+                )
+                titles.append(title or subject)
+            else:
+                titles.append(subject)
+        return r[t.StrSequence].ok(tuple(titles))
 
 
 __all__: list[str] = ["FlextInfraReleaseOrchestratorDispatchMixin"]

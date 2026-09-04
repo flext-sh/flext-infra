@@ -23,7 +23,9 @@ class TestsFlextInfraReleaseDag:
             """Create strict reports without persisting package artifacts."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
 
             result = u.Tests.run_release_main(
@@ -56,7 +58,9 @@ class TestsFlextInfraReleaseDag:
             """Build only with the complete hashed toolchain and attest its digest."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             constraints_path = workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH
 
@@ -93,7 +97,9 @@ class TestsFlextInfraReleaseDag:
             """Reject a valid hash record that omits required toolchain members."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             constraints_path = workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH
             first_record = "\n".join(
@@ -127,7 +133,9 @@ class TestsFlextInfraReleaseDag:
             """Reject committed metadata without the required Hatch boundary."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             pyproject = project / "pyproject.toml"
@@ -169,7 +177,9 @@ class TestsFlextInfraReleaseDag:
             """Detect committed secret material despite permissive ambient config."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             synthetic_token = hashlib.sha256(project_name.encode()).hexdigest()
@@ -203,7 +213,9 @@ class TestsFlextInfraReleaseDag:
             """Reject project-owned scanner policy from the committed source set."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             (project / ".gitleaks.toml").write_text(
@@ -234,7 +246,9 @@ class TestsFlextInfraReleaseDag:
             """Reject a project whose committed source has working-tree changes."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             package_file = workspace / project_name / "src" / "flext_a" / "__init__.py"
             package_file.write_text("# uncommitted release change\n", encoding="utf-8")
