@@ -1,7 +1,14 @@
 {% macro mise_release_resolution(selector, mise) -%}
 	mise_version="{{ selector }}"; \
 	if [ "$$mise_version" = latest ]; then \
-		mise_version=$$(env -u MISE_INSTALL_PATH -u MISE_VERSION "{{ mise }}" latest mise); \
+		mise_release_url=$$(curl -fsSIL -o /dev/null -w '%{url_effective}' \
+			https://github.com/jdx/mise/releases/latest); \
+		mise_version=$${mise_release_url##*/v}; \
+		case "$$mise_version" in \
+			[0-9]*.[0-9]*.[0-9]*) ;; \
+			*) printf 'ERROR: invalid Mise latest release redirect: %s\n' \
+				"$$mise_release_url" >&2; exit 2 ;; \
+		esac; \
 	fi
 {%- endmacro %}
 

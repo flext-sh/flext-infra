@@ -58,7 +58,7 @@ class TestsCodegenCatalogExtensions:
         tm.that(duplicate_result.failure, eq=True)
         tm.that(duplicate_result.error, has="must resolve exactly once")
 
-    def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
+    def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
         tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
     def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
@@ -102,8 +102,8 @@ class TestsCodegenCatalogExtensions:
         bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
             encoding="utf-8"
         )
-        tm.that(bootstrap, has='"{{ mise }}" latest mise')
-        tm.that("curl " in bootstrap, eq=False)
+        tm.that(bootstrap, has="https://github.com/jdx/mise/releases/latest")
+        tm.that(bootstrap, has="curl -fsSIL")
         tm.that(bootstrap, lacks="self-update")
         tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
