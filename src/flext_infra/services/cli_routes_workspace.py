@@ -33,6 +33,18 @@ class WorkspaceRoutes(RefactorRoutes):
             python=params.python,
         ).map(CliRouteBase.as_route_value)
 
+    @staticmethod
+    def _sync_environment(
+        params: m.Infra.WorkspaceEnvironmentCliRequest,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Keep the internal beads render context off the public CLI surface."""
+        request = m.Infra.WorkspaceEnvironmentSyncRequest.model_validate(
+            params.model_dump()
+        )
+        return FlextInfraWorkspaceEnvironmentSync.execute_request(request).map(
+            CliRouteBase.as_route_value
+        )
+
     workspace_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_REFACTOR: RefactorRoutes.refactor_routes,
         c.Infra.CLI_GROUP_RELEASE: (
@@ -90,10 +102,8 @@ class WorkspaceRoutes(RefactorRoutes):
                     (
                         "sync-environment",
                         "Sync generated direnv/mise environment files",
-                        m.Infra.WorkspaceEnvironmentSyncRequest,
-                        CliRouteBase.result_handler(
-                            FlextInfraWorkspaceEnvironmentSync.execute_request
-                        ),
+                        m.Infra.WorkspaceEnvironmentCliRequest,
+                        _sync_environment,
                     ),
                 )
             ),

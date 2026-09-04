@@ -51,7 +51,9 @@ def test_lint_subcommand_writes_report(tmp_path: Path) -> None:
     tm.that(result, eq=0)
 
 
-def test_pr_subcommand_returns_nonzero_for_minimal_repo(tmp_path: Path) -> None:
+def test_pr_status_rejects_directory_without_repository_identity(
+    tmp_path: Path,
+) -> None:
     workspace = u.Tests.create_github_workspace(tmp_path, project_names=("flext-a",))
 
     result = main([
@@ -65,8 +67,7 @@ def test_pr_subcommand_returns_nonzero_for_minimal_repo(tmp_path: Path) -> None:
 
     tm.that(result, ne=0)
     log_path = workspace / "flext-a/.reports/workspace/pr/flext-a.log"
-    tm.that(log_path.is_file(), eq=True)
-    tm.that(log_path.read_text(encoding="utf-8"), lacks="No module named")
+    tm.that(log_path.exists(), eq=False)
 
 
 def test_pr_subcommand_rejects_removed_lifecycle_action(tmp_path: Path) -> None:

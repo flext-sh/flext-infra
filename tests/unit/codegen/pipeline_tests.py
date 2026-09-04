@@ -12,13 +12,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from flext_infra import infra
+from flext_infra import infra, m, u as infra_u
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
     FlextInfraCodegenFixer,
     FlextInfraCodegenLazyInit,
+    FlextInfraCodegenPipeline,
     FlextInfraCodegenScaffolder,
 )
+from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_tests import tm
 
 from tests import t, u
@@ -33,6 +35,40 @@ _SRC_MODULES = (
     "models.py",
     "utilities.py",
 )
+
+
+def test_pipeline_state_resolves_runtime_protocol_annotations() -> None:
+    """The public pipeline state must construct under the installed Pydantic."""
+    state = m.Infra.CodegenPipelineState()
+
+    tm.that(state.discovered_projects, eq=())
+
+
+def test_codegen_pipeline_fail_fast_is_invariant() -> None:
+    """Fail-fast is code-owned and cannot be disabled through CLI input."""
+    pipeline = FlextInfraCodegenPipeline()
+
+    tm.that(pipeline.fail_fast, eq=True)
+    tm.that("fail_fast" in type(pipeline).model_fields, eq=False)
+
+
+def test_package_lookup_prunes_excluded_project_trees(tmp_path: Path) -> None:
+    """Package discovery indexes valid projects without entering hidden trees."""
+    project = tmp_path / "member"
+    package = project / "src" / "member_pkg"
+    package.mkdir(parents=True)
+    (project / "pyproject.toml").touch()
+    (package / "__init__.py").touch()
+    hidden = tmp_path / ".cache" / "src" / "hidden_pkg"
+    hidden.mkdir(parents=True)
+    (hidden.parent.parent / "pyproject.toml").touch()
+    (hidden / "__init__.py").touch()
+
+    tm.that(
+        infra_u.Infra.package_init_path(tmp_path, "member_pkg"),
+        eq=package / "__init__.py",
+    )
+    tm.that(infra_u.Infra.package_init_path(tmp_path, "hidden_pkg"), eq=None)
 
 
 def _project_prefix(package_name: str) -> str:
@@ -81,7 +117,9 @@ def _make_project(
             f"[project]\nname='{name}'\ndependencies=['flext-core>=0.1.0']\n",
             encoding="utf-8",
         )
-    (project / ".git").mkdir()
+    init_result = u.Cli.run_raw(["git", "init"], cwd=project)
+    tm.ok(init_result)
+    tm.that(init_result.value.exit_code, eq=0)
     package_name = name.replace("-", "_")
     pkg_dir = project / "src" / package_name
     pkg_dir.mkdir(parents=True)
@@ -143,6 +181,12 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     }
     tm.that(len(scaffold_by_project_second["project-a"].files_created), eq=0)
     tm.that(len(scaffold_by_project_second["project-b"].files_created), eq=0)
+    initial_namespace = tm.ok(
+        infra_u.Infra.parse_namespace_validation(
+            FlextInfraNamespaceValidator().validate_project(project_b)
+        )
+    )
+    tm.that(any(v.rule.startswith("NS-002") for v in initial_namespace), eq=True)
     fix_results = FlextInfraCodegenFixer.model_validate(payload).fix_workspace()
     fix_by_project = {result.project: result for result in fix_results}
     tm.that(fix_by_project, has="project-a")

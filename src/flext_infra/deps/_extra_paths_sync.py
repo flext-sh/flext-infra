@@ -109,13 +109,13 @@ class FlextInfraExtraPathsSyncMixin:
     ) -> t.StrSequence:
         """Apply computed extra paths to one normalized TOML payload."""
         expected = self.pyright_extra_paths(project_dir=project_dir, is_root=is_root)
-        tool_table = u.Cli.toml_mapping_child(payload, c.Infra.TOOL)
+        tool_table = u.Cli.toml_mapping_path(payload, (c.Infra.TOOL,))
         if tool_table is None:
             return list[str]()
-        pyright_table = u.Cli.toml_mapping_child(tool_table, c.Infra.PYRIGHT)
+        pyright_table = u.Cli.toml_mapping_path(tool_table, (c.Infra.PYRIGHT,))
         if pyright_table is None:
             return list[str]()
-        mypy_table = u.Cli.toml_mapping_child(tool_table, c.Infra.MYPY)
+        mypy_table = u.Cli.toml_mapping_path(tool_table, (c.Infra.MYPY,))
         changes: t.MutableSequenceOf[str] = []
         if u.Cli.toml_mapping_sync_string_list(
             u.Cli.toml_mapping_ensure_path(payload, (c.Infra.TOOL, c.Infra.PYRIGHT)),

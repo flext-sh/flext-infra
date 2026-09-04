@@ -1,4 +1,4 @@
-"""Release phase implementations: build, publish, and version.
+"""Release build phase: registry-safe artifacts and their receipt.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 from flext_infra.release._orchestrator_publish import (
     FlextInfraReleaseOrchestratorPublishMixin,
 )
@@ -28,7 +28,65 @@ logger = u.fetch_logger(__name__)
 class FlextInfraReleaseOrchestratorPhases(
     FlextInfraReleaseOrchestratorPublishMixin, FlextInfraReleaseArtifactBuildMixin
 ):
-    """Build and version phase implementations (publish via the mixin)."""
+    """Build phase implementation (publish via the mixin)."""
+
+    @staticmethod
+    def _build_targets(
+        workspace_root: Path, project_names: t.StrSequence
+    ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
+        """Resolve release build targets from the configured eligibility policy.
+
+        Why (aihub-ioijy.9): this used to hardcode
+        ``project.name.startswith("flext-")``. Eligibility is declared data
+        (``config.Infra.release.publishable_prefixes``); an empty tuple means no
+        prefix filter, so a single-project repository publishes itself.
+        """
+        projects_result = u.Infra.resolve_projects(workspace_root, project_names)
+        if projects_result.failure:
+            return r[t.SequenceOf[t.Pair[str, Path]]].fail(
+                projects_result.error or "release project resolution failed"
+            )
+        prefixes = tuple(config.Infra.release.publishable_prefixes)
+        seen: t.Infra.StrSet = set()
+        unique: t.MutableSequenceOf[t.Pair[str, Path]] = []
+        for project in projects_result.value:
+            if prefixes and not project.name.startswith(prefixes):
+                continue
+            if project.name in seen or not project.path.exists():
+                continue
+            seen.add(project.name)
+            unique.append((project.name, project.path))
+        return r[t.SequenceOf[t.Pair[str, Path]]].ok(unique)
+
+    @staticmethod
+    def _internal_versions(workspace_root: Path) -> p.Result[t.StrMapping]:
+        """Map every visible internal distribution to its own declared version.
+
+        Each repository versions independently, so release metadata pins a
+        sibling to what the sibling's ``pyproject.toml`` declares. The root
+        project is included so a workspace may depend on its own distribution.
+        A sibling consumed through a pinned git ref (a standalone repository's
+        internal dependency) is what the committed ``uv.lock`` resolved for it:
+        the version that sibling declared at the pinned commit.
+        """
+        projects = u.Infra.resolve_projects(workspace_root, ())
+        if projects.failure:
+            return r[t.StrMapping].fail(
+                projects.error or "internal version resolution failed"
+            )
+        versions: dict[str, str] = dict(
+            u.Infra.locked_dependency_versions(
+                workspace_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
+            )
+        )
+        for project in projects.value:
+            declared = u.Infra.current_workspace_version(project.path)
+            if declared.failure:
+                return r[t.StrMapping].fail(
+                    declared.error or f"version unresolved: {project.name}"
+                )
+            versions[project.name] = declared.value
+        return r[t.StrMapping].ok(versions)
 
     def _build_project_record(
         self,
@@ -37,6 +95,7 @@ class FlextInfraReleaseOrchestratorPhases(
         name: str,
         path: Path,
         output_dir: Path,
+        versions: t.StrMapping,
     ) -> p.Result[m.Infra.BuildRecord]:
         """Build one project and convert fail-loud errors into report records."""
         record_result = self._build_release_record(
@@ -45,7 +104,12 @@ class FlextInfraReleaseOrchestratorPhases(
             output_dir=output_dir,
             build_constraints_path=Path(policy.build_constraints_path),
             gitleaks_config_path=Path(policy.gitleaks_policy_path),
-            version=ctx.version,
+            version=(
+                ctx.version
+                if path.resolve() == ctx.workspace_root.resolve()
+                else versions[name]
+            ),
+            versions=versions,
             dry_run=ctx.dry_run,
         )
         if record_result.success:
@@ -72,10 +136,15 @@ class FlextInfraReleaseOrchestratorPhases(
         output_dir: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.BuildRecord]]:
         """Build every selected project and retain its strict report record."""
+        versions = self._internal_versions(ctx.workspace_root)
+        if versions.failure:
+            return r[t.SequenceOf[m.Infra.BuildRecord]].fail(
+                versions.error or "internal version resolution failed"
+            )
         records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
         for name, path in targets:
             record_result = self._build_project_record(
-                ctx, policy, name, path, output_dir
+                ctx, policy, name, path, output_dir, versions.value
             )
             if record_result.failure:
                 return r[t.SequenceOf[m.Infra.BuildRecord]].fail(
@@ -174,26 +243,20 @@ class FlextInfraReleaseOrchestratorPhases(
             build_constraints_sha256=policy.build_constraints_sha256,
             gitleaks_policy_sha256=policy.gitleaks_policy_sha256,
         )
+        report_path = output_dir / c.Infra.RELEASE_REPORT_FILENAME
         write_result = u.Cli.json_write(
-            output_dir / "build-report.json",
+            report_path,
             report.model_dump(mode="json"),
             m.Cli.JsonWriteOptions(sort_keys=True),
         )
         if write_result.failure:
             return r[int].fail(write_result.error or "write build report failed")
-        logger.info(
-            "release_phase_build_report", report=str(output_dir / "build-report.json")
-        )
+        logger.info("release_phase_build_report", report=str(report_path))
         return r[int].ok(failures)
 
     def phase_build(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
-        """Build registry-safe member artifacts and write build-report.json."""
-        output_dir = (
-            u.Cli.resolve_report_dir(
-                ctx.workspace_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
-            )
-            / f"v{ctx.version}"
-        )
+        """Build registry-safe member artifacts and write the receipt."""
+        output_dir = self._release_output_dir(ctx)
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
@@ -223,70 +286,6 @@ class FlextInfraReleaseOrchestratorPhases(
         if report_result.value:
             return r[bool].fail(f"build failed: {report_result.value} project(s)")
         return r[bool].ok(True)
-
-    def phase_version(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
-        """Execute versioning phase across workspace and selected projects."""
-        target = f"{ctx.version}.dev0" if ctx.dev_suffix else ctx.version
-        parse_result = u.Infra.parse_semver(target)
-        if parse_result.failure:
-            return r[bool].fail(parse_result.error or "invalid version")
-        files_result = self._version_files(ctx.workspace_root, ctx.project_names)
-        if files_result.failure:
-            return r[bool].fail(
-                files_result.error or "release version file resolution failed"
-            )
-        changed_result = self._version_update_files(
-            files_result.value, target, dry_run=ctx.dry_run
-        )
-        if changed_result.failure:
-            return r[bool].fail(changed_result.error or "release version update failed")
-        if ctx.dry_run:
-            logger.info("release_phase_version_checked", checked_version=target)
-        logger.info("release_phase_version_summary", files_changed=changed_result.value)
-        return r[bool].ok(True)
-
-    def _version_update_files(
-        self, files: t.SequenceOf[Path], target: str, *, dry_run: bool
-    ) -> p.Result[int]:
-        """Update version in each file, returning count of changed files."""
-        updates: t.MutableSequenceOf[t.Triple[Path, str, str]] = []
-        for path in files:
-            content_result = u.Cli.files_read_text(path)
-            if content_result.failure:
-                return r[int].fail(
-                    content_result.error or f"read version file failed: {path}"
-                )
-            match = c.Infra.VERSION_RE.search(content_result.value)
-            if match and match.group(1) == target:
-                continue
-            rendered = u.Infra.render_project_version(content_result.value, target)
-            if rendered.failure:
-                return r[int].fail(f"{rendered.error} in {path}")
-            updates.append((path, content_result.value, rendered.value))
-
-        for path, _current, updated in updates:
-            if not dry_run:
-                write_result = u.Cli.atomic_write_text_file(path, updated)
-                if write_result.failure:
-                    return r[int].fail(
-                        write_result.error or f"write project version failed: {path}"
-                    )
-            logger.info("release_version_file_updated", path=str(path), target=target)
-        return r[int].ok(len(updates))
-
-    # These methods are defined in the main orchestrator class and
-    # is supplied by the composed release orchestrator.
-    def _build_targets(
-        self, workspace_root: Path, project_names: t.StrSequence
-    ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
-        """Build targets."""
-        raise NotImplementedError
-
-    def _version_files(
-        self, workspace_root: Path, project_names: t.StrSequence
-    ) -> p.Result[t.SequenceOf[Path]]:
-        """Version files."""
-        raise NotImplementedError
 
 
 __all__: list[str] = ["FlextInfraReleaseOrchestratorPhases"]

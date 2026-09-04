@@ -186,7 +186,10 @@ class TestsMakeTestSelector:
         tm.that(executed.exit_code, eq=0, msg=executed.stdout + executed.stderr)
         tm.that(
             uv_log.read_text(encoding="utf-8"),
-            has=[f"venv {engine_root / '.venv'}", f"sync --project {engine_root}"],
+            has=[
+                f"venv {engine_root / '.venv'}",
+                f"sync --frozen --project {engine_root}",
+            ],
         )
 
     def test_explicit_target_replaces_the_default_suite(self, tmp_path: Path) -> None:
@@ -274,5 +277,6 @@ class TestsMakeTestSelector:
             ],
             lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
         )
-        tm.that(reporter, has="{{ command_prefix }}{{ runner }}")
+        tm.that(reporter, has="{{ command_prefix }}set -eu; \\\n")
+        tm.that(reporter, has='TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" {{ runner }}')
         tm.that(reporter, lacks=["grep ", "awk ", "source ", '. "$'])

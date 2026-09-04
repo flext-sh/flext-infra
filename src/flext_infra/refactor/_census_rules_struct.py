@@ -18,50 +18,24 @@ from flext_infra.detectors.private_import_bypass_detector import (
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
+from flext_infra.refactor._census_rules_shared import (
+    FlextInfraRefactorCensusRulesSharedMixin,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
-class FlextInfraRefactorCensusRulesStructMixin:
+class FlextInfraRefactorCensusRulesStructMixin(
+    FlextInfraRefactorCensusRulesSharedMixin
+):
     """Compatibility and structural rule scanners for one module.
 
     Composed into FlextInfraRefactorCensus via inheritance; borrows the
     detector-context + violation/fix builders from sibling mixins via FLEXT.
     """
-
-    if TYPE_CHECKING:
-
-        @staticmethod
-        def _detector_context(
-            rope: p.Infra.RopeWorkspaceDsl,
-            file_path: Path,
-            *,
-            convention: m.Infra.RopeModuleConvention | None = None,
-            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
-            | None = None,
-        ) -> m.Infra.DetectorContext: ...
-        @staticmethod
-        def _raw_violation(
-            *,
-            project: str,
-            object_name: str,
-            object_kind: str,
-            kind: str,
-            file_path: Path,
-            line: int,
-            description: str,
-            fixable: bool = False,
-            fix_action: str = "",
-        ) -> m.Infra.Census.Violation: ...
-        @staticmethod
-        def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
-        @staticmethod
-        def _named_object(
-            objects: tuple[m.Infra.Census.Object, ...], name: str
-        ) -> m.Infra.Census.Object | None: ...
 
     def _rule_class_placement(
         self,

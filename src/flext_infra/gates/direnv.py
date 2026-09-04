@@ -48,7 +48,13 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 message=content.error or f"cannot read {envrc}",
                 severity="ERROR",
             )
-            return self._failed_execution(project_dir, started, (issue,), issue.message)
+            return self._build_check_gate_execution(
+                project_dir,
+                passed=False,
+                issues=(issue,),
+                raw_output=issue.message,
+                started=started,
+            )
         violations = envrc_contract_violations(content.value, root=project_dir)
         if violations:
             issues = tuple(
@@ -62,8 +68,12 @@ class FlextInfraDirenvGate(FlextInfraGate):
                 )
                 for violation in violations
             )
-            return self._failed_execution(
-                project_dir, started, issues, "\n".join(violations)
+            return self._build_check_gate_execution(
+                project_dir,
+                passed=False,
+                issues=issues,
+                raw_output="\n".join(violations),
+                started=started,
             )
         return super().check(project_dir, ctx)
 
@@ -108,26 +118,6 @@ class FlextInfraDirenvGate(FlextInfraGate):
                     severity="ERROR",
                 ),
             ),
-        )
-
-    def _failed_execution(
-        self,
-        project_dir: Path,
-        started: float,
-        issues: t.SequenceOf[m.Infra.Issue],
-        raw_output: str,
-    ) -> m.Infra.GateExecution:
-        """Compose one failed execution from pre-computed issues."""
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=False,
-                errors=tuple(issue.formatted for issue in issues),
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=issues,
-            raw_output=raw_output,
         )
 
 

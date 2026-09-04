@@ -73,14 +73,19 @@ class TestsDocsCli:
             (workspace / "flext-b/.reports/docs/audit-report.md").exists(), eq=False
         )
 
-    def test_fix_generate_and_build_use_public_routes(self, tmp_path: Path) -> None:
-        """Run fix, generate, and build through their public command routes."""
+    def test_fix_uses_public_route(self, tmp_path: Path) -> None:
+        """Run fix through its public command route."""
         workspace = self._workspace(tmp_path, fixable=True)
 
         tm.that(
             infra_main(["docs", "fix", "--workspace", str(workspace), "--apply"]), eq=0
         )
         tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
+
+    def test_generate_uses_public_route(self, tmp_path: Path) -> None:
+        """Run generate through its public command route."""
+        workspace = self._workspace(tmp_path)
+
         tm.that(
             infra_main([
                 "docs",
@@ -101,6 +106,8 @@ class TestsDocsCli:
             (workspace / "flext-b/.reports/docs/generate-report.md").exists(), eq=False
         )
 
+    def test_build_uses_public_route(self, tmp_path: Path) -> None:
+        """Run build through its public command route."""
         build_workspace = u.Tests.create_docs_workspace(tmp_path / "build-root")
         (build_workspace / "mkdocs.yml").write_text(
             "site_name: FLEXT docs\ndocs_dir: docs\nexclude_docs: |\n  README.md\n",

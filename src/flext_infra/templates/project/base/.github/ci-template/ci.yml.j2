@@ -23,11 +23,6 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 
-      - name: Install declared toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
-          version: "{{ mise_version }}"
-
       - name: Setup
         run: make setup
 

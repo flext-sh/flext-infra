@@ -5,23 +5,13 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import WorktreeFixture, u as test_u
 
-
-def _is_immutable_selector(version: str) -> bool:
-    """Exact release tag (fork/prerelease suffix allowed) or full commit sha.
-
-    A suffixed tag such as ``1.2.2-fd1`` names one published artifact just as
-    exactly as ``1.2.2``; only a moving ref (``latest``, a branch, a range) is
-    mutable, and those never match the shapes below.
-    """
-    if len(version) == 40 and all(char in "0123456789abcdef" for char in version):
-        return True
-    core = version.partition("-")[0].split(".")
-    return len(core) == 3 and all(part.isdecimal() for part in core)
+pytestmark = pytest.mark.slow
 
 
 def _repository(
@@ -71,19 +61,13 @@ class TestsCodegenCatalogExtensions:
         tm.that(duplicate_result.failure, eq=True)
         tm.that(duplicate_result.error, has="must resolve exactly once")
 
-    def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
-        tm.that(
-            _is_immutable_selector(config.Infra.codegen.toolchain.beads.version),
-            eq=True,
-        )
+    def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
+        tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
-    def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
+    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
         toolchain = config.Infra.codegen.toolchain
 
-        mise_parts = toolchain.mise_version.split(".")
-        tm.that(len(mise_parts), eq=3)
-        tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
-        tm.that(_is_immutable_selector(toolchain.beads.version), eq=True)
+        tm.that(toolchain.mise_version, eq="latest")
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -100,8 +84,18 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_setup_conform" in content, eq=False)
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
+        tm.that(content, has='direnv allow "$(PROJECT_ROOT)"')
+        mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
+        tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
         tm.that("_builtin_gen_check:" in content, eq=True)
         tm.that("_builtin_gen_apply:" in content, eq=True)
+        bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
+            encoding="utf-8"
+        )
+        tm.that(bootstrap, has="https://github.com/jdx/mise/releases/latest")
+        tm.that(bootstrap, has="curl -fsSIL")
+        tm.that(bootstrap, lacks="self-update")
+        tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
 
@@ -152,6 +146,7 @@ class TestsCodegenCatalogExtensions:
             workspace=member.name,
             database=member.name,
             issue_prefix=member.name,
+            beads_owner=False,
         )
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source)
@@ -214,6 +209,13 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
+        WorktreeFixture.link_member_beads(
+            member_checkout,
+            workspace_root,
+            workspace_name=root.name,
+            database=root.name,
+            issue_prefix=root.name,
+        )
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -273,9 +275,12 @@ class TestsCodegenCatalogExtensions:
             if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(root_makefile.rendered, has=f"WORKSPACE_SUBPROJECTS := {member.name}")
-        tm.that(
-            any(file.path.name == c.Infra.GITMODULES for file in plan.files), eq=False
+        gitmodules_plan = next(
+            file for file in plan.files if file.path == gitmodules.resolve()
         )
+        tm.that(gitmodules_plan.policy, eq="manual")
+        tm.that(gitmodules_plan.changed, eq=False)
+        tm.that(gitmodules_plan.rendered.encode(), eq=declared_gitmodules)
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 

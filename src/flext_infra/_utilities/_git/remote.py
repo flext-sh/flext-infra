@@ -59,4 +59,22 @@ def redact_origin_remote(url: str) -> str:
     )
 
 
-__all__: list[str] = ["redact_origin_remote"]
+def canonical_origin_remote(url: str) -> str:
+    """Return one transport-stable repository identity for a remote URL."""
+    value = redact_origin_remote(url)
+    parsed = urlsplit(value)
+    if parsed.scheme in {"git", "git+ssh", "http", "https", "ssh"} and parsed.netloc:
+        path = parsed.path.rstrip("/").removesuffix(".git")
+        return urlunsplit((
+            parsed.scheme,
+            parsed.netloc,
+            path,
+            parsed.query,
+            parsed.fragment,
+        ))
+    if "@" in value.partition(":")[0]:
+        return value.rstrip("/").removesuffix(".git")
+    return value
+
+
+__all__: list[str] = ["canonical_origin_remote", "redact_origin_remote"]

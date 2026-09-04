@@ -394,6 +394,25 @@ class TestFlextInfraNamespaceValidator:
             eq=True,
         )
 
+    def test_rule2_typevar_runtime_module_detected(self, tmp_path: Path) -> None:
+        validator = FlextInfraNamespaceValidator()
+        root = _make_project_with_module(
+            tmp_path,
+            module_source='from typing import TypeVar\n\nT = TypeVar("T")\n',
+            module_name="base.py",
+        )
+
+        result = validator.validate_project(root)
+
+        tm.ok(result)
+        tm.that(
+            any(
+                "TypeVar 'T' belongs in typings.py" in violation
+                for violation in result.value.violations
+            ),
+            eq=True,
+        )
+
     def test_rule2_composite_type_loose_detected(self, tmp_path: Path) -> None:
         validator = FlextInfraNamespaceValidator()
         root = _make_project_with_module(

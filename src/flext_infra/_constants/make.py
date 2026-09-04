@@ -177,6 +177,7 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
     PYTEST_ENV_COV: Final[str] = "FLEXT_PYTEST_COV_RAW"
+    PYTEST_ENV_PROFILE: Final[str] = "FLEXT_PYTEST_PROFILE_RAW"
     PYTEST_ENV_CI: Final[str] = "CI"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
@@ -193,12 +194,6 @@ class FlextInfraConstantsMake:
         ("GATES", ""),
         ("PROPAGATE", ""),
         ("FIX", ""),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
-        ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
         ("FILE", ""),
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
@@ -236,26 +231,10 @@ class FlextInfraConstantsMake:
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),
-        ("RELEASE_PHASE", "all"),
-        ("INTERACTIVE", "1"),
         ("DRY_RUN", ""),
-        ("PUSH", ""),
-        ("VERSION", ""),
         ("MESSAGE", ""),
-        ("TAG", ""),
-        ("BUMP", ""),
-        ("RELEASE_DEV_SUFFIX", "0"),
-        ("RELEASE_NEXT_DEV", "0"),
-        ("RELEASE_NEXT_BUMP", "minor"),
-        ("CREATE_BRANCHES", "1"),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
         ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
-        ("PR_INCLUDE_ROOT", "1"),
-        ("PR_CHECKPOINT", "1"),
+        ("INDEX", ""),
         ("DEPS_REPORT", "1"),
         ("VERBOSE", ""),
     )
@@ -302,11 +281,6 @@ class FlextInfraConstantsMake:
         "RULES=ENFORCE-XXX,...       Scope fix-enforcement to rules",
         "VERBOSE=1                   Show executed commands",
     )
-    PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (
-        "PR_ACTION=status|create",
-        "PR_BASE=<branch>  PR_HEAD=<branch>",
-        "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
-    )
     # Phase-set per verb for legacy CLI helpers. Make routing is owned by
     # the registry discovered from scripts/cmd through flext-tests.
     WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
@@ -348,7 +322,7 @@ class FlextInfraConstantsMake:
         ("help", "Show this help"),
     )
     STANDALONE_POST_SETUP_VERBS: Final[str] = (
-        "check, test, fmt, build, val, clean, docs, pr"
+        "check, test, fmt, build, val, clean, docs"
     )
     PROJECT_SELECTION_CONFLICT_ERROR: Final[str] = (
         "ERROR: Cannot use PROJECT and PROJECTS together"

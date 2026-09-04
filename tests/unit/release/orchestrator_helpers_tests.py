@@ -4,34 +4,15 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_tests import tm
 from tests import c, m, u
 
-if TYPE_CHECKING:
-    from tests import t
-
 
 class TestsFlextInfraReleaseHelpers:
     """Behavior contract for public release helpers and strict boundaries."""
-
-    class TestsPhaseResolution:
-        """Release phase alias behavior."""
-
-        @staticmethod
-        @pytest.mark.parametrize(
-            ("phase", "expected"),
-            [
-                (c.Infra.RELEASE_PHASE_ALL, c.Tests.ALL_PHASES),
-                (c.Tests.RELEASE_PHASE_VALIDATE, (c.Tests.RELEASE_PHASE_VALIDATE,)),
-            ],
-        )
-        def test_resolve_phase_names(phase: str, expected: t.StrSequence) -> None:
-            """Resolve aliases and explicit phases through the public utility."""
-            tm.that(tuple(u.Infra.resolve_phase_names(phase)), eq=expected)
 
     class TestsReleaseNotes:
         """Release-note behavior."""
@@ -39,7 +20,7 @@ class TestsFlextInfraReleaseHelpers:
         @staticmethod
         def test_generate_notes_writes_release_document(tmp_path: Path) -> None:
             """Generate notes containing projects and verification lines."""
-            notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
             project = u.Tests.create_project_info(tmp_path / "flext-a", name="flext-a")
 
             result = u.Infra.generate_notes(
@@ -56,13 +37,11 @@ class TestsFlextInfraReleaseHelpers:
             tm.that(notes, has="- root")
             tm.that(notes, has="- flext-a")
             tm.that(notes, has=c.Tests.RELEASE_NOTES_CHANGE_LINE)
-            for verification_line in c.Tests.RELEASE_VERIFICATION_LINES[:2]:
-                tm.that(notes, has=verification_line)
 
         @staticmethod
         def test_generate_notes_failure_returns_result_error(tmp_path: Path) -> None:
             """Return a typed failure when the note path is a directory."""
-            notes_path = tmp_path / "release" / c.Tests.RELEASE_NOTES_FILENAME
+            notes_path = tmp_path / "release" / c.Infra.RELEASE_NOTES_FILENAME
             notes_path.mkdir(parents=True, exist_ok=True)
 
             result = u.Infra.generate_notes(
@@ -98,6 +77,13 @@ class TestsFlextInfraReleaseHelpers:
 
             tm.ok(result)
             tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+            # The markdown gate (MD012) rejects a trailing blank line, so a
+            # first changelog ends with exactly one newline.
+            changelog = (workspace / "docs" / "CHANGELOG.md").read_text(
+                encoding="utf-8"
+            )
+            tm.that(changelog.endswith("\n"), eq=True)
+            tm.that(changelog.endswith("\n\n"), eq=False)
             tm.that((workspace / "docs" / "releases" / "latest.md").is_file(), eq=True)
             tm.that(
                 (
@@ -135,6 +121,43 @@ class TestsFlextInfraReleaseHelpers:
             tm.ok(first_result)
             tm.ok(second_result)
             tm.that(changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - "), eq=1)
+
+        @staticmethod
+        def test_update_changelog_normalizes_an_existing_trailing_blank_line(
+            tmp_path: Path,
+        ) -> None:
+            """A rerun repairs a changelog written before the newline normalization.
+
+            The release lane keeps the changelog a previous stamp wrote; the
+            markdown gate (MD012) rejects its trailing blank line, so the rerun
+            must rewrite it even though the release section already exists.
+            """
+            workspace = tmp_path / "workspace"
+            docs_dir = workspace / "docs"
+            docs_dir.mkdir(parents=True, exist_ok=True)
+            (docs_dir / "CHANGELOG.md").write_text(
+                f"# Changelog\n\n## {c.Tests.RELEASE_VERSION_TARGET} - 2026-01-01\n\n"
+                f"- Release tag: `{c.Tests.RELEASE_TAG_TARGET}`\n\n"
+                f"Full notes: `docs/releases/{c.Tests.RELEASE_TAG_TARGET}.md`\n\n\n",
+                encoding="utf-8",
+            )
+            notes_path = workspace / "notes.md"
+            notes_path.write_text(
+                c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8"
+            )
+
+            result = u.Infra.update_changelog(
+                workspace,
+                c.Tests.RELEASE_VERSION_TARGET,
+                c.Tests.RELEASE_TAG_TARGET,
+                notes_path,
+            )
+
+            changelog = (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
+            tm.ok(result)
+            tm.that(changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - "), eq=1)
+            tm.that(changelog.endswith("\n"), eq=True)
+            tm.that(changelog.endswith("\n\n"), eq=False)
 
         @staticmethod
         def test_update_changelog_adds_default_header(tmp_path: Path) -> None:
@@ -184,28 +207,24 @@ class TestsFlextInfraReleaseHelpers:
             """Build each selected project once with strict modeled artifacts."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
 
             result = u.Tests.run_release_main(
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
 
             report_path = (
-                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_TARGET)
+                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_BASE)
                 / "build-report.json"
             )
             report = m.Infra.BuildReport.model_validate_json(
@@ -230,12 +249,10 @@ class TestsFlextInfraReleaseHelpers:
             staged_metadata = (
                 report_path.parent / "metadata" / f"{project_name}-pyproject.toml"
             ).read_text(encoding="utf-8")
-            tm.that(
-                staged_metadata, has=f"flext-core=={c.Tests.RELEASE_VERSION_TARGET}"
-            )
-            tm.that(
-                staged_metadata, has=f"flext-tests=={c.Tests.RELEASE_VERSION_TARGET}"
-            )
+            # Siblings are pinned to the compatible range of the version their
+            # own pyproject declares, never to this project's release version.
+            tm.that(staged_metadata, has=f"flext-core~={c.Tests.RELEASE_VERSION_BASE}")
+            tm.that(staged_metadata, has=f"flext-tests~={c.Tests.RELEASE_VERSION_BASE}")
             tm.that(staged_metadata, lacks="git+")
             tm.that(staged_metadata, lacks="[tool.uv")
 
@@ -284,23 +301,19 @@ class TestsFlextInfraReleaseHelpers:
             """Fail on immutable collision without partial or temporary output."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             arguments = (
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
             artifact_dir = u.Tests.release_artifact_dir(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             )
             first_result = u.Tests.run_release_main(workspace, *arguments)
             original_artifacts = {
@@ -319,7 +332,7 @@ class TestsFlextInfraReleaseHelpers:
                 path.name: path.read_bytes() for path in artifact_dir.iterdir()
             }
             build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             ).read_text(encoding="utf-8")
             tm.that(first_result, eq=0)
             tm.that(second_result, eq=1)
@@ -333,7 +346,9 @@ class TestsFlextInfraReleaseHelpers:
             """Reject a real Hatch build that emits a third output entry."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             pyproject = project / "pyproject.toml"
@@ -364,26 +379,20 @@ class TestsFlextInfraReleaseHelpers:
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
 
             build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             ).read_text(encoding="utf-8")
             tm.that(result, eq=1)
             tm.that(build_log, has="uv build emitted unexpected output")
             tm.that(build_log, has="unexpected.txt")
             tm.that(
                 u.Tests.release_artifact_dir(
-                    workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                    workspace, c.Tests.RELEASE_VERSION_BASE, project_name
                 ).exists(),
                 eq=False,
             )

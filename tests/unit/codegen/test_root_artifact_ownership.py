@@ -165,6 +165,7 @@ class TestsRootArtifactOwnership:
 class TestsAncestryNetworkBoundary:
     """The ancestry plan is a repository-local, offline inventory."""
 
+    @pytest.mark.slow
     def test_ancestry_plan_never_fetches_origin(
         self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

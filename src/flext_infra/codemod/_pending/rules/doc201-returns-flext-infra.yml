@@ -790,42 +790,6 @@ fix: |-
       A result indicating whether the helper file was written.
   """
 ---
-id: doc201-023-github-pr-process-repo
-language: Python
-severity: warning
-message: Add the semantic Returns section for _github_pr_process_repo.
-metadata:
-  source: "src/flext_infra/_utilities/github_pr.py#_github_pr_process_repo"
-rule:
-  all:
-    - pattern: '"""$DOC"""'
-    - not:
-        regex: 'Returns:'
-    - inside:
-        stopBy: end
-        kind: expression_statement
-    - inside:
-        stopBy: end
-        kind: function_definition
-        has:
-          field: name
-          regex: "^_github_pr_process_repo$"
-constraints:
-  DOC:
-    regex: "^Process one repository during workspace pull-request execution\\.(?:\\n|$)"
-transform:
-  CLEAN_DOC:
-    replace:
-      source: $DOC
-      replace: '\\s+$'
-      by: ''
-fix: |-
-  """$CLEAN_DOC
-
-  Returns:
-      A result containing the repository pull-request outcome.
-  """
----
 id: doc201-024-insert-import-line
 language: Python
 severity: warning
@@ -2122,42 +2086,6 @@ fix: |-
       The gate execution result for the requested files.
   """
 ---
-id: doc201-061-build-gate-result
-language: Python
-severity: warning
-message: Add the semantic Returns section for _build_gate_result.
-metadata:
-  source: "src/flext_infra/gates/base_gate.py#_build_gate_result"
-rule:
-  all:
-    - pattern: '"""$DOC"""'
-    - not:
-        regex: 'Returns:'
-    - inside:
-        stopBy: end
-        kind: expression_statement
-    - inside:
-        stopBy: end
-        kind: function_definition
-        has:
-          field: name
-          regex: "^_build_gate_result$"
-constraints:
-  DOC:
-    regex: "^Build gate result\\.(?:\\n|$)"
-transform:
-  CLEAN_DOC:
-    replace:
-      source: $DOC
-      replace: '\\s+$'
-      by: ''
-fix: |-
-  """$CLEAN_DOC
-
-  Returns:
-      The normalized gate execution with warning and error issues.
-  """
----
 id: doc201-062-files-over-cap
 language: Python
 severity: warning
@@ -2180,7 +2108,7 @@ rule:
           regex: "^_files_over_cap$"
 constraints:
   DOC:
-    regex: "^Extract over-cap modules from a tokei `--output json` payload\\.(?:\\n|$)"
+    regex: "^Extract over-cap modules from an `scc --format json --by-file` payload\\.(?:\\n|$)"
 transform:
   CLEAN_DOC:
     replace:
