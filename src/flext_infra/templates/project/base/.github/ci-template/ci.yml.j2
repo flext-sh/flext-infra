@@ -25,8 +25,9 @@ jobs:
 
       - name: Install declared toolchain
         uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
+{% if mise_version != "latest" %}        with:
           version: "{{ mise_version }}"
+{% endif %}
 
       - name: Setup
         run: make setup

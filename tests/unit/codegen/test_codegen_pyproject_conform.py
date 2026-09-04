@@ -288,10 +288,9 @@ python-interpreter-path = "../.venv/bin/python"
         # measures. The expectation now derives from the same SSOT sequence
         # production reads, so it survives any legitimate change to that set.
         # A declared floor reaches the rendered group verbatim UNLESS it names a
-        # workspace project, which dependency provenance rewrites to its pinned
-        # git requirement (measured: "flext-tests" renders as
-        # "flext-tests @ git+.../flext-tests.git@<branch>"). Asserting by
-        # package name keeps both shapes in scope without re-encoding either.
+        # workspace project, which dependency provenance rewrites to its tracked
+        # integration-branch source. Asserting by package name keeps both shapes
+        # in scope without re-encoding either.
         rendered_names = {
             u.Infra.dep_name(requirement)
             for requirement in document["dependency-groups"]["dev"]

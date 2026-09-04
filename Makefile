@@ -109,7 +109,7 @@ SELF_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
 MAKEFILE_ROOT := $(patsubst %/,%,$(dir $(SELF_MAKEFILE)))
 PROJECT_ROOT := $(MAKEFILE_ROOT)
 SETUP_BIN := $(PROJECT_ROOT)/.bin
-SETUP_MISE_VERSION := 2026.9.1
+SETUP_MISE_VERSION := latest
 ifeq ($(OS),Windows_NT)
 TRACKED_MISE := $(PROJECT_ROOT)/bin/mise.cmd
 else
@@ -310,19 +310,12 @@ _bootstrap_setup_tools:
 	@set -eu; \
 	project_root="$(PROJECT_ROOT)"; \
 	mise="$(SETUP_MISE)"; \
-	mise_version="$(SETUP_MISE_VERSION)"; \
 	uv_required="0.12"; \
 	if [ ! -f "$$mise" ]; then \
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	fi; \
-	current=$$(env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" --version); \
-	current=$${current%% *}; \
-	if [ "$$current" != "$$mise_version" ]; then \
-		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
-			"$$mise_version" "$$current" >&2; \
-		exit 2; \
-	fi; \
+	env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" --version >/dev/null; \
 	if [ ! -f "$$project_root/mise.lock" ]; then \
 		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
 		exit 2; \
@@ -1071,6 +1064,17 @@ _builtin_release_status: _builtin_require_environment
 # floors; gen must never run a second pyproject writer over conform's result.
 define _mise_launcher_apply
 	@set -eu; \
+	mise_version="$(SETUP_MISE_VERSION)"; \
+	if [ "$$mise_version" = latest ]; then \
+		mise_release_url=$$(curl -fsSIL -o /dev/null -w '%{url_effective}' \
+			https://github.com/jdx/mise/releases/latest); \
+		mise_version=$${mise_release_url##*/v}; \
+		case "$$mise_version" in \
+			[0-9]*.[0-9]*.[0-9]*) ;; \
+			*) printf 'ERROR: invalid Mise latest release redirect: %s\n' \
+				"$$mise_release_url" >&2; exit 2 ;; \
+		esac; \
+	fi; \
 	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
 	mkdir -p "$$scratch_parent"; \
 	scratch=$$(mktemp -d "$$scratch_parent/mise-launcher.XXXXXX"); \
@@ -1083,7 +1087,7 @@ define _mise_launcher_apply
 		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
 		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" generate install-script \
-		--version "$(SETUP_MISE_VERSION)" \
+		--version "$$mise_version" \
 		--write "$$scratch/mise" --windows \
 		>"$$scratch/generate.log" 2>&1; then \
 		cat "$$scratch/generate.log"; \

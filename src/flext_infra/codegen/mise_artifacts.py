@@ -318,6 +318,25 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             character in "0123456789abcdef" for character in digest
         )
 
+    @staticmethod
+    def _shell_launcher_version(content: str) -> str | None:
+        prefix = 'local mise_version="${MISE_VERSION:-'
+        suffix = '}"'
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if line.startswith(prefix) and line.endswith(suffix):
+                return line.removeprefix(prefix).removesuffix(suffix)
+        return None
+
+    @staticmethod
+    def _is_mise_release(value: str | None) -> bool:
+        if value is None:
+            return False
+        parts = value.split(".")
+        return len(parts) == c.Infra.MISE_RELEASE_COMPONENT_COUNT and all(
+            part.isdecimal() for part in parts
+        )
+
     @classmethod
     def _validate_launchers(cls, root: Path) -> p.Result[bool]:
         shell_path = root / "bin" / "mise"
@@ -326,12 +345,16 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         windows_source = u.Cli.files_read_text(windows_path)
         if shell_source.failure or windows_source.failure:
             return r[bool].fail("missing generated Mise launcher")
-        version = config.Infra.codegen.toolchain.mise_version
-        shell_marker = f'local mise_version="${{MISE_VERSION:-{version}}}"'
-        windows_marker = f'set "pinned_version={version}"'
+        declared_selector = config.Infra.codegen.toolchain.mise_version
+        shell_version = cls._shell_launcher_version(shell_source.value)
+        windows_version = cls._assignment(windows_source.value, "pinned_version")
         if (
-            shell_marker not in shell_source.value
-            or windows_marker not in windows_source.value
+            not cls._is_mise_release(shell_version)
+            or shell_version != windows_version
+            or (
+                declared_selector != "latest"
+                and shell_version != declared_selector.removeprefix("v")
+            )
         ):
             return r[bool].fail("Mise launcher version drift")
         try:

@@ -130,8 +130,6 @@ class TestsFlextInfraPyprojectConformTopologySources:
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
 
-        # The expected specifier is derived from the same declared repository
-        # contract the generator reads - never a hardcoded URL or branch.
         project = workspace.subprojects[0]
         tm.that(
             dependencies,
