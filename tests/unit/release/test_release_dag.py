@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import zipfile
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -125,6 +126,56 @@ class TestsFlextInfraReleaseDag:
 
     class TestsMetadata:
         """Publishable metadata policy behavior."""
+
+        @staticmethod
+        def test_pinned_sibling_version_comes_from_the_committed_lock(
+            tmp_path: Path,
+        ) -> None:
+            """A standalone repository pins a git-consumed sibling to its locked version.
+
+            The sibling is not part of this release, so the only truthful
+            version is what the committed lock resolved for the pinned ref.
+            """
+            project_name = "flext-a"
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=(project_name,), initialize_project_git=True
+            )
+            lock_lines = ["version = 1", ""]
+            for sibling in c.Tests.RELEASE_INTERNAL_DEPENDENCIES:
+                source = f"https://github.com/flext-sh/{sibling}.git?rev=0.12.0-dev#0000"
+                lock_lines.extend([
+                    "[[package]]",
+                    f'name = "{sibling}"',
+                    'version = "0.9.0"',
+                    f'source = {{ git = "{source}" }}',
+                    "",
+                ])
+            (workspace / c.Infra.UV_LOCK_FILENAME).write_text(
+                "\n".join(lock_lines), encoding="utf-8"
+            )
+
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--projects",
+                project_name,
+                "--apply",
+            )
+
+            tm.that(result, eq=0)
+            artifact_dir = u.Tests.release_artifact_dir(
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+            )
+            wheel = next(artifact_dir.glob("*.whl"))
+            with zipfile.ZipFile(wheel) as archive:
+                metadata = next(
+                    archive.read(name).decode("utf-8")
+                    for name in archive.namelist()
+                    if name.endswith("METADATA")
+                )
+            tm.that(metadata, has="Requires-Dist: flext-core~=0.9.0")
+            tm.that(metadata, lacks="git+")
 
         @staticmethod
         def test_missing_hatch_config_fails_before_artifact_build(
