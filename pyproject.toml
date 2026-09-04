@@ -500,6 +500,7 @@ ignore = [
   "multi-line-summary-second-line",
   "no-self-use",
   "non-imperative-mood",
+  "pytest-fixture-autouse",
   "too-many-arguments",
   "too-many-branches",
   "too-many-locals",
