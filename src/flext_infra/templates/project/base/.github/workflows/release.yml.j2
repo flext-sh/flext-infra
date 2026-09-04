@@ -100,8 +100,9 @@ jobs:
 
       - name: Install mise toolchain
         uses: {% endraw %}{{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}{% raw %}
-        with:
+{% endraw %}{% if mise_version != "latest" %}{% raw %}        with:
           version: {% endraw %}{{ mise_version }}{% raw %}
+{% endraw %}{% endif %}{% raw %}
 
       - name: Install system dependencies
         shell: bash
@@ -239,8 +240,9 @@ jobs:
 
       - name: Install mise toolchain
         uses: {% endraw %}{{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}{% raw %}
-        with:
+{% endraw %}{% if mise_version != "latest" %}{% raw %}        with:
           version: {% endraw %}{{ mise_version }}{% raw %}
+{% endraw %}{% endif %}{% raw %}
 
       - name: Install system dependencies
         shell: bash

@@ -1,6 +1,6 @@
 {% from "base_test_report_recipe.j2" import test_report_recipe -%}
 {% from "submodule_setup_recipe.j2" import submodule_setup_recipe -%}
-{% from "tool_bootstrap_recipe.j2" import tool_bootstrap_recipe -%}
+{% from "tool_bootstrap_recipe.j2" import mise_release_resolution, tool_bootstrap_recipe -%}
 # @flext-managed: continuous
 # @flext-regenerate: make gen WHAT=apply APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
@@ -275,7 +275,7 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", "$(SETUP_MISE_VERSION)", uv_version) }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version) }}
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
@@ -845,6 +845,7 @@ _builtin_release_publish: _builtin_require_environment
 # floors; gen must never run a second pyproject writer over conform's result.
 define _mise_launcher_apply
 	@set -eu; \
+	{{ mise_release_resolution("$(SETUP_MISE_VERSION)", "$(SETUP_MISE)") }}; \
 	scratch_parent="$(PROJECT_ROOT)/.test-tmp"; \
 	mkdir -p "$$scratch_parent"; \
 	scratch=$$(mktemp -d "$$scratch_parent/mise-launcher.XXXXXX"); \
@@ -857,7 +858,7 @@ define _mise_launcher_apply
 		MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
 		MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
 		env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" generate install-script \
-		--version "$(SETUP_MISE_VERSION)" \
+		--version "$$mise_version" \
 		--write "$$scratch/mise" --windows \
 		>"$$scratch/generate.log" 2>&1; then \
 		cat "$$scratch/generate.log"; \

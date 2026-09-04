@@ -391,6 +391,8 @@ class FlextInfraUtilitiesDiscovery(
         for candidate in (execution_dir, *execution_dir.parents):
             if not (candidate / c.Infra.GITMODULES).is_file():
                 continue
+            if execution_dir == candidate:
+                return candidate.resolve()
             declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(candidate)
             if declared.failure:
                 continue

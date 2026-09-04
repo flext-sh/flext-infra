@@ -331,7 +331,7 @@ class FlextInfraConfigModels:
             ),
         ]
         mise_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact mise binary version")
+            t.NonEmptyStr, _tool_version_field("Mise release selector")
         ]
         mise_lock_platforms: Annotated[
             tuple[
@@ -1914,7 +1914,7 @@ class FlextInfraConfigModels:
         ]
         mise_version: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Exact mise version required by generated launchers"),
+            m.Field(description="Mise release selector used by generated launchers"),
         ]
         mise_lock_platforms: Annotated[
             tuple[t.NonEmptyStr, ...],

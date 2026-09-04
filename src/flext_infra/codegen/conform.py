@@ -1912,10 +1912,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 environment_path_prepends=(codegen.toolchain.environment_path_prepends),
                 beads_tool_selector=codegen.toolchain.beads.selector,
                 beads_tool_version=codegen.toolchain.beads.version,
-                # prerelease is load-bearing: the fleet bd is a suffixed tag
-                # (v1.2.2-fd1) and mise refuses to resolve it unless told the
-                # release is a prerelease. Omitting it silently pinned every
-                # rig to upstream v1.2.2, which lacks the bd list cycle guard.
+                # prerelease is load-bearing: every fork release of bd carries a
+                # suffixed tag (-fdN) and mise refuses to resolve one unless
+                # told the release is a prerelease. Omitting it silently pinned
+                # every rig to upstream, which lacks the bd list cycle guard.
                 beads_tool_prerelease=codegen.toolchain.beads.prerelease,
                 beads_tool_minimum_release_age=(
                     codegen.toolchain.beads.minimum_release_age

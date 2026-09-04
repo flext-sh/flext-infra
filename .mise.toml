@@ -42,11 +42,11 @@ kubeconform = "0.8"
 # Go runtime for the Go projects in this workspace.
 go = "1.26"
 [tools."github:marlon-costa-dc/beads"]
-version = "1.2.2-fd1"
+version = "latest"
 prerelease = true
 
 [tools."github:marlon-costa-dc/gascity"]
-version = "1.4.1-fc2"
+version = "latest"
 prerelease = true
 
 # End SECTION: tools

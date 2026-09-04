@@ -37,7 +37,9 @@ Infra:
       scc_version: "4.0"
       kubeconform_version: "0.8"
       qlty_version: "0.642"
-      mise_version: "2026.9.1"
+      # Moving selector is deliberate: setup must always provision the newest
+      # Mise release instead of rejecting a newer binary than code generation.
+      mise_version: latest
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -71,7 +73,11 @@ Infra:
         # module replace, so the native store's version_compat gate stops
         # degrading every rig to the fork-per-op BdStore fallback.
         selector: github:marlon-costa-dc/gascity
-        version: "1.4.1-fc2"
+        # Operator order 2026-09-04: always the newest release of OUR fork.
+        # Freezing this stranded the fleet on a build predating its own source
+        # fix (415a2ea8c, read_timeout 15000 -> 120000), whose 15s bound killed
+        # DOLT_GC at 17s and left the hq store unbacked for days.
+        version: latest
         # Suffixed release tag; mise only resolves it when told it is a prerelease.
         prerelease: true
         # Selector shapes that identify gc in a mise manifest, so a regenerated
@@ -82,7 +88,10 @@ Infra:
           - "*:*/gascity"
       beads:
         selector: github:marlon-costa-dc/beads
-        version: "1.2.2-fd1"
+        # Operator order 2026-09-04: always the newest release of OUR fork.
+        # The selector, not a pinned version, is what keeps the fleet off
+        # upstream; freezing the version only rejects our own later releases.
+        version: latest
         # The fleet bd is the operator's fork: it carries 4c1c40337
         # "fix(list): stop bd list from looping forever on hierarchy cycles",
         # absent from upstream v1.2.2, which has already produced a 17.7 GB

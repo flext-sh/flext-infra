@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -437,18 +438,26 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def write_beads_project(
             repository: Path, *, workspace: str, database: str, issue_prefix: str
         ) -> Path:
-            """Write the typed repository-local Beads identity fixture."""
+            """Write the typed repository-local Beads identity fixture.
+
+            The bytes mirror the managed ``config/beads.yaml.j2`` render for
+            the same spec, so a planned regeneration of an existing fixture
+            file is never reported as drift.
+            """
             path = repository / "config" / "beads.yaml"
-            tm.ok(
-                u.Cli.yaml_dump(
-                    path,
-                    m.Infra.BeadsProjectSpec(
-                        version=c.Infra.BEADS_CONFIG_VERSION,
-                        workspace=workspace,
-                        database=database,
-                        issue_prefix=issue_prefix,
-                    ).model_dump(mode="json"),
-                )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            spec = m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace=workspace,
+                database=database,
+                issue_prefix=issue_prefix,
+            )
+            path.write_text(
+                f"version: {spec.version}\n"
+                f"workspace: {json.dumps(spec.workspace)}\n"
+                f"database: {json.dumps(spec.database)}\n"
+                f"issue_prefix: {json.dumps(spec.issue_prefix)}\n\n",
+                encoding="utf-8",
             )
             return path
 
