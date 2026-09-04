@@ -709,6 +709,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = None
+        system_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Runner packages this distribution's tests need; empty "
+                    "means the workflow renders no install step"
+                ),
+            ),
+        ] = ()
 
     class MakeWorkflowRenderSpec(_ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
@@ -2741,6 +2751,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        ci_system_packages: Annotated[
+            Mapping[str, tuple[t.NonEmptyStr, ...]],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-distribution runner packages (Ubuntu apt names) the "
+                    "generated CI installs before the gates run"
+                ),
+            ),
+        ]
         sgconfig: Annotated[
             FlextInfraConfigModels.SgconfigRenderSpec,
             m.Field(description="Canonical ast-grep project contract for every repo"),
@@ -3129,6 +3149,34 @@ class FlextInfraConfigModels:
                 default="https://upload.pypi.org/legacy/",
                 description="Package index upload endpoint for verified artifacts",
             ),
+        ]
+        build_constraints: Annotated[
+            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Hash-pinned build-backend requirements every release artifact "
+                    "is built with; projected to config/build-constraints.txt"
+                ),
+            ),
+        ]
+
+    class BuildConstraintSpec(_ConfigContract):
+        """One hash-pinned build requirement (``uv build --require-hashes``)."""
+
+        name: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
+        version: Annotated[t.NonEmptyStr, m.Field(description="Exact version")]
+        hashes: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Accepted sha256 digests"),
+        ]
+
+    class ReleasePolicyRenderSpec(_ConfigContract):
+        """Typed input consumed by the generated release policy files."""
+
+        build_constraints: Annotated[
+            tuple[FlextInfraConfigModels.BuildConstraintSpec, ...],
+            m.Field(min_length=1, description="Pins rendered into the constraints"),
         ]
 
     # This

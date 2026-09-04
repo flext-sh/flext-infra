@@ -54,8 +54,14 @@ class FlextInfraUtilitiesDependencies:
         return f">={public_version}" if public_version else ""
 
     @classmethod
-    def locked_dependency_versions(cls, lock_path: Path) -> t.MappingKV[str, str]:
-        """Return normalized registry package versions from one ``uv.lock`` file."""
+    def locked_dependency_versions(
+        cls, lock_path: Path, *, sources: t.StrSequence = ("registry",)
+    ) -> t.MappingKV[str, str]:
+        """Return normalized package versions from one ``uv.lock`` file.
+
+        ``sources`` selects the lock source kinds to read (``registry`` by
+        default; ``git`` yields the siblings consumed through a pinned ref).
+        """
         result: t.MappingKV[str, str] = {}
         if lock_path.is_file():
             try:
@@ -76,9 +82,8 @@ class FlextInfraUtilitiesDependencies:
                                 if not isinstance(raw_package, Mapping):
                                     continue
                                 raw_source = raw_package.get("source")
-                                if (
-                                    not isinstance(raw_source, Mapping)
-                                    or "registry" not in raw_source
+                                if not isinstance(raw_source, Mapping) or not any(
+                                    kind in raw_source for kind in sources
                                 ):
                                     continue
                                 raw_name = raw_package.get("name")
