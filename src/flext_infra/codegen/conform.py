@@ -1669,8 +1669,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
-                    mise_version=codegen.toolchain.mise_version,
-                    mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                     uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
                     dependency_cooldown_exclusions=cooldown_exclusions,
                     dependency_cooldown_overrides=cooldown_overrides,
@@ -1939,8 +1937,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 kind_version=codegen.toolchain.kind_version,
                 direnv_version=codegen.toolchain.direnv_version,
                 uv_version=codegen.toolchain.uv_version,
-                mise_version=codegen.toolchain.mise_version,
-                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 qlty_version=codegen.toolchain.qlty_version,
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,

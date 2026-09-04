@@ -180,7 +180,7 @@ class CodegenRoutes(CliRouteBase):
                     ),
                     (
                         "mise-artifacts",
-                        "Validate generated Mise launchers and lock metadata offline",
+                        "Resolve, publish, or validate the generated Mise receipt",
                         FlextInfraCodegenMiseArtifacts,
                         CliRouteBase.result_handler(
                             FlextInfraCodegenMiseArtifacts.execute_command

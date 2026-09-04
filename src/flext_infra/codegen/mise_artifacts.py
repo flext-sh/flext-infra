@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Annotated, ClassVar, override
+from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_core import r
@@ -15,6 +15,9 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra.base import s
+from flext_infra.codegen._mise_artifacts_transaction import (
+    FlextInfraCodegenMiseArtifactTransaction,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -24,21 +27,6 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     """Hydrate generated lock checksums or validate committed Mise artifacts."""
 
     _PLATFORM_PREFIX: ClassVar[str] = "platforms."
-
-    from_root: bool = m.Field(
-        default=False,
-        alias="from-root",
-        description="Propagate root mise.lock to one identical member",
-    )
-    # The base declares project_filter exclude=True, which drops it from the
-    # schema-driven CLI surface; --from-root propagation needs --project.
-    project_filter: Annotated[
-        str | None,
-        m.Field(
-            alias="project",
-            description="Single member selector for --from-root propagation",
-        ),
-    ] = None
 
     @staticmethod
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
@@ -269,9 +257,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             )
         return r[str].ok(hydrated)
 
-    def _hydrate_lock_checksums(self) -> p.Result[bool]:
+    def _hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
         """Download exact resolved artifacts and atomically add missing SHA-256 values."""
-        lock_path = self.workspace_root / "mise.lock"
+        lock_path = root / "mise.lock"
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
             return r[bool].fail(source.error or "cannot read mise.lock")
@@ -285,7 +273,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].ok(True)
         try:
             with TemporaryDirectory(
-                prefix=".mise-checksum.", dir=self.workspace_root
+                prefix=".mise-checksum.", dir=root
             ) as raw_scratch:
                 hydrated = self._hydrate_source(
                     source.value, missing.value, Path(raw_scratch)
@@ -313,9 +301,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     def _is_sha256(value: str | None) -> bool:
         if value is None:
             return False
-        digest = value.split(maxsplit=1)[0]
-        return len(digest) == sha256().digest_size * 2 and all(
-            character in "0123456789abcdef" for character in digest
+        return len(value) == sha256().digest_size * 2 and all(
+            character in "0123456789abcdef" for character in value
         )
 
     @staticmethod
@@ -338,6 +325,19 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         )
 
     @classmethod
+    def _launcher_release(cls, root: Path) -> p.Result[str]:
+        """Return the one exact release embedded by both generated launchers."""
+        shell_source = u.Cli.files_read_text(root / "bin" / "mise")
+        windows_source = u.Cli.files_read_text(root / "bin" / "mise.cmd")
+        if shell_source.failure or windows_source.failure:
+            return r[str].fail("missing generated Mise launcher")
+        shell_version = cls._shell_launcher_version(shell_source.value)
+        windows_version = cls._assignment(windows_source.value, "pinned_version")
+        if not cls._is_mise_release(shell_version) or shell_version != windows_version:
+            return r[str].fail("Mise launcher version drift")
+        return r[str].ok(shell_version)
+
+    @classmethod
     def _validate_launchers(cls, root: Path) -> p.Result[bool]:
         shell_path = root / "bin" / "mise"
         windows_path = root / "bin" / "mise.cmd"
@@ -345,10 +345,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         windows_source = u.Cli.files_read_text(windows_path)
         if shell_source.failure or windows_source.failure:
             return r[bool].fail("missing generated Mise launcher")
-        shell_version = cls._shell_launcher_version(shell_source.value)
-        windows_version = cls._assignment(windows_source.value, "pinned_version")
-        if not cls._is_mise_release(shell_version) or shell_version != windows_version:
-            return r[bool].fail("Mise launcher version drift")
+        release = cls._launcher_release(root)
+        if release.failure:
+            return r[bool].from_failure(release)
         try:
             shell_mode = shell_path.stat().st_mode
         except OSError as exc:
@@ -385,33 +384,6 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                     f"Mise launcher checksum missing: windows-{checksum_name.removeprefix('sum_')}"
                 )
         return r[bool].ok(True)
-
-    def _member_project_root(self) -> p.Result[Path]:
-        """Resolve the one declared workspace member selected for propagation."""
-        if self.project_filter is None:
-            return r[Path].fail("--from-root propagation requires exactly one --project")
-        selectors = [
-            selector for selector in self.project_filter.split(",") if selector.strip()
-        ]
-        if len(selectors) != 1:
-            return r[Path].fail("--from-root propagation requires exactly one --project")
-        selector = selectors[0].strip()
-        if (
-            not selector
-            or selector.startswith(".")
-            or "/" in selector
-            or "\\" in selector
-        ):
-            return r[Path].fail(f"invalid Mise propagation project: {selector}")
-        project_root = (self.workspace_root / selector).resolve()
-        resolved_workspace = self.workspace_root.resolve()
-        if (
-            not project_root.is_dir()
-            or project_root == resolved_workspace
-            or not project_root.is_relative_to(resolved_workspace)
-        ):
-            return r[Path].fail(f"Mise propagation target is not a member: {selector}")
-        return r[Path].ok(project_root)
 
     def _validate_artifacts(self, project_root: Path) -> p.Result[bool]:
         """Validate one project's committed Mise artifacts entirely offline."""
@@ -456,49 +428,6 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             project_exclusions=exclusions.value,
         )
 
-    def _propagate_root_lock(self) -> p.Result[bool]:
-        """Propagate one byte-identical member lock without invoking Mise."""
-        member_result = self._member_project_root()
-        if member_result.failure:
-            return r[bool].fail(member_result.error or "invalid Mise member")
-        member_root = member_result.value
-        root_config = u.Cli.files_read_text(self.workspace_root / ".mise.toml")
-        member_config = u.Cli.files_read_text(member_root / ".mise.toml")
-        if root_config.failure:
-            return r[bool].fail(root_config.error or "cannot read root .mise.toml")
-        if member_config.failure:
-            return r[bool].fail(member_config.error or "cannot read member .mise.toml")
-        root_identity = u.Cli.sha256_file(self.workspace_root / ".mise.toml")
-        member_identity = u.Cli.sha256_file(member_root / ".mise.toml")
-        if root_identity != member_identity:
-            return r[bool].fail(
-                "member .mise.toml is not identical to root: "
-                f"root_sha256={root_identity} member_sha256={member_identity}"
-            )
-        root_lock = u.Cli.files_read_text(self.workspace_root / "mise.lock")
-        if root_lock.failure:
-            return r[bool].fail(root_lock.error or "cannot read root mise.lock")
-        write = u.Cli.atomic_write_text_file(
-            member_root / "mise.lock", root_lock.value
-        )
-        if write.failure:
-            return r[bool].fail(write.error or "cannot propagate root mise.lock")
-        propagated_lock = u.Cli.files_read_text(member_root / "mise.lock")
-        propagated_config = u.Cli.files_read_text(member_root / ".mise.toml")
-        if propagated_lock.failure:
-            return r[bool].fail(
-                propagated_lock.error or "cannot verify propagated mise.lock"
-            )
-        if propagated_config.failure:
-            return r[bool].fail(
-                propagated_config.error or "cannot verify propagated .mise.toml identity"
-            )
-        if propagated_lock.value != root_lock.value:
-            return r[bool].fail("member mise.lock diverged after atomic propagation")
-        if propagated_config.value != root_config.value:
-            return r[bool].fail("member .mise.toml diverged after atomic propagation")
-        return self._validate_artifacts(member_root)
-
     @staticmethod
     def _validate_lock(
         lock: m.Infra.MiseLockSpec,
@@ -539,14 +468,11 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Hydrate in explicit apply mode; otherwise validate entirely offline."""
-        if self.from_root:
-            if self.effective_dry_run:
-                return r[bool].fail("--from-root propagation requires explicit --apply")
-            return self._propagate_root_lock()
+        """Publish the complete workspace in apply mode; otherwise validate it."""
+        transaction = FlextInfraCodegenMiseArtifactTransaction(self)
         if not self.effective_dry_run:
-            return self._hydrate_lock_checksums()
-        return self._validate_artifacts(self.workspace_root)
+            return transaction.execute()
+        return transaction.validate()
 
 
 __all__: list[str] = ["FlextInfraCodegenMiseArtifacts"]
