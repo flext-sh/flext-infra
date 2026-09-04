@@ -36,19 +36,25 @@ class CodegenRoutes(CliRouteBase):
                 name=c.Infra.VERB_RUN,
                 help_text="Run workspace quality gates",
                 model_cls=m.Infra.RunCommand,
-                handler=FlextInfraWorkspaceChecker.execute_payload,
+                handler=CliRouteBase.result_handler(
+                    FlextInfraWorkspaceChecker.execute_payload
+                ),
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-pyrefly-settings",
                 help_text="Repair [tool.pyrefly] blocks",
                 model_cls=m.Infra.FixPyreflyConfigCommand,
-                handler=FlextInfraConfigFixer.execute_payload,
+                handler=CliRouteBase.result_handler(
+                    FlextInfraConfigFixer.execute_payload
+                ),
             ),
             m.Cli.ResultCommandRoute(
                 name="fix-enforcement",
                 help_text="Auto-fix enforcement-catalog violations",
                 model_cls=m.Infra.FixEnforcementCommand,
-                handler=FlextInfraEnforcementFixerOrchestrator.execute_payload,
+                handler=CliRouteBase.result_handler(
+                    FlextInfraEnforcementFixerOrchestrator.execute_payload
+                ),
             ),
         ),
         c.Infra.CLI_GROUP_CODEGEN: (
@@ -64,80 +70,116 @@ class CodegenRoutes(CliRouteBase):
                     name=route_name,
                     help_text=help_text,
                     model_cls=model_cls,
-                    handler=model_cls.execute_command,
+                    handler=handler,
                     success_message=success_message,
                 )
-                for route_name, help_text, model_cls, success_message in (
+                for route_name, help_text, model_cls, handler, success_message in (
                     (
                         "new",
                         "Create a new FLEXT project from the canonical templates",
                         FlextInfraCodegenProjectNew,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenProjectNew.execute_command
+                        ),
                         "project created",
                     ),
                     (
                         "init",
                         "Generate/refresh PEP 562 lazy-import __init__.py files",
                         FlextInfraCodegenLazyInit,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenLazyInit.execute_command
+                        ),
                         "init complete",
                     ),
                     (
                         "census",
                         "Count namespace violations across workspace projects",
                         FlextInfraCodegenCensus,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenCensus.execute_command
+                        ),
                         None,
                     ),
                     (
                         "scaffold",
                         "Generate missing base modules in src/ and tests/",
                         FlextInfraCodegenScaffolder,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenScaffolder.execute_command
+                        ),
                         None,
                     ),
                     (
                         "auto-fix",
                         "Auto-fix namespace violations (move Finals/TypeVars)",
                         FlextInfraCodegenFixer,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenFixer.execute_command
+                        ),
                         None,
                     ),
                     (
                         "py-typed",
                         "Create/remove PEP 561 py.typed markers",
                         FlextInfraCodegenPyTyped,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenPyTyped.execute_command
+                        ),
                         "py-typed markers updated",
                     ),
                     (
                         "pipeline",
                         "Run full codegen pipeline",
                         FlextInfraCodegenPipeline,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenPipeline.execute_command
+                        ),
                         None,
                     ),
                     (
                         "constants-quality-gate",
                         "Run constants migration quality gate",
                         FlextInfraCodegenQualityGate,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenQualityGate.execute_command
+                        ),
                         "constants quality gate passed",
                     ),
                     (
                         "consolidate",
                         "Consolidate inline constants into c.Infra.* references",
                         FlextInfraCodegenConsolidator,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenConsolidator.execute_command
+                        ),
                         None,
                     ),
                     (
                         "layout",
                         "Check/apply the canonical project layout (SSOT-driven)",
                         FlextInfraCodegenLayout,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenLayout.execute_command
+                        ),
                         "layout conformance complete",
                     ),
                     (
                         "mise-artifacts",
                         "Validate generated Mise launchers and lock metadata offline",
                         FlextInfraCodegenMiseArtifacts,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenMiseArtifacts.execute_command
+                        ),
                         "Mise artifact validation complete",
                     ),
                     (
                         "version-file",
                         "Generate __version__.py from project-metadata SSOT",
                         FlextInfraCodegenVersionFile,
+                        CliRouteBase.result_handler(
+                            FlextInfraCodegenVersionFile.execute_command
+                        ),
                         "version-file generation complete",
                     ),
                 )
@@ -148,7 +190,7 @@ class CodegenRoutes(CliRouteBase):
                 name=route_name,
                 help_text=help_text,
                 model_cls=model_cls,
-                handler=model_cls.execute_command,
+                handler=CliRouteBase.result_handler(model_cls.execute_command),
             )
             for route_name, help_text, model_cls in (
                 (

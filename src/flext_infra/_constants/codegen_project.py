@@ -115,7 +115,7 @@ class FlextInfraConstantsCodegenProject:
 
     # Each row: (relpath_template, output_relpath, kinds, delegate, overwrite).
     # kinds: tuple of ProjectKind the row applies to (BOTH = internal+external).
-    # delegate: "render" (CLI engine) today.
+    # delegate: "render" (CLI engine) today; specialized generators may follow.
     # One base catalog serves both profiles;
     # workspace topology is read only from each repository's own .gitmodules.
 

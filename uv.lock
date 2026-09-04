@@ -670,7 +670,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#75d0be86a43f72221d9f7ad0ad7c442c0411da6c" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#7ce50312fb4ae6720a34924efc9d0c3ec0ed0721" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },

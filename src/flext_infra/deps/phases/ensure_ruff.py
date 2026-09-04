@@ -72,7 +72,11 @@ class FlextInfraEnsureRuffConfigPhase:
     @staticmethod
     def _project_per_file_ignores(project_dir: Path) -> t.MappingKV[str, t.StrSequence]:
         """Load validated project-owned Ruff additions from ``config/*.yaml``."""
-        loaded = FlextInfraUtilitiesProjectManagedArtifacts.load(project_dir)
+        loaded = (
+            FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
+                project_dir
+            )
+        )
         if loaded.failure:
             raise ValueError(loaded.error or "project artifact load failed")
         return loaded.value.artifacts.Ruff.per_file_ignores

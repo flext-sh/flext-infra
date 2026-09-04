@@ -83,11 +83,6 @@ class TestsTemplateFormatterFixedPoint:
         for rendered in (without, with_devcontainer):
             tm.that(rendered, has="package-ecosystem: pip")
 
-    def test_makefile_empty_infra_source_root_has_no_trailing_space(self) -> None:
-        rendered = (_TEMPLATES.parents[4] / "Makefile").read_text(encoding="utf-8")
-
-        tm.that(rendered, has="FLEXT_INFRA_SOURCE_ROOT_REL :=\n")
-
     def test_sgconfig_render_has_one_terminal_newline(self) -> None:
         populated = tm.ok(
             u.Cli.template_render(

@@ -509,7 +509,10 @@ Infra:
           project-typings-paths: []
           workspace-include-children: false
           workspace-include-child-env-dirs: []
-          project-shared-search-paths: ["."]
+          # Why (flext-463 follow-up): scripts/ is a checked env dir, so its
+          # runtime sys.path imports (e.g. `from lib...`) must also resolve at
+          # check time; absent dirs are filtered by the is_dir guard.
+          project-shared-search-paths: [".", "scripts"]
       pytest:
         # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686

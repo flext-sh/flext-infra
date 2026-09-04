@@ -7,44 +7,44 @@
 	mise="{{ mise }}"; \
 	mise_version="{{ mise_version }}"; \
 	uv_required="{{ uv_version }}"; \
-	[ -f "$$mise" ] || { \
+	if [ ! -f "$$mise" ]; then \
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
-	}; \
-	version_output=$$("$$mise" --version); \
-	current=$$(printf '%s\n' "$$version_output" | cut -d ' ' -f 1); \
-	[ "$$current" = "$$mise_version" ] || { \
+	fi; \
+	current=$$("$$mise" --version); \
+	current=$${current%% *}; \
+	if [ "$$current" != "$$mise_version" ]; then \
 		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
-			"$$mise_version" "$${current:-<missing>}" >&2; \
+			"$$mise_version" "$$current" >&2; \
 		exit 2; \
-	}; \
-	[ -f "$$project_root/mise.lock" ] || { \
+	fi; \
+	if [ ! -f "$$project_root/mise.lock" ]; then \
 		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
 		exit 2; \
-	}; \
+	fi; \
 	scratch_parent="$$project_root/.test-tmp"; \
 	mkdir -p "$$scratch_parent"; \
 	scratch=$$(mktemp -d "$$scratch_parent/mise-setup.XXXXXX"); \
-	trap 'rm -rf -- "$$scratch"' EXIT HUP INT TERM; \
+	trap 'find "$$scratch" -depth -delete' EXIT; \
 	global_config="$$scratch/global-config.toml"; \
 	config_dir="$$scratch/config"; \
-	config_ceiling=$$(dirname "$$project_root"); \
 	mkdir -p "$$config_dir"; \
 	: > "$$global_config"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		MISE_CEILING_PATHS="$$config_ceiling" \
 		"$$mise" trust "$$project_root/.mise.toml"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		MISE_CEILING_PATHS="$$config_ceiling" \
 		"$$mise" -C "$$project_root" install --locked --yes; \
-	uv_actual=$$(MISE_CONFIG_DIR="$$config_dir" \
+	uv_output=$$(MISE_CONFIG_DIR="$$config_dir" \
 		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		MISE_CEILING_PATHS="$$config_ceiling" \
 		"$$mise" -C "$$project_root" \
-		exec -- uv --version | sed 's/uv //' | cut -d ' ' -f 1); \
+		exec -- uv --version); \
+	case "$$uv_output" in \
+		'uv '*) uv_actual=$${uv_output#uv }; uv_actual=$${uv_actual%% *} ;; \
+		*) printf 'ERROR: uv --version returned an invalid value\n' >&2; exit 2 ;; \
+	esac; \
 	case "$$uv_actual" in \
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
-			"$$uv_required" "$${uv_actual:-<missing>}" >&2; exit 2 ;; \
+			"$$uv_required" "$$uv_actual" >&2; exit 2 ;; \
 	esac
 {%- endmacro %}

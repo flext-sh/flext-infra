@@ -90,20 +90,6 @@ class FlextInfraCodegenLazyInitPlanner(
             context.surface == c.Infra.DIR_TESTS
             and context.current_pkg != c.Infra.DIR_TESTS
         )
-        package_entry = self._package_entry(context.pkg_dir)
-        if (
-            is_test_child_package
-            and package_entry is not None
-            and not self._has_live_package_content(package_entry)
-        ):
-            return m.Infra.LazyInitPlan(
-                context=context,
-                action=(
-                    c.Infra.LazyInitAction.REMOVE
-                    if context.generated_init
-                    else c.Infra.LazyInitAction.SKIP
-                ),
-            )
         empty_action: c.Infra.LazyInitAction = (
             c.Infra.LazyInitAction.WRITE
             if is_test_child_package

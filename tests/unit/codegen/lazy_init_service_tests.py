@@ -12,34 +12,6 @@ from tests import c, u
 class TestsFlextInfraCodegenLazyInitService:
     """Validate real service execution without mocks or internal branching asserts."""
 
-    def test_empty_generated_test_package_is_retired(self, tmp_path: Path) -> None:
-        """Remove an initializer when no module or live child remains."""
-        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        tests_root = workspace_root / c.Infra.DIR_TESTS
-        unit_root = tests_root / "unit"
-        empty_root = unit_root / "obsolete"
-        empty_root.mkdir(parents=True)
-        for package_dir in (tests_root, unit_root, empty_root):
-            package_dir.joinpath(c.Infra.INIT_PY).write_text(
-                f'{c.Infra.AUTOGEN_HEADER}\n"""Generated test package."""\n',
-                encoding=c.Cli.ENCODING_DEFAULT,
-            )
-        unit_root.joinpath("test_live.py").write_text(
-            "def test_live() -> None:\n    pass\n", encoding=c.Cli.ENCODING_DEFAULT
-        )
-        service = u.Tests.create_lazy_init_service(workspace_root)
-        service.apply_changes = True
-
-        result = service.execute()
-
-        tm.that(result.success, eq=True)
-        tm.that(empty_root.joinpath(c.Infra.INIT_PY).exists(), eq=False)
-        parent = unit_root.joinpath(c.Infra.INIT_PY).read_text(
-            encoding=c.Cli.ENCODING_DEFAULT
-        )
-        tm.that(parent, lacks="obsolete")
-        tm.that(u.Tests.run_lazy_init(workspace_root, check_only=True), eq=0)
-
     def test_execute_applies_only_selected_root_artifact_set(
         self, tmp_path: Path
     ) -> None:

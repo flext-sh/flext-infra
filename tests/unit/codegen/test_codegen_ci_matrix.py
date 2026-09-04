@@ -107,12 +107,16 @@ class TestCodegenCiMatrix:
         )
 
         tm.that(workflow, has="run: CI=Y make setup")
+        tm.that(workflow, has="run: CI=Y make gen WHAT=check")
         tm.that(workflow, has="run: CI=Y make check")
         tm.that(workflow, lacks="run: CI=Y make test")
         tm.that(workflow, lacks="run: make test")
-        tm.that(workflow, has="run: CI=Y make gen WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make fmt WHAT=apply APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make fix WHAT=apply APPLY=Y")
+        tm.that(workflow, lacks="WHAT=apply")
+        tm.that(workflow, lacks="APPLY=Y")
+        tm.that(
+            workflow.index("run: CI=Y make setup"),
+            lt=workflow.index("run: CI=Y make gen WHAT=check"),
+        )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
@@ -127,6 +131,14 @@ class TestCodegenCiMatrix:
 
         tm.that(workflow, has="- name: Configure GitHub authentication")
         tm.that(workflow, has="GH_TOKEN: ${{ github.token }}")
+        # The gh credential helper reads GH_TOKEN from the environment of the
+        # step that runs git, so the token must be declared on the job, before
+        # any step, not only on the setup-git step.
+        tm.that(
+            workflow.index("GH_TOKEN: ${{ github.token }}")
+            < workflow.index("    steps:"),
+            eq=True,
+        )
         tm.that(workflow, has="run: gh auth setup-git")
         tm.that(
             workflow.index("run: gh auth setup-git")
@@ -188,8 +200,7 @@ class TestCodegenCiMatrix:
             encoding="utf-8"
         )
         marker = (
-            "fetch-depth: 0\n\n"
-            "      # Codegen refreshes the declared provider baseline"
+            "fetch-depth: 0\n\n      # Codegen refreshes the declared provider baseline"
         )
         tm.that(workflow, has=marker)
         tm.that(

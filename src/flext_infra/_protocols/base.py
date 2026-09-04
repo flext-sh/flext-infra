@@ -468,8 +468,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @classmethod
-    def is_public_python_module_file(cls, file_name: str) -> bool:
-        """Return whether a file names a public Python module."""
+    def matches_root_namespace_file(cls, file_name: str) -> bool:
+        """Return whether a file belongs to the governed root namespace."""
         ...
 
     @staticmethod

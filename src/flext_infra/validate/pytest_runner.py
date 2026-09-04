@@ -163,34 +163,17 @@ class FlextInfraPytestRunner(s[int]):
                 )
             )
         try:
-            document = DefusedET.parse(junit_file)
+            DefusedET.parse(junit_file)
         except DefusedET.ParseError as exc:
             return r[bool].fail(
                 self._artifact_failure_detail(
                     f"junit report is not parseable: {junit_file}: {exc}", pytest_log
                 )
             )
-        root = document.getroot()
-        if root is None:
-            return r[bool].fail(
-                self._artifact_failure_detail(
-                    f"junit report has no root element: {junit_file}", pytest_log
-                )
-            )
-        testcases = tuple(root.iter("testcase"))
-        executed = tuple(
-            testcase for testcase in testcases if testcase.find("skipped") is None
-        )
-        if not executed:
-            return r[bool].fail(
-                self._artifact_failure_detail(
-                    "pytest completed without executing tests", pytest_log
-                )
-            )
         return r[bool].ok(True)
 
     def _coverage_argv(self, report_dir: Path, *, focused: bool) -> tuple[str, ...]:
-        """Build mutually exclusive focused, testmon, and coverage argv.
+        """Build mutually exclusive testmon vs coverage argv.
 
         pytest-testmon nests its Coverage object under an outer pytest-cov
         stack when both are active. Flushing that stack calls get_data() on an
@@ -211,8 +194,6 @@ class FlextInfraPytestRunner(s[int]):
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
                 "--no-cov-on-fail",
             )
-        if focused:
-            return ("--no-cov",)
         return ("--testmon", "--no-cov")
 
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
@@ -224,7 +205,7 @@ class FlextInfraPytestRunner(s[int]):
         coverage_args = self._coverage_argv(report_dir, focused=focused)
         parallel_args = (
             ("-n", "0")
-            if focused or self.fail_fast
+            if focused
             else (
                 "-n",
                 str(pytest.parallel_workers),

@@ -46,15 +46,18 @@ class TestsWorkflowOrphanGuard:
         """
         tm.that("codeql.yml" in _declared_workflows(), eq=False)
 
-    def test_ci_matrix_uses_only_the_closed_topology_profiles(self) -> None:
-        """ci-matrix accepts exactly workspace and standalone."""
+    def test_ci_matrix_uses_only_canonical_profiles(self) -> None:
+        """ci-matrix is projected for workspace and standalone repositories."""
         entries = tuple(
             entry
             for entry in config.Infra.codegen.templates.entries
             if entry.destination == ".github/workflows/ci-matrix.yml"
         )
         tm.that(len(entries), eq=1)
-        tm.that(set(entries[0].profiles), eq={"workspace", "standalone"})
+        profiles = {
+            p.value if hasattr(p, "value") else str(p) for p in entries[0].profiles
+        }
+        tm.that(profiles, eq={"workspace", "standalone"})
 
 
 _ALLOWED_WORKFLOWS: tuple[str, ...] = (

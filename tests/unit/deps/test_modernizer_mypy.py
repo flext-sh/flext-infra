@@ -65,13 +65,13 @@ class TestsFlextInfraDepsModernizerMypy:
         )
         tm.that(u.Tests.toml_strings(mypy_mapping["disable_error_code"]), has="misc")
 
-    def test_mypy_phase_does_not_restore_retired_cli_arg_type_override(
+    def test_mypy_phase_keeps_only_current_scoped_override(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
-        """The strict CLI contract needs no consumer-side arg-type suppression."""
+        """Strict CLI typing needs no waiver; retained overrides stay justified."""
         overrides = tool_config_document.tools.mypy.overrides
         cli_entries = [entry for entry in overrides if "*.cli" in entry.modules]
-        tm.that(cli_entries, empty=True)
+        tm.that(cli_entries, eq=[])
         unreachable_entries = [
             entry
             for entry in overrides

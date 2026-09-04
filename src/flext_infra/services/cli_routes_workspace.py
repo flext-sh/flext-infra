@@ -37,7 +37,9 @@ class WorkspaceRoutes(RefactorRoutes):
                 name=c.Infra.VERB_RUN,
                 help_text="Run release orchestration CLI flow",
                 model_cls=FlextInfraReleaseOrchestrator,
-                handler=FlextInfraReleaseOrchestrator.execute_command,
+                handler=CliRouteBase.result_handler(
+                    FlextInfraReleaseOrchestrator.execute_command
+                ),
                 success_message="Release completed successfully",
             ),
         ),
@@ -46,7 +48,9 @@ class WorkspaceRoutes(RefactorRoutes):
                 name="verify-environment",
                 help_text="Verify live workspace editable provenance",
                 model_cls=m.Infra.WorkspaceEnvironmentRequest,
-                handler=FlextInfraWorkspaceEnvironmentProvenance.execute_request,
+                handler=CliRouteBase.result_handler(
+                    FlextInfraWorkspaceEnvironmentProvenance.execute_request
+                ),
                 success_message="workspace editable provenance verified",
             ),
             m.Cli.ResultCommandRoute(
@@ -61,18 +65,24 @@ class WorkspaceRoutes(RefactorRoutes):
                     name=route_name,
                     help_text=help_text,
                     model_cls=model_cls,
-                    handler=model_cls.execute_command,
+                    handler=handler,
                 )
-                for route_name, help_text, model_cls in (
+                for route_name, help_text, model_cls, handler in (
                     (
                         "detect",
                         "Detect workspace or standalone mode",
                         FlextInfraWorkspaceDetector,
+                        CliRouteBase.result_handler(
+                            FlextInfraWorkspaceDetector.execute_command
+                        ),
                     ),
                     (
                         "orchestrate",
                         "Run make verb across projects",
                         FlextInfraOrchestratorService,
+                        CliRouteBase.result_handler(
+                            FlextInfraOrchestratorService.execute_command
+                        ),
                     ),
                 )
             ),

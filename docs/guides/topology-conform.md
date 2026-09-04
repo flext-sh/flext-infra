@@ -1,6 +1,16 @@
 # Repository-local topology and conformance
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+<!-- TOC START -->
+- [Authorities](#authorities)
+- [Validation boundary](#validation-boundary)
+- [Selection and projections](#selection-and-projections)
+- [uv project boundaries](#uv-project-boundaries)
+<!-- TOC END -->
+
+>>>>>>> origin/0.12.0-dev
 ## Authorities
 =======
 <!-- TOC START -->

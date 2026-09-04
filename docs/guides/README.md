@@ -9,6 +9,7 @@
 Curated operational guides live here. Keep API behavior in generated reference
 pages sourced from code and docstrings.
 
+- [Project tools](project-tools.md)
 - [Topology conform](topology-conform.md)
 - [Back to project docs](../index.md)
 - [API Reference](../api-reference/README.md)

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from flext_infra import FlextInfraGitService, c, m, u
+from flext_infra._utilities._git.repo import git_refresh_binary
 from flext_tests import tm
 from tests import u as test_u
 
@@ -150,17 +151,19 @@ class TestsFlextInfraGitFacet:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Missing git on PATH must Result.fail without raising."""
-
-        def missing_git(_name: str) -> None:
-            return None
-
         monkeypatch.setattr(
-            "flext_infra._utilities._git.repo.shutil.which", missing_git
+            "flext_infra._utilities._git.repo.shutil.which", lambda _name: None
         )
         result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure
         assert result.error is not None
         assert "git executable not found" in result.error
+
+    def test_git_refresh_binary_module_helper_uses_canonical_repo_helper(self) -> None:
+        """Legacy module helper remains available for semantic mixins."""
+        refreshed = git_refresh_binary()
+        tm.ok(refreshed)
+        tm.that(refreshed.value, eq=True)
 
     def test_remove_clean_worktree_preserves_primary_submodule_state(
         self, tmp_path: Path
