@@ -350,7 +350,14 @@ _bootstrap_setup_tools:
 		"$$uv_required"|"$$uv_required".*) ;; \
 		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
 			"$$uv_required" "$$uv_actual" >&2; exit 2 ;; \
-	esac
+	esac; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then \
+		uv_path=$$(MISE_CONFIG_DIR="$$config_dir" \
+			MISE_GLOBAL_CONFIG_FILE="$$global_config" \
+			env -u MISE_INSTALL_PATH -u MISE_VERSION "$$mise" \
+			-C "$$project_root" which uv); \
+		printf '%s\n' "$${uv_path%/*}" >> "$$GITHUB_PATH"; \
+	fi
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
