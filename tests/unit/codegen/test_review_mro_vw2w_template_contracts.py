@@ -51,6 +51,18 @@ class TestsReviewTemplateContracts:
         tm.that(text, has="setup: _bootstrap_setup_tools")
         tm.that(text, has="env -u MISE_INSTALL_PATH -u MISE_VERSION")
 
+    def test_makefile_setup_installs_the_lock_without_writing_it(self) -> None:
+        """Setup provisions exactly the committed lock and never mutates it.
+
+        Why (flext-1wjg1.16): a plain `uv sync` re-resolved a stale lock on the
+        release runner and left the checkout dirty, so the release protocol's
+        clean-checkout preflight failed. Lock refresh is `make deps`' change.
+        """
+        text = _MAKEFILE.read_text(encoding="utf-8")
+        tm.that(text, has='$(UV) sync --frozen --project "$(PROJECT_ROOT)"')
+        ci = _CI.read_text(encoding="utf-8")
+        tm.that(ci.index("make gen WHAT=check") < ci.index("make deps"), eq=True)
+
     def test_makefile_deps_modernize_uses_selected_projects(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(text, has='selected="$(strip $(SELECTED_PROJECTS))"')
