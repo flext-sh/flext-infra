@@ -1554,7 +1554,11 @@ Infra:
             - "**/*.dylib"
             - "**/*.test"
             - "**/*.out"
-            - "vendor/"
+            # Anchored: only a root-level Go vendor tree is ignorable. Unanchored
+            # `vendor/` also matched a vendored package inside src/ (flext-cli
+            # src/flext_cli/vendor), and hatchling honours .gitignore, so the
+            # published wheel silently shipped without it (flext-f6gqq).
+            - "/vendor/"
         - name: "Node.js inside allowed directories"
           patterns:
             - "**/node_modules/"
@@ -1840,11 +1844,13 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
+        # Every repository releases itself through the protocol; the workspace
+        # root additionally publishes its members to the package index.
         - source: base/.github/workflows/release.yml.j2
           destination: .github/workflows/release.yml
-          profiles: [workspace]
+          profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
           destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
           profiles: [workspace, standalone]

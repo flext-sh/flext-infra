@@ -59,6 +59,29 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
 
         tm.that(blocked, eq=())
 
+    def test_vendored_package_directory_is_trackable(self) -> None:
+        """A vendored tree inside the package stays tracked and therefore packaged.
+
+        Why (flext-f6gqq): hatchling honours .gitignore, so an unanchored
+        ``vendor/`` rule silently dropped ``src/<pkg>/vendor`` from the wheel
+        while still ignoring the root-level vendor tree it was meant for.
+        """
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name="probe-project",
+            )
+        )
+
+        tm.that(
+            test_u.Tests.is_tracked_under(
+                rendered, "src/probe_project/vendor/docx/document.py"
+            ),
+            eq=True,
+        )
+        tm.that(test_u.Tests.is_tracked_under(rendered, "vendor/module.go"), eq=False)
+
     def test_declared_projects_are_trackable_under_the_rendered_policy(self) -> None:
         """A project declared in the manifest is trackable in the rendered body.
 

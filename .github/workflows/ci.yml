@@ -127,6 +127,34 @@ jobs:
           retention-days: 7
   # End SECTION: ci job
 
+  # === SECTION: release-plan job (managed) ===
+  # The release protocol's read-only decision on every pull request: the title
+  # must be a Conventional Commits title (it becomes the merge commit subject
+  # the next release is derived from), and no pyproject version may change
+  # outside the protocol's own release commit.
+  release-plan:
+    name: release-plan
+    permissions:
+      contents: read
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: Y
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: false
+      - name: Boot
+        run: make setup
+      - name: Release plan and guard
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: make release WHAT=plan PR_TITLE="$PR_TITLE"
+  # End SECTION: release-plan job
+
   # === SECTION: merge-guard job (managed) ===
   merge-guard:
     name: merge-guard
