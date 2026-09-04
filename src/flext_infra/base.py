@@ -22,7 +22,10 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     apply/dry-run toggles, output formatting, and project filtering.
     """
 
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        validate_by_name=True,
+        validate_by_alias=True,
+    )
 
     @classmethod
     def _runtime_bootstrap_options(cls) -> p.RuntimeBootstrapOptions:
