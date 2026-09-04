@@ -113,29 +113,57 @@ class TestsFlextInfraPytestRunner:
         tm.that(command, lacks="pytest.pstats")
         tm.that(command, lacks="--cov-report")
 
-    def test_full_workers_are_cpu_and_memory_bounded(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    @pytest.mark.parametrize(
+        (
+            "parallel_workers",
+            "cpu_count",
+            "memory_gb",
+            "parallel_worker_memory_gb",
+            "expected",
+        ),
+        [
+            (2, 20, 16, 2, 2),
+            (16, 3, 64, 2, 3),
+            (16, 20, 5, 2, 2),
+        ],
+    )
+    def test_full_workers_are_independently_bounded_by_each_resource(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        parallel_workers: int,
+        cpu_count: int,
+        memory_gb: int,
+        parallel_worker_memory_gb: int,
+        expected: int,
     ) -> None:
         runner = self._runner(tmp_path)
-        report_dir = tmp_path / ".reports" / "tests" / "run"
-        policy = config.Infra.tooling.tools.pytest
-        monkeypatch.setattr(os, "cpu_count", lambda: 20)
+        configured_policy = config.Infra.tooling.tools.pytest
+        payload = configured_policy.model_dump(by_alias=True)
+        payload.update({
+            "parallel-workers": parallel_workers,
+            "parallel-worker-memory-gb": parallel_worker_memory_gb,
+        })
+        policy = type(configured_policy).model_validate(payload)
+        monkeypatch.setattr(os, "cpu_count", lambda: cpu_count)
         monkeypatch.setattr(
             FlextInfraPytestRunner,
             "_memory_gb",
-            staticmethod(lambda: 16),
+            staticmethod(lambda: memory_gb),
         )
 
         workers = runner.parallel_worker_budget(policy)
 
-        tm.that(
-            workers,
-            eq=min(
-                policy.parallel_workers,
-                20,
-                16 // policy.parallel_worker_memory_gb,
-            ),
-        )
+        tm.that(workers, eq=expected)
+
+    def test_full_command_uses_the_derived_worker_budget(
+        self, tmp_path: Path
+    ) -> None:
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        policy = config.Infra.tooling.tools.pytest
+        workers = runner.parallel_worker_budget(policy)
+
         tm.that(runner.build_command(report_dir), has=("-n", str(workers)))
 
     def test_profile_requires_explicit_opt_in(
