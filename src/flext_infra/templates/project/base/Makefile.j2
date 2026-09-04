@@ -876,41 +876,46 @@ define _mise_lock_apply
 		if [ ! -f "$$project_root/.mise.toml" ]; then \
 			printf 'ERROR: missing generated .mise.toml in %s\n' "$$project_root" >&2; exit 2; \
 		fi; \
-		scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
-		scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
-		trap 'find "$$scratch" -depth -delete' EXIT; \
-		cp "$$project_root/.mise.toml" "$$scratch/.mise.toml"; \
-		locked_count=$$(awk '$$0 == "locked = true" { count++ } END { print count + 0 }' "$$scratch/.mise.toml"); \
-		if [ "$$locked_count" -ne 1 ]; then \
-			printf 'ERROR: expected one locked tool_config setting in %s\n' "$$project_root/.mise.toml" >&2; exit 2; \
-		fi; \
-		sed -i 's/^locked = true$$/locked = false/' "$$scratch/.mise.toml"; \
-		mkdir -p "$$scratch/data" "$$scratch/cache" \
-			"$$scratch/state" "$$scratch/tmp"; \
-		: > "$$scratch/global-config.toml"; \
-		if MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
-			MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
-			XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
-			MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
-			MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
-			MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
-			env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" lock \
-			--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
-			cat "$$scratch/lock.log"; \
+		if [ "$$project" != . ] && cmp "$(PROJECT_ROOT)/.mise.toml" "$$project_root/.mise.toml" >/dev/null 2>&1; then \
+			$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+				--project "$$project" --from-root --apply; \
 		else \
-			status=$$?; cat "$$scratch/lock.log"; exit "$$status"; \
+			scratch_parent="$$project_root/.test-tmp"; mkdir -p "$$scratch_parent"; \
+			scratch=$$(mktemp -d "$$scratch_parent/mise-lock.XXXXXX"); \
+			trap 'find "$$scratch" -depth -delete' EXIT; \
+			cp "$$project_root/.mise.toml" "$$scratch/.mise.toml"; \
+			locked_count=$$(awk '$$0 == "locked = true" { count++ } END { print count + 0 }' "$$scratch/.mise.toml"); \
+			if [ "$$locked_count" -ne 1 ]; then \
+				printf 'ERROR: expected one locked tool_config setting in %s\n' "$$project_root/.mise.toml" >&2; exit 2; \
+			fi; \
+			sed -i 's/^locked = true$$/locked = false/' "$$scratch/.mise.toml"; \
+			mkdir -p "$$scratch/data" "$$scratch/cache" \
+				"$$scratch/state" "$$scratch/tmp"; \
+			: > "$$scratch/global-config.toml"; \
+			if MISE_GITHUB_CREDENTIAL_COMMAND="$$credential_command" \
+				MISE_GLOBAL_CONFIG_FILE="$$scratch/global-config.toml" \
+				XDG_CACHE_HOME="$$scratch/cache" XDG_STATE_HOME="$$scratch/state" \
+				MISE_DATA_DIR="$$scratch/data" MISE_CACHE_DIR="$$scratch/cache" \
+				MISE_STATE_DIR="$$scratch/state" TMPDIR="$$scratch/tmp" \
+				MISE_CEILING_PATHS="$$scratch_parent" MISE_TRUSTED_CONFIG_PATHS="$$scratch" \
+				env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" -C "$$scratch" lock \
+				--platform "$(MISE_LOCK_PLATFORMS)" >"$$scratch/lock.log" 2>&1; then \
+				cat "$$scratch/lock.log"; \
+			else \
+				status=$$?; cat "$$scratch/lock.log"; exit "$$status"; \
+			fi; \
+			if grep -Fq 'mise WARN' "$$scratch/lock.log"; then \
+				printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
+			else \
+				status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
+			fi; \
+			$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
+				--workspace "$$scratch" --apply; \
+			lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
+			cp "$$scratch/mise.lock" "$$lock_tmp"; \
+			mv -f "$$lock_tmp" "$$project_root/mise.lock"; \
+			find "$$scratch" -depth -delete; trap - EXIT; \
 		fi; \
-		if grep -Fq 'mise WARN' "$$scratch/lock.log"; then \
-			printf 'ERROR: Mise lock generation emitted warnings for %s\n' "$$project_root" >&2; exit 2; \
-		else \
-			status=$$?; if [ "$$status" -ne 1 ]; then exit "$$status"; fi; \
-		fi; \
-		$(PROJECT_FLEXT_INFRA) codegen mise-artifacts \
-			--workspace "$$scratch" --apply; \
-		lock_tmp="$$project_root/.mise.lock.new.$$$$"; \
-		cp "$$scratch/mise.lock" "$$lock_tmp"; \
-		mv -f "$$lock_tmp" "$$project_root/mise.lock"; \
-		find "$$scratch" -depth -delete; trap - EXIT; \
 	done
 endef
 

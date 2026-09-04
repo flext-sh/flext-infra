@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r
-from flext_infra import config, m, u
+from flext_infra import config, m, p, r, u
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 
@@ -247,6 +246,93 @@ class TestsCodegenMiseArtifacts:
         }).execute()
 
         tm.ok(result, eq=True)
+
+    @classmethod
+    def _member(cls, root: Path, name: str, *, identical: bool) -> Path:
+        member = root / name
+        member.mkdir()
+        root_config = (root / ".mise.toml").read_text(encoding="utf-8")
+        member_config = (
+            root_config
+            if identical
+            else root_config.replace("lockfile = true", "lockfile = false")
+        )
+        (member / ".mise.toml").write_text(member_config, encoding="utf-8")
+        cls._write_launchers(member)
+        (member / "mise.lock").write_text("lockfile_version = 0\n", encoding="utf-8")
+        return member
+
+    def test_from_root_applies_byte_identical_member_lock(
+        self, tmp_path: Path
+    ) -> None:
+        root = self._project(tmp_path / "root")
+        member = self._member(root, "member-identical", identical=True)
+        expected_lock = (root / "mise.lock").read_text(encoding="utf-8")
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-identical",
+            "from_root": True,
+            "apply_changes": True,
+        }).execute()
+
+        tm.ok(result, eq=True)
+        tm.that((member / "mise.lock").read_text(encoding="utf-8"), eq=expected_lock)
+
+    def test_from_root_rejects_materially_different_member(
+        self, tmp_path: Path
+    ) -> None:
+        root = self._project(tmp_path / "root")
+        member = self._member(root, "member-different", identical=False)
+        unchanged_lock = (member / "mise.lock").read_text(encoding="utf-8")
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-different",
+            "from_root": True,
+            "apply_changes": True,
+        }).execute()
+
+        tm.fail(result, has="not identical")
+        tm.that(
+            (member / "mise.lock").read_text(encoding="utf-8"),
+            eq=unchanged_lock,
+        )
+
+    def test_from_root_requires_explicit_apply(self, tmp_path: Path) -> None:
+        root = self._project(tmp_path / "root")
+        _member = self._member(root, "member-identical", identical=True)
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-identical",
+            "from_root": True,
+        }).execute()
+
+        tm.fail(result, has="requires explicit --apply")
+
+    def test_from_root_fails_causally_after_post_copy_divergence(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        root = self._project(tmp_path / "root")
+        _member = self._member(root, "member-identical", identical=True)
+        original_write = u.Cli.atomic_write_text_file
+
+        def write_divergent_lock(path: Path, content: str) -> p.Result[bool]:
+            if path.name == "mise.lock":
+                content = f"{content}# diverged\n"
+            return original_write(path, content)
+
+        monkeypatch.setattr(u.Cli, "atomic_write_text_file", write_divergent_lock)
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-identical",
+            "from_root": True,
+            "apply_changes": True,
+        }).execute()
+
+        tm.fail(result, has="mise.lock diverged after atomic propagation")
 
 
 __all__: tuple[str, ...] = ()
