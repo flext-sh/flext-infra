@@ -1637,6 +1637,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make=codegen.make,
                 )
             )
+        if destination in {
+            c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
+            c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
+        }:
+            # Why (flext-to3n7): the release build phase snapshots these two
+            # policies from the repository; they are fleet policy owned by
+            # config/infra.yaml, never scaffold-only project metadata.
+            return r[p.Model].ok(
+                m.Infra.ReleasePolicyRenderSpec(
+                    build_constraints=config.Infra.release.build_constraints
+                )
+            )
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
             subprojects = (

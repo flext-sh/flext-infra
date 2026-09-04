@@ -321,5 +321,7 @@ CLAUDE.local.md
 !.vscode/settings.json
 !LICENSE
 !config/
+!config/build-constraints.txt
+!config/gitleaks-release.toml
 !config/workspace.yaml
 !custom.mk

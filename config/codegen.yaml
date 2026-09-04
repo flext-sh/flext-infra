@@ -1195,6 +1195,13 @@ Infra:
       - path: LICENSE
         owner: codegen
         policy: create-only
+      # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
+      - path: config/build-constraints.txt
+        owner: codegen
+        policy: full
+      - path: config/gitleaks-release.toml
+        owner: codegen
+        policy: full
       - path: Makefile
         owner: make
         policy: full
@@ -1798,6 +1805,21 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
+        # Why (flext-to3n7): the release build phase snapshots these two policy
+        # files before the first artifact build (hash-pinned build backend for
+        # `uv build --require-hashes`, and the Gitleaks policy). They are one
+        # fleet-wide policy owned here and projected into every repository;
+        # a repository never hand-writes its own (overwrite: true).
+        - source: base/config/build-constraints.txt.j2
+          destination: config/build-constraints.txt
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        - source: base/config/gitleaks-release.toml.j2
+          destination: config/gitleaks-release.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
         - source: base/gitignore.j2
           destination: .gitignore
           profiles: [workspace, standalone]
