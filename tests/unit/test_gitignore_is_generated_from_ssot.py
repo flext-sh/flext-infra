@@ -25,9 +25,8 @@ def _workspace_root() -> Path:
     return Path(flext_infra.__file__).resolve().parents[2]
 
 
-def _is_allowed_by_policy(relative_path: str) -> bool:
-    """Return whether the shipped SSOT policy keeps *relative_path* trackable."""
-    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+def _is_allowed_by_policy(rendered: str, relative_path: str) -> bool:
+    """Return whether one policy snapshot keeps *relative_path* trackable."""
     return test_u.Tests.is_tracked_under(rendered, relative_path)
 
 
@@ -49,10 +48,13 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             for item in config.Infra.codegen.managed_files
             if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
         )
+        rendered = (
+            "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+        )
         blocked = tuple(
             item.path.as_posix()
             for item in committed
-            if not _is_allowed_by_policy(item.path.as_posix())
+            if not _is_allowed_by_policy(rendered, item.path.as_posix())
         )
 
         tm.that(blocked, eq=())

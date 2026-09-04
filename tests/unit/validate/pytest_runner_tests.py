@@ -119,6 +119,7 @@ class TestsFlextInfraPytestRunner:
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
         policy = config.Infra.tooling.tools.pytest
+        monkeypatch.setattr(os, "cpu_count", lambda: 20)
         monkeypatch.setattr(
             FlextInfraPytestRunner,
             "_memory_gb",
@@ -131,7 +132,7 @@ class TestsFlextInfraPytestRunner:
             workers,
             eq=min(
                 policy.parallel_workers,
-                os.cpu_count() or 1,
+                20,
                 16 // policy.parallel_worker_memory_gb,
             ),
         )
