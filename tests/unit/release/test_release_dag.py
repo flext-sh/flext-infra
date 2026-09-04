@@ -124,6 +124,49 @@ class TestsFlextInfraReleaseDag:
             tm.that(build_log, has="release build toolchain mismatch")
             tm.that(build_log, has="packaging")
 
+    class TestsArchiveBoundary:
+        """Publishable archive content policy."""
+
+        @staticmethod
+        def test_package_data_may_carry_an_operational_looking_tree(
+            tmp_path: Path,
+        ) -> None:
+            """A `.github` tree inside the package is data, not repository operations.
+
+            flext-infra ships the fleet's `.github` workflow templates as package
+            data; only the archive root is an operational boundary.
+            """
+            project_name = "flext-a"
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+            )
+            project = workspace / project_name
+            templates = project / "src" / "flext_a" / "templates" / ".github"
+            templates.mkdir(parents=True)
+            (templates / "ci.yml.j2").write_text("name: CI\n", encoding="utf-8")
+            u.Tests.commit_git_changes(project, "package the workflow templates")
+
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--projects",
+                project_name,
+                "--apply",
+            )
+
+            build_log = u.Tests.release_build_log(
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+            ).read_text(encoding="utf-8")
+            tm.that(result, eq=0, msg=build_log)
+            wheel = next(
+                u.Tests.release_artifact_dir(
+                    workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+                ).glob("*.whl")
+            )
+            with zipfile.ZipFile(wheel) as archive:
+                tm.that(archive.namelist(), has="flext_a/templates/.github/ci.yml.j2")
+
     class TestsMetadata:
         """Publishable metadata policy behavior."""
 
