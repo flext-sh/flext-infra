@@ -39,6 +39,13 @@ def _dump_real_profile(path: Path) -> None:
     path.write_bytes(marshal.dumps(stats))
 
 
+def _sentinel_worker_budget(
+    _runner: FlextInfraPytestRunner, _policy: object
+) -> int:
+    """Return a value that cannot coincide with the shipped worker ceiling."""
+    return 7
+
+
 class TestsFlextInfraPytestRunner:
     @pytest.fixture(autouse=True)
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -157,14 +164,17 @@ class TestsFlextInfraPytestRunner:
         tm.that(workers, eq=expected)
 
     def test_full_command_uses_the_derived_worker_budget(
-        self, tmp_path: Path
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
-        policy = config.Infra.tooling.tools.pytest
-        workers = runner.parallel_worker_budget(policy)
+        monkeypatch.setattr(
+            FlextInfraPytestRunner,
+            "parallel_worker_budget",
+            _sentinel_worker_budget,
+        )
 
-        tm.that(runner.build_command(report_dir), has=("-n", str(workers)))
+        tm.that(runner.build_command(report_dir), has=("-n", "7"))
 
     def test_profile_requires_explicit_opt_in(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
