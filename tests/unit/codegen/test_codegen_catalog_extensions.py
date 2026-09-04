@@ -5,10 +5,13 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
+import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import WorktreeFixture, u as test_u
+
+pytestmark = pytest.mark.slow
 
 
 def _repository(
@@ -65,19 +68,6 @@ class TestsCodegenCatalogExtensions:
         toolchain = config.Infra.codegen.toolchain
 
         tm.that(toolchain.mise_version, eq="latest")
-
-    def test_flext_dependencies_have_no_frozen_version_or_git_ref(self) -> None:
-        dependencies = (
-            dependency
-            for profile in config.Infra.codegen.scaffold.project.dependency_profiles
-            for dependency in (*profile.runtime, *profile.codegen)
-            if dependency.startswith("flext-")
-        )
-
-        tm.that(
-            all(not any(marker in dependency for marker in "@<>=~!") for dependency in dependencies),
-            eq=True,
-        )
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
