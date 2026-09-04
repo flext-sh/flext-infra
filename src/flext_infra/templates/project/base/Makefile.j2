@@ -881,7 +881,7 @@ define _mise_toolchain_apply
 	for project in $(MISE_LOCK_PROJECTS); do \
 		case "$$project" in \
 			.) project_root="$(PROJECT_ROOT)"; stage_key=.root ;; \
-			/*|..|../*|*/../*|*/..|*[!A-Za-z0-9._/-]*) \
+			/*|..|..'/'*|*/..'/'*|*/..|*[!A-Za-z0-9._/-]*) \
 				printf 'ERROR: unsafe Mise project selector: %s\n' "$$project" >&2; exit 2 ;; \
 			*) project_root="$(PROJECT_ROOT)/$$project"; stage_key="$$project" ;; \
 		esac; \
