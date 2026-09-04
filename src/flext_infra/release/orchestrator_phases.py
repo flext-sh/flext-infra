@@ -105,7 +105,8 @@ class FlextInfraReleaseOrchestratorPhases(
             build_constraints_path=Path(policy.build_constraints_path),
             gitleaks_config_path=Path(policy.gitleaks_policy_path),
             version=(
-                ctx.version if path.resolve() == ctx.workspace_root.resolve()
+                ctx.version
+                if path.resolve() == ctx.workspace_root.resolve()
                 else versions[name]
             ),
             versions=versions,

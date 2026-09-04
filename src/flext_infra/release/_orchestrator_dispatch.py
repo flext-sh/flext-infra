@@ -231,7 +231,9 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         subjects = self._subjects(root, base_oid, merges_only=False)
         if subjects.failure:
             return r[bool].fail(subjects.error or "git log failed")
-        if any(u.Infra.is_release_subject(subject, version) for subject in subjects.value):
+        if any(
+            u.Infra.is_release_subject(subject, version) for subject in subjects.value
+        ):
             return r[bool].ok(True)
         release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
         return r[bool].fail(
@@ -272,7 +274,9 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self.logger.info("release_version_pull_request", version=plan.value.next)
         return r[bool].ok(True)
 
-    def _preflight_version(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
+    def _preflight_version(
+        self, root: Path, plan: m.Infra.ReleasePlan
+    ) -> p.Result[bool]:
         """Require a clean checkout on the integration branch and a free tag."""
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
         if status.failure:
@@ -306,7 +310,13 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         # continue the same lane, whether it already exists locally or only
         # on the remote, and never fail on "branch already exists".
         local = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--verify", "--quiet", f"refs/heads/{c.Infra.RELEASE_BRANCH}"],
+            [
+                c.Infra.GIT,
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                f"refs/heads/{c.Infra.RELEASE_BRANCH}",
+            ],
             cwd=root,
         )
         fetch = u.Cli.run_checked(
@@ -529,23 +539,36 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         """Return commit subjects reachable from HEAD since ``since`` (all when empty).
 
         Merge commits carry the pull-request titles the bump is derived from;
-        the full history is what the release commit is looked up in.
+        the full history is what the release commit is looked up in. GitHub's
+        default merge subject contains only the PR number and branch, so its
+        first body line is the authoritative PR title. Preserve the default
+        subject when that line is absent so release planning fails loud.
         """
         log = u.Cli.capture(
             [
                 c.Infra.GIT,
                 "log",
+                "--format=%s%x1f%b%x1e",
                 *(("--merges",) if merges_only else ()),
-                "--format=%s",
                 f"{since}..{c.Infra.GIT_HEAD}",
             ],
             cwd=root,
         )
         if log.failure:
             return r[t.StrSequence].fail(log.error or "merge log failed")
-        return r[t.StrSequence].ok(
-            tuple(line for line in log.value.splitlines() if line.strip())
-        )
+        titles: list[str] = []
+        for record in log.value.split("\x1e"):
+            if not record.strip():
+                continue
+            subject, _, body = record.strip().partition("\x1f")
+            if merges_only and c.Infra.PULL_REQUEST_MERGE_SUBJECT_RE.match(subject):
+                title = next(
+                    (line.strip() for line in body.splitlines() if line.strip()), ""
+                )
+                titles.append(title or subject)
+            else:
+                titles.append(subject)
+        return r[t.StrSequence].ok(tuple(titles))
 
 
 __all__: list[str] = ["FlextInfraReleaseOrchestratorDispatchMixin"]

@@ -1593,8 +1593,7 @@ class TestScriptDispatchMakefile:
         # flext-udpm5: continuous gen apply regenerates lazy inits after conform
         # and before the generated-docs write, so config drift never lands stale.
         tm.that(
-            gen_all_body,
-            has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply',
+            gen_all_body, has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply'
         )
         tm.that(
             gen_all_body.index("codegen conform")

@@ -924,7 +924,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return branch
 
         @staticmethod
-        def merge_pull_request(repo_root: Path, subject: str) -> None:
+        def merge_pull_request(
+            repo_root: Path, subject: str, *, body: str = ""
+        ) -> None:
             """Land one pull request the way GitHub does: a merge commit titled ``subject``."""
             branch = f"pr/{abs(hash(subject))}"
             current = tm.ok(
@@ -940,7 +942,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             tm.ok(run([c.Infra.GIT, "switch", current], cwd=repo_root))
             tm.ok(
                 run(
-                    [c.Infra.GIT, "merge", "--no-ff", "-m", subject, branch],
+                    [
+                        c.Infra.GIT,
+                        "merge",
+                        "--no-ff",
+                        "-m",
+                        subject,
+                        *(["-m", body] if body else []),
+                        branch,
+                    ],
                     cwd=repo_root,
                 )
             )

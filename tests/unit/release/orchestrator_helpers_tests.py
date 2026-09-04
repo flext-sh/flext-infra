@@ -207,7 +207,9 @@ class TestsFlextInfraReleaseHelpers:
             """Build each selected project once with strict modeled artifacts."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
 
             result = u.Tests.run_release_main(
@@ -249,12 +251,8 @@ class TestsFlextInfraReleaseHelpers:
             ).read_text(encoding="utf-8")
             # Siblings are pinned to the compatible range of the version their
             # own pyproject declares, never to this project's release version.
-            tm.that(
-                staged_metadata, has=f"flext-core~={c.Tests.RELEASE_VERSION_BASE}"
-            )
-            tm.that(
-                staged_metadata, has=f"flext-tests~={c.Tests.RELEASE_VERSION_BASE}"
-            )
+            tm.that(staged_metadata, has=f"flext-core~={c.Tests.RELEASE_VERSION_BASE}")
+            tm.that(staged_metadata, has=f"flext-tests~={c.Tests.RELEASE_VERSION_BASE}")
             tm.that(staged_metadata, lacks="git+")
             tm.that(staged_metadata, lacks="[tool.uv")
 
@@ -303,7 +301,9 @@ class TestsFlextInfraReleaseHelpers:
             """Fail on immutable collision without partial or temporary output."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             arguments = (
                 "--phase",
@@ -346,7 +346,9 @@ class TestsFlextInfraReleaseHelpers:
             """Reject a real Hatch build that emits a third output entry."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             pyproject = project / "pyproject.toml"

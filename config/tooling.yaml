@@ -140,6 +140,10 @@ Infra:
             - multi-line-summary-second-line
             - no-self-use
             - non-imperative-mood
+            # Autouse is the correct contract for suite-wide isolation guards:
+            # requiring every test to opt in would let live state leak whenever
+            # one consumer omitted the fixture.
+            - pytest-fixture-autouse
             - too-many-arguments
             - too-many-branches
             - too-many-locals

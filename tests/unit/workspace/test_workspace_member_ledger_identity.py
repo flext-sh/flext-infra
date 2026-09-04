@@ -55,9 +55,7 @@ class TestsWorkspaceMemberLedgerIdentity:
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member)
         )
-        tm.ok(
-            u.Cli.run_checked([c.Infra.GIT, "add", c.Infra.GITMODULES], cwd=parent)
-        )
+        tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", c.Infra.GITMODULES], cwd=parent))
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -72,29 +70,24 @@ class TestsWorkspaceMemberLedgerIdentity:
         )
         tm.ok(
             u.Cli.run_checked(
-                [c.Infra.GIT, "commit", "--quiet", "-m", "attach member"],
-                cwd=parent,
+                [c.Infra.GIT, "commit", "--quiet", "-m", "attach member"], cwd=parent
             )
         )
         return member, parent
 
-    def test_parent_does_not_load_member_local_manifest(
-        self, tmp_path: Path
-    ) -> None:
+    def test_parent_does_not_load_member_local_manifest(self, tmp_path: Path) -> None:
         """A parent observes member paths without parsing the member-local manifest."""
         member, parent = self._attach_member_to_workspace(tmp_path)
         member_manifest = member / "config/workspace.yaml"
         member_manifest.parent.mkdir(parents=True, exist_ok=True)
         member_manifest.write_text(
-            "version: parent-must-not-parse-member-manifest\n",
-            encoding="utf-8",
+            "version: parent-must-not-parse-member-manifest\n", encoding="utf-8"
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(parent))
 
         tm.that(
-            tuple(item.path for item in workspace.subprojects),
-            has=Path("apps/member"),
+            tuple(item.path for item in workspace.subprojects), has=Path("apps/member")
         )
 
     def test_submodule_self_load_accepts_an_independent_ledger(
@@ -135,8 +128,7 @@ class TestsWorkspaceMemberLedgerIdentity:
         tm.that(workspace.beads.workspace, eq="member-workspace")
 
     def test_submodule_self_load_rejects_a_divergent_linked_identity(
-        self,
-        tmp_path: Path,
+        self, tmp_path: Path
     ) -> None:
         """A linked member cannot self-authorize a second ledger."""
         member, _ = self._attach_member_to_workspace(tmp_path)

@@ -18,8 +18,7 @@ class FlextInfraUtilitiesRelease:
 
     @staticmethod
     def plan_bump(
-        subjects: t.StrSequence,
-        bump_types: Mapping[str, c.Infra.VersionBump],
+        subjects: t.StrSequence, bump_types: Mapping[str, c.Infra.VersionBump]
     ) -> p.Result[c.Infra.VersionBump]:
         """Derive the release bump from the merged pull-request subjects.
 
