@@ -410,11 +410,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def mise_version(self) -> str:
-            """Mise release selector."""
-            ...
-
-        @property
         def mise_lock_platforms(self) -> t.StrSequence:
             """Platforms materialized into the project mise lockfile."""
             ...
@@ -692,6 +687,45 @@ class FlextInfraProtocolsBase(Protocol):
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
         ) -> t.SequenceOf[m.Infra.CensusReport]:
             """Run census and return typed reports."""
+            ...
+
+    @runtime_checkable
+    class MiseArtifactsOwner(Protocol):
+        """Single public owner composed by private Mise transaction mechanics."""
+
+        workspace_root: Path
+
+        @classmethod
+        def validate_launchers(cls, root: Path) -> p.Result[bool]:
+            """Validate one generated launcher receipt."""
+            ...
+
+        @classmethod
+        def validate_seed(cls, path: Path) -> p.Result[str]:
+            """Validate one staged native launcher seed without executing it."""
+            ...
+
+        @classmethod
+        def launcher_release(cls, root: Path) -> p.Result[str]:
+            """Return the release embedded identically by both launchers."""
+            ...
+
+        @staticmethod
+        def is_mise_release(value: str | None) -> bool:
+            """Return whether a runtime identity is an exact Mise release."""
+            ...
+
+        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
+            """Hydrate missing checksums in one staged lock."""
+            ...
+
+        def validate_artifacts(
+            self,
+            project_root: Path,
+            *,
+            config_sources: tuple[m.Cli.AtomicFileState, ...],
+        ) -> p.Result[bool]:
+            """Validate one complete project artifact set."""
             ...
 
     @runtime_checkable

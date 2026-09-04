@@ -39,7 +39,6 @@ Infra:
       qlty_version: "0.642"
       # Moving selector is deliberate: setup must always provision the newest
       # Mise release instead of rejecting a newer binary than code generation.
-      mise_version: latest
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -158,29 +157,29 @@ Infra:
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
     ci_private_submodules:
       cosmos-main:
+        known_hosts: &github_ssh_known_hosts
+          - github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
         paths:
           - apps/cosmos-charts
           - apps/cosmos-gitops
         deploy_keys:
           - secret: CHARTS_DEPLOY_KEY
-            host_alias: github-charts
             submodule: cosmos-charts
             path: apps/cosmos-charts
-            ssh_url: git@github-charts:datacosmos-br/cosmos-charts.git
+            remote: git@github.com:datacosmos-br/cosmos-charts.git
           - secret: GITOPS_DEPLOY_KEY
-            host_alias: github.com
             submodule: cosmos-gitops
             path: apps/cosmos-gitops
-            ssh_url: git@github.com:datacosmos-br/cosmos-gitops.git
+            remote: git@github.com:datacosmos-br/cosmos-gitops.git
       invest:
+        known_hosts: *github_ssh_known_hosts
         paths:
           - neptor
         deploy_keys:
           - secret: NEPTOR_DEPLOY_KEY
-            host_alias: github-neptor
             submodule: neptor
             path: neptor
-            ssh_url: git@github-neptor:marlonsc/neptor.git
+            remote: git@github.com:marlonsc/neptor.git
 
     github_actions:
       checkout:

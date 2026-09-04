@@ -330,12 +330,6 @@ class FlextInfraConfigModels:
                 "is a declared tool"
             ),
         ]
-        mise_version: Annotated[
-            Literal["latest"],
-            _tool_version_field(
-                "Mandatory moving Mise selector; generated launchers carry the exact receipt"
-            ),
-        ]
         mise_lock_platforms: Annotated[
             tuple[
                 Literal[
@@ -555,10 +549,6 @@ class FlextInfraConfigModels:
                 description="GitHub Actions secret name holding the deploy key PEM"
             ),
         ]
-        host_alias: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="SSH Host alias written into ~/.ssh/config"),
-        ]
         submodule: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -568,12 +558,26 @@ class FlextInfraConfigModels:
         path: Annotated[
             t.NonEmptyStr, m.Field(description="Checkout-relative submodule path")
         ]
-        ssh_url: Annotated[
-            t.NonEmptyStr, m.Field(description="SSH clone URL using the Host alias")
+        remote: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^git@github\.com:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git$",
+                description="Canonical GitHub SSH clone URL without a Host alias",
+            ),
         ]
 
     class CiPrivateSubmodulesSpec(_ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
+
+        _KNOWN_HOSTS_FIELD_COUNT: ClassVar[int] = 3
+
+        known_hosts: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Pinned official SSH host-key lines used only in runner temp",
+            ),
+        ]
 
         paths: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -585,6 +589,33 @@ class FlextInfraConfigModels:
             tuple[FlextInfraConfigModels.CiPrivateSubmoduleDeployKeySpec, ...],
             m.Field(min_length=1, description="Ordered deploy-key materializations"),
         ]
+
+        @u.model_validator(mode="after")
+        def _validate_private_submodule_identity(self) -> Self:
+            """Keep path, key, and host identities complete and unambiguous."""
+            key_paths = tuple(key.path for key in self.deploy_keys)
+            if key_paths != self.paths:
+                msg = "private submodule deploy-key paths must exactly match paths"
+                raise ValueError(msg)
+            for field, values in (
+                ("secret", tuple(key.secret for key in self.deploy_keys)),
+                ("submodule", tuple(key.submodule for key in self.deploy_keys)),
+                ("remote", tuple(key.remote for key in self.deploy_keys)),
+                ("known_hosts", self.known_hosts),
+            ):
+                if len(set(values)) != len(values):
+                    msg = f"private submodule {field} values must be unique"
+                    raise ValueError(msg)
+            for line in self.known_hosts:
+                fields = line.split()
+                if (
+                    len(fields) != self._KNOWN_HOSTS_FIELD_COUNT
+                    or fields[0] != "github.com"
+                    or fields[1] != "ssh-ed25519"
+                ):
+                    msg = "private submodule known_hosts must pin github.com ssh-ed25519"
+                    raise ValueError(msg)
+            return self
 
     class GithubWorkflowRenderSpec(_ConfigContract):
         """Typed input consumed by generated GitHub workflow templates."""
@@ -1912,14 +1943,6 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="mise-owned uv version used by bootstrap validation"),
         ]
-        mise_version: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mise release selector used by generated launchers"),
-        ]
-        mise_lock_platforms: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(description="Platforms included in the generated mise lockfile"),
-        ]
         uv_exclude_newer: Annotated[
             t.NonEmptyStr,
             m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
@@ -2377,24 +2400,6 @@ class FlextInfraConfigModels:
         ]
         uv_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
-        ]
-        mise_version: Annotated[
-            t.NonEmptyStr, _tool_version_field("Exact mise bootstrap version")
-        ]
-        mise_lock_platforms: Annotated[
-            tuple[
-                Literal[
-                    "linux-x64",
-                    "linux-arm64",
-                    "linux-x64-musl",
-                    "linux-arm64-musl",
-                    "macos-x64",
-                    "macos-arm64",
-                    "windows-x64",
-                ],
-                ...,
-            ],
-            m.Field(description="Platforms owned by the generated mise lockfile"),
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
@@ -3417,6 +3422,17 @@ class FlextInfraConfigModels:
             m.Field(description="Read-only check or atomic apply"),
         ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
 
+    class CodegenArtifactComposition(_ConfigContract):
+        """Rendered artifact plus the exact source states used to compose it."""
+
+        rendered: Annotated[
+            str, m.Field(description="Fully composed managed-file content")
+        ]
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(description="Ordered immutable sources consumed by composition"),
+        ] = ()
+
     class CodegenFilePlan(_ConfigContract):
         """Expected content and current state for one managed file."""
 
@@ -3425,6 +3441,13 @@ class FlextInfraConfigModels:
         expected_sha256: Annotated[
             t.NonEmptyStr, m.Field(description="SHA-256 of expected content")
         ]
+        source_states: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(
+                exclude=True,
+                description="Exact source states that produced rendered content",
+            ),
+        ] = ()
         owner: Annotated[
             str,
             m.Field(description="Canonical artifact owner, empty for scaffold files"),

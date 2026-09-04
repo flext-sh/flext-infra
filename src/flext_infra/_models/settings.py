@@ -74,6 +74,17 @@ class FlextInfraSettingsModels:
                 description="GitHub Actions ref name for dependency sync.",
             ),
         ]
+        mise_github_credential_command: Annotated[
+            str | None,
+            m.Field(
+                default=None,
+                validation_alias="MISE_GITHUB_CREDENTIAL_COMMAND",
+                description=(
+                    "Credential command required only by selected Mise GitHub "
+                    "artifact publication"
+                ),
+            ),
+        ]
 
 
 __all__: list[str] = ["FlextInfraSettingsModels"]

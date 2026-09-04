@@ -50,6 +50,14 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
+    managed_artifacts: Annotated[
+        m.Infra.ProjectManagedArtifactsResolution | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Caller-owned project ManagedArtifacts resolution",
+        ),
+    ] = None
     tomlsort_sort_first: t.StrSequence = m.Field(
         default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
         exclude=True,
