@@ -74,6 +74,17 @@ class TestInfraGitIdentitySubmodules:
         identity = tm.ok(u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=plain)))
         tm.that(identity.has_submodules, eq=False)
 
+    def test_unborn_repository_returns_typed_failure(self, tmp_path: Path) -> None:
+        """Discovery can reject an initialized repository with no committed HEAD."""
+        unborn = tmp_path / "unborn"
+        unborn.mkdir()
+        tm.ok(u.Cli.run_checked(["git", "-C", str(unborn), "init", "--quiet"]))
+
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=unborn))
+
+        tm.that(identity.failure, eq=True)
+        tm.that(identity.error or "", has="Git repository has no committed HEAD")
+
     def test_submodule_checkout_is_not_a_superproject(self, tmp_path: Path) -> None:
         """The nested checkout is a submodule, and owns none of its own."""
         parent = self._superproject(tmp_path)

@@ -174,6 +174,18 @@ class FlextInfraUtilitiesVersioning:
         return r[t.Triple[int, int, int]].ok((major, minor, patch))
 
     @staticmethod
+    def version_is_newer(candidate: str, reference: str) -> p.Result[bool]:
+        """Whether ``candidate`` orders after ``reference`` under PEP 440.
+
+        Pre-release segments take part in the ordering: ``0.12.0`` is newer
+        than ``0.12.0rc2`` although both share the release triple.
+        """
+        try:
+            return r[bool].ok(Version(candidate) > Version(reference))
+        except InvalidVersion as exc:
+            return r[bool].fail(f"invalid version: {exc}")
+
+    @staticmethod
     def render_project_version(content: str, version: str) -> p.Result[str]:
         """Render one canonical project-version update without writing it."""
         version_result = FlextInfraUtilitiesVersioning.parse_semver(version)
@@ -210,7 +222,15 @@ class FlextInfraUtilitiesVersioning:
         )
         if rendered.failure:
             return r[bool].fail(f"{rendered.error} in {pyproject}")
-        return u.Cli.atomic_write_text_file(pyproject, rendered.value)
+        written = u.Cli.atomic_write_text_file(pyproject, rendered.value)
+        if written.failure:
+            return written
+        # Why: flext-core caches the parsed pyproject per process. This is the
+        # protocol's only writer of the version, and the docs projections
+        # rendered right after the stamp must see the stamped version, not
+        # the document read before it (flext-cli#129 drifted that way).
+        u.read_project_document_cached.cache_clear()
+        return written
 
 
 __all__: list[str] = ["FlextInfraUtilitiesVersioning"]

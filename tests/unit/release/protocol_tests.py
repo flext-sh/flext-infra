@@ -106,6 +106,58 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(plan.releasable, eq=True)
 
         @staticmethod
+        def test_final_version_is_ahead_of_its_own_prerelease_tag(tmp_path: Path) -> None:
+            """A final version whose last tag is one of its pre-releases ships as declared.
+
+            The release triple is shared, so only a comparison that keeps the
+            pre-release segment sees that ``0.1.0`` follows ``v0.1.0rc2``.
+            """
+            workspace = u.Tests.create_release_workspace(tmp_path)
+            u.Tests.checkout_integration(workspace)
+            _tag(workspace, "v0.1.0rc2")
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge pull request #4 from legacy/lane"],
+                    cwd=workspace,
+                )
+            )
+            tm.ok(cli.run_checked([c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace))
+
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            plan = _plan(workspace)
+            tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_BASE)
+            tm.that(plan.previous_tag, eq="v0.1.0rc2")
+            tm.that(plan.releasable, eq=True)
+
+        @staticmethod
+        def test_declared_version_ahead_of_the_last_tag_is_the_next_release(
+            tmp_path: Path,
+        ) -> None:
+            """A version declared beyond the last tag was decided before the protocol.
+
+            It ships as declared; the titles merged since the tag (including
+            GitHub's default merge subjects) are not consulted.
+            """
+            workspace = _released_workspace(tmp_path)
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge pull request #3 from legacy/lane"],
+                    cwd=workspace,
+                )
+            )
+            tm.ok(u.Infra.replace_project_version(workspace, "0.2.0"))
+            tm.ok(cli.run_checked([c.Infra.GIT, "commit", "-am", "chore: baseline 0.2.0"], cwd=workspace))
+            # The fixture's origin is the repository itself: refresh the remote
+            # ref so the integration base carries the declared version.
+            tm.ok(cli.run_checked([c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace))
+
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            plan = _plan(workspace)
+            tm.that(plan.next, eq="0.2.0")
+            tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
+            tm.that(plan.releasable, eq=True)
+
+        @staticmethod
         def test_pull_request_titles_decide_the_bump(tmp_path: Path) -> None:
             """The most significant Conventional title since the last tag wins."""
             workspace = _released_workspace(tmp_path)
@@ -274,6 +326,9 @@ class TestsFlextInfraReleaseProtocol:
                 "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
             )
             integration = u.Tests.integration_branch(workspace)
+            # flext-core caches the parsed pyproject per process; a warm cache
+            # holding the pre-stamp document must not leak into the projections.
+            tm.ok(u.read_project_metadata(workspace))
 
             result = u.Tests.run_release_main(
                 workspace, "--phase", "version", "--apply"
@@ -304,7 +359,8 @@ class TestsFlextInfraReleaseProtocol:
             )
             tm.that(
                 (workspace / "docs" / "index.md").read_text(encoding="utf-8"),
-                has=f"`{c.Tests.RELEASE_VERSION_BASE}`",
+                has=f"- Version: `{c.Tests.RELEASE_VERSION_BASE}`",
+                lacks=c.Tests.RELEASE_VERSION_PRERELEASE,
             )
             tm.that(
                 u.Infra.git_status(

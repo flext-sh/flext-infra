@@ -345,17 +345,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         windows_source = u.Cli.files_read_text(windows_path)
         if shell_source.failure or windows_source.failure:
             return r[bool].fail("missing generated Mise launcher")
-        declared_selector = config.Infra.codegen.toolchain.mise_version
         shell_version = cls._shell_launcher_version(shell_source.value)
         windows_version = cls._assignment(windows_source.value, "pinned_version")
-        if (
-            not cls._is_mise_release(shell_version)
-            or shell_version != windows_version
-            or (
-                declared_selector != "latest"
-                and shell_version != declared_selector.removeprefix("v")
-            )
-        ):
+        if not cls._is_mise_release(shell_version) or shell_version != windows_version:
             return r[bool].fail("Mise launcher version drift")
         try:
             shell_mode = shell_path.stat().st_mode
@@ -368,14 +360,30 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             "checksum_linux_x86_64_musl",
             "checksum_linux_arm64",
             "checksum_linux_arm64_musl",
+            "checksum_linux_armv7",
+            "checksum_linux_armv7_musl",
             "checksum_macos_x86_64",
             "checksum_macos_arm64",
+            "checksum_linux_x86_64_zstd",
+            "checksum_linux_x86_64_musl_zstd",
+            "checksum_linux_arm64_zstd",
+            "checksum_linux_arm64_musl_zstd",
+            "checksum_linux_armv7_zstd",
+            "checksum_linux_armv7_musl_zstd",
+            "checksum_macos_x86_64_zstd",
+            "checksum_macos_arm64_zstd",
         )
         for checksum_name in shell_checksums:
             if not cls._is_sha256(cls._assignment(shell_source.value, checksum_name)):
                 return r[bool].fail(f"Mise launcher checksum missing: {checksum_name}")
-        if not cls._is_sha256(cls._assignment(windows_source.value, "sum_x64")):
-            return r[bool].fail("Mise launcher checksum missing: windows-x64")
+        windows_checksums = ("sum_x64", "sum_arm64")
+        for checksum_name in windows_checksums:
+            if not cls._is_sha256(
+                cls._assignment(windows_source.value, checksum_name)
+            ):
+                return r[bool].fail(
+                    f"Mise launcher checksum missing: windows-{checksum_name.removeprefix('sum_')}"
+                )
         return r[bool].ok(True)
 
     def _member_project_root(self) -> p.Result[Path]:

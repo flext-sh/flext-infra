@@ -38,12 +38,6 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-{% if mise_version != "latest" %}        with:
-          version: {{ mise_version }}
-{% endif %}
-
       - name: Sync workspace toolchain
         run: make setup
 
@@ -110,12 +104,6 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
-
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-{% if mise_version != "latest" %}        with:
-          version: {{ mise_version }}
-{% endif %}
 
       - name: Sync workspace toolchain
         run: make setup

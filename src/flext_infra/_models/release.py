@@ -134,6 +134,17 @@ class FlextInfraModelsRelease:
             tuple[str, ...],
             m.Field(default=(), description="Merged PR subjects since previous_tag"),
         ] = ()
+        declared: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "``next`` is the declared version itself (first release, "
+                    "finalized pre-release, or a version written beyond the last "
+                    "tag): decided when it was written, still untagged"
+                ),
+            ),
+        ] = False
 
         @m.computed_field
         @property
@@ -144,8 +155,8 @@ class FlextInfraModelsRelease:
         @m.computed_field
         @property
         def releasable(self) -> bool:
-            """Whether a release commit is due: first release, or a real bump."""
-            return self.previous_tag is None or self.next != self.current
+            """Whether a release commit is due: a declared release, or a real bump."""
+            return self.declared or self.next != self.current
 
     class BuildReport(m.StrictBoundaryModel):
         """Aggregated build report payload written to JSON."""

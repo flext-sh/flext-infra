@@ -484,6 +484,11 @@ class TestsCodegenMakeEnvironment:
 
         for required in (
             "UV ?= uv",
+            "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
+            "SETUP_BOOTSTRAP_ONLY := Y",
+            'if [ -n "$${GITHUB_PATH:-}" ]; then',
+            'managed_path=$$(MISE_CONFIG_DIR="$$config_dir"',
+            "for bin_dir in $$managed_path; do",
             '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --frozen --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',
