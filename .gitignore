@@ -314,6 +314,7 @@ CLAUDE.local.md
 !.github/scripts/check-cqrs-compliance.sh
 !.github/scripts/flext-law-loop.sh
 !.github/scripts/install-git-hooks.sh
+!.github/scripts/gate-attestation.sh
 !tests/fixtures/
 !tests/fixtures/ci/
 !tests/fixtures/ci/docker/
@@ -325,6 +326,7 @@ CLAUDE.local.md
 !.github/workflows/
 !.github/workflows/ci-matrix.yml
 !.github/workflows/ci.yml
+!.github/workflows/gate-attestation.yml
 !.github/workflows/docs.yml
 !.github/workflows/release.yml
 !sgconfig.yml
