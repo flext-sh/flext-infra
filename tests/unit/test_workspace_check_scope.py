@@ -33,11 +33,11 @@ class TestsFlextInfraWorkspaceCheckScope:
         tm.that(
             template,
             has=(
-                "WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} "
-                "{{ subproject }}{% endfor %}"
+                "DECLARED_REPOSITORIES :={% for declared_repository in declared_repositories %} "
+                "{{ declared_repository }}{% endfor %}"
             ),
         )
-        tm.that(template, has="ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)")
+        tm.that(template, has="ALLOWED_PROJECTS := . $(DECLARED_REPOSITORIES)")
         tm.that(template, has="override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)")
         tm.that(template, has="$(WORKSPACE_ORCHESTRATE) --verb check")
         tm.that(template, has='--make-arg "CHECK_GATES=$$gates"')

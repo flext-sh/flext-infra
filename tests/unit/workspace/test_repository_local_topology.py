@@ -159,7 +159,7 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.repository.name, eq="child")
         tm.that(workspace.name, eq="child-workspace")
         tm.that(workspace.beads.workspace, eq="child-workspace")
-        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.declared_repositories, empty=True)
         tm.that(resolved, eq=child.resolve())
 
     def test_submodule_self_load_preserves_its_checkout_relationship(
@@ -219,7 +219,7 @@ class TestsRepositoryLocalTopology:
         tm.that(workspace.repository.path, eq=Path())
         tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
 
-    def test_workspace_preserves_distinct_subproject_identities(
+    def test_workspace_preserves_distinct_declared_repository_identities(
         self, tmp_path: Path
     ) -> None:
         """Accept local child identities without copying the root identity."""
@@ -248,7 +248,9 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(project.path.as_posix() for project in workspace.subprojects),
+            tuple(
+                project.path.as_posix() for project in workspace.declared_repositories
+            ),
             eq=tuple(identities),
         )
         tm.that(workspace.beads.workspace, eq="root-workspace")
@@ -293,7 +295,9 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(project.path.as_posix() for project in workspace.subprojects),
+            tuple(
+                project.path.as_posix() for project in workspace.declared_repositories
+            ),
             eq=(python_project,),
         )
         tm.that(workspace.external_dependency_paths, eq=(Path(service_project),))
@@ -334,7 +338,7 @@ class TestsRepositoryLocalTopology:
     def test_gitmodule_requires_complete_contract(
         self, tmp_path: Path, missing_key: str, expected_error: str
     ) -> None:
-        """Reject a subproject entry without its exact URL or branch."""
+        """Reject a declared_repository entry without its exact URL or branch."""
         root = tmp_path / missing_key
         WorktreeFixture.initialize_governed_project(
             root,
@@ -445,7 +449,7 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="governed subproject checkout is missing")
+        tm.fail(result, has="governed declared_repository checkout is missing")
 
     def test_uninitialized_gitlink_does_not_borrow_parent_origin(
         self, tmp_path: Path
@@ -480,7 +484,7 @@ class TestsRepositoryLocalTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.declared_repositories, empty=True)
         tm.that(workspace.external_dependency_paths, eq=(child_path,))
 
     def test_gitmodule_rejects_provider_branch_divergence(self, tmp_path: Path) -> None:
@@ -531,7 +535,7 @@ class TestsRepositoryLocalTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.subprojects, empty=True)
+        tm.that(workspace.declared_repositories, empty=True)
         tm.that(workspace.external_dependency_paths, eq=(Path("external-fork"),))
 
     def test_gitmodule_accepts_the_published_integration_branch(
@@ -584,7 +588,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            [item.path.as_posix() for item in workspace.subprojects],
+            [item.path.as_posix() for item in workspace.declared_repositories],
             eq=["fixture-child"],
         )
 
@@ -617,12 +621,14 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="subproject origin differs from its .gitmodules URL")
+        tm.fail(
+            result, has="declared_repository origin differs from its .gitmodules URL"
+        )
 
     def test_gitmodule_rejects_unknown_provider_without_raw_url(
         self, tmp_path: Path
     ) -> None:
-        """Reject unknown subproject ownership before inspecting its checkout."""
+        """Reject unknown declared_repository ownership before inspecting its checkout."""
         root = tmp_path / "unknown-provider"
         WorktreeFixture.initialize_governed_project(
             root,

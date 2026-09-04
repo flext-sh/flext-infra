@@ -111,7 +111,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
-                    description="Typings paths used in subproject configs.",
+                    description="Typings paths used in declared_repository configs.",
                 ),
             ]
             ignored_diagnostic_globs: Annotated[
@@ -239,7 +239,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
-                    description="Typings paths used in subproject configs.",
+                    description="Typings paths used in declared_repository configs.",
                 ),
             ]
             env_dirs: Annotated[
@@ -267,7 +267,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="project-shared-search-paths",
-                    description="Additional shared workspace paths for subproject pyrefly search-path.",
+                    description="Additional shared workspace paths for declared_repository pyrefly search-path.",
                 ),
             ]
 

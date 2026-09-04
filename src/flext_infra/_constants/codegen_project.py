@@ -33,7 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        SUBPROJECTS = "subprojects"
+        DECLARED = "declared_repositories"
         ALL = "all"
 
     @unique

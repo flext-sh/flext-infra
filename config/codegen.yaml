@@ -100,11 +100,11 @@ Infra:
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
     # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through the override map.
+    # really exercise their declared_repositories in CI opt in through the override map.
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
-    # Per-distribution private workspace member auth for CI. The default
+    # Per-distribution private declared repository auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
@@ -1416,7 +1416,7 @@ Infra:
         # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
         # provider surfaces as real local files via generate-workspace-config
         # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
-        # repo-server refuse the repository, so subprojects must not track them.
+        # repo-server refuse the repository, so declared_repositories must not track them.
         - name: "BLOCK: Agent surface outside the repository root"
           profiles: [standalone]
           patterns:

@@ -717,7 +717,7 @@ class TestCodegenConform:
             beads=u.Tests.beads_project("flext"),
             repository=root_repository,
             project=u.Tests.project_spec("flext"),
-            subprojects=(member,),
+            declared_repositories=(member,),
         )
         root = tmp_path / "flext"
         request = m.Infra.CodegenConformRequest(
@@ -1189,7 +1189,7 @@ class TestScriptDispatchMakefile:
             beads=u.Tests.beads_project("demo-root"),
             repository=root_repository,
             project=u.Tests.project_spec("demo-root"),
-            subprojects=(),
+            declared_repositories=(),
         )
         root = tmp_path / "demo-root"
         request = m.Infra.CodegenConformRequest(

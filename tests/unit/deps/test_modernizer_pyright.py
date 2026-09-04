@@ -137,7 +137,7 @@ class TestsFlextInfraDepsModernizerPyright:
             ],
         )
 
-    def test_subproject_config_sets_expected_execution_environments(
+    def test_declared_repository_config_sets_expected_execution_environments(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Render every configured standalone analyzer environment."""

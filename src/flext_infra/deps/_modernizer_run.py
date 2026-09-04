@@ -77,32 +77,32 @@ class FlextInfraPyprojectModernizerRunMixin:
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
         # Modernization writes only the requested repository root and its
-        # declared subprojects, never siblings.
+        # declared declared_repositories, never siblings.
         include_root = not project_names or "." in project_names
         selected_names = (
             [name for name in project_names if name != "."]
             if project_names
             else list(u.Infra.workspace_project_paths(self.root))
         )
-        configured_subproject_paths = {
-            subproject_name: self.root / subproject_name
-            for subproject_name in u.Infra.workspace_project_paths(self.root)
+        configured_declared_paths = {
+            declared_repository_name: self.root / declared_repository_name
+            for declared_repository_name in u.Infra.workspace_project_paths(self.root)
         }
         resolved_root = self.root.resolve()
-        outside_subproject_names = [
-            subproject_name
-            for subproject_name, subproject_path in configured_subproject_paths.items()
-            if not subproject_path.resolve().is_relative_to(resolved_root)
+        outside_declared_repository_names = [
+            declared_repository_name
+            for declared_repository_name, declared_path in configured_declared_paths.items()
+            if not declared_path.resolve().is_relative_to(resolved_root)
         ]
-        if outside_subproject_names:
+        if outside_declared_repository_names:
             u.Cli.error(
-                "workspace subprojects outside root: "
-                f"{', '.join(sorted(outside_subproject_names))}"
+                "workspace declared_repositories outside root: "
+                f"{', '.join(sorted(outside_declared_repository_names))}"
             )
             return 2
         basename_aliases: dict[str, list[Path]] = {}
         declared_name_aliases: dict[str, list[Path]] = {}
-        for configured_path in configured_subproject_paths.values():
+        for configured_path in configured_declared_paths.values():
             basename_aliases.setdefault(configured_path.name, []).append(
                 configured_path
             )
@@ -123,7 +123,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         missing_names: t.MutableSequenceOf[str] = []
         ambiguous_names: t.MutableSequenceOf[str] = []
         for project_name in selected_names:
-            project_path = configured_subproject_paths.get(project_name)
+            project_path = configured_declared_paths.get(project_name)
             if project_path is None:
                 alias_matches: t.MutableSequenceOf[Path] = []
                 for alias_path in (

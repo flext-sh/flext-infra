@@ -127,18 +127,18 @@ class FlextInfraWorkspaceDetector(
 
     @staticmethod
     def _gitmodule_contract(
-        repository_root: Path, subproject_path: Path
+        repository_root: Path, declared_path: Path
     ) -> p.Result[tuple[str, str]]:
         """Read one exact URL/branch pair from the local ``.gitmodules``."""
         contract = u.Infra.gitmodule_contract(
             m.Infra.GitSubmoduleContractRequest(
-                repo_root=repository_root, member_path=subproject_path.as_posix()
+                repo_root=repository_root, member_path=declared_path.as_posix()
             )
         )
         if contract.failure:
             return r[tuple[str, str]].fail(
                 contract.error
-                or f"invalid .gitmodules entry: {subproject_path.as_posix()}"
+                or f"invalid .gitmodules entry: {declared_path.as_posix()}"
             )
         return r[tuple[str, str]].ok((contract.value.url, contract.value.branch))
 
@@ -164,7 +164,7 @@ class FlextInfraWorkspaceDetector(
             origin.value
         ) != u.Infra.git_remote_identity(declared_url):
             return r[m.Infra.RepositoryRef].fail(
-                f"subproject origin differs from its .gitmodules URL: {path.as_posix()}"
+                f"declared_repository origin differs from its .gitmodules URL: {path.as_posix()}"
             )
         effective_url = declared_url or origin.value
         provider_result = cls._provider_for_url(effective_url)
@@ -197,7 +197,7 @@ class FlextInfraWorkspaceDetector(
         return r[m.Infra.RepositoryRef].ok(repository)
 
     @classmethod
-    def _load_subprojects(
+    def _load_declared_repositories(
         cls, repository_root: Path
     ) -> p.Result[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]:
         """Validate every direct governed .gitmodules entry before planning writes."""
@@ -207,7 +207,7 @@ class FlextInfraWorkspaceDetector(
             return result_type.fail(
                 declared.error or "unable to read local .gitmodules"
             )
-        subprojects: list[m.Infra.RepositoryRef] = []
+        declared_repositories: list[m.Infra.RepositoryRef] = []
         external: list[Path] = []
         seen: set[Path] = set()
         baseline = u.Infra.repository_baseline_branch(repository_root)
@@ -218,7 +218,7 @@ class FlextInfraWorkspaceDetector(
                     f"duplicate .gitmodules path: {path.as_posix()}"
                 )
             seen.add(path)
-            loaded = cls._load_subproject(
+            loaded = cls._load_declared_repository(
                 repository_root, path, integration_branch=integration_branch
             )
             if loaded.failure:
@@ -226,11 +226,11 @@ class FlextInfraWorkspaceDetector(
             if isinstance(loaded.value, Path):
                 external.append(loaded.value)
                 continue
-            subprojects.append(loaded.value)
-        return result_type.ok((tuple(subprojects), tuple(external)))
+            declared_repositories.append(loaded.value)
+        return result_type.ok((tuple(declared_repositories), tuple(external)))
 
     @classmethod
-    def _load_subproject(
+    def _load_declared_repository(
         cls, repository_root: Path, path: Path, *, integration_branch: str | None = None
     ) -> p.Result[m.Infra.RepositoryRef | Path]:
         """Load one governed entry, or its declared path for external entries.
@@ -240,7 +240,7 @@ class FlextInfraWorkspaceDetector(
         fork checkout the workspace never governs: it classifies as an
         external dependency without provider or branch policy validation,
         the same contract lane provisioning already applies. Governed
-        subprojects must resolve to a declared provider and integrate on the
+        declared_repositories must resolve to a declared provider and integrate on the
         provider line or on the repository's published integration branch.
         """
         result_type = r[m.Infra.RepositoryRef | Path]
@@ -280,25 +280,25 @@ class FlextInfraWorkspaceDetector(
             integration_branch=integration_branch,
         ):
             return result_type.fail(
-                "governed subproject branch differs from provider policy: "
+                "governed declared_repository branch differs from provider policy: "
                 f"{path.as_posix()}"
             )
-        subproject_root = (repository_root / path).resolve()
-        if not subproject_root.is_relative_to(repository_root):
+        declared_repository_root = (repository_root / path).resolve()
+        if not declared_repository_root.is_relative_to(repository_root):
             return result_type.fail(
-                f"subproject escapes repository root: {path.as_posix()}"
+                f"declared_repository escapes repository root: {path.as_posix()}"
             )
-        if not subproject_root.is_dir():
+        if not declared_repository_root.is_dir():
             return result_type.fail(
-                f"governed subproject checkout is missing: {path.as_posix()}"
+                f"governed declared_repository checkout is missing: {path.as_posix()}"
             )
-        if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
+        if not (declared_repository_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return result_type.ok(path)
-        beads = cls.load_beads_spec(subproject_root)
+        beads = cls.load_beads_spec(declared_repository_root)
         if beads.failure:
             return result_type.fail(beads.error)
         repository = cls._local_repository_ref(
-            subproject_root,
+            declared_repository_root,
             path=path,
             checkout=c.Infra.CheckoutKind.SUBMODULE,
             declared_url=declared_url,
@@ -324,16 +324,16 @@ class FlextInfraWorkspaceDetector(
         repository = cls._local_repository_ref(resolved_root)
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
-        topology = cls._load_subprojects(resolved_root)
+        topology = cls._load_declared_repositories(resolved_root)
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
-        subprojects, external = topology.value
+        declared_repositories, external = topology.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=beads.value.workspace,
                 beads=beads.value,
                 repository=repository.value,
-                subprojects=subprojects,
+                declared_repositories=declared_repositories,
                 external_dependency_paths=external,
             )
         )

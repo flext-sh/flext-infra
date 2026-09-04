@@ -60,7 +60,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         discovered_dirs = [
             directory
             for directory in self._dirs_with_py(
-                project_dir, (*c.Infra.CHECK_DIRS_SUBPROJECT, c.Infra.DIR_TESTS)
+                project_dir, (*c.Infra.CHECK_DIRS_REPOSITORY, c.Infra.DIR_TESTS)
             )
             if self._has_real_module(project_dir / directory)
             and (exclude is None or not exclude.match(f"{directory}/"))

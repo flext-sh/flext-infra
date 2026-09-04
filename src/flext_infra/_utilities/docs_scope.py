@@ -96,7 +96,7 @@ class FlextInfraUtilitiesDocsScope:
         ):
             root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
                 resolved_repository_root,
-                workspace_subprojects=FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(
+                declared_repositories=FlextInfraUtilitiesDocsScope._declared_repository_path_set(
                     resolved_repository_root
                 ),
             )
@@ -134,8 +134,8 @@ class FlextInfraUtilitiesDocsScope:
         return FlextInfraUtilitiesPyproject.project_name_from_payload(entry, payload)
 
     @staticmethod
-    def _workspace_subproject_path_set(repository_root: Path) -> frozenset[Path]:
-        """Return resolved subprojects declared by this root's ``.gitmodules``."""
+    def _declared_repository_path_set(repository_root: Path) -> frozenset[Path]:
+        """Return resolved declared_repositories declared by this root's ``.gitmodules``."""
         resolved_root = repository_root.resolve()
         return frozenset(
             (resolved_root / path).resolve()
@@ -146,7 +146,7 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def _project_info_for_entry(
-        entry: Path, *, workspace_subprojects: frozenset[Path]
+        entry: Path, *, declared_repositories: frozenset[Path]
     ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
         entry = entry.resolve()
@@ -166,27 +166,22 @@ class FlextInfraUtilitiesDocsScope:
         ):
             return None
         project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
-        is_workspace_subproject = entry in workspace_subprojects
+        is_declared = entry in declared_repositories
         enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
         has_src = (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
         has_tests = (entry / c.Infra.DIR_TESTS).is_dir()
         has_deps = bool(project_section.get("dependencies"))
-        if (
-            not is_workspace_subproject
-            and not has_src
-            and not has_tests
-            and not has_deps
-        ):
+        if not is_declared and not has_src and not has_tests and not has_deps:
             return None
-        # Topology role is proven by the checkout itself. Declared-subproject
+        # Topology role is proven by the checkout itself. Declared-declared_repository
         # is the aggregate's relationship to this path, not the repository's
         # own workspace/standalone classification.
         if (entry / c.Infra.GITMODULES).is_file():
-            workspace_role = c.Infra.WorkspaceProjectRole.WORKSPACE
+            workspace_role = c.Infra.WorkspaceMode.WORKSPACE
         else:
-            workspace_role = c.Infra.WorkspaceProjectRole.STANDALONE
+            workspace_role = c.Infra.WorkspaceMode.STANDALONE
         project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
             path=entry,
             name=project_state.project_name,
@@ -200,7 +195,7 @@ class FlextInfraUtilitiesDocsScope:
             ),
             package_name=project_state.package_name,
             workspace_role=workspace_role,
-            declared_subproject=is_workspace_subproject,
+            declared=is_declared,
         )
         return project_info
 
@@ -342,8 +337,8 @@ class FlextInfraUtilitiesDocsScope:
                 f"discovery failed: invalid repository root {repository_root}"
             )
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(repository_root)
-        workspace_subprojects = (
-            FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(repository_root)
+        declared_repositories = (
+            FlextInfraUtilitiesDocsScope._declared_repository_path_set(repository_root)
         )
         project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
             repository_root
@@ -359,7 +354,7 @@ class FlextInfraUtilitiesDocsScope:
             ):
                 continue
             project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
-                project_root, workspace_subprojects=workspace_subprojects
+                project_root, declared_repositories=declared_repositories
             )
             if project_info is None:
                 continue

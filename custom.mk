@@ -33,7 +33,7 @@ _custom_run_cprofile-report:
 # flext-0wuz: project-layout engine (SSOT in flext-infra/config/codegen.yaml).
 # Dry-run report by default; APPLY=Y executes the idempotent reorganization.
 # PROJECT=<name> scopes to one workspace project; otherwise the whole
-# workspace rooted at WORKSPACE_ROOT is planned/applied.
+# composition rooted at WORKSPACE_ROOT is planned/applied.
 _custom_build_layout:
 	@set -eu; \
 	apply=""; \

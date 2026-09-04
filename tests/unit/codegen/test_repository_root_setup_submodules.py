@@ -24,7 +24,7 @@ def _render_repository_root_makefile(tmp_path: Path) -> str:
         name="flext",
         repository=root_repository,
         project=test_u.Tests.project_spec("flext"),
-        subprojects=(project,),
+        declared_repositories=(project,),
     )
 
     root = tmp_path / "render-root"

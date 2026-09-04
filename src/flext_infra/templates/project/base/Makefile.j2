@@ -20,11 +20,11 @@ SHELL := /bin/sh
 PROJECT_NAME := {{ dist }}
 MAKE_PROFILE := {{ make_profile }}
 REPOSITORY_ROOT_REL := {{ repository_root_rel }}
-# === SECTION: workspace subprojects (managed) ===
-# Source: config:workspace_subprojects (list), config:workspace_repositories (list)
+# === SECTION: workspace declared_repositories (managed) ===
+# Source: config:declared_repositories (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
-WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
-MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
+DECLARED_REPOSITORIES :={% for declared_repository in declared_repositories %} {{ declared_repository }}{% endfor %}
+MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(DECLARED_REPOSITORIES){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
@@ -101,10 +101,10 @@ TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
 override SETUP_MISE := $(TRACKED_MISE)
 MISE_LOCK_PLATFORMS := {{ mise_lock_platforms | join(",") }}
-MISE_LOCK_PROJECTS := .{% if make_profile == "workspace" %}{% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}{% endif %}
+MISE_LOCK_PROJECTS := .{% if make_profile == "workspace" %}{% for declared_repository in declared_repositories %} {{ declared_repository }}{% endfor %}{% endif %}
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# make work targets a member checkout when PROJECT names a workspace member and
+# make work targets a member checkout when PROJECT names a declared repository and
 # WORKSPACE was not overridden on the command line. PROJECT alone used to keep
 # WORKSPACE at the repository root, so finish looked up lanes in the wrong git
 # primary and failed with "worktree branch is not registered".
@@ -300,11 +300,11 @@ BORROW_RUNTIME_VENV_RECIPE = set -eu; \
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
 # A repository root owns no local gate implementation: its verbs fan out to the
-# declared subprojects. Selecting the root (PROJECT=.) would make it orchestrate
-# itself forever; map `.` to WORKSPACE_SUBPROJECTS instead of failing closed mid-CI.
-DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS){% if make_profile != "workspace" %} .{% endif %}
+# declared declared_repositories. Selecting the root (PROJECT=.) would make it orchestrate
+# itself forever; map `.` to DECLARED_REPOSITORIES instead of failing closed mid-CI.
+DEFAULT_PROJECTS := $(DECLARED_REPOSITORIES){% if make_profile != "workspace" %} .{% endif %}
 {% if make_profile == "workspace" %}
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
+SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(DECLARED_REPOSITORIES),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
 {% else %}
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 {% endif %}
@@ -330,7 +330,7 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # surplus and uninstalls them, undoing the root's provisioning and leaving
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
-SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
+SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(DECLARED_REPOSITORIES)),1,))
 UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)

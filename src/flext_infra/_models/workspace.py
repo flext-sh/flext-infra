@@ -81,10 +81,9 @@ class FlextInfraModelsWorkspace:
             str, m.Field(description="Primary Python package name")
         ] = ""
         workspace_role: Annotated[
-            c.Infra.WorkspaceProjectRole,
-            m.Field(description="Repository-local topology role"),
-        ] = c.Infra.WorkspaceProjectRole.STANDALONE
-        declared_subproject: Annotated[
+            c.Infra.WorkspaceMode, m.Field(description="Repository-local topology role")
+        ] = c.Infra.WorkspaceMode.STANDALONE
+        declared: Annotated[
             bool,
             m.Field(description="Whether the aggregate workspace declares this path"),
         ] = False

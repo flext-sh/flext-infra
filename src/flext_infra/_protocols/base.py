@@ -241,7 +241,9 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def subprojects(self) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
+        def declared_repositories(
+            self,
+        ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Direct governed repositories declared by local .gitmodules."""
             ...
 

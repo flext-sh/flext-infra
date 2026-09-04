@@ -32,7 +32,7 @@ workspace validates each direct governed path declared by its own `.gitmodules`:
 - its own `config/beads.yaml` exists and validates.
 
 Subprojects keep independent Beads identities. A workspace never copies its
-identity into a subproject and never overwrites a subproject's source config.
+identity into a declared_repository and never overwrites a declared_repository's source config.
 External provider URLs remain read-only dependency paths.
 
 Missing, malformed, duplicate, escaping, or mismatched inputs fail before any
@@ -41,9 +41,9 @@ file write. Conformance does not generate, merge, reorder, fan out, or overwrite
 
 ## Selection and projections
 
-`codegen conform` accepts `self`, `subprojects`, and `all`. `self` always means
-the requested checkout. `subprojects` and `all` are valid only from a workspace
-whose own `.gitmodules` declares governed direct subprojects.
+`codegen conform` accepts `self`, `declared_repositories`, and `all`. `self` always means
+the requested checkout. `declared_repositories` and `all` are valid only from a workspace
+whose own `.gitmodules` declares governed direct declared_repositories.
 
 The generated `.beads/config.yaml` and `.beads/metadata.json` are projections of
 the selected repository's local Beads identity plus the fleet-owned Gas City
@@ -53,7 +53,7 @@ projection preserves project extensions first and appends the required Gas City
 baseline. Generation never starts, stops, initializes, probes, or mutates Dolt.
 
 The generated Makefile preserves the same boundary: workspace orchestration may
-fan out to direct local subprojects, while standalone repositories and linked
+fan out to direct local declared_repositories, while standalone repositories and linked
 worktrees own their runtime, environment, and writes locally.
 
 ## uv project boundaries
@@ -63,7 +63,7 @@ gitlink. Every generated `pyproject.toml` therefore declares
 `[tool.uv.workspace] members = []`: uv discovers that repository as its own
 project and writes its lock, environment, and distributions below that root.
 
-The composition root does not turn gitlinks into uv workspace members. It keeps
+The composition root does not turn gitlinks into uv declared repositorys. It keeps
 the same empty boundary and projects a local `{ path = ..., editable = true }`
 source only for an internal dependency actually declared by the root project or
 one of its dependency groups. The obsolete `workspace` dependency group and

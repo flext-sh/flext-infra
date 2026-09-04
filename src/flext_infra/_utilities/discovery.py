@@ -244,7 +244,7 @@ class FlextInfraUtilitiesDiscovery(
         roots that actually exist, which is the only set an analyzer accepts.
 
         A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace subprojects are Python directories
+        never a root of this one: workspace declared_repositories are Python directories
         too, and each is analyzed under its own local configuration.
         """
         discovered = cls.discover_python_dirs(project_dir)

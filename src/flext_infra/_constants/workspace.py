@@ -93,14 +93,6 @@ class FlextInfraConstantsWorkspace:
         WORKSPACE = "workspace"
         STANDALONE = "standalone"
 
-    @unique
-    class WorkspaceProjectRole(StrEnum):
-        """Relationship of one discovered project to an aggregate workspace."""
-
-        WORKSPACE = "workspace"
-        SUBPROJECT = "subproject"
-        STANDALONE = "standalone"
-
     EXTERNAL_WORKSPACE_SIBLING_PATTERNS: Final[t.StrSequence] = (
         ".ai-hub",
         "algar-*",

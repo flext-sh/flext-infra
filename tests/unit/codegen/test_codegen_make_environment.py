@@ -58,7 +58,7 @@ class TestsCodegenMakeEnvironment:
         )
         repository_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_subprojects = (
+        local_declared_repositories = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
@@ -68,7 +68,7 @@ class TestsCodegenMakeEnvironment:
             beads=test_u.Tests.beads_project("fixture-project"),
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
-            subprojects=local_subprojects,
+            declared_repositories=local_declared_repositories,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,

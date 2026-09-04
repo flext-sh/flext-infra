@@ -71,7 +71,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             beads=test_u.Tests.beads_project("flext"),
             name="probe-root",
             repository=test_u.Tests.repository_ref("probe-root"),
-            subprojects=tuple(
+            declared_repositories=tuple(
                 test_u.Tests.repository_ref(
                     Path(item).name,
                     path=Path(item),

@@ -361,16 +361,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             from a registry. Only the provider contract (generic policy) is
             read from config, which keeps the fixture valid for any provider.
 
-            A non-empty path denotes the root's view of one subproject. The
-            subproject still classifies itself as standalone; only its checkout
+            A non-empty path denotes the root's view of one declared_repository. The
+            declared_repository still classifies itself as standalone; only its checkout
             relationship is ``submodule``.
             """
             provider = TestsFlextInfraUtilities.Tests.provider()
             resolved_path = Path() if path is None else path
-            is_subproject = bool(resolved_path.parts)
+            is_declared_repository = bool(resolved_path.parts)
             resolved_role = role or (
                 c.Infra.RepositoryRole.STANDALONE
-                if is_subproject
+                if is_declared_repository
                 else c.Infra.RepositoryRole.WORKSPACE
             )
             return m.Infra.RepositoryRef(
@@ -382,12 +382,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 provider=provider.name,
                 checkout=(
                     c.Infra.CheckoutKind.SUBMODULE
-                    if is_subproject
+                    if is_declared_repository
                     else c.Infra.CheckoutKind.ROOT
                 ),
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=True,
-                editable=is_subproject,
+                editable=is_declared_repository,
                 read_only=False,
             )
 
@@ -1154,9 +1154,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             has_src: bool = True,
             project_class: str = "FlextTestProject",
             package_name: str = "test_project",
-            workspace_role: c.Infra.WorkspaceProjectRole = (
-                c.Infra.WorkspaceProjectRole.STANDALONE
-            ),
+            workspace_role: c.Infra.WorkspaceMode = (c.Infra.WorkspaceMode.STANDALONE),
         ) -> m.Infra.ProjectInfo:
             """Provide the typed test helper `create_project_info`."""
             return m.Infra.ProjectInfo(

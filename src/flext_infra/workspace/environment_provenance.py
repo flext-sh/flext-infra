@@ -42,7 +42,7 @@ class FlextInfraWorkspaceEnvironmentProvenance:
             )
         repositories = tuple(
             repository
-            for repository in workspace_result.value.subprojects
+            for repository in workspace_result.value.declared_repositories
             if repository.package and repository.editable
         )
         validated = 0

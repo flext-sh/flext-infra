@@ -143,7 +143,7 @@ class TestsCodegenCatalogExtensions:
             beads=test_u.Tests.beads_project(root.name),
             repository=root,
             project=test_u.Tests.project_spec(root.name),
-            subprojects=(member,),
+            declared_repositories=(member,),
         )
         provider = test_u.Tests.provider()
         member_source = tmp_path / "member-source"
@@ -273,7 +273,7 @@ class TestsCodegenCatalogExtensions:
             for file in plan.files
             if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
-        tm.that(root_makefile.rendered, has=f"WORKSPACE_SUBPROJECTS := {member.name}")
+        tm.that(root_makefile.rendered, has=f"DECLARED_REPOSITORIES := {member.name}")
         tm.that(
             any(file.path.name == c.Infra.GITMODULES for file in plan.files), eq=False
         )

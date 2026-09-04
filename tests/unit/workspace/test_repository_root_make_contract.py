@@ -18,11 +18,11 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     repository_root = tmp_path / "workspace"
     repository_root.mkdir()
     root_repository = u.Tests.repository_ref("fixture-workspace")
-    subprojects = tuple(
+    declared_repositories = tuple(
         u.Tests.repository_ref(name, path=Path(name))
         for name in ("fixture-member-one", "fixture-member-two")
     )
-    project_names = tuple(project.path.as_posix() for project in subprojects)
+    project_names = tuple(project.path.as_posix() for project in declared_repositories)
     root_package = (
         repository_root / "src" / root_repository.distribution.replace("-", "_")
     )
@@ -177,7 +177,7 @@ class TestsRepositoryRootMakeContract:
         self, tmp_path: Path
     ) -> None:
         """The public fix verb fans out mutation authority to every member."""
-        repository_root, _project_names = _write_workspace(tmp_path)
+        repository_root, project_names = _write_workspace(tmp_path)
 
         process: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
@@ -234,7 +234,7 @@ class TestsRepositoryRootMakeContract:
         """A FILE selection rides the orchestration to the declared members.
 
         The repository root owns no local gate implementation: its verbs fan
-        out to the subprojects, so a FILE selector is forwarded through
+        out to the declared_repositories, so a FILE selector is forwarded through
         REPOSITORY_ROOT_TEST_ARGS instead of being executed at the root.
         """
         repository_root, project_names = _write_workspace(tmp_path)
