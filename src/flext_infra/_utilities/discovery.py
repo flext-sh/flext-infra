@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, r, t
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
@@ -341,10 +342,25 @@ class FlextInfraUtilitiesDiscovery(
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
-        for candidate in (execution_dir, *execution_dir.parents):
-            if (candidate / c.Infra.GITMODULES).is_file():
-                return candidate.resolve()
         project_root = cls.project_root(resolved_root)
+        for candidate in (execution_dir, *execution_dir.parents):
+            if not (candidate / c.Infra.GITMODULES).is_file():
+                continue
+            declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(candidate)
+            if declared.failure:
+                raise ValueError(declared.error or "invalid .gitmodules")
+            candidate_root = candidate.resolve()
+            declared_roots = tuple(
+                (candidate_root / relative).resolve() for relative in declared.value
+            )
+            if candidate_root == execution_dir or (
+                any(
+                    execution_dir == declared_root
+                    or declared_root in execution_dir.parents
+                    for declared_root in declared_roots
+                )
+            ):
+                return candidate_root
         if project_root is not None and (
             (project_root / c.Infra.PYPROJECT_FILENAME).is_file()
             or (project_root / c.Infra.GIT_DIR).exists()

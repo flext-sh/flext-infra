@@ -139,6 +139,7 @@ def modernizer_workspace(tmp_path: Path) -> Path:
     (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
         _modernizer_workspace_pyproject(), encoding="utf-8"
     )
+    u.Tests.write_project_beads_config(workspace, "workspace")
     return workspace
 
 

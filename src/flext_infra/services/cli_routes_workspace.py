@@ -33,6 +33,21 @@ class WorkspaceRoutes(RefactorRoutes):
             python=params.python,
         ).map(CliRouteBase.as_route_value)
 
+    @staticmethod
+    def _sync_environment(
+        params: m.Infra.WorkspaceEnvironmentSyncCliRequest,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Translate the CLI-safe request into the internal domain request."""
+        request = m.Infra.WorkspaceEnvironmentSyncRequest(
+            workspace_root=params.workspace_root,
+            apply=params.apply,
+            force=params.force,
+            allow_direnv=params.allow_direnv,
+        )
+        return FlextInfraWorkspaceEnvironmentSync.execute_request(request).map(
+            CliRouteBase.as_route_value
+        )
+
     workspace_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_REFACTOR: RefactorRoutes.refactor_routes,
         c.Infra.CLI_GROUP_RELEASE: (
@@ -90,10 +105,8 @@ class WorkspaceRoutes(RefactorRoutes):
                     (
                         "sync-environment",
                         "Sync generated direnv/mise environment files",
-                        m.Infra.WorkspaceEnvironmentSyncRequest,
-                        CliRouteBase.result_handler(
-                            FlextInfraWorkspaceEnvironmentSync.execute_request
-                        ),
+                        m.Infra.WorkspaceEnvironmentSyncCliRequest,
+                        _sync_environment,
                     ),
                 )
             ),

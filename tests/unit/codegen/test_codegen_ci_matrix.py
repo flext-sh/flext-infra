@@ -121,6 +121,8 @@ class TestCodegenCiMatrix:
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
         tm.that(ci_job, has="permissions:\n      contents: read")
+        tm.that(jobs, has="merge-guard:")
+        tm.that(jobs, has="Block WIP/DRAFT merges")
 
     def test_blocking_ci_configures_git_auth_through_gh(self, tmp_path: Path) -> None:
         """Provider baseline fetches use the runner token through the gh owner."""
@@ -142,7 +144,7 @@ class TestCodegenCiMatrix:
         tm.that(workflow, has="run: gh auth setup-git")
         tm.that(
             workflow.index("run: gh auth setup-git")
-            < workflow.index("run: CI=Y make gen WHAT=apply APPLY=Y"),
+            < workflow.index("run: CI=Y make setup"),
             eq=True,
         )
 

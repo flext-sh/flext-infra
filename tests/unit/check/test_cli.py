@@ -27,18 +27,28 @@ class TestWorkspaceCheckCli:
         workspace = tmp_path / "workspace"
         workspace.mkdir(parents=True, exist_ok=True)
         for project_name in project_names:
-            _ = u.Tests.mk_project(
+            project = u.Tests.mk_project(
                 workspace,
                 project_name,
                 pyproject=(f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n'),
                 with_src=True,
             )
+            package = project / "src" / project_name.replace("-", "_")
+            (package / "__init__.py").write_text(
+                f'"""{project_name} test package."""\n', encoding="utf-8"
+            )
         return workspace
 
     @staticmethod
     def _write_module(workspace: Path, project_name: str, content: str) -> Path:
-        module_path = workspace / project_name / "src" / "module.py"
-        module_path.write_text(content, encoding="utf-8")
+        module_path = (
+            workspace
+            / project_name
+            / "src"
+            / project_name.replace("-", "_")
+            / "module.py"
+        )
+        module_path.write_text(f'"""Test module."""\n\n{content}', encoding="utf-8")
         return module_path
 
     def test_resolve_gates_deduplicates_explicit_gate(self) -> None:
@@ -125,6 +135,7 @@ class TestWorkspaceCheckCli:
         monkeypatch.delenv("CI", raising=False)
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
+        original = module_path.read_text(encoding="utf-8")
 
         exit_code = main([
             "check",
@@ -141,7 +152,7 @@ class TestWorkspaceCheckCli:
         ])
 
         tm.that(exit_code, eq=1)
-        tm.that(module_path.read_text(encoding="utf-8"), eq="def broken(:\n")
+        tm.that(module_path.read_text(encoding="utf-8"), eq=original)
 
     def test_run_cli_check_only_preserves_source(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -151,6 +162,7 @@ class TestWorkspaceCheckCli:
         module_path = self._write_module(
             workspace, "flext-core", "import os\n\nvalue = 1\n"
         )
+        original = module_path.read_text(encoding="utf-8")
 
         exit_code = main([
             "check",
@@ -168,7 +180,7 @@ class TestWorkspaceCheckCli:
         ])
 
         tm.that(exit_code, eq=1)
-        tm.that(module_path.read_text(encoding="utf-8"), eq="import os\n\nvalue = 1\n")
+        tm.that(module_path.read_text(encoding="utf-8"), eq=original)
 
     def test_run_cli_accepts_shared_dry_run_flag(self) -> None:
         exit_code = main(["check", "--dry-run", "run", "--projects", "flext-core"])

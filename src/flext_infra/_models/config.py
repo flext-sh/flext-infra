@@ -3072,6 +3072,23 @@ class FlextInfraConfigModels:
             m.Field(description="Local, remote, and worktree ancestry inventory"),
         ]
 
+    class WorkspaceEnvironmentSyncCliRequest(_ConfigContract):
+        """CLI-safe request for the public workspace environment sync route."""
+
+        workspace_root: Annotated[
+            Path, m.Field(description="Workspace root receiving the sync")
+        ]
+        apply: Annotated[
+            bool, m.Field(description="Write changes instead of reporting them")
+        ] = True
+        force: Annotated[
+            bool, m.Field(description="Replace custom files with generated content")
+        ] = False
+        allow_direnv: Annotated[
+            bool,
+            m.Field(description="Allow the generated direnv environment after sync"),
+        ] = True
+
     class WorkspaceEnvironmentSyncRequest(_ConfigContract):
         """Validated public request for one workspace environment sync."""
 

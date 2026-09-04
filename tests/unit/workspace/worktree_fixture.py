@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, t
+from flext_infra import FlextInfraWorktreeService, c, t
 from flext_tests import tm
 from tests import u
 
@@ -14,16 +14,10 @@ class WorktreeFixture:
 
     @staticmethod
     def _lane(primary_root: Path, outermost_project: Path, branch: str) -> Path:
-        """Derive the configured collision-safe test contract."""
-        digest = u.Cli.sha256_content(str(primary_root.resolve()))[
-            : c.Infra.WORKTREE_NAMESPACE_DIGEST_LENGTH
-        ]
-        namespace = f"{primary_root.resolve().name}-{digest}"
-        return (
-            outermost_project.resolve().parent
-            / c.Infra.WORKTREES_DIRNAME
-            / namespace
-            / branch
+        """Resolve the lane through the production path authority."""
+        _ = outermost_project
+        return tm.ok(
+            FlextInfraWorktreeService.canonical_lane_path(primary_root, branch)
         )
 
     @staticmethod
