@@ -159,12 +159,6 @@ class FlextInfraModelsMixins:
         version: Annotated[str, m.Field(description="Version string")] = ""
         tag: Annotated[str, m.Field(description="Git tag (e.g. v1.0.0)")] = ""
 
-    class AutomationMixin:
-        """Shared release automation toggles."""
-
-        push: Annotated[bool, m.Field(description="Push to remote")] = False
-        dev_suffix: Annotated[bool, m.Field(description="Add dev suffix")] = False
-
     # ═══════════════════ FIELD CONTRACT MIXINS ═══════════════════
 
     class FilePathMixin:

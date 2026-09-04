@@ -56,9 +56,6 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
-        if workspace.project is not None:
-            u.Cli.toml_sync_value(project, c.Infra.VERSION, workspace.project.version)
-
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
