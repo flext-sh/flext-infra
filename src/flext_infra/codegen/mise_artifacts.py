@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_core import r
@@ -30,6 +30,15 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         alias="from-root",
         description="Propagate root mise.lock to one identical member",
     )
+    # The base declares project_filter exclude=True, which drops it from the
+    # schema-driven CLI surface; --from-root propagation needs --project.
+    project_filter: Annotated[
+        str | None,
+        m.Field(
+            alias="project",
+            description="Single member selector for --from-root propagation",
+        ),
+    ] = None
 
     @staticmethod
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:

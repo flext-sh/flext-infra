@@ -334,5 +334,12 @@ class TestsCodegenMiseArtifacts:
 
         tm.fail(result, has="mise.lock diverged after atomic propagation")
 
+    def test_project_selector_is_cli_exposed(self) -> None:
+        """The propagation selector reaches the schema-driven CLI as --project."""
+        field = FlextInfraCodegenMiseArtifacts.model_fields["project_filter"]
+
+        tm.that(field.alias, eq="project")
+        tm.that(field.exclude, ne=True)
+
 
 __all__: tuple[str, ...] = ()
