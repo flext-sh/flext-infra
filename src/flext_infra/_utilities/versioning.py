@@ -222,7 +222,15 @@ class FlextInfraUtilitiesVersioning:
         )
         if rendered.failure:
             return r[bool].fail(f"{rendered.error} in {pyproject}")
-        return u.Cli.atomic_write_text_file(pyproject, rendered.value)
+        written = u.Cli.atomic_write_text_file(pyproject, rendered.value)
+        if written.failure:
+            return written
+        # Why: flext-core caches the parsed pyproject per process. This is the
+        # protocol's only writer of the version, and the docs projections
+        # rendered right after the stamp must see the stamped version, not
+        # the document read before it (flext-cli#129 drifted that way).
+        u.read_project_document_cached.cache_clear()
+        return written
 
 
 __all__: list[str] = ["FlextInfraUtilitiesVersioning"]

@@ -287,6 +287,9 @@ class TestsFlextInfraReleaseProtocol:
             gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
             monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
             integration = u.Tests.integration_branch(workspace)
+            # flext-core caches the parsed pyproject per process; a warm cache
+            # holding the pre-stamp document must not leak into the projections.
+            tm.ok(u.read_project_metadata(workspace))
 
             result = u.Tests.run_release_main(
                 workspace, "--phase", "version", "--apply"
@@ -314,7 +317,8 @@ class TestsFlextInfraReleaseProtocol:
             )
             tm.that(
                 (workspace / "docs" / "index.md").read_text(encoding="utf-8"),
-                has=f"`{c.Tests.RELEASE_VERSION_BASE}`",
+                has=f"- Version: `{c.Tests.RELEASE_VERSION_BASE}`",
+                lacks=c.Tests.RELEASE_VERSION_PRERELEASE,
             )
             tm.that(
                 u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=workspace))
