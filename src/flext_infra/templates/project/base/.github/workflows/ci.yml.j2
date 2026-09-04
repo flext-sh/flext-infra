@@ -49,23 +49,9 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-{% if mise_version != "latest" %}        with:
-          version: {{ mise_version }}
-{% endif %}
-
-      # Why: the official uv cache must never be reused across differently
-      # resolved projects — cache identity is owned ONLY by uv.lock. The uv
-      # version comes from the same toolchain SSOT that renders .mise.toml,
-      # keeping one version source for local (mise) and CI (setup-uv).
-      - name: Set up uv with lock-owned cache
-        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
-        with:
-          version: {{ uv_version }}
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-          cache-suffix: locked
+      # make setup is the only toolchain installer. Its committed Mise seed
+      # resolves and executes the newest signed Mise release, then installs the
+      # exact tool versions recorded in mise.lock before any other Make verb.
 
       # The direnv check gate runs a real `direnv exec` activation smoke. The
       # preinstalled runner image has no direnv binary, so provision it here —
