@@ -1871,6 +1871,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             for section in codegen.gitignore_sections
             if not section.profiles or profile in section.profiles
         )
+        # The repository's own pyproject.toml is the version SSOT; the release
+        # protocol is its only writer, so conform reads it and never syncs it.
+        # A tree that has no pyproject yet is being created: it starts at the
+        # typed initial version and the protocol owns every change after that.
+        version_result = (
+            u.Infra.current_workspace_version(repository_root)
+            if (repository_root / c.Infra.PYPROJECT_FILENAME).is_file()
+            else r[str].ok(config.Infra.initial_project_version)
+        )
+        if version_result.failure:
+            return r[m.Infra.ProjectRenderContext].fail(
+                version_result.error or f"project version unresolved: {repository_root}"
+            )
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -1920,7 +1933,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 upstream=project.upstream,
                 inherited_facets=project.inherited_facets,
                 description=project.description,
-                version=project.version,
+                version=version_result.value,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
                 kubectl_version=codegen.toolchain.kubectl_version,

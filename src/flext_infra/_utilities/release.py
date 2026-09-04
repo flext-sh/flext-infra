@@ -1,4 +1,4 @@
-"""Release reporting utilities for the u.Infra FLEXT chain."""
+"""Release protocol utilities for the u.Infra FLEXT chain."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_cli import r, u
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -15,14 +14,41 @@ from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesRelease:
-    """Release notes and changelog utility methods exposed via u.Infra."""
+    """Bump derivation, release notes, changelog, and publish-order utilities."""
 
     @staticmethod
-    def resolve_phase_names(phase: str) -> t.StrSequence:
-        """Expand release phase selectors to the canonical ordered phase list."""
-        if phase == c.Infra.RELEASE_PHASE_ALL:
-            return tuple(c.Infra.ReleasePhase)
-        return FlextInfraUtilitiesBase.normalize_cli_values(phase)
+    def plan_bump(
+        subjects: t.StrSequence,
+        bump_types: Mapping[str, c.Infra.VersionBump],
+    ) -> p.Result[c.Infra.VersionBump]:
+        """Derive the release bump from the merged pull-request subjects.
+
+        Every subject is the merge commit of one pull request, so it carries the
+        pull-request title. A Conventional Commits title maps through
+        ``bump_types``; ``!`` marks a breaking change. A GitHub default merge
+        subject carries no release information and therefore fails loudly: the
+        protocol requires the title, never a guess. Any other merge subject (a
+        lane absorbing its integration base) contributes nothing.
+        """
+        order = tuple(c.Infra.VersionBump)
+        bump = c.Infra.VersionBump.NONE
+        for subject in subjects:
+            if c.Infra.PULL_REQUEST_MERGE_SUBJECT_RE.match(subject):
+                return r[c.Infra.VersionBump].fail(
+                    "merged pull request without a Conventional Commits title: "
+                    f"{subject!r}"
+                )
+            match = c.Infra.CONVENTIONAL_SUBJECT_RE.match(subject)
+            if match is None:
+                continue
+            candidate = (
+                c.Infra.VersionBump.MAJOR
+                if match.group("breaking")
+                else bump_types.get(match.group("type"), c.Infra.VersionBump.NONE)
+            )
+            if order.index(candidate) > order.index(bump):
+                bump = candidate
+        return r[c.Infra.VersionBump].ok(bump)
 
     @staticmethod
     def generate_notes(
@@ -36,14 +62,9 @@ class FlextInfraUtilitiesRelease:
         lines: t.MutableSequenceOf[str] = [
             f"# Release {tag}",
             "",
-            "## Status",
-            "",
-            "- Quality: Alpha",
-            "- Usage: Non-production",
-            "",
             "## Scope",
             "",
-            f"- Workspace release version: {version}",
+            f"- Release version: {version}",
             f"- Projects packaged: {len(project_list) + 1}",
             "",
             "## Projects impacted",
@@ -53,15 +74,9 @@ class FlextInfraUtilitiesRelease:
         lines.extend(f"- {proj.name}" for proj in project_list)
         lines.extend([
             "",
-            "## Changes since last tag",
+            "## Pull requests since last release",
             "",
             changes or "- Initial tagged release",
-            "",
-            "## Verification",
-            "",
-            "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all",
-            "- make val VALIDATE_SCOPE=workspace",
-            "- make build",
         ])
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -136,7 +151,10 @@ class FlextInfraUtilitiesRelease:
         """Return changelog text with a release section for the version."""
         date = u.now().date().isoformat()
         heading = f"## {version} - "
-        section = f"{heading}{date}\n\n- Workspace release tag: `{tag}`\n- Status: Alpha, non-production\n\nFull notes: `docs/releases/{tag}.md`\n\n"
+        section = (
+            f"{heading}{date}\n\n- Release tag: `{tag}`\n\n"
+            f"Full notes: `docs/releases/{tag}.md`\n\n"
+        )
         if heading in existing:
             return existing
         marker = "# Changelog\n\n"

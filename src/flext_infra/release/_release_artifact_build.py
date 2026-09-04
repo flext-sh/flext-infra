@@ -17,10 +17,21 @@ if TYPE_CHECKING:
 
 
 class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixin):
-    """Build registry-safe artifacts from committed project sources."""
+    """Build registry-safe artifacts from committed project sources.
+
+    ``versions`` maps every internal distribution the build can see to the
+    version its own repository declares; release metadata pins internal
+    dependencies to those declared versions, never to this project's version.
+    """
 
     def _render_release_metadata(
-        self, *, project: str, stage_path: Path, output_dir: Path, version: str
+        self,
+        *,
+        project: str,
+        stage_path: Path,
+        output_dir: Path,
+        version: str,
+        versions: t.StrMapping,
     ) -> p.Result[bool]:
         """Render validated registry metadata into stage and audit output."""
         pyproject_path = stage_path / c.Infra.PYPROJECT_FILENAME
@@ -29,7 +40,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             return r[bool].fail(
                 source_result.error or f"read staged pyproject failed: {project}"
             )
-        render_result = self._release_pyproject(source_result.value, version)
+        render_result = self._release_pyproject(source_result.value, version, versions)
         if render_result.failure:
             return r[bool].fail(
                 render_result.error or f"release metadata failed: {project}"
@@ -54,6 +65,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         output_dir: Path,
         gitleaks_config_path: Path,
         version: str,
+        versions: t.StrMapping,
     ) -> p.Result[t.Pair[m.Infra.SourceSnapshot, str]]:
         """Stage and validate committed source, returning epoch and license digest."""
         archive_result = self._archive_project(project_path, stage_path)
@@ -82,6 +94,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             stage_path=stage_path,
             output_dir=output_dir,
             version=version,
+            versions=versions,
         )
         if metadata_result.failure:
             return r[t.Pair[m.Infra.SourceSnapshot, str]].fail(
@@ -99,6 +112,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         output_dir: Path,
         project: str,
         version: str,
+        versions: t.StrMapping,
         license_sha256: str,
     ) -> p.Result[t.SequenceOf[m.Infra.BuildArtifact]]:
         """Validate a complete artifact set and persist it atomically."""
@@ -112,7 +126,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         ] = []
         for source in built_result.value:
             validation = self._validate_artifact(
-                source, project, version, license_sha256
+                source, project, version, license_sha256, versions
             )
             if validation.failure:
                 return r[t.SequenceOf[m.Infra.BuildArtifact]].fail(
@@ -145,6 +159,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         project_path: Path,
         output_dir: Path,
         version: str,
+        versions: t.StrMapping,
         license_sha256: str,
         snapshot: m.Infra.SourceSnapshot,
         temporary_dist: Path,
@@ -156,6 +171,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             output_dir=output_dir,
             project=project,
             version=version,
+            versions=versions,
             license_sha256=license_sha256,
         )
         if artifacts_result.failure:
@@ -182,6 +198,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         output_dir: Path,
         build_constraints_path: Path,
         version: str,
+        versions: t.StrMapping,
         snapshot: m.Infra.SourceSnapshot,
         license_sha256: str,
         stage_path: Path,
@@ -217,6 +234,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             project_path=project_path,
             output_dir=output_dir,
             version=version,
+            versions=versions,
             license_sha256=license_sha256,
             snapshot=snapshot,
             temporary_dist=temporary_dist,
@@ -260,6 +278,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         build_constraints_path: Path,
         gitleaks_config_path: Path,
         version: str,
+        versions: t.StrMapping,
         dry_run: bool,
     ) -> p.Result[m.Infra.BuildRecord]:
         """Build and validate one project from its committed Git snapshot."""
@@ -272,6 +291,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
                     build_constraints_path=build_constraints_path,
                     gitleaks_config_path=gitleaks_config_path,
                     version=version,
+                    versions=versions,
                     dry_run=dry_run,
                     temporary_root=Path(temporary),
                 )
@@ -289,6 +309,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         build_constraints_path: Path,
         gitleaks_config_path: Path,
         version: str,
+        versions: t.StrMapping,
         dry_run: bool,
         temporary_root: Path,
     ) -> p.Result[m.Infra.BuildRecord]:
@@ -302,6 +323,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             output_dir=output_dir,
             gitleaks_config_path=gitleaks_config_path,
             version=version,
+            versions=versions,
         )
         if stage_result.failure:
             return r[m.Infra.BuildRecord].fail(
@@ -322,6 +344,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             output_dir=output_dir,
             build_constraints_path=build_constraints_path,
             version=version,
+            versions=versions,
             snapshot=snapshot,
             license_sha256=license_sha256,
             stage_path=stage_path,
