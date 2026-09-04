@@ -144,6 +144,14 @@ Infra:
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
+    # Runner packages a distribution's own tests need (Ubuntu apt names),
+    # installed by the generated CI before the gates run. A test that drives
+    # a real external engine keeps running in CI instead of being skipped;
+    # the engine is declared here, once, at the fleet SSOT.
+    ci_system_packages:
+      flext-cli:
+        # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
+        - libreoffice-calc
     # Per-distribution private workspace member auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes

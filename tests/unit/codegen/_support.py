@@ -18,6 +18,7 @@ class CodegenTestSupport:
             make_profile: c.Infra.MakeProfile,
             repository_branch: t.NonEmptyStr,
             ci_trigger_branches: tuple[t.NonEmptyStr, ...],
+            system_packages: tuple[t.NonEmptyStr, ...] = (),
         ) -> m.Infra.GithubWorkflowRenderSpec:
             """Build the common strictly typed workflow rendering contract."""
             codegen = config.Infra.codegen
@@ -26,6 +27,7 @@ class CodegenTestSupport:
                 make_profile=make_profile,
                 repository_branch=repository_branch,
                 ci_trigger_branches=ci_trigger_branches,
+                system_packages=system_packages,
                 python_version=codegen.toolchain.python_version,
                 mise_version=codegen.toolchain.mise_version,
                 uv_version=codegen.toolchain.uv_version,

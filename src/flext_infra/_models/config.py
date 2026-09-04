@@ -688,6 +688,16 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = None
+        system_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Runner packages this distribution's tests need; empty "
+                    "means the workflow renders no install step"
+                ),
+            ),
+        ] = ()
 
     class MakeWorkflowRenderSpec(_ConfigContract):
         """Typed input shared by generated local workflow surfaces."""
@@ -2743,6 +2753,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
+                ),
+            ),
+        ]
+        ci_system_packages: Annotated[
+            Mapping[str, tuple[t.NonEmptyStr, ...]],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-distribution runner packages (Ubuntu apt names) the "
+                    "generated CI installs before the gates run"
                 ),
             ),
         ]
