@@ -85,11 +85,6 @@ jobs:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
 {%- include "_fragments/private_submodules_init.j2" %}
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-{% if mise_version != "latest" %}        with:
-          version: {{ mise_version }}
-{% endif %}
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"
@@ -122,11 +117,6 @@ jobs:
           ref: {% raw %}${{ needs.identity.outputs.ref }}{% endraw %}
           submodules: {{ checkout_submodules }}
 {%- include "_fragments/private_submodules_init.j2" %}
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-{% if mise_version != "latest" %}        with:
-          version: {{ mise_version }}
-{% endif %}
       - name: Release identity
         run: |
           git config user.name "github-actions[bot]"

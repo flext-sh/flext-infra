@@ -766,8 +766,21 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def release_policy_root() -> Path:
-            """Return the repository-owned isolated release policy fixture."""
-            return Path(__file__).resolve().parent / "fixtures" / "release"
+            """Return the packaged template root that owns the release policies.
+
+            The build-constraints and Gitleaks policies are codegen templates
+            projected into every repository; the release fixtures copy the same
+            bytes so the test workspace carries exactly what a generated
+            repository carries.
+            """
+            return (
+                Path(__file__).resolve().parents[1]
+                / "src"
+                / "flext_infra"
+                / "templates"
+                / "project"
+                / "base"
+            )
 
         @staticmethod
         def create_release_workspace(
@@ -804,13 +817,22 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
                 c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
             )
+            # The policies are rendered exactly as codegen projects them into
+            # a generated repository: same template, same typed pins.
+            policy_context = m.Infra.ReleasePolicyRenderSpec(
+                build_constraints=config.Infra.release.build_constraints
+            )
             for policy_path in policy_paths:
-                policy_source = (
-                    TestsFlextInfraUtilities.Tests.release_policy_root() / policy_path
+                policy_source = TestsFlextInfraUtilities.Tests.release_policy_root() / (
+                    f"{policy_path}.j2"
                 )
+                rendered = u.Cli.template_render(policy_source, policy_context)
+                if rendered.failure:
+                    msg = rendered.error or f"release policy render failed: {policy_path}"
+                    raise RuntimeError(msg)
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(policy_source, policy_target)
+                policy_target.write_text(rendered.value, encoding="utf-8")
             for name in project_names:
                 project = workspace / name
                 project.mkdir(parents=True, exist_ok=True)

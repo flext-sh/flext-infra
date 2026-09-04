@@ -21,8 +21,8 @@ RUN dnf install -y \
 
 # === SECTION: managed tool bootstrap (managed) ===
 # Source: generated bin/mise + .mise.toml + mise.lock
-# The official launcher and locked tools are installed by the same unprivileged
-# user that executes project verbs, so trust and XDG state have one owner.
+# The canonical make setup verb below owns the official newest-Mise bootstrap
+# and every locked tool installation as the same unprivileged runtime user.
 ENV HOME=/home/runner \
     XDG_DATA_HOME=/home/runner/.local/share \
     XDG_CACHE_HOME=/home/runner/.cache \
@@ -36,9 +36,6 @@ RUN --mount=type=bind,source=.,target=/source,ro \
     cp -R /source/. /workspace/ \
     && chown -R runner:runner /workspace
 USER runner
-RUN mkdir -p /workspace/.test-tmp \
-    && ./bin/mise trust .mise.toml \
-    && ./bin/mise install --locked --yes
 ENV PATH="/home/runner/.local/share/mise/shims:${PATH}"
 # End SECTION: managed tool bootstrap
 
