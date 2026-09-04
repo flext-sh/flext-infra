@@ -106,6 +106,34 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(plan.releasable, eq=True)
 
         @staticmethod
+        def test_declared_version_ahead_of_the_last_tag_is_the_next_release(
+            tmp_path: Path,
+        ) -> None:
+            """A version declared beyond the last tag was decided before the protocol.
+
+            It ships as declared; the titles merged since the tag (including
+            GitHub's default merge subjects) are not consulted.
+            """
+            workspace = _released_workspace(tmp_path)
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge pull request #3 from legacy/lane"],
+                    cwd=workspace,
+                )
+            )
+            tm.ok(u.Infra.replace_project_version(workspace, "0.2.0"))
+            tm.ok(cli.run_checked([c.Infra.GIT, "commit", "-am", "chore: baseline 0.2.0"], cwd=workspace))
+            # The fixture's origin is the repository itself: refresh the remote
+            # ref so the integration base carries the declared version.
+            tm.ok(cli.run_checked([c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace))
+
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            plan = _plan(workspace)
+            tm.that(plan.next, eq="0.2.0")
+            tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
+            tm.that(plan.releasable, eq=True)
+
+        @staticmethod
         def test_pull_request_titles_decide_the_bump(tmp_path: Path) -> None:
             """The most significant Conventional title since the last tag wins."""
             workspace = _released_workspace(tmp_path)

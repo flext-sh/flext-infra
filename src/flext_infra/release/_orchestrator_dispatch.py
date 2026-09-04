@@ -139,17 +139,23 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         final = u.Infra.finalize_version(current)
         if final.failure:
             return r[m.Infra.ReleasePlan].fail(final.error or "invalid version")
-        if not latest_tag or final.value != current:
-            # A first release ships the declared version as is, and a declared
-            # pre-release ships its base: that release was decided when the
-            # pre-release was cut, so the titles merged since then are not
-            # consulted. Titles decide only from the first final release on.
+        declared_ahead = self._declared_ahead_of_tag(final.value, latest_tag)
+        if declared_ahead.failure:
+            return r[m.Infra.ReleasePlan].fail(declared_ahead.error or "tag unparsable")
+        if not latest_tag or final.value != current or declared_ahead.value:
+            # A first release ships the declared version as is; a declared
+            # pre-release ships its base; a declared version beyond the last
+            # tag ships as declared. Each of those releases was decided when
+            # the version was written, so the titles merged since the tag are
+            # not consulted. Titles decide only once the declared version has
+            # been tagged.
             return r[m.Infra.ReleasePlan].ok(
                 m.Infra.ReleasePlan(
                     current=current,
                     next=final.value,
                     bump=c.Infra.VersionBump.NONE,
                     previous_tag=latest_tag or None,
+                    declared=True,
                 )
             )
         merges = self._subjects(root, latest_tag, merges_only=True)
@@ -170,6 +176,20 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                 merges=tuple(merges.value),
             )
         )
+
+    @staticmethod
+    def _declared_ahead_of_tag(version: str, latest_tag: str) -> p.Result[bool]:
+        """Whether the declared (final) version is newer than the last tag's."""
+        if not latest_tag:
+            return r[bool].ok(True)
+        declared = u.Infra.parse_semver(version)
+        if declared.failure:
+            return r[bool].fail(declared.error or f"invalid version: {version}")
+        tag_prefix = c.Infra.TAG_FORMAT.format(version="")
+        tagged = u.Infra.parse_semver(latest_tag.removeprefix(tag_prefix))
+        if tagged.failure:
+            return r[bool].fail(tagged.error or f"invalid release tag: {latest_tag}")
+        return r[bool].ok(declared.value > tagged.value)
 
     def _guard_version_change(self, root: Path, version: str) -> p.Result[bool]:
         """Reject a pyproject version that differs from the integration base.
