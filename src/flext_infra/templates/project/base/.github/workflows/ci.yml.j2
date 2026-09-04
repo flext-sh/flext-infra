@@ -49,9 +49,44 @@ jobs:
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
 
-      # make setup is the only toolchain installer. Its committed Mise seed
-      # resolves and executes the newest signed Mise release, then installs the
-      # exact tool versions recorded in mise.lock before any other Make verb.
+      - name: Install mise toolchain
+        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
+{% if mise_version != "latest" %}        with:
+          version: {{ mise_version }}
+{% endif %}
+
+      # Why: the official uv cache must never be reused across differently
+      # resolved projects — cache identity is owned ONLY by uv.lock. The uv
+      # version comes from the same toolchain SSOT that renders .mise.toml,
+      # keeping one version source for local (mise) and CI (setup-uv).
+      - name: Set up uv with lock-owned cache
+        uses: {{ github_actions["setup-uv"].repository }}@{{ github_actions["setup-uv"].sha }}  # {{ github_actions["setup-uv"].version }}
+        with:
+          version: {{ uv_version }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: locked
+
+      # The direnv check gate runs a real `direnv exec` activation smoke. The
+      # preinstalled runner image has no direnv binary, so provision it here —
+      # the gate is intentional and its binary must exist wherever CI=Y make
+      # check runs. The smoke runs unattended, where no one can answer
+      # `direnv allow`, so allow the checkout's .envrc up front: `direnv allow
+      # <path>` computes and stores the same path-hash record an interactive
+      # allow writes. .envrc is tracked, so it exists right after checkout.
+      # This trusts only this repo's own generated file, on this runner only.
+      - name: Install direnv (check-gate dependency)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq direnv
+          direnv allow "{% raw %}${{ github.workspace }}{% endraw %}/.envrc"
+{%- if system_packages %}
+
+      # Why: this repository's tests exercise a real external engine, and the
+      # fleet declares such runner packages per distribution (codegen
+      # ci_system_packages) instead of skipping the tests that need them.
+      - name: Install declared system packages
+        run: sudo apt-get install -y -qq --no-install-recommends {{ system_packages | join(" ") }}
+{%- endif %}
 
 {%- include "_fragments/testmon_cache.j2" %}
 
@@ -62,6 +97,12 @@ jobs:
 {%- if step.verb == "setup" %}
       - name: gen check (blocking)
         run: {{ make.ci.variable }}={{ make.ci.value }} make gen WHAT=check
+
+      # Setup installs the committed lock as-is (`uv sync --frozen`); a stale
+      # lock is a reviewed change through `make deps`, so CI proves it here
+      # instead of letting a runner rewrite it.
+      - name: deps check (blocking)
+        run: {{ make.ci.variable }}={{ make.ci.value }} make deps
 {%- endif %}
 {%- if step.verb == "check" %}
 
