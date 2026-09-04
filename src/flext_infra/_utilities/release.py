@@ -50,6 +50,16 @@ class FlextInfraUtilitiesRelease:
         return r[c.Infra.VersionBump].ok(bump)
 
     @staticmethod
+    def is_release_subject(subject: str, version: str) -> bool:
+        """Whether ``subject`` is the protocol's release commit for ``version``.
+
+        Matches the commit as the lane wrote it and as GitHub merged it, which
+        appends the pull-request number to the subject.
+        """
+        match = c.Infra.RELEASE_COMMIT_SUBJECT_RE.match(subject)
+        return match is not None and match.group("version") == version
+
+    @staticmethod
     def generate_notes(
         version: str,
         tag: str,

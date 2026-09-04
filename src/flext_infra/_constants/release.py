@@ -54,6 +54,10 @@ class FlextInfraConstantsRelease:
     RELEASE_BRANCH: Final[str] = "release/next"
     "One bot-owned lane per repository; the open release pull request lives here."
     RELEASE_COMMIT_SUBJECT: Final[str] = "chore(release): v{version}"
+    RELEASE_COMMIT_SUBJECT_RE: Final[t.RegexPattern] = re.compile(
+        r"^chore\(release\): v(?P<version>\S+?)(?: \(#\d+\))?$"
+    )
+    "The release commit as Git carries it: GitHub appends ` (#N)` when merging."
     RELEASE_PLAN_FILENAME: Final[str] = "plan.json"
     RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
     RELEASE_REPORT_FILENAME: Final[str] = "build-report.json"
