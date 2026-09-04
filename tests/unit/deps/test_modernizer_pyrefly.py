@@ -277,7 +277,7 @@ class TestsFlextInfraModernizerPyrefly:
             fresh,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=True,
         )
@@ -317,7 +317,7 @@ class TestsFlextInfraModernizerPyrefly:
             fresh,
             is_root=False,
             project_dir=project_dir,
-            paths_manager=FlextInfraExtraPathsManager(workspace_root=tmp_path),
+            paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
             declared_python_dirs=(),
             declared_python_dirs_are_complete=True,
         )

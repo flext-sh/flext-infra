@@ -55,7 +55,7 @@ class TestsFlextInfraInfraRopeService:
         blocks; the regenerated package facade re-exported them and every
         importer failed with a missing module attribute.
         """
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         module_path = package_root / "demo.py"
         module_path.write_text(
             '"""Demo."""\n\n'
@@ -71,7 +71,7 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        rope = FlextInfraRopeWorkspace.open_workspace(workspace_root)
+        rope = FlextInfraRopeWorkspace.open_workspace(repository_root)
         try:
             exports = rope.exports(
                 module_path,
@@ -210,7 +210,7 @@ class TestsFlextInfraInfraRopeService:
         u.Tests.declare_workspace_projects(ancestor, (declared_root.name,))
 
         with flext_infra.infra.rope_workspace(package_root) as rope:
-            tm.that(rope.rope_workspace_root, eq=project_root.resolve())
+            tm.that(rope.rope_repository_root, eq=project_root.resolve())
 
     def test_unowned_ancestor_src_does_not_expand_rope_scope(
         self, tmp_path: Path

@@ -397,7 +397,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Run complete conformance inside the sole generation lock."""
         mode = c.Infra.CodegenConformMode(request.mode)
         mise_owner = FlextInfraCodegenMiseArtifacts(
-            workspace_root=request.root,
+            repository_root=request.root,
             apply_changes=mode is c.Infra.CodegenConformMode.APPLY,
             check_only=mode is c.Infra.CodegenConformMode.CHECK,
         )

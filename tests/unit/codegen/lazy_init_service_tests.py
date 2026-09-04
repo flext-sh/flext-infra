@@ -444,19 +444,19 @@ class TestsFlextInfraCodegenLazyInitService:
         self, tmp_path: Path
     ) -> None:
         """The `codegen lazy-init` CLI route applies through execute_command."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
         original_init = init_path.read_bytes()
-        apply_service = u.Tests.create_lazy_init_service(workspace_root)
+        apply_service = u.Tests.create_lazy_init_service(repository_root)
         apply_service.target_module = "flext_test_project"
         apply_service.apply_changes = True
 
         apply_result = FlextInfraCodegenLazyInit.execute_command(apply_service)
         applied_init = init_path.read_bytes()
-        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_service = u.Tests.create_lazy_init_service(repository_root)
         check_service.target_module = "flext_test_project"
         check_service.check_only = True
 
@@ -483,7 +483,7 @@ class TestsFlextInfraCodegenLazyInitService:
         self, tmp_path: Path
     ) -> None:
         """A nested package inheriting a root alias plans without error."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
@@ -505,13 +505,13 @@ class TestsFlextInfraCodegenLazyInitService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         init_path = nested_root / c.Infra.INIT_PY
-        apply_service = u.Tests.create_lazy_init_service(workspace_root)
+        apply_service = u.Tests.create_lazy_init_service(repository_root)
         apply_service.target_module = "flext_test_project.servers._base"
         apply_service.apply_changes = True
 
         apply_result = apply_service.execute()
         applied_init = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_service = u.Tests.create_lazy_init_service(repository_root)
         check_service.target_module = "flext_test_project.servers._base"
         check_service.check_only = True
 
@@ -535,8 +535,8 @@ class TestsFlextInfraCodegenLazyInitService:
         self, tmp_path: Path
     ) -> None:
         """A stdlib-named tests directory is skipped and its residue removed."""
-        workspace_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        tests_root = workspace_root / c.Infra.DIR_TESTS
+        repository_root, _package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        tests_root = repository_root / c.Infra.DIR_TESTS
         tests_root.mkdir()
         tests_init = tests_root / c.Infra.INIT_PY
         tests_init.write_text("", encoding=c.Cli.ENCODING_DEFAULT)
@@ -562,13 +562,13 @@ class TestsFlextInfraCodegenLazyInitService:
             'class TestsIoStreams:\n    """Collected test class."""\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        apply_service = u.Tests.create_lazy_init_service(workspace_root)
+        apply_service = u.Tests.create_lazy_init_service(repository_root)
         apply_service.target_module = c.Infra.DIR_TESTS
         apply_service.apply_changes = True
 
         apply_result = apply_service.execute()
         generated_tests_init = tests_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_service = u.Tests.create_lazy_init_service(repository_root)
         check_service.target_module = c.Infra.DIR_TESTS
         check_service.check_only = True
 

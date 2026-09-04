@@ -32,7 +32,7 @@ class FlextInfraReleaseOrchestratorPhases(
 
     @staticmethod
     def _build_targets(
-        workspace_root: Path, project_names: t.StrSequence
+        repository_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
         """Resolve release build targets from the configured eligibility policy.
 
@@ -41,7 +41,7 @@ class FlextInfraReleaseOrchestratorPhases(
         (``config.Infra.release.publishable_prefixes``); an empty tuple means no
         prefix filter, so a single-project repository publishes itself.
         """
-        projects_result = u.Infra.resolve_projects(workspace_root, project_names)
+        projects_result = u.Infra.resolve_projects(repository_root, project_names)
         if projects_result.failure:
             return r[t.SequenceOf[t.Pair[str, Path]]].fail(
                 projects_result.error or "release project resolution failed"
@@ -59,7 +59,7 @@ class FlextInfraReleaseOrchestratorPhases(
         return r[t.SequenceOf[t.Pair[str, Path]]].ok(unique)
 
     @staticmethod
-    def _internal_versions(workspace_root: Path) -> p.Result[t.StrMapping]:
+    def _internal_versions(repository_root: Path) -> p.Result[t.StrMapping]:
         """Map every visible internal distribution to its own declared version.
 
         Each repository versions independently, so release metadata pins a
@@ -69,14 +69,14 @@ class FlextInfraReleaseOrchestratorPhases(
         internal dependency) is what the committed ``uv.lock`` resolved for it:
         the version that sibling declared at the pinned commit.
         """
-        projects = u.Infra.resolve_projects(workspace_root, ())
+        projects = u.Infra.resolve_projects(repository_root, ())
         if projects.failure:
             return r[t.StrMapping].fail(
                 projects.error or "internal version resolution failed"
             )
         versions: dict[str, str] = dict(
             u.Infra.locked_dependency_versions(
-                workspace_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
+                repository_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
             )
         )
         for project in projects.value:
@@ -106,7 +106,7 @@ class FlextInfraReleaseOrchestratorPhases(
             gitleaks_config_path=Path(policy.gitleaks_policy_path),
             version=(
                 ctx.version
-                if path.resolve() == ctx.workspace_root.resolve()
+                if path.resolve() == ctx.repository_root.resolve()
                 else versions[name]
             ),
             versions=versions,
@@ -136,7 +136,7 @@ class FlextInfraReleaseOrchestratorPhases(
         output_dir: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.BuildRecord]]:
         """Build every selected project and retain its strict report record."""
-        versions = self._internal_versions(ctx.workspace_root)
+        versions = self._internal_versions(ctx.repository_root)
         if versions.failure:
             return r[t.SequenceOf[m.Infra.BuildRecord]].fail(
                 versions.error or "internal version resolution failed"

@@ -50,7 +50,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return r[bool].fail(current.error or "project version unresolved")
         ctx = m.Infra.ReleasePhaseDispatchConfig(
             phase=self.phase,
-            workspace_root=self.root,
+            repository_root=self.root,
             version=current.value,
             tag=c.Infra.TAG_FORMAT.format(version=current.value),
             project_names=self.project_names or (),
@@ -81,7 +81,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self, ctx: m.Infra.ReleasePhaseDispatchConfig
     ) -> p.Result[m.Infra.ReleasePlan]:
         """Derive the next version and prove no version changed outside the protocol."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         if ctx.pr_title and not c.Infra.CONVENTIONAL_SUBJECT_RE.match(ctx.pr_title):
             return r[m.Infra.ReleasePlan].fail(
                 "pull-request title must follow Conventional Commits "
@@ -247,7 +247,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     def phase_version(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Open or update the release pull request for the planned version."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         plan = self.phase_plan(ctx)
         if plan.failure:
             return r[bool].fail(plan.error or "release plan failed")
@@ -345,7 +345,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self, ctx: m.Infra.ReleasePhaseDispatchConfig, plan: m.Infra.ReleasePlan
     ) -> p.Result[bool]:
         """Write the version SSOT, the release notes, and the changelog."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
@@ -459,7 +459,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     def phase_tag(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Tag the merged release commit; idempotent when the tag already points here."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         head = self._head_subject(root)
         if head.failure:
             return r[bool].fail(head.error or "HEAD subject failed")
@@ -478,14 +478,14 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             [c.Infra.GIT, "push", c.Infra.GIT_ORIGIN, ctx.tag], cwd=root
         )
 
-    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
+    def _create_tag(self, repository_root: Path, tag: str) -> p.Result[bool]:
         """Create the annotated tag at HEAD, or accept it when it already points there."""
         existing = u.Cli.capture(
-            [c.Infra.GIT, "rev-list", "-n", "1", tag], cwd=workspace_root
+            [c.Infra.GIT, "rev-list", "-n", "1", tag], cwd=repository_root
         )
         if existing.success and existing.value.strip():
             head = u.Cli.capture(
-                [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=workspace_root
+                [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=repository_root
             )
             if head.failure:
                 return r[bool].fail(head.error or "rev-parse HEAD failed")

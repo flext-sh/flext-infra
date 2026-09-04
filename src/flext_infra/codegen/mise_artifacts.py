@@ -416,8 +416,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             or "\\" in selector
         ):
             return r[Path].fail(f"invalid Mise propagation project: {selector}")
-        project_root = (self.workspace_root / selector).resolve()
-        resolved_workspace = self.workspace_root.resolve()
+        project_root = (self.repository_root / selector).resolve()
+        resolved_workspace = self.repository_root.resolve()
         if (
             not project_root.is_dir()
             or project_root == resolved_workspace
@@ -480,20 +480,20 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         if member_result.failure:
             return r[bool].fail(member_result.error or "invalid Mise member")
         member_root = member_result.value
-        root_config = u.Cli.files_read_text(self.workspace_root / ".mise.toml")
+        root_config = u.Cli.files_read_text(self.repository_root / ".mise.toml")
         member_config = u.Cli.files_read_text(member_root / ".mise.toml")
         if root_config.failure:
             return r[bool].fail(root_config.error or "cannot read root .mise.toml")
         if member_config.failure:
             return r[bool].fail(member_config.error or "cannot read member .mise.toml")
-        root_identity = u.Cli.sha256_file(self.workspace_root / ".mise.toml")
+        root_identity = u.Cli.sha256_file(self.repository_root / ".mise.toml")
         member_identity = u.Cli.sha256_file(member_root / ".mise.toml")
         if root_identity != member_identity:
             return r[bool].fail(
                 "member .mise.toml is not identical to root: "
                 f"root_sha256={root_identity} member_sha256={member_identity}"
             )
-        root_lock = u.Cli.files_read_text(self.workspace_root / "mise.lock")
+        root_lock = u.Cli.files_read_text(self.repository_root / "mise.lock")
         if root_lock.failure:
             return r[bool].fail(root_lock.error or "cannot read root mise.lock")
         write = u.Cli.atomic_write_text_file(member_root / "mise.lock", root_lock.value)

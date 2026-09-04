@@ -33,9 +33,9 @@ class FlextInfraUtilitiesDiscovery(
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
-    def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
+    def _workspace_project_roots(repository_root: str) -> tuple[Path, ...]:
         """Discover project roots once for a command-scoped workspace."""
-        resolved_root = Path(workspace_root).resolve()
+        resolved_root = Path(repository_root).resolve()
         nested_roots: set[Path] = set()
         for directory, child_names, file_names in resolved_root.walk(top_down=True):
             child_names[:] = [

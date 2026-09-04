@@ -199,8 +199,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def workspace_root_rel(self) -> str:
-            """Declared relative path from the project to its workspace root."""
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its repository root."""
             ...
 
     @runtime_checkable
@@ -700,7 +700,7 @@ class FlextInfraProtocolsBase(Protocol):
     class MiseArtifactsOwner(Protocol):
         """Single public owner composed by private Mise transaction mechanics."""
 
-        workspace_root: Path
+        repository_root: Path
 
         @classmethod
         def validate_launchers(cls, root: Path) -> p.Result[bool]:

@@ -75,7 +75,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
                 if scope
                 else discovered
             )
-        enforcer = FlextInfraNamespaceEnforcer(workspace_root=self.workspace_root)
+        enforcer = FlextInfraNamespaceEnforcer(repository_root=self.repository_root)
 
         def enforce_namespace(project_name: str) -> m.Infra.WorkspaceEnforcementReport:
             return enforcer.enforce(

@@ -26,7 +26,7 @@ class FlextInfraCodegenMakeBootstrap(s[bool]):
         )
         conformed = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
-                root=self.workspace_root,
+                root=self.repository_root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
                 scope=c.Infra.CodegenConformScope.SELF,
                 mode=mode,

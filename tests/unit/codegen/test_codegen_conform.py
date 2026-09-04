@@ -454,7 +454,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         )
 
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
@@ -530,7 +530,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         )
 
         anchored = tm.ok(service.plan(request)).branch_ancestry[0]

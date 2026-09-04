@@ -285,7 +285,7 @@ class TestsCodegenMiseArtifacts:
         expected_lock = (root / "mise.lock").read_text(encoding="utf-8")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-identical",
             "from_root": True,
             "apply_changes": True,
@@ -302,7 +302,7 @@ class TestsCodegenMiseArtifacts:
         unchanged_lock = (member / "mise.lock").read_text(encoding="utf-8")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-different",
             "from_root": True,
             "apply_changes": True,
@@ -316,7 +316,7 @@ class TestsCodegenMiseArtifacts:
         _member = self._member(root, "member-identical", identical=True)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-identical",
             "from_root": True,
         }).execute()
@@ -338,7 +338,7 @@ class TestsCodegenMiseArtifacts:
         monkeypatch.setattr(u.Cli, "atomic_write_text_file", write_divergent_lock)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-identical",
             "from_root": True,
             "apply_changes": True,
