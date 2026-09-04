@@ -111,7 +111,7 @@ fix-report.json
 **/*.dylib
 **/*.test
 **/*.out
-vendor/
+/vendor/
 
 # Node.js inside allowed directories
 **/node_modules/
