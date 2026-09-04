@@ -106,6 +106,30 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(plan.releasable, eq=True)
 
         @staticmethod
+        def test_final_version_is_ahead_of_its_own_prerelease_tag(tmp_path: Path) -> None:
+            """A final version whose last tag is one of its pre-releases ships as declared.
+
+            The release triple is shared, so only a comparison that keeps the
+            pre-release segment sees that ``0.1.0`` follows ``v0.1.0rc2``.
+            """
+            workspace = u.Tests.create_release_workspace(tmp_path)
+            u.Tests.checkout_integration(workspace)
+            _tag(workspace, "v0.1.0rc2")
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge pull request #4 from legacy/lane"],
+                    cwd=workspace,
+                )
+            )
+            tm.ok(cli.run_checked([c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace))
+
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
+            plan = _plan(workspace)
+            tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_BASE)
+            tm.that(plan.previous_tag, eq="v0.1.0rc2")
+            tm.that(plan.releasable, eq=True)
+
+        @staticmethod
         def test_declared_version_ahead_of_the_last_tag_is_the_next_release(
             tmp_path: Path,
         ) -> None:

@@ -174,6 +174,18 @@ class FlextInfraUtilitiesVersioning:
         return r[t.Triple[int, int, int]].ok((major, minor, patch))
 
     @staticmethod
+    def version_is_newer(candidate: str, reference: str) -> p.Result[bool]:
+        """Whether ``candidate`` orders after ``reference`` under PEP 440.
+
+        Pre-release segments take part in the ordering: ``0.12.0`` is newer
+        than ``0.12.0rc2`` although both share the release triple.
+        """
+        try:
+            return r[bool].ok(Version(candidate) > Version(reference))
+        except InvalidVersion as exc:
+            return r[bool].fail(f"invalid version: {exc}")
+
+    @staticmethod
     def render_project_version(content: str, version: str) -> p.Result[str]:
         """Render one canonical project-version update without writing it."""
         version_result = FlextInfraUtilitiesVersioning.parse_semver(version)

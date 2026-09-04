@@ -179,17 +179,15 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     @staticmethod
     def _declared_ahead_of_tag(version: str, latest_tag: str) -> p.Result[bool]:
-        """Whether the declared (final) version is newer than the last tag's."""
+        """Whether the declared (final) version is newer than the last tag's.
+
+        The comparison keeps pre-release segments: a repository at ``0.12.0``
+        whose last tag is ``v0.12.0rc2`` is ahead of it.
+        """
         if not latest_tag:
             return r[bool].ok(True)
-        declared = u.Infra.parse_semver(version)
-        if declared.failure:
-            return r[bool].fail(declared.error or f"invalid version: {version}")
         tag_prefix = c.Infra.TAG_FORMAT.format(version="")
-        tagged = u.Infra.parse_semver(latest_tag.removeprefix(tag_prefix))
-        if tagged.failure:
-            return r[bool].fail(tagged.error or f"invalid release tag: {latest_tag}")
-        return r[bool].ok(declared.value > tagged.value)
+        return u.Infra.version_is_newer(version, latest_tag.removeprefix(tag_prefix))
 
     def _guard_version_change(self, root: Path, version: str) -> p.Result[bool]:
         """Reject a pyproject version that differs from the integration base.
