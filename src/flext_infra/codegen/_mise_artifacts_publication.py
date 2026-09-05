@@ -27,10 +27,7 @@ def publish(
     for publication in publications:
         before = publication.before
         replacement = publication.replacement
-        if (
-            before.content == replacement.content
-            and before.mode == replacement.mode
-        ):
+        if before.content == replacement.content and before.mode == replacement.mode:
             continue
         written = files.write_publication(publication)
         if written.failure:

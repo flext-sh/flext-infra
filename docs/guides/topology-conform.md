@@ -3,6 +3,8 @@
 <!-- TOC START -->
 - [Authorities](#authorities)
 - [Validation boundary](#validation-boundary)
+- [Scoped projection isolation](#scoped-projection-isolation)
+- [Full refactor workflow](#full-refactor-workflow)
 - [Makefile bootstrap projection](#makefile-bootstrap-projection)
 - [Selection and projections](#selection-and-projections)
 - [uv project boundaries](#uv-project-boundaries)
@@ -55,9 +57,12 @@ destination, content digest, content and removal intent. A planning failure or
 nondeterministic result therefore leaves a pre-existing Makefile byte- and
 inode-identical; the validated candidate is then promoted with one atomic write.
 
-The Makefile projection rejects broader scopes. `--what all` remains the
-operational conformance route: it validates live topology, Beads, environments,
-and ancestry in addition to planning every governed artifact.
+The Makefile projection requires a repository-local workspace declaration and
+rejects broader scopes. `--what all` remains the operational conformance route:
+it validates live topology, Beads, environments, and ancestry in addition to
+planning every governed artifact.
+
+## Full refactor workflow
 
 Direct governed submodules have exactly one ledger mode. A checked-in `.beads`
 symlink inherits the repository root's ledger and requires a routing-only

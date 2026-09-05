@@ -45,8 +45,7 @@ def receipt_states(receipt: Path) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]
 
 
 def publication_plan(
-    projects: tuple[m.Infra.MiseToolchainProjectState, ...],
-    stages: tuple[Path, ...],
+    projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
 ) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
     """Bind each staged artifact to its exact pre-lock destination state."""
     publications: list[m.Infra.MiseToolchainPublication] = []
@@ -71,8 +70,7 @@ def publication_plan(
                 )
             publications.append(
                 m.Infra.MiseToolchainPublication(
-                    before=before,
-                    replacement=replacement.value,
+                    before=before, replacement=replacement.value
                 )
             )
     return r[tuple[m.Infra.MiseToolchainPublication, ...]].ok(tuple(publications))

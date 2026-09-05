@@ -25,26 +25,19 @@ class FlextInfraMiseStaging:
         self._runtime = FlextInfraMiseRuntime(owner)
 
     def stage(
-        self,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
-        *,
-        credential_command: str,
+        self, plan: m.Infra.MiseToolchainWorkspacePlan, *, credential_command: str
     ) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
         """Generate, hydrate, and validate all destination-local candidates."""
         receipt = self._runtime.latest_receipt(
             plan.projects[0], credential_command=credential_command
         )
         if receipt.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                receipt
-            )
+            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(receipt)
         runtime_scratch = plan.projects[0].layout.transaction_root / "runtime"
         environment = process.credential_environment(
             runtime_scratch, credential_command
         )
-        launcher = receipt.value / "bin" / (
-            "mise.cmd" if os.name == "nt" else "mise"
-        )
+        launcher = receipt.value / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
         credential = process.validate_credential_source(
             launcher, cwd=runtime_scratch, env=environment
         )
@@ -68,9 +61,9 @@ class FlextInfraMiseStaging:
                 environment=environment,
             )
             if staged.failure:
-                return r[
-                    tuple[m.Infra.MiseToolchainPublication, ...]
-                ].from_failure(staged)
+                return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
+                    staged
+                )
             stages.append(stage_root)
         return candidates.publication_plan(plan.projects, tuple(stages))
 

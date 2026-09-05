@@ -126,10 +126,7 @@ def write(
     observed = state.journal_state(layout)
     if observed.failure:
         return r[m.Cli.AtomicFileState].from_failure(observed)
-    if (
-        observed.value.content != content
-        or observed.value.mode != files.JOURNAL_MODE
-    ):
+    if observed.value.content != content or observed.value.mode != files.JOURNAL_MODE:
         return r[m.Cli.AtomicFileState].fail(
             "published Mise journal differs from staged bytes or mode"
         )
@@ -165,8 +162,7 @@ def read_scope(
 
 
 def cleanup(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-    journal_state: m.Cli.AtomicFileState,
+    layout: m.Infra.MiseToolchainWorkspaceLayout, journal_state: m.Cli.AtomicFileState
 ) -> p.Result[bool]:
     """Retain recovery authority until every disposable root is removed."""
     roots = state.remove_transaction_roots(layout)
@@ -179,8 +175,7 @@ def cleanup(
 
 
 def _journal_source(
-    plan: m.Infra.MiseToolchainWorkspacePlan,
-    source: m.Cli.AtomicFileState,
+    plan: m.Infra.MiseToolchainWorkspacePlan, source: m.Cli.AtomicFileState
 ) -> p.Result[m.Infra.MiseToolchainJournalSource]:
     if source.content is None or source.mode is None:
         return r[m.Infra.MiseToolchainJournalSource].fail(
@@ -191,9 +186,7 @@ def _journal_source(
         return r[m.Infra.MiseToolchainJournalSource].from_failure(selector)
     return r[m.Infra.MiseToolchainJournalSource].ok(
         m.Infra.MiseToolchainJournalSource(
-            path=selector.value,
-            sha256=files.digest(source.content),
-            mode=source.mode,
+            path=selector.value, sha256=files.digest(source.content), mode=source.mode
         )
     )
 

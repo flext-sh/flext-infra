@@ -16,9 +16,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-def prepare_state_roots(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[bool]:
+def prepare_state_roots(layout: m.Infra.MiseToolchainWorkspaceLayout) -> p.Result[bool]:
     """Create every configured persistent state root before transaction effects."""
     for project in layout.projects:
         prepared = _prepare_state_root(project.root)
@@ -44,18 +42,12 @@ def prepare_state_roots(
     return r[bool].ok(True)
 
 
-def prepare_common_state_root(
-    scope_root: Path,
-) -> p.Result[bool]:
+def prepare_common_state_root(scope_root: Path) -> p.Result[bool]:
     """Create only the umbrella coordination root before acquiring its lock."""
     return _prepare_state_root(scope_root)
 
 
-def validate_lock_path(
-    scope_root: Path,
-    *,
-    require_existing: bool,
-) -> p.Result[Path]:
+def validate_lock_path(scope_root: Path, *, require_existing: bool) -> p.Result[Path]:
     """Authenticate the persistent lock path before FileLock opens it."""
     lock_path = scope_root / files.STATE_DIRECTORY / files.LOCK_NAME
     try:
@@ -72,11 +64,7 @@ def validate_lock_path(
         state = lock_path.lstat()
     except OSError as exc:
         return r[Path].fail_op("inspect Mise transaction lock", exc)
-    if (
-        not stat.S_ISREG(state.st_mode)
-        or state.st_nlink != 1
-        or _is_reparse(state)
-    ):
+    if not stat.S_ISREG(state.st_mode) or state.st_nlink != 1 or _is_reparse(state):
         return r[Path].fail(f"Mise transaction lock is not physical: {lock_path}")
     return r[Path].ok(lock_path)
 
@@ -120,9 +108,7 @@ def create_transaction_roots(
         for project in layout.projects:
             project.transaction_root.mkdir(mode=0o700, exist_ok=False)
             state = project.transaction_root.lstat()
-            created.append(
-                (project.transaction_root, (state.st_dev, state.st_ino))
-            )
+            created.append((project.transaction_root, (state.st_dev, state.st_ino)))
     except OSError as exc:
         cleanup = _remove_exact(tuple(created))
         if cleanup.failure:
@@ -166,9 +152,7 @@ def validate_transaction_roots(
         except OSError as exc:
             return r[bool].fail_op("inspect Mise recovery root", exc)
         if not stat.S_ISDIR(recovery_state.st_mode) or _is_reparse(recovery_state):
-            return r[bool].fail(
-                f"Mise recovery root is not physical: {recovery_root}"
-            )
+            return r[bool].fail(f"Mise recovery root is not physical: {recovery_root}")
     return r[bool].ok(True)
 
 
@@ -197,9 +181,7 @@ def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | None]
     try:
         state = target.lstat()
     except OSError as exc:
-        return r[tuple[int, int] | None].fail_op(
-            "inspect Mise transaction target", exc
-        )
+        return r[tuple[int, int] | None].fail_op("inspect Mise transaction target", exc)
     if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
         return r[tuple[int, int] | None].fail(
             f"Mise transaction target is not physical: {target}"

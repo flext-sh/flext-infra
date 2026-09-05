@@ -146,9 +146,7 @@ class FlextInfraMiseWorkspacePlanner:
         )
 
     def layout_for_config_plans(
-        self,
-        scope_root: Path,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        self, scope_root: Path, config_plans: tuple[m.Infra.CodegenFilePlan, ...]
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Derive exact selected project topology from the locked conform plan."""
         if not config_plans:
@@ -163,9 +161,12 @@ class FlextInfraMiseWorkspacePlanner:
                     f"invalid Mise configuration plan path: {plan.path}"
                 )
             try:
-                selector = plan.path.parent.absolute().relative_to(
-                    scope_root.absolute()
-                ).as_posix()
+                selector = (
+                    plan.path.parent
+                    .absolute()
+                    .relative_to(scope_root.absolute())
+                    .as_posix()
+                )
             except ValueError:
                 return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                     f"Mise configuration plan escapes scope: {plan.path}"
@@ -175,9 +176,9 @@ class FlextInfraMiseWorkspacePlanner:
         layout = self.layout_from_selectors(scope_root, tuple(selectors))
         if layout.failure:
             return layout
-        if tuple(project.artifacts.config for project in layout.value.projects) != tuple(
-            expected_paths
-        ):
+        if tuple(
+            project.artifacts.config for project in layout.value.projects
+        ) != tuple(expected_paths):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 "Mise configuration plan paths differ from derived topology"
             )
@@ -207,10 +208,7 @@ class FlextInfraMiseWorkspacePlanner:
                 return r[m.Infra.MiseToolchainWorkspacePlan].from_failure(project)
             projects.append(project.value)
         return r[m.Infra.MiseToolchainWorkspacePlan].ok(
-            m.Infra.MiseToolchainWorkspacePlan(
-                layout=layout,
-                projects=tuple(projects),
-            )
+            m.Infra.MiseToolchainWorkspacePlan(layout=layout, projects=tuple(projects))
         )
 
     @staticmethod
@@ -262,9 +260,7 @@ class FlextInfraMiseWorkspacePlanner:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(state)
             artifacts.append(state.value)
         artifact_set = m.Infra.MiseToolchainArtifactSet(
-            unix_launcher=artifacts[0],
-            windows_launcher=artifacts[1],
-            lock=artifacts[2],
+            unix_launcher=artifacts[0], windows_launcher=artifacts[1], lock=artifacts[2]
         )
         native_seed = (
             artifact_set.windows_launcher
