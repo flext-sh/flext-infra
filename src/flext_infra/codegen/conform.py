@@ -1972,47 +1972,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return "."
 
     @staticmethod
-    def _infra_repository(
-        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Resolve the repository that owns the infrastructure CLI.
-
-        The owner is read from the live workspace topology when that topology
-        declares it. A standalone consumer legitimately declares no
-        infrastructure subproject, so the reference is then derived from the
-        typed source and provider contracts. Either way nothing is read from a
-        generated pyproject or looked up in a project catalog.
-        """
-        source = codegen.infra_repository
-        matches = tuple(
-            item
-            for item in (workspace.repository, *workspace.subprojects)
-            if item.distribution == source.distribution
-        )
-        if len(matches) > 1:
-            return r[m.Infra.RepositoryRef].fail(
-                "workspace topology declares more than one "
-                f"{source.distribution} checkout"
-            )
-        if matches:
-            return r[m.Infra.RepositoryRef].ok(matches[0])
-        provider_matches = tuple(
-            provider
-            for provider in config.Infra.codegen.providers
-            if provider.name == config.Infra.codegen.infrastructure_provider
-        )
-        if len(provider_matches) != 1:
-            return r[m.Infra.RepositoryRef].fail(
-                "infrastructure repository provider must resolve exactly once: "
-                f"{config.Infra.codegen.infrastructure_provider}"
-            )
-        return r[m.Infra.RepositoryRef].ok(
-            u.Infra.derived_repository_ref(
-                config.Infra.name, provider=provider_matches[0]
-            )
-        )
-
-    @staticmethod
     def _repository_provider(
         repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.ProviderSpec]:
