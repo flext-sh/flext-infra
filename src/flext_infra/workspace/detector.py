@@ -531,18 +531,24 @@ class FlextInfraWorkspaceDetector(
                     "Git submodule is not declared as a governed workspace member: "
                     f"{resolved_root}"
                 )
+            inherited_beads = inherited.value.beads
+            if inherited_beads is None:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    "repository root declares no Beads ledger to inherit: "
+                    f"{superproject_root}"
+                )
             route_error = cls._submodule_beads_route_error(
-                resolved_root, superproject_root, inherited.value.beads
+                resolved_root, superproject_root, inherited_beads
             )
             if route_error is not None:
                 return r[m.Infra.WorkspaceSpec].fail(
                     "workspace member must inherit the workspace Beads ledger: "
                     f"{route_error}"
                 )
-            beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited.value.beads)
+            beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited_beads)
         if beads_result.failure:
             return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
-        beads = beads_result
+        beads = beads_result.value
         repository = cls._local_repository_ref(
             resolved_root,
             checkout=(
@@ -554,7 +560,7 @@ class FlextInfraWorkspaceDetector(
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
         topology = cls._load_declared_repositories(
-            resolved_root, workspace_beads=beads.value
+            resolved_root, workspace_beads=beads
         )
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
@@ -569,18 +575,182 @@ class FlextInfraWorkspaceDetector(
             }
         )
         manifest_repository = cls._manifest_repository_ref(
-            resolved_root, observed=observed_repository, beads=beads.value
+            resolved_root, observed=observed_repository, beads=beads
         )
         if manifest_repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(manifest_repository.error)
         repository_ref = manifest_repository.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
-                name=beads.value.workspace,
-                beads=beads.value,
+                name=beads.workspace,
+                beads=beads,
                 repository=repository_ref,
                 declared_repositories=declared_repositories,
                 external_dependency_paths=external,
+            )
+        )
+
+    @classmethod
+    def load_workspace_declaration(
+        cls, repository_root: Path
+    ) -> p.Result[m.Infra.WorkspaceManifestSpec]:
+        """Parse ``config/workspace.yaml`` without observing any live topology."""
+        manifest_path = cls._workspace_manifest_path(
+            repository_root.expanduser().resolve()
+        )
+        if not manifest_path.is_file():
+            return r[m.Infra.WorkspaceManifestSpec].fail(
+                f"repository declares no workspace manifest: {manifest_path}"
+            )
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            return r[m.Infra.WorkspaceManifestSpec].fail(
+                f"invalid workspace manifest ({manifest_path}): "
+                f"{loaded.error or 'configuration load failed'}"
+            )
+        try:
+            validated = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
+        except c.ValidationError as exc:
+            return r[m.Infra.WorkspaceManifestSpec].fail_op(
+                f"workspace manifest model validation ({manifest_path})", exc
+            )
+        return r[m.Infra.WorkspaceManifestSpec].ok(validated)
+
+    @classmethod
+    def load_projection_workspace_spec(
+        cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
+    ) -> p.Result[m.Infra.WorkspaceSpec]:
+        """Load only repository-owned declarations needed by scoped projection.
+
+        The declared Makefile projection must reach exactly two declaration
+        sources and nothing else: ``config/workspace.yaml`` when the repository
+        ships one, otherwise its PEP 621 metadata. Git, Beads, the environment
+        manager and the resolver are never consulted, so a bootstrap that has
+        no initialized topology yet still renders its own dispatcher.
+        """
+        resolved_root = repository_root.expanduser().resolve()
+        if cls._workspace_manifest_path(resolved_root).is_file():
+            declared = cls.load_workspace_declaration(resolved_root)
+            if declared.failure:
+                return r[m.Infra.WorkspaceSpec].fail(declared.error)
+            manifest = declared.value
+            return r[m.Infra.WorkspaceSpec].ok(
+                m.Infra.WorkspaceSpec(
+                    name=manifest.name,
+                    repository=manifest.repository,
+                    project=manifest.project,
+                    declared_repositories=manifest.members,
+                    external_dependency_paths=manifest.external_dependency_paths,
+                )
+            )
+        resolved_metadata = project_metadata
+        if resolved_metadata is None:
+            metadata = u.read_project_metadata(resolved_root)
+            if metadata.failure:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    metadata.error
+                    or f"cannot derive projection identity: {resolved_root}"
+                )
+            resolved_metadata = metadata.value
+        project_name = resolved_metadata.project.name
+        repository_url = resolved_metadata.project.urls.repository
+        if not repository_url:
+            return r[m.Infra.WorkspaceSpec].fail(
+                "manifestless projection requires project.urls.Repository: "
+                f"{resolved_root}"
+            )
+        canonical_url = (
+            repository_url
+            if repository_url.endswith(c.Infra.GIT_URL_SUFFIX)
+            else f"{repository_url}{c.Infra.GIT_URL_SUFFIX}"
+        )
+        provider = cls._declared_provider_for_url(canonical_url)
+        if provider is None:
+            return r[m.Infra.WorkspaceSpec].fail(
+                "project.urls.Repository is not owned by a declared provider: "
+                f"{resolved_root}"
+            )
+        return r[m.Infra.WorkspaceSpec].ok(
+            m.Infra.WorkspaceSpec(
+                name=project_name,
+                repository=m.Infra.RepositoryRef(
+                    name=project_name,
+                    distribution=project_name,
+                    url=canonical_url,
+                    path=Path(),
+                    role=c.Infra.MakeProfile.STANDALONE,
+                    provider=provider.name,
+                    checkout=c.Infra.CheckoutKind.INDEPENDENT,
+                    codegen=c.Infra.CodegenKind.CONFORM,
+                    package=True,
+                    editable=False,
+                    read_only=False,
+                ),
+            )
+        )
+
+    @classmethod
+    def declared_conform_target(
+        cls,
+        repository_root: Path,
+        workspace_spec: m.Infra.WorkspaceSpec,
+        *,
+        project_metadata: p.ProjectMetadata | None = None,
+    ) -> p.Result[m.Infra.RepositoryConformTarget]:
+        """Derive one target exclusively from repository-owned declarations."""
+        resolved_root = repository_root.expanduser().resolve()
+        repository = workspace_spec.repository
+        if repository.path != Path():
+            return r[m.Infra.RepositoryConformTarget].fail(
+                "local workspace repository path must be '.'"
+            )
+        providers = tuple(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name == repository.provider
+        )
+        if len(providers) != 1:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                f"repository provider must resolve exactly once: {repository.provider}"
+            )
+        (provider,) = providers
+        if not cls.repository_is_governed(repository, provider):
+            return r[m.Infra.RepositoryConformTarget].fail(
+                f"declared repository is not governed by provider {provider.name}"
+            )
+        resolved_metadata = project_metadata
+        if resolved_metadata is None:
+            metadata = u.read_project_metadata(resolved_root)
+            if metadata.failure:
+                return r[m.Infra.RepositoryConformTarget].fail(
+                    metadata.error
+                    or f"unable to read project metadata: {resolved_root}"
+                )
+            resolved_metadata = metadata.value
+        canonical_project_name = resolved_metadata.project.name
+        if canonical_project_name != repository.distribution:
+            return r[m.Infra.RepositoryConformTarget].fail(
+                "project metadata and repository identity differ: "
+                f"{canonical_project_name} != {repository.distribution}"
+            )
+        return r[m.Infra.RepositoryConformTarget].ok(
+            m.Infra.RepositoryConformTarget(
+                repository=repository,
+                root=resolved_root,
+                make_profile=repository.role,
+                canonical_project_name=canonical_project_name,
+                # A declaration-only target cannot observe this checkout's
+                # published integration branch, so the provider contract -- the
+                # only declared baseline -- is the answer, never a Git probe.
+                baseline_branch=provider.branch,
+                ci_enabled=True,
+                external_dependency_paths=workspace_spec.external_dependency_paths,
+                technical_branch_patterns=(
+                    config.Infra.codegen.branch_policy.technical_branch_patterns
+                ),
+                governed_branch_patterns=(
+                    config.Infra.codegen.branch_policy.governed_branch_patterns
+                ),
             )
         )
 

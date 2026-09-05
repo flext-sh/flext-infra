@@ -69,9 +69,10 @@ class TestCodegenLinkedWorktreeTopology:
 
         makefile = (lane / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
         tm.that(makefile, has="MAKE_PROFILE := standalone")
-        tm.that(applied.plan.workspace.beads.workspace, eq="lane-workspace")
-        tm.that(applied.plan.workspace.beads.database, eq="lane-database")
-        tm.that(applied.plan.workspace.beads.issue_prefix, eq="lane-prefix")
+        # The Makefile surface is declaration-only: it never reads the ledger,
+        # so the plan it produces carries no Beads identity at all. The lane's
+        # own `config/beads.yaml` is proven untouched below instead.
+        tm.that(applied.plan.workspace.beads, eq=None)
         tm.that(bool(applied.written_files), eq=True)
         tm.that(
             all(path.is_relative_to(lane) for path in applied.written_files), eq=True

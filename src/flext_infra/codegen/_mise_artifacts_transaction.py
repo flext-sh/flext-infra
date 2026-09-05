@@ -15,9 +15,7 @@ from flext_infra.codegen import _mise_artifacts_state as state
 from flext_infra.codegen import _mise_artifacts_verification as verify
 from flext_infra.codegen._mise_artifacts_recovery import FlextInfraMiseRecovery
 from flext_infra.codegen._mise_artifacts_staging import FlextInfraMiseStaging
-from flext_infra.codegen._mise_artifacts_workspace import (
-    FlextInfraMiseWorkspacePlanner,
-)
+from flext_infra.codegen._mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -38,15 +36,11 @@ class FlextInfraCodegenMiseArtifactTransaction:
         """Validate one coherent live snapshot under the existing lock."""
         return self.run_locked(
             prepare=False,
-            operation=lambda scope_root: self.validate_locked(
-                scope_root, config_plans
-            ),
+            operation=lambda scope_root: self.validate_locked(scope_root, config_plans),
         )
 
     def validate_locked(
-        self,
-        scope_root: Path,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+        self, scope_root: Path, config_plans: tuple[m.Infra.CodegenFilePlan, ...] = ()
     ) -> p.Result[bool]:
         """Validate a plan while the generation owner holds the workspace lock."""
         layout_result = (
@@ -64,9 +58,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
         if journal.failure:
             return r[bool].from_failure(journal)
         if journal.value.content is not None:
-            return r[bool].fail(
-                "pending Mise transaction requires apply-mode recovery"
-            )
+            return r[bool].fail("pending Mise transaction requires apply-mode recovery")
         residue = state.transaction_residue(layout)
         if residue:
             return r[bool].fail(
@@ -83,19 +75,14 @@ class FlextInfraCodegenMiseArtifactTransaction:
         """Recover if necessary, then publish one locked atomic workspace set."""
         published = self.run_locked(
             prepare=True,
-            operation=lambda scope_root: self.publish_locked(
-                scope_root, config_plans
-            ),
+            operation=lambda scope_root: self.publish_locked(scope_root, config_plans),
         )
         if published.failure:
             return r[bool].from_failure(published)
         return r[bool].ok(True)
 
     def run_locked[T](
-        self,
-        *,
-        prepare: bool,
-        operation: Callable[[Path], p.Result[T]],
+        self, *, prepare: bool, operation: Callable[[Path], p.Result[T]]
     ) -> p.Result[T]:
         """Run one generation operation under the stable workspace lock."""
         scope_root = self._planner.scope_root()
@@ -131,9 +118,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
         operation: Callable[[Path], p.Result[T]],
     ) -> p.Result[T]:
         """Authenticate lock and layout before entering caller-owned work."""
-        authenticated = state.validate_lock_path(
-            scope_root, require_existing=True
-        )
+        authenticated = state.validate_lock_path(scope_root, require_existing=True)
         if authenticated.failure:
             return r[T].from_failure(authenticated)
         if prepare:
@@ -143,15 +128,11 @@ class FlextInfraCodegenMiseArtifactTransaction:
         return operation(scope_root)
 
     def publish_locked(
-        self,
-        scope_root: Path,
-        config_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        self, scope_root: Path, config_plans: tuple[m.Infra.CodegenFilePlan, ...]
     ) -> p.Result[tuple[Path, ...]]:
         """Publish one planned bundle while its caller holds the stable lock."""
         result_type = r[tuple[Path, ...]]
-        layout_result = self._planner.layout_for_config_plans(
-            scope_root, config_plans
-        )
+        layout_result = self._planner.layout_for_config_plans(scope_root, config_plans)
         if layout_result.failure:
             return result_type.from_failure(layout_result)
         layout = layout_result.value
@@ -207,8 +188,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
         if sources.failure:
             return result_type.from_failure(
                 self._recover_failure(
-                    scope_root,
-                    sources.error or "Mise sources changed during staging",
+                    scope_root, sources.error or "Mise sources changed during staging"
                 )
             )
         destinations = verify.destinations(plan.value)
@@ -227,9 +207,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
                     prepared_journal.error or "cannot prepare Mise recovery journal",
                 )
             )
-        prepared_topology = verify.journal_topology(
-            layout, prepared_journal.value
-        )
+        prepared_topology = verify.journal_topology(layout, prepared_journal.value)
         if prepared_topology.failure:
             return result_type.from_failure(
                 self._recover_failure(
@@ -271,16 +249,14 @@ class FlextInfraCodegenMiseArtifactTransaction:
         if published.failure:
             return result_type.from_failure(
                 self._recover_failure(
-                    scope_root,
-                    published.error or "Mise artifact publication failed",
+                    scope_root, published.error or "Mise artifact publication failed"
                 )
             )
         precommit = verify.live(self._owner, plan.value, staged.value)
         if precommit.failure:
             return result_type.from_failure(
                 self._recover_failure(
-                    scope_root,
-                    precommit.error or "Mise pre-commit validation failed",
+                    scope_root, precommit.error or "Mise pre-commit validation failed"
                 )
             )
         source_commit = verify.sources(plan.value, prepared_journal.value)
@@ -305,8 +281,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
         if committed_state.failure:
             return result_type.from_failure(
                 self._recover_failure(
-                    scope_root,
-                    committed_state.error or "cannot commit Mise journal",
+                    scope_root, committed_state.error or "cannot commit Mise journal"
                 )
             )
         changed = tuple(
@@ -337,14 +312,14 @@ class FlextInfraCodegenMiseArtifactTransaction:
     ) -> p.Result[bool]:
         observed = state.journal_state_for_scope(scope_root)
         if observed.failure:
-            return r[bool].fail(f"{failure}; journal inspection failed: {observed.error}")
+            return r[bool].fail(
+                f"{failure}; journal inspection failed: {observed.error}"
+            )
         if observed.value.content is None:
             return r[bool].fail(f"{failure}; durable journal disappeared")
         return self._recover_failure(scope_root, failure)
 
-    def _recover_failure(
-        self, scope_root: Path, failure: str
-    ) -> p.Result[bool]:
+    def _recover_failure(self, scope_root: Path, failure: str) -> p.Result[bool]:
         recovered = self._recover(scope_root)
         if recovered.failure:
             return r[bool].fail(f"{failure}; recovery failed: {recovered.error}")

@@ -31,14 +31,14 @@ endif
 endif
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := standalone
-WORKSPACE_ROOT_REL := .
-# === SECTION: workspace subprojects (managed) ===
-# Source: config:workspace_subprojects (list), config:workspace_repositories (list)
+REPOSITORY_ROOT_REL := .
+# === SECTION: workspace declared_repositories (managed) ===
+# Source: config:declared_repositories (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
-WORKSPACE_SUBPROJECTS :=
+DECLARED_REPOSITORIES :=
 MANAGED_GITLINKS :=
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.
 UV_LINK_MODE := copy
@@ -123,32 +123,43 @@ endif
 override SETUP_MISE := $(TRACKED_MISE)
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# === SECTION: WORKSPACE_ROOT isolation (managed) ===
+# make work targets a member checkout when PROJECT names a declared repository and
+# WORKSPACE was not overridden on the command line. PROJECT alone used to keep
+# WORKSPACE at the repository root, so finish looked up lanes in the wrong git
+# primary and failed with "worktree branch is not registered".
+ifeq ($(filter command line override,$(origin WORKSPACE)),)
+ifneq ($(strip $(PROJECT)),)
+ifneq ($(filter $(PROJECT),$(DECLARED_REPOSITORIES)),)
+override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
+endif
+endif
+endif
+# === SECTION: REPOSITORY_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
-# Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
+# Rule: REPOSITORY_ROOT is always derived from the current checkout unless the
 # caller passed it on the command line or via an override origin. An inherited
-# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
+# environment REPOSITORY_ROOT (e.g. a leaked .envrc export from a foreign checkout)
 # must never redirect verbs to another working tree. The git queries therefore
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
 # `gen WHAT=init` (GEN_INIT_ONLY) must probe NO external tool — the checkout may
 # have no git metadata yet.
 ifeq ($(GEN_INIT_ONLY),Y)
-WORKSPACE_ROOT := $(PROJECT_ROOT)
+REPOSITORY_ROOT := $(PROJECT_ROOT)
 else
-ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
-WORKSPACE_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
+ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
+REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
 endif
 endif
-# End SECTION: WORKSPACE_ROOT isolation
-# A workspace lane is always registered at the workspace root. Other verbs may
+# End SECTION: REPOSITORY_ROOT isolation
+# A workspace lane is always registered at the repository root. Other verbs may
 # select a member through PROJECT while workspace orchestration keeps the root
 # so one Git worktree owns the complete project matrix.
 ifneq ($(filter work,$(MAKECMDGOALS)),work)
 ifeq ($(filter command line override,$(origin WORKSPACE)),)
 ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(WORKSPACE_SUBPROJECTS)),)
-override WORKSPACE := $(WORKSPACE_ROOT)/$(PROJECT)
+ifneq ($(filter $(PROJECT),$(DECLARED_REPOSITORIES)),)
+override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)
 endif
 endif
 endif
@@ -157,8 +168,8 @@ endif
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default
-PUBLIC_VERBS := help setup deps build check test fmt fix run work status checkpoint docs clean release gen mod
-BUILTIN_VERBS := help setup deps build check test fmt fix run work status checkpoint docs clean release gen mod
+PUBLIC_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
+BUILTIN_VERBS := help setup deps build check test fmt fix run status docs clean release gen mod
 SCRIPT_VERBS :=
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
@@ -181,9 +192,7 @@ _ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint
 _ALLOWED_WHATS_fmt := check all apply
 _ALLOWED_WHATS_fix := check all apply
 _ALLOWED_WHATS_run := default
-_ALLOWED_WHATS_work := help status start land finish
 _ALLOWED_WHATS_status := diagnostics
-_ALLOWED_WHATS_checkpoint := wip review verify
 _ALLOWED_WHATS_docs := all generate fix audit build validate
 _ALLOWED_WHATS_clean := status generated
 _ALLOWED_WHATS_release := plan version tag build publish
@@ -199,9 +208,7 @@ _ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint $(pats
 _ALLOWED_WHATS_fmt := check all apply $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fix := check all apply $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_run := default $(patsubst _custom_run_%,%,$(filter _custom_run_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_work := help status start land finish $(patsubst _custom_work_%,%,$(filter _custom_work_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_status := diagnostics $(patsubst _custom_status_%,%,$(filter _custom_status_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_checkpoint := wip review verify $(patsubst _custom_checkpoint_%,%,$(filter _custom_checkpoint_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_docs := all generate fix audit build validate $(patsubst _custom_docs_%,%,$(filter _custom_docs_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_clean := status generated $(patsubst _custom_clean_%,%,$(filter _custom_clean_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_release := plan version tag build publish $(patsubst _custom_release_%,%,$(filter _custom_release_%,$(CUSTOM_DECLARED_TARGETS)))
@@ -235,9 +242,7 @@ _DEFAULT_test := all
 _DEFAULT_fmt := check
 _DEFAULT_fix := check
 _DEFAULT_run := default
-_DEFAULT_work := status
 _DEFAULT_status := diagnostics
-_DEFAULT_checkpoint := wip
 _DEFAULT_docs := validate
 _DEFAULT_clean := status
 _DEFAULT_release := plan
@@ -249,7 +254,6 @@ _APPLY_WHAT_test := all
 _APPLY_WHAT_fmt := apply
 _APPLY_WHAT_fix := apply
 _APPLY_WHAT_run := default
-_APPLY_WHAT_work := start
 _APPLY_WHAT_docs := generate
 _APPLY_WHAT_clean := generated
 _APPLY_WHAT_release := version
@@ -407,13 +411,13 @@ _bootstrap_setup_tools:
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)
+ALLOWED_PROJECTS := . $(DECLARED_REPOSITORIES)
 else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
 
-# Workspace-root gate verbs fan out across declared members through the generic
+# Repository-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
@@ -447,10 +451,10 @@ BORROW_RUNTIME_VENV_RECIPE = set -eu; \
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra workspace orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-# A workspace root owns no local gate implementation: its verbs fan out to the
-# declared subprojects. Selecting the root (PROJECT=.) would make it orchestrate
-# itself forever; map `.` to WORKSPACE_SUBPROJECTS instead of failing closed mid-CI.
-DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS) .
+# A repository root owns no local gate implementation: its verbs fan out to the
+# declared declared_repositories. Selecting the root (PROJECT=.) would make it orchestrate
+# itself forever; map `.` to DECLARED_REPOSITORIES instead of failing closed mid-CI.
+DEFAULT_PROJECTS := $(DECLARED_REPOSITORIES) .
 
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 
@@ -476,7 +480,7 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # surplus and uninstalls them, undoing the root's provisioning and leaving
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
-SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
+SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(DECLARED_REPOSITORIES)),1,))
 UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)
@@ -649,17 +653,7 @@ _builtin_help_usage:
 
 
 
-
-	@printf '  %-10s WHAT=%s\n' 'work' "$$(printf '%s' '$(_ALLOWED_WHATS_work)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-	@printf '  %-10s %s\n' '' 'status is read-only; other WHATs require APPLY=Y';
-
-
-
 	@printf '  %-10s WHAT=%s\n' 'status' "$$(printf '%s' '$(_ALLOWED_WHATS_status)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
-
-
-
-	@printf '  %-10s WHAT=%s\n' 'checkpoint' "$$(printf '%s' '$(_ALLOWED_WHATS_checkpoint)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
@@ -704,7 +698,7 @@ _builtin_help_usage:
 
 # === SECTION: submodule setup (managed) ===
 # Source: template (submodule_setup_recipe.j2)
-# Computed: workspace uses WORKSPACE_SUBPROJECTS from config; standalone discovers
+# Computed: workspace uses DECLARED_REPOSITORIES from config; standalone discovers
 #           submodules with flext-managed=true from .gitmodules at runtime.
 # Rule: setup PROVISIONS an absent governed gitlink and VERIFIES a present one.
 #       An absent checkout holds no work, so setup initializes it at the recorded
@@ -1063,15 +1057,6 @@ _builtin_status_diagnostics: _builtin_require_environment
 	fi
 	@git -C "$(PROJECT_ROOT)" status --short
 
-_builtin_checkpoint_wip: _builtin_require_environment
-	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" wip
-
-_builtin_checkpoint_review: _builtin_require_environment
-	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" review
-
-_builtin_checkpoint_verify: _builtin_require_environment
-	@"$(PROJECT_ROOT)/.github/scripts/gate-attestation.sh" verify
-
 _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
@@ -1178,21 +1163,3 @@ _builtin_gen_all:
 	$(call _generated_docs,--apply)
 
 _builtin_gen_apply: _builtin_gen_all
-
-_builtin_work_status:
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation status --bead "$(BEAD)"
-
-_builtin_work_start:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation start --bead "$(BEAD)" --kind "$(KIND)" --name "$(NAME)" --base "$(BASE)" --apply
-
-_builtin_work_land:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation land --bead "$(BEAD)" --apply
-
-_builtin_work_finish:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) workspace work --workspace "$(WORKSPACE)" --operation finish --bead "$(BEAD)" --apply
-
-_builtin_work_help:
-	@printf '%s\n' 'make work WHAT=status|start|land|finish';

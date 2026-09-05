@@ -18,8 +18,7 @@ if TYPE_CHECKING:
 
 
 def journal_topology(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-    journal: m.Infra.MiseToolchainJournal,
+    layout: m.Infra.MiseToolchainWorkspaceLayout, journal: m.Infra.MiseToolchainJournal
 ) -> p.Result[bool]:
     """Bind every untrusted journal selector to the stable workspace layout."""
     if journal.projects != tuple(project.selector for project in layout.projects):
@@ -88,9 +87,7 @@ def sources(
         expected = project.config.sources
         current = config_sources.value
         if current != expected:
-            return r[bool].fail(
-                f"Mise sources changed: {project.layout.selector}"
-            )
+            return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
         expected_states.extend(expected)
     if journal is None:
         return r[bool].ok(True)
@@ -160,8 +157,7 @@ def live(
         if validated.failure:
             return r[bool].fail(
                 validated.error
-                or "published Mise validation failed for "
-                f"{project.layout.selector}"
+                or f"published Mise validation failed for {project.layout.selector}"
             )
     artifact_after = _artifact_snapshot(plan, replacements)
     if artifact_after.failure:
@@ -181,7 +177,7 @@ def live(
 
 def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    replacements: dict[Path, tuple[bytes, int | None]],
+    replacements: dict[Path, tuple[bytes | None, int | None]],
 ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
     """Capture and validate one complete ordered artifact-state barrier."""
     root_launchers: tuple[bytes, bytes] | None = None
@@ -248,7 +244,9 @@ def _journal_source_topology(
             and resolved.value.suffix == ".yaml"
         )
         if len(owners) != 1:
-            return r[bool].fail(f"Mise journal source is outside topology: {source.path}")
+            return r[bool].fail(
+                f"Mise journal source is outside topology: {source.path}"
+            )
         grouped[owners[0].root].append(source.path)
     expected_order: list[str] = []
     for project in layout.projects:

@@ -317,9 +317,6 @@ Infra:
         - develop
         - dev
         - main
-    infra_repository:
-      distribution: flext-infra
-      provider: flext-sh
 
     profiles:
       - name: workspace

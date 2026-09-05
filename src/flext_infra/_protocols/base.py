@@ -241,8 +241,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec:
-            """Repository-local Beads identity."""
+        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec | None:
+            """Repository-local Beads identity; ``None`` for a declared projection."""
             ...
 
         @property

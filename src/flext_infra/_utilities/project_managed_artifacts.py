@@ -76,7 +76,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def _config_directory_identity(
-        cls, config_dir: Path,
+        cls, config_dir: Path
     ) -> p.Result[tuple[int, ...] | None]:
         try:
             state = config_dir.lstat()
@@ -103,9 +103,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 sorted(path for path in config_dir.iterdir() if path.suffix == ".yaml")
             )
         except OSError as exc:
-            return r[tuple[Path, ...]].fail_op(
-                "enumerate project config sources", exc
-            )
+            return r[tuple[Path, ...]].fail_op("enumerate project config sources", exc)
         current = cls._config_directory_identity(config_dir)
         if current.failure:
             return r[tuple[Path, ...]].from_failure(current)
@@ -155,14 +153,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def load_project_managed_artifacts(
-        cls, project_dir: Path,
+        cls, project_dir: Path
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Snapshot every YAML once and parse that exact source set."""
         snapshot = cls.snapshot_project_managed_artifacts(project_dir)
         if snapshot.failure:
-            return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(
-                snapshot
-            )
+            return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(snapshot)
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(
             snapshot.value.resolution
         )
@@ -184,8 +180,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[m.Infra.ProjectManagedArtifactsSnapshot].from_failure(resolution)
         return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(
             m.Infra.ProjectManagedArtifactsSnapshot(
-                sources=source_snapshot.value,
-                resolution=resolution.value,
+                sources=source_snapshot.value, resolution=resolution.value
             )
         )
 
@@ -277,9 +272,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def compose_mise_toml_from_snapshot(
-        cls,
-        source_snapshot: tuple[m.Cli.AtomicFileState, ...],
-        rendered: str,
+        cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...], rendered: str
     ) -> p.Result[str]:
         """Add local tools from one caller-owned immutable YAML snapshot."""
         resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)

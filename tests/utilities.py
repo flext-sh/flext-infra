@@ -686,6 +686,43 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def write_standalone_workspace_manifest(
+            project_dir: Path,
+            name: str,
+            *,
+            upstream: str | None = None,
+            inherited_facets: t.StrSequence = (),
+        ) -> Path:
+            """Write the declared ``config/workspace.yaml`` of one standalone repository.
+
+            The Makefile projection reads declarations only, so this fixture is
+            the complete topology input for ``codegen conform --what makefile
+            --scope self``. Every value is derived from the same typed SSOT the
+            production loader validates against, never frozen by hand.
+            """
+            repository = TestsFlextInfraUtilities.Tests.repository_ref(
+                name, role=c.Infra.MakeProfile.STANDALONE
+            ).model_copy(update={"checkout": c.Infra.CheckoutKind.INDEPENDENT})
+            project = TestsFlextInfraUtilities.Tests.project_spec(name)
+            if upstream is not None:
+                project = project.model_copy(update={"upstream": upstream})
+            if inherited_facets:
+                project = project.model_copy(
+                    update={"inherited_facets": tuple(inherited_facets)}
+                )
+            manifest = m.Infra.WorkspaceManifestSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=name,
+                repository=repository,
+                project=project,
+            )
+            config_dir = project_dir / c.CONFIG_DIR_NAME
+            config_dir.mkdir(parents=True, exist_ok=True)
+            manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
+            tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
+            return manifest_path
+
+        @staticmethod
         def standalone_workspace(
             project_dir: Path, name: str = "flext-demo"
         ) -> m.Infra.WorkspaceSpec:
@@ -712,13 +749,47 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def required_beads(
+            workspace: m.Infra.WorkspaceSpec,
+        ) -> m.Infra.BeadsProjectSpec:
+            """Return the ledger identity the observed loader must always resolve.
+
+            ``WorkspaceSpec.beads`` is absent only on a spec built from
+            declarations alone, which the Makefile projection uses. Every
+            observed load owns an identity, so a test asserting one states that
+            contract here instead of repeating a narrowing at each call site.
+            """
+            beads = workspace.beads
+            tm.that(beads is None, eq=False, msg="observed workspace owns a ledger")
+            if beads is None:
+                msg = "observed workspace spec resolved no Beads identity"
+                raise AssertionError(msg)
+            return beads
+
+        @staticmethod
+        def mise_release() -> str:
+            """Return the release this checkout's tracked Mise launchers embed.
+
+            The toolchain SSOT stopped declaring a Mise version when the tracked
+            ``bin/mise`` launcher became its pinned owner, so a fixture reads the
+            release back through the production owner instead of freezing one.
+            """
+            from flext_infra.codegen.mise_artifacts import (
+                FlextInfraCodegenMiseArtifacts,
+            )
+
+            root = Path(__file__).resolve().parents[1]
+            return tm.ok(FlextInfraCodegenMiseArtifacts.launcher_release(root))
+
+        @staticmethod
         def write_mise_stub(path: Path) -> Path:
             """Write the one hermetic Mise contract used by Make setup fixtures."""
             TestsFlextInfraUtilities.Tests.write_executable(
                 path,
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
-                f"printf '%s\\n' '{config.Infra.codegen.toolchain.mise_version}'; exit; fi\n"
+                f"printf '%s\\n' '{TestsFlextInfraUtilities.Tests.mise_release()}'; "
+                "exit; fi\n"
                 f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
                 f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
                 'if [ "$1" = "trust" ]; then exit; fi\n'
@@ -902,7 +973,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 rendered = u.Cli.template_render(policy_source, policy_context)
                 if rendered.failure:
-                    msg = rendered.error or f"release policy render failed: {policy_path}"
+                    msg = (
+                        rendered.error or f"release policy render failed: {policy_path}"
+                    )
                     raise RuntimeError(msg)
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)

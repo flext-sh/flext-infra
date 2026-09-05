@@ -38,7 +38,7 @@ class FlextInfraEnsureRuffConfigPhase:
             if (
                 project.package_name
                 and project.package_name.isidentifier()
-                and project.declared
+                and project.declared_subproject
             )
         })
 

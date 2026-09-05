@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from .cprofile_report_tests import TestsFlextInfraCProfileReport
     from .governance_authority_tests import (
         COMMON_DIR,
-        ROOT,
         REPOSITORY_ROOT,
+        ROOT,
         test_markdownlint_does_not_suppress_strict_rules,
         test_prompt_skills_resolve_to_existing_paths,
     )
@@ -61,8 +61,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".cprofile_report_tests": ("TestsFlextInfraCProfileReport",),
             ".governance_authority_tests": (
                 "COMMON_DIR",
-                "ROOT",
                 "REPOSITORY_ROOT",
+                "ROOT",
                 "test_markdownlint_does_not_suppress_strict_rules",
                 "test_prompt_skills_resolve_to_existing_paths",
             ),

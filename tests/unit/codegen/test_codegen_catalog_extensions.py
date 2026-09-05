@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import WorktreeFixture, u as test_u
 
@@ -64,10 +65,17 @@ class TestsCodegenCatalogExtensions:
     def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
         tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
-    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
-        toolchain = config.Infra.codegen.toolchain
+    def test_bootstrap_toolchain_pins_one_tracked_mise_release(self) -> None:
+        """The tracked launchers are the pinned Mise owner, not a config floor.
 
-        tm.that(toolchain.mise_version, eq="latest")
+        The toolchain SSOT declared ``mise_version`` until the Mise transaction
+        made ``bin/mise``/``bin/mise.cmd`` the committed, checksum-verified
+        owner. The live contract is therefore that both launchers embed exactly
+        one valid release, which is what this asserts.
+        """
+        release = test_u.Tests.mise_release()
+
+        tm.that(FlextInfraCodegenMiseArtifacts.is_mise_release(release), eq=True)
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -119,7 +127,7 @@ class TestsCodegenCatalogExtensions:
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
-        rendered = tomllib.loads(tm.ok(result))
+        rendered = tomllib.loads(tm.ok(result).rendered)
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(
