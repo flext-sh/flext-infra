@@ -525,12 +525,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         versioning owner performs the ordering instead.
         """
         tags = u.Cli.capture(
-            [
-                c.Infra.GIT,
-                "tag",
-                "--list",
-                c.Infra.TAG_FORMAT.format(version="*"),
-            ],
+            [c.Infra.GIT, "tag", "--list", c.Infra.TAG_FORMAT.format(version="*")],
             cwd=root,
         )
         if tags.failure:

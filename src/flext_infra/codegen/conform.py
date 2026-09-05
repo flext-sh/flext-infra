@@ -1973,12 +1973,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         provider_matches = tuple(
             provider
             for provider in config.Infra.codegen.providers
-            if provider.name == config.Infra.codegen.infrastructure_provider
+            if provider.name == source.provider
         )
         if len(provider_matches) != 1:
             return r[m.Infra.RepositoryRef].fail(
                 "infrastructure repository provider must resolve exactly once: "
-                f"{config.Infra.codegen.infrastructure_provider}"
+                f"{source.provider}"
             )
         return r[m.Infra.RepositoryRef].ok(
             u.Infra.derived_repository_ref(

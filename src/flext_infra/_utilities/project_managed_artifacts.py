@@ -75,9 +75,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return r[tuple[int, ...]].ok(cls._directory_state_key(state))
 
     @classmethod
-    def _config_directory_identity(
-        cls, config_dir: Path
-    ) -> p.Result[tuple[int, ...]]:
+    def _config_directory_identity(cls, config_dir: Path) -> p.Result[tuple[int, ...]]:
         """Return the directory's state key, or ``()`` when it does not exist.
 
         A repository legitimately ships no ``config/`` directory, which is an
@@ -90,9 +88,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         except FileNotFoundError:
             return r[tuple[int, ...]].ok(())
         except OSError as exc:
-            return r[tuple[int, ...]].fail_op(
-                "inspect project config directory", exc
-            )
+            return r[tuple[int, ...]].fail_op("inspect project config directory", exc)
         attributes = getattr(state, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
         if not stat.S_ISDIR(state.st_mode) or attributes & reparse:

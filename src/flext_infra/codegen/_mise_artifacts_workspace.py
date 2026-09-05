@@ -74,7 +74,10 @@ class FlextInfraMiseWorkspacePlanner:
             )
         selectors = (
             ".",
-            *(project.path.as_posix() for project in workspace.value.declared_repositories),
+            *(
+                project.path.as_posix()
+                for project in workspace.value.declared_repositories
+            ),
         )
         return self.layout_from_selectors(scope_root, selectors)
 

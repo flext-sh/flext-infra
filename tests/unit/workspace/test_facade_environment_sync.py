@@ -10,10 +10,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_infra import c, infra, m
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import c, infra, m, u
 from flext_tests import tm
 
 
@@ -113,8 +110,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.ok(setup)
         (workspace / "pyproject.toml").unlink()
         _ = (workspace / ".mise.toml").write_text(
-            f"{c.Infra.WORKSPACE_ENV_GENERATED_MARKERS[0]}\n[tools]\n",
-            encoding="utf-8",
+            f"{c.Infra.WORKSPACE_ENV_GENERATED_MARKERS[0]}\n[tools]\n", encoding="utf-8"
         )
 
         result = infra.sync_environment_files(
@@ -153,9 +149,7 @@ class TestsFlextInfraProjectMiseComposition:
             encoding="utf-8",
         )
 
-        composed = FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
-            workspace, '[tools]\npython = "3.13"\n'
-        )
+        composed = u.Infra.compose_mise_toml(workspace, '[tools]\npython = "3.13"\n')
 
         tools = tomllib.loads(tm.ok(composed))["tools"]
         tm.that(tools["node"], eq="26")
@@ -175,9 +169,7 @@ class TestsFlextInfraProjectMiseComposition:
                 encoding="utf-8",
             )
 
-        composed = FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
-            workspace, "[tools]\n"
-        )
+        composed = u.Infra.compose_mise_toml(workspace, "[tools]\n")
 
         tm.that(composed.failure, eq=True)
         tm.that(composed.error or "", has=["node", "one.yaml", "two.yaml"])
@@ -196,9 +188,7 @@ class TestsFlextInfraProjectMiseComposition:
             encoding="utf-8",
         )
 
-        composed = FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
-            workspace, '[tools]\npython = "3.13"\n'
-        )
+        composed = u.Infra.compose_mise_toml(workspace, '[tools]\npython = "3.13"\n')
 
         tm.that(composed.failure, eq=True)
         tm.that(

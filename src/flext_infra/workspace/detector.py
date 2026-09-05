@@ -559,9 +559,7 @@ class FlextInfraWorkspaceDetector(
         )
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
-        topology = cls._load_declared_repositories(
-            resolved_root, workspace_beads=beads
-        )
+        topology = cls._load_declared_repositories(resolved_root, workspace_beads=beads)
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
         declared_repositories, external = topology.value

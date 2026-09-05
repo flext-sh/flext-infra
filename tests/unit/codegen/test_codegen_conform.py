@@ -7,12 +7,15 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
+import shutil
+import stat
 import sys
 import tomllib
 from difflib import unified_diff
 from pathlib import Path
 
 import pytest
+from filelock import UnixFileLock
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -1789,38 +1792,20 @@ class TestScriptDispatchMakefile:
             "--mode",
             c.Infra.CodegenConformMode.APPLY.value,
         ]
-        environment = dict(os.environ)
-        environment["PYTHONUNBUFFERED"] = "1"
-        output_path = tmp_path / "conform-output.log"
-        process: subprocess.Popen[str]
-        with (
-            UnixFileLock(lock_path, fallback_to_soft=False),
-            output_path.open("w", encoding="utf-8") as output,
-        ):
-            process = subprocess.Popen(  # ruff:ignore[subprocess-without-shell-equals-true]  Why: fixed argv executes this test environment's public module entry point.
-                command,
-                cwd=root,
-                env=environment,
-                stdout=output,
-                stderr=subprocess.STDOUT,
-                text=True,
+        with UnixFileLock(lock_path, fallback_to_soft=False):
+            started = tm.ok(
+                u.Cli.process_start(command, cwd=root, env={"PYTHONUNBUFFERED": "1"})
             )
-            deadline = time.monotonic() + c.Infra.TIMEOUT_SHORT
-            waiting = False
-            while time.monotonic() < deadline and process.poll() is None:
-                output.flush()
-                waiting = "stage=wait-transaction-lock" in output_path.read_text(
-                    encoding="utf-8"
-                )
-                if waiting:
-                    break
-                time.sleep(0.02)
-            tm.that(waiting, eq=True, msg=output_path.read_text(encoding="utf-8"))
+            # The child cannot promote anything while this test owns the
+            # transaction lock, so it is still alive after the bounded wait.
+            # That is the observable proof it is waiting for the owner.
+            blocked = started.wait(timeout=c.Infra.TIMEOUT_SHORT_POLL)
+            tm.that(blocked.failure, eq=True)
             concurrent = b"concurrent human WIP\n"
             makefile.write_bytes(concurrent)
             concurrent_inode = makefile.stat().st_ino
-        return_code = process.wait(timeout=c.Infra.TIMEOUT_SHORT)
-        output_text = output_path.read_text(encoding="utf-8")
+        return_code = tm.ok(started.wait(timeout=c.Infra.TIMEOUT_SHORT))
+        output_text = started.stdout + started.stderr
 
         tm.that(return_code, eq=1, msg=output_text)
         tm.that(output_text, has="Makefile projection changed")
@@ -1865,7 +1850,7 @@ class TestScriptDispatchMakefile:
         infra_provider = next(
             provider
             for provider in config.Infra.codegen.providers
-            if provider.name == config.Infra.codegen.infrastructure_provider
+            if provider.name == config.Infra.codegen.infra_repository.provider
         )
         consumer_provider = next(
             provider
