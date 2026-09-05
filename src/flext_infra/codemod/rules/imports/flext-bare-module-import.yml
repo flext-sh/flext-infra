@@ -1,0 +1,11 @@
+# A plain `import flext_<ns>...` can never bind a canonical facade.
+id: flext-bare-module-import
+language: python
+severity: error
+message: "Import FLEXT facades with `from flext_<ns> import <alias>`; a module import cannot bind a canonical facade."
+rule:
+  kind: import_statement
+  has:
+    kind: identifier
+    stopBy: end
+    regex: '^flext_[a-z0-9_]+$'
