@@ -13,7 +13,11 @@ rule:
         selector: class_definition
     - not:
         has:
-          pattern: "def process_succeeded($$$ARGS): $$$STATEMENTS"
+          all:
+            - kind: function_definition
+            - has:
+                field: name
+                regex: "^process_succeeded$"
           stopBy: end
 fix: |
   class FlextCliUtilitiesRuntimeProcessOutcomeMixin:

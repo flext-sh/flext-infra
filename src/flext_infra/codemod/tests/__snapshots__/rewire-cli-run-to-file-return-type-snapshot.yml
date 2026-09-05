@@ -1,0 +1,16 @@
+id: rewire-cli-run-to-file-return-type
+snapshots:
+  ? |
+    def run_to_file(command: t.StrSequence) -> p.Result[int]:
+        return execute(command)
+  : fixed: |+
+      def run_to_file(command: t.StrSequence) -> p.Result[p.Cli.ProcessOutcome]:
+          return execute(command)
+
+    labels:
+    - source: |-
+        def run_to_file(command: t.StrSequence) -> p.Result[int]:
+            return execute(command)
+      style: primary
+      start: 0
+      end: 85

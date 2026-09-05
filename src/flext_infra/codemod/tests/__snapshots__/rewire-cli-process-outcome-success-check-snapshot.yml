@@ -1,0 +1,16 @@
+id: rewire-cli-process-outcome-success-check
+snapshots:
+  c.Cli.EXIT_CODE_SUCCESS == output.outcome.raw_return_code:
+    fixed: u.Cli.process_succeeded(output.outcome)
+    labels:
+    - source: c.Cli.EXIT_CODE_SUCCESS == output.outcome.raw_return_code
+      style: primary
+      start: 0
+      end: 57
+  output.outcome.raw_return_code == 0:
+    fixed: u.Cli.process_succeeded(output.outcome)
+    labels:
+    - source: output.outcome.raw_return_code == 0
+      style: primary
+      start: 0
+      end: 35
