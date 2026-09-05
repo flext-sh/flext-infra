@@ -170,8 +170,6 @@ class FlextInfraUtilitiesDependencies:
             if not resource_root.is_dir():
                 continue
             for candidate in sorted(resource_root.rglob(f"*{suffix}")):
-                if "_pending" in candidate.parts:
-                    continue
                 resolved = candidate.resolve()
                 if resolved not in seen:
                     seen.add(resolved)
