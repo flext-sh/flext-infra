@@ -224,10 +224,13 @@ class TestCodegenLinkedWorktreeTopology:
         WorktreeFixture.write_gitmodules(root, ("linked-project",))
         outside_snapshot = WorktreeFixture.repository_snapshot(outside)
 
+        # The declared-repository walk lives on the full surface; the Makefile
+        # surface is declaration-only and accepts scope=self alone, so it never
+        # reaches a declared path to reject.
         result = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
+                what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.DECLARED,
                 mode=c.Infra.CodegenConformMode.CHECK,
             )

@@ -785,6 +785,23 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return tm.ok(FlextInfraCodegenMiseArtifacts.launcher_release(root))
 
         @staticmethod
+        def copy_tracked_mise_seeds(root: Path) -> None:
+            """Copy this checkout's committed Mise launchers and lock into ``root``.
+
+            ``codegen conform`` validates the tracked, checksum-verified
+            ``bin/mise`` seeds instead of minting them, so a fixture tree that
+            conforms the full surface must carry them exactly as a governed
+            repository does. ``.mise.toml`` is deliberately not copied: it is a
+            planned projection the fixture expects conform to write.
+            """
+            source_root = Path(__file__).resolve().parents[1]
+            for relative in ("bin/mise", "bin/mise.cmd", "mise.lock"):
+                source = source_root / relative
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                _ = shutil.copy2(source, destination)
+
+        @staticmethod
         def mise_generate_install_script_branch() -> str:
             """Return the stub branch that materializes a generated launcher.
 

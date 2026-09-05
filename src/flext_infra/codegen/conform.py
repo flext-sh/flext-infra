@@ -684,8 +684,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"{repository_root} != {root}"
                     )
             else:
+                # The governing root is the requested checkout, never the
+                # previous iteration's member: resolving the second declared
+                # repository against the first produced <root>/alpha/beta.
                 repository_root_result = self._repository_root(
-                    repository_root, workspace, repository
+                    root, workspace, repository
                 )
                 if repository_root_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
