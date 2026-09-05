@@ -86,9 +86,7 @@ class FlextInfraModGateEngine:
         ))
 
     @classmethod
-    def prepare_rules(
-        cls, rules: t.SequenceOf[Path]
-    ) -> p.Result[m.Infra.ModRuleBatch]:
+    def prepare_rules(cls, rules: t.SequenceOf[Path]) -> p.Result[m.Infra.ModRuleBatch]:
         """Precompile ast-grep rule documents once per batch execution."""
         all_ids: set[str] = set()
         fixable_ids: set[str] = set()

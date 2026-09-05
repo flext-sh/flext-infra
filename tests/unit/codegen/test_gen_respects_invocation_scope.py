@@ -125,7 +125,7 @@ def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
     assert len(init_commands) == 2
     assert all('--workspace "$(PROJECT_ROOT)"' in line for line in init_commands)
     assert all("codegen conform" not in line for line in init_lines)
-    assert "$(filter-out setup gen,$(PUBLIC_VERBS)):" in text
+    assert "$(filter-out setup gen help,$(PUBLIC_VERBS)):" in text
     public_init = text.split("gen:\n", 1)[1].split("\n\n", 1)[0]
     init_branch = public_init.split("else", 1)[0]
     assert "_builtin_gen_init" in init_branch

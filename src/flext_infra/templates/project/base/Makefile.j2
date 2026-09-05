@@ -56,9 +56,11 @@ UV_LINK_MODE := {{ uv_link_mode }}
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 {{ make.apply_variable }} ?= {{ make.apply_absent_value }}
-# The seeded absent value means "not applying", so every guard compares against
-# APPLYING and a plain read-only run never trips the write-enable check.
-APPLYING := $(if $(filter-out {{ make.apply_absent_value }},$(strip $({{ make.apply_variable }}))),$(strip $({{ make.apply_variable }})))
+# Mutation is authorized only by this make invocation's command line. Recipe
+# subprocesses inherit command-line variables as environment state; treating
+# that inherited APPLY as fresh authority makes an unrelated nested read-only
+# make (for example `make help` inside `make test APPLY=Y`) fail or mutate.
+APPLYING := $(if $(filter command line override,$(origin {{ make.apply_variable }})),$(if $(filter-out {{ make.apply_absent_value }},$(strip $({{ make.apply_variable }}))),$(strip $({{ make.apply_variable }}))))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -476,7 +478,7 @@ endef
 # environment exists. It is excluded from the require-environment fan-out and
 # runs directly so an old parsed dispatcher cannot continue into stale recipes.
 ifeq ($(filter gen,$(PUBLIC_VERBS)),gen)
-$(filter-out setup gen,$(PUBLIC_VERBS)): _builtin_require_environment
+$(filter-out setup gen help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
 # The hermetic bootstrap route for WHAT=init: run the init selector directly,
@@ -491,10 +493,10 @@ endif
 else
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
+endif
 
 help:
 	$(call _dispatch,$@)
-endif
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project

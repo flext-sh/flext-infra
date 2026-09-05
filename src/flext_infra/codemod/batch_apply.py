@@ -86,9 +86,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return r[t.Cli.ResultValue].fail(
                 baseline.error or "baseline measure failed"
             )
-        cli.display_text(
-            f"mod: phase=scan-before rules={compiled_rules.rule_count}"
-        )
+        cli.display_text(f"mod: phase=scan-before rules={compiled_rules.rule_count}")
         pending = FlextInfraModGateEngine.scan_prepared(root, compiled_rules, fix=False)
         if pending.failure:
             return r[t.Cli.ResultValue].fail(pending.error or "ast-grep scan failed")

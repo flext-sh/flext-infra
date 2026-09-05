@@ -57,7 +57,9 @@ class FlextInfraUtilitiesRelease:
                 )
             validated_members.append((member, path_result.value))
         if destination.exists():
-            return r[bool].fail(f"release stage directory already exists: {destination}")
+            return r[bool].fail(
+                f"release stage directory already exists: {destination}"
+            )
         try:
             destination.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:

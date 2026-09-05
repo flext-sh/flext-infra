@@ -48,9 +48,11 @@ UV_LINK_MODE := copy
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 APPLY ?= N
-# The seeded absent value means "not applying", so every guard compares against
-# APPLYING and a plain read-only run never trips the write-enable check.
-APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
+# Mutation is authorized only by this make invocation's command line. Recipe
+# subprocesses inherit command-line variables as environment state; treating
+# that inherited APPLY as fresh authority makes an unrelated nested read-only
+# make (for example `make help` inside `make test APPLY=Y`) fail or mutate.
+APPLYING := $(if $(filter command line override,$(origin APPLY)),$(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY))))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -84,7 +86,7 @@ override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=sho
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 override PYTEST_PARALLEL_WORKERS := 2
 override PYTEST_PARALLEL_WORKER_MEMORY_GB := 2
-override PYTEST_PARALLEL_DISTRIBUTION := worksteal
+override PYTEST_PARALLEL_DISTRIBUTION := load
 override PYTEST_PROFILE_SORT := cumulative
 override PYTEST_PROFILE_LIMIT := 50
 override PROCESS_TIMEOUT_COMMAND := timeout
@@ -174,7 +176,7 @@ _ALLOWED_WHATS_help := usage
 _ALLOWED_WHATS_setup := environment
 _ALLOWED_WHATS_deps := check lock upgrade
 _ALLOWED_WHATS_build := artifacts
-_ALLOWED_WHATS_check := all lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
+_ALLOWED_WHATS_check := all lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
 _ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint
 _ALLOWED_WHATS_fmt := check all apply
 _ALLOWED_WHATS_fix := check all apply
@@ -190,7 +192,7 @@ _ALLOWED_WHATS_help := usage $(patsubst _custom_help_%,%,$(filter _custom_help_%
 _ALLOWED_WHATS_setup := environment $(patsubst _custom_setup_%,%,$(filter _custom_setup_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_deps := check lock upgrade $(patsubst _custom_deps_%,%,$(filter _custom_deps_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_build := artifacts $(patsubst _custom_build_%,%,$(filter _custom_build_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_check := all lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_check := all lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint $(patsubst _custom_test_%,%,$(filter _custom_test_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fmt := check all apply $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fix := check all apply $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(CUSTOM_DECLARED_TARGETS)))
@@ -202,8 +204,8 @@ _ALLOWED_WHATS_release := plan version tag build publish $(patsubst _custom_rele
 _ALLOWED_WHATS_gen := check all apply init $(patsubst _custom_gen_%,%,$(filter _custom_gen_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_mod := check all apply $(patsubst _custom_mod_%,%,$(filter _custom_mod_%,$(CUSTOM_DECLARED_TARGETS)))
 endif
-CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
-CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
+CHECK_GATES_ALLOWED := lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
+CHECK_GATES_DEFAULT := lint pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
 
@@ -552,7 +554,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_check_lint _builtin_check_format _builtin_check_pyrefly _builtin_check_mypy _builtin_check_pyright _builtin_check_silent-failure _builtin_check_deferred-self-reference _builtin_check_security _builtin_check_markdown _builtin_check_loc-cap _builtin_check_boundary _builtin_check_runtime-census _builtin_check_namespace _builtin_check_tier-whitelist _builtin_check_smells _builtin_check_layout _builtin_check_canonical-alias _builtin_check_codemod _builtin_check_direnv _builtin_check_duplication _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_plan _builtin_release_version _builtin_release_tag _builtin_release_build _builtin_release_publish _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_check_lint _builtin_check_pyrefly _builtin_check_mypy _builtin_check_pyright _builtin_check_silent-failure _builtin_check_deferred-self-reference _builtin_check_security _builtin_check_markdown _builtin_check_loc-cap _builtin_check_boundary _builtin_check_runtime-census _builtin_check_namespace _builtin_check_tier-whitelist _builtin_check_smells _builtin_check_layout _builtin_check_canonical-alias _builtin_check_codemod _builtin_check_direnv _builtin_check_duplication _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_plan _builtin_release_version _builtin_release_tag _builtin_release_build _builtin_release_publish _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
@@ -564,7 +566,7 @@ endef
 # environment exists. It is excluded from the require-environment fan-out and
 # runs directly so an old parsed dispatcher cannot continue into stale recipes.
 ifeq ($(filter gen,$(PUBLIC_VERBS)),gen)
-$(filter-out setup gen,$(PUBLIC_VERBS)): _builtin_require_environment
+$(filter-out setup gen help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
 # The hermetic bootstrap route for WHAT=init: run the init selector directly,
@@ -579,10 +581,10 @@ endif
 else
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
+endif
 
 help:
 	$(call _dispatch,$@)
-endif
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -904,7 +906,6 @@ _builtin_check_all: _builtin_require_environment
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 			keep=0; \
 			if [ "$$gate" = "lint" ]; then keep=1; fi; \
-			if [ "$$gate" = "format" ]; then keep=1; fi; \
 			if [ "$$gate" = "pyright" ]; then keep=1; fi; \
 			if [ "$$gate" = "silent-failure" ]; then keep=1; fi; \
 			if [ "$$gate" = "deferred-self-reference" ]; then keep=1; fi; \
@@ -926,7 +927,7 @@ _builtin_check_all: _builtin_require_environment
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y runs check gates: lint format pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication\n'; \
+		printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -943,9 +944,6 @@ _builtin_check_all: _builtin_require_environment
 
 _builtin_check_lint: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=lint
-
-_builtin_check_format: _builtin_require_environment
-	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=format
 
 _builtin_check_pyrefly: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyrefly

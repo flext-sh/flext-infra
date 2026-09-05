@@ -149,7 +149,10 @@ class FlextInfraPytestRunner(s[int]):
 
     def parallel_worker_budget(self, policy: PytestPolicy) -> int:
         """Derive one bounded xdist budget from typed CPU and memory owners."""
-        cpu_budget = os.cpu_count() or 1
+        cpu_budget = os.cpu_count()
+        if cpu_budget is None or cpu_budget <= 0:
+            msg = "CPU capacity is unavailable"
+            raise ValueError(msg)
         worker_memory_gb: int = policy.parallel_worker_memory_gb
         configured_workers: int = policy.parallel_workers
         memory_budget = max(1, self._memory_gb() // worker_memory_gb)

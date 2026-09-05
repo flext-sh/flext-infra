@@ -563,9 +563,10 @@ Infra:
         # Reserve physical memory for each xdist worker and its child process
         # tree; this bound may reduce the tested ceiling on smaller hosts.
         parallel-worker-memory-gb: 2
-        # Work stealing drains uneven codegen/subprocess tails without the
-        # serialized 99% tail measured under loadscope.
-        parallel-distribution: worksteal
+        # Keep scheduling centralized so -x stops feeding workers after the
+        # first failure. Work stealing pre-allocated an entire worker queue and
+        # continued hundreds of cases for minutes after a decisive failure.
+        parallel-distribution: load
         profile-sort: cumulative
         profile-limit: 50
         min-version: "8.0"

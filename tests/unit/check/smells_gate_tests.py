@@ -168,7 +168,7 @@ class TestSmellsGate:
         tm.that(len(execution.result.errors), eq=len(_SMELL_CODES))
         tm.that(
             all(
-                issue.severity == c.Infra.GateSeverity.WARNING.value
+                issue.severity == c.Infra.GateSeverity.ERROR.value
                 for issue in execution.issues
             ),
             eq=True,

@@ -21,7 +21,10 @@ from flext_infra.gates.base_gate import FlextInfraGate
 
 # flext-0ftd.3.5: the empty package initializer is not a compatibility export;
 # consume the declaration at its canonical owner after the lazy-init cutover.
-from flext_infra.transformers.smells.base import smell_fixer_for
+from flext_infra.transformers.smells.base import (
+    auto_fixable_smell_tags,
+    smell_fixer_for,
+)
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
 
 if TYPE_CHECKING:
@@ -78,24 +81,24 @@ class FlextInfraSmellsGate(FlextInfraGate):
             fixed, fix_changes = fixer.fix(project_dir, issue)
             if fixed:
                 changes.extend(fix_changes)
-        remaining = tuple(
-            issue for issue in issues if not self._is_auto_fixable(issue)
-        )
+        remaining = tuple(issue for issue in issues if not self._is_auto_fixable(issue))
         self._warn_issues(remaining)
         return self._build_check_gate_execution(
             project_dir,
-            passed=True,
+            passed=not remaining,
             issues=remaining,
-            raw_output="\n".join(changes) if changes else self._scan_output(scan),
+            raw_output="\n".join(
+                part for part in (*changes, self._scan_output(scan)) if part
+            ),
             started=started,
+            errors=[issue.formatted for issue in remaining] if remaining else (),
         )
 
     @staticmethod
     def _is_auto_fixable(issue: m.Infra.Issue) -> bool:
         """Return True when flext-core marks this smell tag as auto-fixable."""
         tag = c.Infra.SMELLS_RULE_TAGS.get(issue.code, "")
-        strategy = c.ENFORCEMENT_SMELL_FIX_STRATEGIES.get(tag)
-        return bool(strategy and strategy.get("auto"))
+        return tag in auto_fixable_smell_tags()
 
     @override
     def check(
@@ -185,7 +188,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @staticmethod
     def _severity() -> str:
-        """Return the sole blocking severity."""
+        """Return the sole blocking severity for smell findings."""
         return str(c.Infra.GateSeverity.ERROR.value)
 
     @classmethod

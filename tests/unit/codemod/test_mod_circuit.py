@@ -42,7 +42,12 @@ def _repo(tmp_path: Path, source: str) -> Path:
     (root / "pyproject.toml").write_text(
         '[project]\nname = "tmp"\nversion = "0.0.0"\n', encoding="utf-8"
     )
-    (root / "sample.py").write_text(source, encoding="utf-8")
+    (root / "__init__.py").write_text(
+        '"""Codemod fixture package."""\n', encoding="utf-8"
+    )
+    (root / "sample.py").write_text(
+        f'"""Codemod fixture module."""\n\n{source}', encoding="utf-8"
+    )
     _git(root, "add", "-A")
     _git(
         root,
@@ -125,8 +130,8 @@ class TestsFlextInfraModCircuitApply:
     def test_apply_reports_verified_node_and_file_counts(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        root = _repo(tmp_path, "value = dict()\n")
-        _rule(root, pattern="value = dict()", fix="value = {}")
+        root = _repo(tmp_path, "value: dict[str, str] = dict()\n")
+        _rule(root, pattern="dict()", fix="{}")
         _git(root, "add", "-A")
         _git(
             root,
@@ -144,9 +149,12 @@ class TestsFlextInfraModCircuitApply:
             repository_root=root, apply_changes=True
         ).execute()
 
-        tm.that(result.success, eq=True)
+        tm.ok(result)
         tm.that(capsys.readouterr().out, has="applied 1 node(s) across 1 file(s)")
-        tm.that((root / "sample.py").read_text(encoding="utf-8"), eq="value = {}\n")
+        tm.that(
+            (root / "sample.py").read_text(encoding="utf-8"),
+            eq='"""Codemod fixture module."""\n\nvalue: dict[str, str] = {}\n',
+        )
         tm.that(_git(root, "rev-parse", "HEAD"), eq=head_before)
 
     def test_detection_only_rule_remains_blocking_without_mutation(
@@ -165,7 +173,10 @@ class TestsFlextInfraModCircuitApply:
         tm.that(check_result.error or "", has="1 pending ast-grep finding")
         tm.that(apply_result.error or "", has="1 ast-grep finding(s) remained")
         tm.that(capsys.readouterr().out, has="phase=scan-after")
-        tm.that((root / "sample.py").read_text(encoding="utf-8"), eq="value = dict()\n")
+        tm.that(
+            (root / "sample.py").read_text(encoding="utf-8"),
+            eq='"""Codemod fixture module."""\n\nvalue = dict()\n',
+        )
 
     def test_byte_identical_fix_is_not_pending(self, tmp_path: Path) -> None:
         root = _repo(tmp_path, "value = dict()\n")
@@ -212,7 +223,10 @@ class TestsFlextInfraModCircuitApply:
         tm.that(result.error or "", has="changes retained for fix-forward repair")
         tm.that(
             (root / "sample.py").read_text(encoding="utf-8"),
-            eq="import os\nimport sys\nvalue = {}\n",
+            eq=(
+                '"""Codemod fixture module."""\n\n'
+                "import os\nimport sys\nvalue = {}\n"
+            ),
         )
         tm.that(_git(root, "rev-parse", "HEAD"), eq=head_before)
 
@@ -224,7 +238,10 @@ class TestsFlextInfraModCircuitApply:
 
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="pending ast-grep finding")
-        tm.that((root / "sample.py").read_text(encoding="utf-8"), eq="value = dict()\n")
+        tm.that(
+            (root / "sample.py").read_text(encoding="utf-8"),
+            eq='"""Codemod fixture module."""\n\nvalue = dict()\n',
+        )
 
 
 class TestsFlextInfraModCliRoute:
@@ -235,4 +252,26 @@ class TestsFlextInfraModCliRoute:
         exit_code = infra_main(["refactor", "mod", "--workspace", str(root)])
 
         tm.that(exit_code, ne=0)
-        tm.that((root / "sample.py").read_text(encoding="utf-8"), eq="value = dict()\n")
+        tm.that(
+            (root / "sample.py").read_text(encoding="utf-8"),
+            eq='"""Codemod fixture module."""\n\nvalue = dict()\n',
+        )
+
+    def test_refactor_mod_rejects_crg_library_and_implementation(
+        self, tmp_path: Path
+    ) -> None:
+        cases = {
+            "library": "import crg\n",
+            "implementation": "def build_crg() -> None:\n    pass\n",
+        }
+        for case, source in cases.items():
+            case_root = tmp_path / case
+            case_root.mkdir()
+            root = _repo(case_root, "")
+            package = root / "src" / "flext_infra"
+            package.mkdir(parents=True)
+            (package / "crg_case.py").write_text(source, encoding="utf-8")
+
+            exit_code = infra_main(["refactor", "mod", "--workspace", str(root)])
+
+            tm.that(exit_code, ne=0)
