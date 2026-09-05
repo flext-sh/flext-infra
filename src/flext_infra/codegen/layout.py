@@ -89,9 +89,11 @@ class FlextInfraCodegenLayout(
             )
         discovered = u.Infra.projects(self.repository_root)
         if discovered.success and discovered.value:
-            return r[t.SequenceOf[Path]].ok(
-                tuple(project.path for project in discovered.value)
-            )
+            project_dirs = dict.fromkeys((
+                self.repository_root,
+                *(project.path for project in discovered.value),
+            ))
+            return r[t.SequenceOf[Path]].ok(tuple(project_dirs))
         if self.repository_root.is_dir():
             return r[t.SequenceOf[Path]].ok((self.repository_root,))
         return r[t.SequenceOf[Path]].fail("no projects discovered")

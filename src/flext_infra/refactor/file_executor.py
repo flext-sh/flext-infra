@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
+from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 from flext_infra.transformers.class_nesting import (
     FlextInfraRefactorClassNestingTransformer,
 )
@@ -25,7 +25,7 @@ class FlextInfraClassNestingPostCheckGate:
     """Run post-transform validation gates for direct class-nesting execution."""
 
     def validate(
-        self, result: m.Infra.Result, expected: t.JsonMapping
+        self, result: m.Infra.Result, expected: t.JsonMapping, *, repository_root: Path
     ) -> t.Pair[bool, t.StrSequence]:
         """Validate post-check expectations against one transformed file result."""
         if not result.success:
@@ -47,7 +47,7 @@ class FlextInfraClassNestingPostCheckGate:
                 self._validate_flext(file_path, source_symbol, expected_chain)
             )
         if c.Infra.RK_LSP_DIAGNOSTICS_CLEAN in quality_gates:
-            errors.extend(self._validate_types(file_path))
+            errors.extend(self._validate_types(repository_root, file_path))
         return (not errors, errors)
 
     def _validate_imports(self, file_path: Path) -> t.StrSequence:
@@ -80,14 +80,12 @@ class FlextInfraClassNestingPostCheckGate:
         return list[str]()
 
     @staticmethod
-    def _validate_types(file_path: Path) -> t.StrSequence:
-        """Validate types."""
-        result = u.Cli.capture([sys.executable, "-m", "py_compile", str(file_path)])
-        return (
-            [f"lsp_diagnostics_clean_failed:{result.error or ''}"]
-            if result.failure
-            else list[str]()
-        )
+    def _validate_types(repository_root: Path, file_path: Path) -> t.StrSequence:
+        """Validate types through the real Pyright Language Server Protocol."""
+        FlextInfraLspDiagnosticsDetector.validate(
+            repository_root, (file_path,)
+        ).unwrap()
+        return list[str]()
 
 
 class FlextInfraRefactorFileExecutor:
@@ -125,22 +123,17 @@ class FlextInfraRefactorFileExecutor:
             if project_root is not None
             else Path(resource.real_path)
         )
-        try:
-            return self._apply_class_nesting_checked(
-                resource, file_path, dry_run=dry_run
-            )
-        except c.EXC_BROAD_IO_TYPE as exc:
-            return m.Infra.Result(
-                file_path=file_path,
-                success=False,
-                modified=False,
-                error=str(exc),
-                changes=[],
-                refactored_code=None,
-            )
+        return self._apply_class_nesting_checked(
+            resource, file_path, repository_root=project_root, dry_run=dry_run
+        )
 
     def _apply_class_nesting_checked(
-        self, resource: t.Infra.RopeResource, file_path: Path, *, dry_run: bool
+        self,
+        resource: t.Infra.RopeResource,
+        file_path: Path,
+        *,
+        repository_root: Path | None,
+        dry_run: bool,
     ) -> m.Infra.Result:
         """Apply class nesting after the public error boundary."""
         source = resource.read()
@@ -176,12 +169,18 @@ class FlextInfraRefactorFileExecutor:
         )
         modified = updated != source
         if modified and not dry_run:
+            resource.write(updated)
+            postcheck_root = (
+                repository_root or u.Infra.project_root(file_path) or file_path.parent
+            )
             postcheck_result = self._run_class_nesting_postcheck(
-                file_path=file_path, updated=updated, changes=changes
+                repository_root=postcheck_root,
+                file_path=file_path,
+                updated=updated,
+                changes=changes,
             )
             if postcheck_result is not None:
                 return postcheck_result
-            resource.write(updated)
         return m.Infra.Result(
             file_path=file_path,
             success=True,
@@ -191,7 +190,12 @@ class FlextInfraRefactorFileExecutor:
         )
 
     def _run_class_nesting_postcheck(
-        self, *, file_path: Path, updated: str, changes: t.StrSequence
+        self,
+        *,
+        repository_root: Path,
+        file_path: Path,
+        updated: str,
+        changes: t.StrSequence,
     ) -> m.Infra.Result | None:
         """Run postchecks for a modified class-nesting result."""
         expected_base_chain: t.JsonValueList = []
@@ -215,6 +219,7 @@ class FlextInfraRefactorFileExecutor:
                 refactored_code=updated,
             ),
             payload,
+            repository_root=repository_root,
         )
         if ok:
             return None

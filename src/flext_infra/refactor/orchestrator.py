@@ -39,11 +39,11 @@ class FlextInfraRefactorOrchestrator(
         self,
         loader: FlextInfraRefactorRuleLoader,
         *,
-        safety_manager: FlextInfraRefactorSafetyManager | None = None,
+        safety_manager: FlextInfraRefactorSafetyManager,
     ) -> None:
-        """Initialize the orchestrator with a loader and optional safety service."""
+        """Initialize the orchestrator with explicitly injected services."""
         self.loader = loader
-        self.safety_manager = safety_manager or FlextInfraRefactorSafetyManager()
+        self.safety_manager = safety_manager
         self._class_nesting_config: t.JsonMapping | None = None
         self._class_nesting_policy_by_family: (
             t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
@@ -52,31 +52,19 @@ class FlextInfraRefactorOrchestrator(
 
     @override
     def refactor_file(
-        self,
-        file_path: Path,
-        *,
-        dry_run: bool = False,
-        gates: t.StrSequence | None = None,
+        self, file_path: Path, *, dry_run: bool = False
     ) -> m.Infra.Result:
         """Refactor one file using the loader's current rule selections."""
-        try:
-            if file_path.suffix != c.Infra.EXT_PYTHON:
-                return self._skip_result(file_path)
-            return self._refactor_python_file(file_path, dry_run=dry_run, gates=gates)
-        except c.EXC_BROAD_IO_TYPE as exc:
-            return self._error_result(file_path, str(exc))
+        if file_path.suffix != c.Infra.EXT_PYTHON:
+            return self._skip_result(file_path)
+        return self._refactor_python_file(file_path, dry_run=dry_run)
 
     def _refactor_python_file(
-        self, file_path: Path, *, dry_run: bool, gates: t.StrSequence | None
+        self, file_path: Path, *, dry_run: bool
     ) -> m.Infra.Result:
         """Refactor one Python source file after caller-level exception handling."""
         repository_root = u.Infra.project_root(file_path) or file_path.parent
-        read = u.Cli.files_read_text(file_path)
-        if read.failure:
-            return self._error_result(
-                file_path, read.error or f"failed to read {file_path}"
-            )
-        original = read.value
+        original = u.Cli.files_read_text(file_path).unwrap()
         current, all_changes = original, list[str]()
         current, error_result = self._apply_file_rules(
             file_path, repository_root, current, all_changes
@@ -90,9 +78,7 @@ class FlextInfraRefactorOrchestrator(
                 file_path=file_path,
                 repository_root=repository_root,
                 current=current,
-                original=original,
                 all_changes=all_changes,
-                gates=gates,
             )
         return error_result or m.Infra.Result(
             file_path=file_path,
@@ -163,44 +149,21 @@ class FlextInfraRefactorOrchestrator(
         file_path: Path,
         repository_root: Path,
         current: str,
-        original: str,
         all_changes: t.MutableSequenceOf[str],
-        gates: t.StrSequence | None,
     ) -> m.Infra.Result | None:
-        """Write transformed source through protected validation."""
-        ok, report = u.Infra.protected_source_write(
-            file_path,
-            request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=repository_root,
-                updated_source=current,
-                keep_backup=True,
-                gates=gates,
-            ),
-        )
-        all_changes.extend(report)
-        if ok:
-            return None
-        return m.Infra.Result(
-            file_path=file_path,
-            success=False,
-            modified=False,
-            error="Protected refactor validation failed",
-            changes=all_changes,
-            refactored_code=original,
-        )
+        """Write transformed source once; later validation retains it on failure."""
+        _ = repository_root, all_changes
+        u.Cli.files_write_text(file_path, current).unwrap()
+        return None
 
     @override
     def refactor_files(
-        self,
-        file_paths: t.SequenceOf[Path],
-        *,
-        dry_run: bool = False,
-        gates: t.StrSequence | None = None,
+        self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor many files and collect individual results."""
         results: t.MutableSequenceOf[m.Infra.Result] = []
         for file_path in file_paths:
-            result = self.refactor_file(file_path, dry_run=dry_run, gates=gates)
+            result = self.refactor_file(file_path, dry_run=dry_run)
             results.append(result)
             if result.success and result.modified:
                 u.Cli.info(
@@ -213,6 +176,7 @@ class FlextInfraRefactorOrchestrator(
                 self._refactor_debug(f"Unchanged: {file_path.name}")
             else:
                 u.Cli.error(f"Failed: {file_path.name} - {result.error}")
+                return results
         return results
 
 

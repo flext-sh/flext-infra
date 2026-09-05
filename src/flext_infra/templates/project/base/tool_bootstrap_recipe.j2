@@ -1,5 +1,5 @@
-{% macro mise_latest_runtime_bootstrap(project_root, mise) -%}
-	scratch_parent="{{ project_root }}/.test-tmp"; \
+{% macro mise_latest_runtime_bootstrap(scratch_root, mise) -%}
+	scratch_parent="{{ scratch_root }}"; \
 	mkdir -p "$$scratch_parent"; \
 	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
 	trap 'find "$$scratch" -depth -delete' EXIT; \
@@ -43,7 +43,7 @@
 	printf 'mise setup runtime=%s\n' "$$mise_runtime"
 {%- endmacro %}
 
-{% macro tool_bootstrap_recipe(target, project_root, mise, uv_version, lifecycle) -%}
+{% macro tool_bootstrap_recipe(target, project_root, scratch_root, mise, uv_version, lifecycle) -%}
 .PHONY: {{ target }}
 
 {{ target }}:
@@ -52,14 +52,14 @@
 	mise="{{ mise }}"; \
 	uv_required="{{ uv_version }}"; \
 	if [ ! -f "$$mise" ]; then \
-		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
+		printf 'ERROR: missing generated mise launcher: %s; run make gen APPLY=Y\n' "$$mise" >&2; \
 		exit 2; \
 	fi; \
 	if [ ! -f "$$project_root/mise.lock" ]; then \
-		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
+		printf 'ERROR: missing generated mise.lock; run make gen APPLY=Y and commit it\n' >&2; \
 		exit 2; \
 	fi; \
-	{{ mise_latest_runtime_bootstrap(project_root, mise) }}; \
+	{{ mise_latest_runtime_bootstrap(scratch_root, mise) }}; \
 	global_config="$$scratch/global-config.toml"; \
 	config_dir="$$scratch/config"; \
 	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \

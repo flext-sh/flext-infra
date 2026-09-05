@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Final
 
 from flext_core import c
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
-from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -39,12 +38,11 @@ def _build_namespace_family_expected_alias(
     return MappingProxyType(result)
 
 
-class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
+class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
 
     RK_REFACTOR: Final[str] = "refactor"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
-    RK_IGNORE_PATTERNS: Final[str] = "ignore_patterns"
     RK_FILE_EXTENSIONS: Final[str] = "file_extensions"
     RK_FORBIDDEN_IMPORTS: Final[str] = "forbidden_imports"
     RK_REDUNDANT_TYPE_TARGETS: Final[str] = "redundant_type_targets"
@@ -68,11 +66,17 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
     RK_FLEXT_VALID: Final[str] = "flext_valid"
     RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
+    CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
+    CODEMOD_RULE_SUFFIX: Final[str] = ".yml"
+    CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
+    CODEMOD_TEST_CONFIGS_KEY: Final[str] = "testConfigs"
+    CODEMOD_TEST_DIR_KEY: Final[str] = "testDir"
+    CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
+    CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
     CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
     CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
-        RK_IGNORE_PATTERNS,
         RK_FILE_EXTENSIONS,
     )
     """Allowed keys under the ``refactor`` config scope."""

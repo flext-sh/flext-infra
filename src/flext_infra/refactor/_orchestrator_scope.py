@@ -15,18 +15,14 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorOrchestratorScopeMixin:
-    """Provide project/workspace refactor scopes with checkpoint/rollback flow."""
+    """Provide fail-fast project and workspace refactor scopes."""
 
     if TYPE_CHECKING:
         loader: FlextInfraRefactorRuleLoader
         safety_manager: FlextInfraRefactorSafetyManager
 
         def refactor_files(
-            self,
-            file_paths: t.SequenceOf[Path],
-            *,
-            dry_run: bool = False,
-            gates: t.StrSequence | None = None,
+            self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         @staticmethod
@@ -35,82 +31,31 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         @staticmethod
         def _refactor_header(message: str) -> None: ...
 
-    def _try_safety_checkpoint(
-        self, target: Path, *, apply_safety: bool, dry_run: bool
-    ) -> t.Pair[str, t.SequenceOf[m.Infra.Result] | None]:
-        """Try safety checkpoint."""
-        if not apply_safety or dry_run:
-            return "", None
-        checkpoint = self.safety_manager.create_pre_transformation_checkpoint(target)
-        if checkpoint.failure:
-            msg = checkpoint.error or "pre-transformation checkpoint failed"
-            u.Cli.error(msg)
-            return "", [self._error_result(target, msg)]
-        return checkpoint.value, None
-
-    def _finalize_safety(
+    def _validate_results(
         self,
         *,
         target: Path,
-        checkpoint_ref: str,
-        processed_targets: t.StrSequence,
         results: t.MutableSequenceOf[m.Infra.Result],
+        dry_run: bool,
     ) -> None:
-        """Finalize safety."""
-        checkpoint = self.safety_manager.save_checkpoint_state(
-            target,
-            status="post-transform",
-            checkpoint_ref=checkpoint_ref,
-            processed_targets=processed_targets,
-        )
-        if checkpoint.failure:
-            self._abort_with_rollback(
-                target=target,
-                checkpoint_ref=checkpoint_ref,
-                results=results,
-                msg=checkpoint.error or "checkpoint save failed",
-            )
+        """Validate retained changes once after successful transformation."""
+        if dry_run or any(not result.success for result in results):
             return
-        validation = self.safety_manager.run_semantic_validation(target)
-        if validation.failure:
-            self._abort_with_rollback(
-                target=target,
-                checkpoint_ref=checkpoint_ref,
-                results=results,
-                msg=validation.error or "semantic validation failed",
-            )
-            return
-        cleared = self.safety_manager.clear_checkpoint(
-            keep=[
-                result.file_path
-                for result in results
-                if result.success and result.modified
-            ]
+        changed = tuple(result.file_path for result in results if result.modified)
+        self.safety_manager.run_semantic_validation(target, changed).unwrap()
+
+    def _refactor_project_results(
+        self, project_path: Path, *, dry_run: bool, pattern: str
+    ) -> t.MutableSequenceOf[m.Infra.Result]:
+        """Transform one project's configured files without a second validation path."""
+        collected = u.Infra.collect_refactor_project_files(
+            self.loader.settings, project_path, pattern=pattern
         )
-        if cleared.failure:
-            u.Cli.error(cleared.error or "checkpoint clear failed")
-
-    def _abort_with_rollback(
-        self,
-        *,
-        target: Path,
-        checkpoint_ref: str,
-        results: t.MutableSequenceOf[m.Infra.Result],
-        msg: str,
-    ) -> None:
-        """Stop processing, log, attempt rollback, and append a failure result.
-
-        Centralizes the "fail + rollback + record" pattern shared by every
-        post-transform safety failure path so each failure branch stays one
-        line at the call site (DRY + fail-loud — rollback errors are also
-        logged, never silently swallowed).
-        """
-        self.safety_manager.request_emergency_stop(msg)
-        u.Cli.error(msg)
-        rollback = self.safety_manager.rollback(target, checkpoint_ref)
-        if rollback.failure:
-            u.Cli.error(rollback.error or "rollback failed")
-        results.append(self._error_result(target, msg))
+        if collected is None:
+            msg = f"File iteration failed for {project_path}"
+            raise RuntimeError(msg)
+        u.Cli.info(f"Found {len(collected)} files to process")
+        return list(self.refactor_files(collected, dry_run=dry_run))
 
     def refactor_project(
         self,
@@ -118,35 +63,12 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         *,
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
-        apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor files under configured project directories."""
-        checkpoint_ref, error_results = self._try_safety_checkpoint(
-            project_path, apply_safety=apply_safety, dry_run=dry_run
+        results = self._refactor_project_results(
+            project_path, dry_run=dry_run, pattern=pattern
         )
-        if error_results is not None:
-            results_out: t.SequenceOf[m.Infra.Result] = error_results
-            return results_out
-        collected = u.Infra.collect_refactor_project_files(
-            self.loader.settings, project_path, pattern=pattern
-        )
-        if collected is None:
-            return [
-                self._error_result(
-                    project_path, f"File iteration failed for {project_path}"
-                )
-            ]
-        u.Cli.info(f"Found {len(collected)} files to process")
-        results: t.MutableSequenceOf[m.Infra.Result] = []
-        results.extend(self.refactor_files(collected, dry_run=dry_run, gates=gates))
-        if apply_safety and not dry_run:
-            self._finalize_safety(
-                target=project_path,
-                checkpoint_ref=checkpoint_ref,
-                processed_targets=[str(project_path)],
-                results=results,
-            )
+        self._validate_results(target=project_path, results=results, dry_run=dry_run)
         return results
 
     def refactor_workspace(
@@ -155,49 +77,27 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         *,
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
-        apply_safety: bool = True,
-        gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor all discoverable workspace projects."""
         root = repository_root.resolve()
         if not root.exists() or not root.is_dir():
-            u.Cli.error(f"Invalid repository root: {repository_root}")
-            return []
+            raise FileNotFoundError(repository_root)
         projects = u.Infra.discover_refactor_projects(self.loader.settings, root)
         if not projects:
-            u.Cli.error(f"No projects discovered under: {repository_root}")
-            return []
+            msg = f"No projects discovered under: {repository_root}"
+            raise RuntimeError(msg)
         u.Cli.info(f"Discovered {len(projects)} projects in workspace")
-        checkpoint_ref, error_results = self._try_safety_checkpoint(
-            root, apply_safety=apply_safety, dry_run=dry_run
-        )
-        if error_results is not None:
-            results_out: t.SequenceOf[m.Infra.Result] = error_results
-            return results_out
         results: t.MutableSequenceOf[m.Infra.Result] = []
-        processed: t.MutableSequenceOf[str] = []
         for project in projects:
-            if apply_safety and self.safety_manager.emergency_stop_requested:
-                break
             self._refactor_header(f"Project: {project}")
             results.extend(
-                self.refactor_project(
-                    project,
-                    dry_run=dry_run,
-                    pattern=pattern,
-                    apply_safety=False,
-                    gates=gates,
+                self._refactor_project_results(
+                    project, dry_run=dry_run, pattern=pattern
                 )
             )
-            if apply_safety and not dry_run:
-                processed.append(str(project))
-        if apply_safety and not dry_run:
-            self._finalize_safety(
-                target=root,
-                checkpoint_ref=checkpoint_ref,
-                processed_targets=processed,
-                results=results,
-            )
+            if any(not result.success for result in results):
+                return results
+        self._validate_results(target=root, results=results, dry_run=dry_run)
         return results
 
 

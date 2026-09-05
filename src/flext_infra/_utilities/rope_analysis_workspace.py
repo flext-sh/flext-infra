@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import operator
 from pathlib import Path
+from time import perf_counter
 
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_cli import u
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -13,16 +15,6 @@ from flext_infra.typings import t
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
     """Rope-backed workspace indexing helpers."""
-
-    @staticmethod
-    def _project_root_for_file(repository_root: Path, file_path: Path) -> Path | None:
-        """Project root for file."""
-        for parent in file_path.parents:
-            if (parent / "pyproject.toml").is_file():
-                return parent.resolve()
-            if parent == repository_root:
-                return repository_root
-        return None
 
     @classmethod
     def _package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
@@ -64,39 +56,40 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
 
     @staticmethod
-    def _python_and_stub_file_paths(
-        rope_project: t.Infra.RopeProject, resolved_root: Path
-    ) -> tuple[Path, ...]:
-        """Return indexed sources, declared wrapper modules, and typing stubs."""
-        python_paths = {
-            path.resolve()
-            for path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project)
-            if not set(path.relative_to(resolved_root).parts)
-            & c.Infra.ITERATION_EXCLUDED_PARTS
-        }
-        # flext-pulj (codex): Rope's source roots omit tests/examples/scripts;
-        # index those declared wrapper surfaces so explicitly targeted codegen
-        # can update their generated initializers without textual fallbacks.
-        wrapper_paths = {
-            path.resolve()
-            for wrapper_name in c.Infra.ROOT_WRAPPER_SEGMENTS
-            for wrapper_root in (resolved_root / wrapper_name,)
-            if wrapper_root.is_dir()
-            for path in wrapper_root.rglob("*.py")
-            if path.is_file()
-            and not set(path.relative_to(resolved_root).parts)
-            & c.Infra.ITERATION_EXCLUDED_PARTS
-        }
-        stub_paths = {
-            path.resolve()
-            for path in resolved_root.rglob("*.pyi")
-            if path.is_file()
-            and not set(path.relative_to(resolved_root).parts)
-            & c.Infra.ITERATION_EXCLUDED_PARTS
-        }
-        return tuple(
-            sorted(python_paths | wrapper_paths | stub_paths, key=Path.as_posix)
+    def _python_and_stub_files(resolved_root: Path) -> tuple[tuple[Path, Path], ...]:
+        """Return owned Python paths paired with their declared project root."""
+        declared = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
+            resolved_root
         )
+        project_roots = {resolved_root, *(path.resolve() for path in declared)}
+        if not (resolved_root / c.Infra.GITMODULES).is_file():
+            project_roots.update(
+                path.resolve()
+                for path in resolved_root.iterdir()
+                if path.is_dir()
+                and not path.name.startswith(".")
+                and (path / c.Infra.PYPROJECT_FILENAME).is_file()
+            )
+        scan_roots = {c.Infra.DEFAULT_SRC_DIR, *c.Infra.ROOT_WRAPPER_SEGMENTS}
+        files: set[tuple[Path, Path]] = set()
+        for project_root in sorted(project_roots):
+            for root_name in sorted(scan_roots):
+                source_root = project_root / root_name
+                if not source_root.is_dir():
+                    continue
+                for parent, child_dirs, file_names in source_root.walk():
+                    child_dirs[:] = [
+                        name
+                        for name in child_dirs
+                        if not name.startswith(".")
+                        and name not in c.Infra.ITERATION_EXCLUDED_PARTS
+                    ]
+                    files.update(
+                        (parent / file_name, project_root)
+                        for file_name in file_names
+                        if file_name.endswith((".py", ".pyi"))
+                    )
+        return tuple(sorted(files, key=lambda item: item[0].as_posix()))
 
     @classmethod
     def _collect_modules(
@@ -109,13 +102,20 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         set[Path],
     ]:
         """Collect modules."""
+        started_at = perf_counter()
         modules_by_path: dict[str, m.Infra.RopeModuleIndexEntry] = {}
         modules_by_dir: dict[Path, list[m.Infra.RopeModuleIndexEntry]] = {}
         package_dir_by_name: dict[str, Path] = {}
         project_package_by_root: dict[str, str] = {}
         package_dirs: set[Path] = set()
-        for file_path in cls._python_and_stub_file_paths(rope_project, resolved_root):
-            resolved_file_path = file_path.resolve()
+        _ = rope_project
+        files = cls._python_and_stub_files(resolved_root)
+        u.Cli.info(
+            f"rope: enumerated {len(files)} python modules in "
+            f"{perf_counter() - started_at:.2f}s"
+        )
+        collection_started_at = perf_counter()
+        for index, (resolved_file_path, project_root) in enumerate(files, start=1):
             if cls._is_generated_init_stub(resolved_file_path):
                 continue
             try:
@@ -127,20 +127,11 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 c.Infra.INIT_PY,
                 c.Infra.INIT_PYI,
             }
-            project_root = cls._project_root_for_file(resolved_root, resolved_file_path)
-            module_name = (
-                cls._module_name_for_file(resolved_file_path, project_root=project_root)
-                if project_root is not None
-                else ""
+            module_name = cls._module_name_for_file(
+                resolved_file_path, project_root=project_root
             )
-            package_name = (
-                cls._package_name_for_dir(package_dir, project_root=project_root)
-                if project_root is not None
-                else module_name
-                if is_package_init
-                else module_name.rsplit(".", maxsplit=1)[0]
-                if "." in module_name
-                else ""
+            package_name = cls._package_name_for_dir(
+                package_dir, project_root=project_root
             )
             entry = m.Infra.RopeModuleIndexEntry(
                 file_path=resolved_file_path,
@@ -162,6 +153,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     and package_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
                 ):
                     project_package_by_root[str(project_root)] = package_name
+            if index % 1000 == 0:
+                u.Cli.info(f"rope: collected {index}/{len(files)} module entries")
+        u.Cli.info(
+            f"rope: collected {len(files)} module entries in "
+            f"{perf_counter() - collection_started_at:.2f}s"
+        )
         return (
             modules_by_path,
             modules_by_dir,
@@ -175,6 +172,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         cls, rope_project: t.Infra.RopeProject, repository_root: Path
     ) -> m.Infra.RopeWorkspaceIndex:
         """Build a generic Rope workspace index for package-oriented planning."""
+        started_at = perf_counter()
         resolved_root = repository_root.resolve()
         (
             modules_by_path,
@@ -183,6 +181,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             project_package_by_root,
             package_dirs,
         ) = cls._collect_modules(rope_project, resolved_root)
+        u.Cli.info(f"rope: module index ready in {perf_counter() - started_at:.2f}s")
+        hierarchy_started_at = perf_counter()
         sorted_package_dirs = tuple(sorted(package_dirs))
         package_dir_set = frozenset(sorted_package_dirs)
         direct_children_by_dir: dict[Path, list[Path]] = {
@@ -200,6 +200,11 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                     continue
                 if ancestor_dir in package_dir_set:
                     descendants_by_dir[ancestor_dir].append(package_dir)
+        u.Cli.info(
+            f"rope: package hierarchy ready in "
+            f"{perf_counter() - hierarchy_started_at:.2f}s"
+        )
+        aggregation_started_at = perf_counter()
         packages_by_dir: dict[str, m.Infra.RopePackageIndexEntry] = {}
         for package_dir in sorted_package_dirs:
             dir_modules = tuple(
@@ -249,7 +254,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 direct_child_dirs=direct_child_dirs,
                 descendant_child_dirs=descendant_child_dirs,
             )
-        return m.Infra.RopeWorkspaceIndex(
+        u.Cli.info(
+            f"rope: aggregated {len(packages_by_dir)} packages in "
+            f"{perf_counter() - aggregation_started_at:.2f}s"
+        )
+        validation_started_at = perf_counter()
+        workspace_index = m.Infra.RopeWorkspaceIndex(
             repository_root=resolved_root,
             package_dirs=sorted_package_dirs,
             packages_by_dir=packages_by_dir,
@@ -257,6 +267,11 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             package_dir_by_name=package_dir_by_name,
             project_package_by_root=project_package_by_root,
         )
+        u.Cli.info(
+            f"rope: validated workspace index in "
+            f"{perf_counter() - validation_started_at:.2f}s"
+        )
+        return workspace_index
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRopeAnalysisWorkspace"]

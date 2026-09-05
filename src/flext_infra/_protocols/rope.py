@@ -294,6 +294,9 @@ class FlextInfraProtocolsRope(Protocol):
         def init_rope_project(repository_root: Path) -> t.Infra.RopeProject: ...
 
         @staticmethod
+        def init_rope_workspace(repository_root: Path) -> t.Infra.RopeProject: ...
+
+        @staticmethod
         def get_resource_from_path(
             rope_project: t.Infra.RopeProject, file_path: Path
         ) -> t.Infra.RopeResource | None: ...

@@ -57,7 +57,6 @@ class FlextInfraConstantsSourceCode:
         ".cursor",
         ".gemini",
         ".opencode",
-        ".test-tmp",
         ".beads",
         "reports",
         ".agents",
@@ -563,9 +562,13 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: pytest block-end markers (summary/warnings/timing)."
 
-    # flext-r3r8: analyzers cover production; pytest owns executable test validation.
-    CHECK_DIRS_REPOSITORY: Final[t.StrSequence] = ("src",)
-    "Productive Python root passed positionally to declared_repository analyzers."
+    CHECK_DIRS_REPOSITORY: Final[t.StrSequence] = (
+        "src",
+        "examples",
+        "scripts",
+        "tests",
+    )
+    "All first-class Python roots passed to repository analyzers."
 
     GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"
     "Official GitHub repository URL for the FLEXT project."

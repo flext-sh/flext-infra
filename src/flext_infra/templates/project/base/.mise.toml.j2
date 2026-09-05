@@ -18,6 +18,7 @@ locked = true
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
 #          gitleaks_version, scc_version, kubeconform_version, qlty_version,
 #          node_version, jscpd_version,
+#          waza_version,
 #          beads (selector/version/prerelease), gascity (selector/version/prerelease))
 [tools]
 python = "{{ python_version }}"
@@ -45,6 +46,8 @@ kubeconform = "{{ kubeconform_version }}"
 # PATH without resolving a runner or a version of its own.
 node = "{{ node_version }}"
 "npm:jscpd" = "{{ jscpd_version }}"
+# Waza ships as a GitHub release and is invoked only by the public Make verb.
+"github:microsoft/waza" = "{{ waza_version }}"
 # Go runtime for the Go projects in this workspace.
 go = "{{ go_version }}"
 [tools."{{ beads.selector }}"]

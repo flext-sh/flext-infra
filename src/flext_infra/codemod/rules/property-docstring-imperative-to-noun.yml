@@ -26,16 +26,13 @@
 # Idempotent: each fix removes its own trigger head, so a re-scan finds zero.
 id: property-docstring-imperative-to-noun
 language: python
-severity: hint
+severity: error
 files:
   - "**/*.py"
 ignores:
   - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
   - "**/legado/**"
   - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 message: >-
@@ -73,16 +70,13 @@ fix: $QUOTE$FIRST_UP$REST
 # R2: `Check/Determine [if|whether] X` -> `Whether X` on a boolean @property.
 id: property-docstring-check-to-whether
 language: python
-severity: hint
+severity: error
 files:
   - "**/*.py"
 ignores:
   - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
   - "**/legado/**"
   - "**/legacy/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"
 message: >-

@@ -39,6 +39,10 @@ class FlextInfraConstantsCheck:
             "Flext Silent Failure Detector",
             "internal://flext-infra/silent-failure",
         ),
+        "deferred-self-reference": (
+            "Flext Deferred Self Reference Detector",
+            "internal://flext-infra/deferred-self-reference",
+        ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
         "loc-cap": ("scc", "https://github.com/boyter/scc"),
@@ -56,6 +60,7 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/tier-whitelist",
         ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
+        "codemod": ("ast-grep", "https://ast-grep.github.io/"),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
@@ -77,9 +82,6 @@ class FlextInfraConstantsCheck:
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
-    GATE_ERROR_OUTPUT_LIMIT: Final[int] = 20
-    "Maximum parsed gate diagnostics emitted inline before the canonical report."
-
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     PYRIGHT_PROJECT_ARG: Final[str] = "--project"
     PYRIGHT_PROJECT_CONFIG_TARGET: Final[str] = "."
@@ -227,29 +229,10 @@ class FlextInfraConstantsCheck:
     JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
     JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
-        "**/__pycache__/**",
-        "**/target/**",
-        "**/*.pyc",
-        "**/*.bak",
-        "**/*.tmp",
-        "**/*.orig",
-        "**/.venv/**",
-        "**/node_modules/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/.eggs/**",
         "**/__snapshots__/**",
         "**/__init__.py",
-        "**/.github/**",
-        "**/.claude/**",
-        "**/.agents/**",
-        "**/.cursor/**",
-        "**/.codex/**",
-        "**/skills/**",
-        "Makefile",
-        "LICENSE.md",
     )
-    "Same reviewed exclusion set the retired hand-maintained .jscpd.json carried."
+    "Generated Python surfaces excluded semantically; Git owns artifact visibility."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({

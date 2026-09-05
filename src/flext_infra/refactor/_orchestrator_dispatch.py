@@ -22,19 +22,11 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
         loader: FlextInfraRefactorRuleLoader
 
         def refactor_file(
-            self,
-            file_path: Path,
-            *,
-            dry_run: bool = False,
-            gates: t.StrSequence | None = None,
+            self, file_path: Path, *, dry_run: bool = False
         ) -> m.Infra.Result: ...
 
         def refactor_files(
-            self,
-            file_paths: t.SequenceOf[Path],
-            *,
-            dry_run: bool = False,
-            gates: t.StrSequence | None = None,
+            self, file_paths: t.SequenceOf[Path], *, dry_run: bool = False
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         def refactor_project(
@@ -43,8 +35,6 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             *,
             dry_run: bool = False,
             pattern: str = c.Infra.EXT_PYTHON_GLOB,
-            apply_safety: bool = True,
-            gates: t.StrSequence | None = None,
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
         def refactor_workspace(
@@ -53,8 +43,6 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
             *,
             dry_run: bool = False,
             pattern: str = c.Infra.EXT_PYTHON_GLOB,
-            apply_safety: bool = True,
-            gates: t.StrSequence | None = None,
         ) -> t.SequenceOf[m.Infra.Result]: ...
 
     @staticmethod
@@ -71,12 +59,13 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
 
     @staticmethod
     def _skip_result(fp: Path) -> m.Infra.Result:
-        """Build a skip result for non-Python files."""
+        """Reject a non-Python file on the Python refactor route."""
         return m.Infra.Result(
             file_path=fp,
-            success=True,
+            success=False,
             modified=False,
-            changes=["Skipped non-Python file"],
+            error=f"unsupported refactor file: {fp}",
+            changes=[],
             refactored_code=None,
         )
 
@@ -192,13 +181,13 @@ class FlextInfraRefactorOrchestratorDispatchMixin:
                 )
             results = [result]
         elif args.files:
-            existing = [path for path in args.files if path.exists()]
             for path in args.files:
                 if not path.exists():
-                    u.Cli.error(f"File not found: {path}")
-            results = list(self.refactor_files(existing, dry_run=args.dry_run))
+                    raise FileNotFoundError(path)
+            results = list(self.refactor_files(args.files, dry_run=args.dry_run))
         else:
-            results = list[m.Infra.Result]()
+            msg = "refactor requires an explicit file, project, or workspace"
+            raise ValueError(msg)
         self._print_summary(results, dry_run=args.dry_run)
         if args.impact_map_output is not None:
             _ = u.Infra.write_impact_map(results, args.impact_map_output)

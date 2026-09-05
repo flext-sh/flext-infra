@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
@@ -179,7 +178,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         """
         paths = tuple(Path(path) for path in file_paths)
         with u.Infra.open_project(self._repository_root) as rope_project:
-            return FlextInfraUtilitiesRopeImports.normalize_imports(
+            return u.Infra.normalize_imports(
                 rope_project, file_paths=paths, preserve_canonical_aliases=True
             )
 

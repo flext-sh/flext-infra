@@ -70,6 +70,13 @@ class FlextInfraCodegenLazyInitGenerationMixin(
                 and pkg_dir.resolve() == target_package_dir.resolve()
             ):
                 break
+        if planner.collision_count:
+            u.Cli.error(
+                "lazy-init: refusing to apply "
+                f"{len(planned)} plans with {planner.collision_count} "
+                "unresolved export collision(s)"
+            )
+            return total, 0, planner.collision_count, dir_exports
         u.Cli.info(f"lazy-init: applying {len(planned)} preflighted package plans")
         for plan in planned:
             result, _exports = self._process_plan(plan, check_only=check_only)

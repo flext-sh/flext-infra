@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -56,7 +55,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         constants_module: str,
     ) -> ClassvarConstantAutofixPlan:
         """Build an autofix plan without touching disk."""
-        with FlextInfraUtilitiesRopeCore.open_project(repository_root) as project:
+        with u.Infra.open_project(repository_root) as project:
             return FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
                 project, class_full_name, constant_name, constants_module
             )
@@ -110,7 +109,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
         dry_run: bool = False,
     ) -> m.Infra.ClassvarConstantAutofixResult:
         """Move the constant and rewrite all internal references."""
-        with FlextInfraUtilitiesRopeCore.open_project(repository_root) as project:
+        with u.Infra.open_project(repository_root) as project:
             plan = FlextInfraRefactorClassvarConstantAutofix._plan_with_project(
                 project, class_full_name, constant_name, constants_module
             )

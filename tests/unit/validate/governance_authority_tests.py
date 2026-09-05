@@ -58,3 +58,18 @@ def test_markdownlint_does_not_suppress_strict_rules() -> None:
     assert config.get("MD064") is not False
     assert config.get("MD075") is not False
     assert config["MD013"]["line_length"] <= 500
+
+
+def test_flext_law_requires_automated_structural_rewires() -> None:
+    law = (REPOSITORY_ROOT / ".agents/skills/flext-law/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+    for required in (
+        "`make mod APPLY=Y`",
+        "`ast-grep` rewrites",
+        "Code Review Graph CLI impact/refactor analysis",
+        "`pyright-langserver` diagnostics",
+        "Repetitive manual call-site editing is prohibited",
+    ):
+        tm.that(law, has=required)

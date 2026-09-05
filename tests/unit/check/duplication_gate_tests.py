@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_core import e as core_e
-from flext_infra import c, m, u
+from flext_infra import c, config, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from flext_tests import tm
@@ -128,10 +128,12 @@ class TestDuplicationGate:
 
     def test_registered_and_allowed(self) -> None:
         tm.that("duplication" in c.Infra.ALLOWED_GATES, eq=True)
-        tm.that("duplication" in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES, eq=True)
         tm.that(
-            "duplication" not in c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES, eq=True
+            "duplication"
+            in tuple(verb.name for verb in config.Infra.codegen.make.verbs),
+            eq=True,
         )
+        tm.that("duplication" in c.Infra.ORCHESTRATED_VERBS, eq=True)
         tm.that(
             FlextInfraGateRegistry.default().get("duplication") is not None, eq=True
         )

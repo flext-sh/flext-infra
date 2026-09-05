@@ -85,6 +85,57 @@ class TestsFlextInfraInfraRopeService:
 
         tm.that(exports, has=["LIMIT", "run"], lacks=["result", "msg"])
 
+    def test_source_exports_preserve_explicit_public_contract(
+        self, tmp_path: Path
+    ) -> None:
+        """Explicit ``__all__`` remains authoritative over implicit symbols."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        module_path = package_root / "public.py"
+        module_path.write_text(
+            '"""Public contract."""\n\n'
+            "from elsewhere import Imported\n\n"
+            'PUBLIC = "public"\n'
+            'PRIVATE = "private"\n'
+            '__all__ = ("PUBLIC",)\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            exports = rope.exports(
+                module_path,
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_assignments": True,
+                    "allow_functions": True,
+                }),
+            )
+
+        tm.that(exports, eq=("PUBLIC",))
+
+    def test_source_exports_include_conditional_module_assignments(
+        self, tmp_path: Path
+    ) -> None:
+        """Module-control-flow assignments remain visible outside script guards."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        module_path = package_root / "conditional.py"
+        module_path.write_text(
+            '"""Conditional contract."""\n\n'
+            "if TYPE_CHECKING:\n"
+            '    MODE = "typing"\n'
+            "else:\n"
+            '    MODE = "runtime"\n',
+            encoding=c.Cli.ENCODING_DEFAULT,
+        )
+
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            exports = rope.exports(
+                module_path,
+                export_options=m.Infra.ExportOptions.model_validate({
+                    "allow_assignments": True
+                }),
+            )
+
+        tm.that(exports, eq=("MODE",))
+
     def test_open_workspace_indexes_declared_wrapper_packages(
         self, tmp_path: Path
     ) -> None:

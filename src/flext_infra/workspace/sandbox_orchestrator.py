@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra._utilities.snapshot import FlextInfraUtilitiesSnapshot
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 
 if TYPE_CHECKING:
@@ -47,7 +46,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
 
     def _snapshot(self) -> p.Result[Path]:
         """Snapshot."""
-        return FlextInfraUtilitiesSnapshot.rsync(
+        return u.Infra.rsync(
             src=self.root.resolve(), dst=self._sandbox_path
         )
 

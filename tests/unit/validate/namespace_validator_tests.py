@@ -114,7 +114,10 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
-            any("Multiple outer classes found" in v for v in result.value.violations),
+            any(
+                "module must declare exactly one top-level class; found 2" in violation
+                for violation in result.value.violations
+            ),
             eq=True,
         )
 

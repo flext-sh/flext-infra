@@ -43,7 +43,6 @@ Infra:
           - .claude/**
           - .vscode/**
           - .codegraph/**
-          - .code-review-graph/**
           - .serena/**
           - .snapshots/**
           - .benchmarks/**
@@ -547,6 +546,9 @@ Infra:
         # process wall adds one minute for orderly worker/report shutdown.
         run-timeout-seconds: 600
         termination-grace-seconds: 2
+        # The first failing test is the only actionable red. Continuing after
+        # it wastes runtime and obscures the causal failure.
+        max-failures: 1
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
@@ -616,6 +618,7 @@ Infra:
       tomlsort:
         all: true
         in_place: true
+        process-timeout-seconds: 60
         sort_first: [project, build-system, tool, dependency-groups]
       vulture:
         # NOTE (multi-agent, flext-j47u): Vulture 2.16 reports keyword-bearing

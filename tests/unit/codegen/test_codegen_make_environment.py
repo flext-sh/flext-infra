@@ -11,7 +11,8 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import WorktreeFixture, u as test_u
+from tests import u as test_u
+from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
 
@@ -313,7 +314,25 @@ class TestsCodegenMakeEnvironment:
             in makefile,
             eq=True,
         )
-        tm.that('test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"' in makefile, eq=True)
+        toolchain = config.Infra.codegen.toolchain
+        tm.that(
+            (
+                "PROJECT_STATE_ROOT := $(abspath $(dir $(REPOSITORY_ROOT))/"
+                f"{toolchain.state_directory_name}/$(notdir $(PROJECT_ROOT)))"
+            )
+            in makefile,
+            eq=True,
+        )
+        tm.that(
+            f"PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/{toolchain.scratch_namespace}"
+            in makefile,
+            eq=True,
+        )
+        tm.that(
+            "override export PYTHONPYCACHEPREFIX := "
+            f"$(PROJECT_STATE_ROOT)/{toolchain.pycache_namespace}" in makefile,
+            eq=True,
+        )
         tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)

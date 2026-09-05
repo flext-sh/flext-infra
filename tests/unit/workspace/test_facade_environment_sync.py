@@ -10,7 +10,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from flext_infra import c, infra, m, u
+from flext_infra import c, config, infra, m, u
 from flext_tests import tm
 
 
@@ -54,7 +54,20 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.that("DIRENV_DIR" in envrc, eq=False)
         tm.that('PROJECT_ROOT="$(find_up pyproject.toml)"' in envrc, eq=True)
         tm.that('PROJECT_ROOT="${PROJECT_ROOT%/*}"' in envrc, eq=True)
-        tm.that('PROJECT_SCRATCH="${PROJECT_ROOT}/.test-tmp"' in envrc, eq=True)
+        toolchain = config.Infra.codegen.toolchain
+        tm.that(
+            (
+                'PROJECT_STATE_ROOT="${PROJECT_ROOT%/*}/'
+                f'{toolchain.state_directory_name}/${{PROJECT_ROOT##*/}}"'
+            )
+            in envrc,
+            eq=True,
+        )
+        tm.that(
+            f'PROJECT_SCRATCH="${{PROJECT_STATE_ROOT}}/{toolchain.scratch_namespace}"'
+            in envrc,
+            eq=True,
+        )
         tm.that('export TMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
         tm.that('export GOTMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
 

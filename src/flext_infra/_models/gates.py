@@ -9,7 +9,7 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import u
 from flext_core import m
-from flext_infra import t
+from flext_infra import c, t
 
 
 class FlextInfraModelsGates:
@@ -91,7 +91,7 @@ class FlextInfraModelsGates:
         schema_version: Annotated[
             Literal["https://flext.sh/attestations/gates/v1"],
             m.Field(description="Predicate schema identity"),
-        ]
+        ] = c.Infra.GATE_ATTESTATION_SCHEMA
         repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
         commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Full commit SHA")]
         tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Full tree SHA")]

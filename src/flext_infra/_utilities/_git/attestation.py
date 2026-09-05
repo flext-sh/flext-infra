@@ -56,7 +56,6 @@ class FlextInfraUtilitiesGitAttestationMixin(
             )
         toolchain = cls._toolchain_digest(repo_root)
         predicate = m.Infra.GateAttestationPredicate(
-            schema_version="https://flext.sh/attestations/gates/v1",
             repository=canonical_origin_remote(identity.value.origin_remote or ""),
             commit_sha=identity.value.head_oid,
             tree_sha=repo.head.commit.tree.hexsha,
@@ -73,7 +72,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     ) -> p.Result[tuple[m.Infra.GateCommandEvidence, ...]]:
         evidence: list[m.Infra.GateCommandEvidence] = []
         for gate in gates:
-            command = f"make {gate}" if gate != "gen" else "make gen WHAT=check"
+            command = f"make {gate} APPLY=Y"
             started = datetime.now(UTC)
             outcome = u.Cli.run_raw(command.split(), cwd=repo_root)
             completed = datetime.now(UTC)

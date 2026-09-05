@@ -237,9 +237,12 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     for generated_page in (first_readme, first_index):
         tm.that(
             generated_page,
-            has=("`config.AiHub.paths.agents_home`/`skills/make-check/SKILL.md`"),
+            has=(
+                "Canonical selector-free `make` verbs",
+                f"{c.Infra.GITHUB_REPO_URL}/blob/",
+            ),
         )
-        tm.that(generated_page, lacks="the agents_home `make-check` skill")
+        tm.that(generated_page, lacks=("agents_home", "make-check/SKILL.md"))
     tm.that(
         first_readme.index("FlextAAlpha") < first_readme.index("FlextABeta"), eq=True
     )

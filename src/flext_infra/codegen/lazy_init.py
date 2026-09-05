@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, u
-from flext_infra._utilities._sort_keys import path_depth
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -91,7 +90,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         for package_dir in workspace_index.package_dirs
                         if package_dir.is_relative_to(resolved_repository_root)
                     ),
-                    key=path_depth,
+                    key=u.Infra.path_depth,
                     reverse=True,
                 )
             )
@@ -161,8 +160,17 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         == production_prefix
                     )
                 )
+            duplicate_scan_started_at = perf_counter()
+            u.Cli.info(
+                "lazy-init: checking duplicate class ownership across "
+                f"{len(package_dirs)} package dirs"
+            )
             duplicates = self._detect_duplicate_class_names(
                 rope, package_dirs=package_dirs
+            )
+            u.Cli.info(
+                "lazy-init: duplicate class ownership check completed in "
+                f"{perf_counter() - duplicate_scan_started_at:.2f}s"
             )
             if duplicates:
                 self._duplicate_class_names = len(duplicates)
@@ -182,11 +190,16 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 rope_workspace=rope, lazy_init=lazy_init
             )
             u.Cli.info(f"lazy-init: planning {len(package_dirs)} package dirs")
+            planning_started_at = perf_counter()
             total, ok, errors, _dir_exports = self._generate_all_inits(
                 package_dirs,
                 check_only=check_only,
                 planner=planner,
                 target_package_dir=target_package_dir,
+            )
+            u.Cli.info(
+                "lazy-init: planning and generation completed in "
+                f"{perf_counter() - planning_started_at:.2f}s"
             )
         # flext-96j2.4 (agent: claude): Ruff check runs once over the changed
         # artifact set instead of per rendered template. Apply mode only:
@@ -255,17 +268,19 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 continue
             module_segments = frozenset(entry.module_name.split("."))
             is_private_scope = bool(module_segments & c.Infra.NON_PUBLIC_LAZY_ROOTS)
+            if "_part_" in entry.file_path.stem:
+                continue
             scope_key = (
                 str(entry.project_root)
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for obj in rope.objects(
-                entry.file_path, include_local_scopes=False, include_references=False
+            for class_info in u.Infra.class_info_from_source(
+                rope.source(entry.file_path)
             ):
-                if obj.kind != "class" or obj.scope_path:
+                name = class_info.name
+                if is_private_scope and name.startswith("Tests"):
                     continue
-                name = obj.name
                 if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
                     continue
                 scoped_modules[name, scope_key].add(entry.module_name)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_journal as journal_io
 from flext_infra.codegen import _mise_artifacts_process as process
@@ -33,6 +33,11 @@ class FlextInfraMiseRecovery:
         if roots.failure:
             return roots
         if journal.state == "staging":
+            directories = files.remove_created_directories(
+                layout, journal.created_directories
+            )
+            if directories.failure:
+                return directories
             return journal_io.cleanup(layout, journal_state)
         classified = self._classify(layout, journal)
         if classified.failure:
@@ -47,6 +52,11 @@ class FlextInfraMiseRecovery:
             exact = self._verify_originals(layout, journal)
             if exact.failure:
                 return exact
+            directories = files.remove_created_directories(
+                layout, journal.created_directories
+            )
+            if directories.failure:
+                return directories
         return journal_io.cleanup(layout, journal_state)
 
     def _classify(
@@ -63,7 +73,7 @@ class FlextInfraMiseRecovery:
             )
             if target.failure:
                 return result_type.from_failure(target)
-            current = files.read_state(target.value, required=False)
+            current = u.Cli.atomic_read_binary_file_state(target.value, required=False)
             if current.failure:
                 return result_type.from_failure(current)
             current_identity = self._identity(current.value)
@@ -100,10 +110,10 @@ class FlextInfraMiseRecovery:
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         actions: tuple[m.Infra.MiseToolchainRecoveryAction, ...],
-    ) -> p.Result[tuple[m.Infra.MiseToolchainPublication | None, ...]]:
+    ) -> p.Result[tuple[m.Cli.AtomicFilePublication | None, ...]]:
         """Prepare every deterministic restore candidate before live effects."""
-        result_type = r[tuple[m.Infra.MiseToolchainPublication | None, ...]]
-        candidates: list[m.Infra.MiseToolchainPublication | None] = []
+        result_type = r[tuple[m.Cli.AtomicFilePublication | None, ...]]
+        candidates: list[m.Cli.AtomicFilePublication | None] = []
         for action in actions:
             if action.operation != "restore":
                 candidates.append(None)
@@ -118,57 +128,61 @@ class FlextInfraMiseRecovery:
     def _restore_publication(
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         action: m.Infra.MiseToolchainRecoveryAction,
-    ) -> p.Result[m.Infra.MiseToolchainPublication]:
+    ) -> p.Result[m.Cli.AtomicFilePublication]:
         entry = action.entry
         if (
             entry.original_backup is None
             or entry.original_sha256 is None
             or entry.original_mode is None
         ):
-            return r[m.Infra.MiseToolchainPublication].fail(
+            return r[m.Cli.AtomicFilePublication].fail(
                 f"Mise recovery tuple is incomplete: {entry.path}"
             )
         backup_path = files.resolve_relative(
-            layout.scope_root, entry.original_backup, purpose="Mise recovery backup"
+            layout.state_root, entry.original_backup, purpose="Mise recovery backup"
         )
         if backup_path.failure:
-            return r[m.Infra.MiseToolchainPublication].from_failure(backup_path)
-        backup = files.read_state(backup_path.value, required=True)
+            return r[m.Cli.AtomicFilePublication].from_failure(backup_path)
+        backup = u.Cli.atomic_read_binary_file_state(backup_path.value, required=True)
         if backup.failure or backup.value.content is None:
-            return r[m.Infra.MiseToolchainPublication].fail(
+            return r[m.Cli.AtomicFilePublication].fail(
                 backup.error or f"Mise recovery backup is absent: {entry.path}"
             )
         if (
             backup.value.mode != files.JOURNAL_MODE
-            or files.digest(backup.value.content) != entry.original_sha256
+            or u.Cli.sha256_bytes(backup.value.content) != entry.original_sha256
         ):
-            return r[m.Infra.MiseToolchainPublication].fail(
+            return r[m.Cli.AtomicFilePublication].fail(
                 f"Mise recovery backup identity differs: {entry.path}"
             )
         candidate_path = backup_path.value.with_suffix(".restore")
-        candidate = files.read_state(candidate_path, required=False)
+        candidate = u.Cli.atomic_read_binary_file_state(candidate_path, required=False)
         if candidate.failure:
-            return r[m.Infra.MiseToolchainPublication].from_failure(candidate)
+            return r[m.Cli.AtomicFilePublication].from_failure(candidate)
         if candidate.value.content is None:
-            created = process.write_new(
-                candidate_path, backup.value.content, entry.original_mode
+            created = u.Cli.atomic_create_binary_file_guarded(
+                candidate_path,
+                backup.value.content,
+                permission_mode=entry.original_mode,
             )
             if created.failure:
-                return r[m.Infra.MiseToolchainPublication].fail(
+                return r[m.Cli.AtomicFilePublication].fail(
                     created.error or f"cannot prepare Mise restore: {entry.path}"
                 )
-            candidate = files.read_state(candidate_path, required=True)
+            candidate = u.Cli.atomic_read_binary_file_state(
+                candidate_path, required=True
+            )
             if candidate.failure:
-                return r[m.Infra.MiseToolchainPublication].from_failure(candidate)
+                return r[m.Cli.AtomicFilePublication].from_failure(candidate)
         if (
             candidate.value.content != backup.value.content
             or candidate.value.mode != entry.original_mode
         ):
-            return r[m.Infra.MiseToolchainPublication].fail(
+            return r[m.Cli.AtomicFilePublication].fail(
                 f"Mise restore candidate identity differs: {entry.path}"
             )
-        return r[m.Infra.MiseToolchainPublication].ok(
-            m.Infra.MiseToolchainPublication(
+        return r[m.Cli.AtomicFilePublication].ok(
+            m.Cli.AtomicFilePublication(
                 before=action.current, replacement=candidate.value
             )
         )
@@ -176,7 +190,7 @@ class FlextInfraMiseRecovery:
     @staticmethod
     def _restore(
         actions: tuple[m.Infra.MiseToolchainRecoveryAction, ...],
-        candidates: tuple[m.Infra.MiseToolchainPublication | None, ...],
+        candidates: tuple[m.Cli.AtomicFilePublication | None, ...],
     ) -> p.Result[bool]:
         paired = tuple(zip(actions, candidates, strict=True))
         for action, candidate in reversed(paired):
@@ -185,13 +199,13 @@ class FlextInfraMiseRecovery:
                     return r[bool].fail(
                         f"Mise restore candidate is absent: {action.entry.path}"
                     )
-                restored = files.write_publication(candidate)
+                restored = u.Cli.atomic_apply_file_publication_guarded(candidate)
                 if restored.failure:
                     return r[bool].fail(
                         restored.error or f"Mise restore failed: {action.entry.path}"
                     )
             elif action.operation == "delete":
-                removed = files.delete_state(action.current)
+                removed = u.Cli.atomic_delete_binary_file_guarded(action.current)
                 if removed.failure:
                     return r[bool].fail(
                         removed.error
@@ -210,7 +224,7 @@ class FlextInfraMiseRecovery:
             )
             if target.failure:
                 return r[bool].from_failure(target)
-            current = files.read_state(target.value, required=False)
+            current = u.Cli.atomic_read_binary_file_state(target.value, required=False)
             expected = (
                 (entry.original_sha256, entry.original_mode)
                 if entry.original_exists
@@ -228,7 +242,7 @@ class FlextInfraMiseRecovery:
     @staticmethod
     def _identity(state: m.Cli.AtomicFileState) -> tuple[str | None, int | None]:
         return (
-            None if state.content is None else files.digest(state.content),
+            None if state.content is None else u.Cli.sha256_bytes(state.content),
             state.mode,
         )
 

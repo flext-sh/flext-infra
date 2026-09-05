@@ -196,7 +196,17 @@ class FlextInfraProtocolsBase(Protocol):
 
     @runtime_checkable
     class ProjectSpec(Protocol):
-        """Scaffold-only project metadata consumed by initial generation."""
+        """Project metadata consumed by initial and continuous generation."""
+
+        @property
+        def root_modules(self) -> t.StrSequence:
+            """Standalone ``src/*.py`` modules included in the distribution."""
+            ...
+
+        @property
+        def root_packages(self) -> t.StrSequence:
+            """Additional ``src/*`` packages included in the distribution."""
+            ...
 
         @property
         def repository_root_rel(self) -> str:
@@ -247,7 +257,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def project(self) -> FlextInfraProtocolsBase.ProjectSpec | None:
-            """Scaffold metadata; ``None`` for an existing repository."""
+            """Declared project metadata; ``None`` without a project manifest."""
             ...
 
         @property
@@ -304,6 +314,31 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def python_version(self) -> str:
             """Compatible Python major.minor line."""
+            ...
+
+        @property
+        def state_directory_name(self) -> str:
+            """Runtime state directory beside the checkout."""
+            ...
+
+        @property
+        def scratch_namespace(self) -> str:
+            """Disposable workspace namespace under runtime state."""
+            ...
+
+        @property
+        def pycache_namespace(self) -> str:
+            """Python bytecode namespace under runtime state."""
+            ...
+
+        @property
+        def mise_namespace(self) -> str:
+            """Mise publication namespace under runtime state."""
+            ...
+
+        @property
+        def crg_namespace(self) -> str:
+            """Code Review Graph namespace under runtime state."""
             ...
 
         @property
@@ -674,12 +709,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Contract for multi-project orchestration services."""
 
         def orchestrate(
-            self,
-            projects: t.StrSequence,
-            verb: str,
-            *,
-            fail_fast: bool = False,
-            make_args: t.StrSequence = (),
+            self, projects: t.StrSequence, verb: str
         ) -> p.Result[t.SequenceOf[p.Cli.CommandOutput]]:
             """Execute one make verb across multiple projects."""
             ...

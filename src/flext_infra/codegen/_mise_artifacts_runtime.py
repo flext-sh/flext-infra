@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import config, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_process as process
 
@@ -37,7 +37,9 @@ class FlextInfraMiseRuntime:
         if seed_state.content is None or seed_state.mode is None:
             return r[Path].fail(f"native Mise seed is absent: {seed_state.path}")
         seed = scratch / "seed" / "bin" / seed_state.path.name
-        created = process.write_new(seed, seed_state.content, seed_state.mode)
+        created = u.Cli.atomic_create_binary_file_guarded(
+            seed, seed_state.content, permission_mode=seed_state.mode
+        )
         if created.failure:
             return r[Path].from_failure(created)
         seed_validation = self._owner.validate_seed(seed)
@@ -51,6 +53,7 @@ class FlextInfraMiseRuntime:
             cwd=scratch,
             env=environment,
             operation="Mise latest release resolution",
+            timeout_seconds=config.Infra.codegen.toolchain.mise_network_timeout_seconds,
         )
         if updated.failure:
             return r[Path].from_failure(updated)
@@ -59,6 +62,7 @@ class FlextInfraMiseRuntime:
             cwd=scratch,
             env=environment,
             operation="Mise resolved release identity",
+            timeout_seconds=config.Infra.codegen.toolchain.mise_network_timeout_seconds,
         )
         if resolved_runtime.failure:
             return r[Path].from_failure(resolved_runtime)
@@ -86,6 +90,7 @@ class FlextInfraMiseRuntime:
             cwd=scratch,
             env=environment,
             operation="Mise exact latest launcher generation",
+            timeout_seconds=config.Infra.codegen.toolchain.mise_network_timeout_seconds,
         )
         if generated.failure:
             return r[Path].from_failure(generated)
@@ -101,6 +106,7 @@ class FlextInfraMiseRuntime:
             cwd=scratch,
             env=environment,
             operation="Mise newest runtime identity",
+            timeout_seconds=config.Infra.codegen.toolchain.mise_network_timeout_seconds,
         )
         if runtime.failure:
             return r[Path].from_failure(runtime)
@@ -119,15 +125,13 @@ class FlextInfraMiseRuntime:
     @staticmethod
     def _apply_receipt_modes(receipt: Path) -> p.Result[bool]:
         for name, mode in files.ARTIFACT_SPECS[:2]:
-            state = files.read_state(receipt / name, required=True)
+            state = u.Cli.atomic_read_binary_file_state(receipt / name, required=True)
             if state.failure:
                 return r[bool].from_failure(state)
             if state.value.content is None or state.value.mode is None:
                 return r[bool].fail(f"generated Mise receipt is absent: {name}")
             normalized = u.Cli.atomic_write_binary_file_guarded(
-                state.value,
-                state.value.content,
-                permission_mode=mode,
+                state.value, state.value.content, permission_mode=mode
             )
             if normalized.failure:
                 return r[bool].fail(

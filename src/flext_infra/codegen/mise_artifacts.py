@@ -11,9 +11,6 @@ from urllib.parse import urlsplit
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 from flext_infra.base import s
 from flext_infra.codegen._mise_artifacts_transaction import (
     FlextInfraCodegenMiseArtifactTransaction,
@@ -196,6 +193,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         cls, selector: str, platform: str, url: str, artifact: Path
     ) -> p.Result[str]:
         """Download and hash one validated HTTPS artifact."""
+        u.Cli.info(f"mise-toolchain: checksum selector={selector} platform={platform}")
         download = u.Cli.run_raw(
             (
                 "curl",
@@ -212,6 +210,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 url,
             ),
             cwd=artifact.parent,
+            timeout=config.Infra.codegen.toolchain.mise_network_timeout_seconds,
         )
         if download.failure:
             return r[str].fail(
@@ -427,9 +426,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         launcher_result = self.validate_launchers(project_root)
         if launcher_result.failure:
             return launcher_result
-        exclusions = FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions_from_snapshot(
-            config_sources
-        )
+        exclusions = u.Infra.lock_platform_exclusions_from_snapshot(config_sources)
         if exclusions.failure:
             return r[bool].fail(exclusions.error or "project Mise platforms invalid")
         return self._validate_lock(

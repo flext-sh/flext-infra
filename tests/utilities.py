@@ -692,6 +692,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *,
             upstream: str | None = None,
             inherited_facets: t.StrSequence = (),
+            root_modules: t.StrSequence = (),
+            root_packages: t.StrSequence = (),
         ) -> Path:
             """Write the declared ``config/workspace.yaml`` of one standalone repository.
 
@@ -709,6 +711,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             if inherited_facets:
                 project = project.model_copy(
                     update={"inherited_facets": tuple(inherited_facets)}
+                )
+            if root_modules or root_packages:
+                project = project.model_copy(
+                    update={
+                        "root_modules": tuple(root_modules),
+                        "root_packages": tuple(root_packages),
+                    }
                 )
             manifest = m.Infra.WorkspaceManifestSpec(
                 version=c.Infra.WORKSPACE_MANIFEST_VERSION,

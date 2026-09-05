@@ -5,10 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
@@ -18,69 +15,129 @@ if TYPE_CHECKING:
 
 
 def journal_topology(
-    layout: m.Infra.MiseToolchainWorkspaceLayout, journal: m.Infra.MiseToolchainJournal
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.MiseToolchainJournal,
+    publications: tuple[m.Cli.AtomicFilePublication, ...] | None = None,
 ) -> p.Result[bool]:
-    """Bind every untrusted journal selector to the stable workspace layout."""
+    """Bind every untrusted journal entry to the stable workspace layout."""
     if journal.projects != tuple(project.selector for project in layout.projects):
         return r[bool].fail("Mise journal project topology differs from layout")
     source_topology = _journal_source_topology(layout, journal.sources)
     if source_topology.failure:
         return source_topology
+    directories = _journal_directory_topology(layout, journal, publications)
+    if directories.failure:
+        return directories
     if journal.state == "staging":
         return r[bool].ok(True)
-    if len(journal.entries) != len(layout.projects) * len(files.PUBLICATION_SPECS):
-        return r[bool].fail("Mise journal entry count differs from project topology")
-    expected_entries: list[tuple[str, int]] = []
-    entry_projects: list[m.Infra.MiseToolchainProjectLayout] = []
-    for project in layout.projects:
-        for artifact, (_name, mode) in zip(
-            (
-                project.artifacts.config,
-                project.artifacts.unix_launcher,
-                project.artifacts.windows_launcher,
-                project.artifacts.lock,
-            ),
-            files.PUBLICATION_SPECS,
-            strict=True,
-        ):
-            selector = files.workspace_relative(layout.scope_root, artifact)
+    observed_paths = tuple(entry.path for entry in journal.entries)
+    if len(set(observed_paths)) != len(observed_paths):
+        return r[bool].fail("codegen journal destination paths are not unique")
+    if publications is not None:
+        expected_entries: list[tuple[str, str | None, int | None]] = []
+        for item in publications:
+            selector = files.workspace_relative(layout.scope_root, item.before.path)
             if selector.failure:
                 return r[bool].from_failure(selector)
-            expected_entries.append((selector.value, mode))
-            entry_projects.append(project)
-    observed_entries = tuple(
-        (entry.path, entry.replacement_mode) for entry in journal.entries
-    )
-    if observed_entries != tuple(expected_entries):
-        return r[bool].fail("Mise journal artifact topology differs from workspace")
-    for index, (entry, project) in enumerate(
-        zip(journal.entries, entry_projects, strict=True)
-    ):
+            expected_entries.append((
+                selector.value,
+                None
+                if item.replacement.content is None
+                else u.Cli.sha256_bytes(item.replacement.content),
+                item.replacement.mode,
+            ))
+        observed_entries = tuple(
+            (entry.path, entry.replacement_sha256, entry.replacement_mode)
+            for entry in journal.entries
+        )
+        if observed_entries != tuple(expected_entries):
+            return r[bool].fail(
+                "codegen journal entries differ from staged publications"
+            )
+    for index, entry in enumerate(journal.entries):
+        target = files.resolve_relative(
+            layout.scope_root, entry.path, purpose="codegen journal destination"
+        )
+        if target.failure:
+            return r[bool].from_failure(target)
+        project = files.project_for_path(layout, target.value)
+        if project.failure:
+            return r[bool].from_failure(project)
         expected_backup: str | None = None
         if entry.original_exists:
             relative = files.workspace_relative(
-                layout.scope_root,
-                project.transaction_root / "recovery" / f"{index:04d}.original",
+                layout.state_root,
+                project.value.transaction_root / "recovery" / f"{index:04d}.original",
             )
             if relative.failure:
                 return r[bool].from_failure(relative)
             expected_backup = relative.value
         if entry.original_backup != expected_backup:
-            return r[bool].fail("Mise journal backup topology differs from workspace")
+            return r[bool].fail(
+                "Mise journal backup topology differs from runtime state"
+            )
+    return r[bool].ok(True)
+
+
+def _journal_directory_topology(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.MiseToolchainJournal,
+    publications: tuple[m.Cli.AtomicFilePublication, ...] | None,
+) -> p.Result[bool]:
+    """Authenticate created-directory ownership, order, and preflight state."""
+    selectors = journal.created_directories
+    if len(set(selectors)) != len(selectors):
+        return r[bool].fail("codegen journal directory paths are not unique")
+    resolved_paths: list[Path] = []
+    for selector in selectors:
+        resolved = files.resolve_relative(
+            layout.scope_root, selector, purpose="codegen destination directory"
+        )
+        if resolved.failure:
+            return r[bool].from_failure(resolved)
+        owner = files.project_for_path(layout, resolved.value)
+        if owner.failure:
+            return r[bool].from_failure(owner)
+        if resolved.value == owner.value.root.absolute():
+            return r[bool].fail("codegen journal cannot create a project root")
+        resolved_paths.append(resolved.value)
+    canonical = tuple(
+        sorted(resolved_paths, key=lambda path: (len(path.parts), str(path)))
+    )
+    if tuple(resolved_paths) != canonical:
+        return r[bool].fail("codegen journal directory order differs from topology")
+    if publications is None:
+        return r[bool].ok(True)
+    targets = tuple(
+        item.before.path
+        for item in publications
+        if item.replacement.content is not None
+    )
+    for directory in resolved_paths:
+        if not directory.is_dir() or directory.is_symlink():
+            return r[bool].fail(
+                f"journaled codegen destination directory is invalid: {directory}"
+            )
+        if not any(directory in target.parents for target in targets):
+            return r[bool].fail(
+                f"journaled codegen directory owns no publication: {directory}"
+            )
+    if any(
+        not target.parent.is_dir() or target.parent.is_symlink() for target in targets
+    ):
+        return r[bool].fail("codegen publication has an invalid destination parent")
     return r[bool].ok(True)
 
 
 def sources(
     plan: m.Infra.MiseToolchainWorkspacePlan,
     journal: m.Infra.MiseToolchainJournal | None = None,
+    source_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
 ) -> p.Result[bool]:
     """Prove source topology, bytes, and modes still equal one snapshot."""
-    expected_states: list[m.Cli.AtomicFileState] = []
     for project in plan.projects:
         config_sources = (
-            FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
-                project.layout.root
-            )
+            u.Infra.snapshot_config_sources(project.layout.root)
         )
         if config_sources.failure:
             return r[bool].from_failure(config_sources)
@@ -88,15 +145,23 @@ def sources(
         current = config_sources.value
         if current != expected:
             return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
-        expected_states.extend(expected)
+    expected_states = files.transaction_sources(plan, source_plans)
+    if expected_states.failure:
+        return r[bool].from_failure(expected_states)
+    for expected in expected_states.value:
+        current = u.Cli.atomic_read_binary_file_state(expected.path, required=True)
+        if current.failure:
+            return r[bool].from_failure(current)
+        if current.value != expected:
+            return r[bool].fail(f"codegen source changed: {expected.path}")
     if journal is None:
         return r[bool].ok(True)
     topology = _journal_source_topology(plan.layout, journal.sources)
     if topology.failure:
         return topology
-    if len(journal.sources) != len(expected_states):
-        return r[bool].fail("Mise journal source count differs from snapshot")
-    for expected, recorded in zip(expected_states, journal.sources, strict=True):
+    if len(journal.sources) != len(expected_states.value):
+        return r[bool].fail("codegen journal source count differs from snapshot")
+    for expected, recorded in zip(expected_states.value, journal.sources, strict=True):
         selector = files.workspace_relative(plan.layout.scope_root, expected.path)
         if selector.failure:
             return r[bool].from_failure(selector)
@@ -104,37 +169,73 @@ def sources(
             expected.content is None
             or expected.mode is None
             or recorded.path != selector.value
-            or files.digest(expected.content) != recorded.sha256
+            or u.Cli.sha256_bytes(expected.content) != recorded.sha256
             or expected.mode != recorded.mode
         ):
             return r[bool].fail(f"Mise source differs from journal: {expected.path}")
     return r[bool].ok(True)
 
 
-def destinations(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
+def destinations(
+    plan: m.Infra.MiseToolchainWorkspacePlan,
+    publications: tuple[m.Cli.AtomicFilePublication, ...] = (),
+) -> p.Result[bool]:
     """Prove every live destination still equals the locked preflight snapshot."""
-    for project in plan.projects:
-        expected_states = (
-            project.config.before,
-            project.artifacts.unix_launcher,
-            project.artifacts.windows_launcher,
-            project.artifacts.lock,
+    expected_by_path: dict[Path, m.Cli.AtomicFileState] = {}
+    expected_states = (
+        *(
+            state
+            for project in plan.projects
+            for state in (
+                project.config.before,
+                project.artifacts.unix_launcher,
+                project.artifacts.windows_launcher,
+                project.artifacts.lock,
+            )
+        ),
+        *(publication.before for publication in publications),
+    )
+    for expected in expected_states:
+        prior = expected_by_path.get(expected.path)
+        if prior is not None and prior != expected:
+            return r[bool].fail(
+                f"codegen destination has conflicting snapshots: {expected.path}"
+            )
+        expected_by_path[expected.path] = expected
+    for expected in expected_by_path.values():
+        observed = u.Cli.atomic_read_binary_file_state(expected.path, required=False)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != expected:
+            return r[bool].fail(
+                f"codegen destination changed after preflight: {expected.path}"
+            )
+    return r[bool].ok(True)
+
+
+def published(publications: tuple[m.Cli.AtomicFilePublication, ...]) -> p.Result[bool]:
+    """Prove every live destination equals its staged replacement."""
+    for publication in publications:
+        expected = publication.replacement
+        observed = u.Cli.atomic_read_binary_file_state(
+            publication.before.path, required=expected.content is not None
         )
-        for expected in expected_states:
-            observed = files.read_state(expected.path, required=False)
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            if observed.value != expected:
-                return r[bool].fail(
-                    f"Mise destination changed after preflight: {expected.path}"
-                )
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if (observed.value.content, observed.value.mode) != (
+            expected.content,
+            expected.mode,
+        ):
+            return r[bool].fail(
+                f"published codegen destination differs: {publication.before.path}"
+            )
     return r[bool].ok(True)
 
 
 def live(
     owner: p.Infra.MiseArtifactsOwner,
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publications: tuple[m.Infra.MiseToolchainPublication, ...] | None = None,
+    publications: tuple[m.Cli.AtomicFilePublication, ...] | None = None,
 ) -> p.Result[bool]:
     """Exercise each real artifact consumer and compare exact bytes plus modes."""
     source_before = sources(plan)
@@ -193,7 +294,7 @@ def _artifact_snapshot(
         for expected, (_name, required_mode) in zip(
             artifacts, files.PUBLICATION_SPECS, strict=True
         ):
-            current = files.read_state(expected.path, required=True)
+            current = u.Cli.atomic_read_binary_file_state(expected.path, required=True)
             if current.failure or current.value.content is None:
                 return r[tuple[m.Cli.AtomicFileState, ...]].fail(
                     current.error
@@ -226,7 +327,6 @@ def _journal_source_topology(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     sources_to_validate: tuple[m.Infra.MiseToolchainJournalSource, ...],
 ) -> p.Result[bool]:
-    grouped: dict[Path, list[str]] = {project.root: [] for project in layout.projects}
     seen: set[str] = set()
     for source in sources_to_validate:
         if source.path in seen:
@@ -237,29 +337,19 @@ def _journal_source_topology(
         )
         if resolved.failure:
             return r[bool].from_failure(resolved)
-        owners = tuple(
-            project
-            for project in layout.projects
-            if resolved.value.parent == project.root / "config"
-            and resolved.value.suffix == ".yaml"
-        )
-        if len(owners) != 1:
-            return r[bool].fail(
-                f"Mise journal source is outside topology: {source.path}"
-            )
-        grouped[owners[0].root].append(source.path)
-    expected_order: list[str] = []
-    for project in layout.projects:
-        project_sources = grouped[project.root]
-        expected_group = sorted(project_sources)
-        if project_sources != expected_group:
-            return r[bool].fail(
-                f"Mise journal source topology differs for {project.selector}"
-            )
-        expected_order.extend(expected_group)
-    if tuple(source.path for source in sources_to_validate) != tuple(expected_order):
-        return r[bool].fail("Mise journal source order differs from workspace")
+        owner = files.project_for_path(layout, resolved.value)
+        if owner.failure:
+            return r[bool].from_failure(owner)
+    observed_order = tuple(source.path for source in sources_to_validate)
+    if observed_order != tuple(sorted(observed_order)):
+        return r[bool].fail("codegen journal source order differs from workspace")
     return r[bool].ok(True)
 
 
-__all__: list[str] = ["destinations", "journal_topology", "live", "sources"]
+__all__: list[str] = [
+    "destinations",
+    "journal_topology",
+    "live",
+    "published",
+    "sources",
+]

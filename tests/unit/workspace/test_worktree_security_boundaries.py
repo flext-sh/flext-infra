@@ -99,10 +99,14 @@ def test_symlinked_epic_topology_fails_closed(tmp_path: Path, entry: str) -> Non
         tm.ok(u.Infra.git_remove_clean_worktree(repository, epic))
         epic.symlink_to(outside, target_is_directory=True)
 
-    result = _add(repository, f"feature/{entry}-child", epic=epic)
+    try:
+        result = _add(repository, f"feature/{entry}-child", epic=epic)
 
-    tm.fail(result, has="symlink")
-    assert list(outside.iterdir()) == []
+        tm.fail(result, has="symlink")
+        assert list(outside.iterdir()) == []
+    finally:
+        if epic.is_symlink():
+            epic.unlink()
 
 
 def test_epic_path_must_match_git_registry(tmp_path: Path) -> None:

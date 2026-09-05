@@ -313,6 +313,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         declared_python_dirs: t.StrSequence,
         declared_python_dirs_are_complete: bool,
         generated_roots: t.StrSequence,
+        analysis_exclusions: t.StrSequence | None,
     ) -> t.StrSequence:
         """Resolve the one analyzer-root set consumed by includes and environments."""
         declared = self._declared_environment_dirs(
@@ -323,11 +324,27 @@ class FlextInfraEnsurePyrightConfigPhase:
             and repository_root is not None
             and (repository_root / c.Infra.GITMODULES).is_file()
         ):
-            return u.Infra.analyzer_python_roots(repository_root, generated_roots)
+            return u.Infra.analyzer_python_roots(
+                repository_root,
+                generated_roots,
+                excluded_top_dirs=(
+                    None
+                    if analysis_exclusions is None
+                    else u.Infra.analysis_excluded_top_dirs(analysis_exclusions)
+                ),
+            )
         if declared_python_dirs_are_complete:
             return declared
         if project_dir is not None:
-            return u.Infra.analyzer_python_roots(project_dir, declared)
+            return u.Infra.analyzer_python_roots(
+                project_dir,
+                declared,
+                excluded_top_dirs=(
+                    None
+                    if analysis_exclusions is None
+                    else u.Infra.analysis_excluded_top_dirs(analysis_exclusions)
+                ),
+            )
         if declared:
             return declared
         return self._tool_config.tools.pyright.path_rules.env_dirs
@@ -360,6 +377,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             generated_roots=generated_roots,
+            analysis_exclusions=analysis_exclusions,
         )
         expected_includes = self._expected_includes(
             is_root=is_root,

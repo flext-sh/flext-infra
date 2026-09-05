@@ -67,5 +67,16 @@ class FlextInfraUtilitiesProjectDiscovery(
         ordered.extend(non_root_candidates)
         return ordered
 
+    @classmethod
+    def ast_grep_scan_targets(cls, repository_root: Path) -> t.StrSequence:
+        """Return root and declared members as deterministic relative scan targets."""
+        resolved_root = repository_root.resolve()
+        members = tuple(
+            project.relative_to(resolved_root).as_posix()
+            for project in cls.discover_project_roots(resolved_root)
+            if project != resolved_root
+        )
+        return (".", *members)
+
 
 __all__: list[str] = ["FlextInfraUtilitiesProjectDiscovery"]

@@ -102,7 +102,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
         cmd = (
             binary,
-            "--no-gitignore",
             "--config",
             str(config_path),
             "--reporters",

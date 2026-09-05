@@ -9,7 +9,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import t
@@ -80,6 +80,21 @@ class FlextInfraModelsScan:
         ]
         detector_name: Annotated[
             str, m.Field(description="Name of the detector that produced this result")
+        ]
+
+    class ModScanReport(m.ArbitraryTypesModel):
+        """Verified structural findings and actionable rewrite targets."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        findings: Annotated[
+            t.NonNegativeInt, m.Field(description="Complete finding count")
+        ]
+        nodes: Annotated[
+            t.NonNegativeInt, m.Field(description="Actionable rewrite count")
+        ]
+        files: Annotated[
+            frozenset[Path], m.Field(description="Files containing actionable nodes")
         ]
 
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import concurrent.futures
+import difflib
 import hashlib
 from collections.abc import MutableMapping
+from itertools import islice
 from pathlib import Path
 from typing import ClassVar
 
@@ -20,6 +22,27 @@ class FlextInfraUtilitiesProtectedEditLinting:
     """Shared linting and path helpers for protected edit workflows."""
 
     _SNAPSHOT_MAX_WORKERS: ClassVar[int] = 4
+
+    @staticmethod
+    def unified_diff_lines(
+        before: str, after: str, *, fromfile: str, tofile: str, max_lines: int
+    ) -> t.StrSequence:
+        """Return a bounded unified diff without materializing omitted lines."""
+        if max_lines < 1:
+            msg = "max_lines must be positive"
+            raise ValueError(msg)
+        return tuple(
+            islice(
+                difflib.unified_diff(
+                    before.splitlines(keepends=True),
+                    after.splitlines(keepends=True),
+                    fromfile=fromfile,
+                    tofile=tofile,
+                    n=3,
+                ),
+                max_lines,
+            )
+        )
 
     @staticmethod
     def _workspace_tool_command(workspace: Path, tool_name: str) -> t.StrSequence:
@@ -276,6 +299,10 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 or (run_result.value.stdout + run_result.value.stderr).strip()
             )
             gate_errors = tuple(line for line in output.splitlines() if line.strip())
+        elif run_result.value.stderr.strip():
+            gate_errors = tuple(
+                line for line in run_result.value.stderr.splitlines() if line.strip()
+            )
         else:
             gate_errors = ()
         return m.Infra.LintGateResult(tool_name=tool_name, errors=gate_errors)

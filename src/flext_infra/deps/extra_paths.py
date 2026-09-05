@@ -38,6 +38,17 @@ class FlextInfraExtraPathsManager(
             description="Analyzer roots the active codegen plan materializes",
         ),
     ] = ()
+    analysis_exclusions: Annotated[
+        t.StrSequence | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description=(
+                "Caller-resolved analysis exclusions; None delegates discovery, "
+                "while an empty sequence proves there are no exclusions"
+            ),
+        ),
+    ] = None
 
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
@@ -177,9 +188,18 @@ class FlextInfraExtraPathsManager(
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
+        excluded_top_dirs = (
+            None
+            if self.analysis_exclusions is None
+            else u.Infra.analysis_excluded_top_dirs(self.analysis_exclusions)
+        )
         # flext-j47u (codex): never reread an on-disk Pyright table while its
         # in-memory payload is being conformed; include only real production roots.
-        discovered_python_roots = set(u.Infra.discover_python_dirs(project_dir))
+        discovered_python_roots = set(
+            u.Infra.discover_python_dirs(
+                project_dir, excluded_top_dirs=excluded_top_dirs
+            )
+        )
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
                 tuple(
@@ -193,7 +213,11 @@ class FlextInfraExtraPathsManager(
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
         for child in sorted(project_dir.iterdir()):
-            if not child.is_dir() or not (child / c.Infra.PYPROJECT_FILENAME).exists():
+            if (
+                not child.is_dir()
+                or child.name in (excluded_top_dirs or ())
+                or not (child / c.Infra.PYPROJECT_FILENAME).exists()
+            ):
                 continue
             child_dirs = u.Infra.discover_python_dirs(child)
             includes.update(

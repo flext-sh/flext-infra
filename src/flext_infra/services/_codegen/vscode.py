@@ -176,17 +176,30 @@ class FlextInfraCodegenVscodeMixin:
         )
         if changed.failure:
             return r[bool].fail(changed.error)
-        # The three exclude maps derive from the codegen artifact SSOT;
-        # map_union_settings keeps only the remaining non-artifact keys.
+        # The three exclude maps are complete projections of the artifact SSOT.
+        # Replacing them removes retired artifacts instead of preserving stale
+        # generated keys forever. Only explicitly declared non-artifact maps use
+        # merge semantics.
         codegen = config.Infra.codegen
-        map_union_settings: dict[str, Mapping[str, str | bool]] = {
+        artifact_maps: dict[str, Mapping[str, str | bool]] = {
             "files.exclude": dict(codegen.vscode_files_exclude_map),
             "files.watcherExclude": dict(codegen.vscode_watcher_exclude_map),
             "search.exclude": dict(codegen.vscode_search_exclude_map),
-            **spec.map_union_settings,
         }
+        artifacts_changed = False
+        for key, canonical_map in artifact_maps.items():
+            canonical = {
+                name: u.normalize_to_json_value(value)
+                for name, value in canonical_map.items()
+            }
+            if settings.get(key) == canonical:
+                continue
+            settings[key] = canonical
+            artifacts_changed = True
         return r[bool].ok(
-            cls._apply_union_settings(settings, map_union_settings) or changed.value
+            cls._apply_union_settings(settings, spec.map_union_settings)
+            or artifacts_changed
+            or changed.value
         )
 
     @classmethod

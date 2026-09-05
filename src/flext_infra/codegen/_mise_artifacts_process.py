@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r
-from flext_infra import t, u
+from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -57,7 +57,7 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
         (scratch / "gitconfig", b""),
         (scratch / "netrc", b""),
     ):
-        written = write_new(path, content, 0o600)
+        written = u.Cli.atomic_create_binary_file_guarded(path, content, permission_mode=0o600)
         if written.failure:
             return written
     return r[bool].ok(True)
@@ -138,7 +138,7 @@ def credential_environment(scratch: Path, command: str) -> dict[str, str]:
 
 
 def validate_credential_source(
-    launcher: Path, *, cwd: Path, env: t.StrMapping
+    launcher: Path, *, cwd: Path, env: t.StrMapping, timeout_seconds: int
 ) -> p.Result[bool]:
     """Prove masked token resolution selected only the declared command."""
     resolved = run(
@@ -146,6 +146,7 @@ def validate_credential_source(
         cwd=cwd,
         env=env,
         operation="Mise GitHub credential source preflight",
+        timeout_seconds=timeout_seconds,
     )
     if resolved.failure:
         return r[bool].from_failure(resolved)
@@ -155,32 +156,100 @@ def validate_credential_source(
 
 
 def run(
-    command: t.StrSequence, *, cwd: Path, env: t.StrMapping, operation: str
+    command: t.StrSequence,
+    *,
+    cwd: Path,
+    env: t.StrMapping,
+    operation: str,
+    timeout_seconds: int,
 ) -> p.Result[str]:
     """Run one Mise process and reject nonzero status or any Mise warning."""
+    u.Cli.info(f"mise-toolchain: start operation={operation}")
     executed = u.Cli.run_raw(
-        command, cwd=cwd, env=env, remove_env_keys=tuple(os.environ)
+        command,
+        cwd=cwd,
+        env=env,
+        remove_env_keys=tuple(os.environ),
+        timeout=timeout_seconds,
     )
     if executed.failure:
-        return r[str].fail(executed.error or f"{operation} failed to execute")
+        return r[str].from_failure(executed)
     output = executed.value.stdout + executed.value.stderr
     if executed.value.exit_code != 0:
-        detail = output.strip() or f"exit {executed.value.exit_code}"
-        return r[str].fail(f"{operation} failed: {detail}")
+        return _process_failure(
+            operation,
+            raw_exit_code=executed.value.exit_code,
+            stdout=executed.value.stdout,
+            stderr=executed.value.stderr,
+        )
     if "mise WARN" in output:
         return r[str].fail(f"{operation} emitted a warning: {output.strip()}")
+    u.Cli.info(f"mise-toolchain: complete operation={operation}")
     return r[str].ok(executed.value.stdout.strip())
 
 
-def write_new(path: Path, content: bytes, mode: int) -> p.Result[bool]:
-    """Create exact isolated state through the canonical atomic owner."""
-    before = u.Cli.atomic_read_binary_file_state(path, required=False)
-    if before.failure:
-        return r[bool].from_failure(before)
-    if before.value.content is not None:
-        return r[bool].fail(f"isolated Mise file already exists: {path}")
-    return u.Cli.atomic_write_binary_file_guarded(
-        before.value, content, permission_mode=mode
+def run_live(
+    command: t.StrSequence,
+    *,
+    cwd: Path,
+    env: t.StrMapping,
+    operation: str,
+    output_path: Path,
+    timeout_seconds: int,
+) -> p.Result[str]:
+    """Run one bounded Mise process with live and durable combined output."""
+    u.Cli.info(f"mise-toolchain: start operation={operation}")
+    executed = u.Cli.run_to_file(
+        command,
+        output_path,
+        cwd=cwd,
+        env=env,
+        remove_env_keys=tuple(os.environ),
+        live=True,
+        timeout=timeout_seconds,
+    )
+    if executed.failure:
+        return r[str].from_failure(executed)
+    output = u.Cli.files_read_text(output_path)
+    if output.failure:
+        return r[str].from_failure(output)
+    if executed.value != 0:
+        return _process_failure(
+            operation,
+            raw_exit_code=executed.value,
+            stdout=output.value,
+            stderr="",
+            combined=True,
+        )
+    if "mise WARN" in output.value:
+        return r[str].fail(f"{operation} emitted a warning: {output.value.strip()}")
+    u.Cli.info(f"mise-toolchain: complete operation={operation}")
+    return r[str].ok(output.value.strip())
+
+
+def _process_failure(
+    operation: str,
+    *,
+    raw_exit_code: int,
+    stdout: str,
+    stderr: str,
+    combined: bool = False,
+) -> p.Result[str]:
+    """Preserve one child status and its exact captured diagnostic channels."""
+    exit_code = u.Infra.normalize_process_exit_code(raw_exit_code)
+    classification = u.Infra.classify_process_exit(raw_exit_code)
+    outcome = m.Infra.ProcessExit(
+        exit_code=exit_code, raw_exit_code=raw_exit_code, classification=classification
+    )
+    if combined:
+        diagnostics = f"combined_stdout_stderr:\n{stdout}"
+    else:
+        diagnostics = f"stdout:\n{stdout}\nstderr:\n{stderr}"
+    return r[str].fail(
+        f"{operation} failed: raw_exit_code={raw_exit_code} "
+        f"exit_code={exit_code} classification={classification}\n{diagnostics}",
+        error_code=c.Infra.PROCESS_EXIT_ERROR_CODE,
+        error_data=outcome,
     )
 
 
@@ -189,6 +258,6 @@ __all__: list[str] = [
     "environment",
     "prepare_isolation",
     "run",
+    "run_live",
     "validate_credential_source",
-    "write_new",
 ]

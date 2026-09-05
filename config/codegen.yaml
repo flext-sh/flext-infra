@@ -11,6 +11,11 @@ Infra:
       # uv is supplied by the caller environment and is deliberately not pinned.
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
+      state_directory_name: .flext-runtime
+      scratch_namespace: scratch
+      pycache_namespace: pycache
+      mise_namespace: mise-artifacts
+      crg_namespace: code-review-graph
       uv_link_mode: copy
       # Supported resolution environments for the generated lock. Windows is
       # not a deployment target, so uv skips that split instead of resolving it.
@@ -47,8 +52,15 @@ Infra:
       # so no gate ever resolves a runner or a version outside this SSOT.
       node_version: "26.8"
       jscpd_version: "5.1.2"
+      # Waza is the public semantic-governance gate; setup provisions the exact
+      # native release so Make never resolves a moving executable.
+      waza_version: "0.38.7"
       # Moving selector is deliberate: setup must always provision the newest
       # Mise release instead of rejecting a newer binary than code generation.
+      # The budget covers one unique toolchain lock resolution. Output is
+      # streamed live, and identical generated toolchains reuse that result.
+      mise_network_timeout_seconds: 60
+      mise_lock_timeout_seconds: 600
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -136,14 +148,11 @@ Infra:
           - convergence
           - step
 
-    # Why (ai-hub-qwoc): the ast-grep project contract for every governed
-    # repository. A provider manifest may declare sgconfig.yml as a required
-    # surface, so it is rendered from here instead of hand-written per repo.
-    sgconfig:
-      rule_dirs:
-        - ast-grep-rules
-      test_dirs:
-        - ast-grep-rule-tests
+    # Removed projections remain explicit until every supported checkout has
+    # passed through conformance. make mod now discovers package-owned rules
+    # through the project's complete FLEXT dependency DAG.
+    retired_generated_paths:
+      - sgconfig.yml
 
     # actions/checkout submodules mode for every generated workflow.
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
@@ -258,6 +267,13 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
+    # Runtime requirements owned by the fleet generator, keyed by the
+    # distribution that consumes them. Entries are packaged requirements;
+    # local paths and editable fallbacks are never rendered.
+    runtime_dependency_overlays:
+      ai-hub:
+        - agents-governance==0.3.0
+
     # One owner of the infrastructure repository identity: the repository
     # utilities, the conform infra-repository resolution and the
     # provider-identity validation all read it. The `infrastructure_provider`
@@ -338,12 +354,16 @@ Infra:
         discovery_scope: none
 
     make:
-      selector: WHAT
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
       testmon_cache:
         schema_version: 1
+        namespace: testmon
+        invocation_namespace: pytest
+        database_filename: .testmondata
+        target_directory: tests
+        reports_directory: .reports/tests
         mode: bootstrap
         save_enabled: false
         max_bootstrap_generations: 3
@@ -360,31 +380,9 @@ Infra:
       ci:
         variable: CI
         value: Y
-        # local_value (hq-36xk): the local arm of the same ternary. Only the
-        # exact `value` disables coverage and narrows CHECK_GATES, so pre-push
-        # sets this instead to keep every gate and the complete pytest+coverage
-        # run. The templates consumed `make.ci.local_value` while no owner
-        # declared it, so no repository could render its pre-commit config.
+        # local_value is explicit hook context only; it never narrows the gate
+        # set. Every context executes the same complete configured operation.
         local_value: N
-        # RULING 2 (rules, not a skip-list): local_check_gates is the ONLY
-        # declared set. CI=Y runs its strict complement, derived in
-        # MakeCiSpec.check_gates, so the two contexts can never overlap nor
-        # leave a gate unowned; an unset CI runs every allowed gate. `format`
-        # is not a check gate at all -- it mutates files, so it belongs to
-        # make fmt / make fix APPLY=Y only. This supersedes the earlier
-        # check_gates_skip list, which could drift out of sync with the set it
-        # was meant to complement.
-        # RULING 1: CI is ternary (Y/N/absent). CI=Y owns the Review workflow,
-        # including full pytest+coverage while attestation is not selected;
-        # CI=N owns the complementary local check gates; absent uses testmon
-        # for incremental developer runs.
-        #
-        # The set is the SLOW whole-program type checkers, matching
-        # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
-        # off the fast CI leg, and they are what CI=N exists to own. `lint` is
-        # not here -- ruff is cheap, so making CI skip it buys nothing and
-        # leaves the fast leg without a linter.
-        local_check_gates: [pyrefly, mypy]
       # Why (operator law 2026-08-24): git-hook stages are disabled by default;
       # the workflow below still declares stage membership so re-enabling is a
       # one-key change, case by case. CI owns read-only setup, generation drift,
@@ -395,37 +393,14 @@ Infra:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
         # broken code from ever being committed. pre-push adds gen+test.
-        - { verb: setup, apply: false, contexts: [local, ci] }
+        - { verb: setup, apply: true, contexts: [local, ci] }
         - { verb: gen, apply: true, contexts: [local, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
+        - { verb: check, apply: true, contexts: [local, ci, pre_push, pre_commit] }
         # Review CI proves the complete native gate set. Draft PRs do not select
         # the job, while attestation reuse is selected externally by AI Hub.
-        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
-      # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
-      # sweep and the root-level directory/file lists.
-      clean:
-        cache_dirs:
-          - __pycache__
-          - .mypy_cache
-          - .pytest_cache
-          - .ruff_cache
-          - .pyrefly_cache
-          - .benchmarks
-          - .hypothesis
-        root_dirs:
-          - .test-tmp
-          - .test-runtime
-          - build
-          - dist
-          - htmlcov
-          - .reports
-        root_files:
-          - .coverage
-          - .testmondata
-        trace_globs:
-          - "*.pstats"
+        - { verb: test, apply: true, contexts: [local, ci, pre_push] }
       # Branch shapes and PR state that let a push skip the pre-push gate, and
       # the integration branches the merge lock protects. Read by
       # ci.yml.j2 and .pre-commit-config.yaml.j2.
@@ -488,115 +463,77 @@ Infra:
             local_checkout: ~/invest
       verbs:
         - name: help
-          default_what: usage
-          whats: [usage]
-          apply_guarded: false
-        - name: setup
-          default_what: environment
-          whats: [environment]
-          apply_guarded: false
-        - name: deps
-          default_what: check
-          whats: [check, lock, upgrade]
-          # `lock` and `upgrade` rewrite the lockfile and call _require_apply,
-          # so declaring the verb unguarded made them unreachable: the dispatch
-          # rejected APPLY=Y while the recipe demanded it.
-          apply_guarded: true
-          apply_what: upgrade
-        - name: build
-          default_what: artifacts
-          whats: [artifacts]
-          apply_guarded: false
-        - name: check
-          default_what: all
-          whats: [all]
-          apply_guarded: false
-        - name: test
-          default_what: all
-          # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Coverage is on unless CI=Y (no separate cov verb).
-          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-          # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
-          apply_guarded: false
-          accepts_apply: true
-          apply_what: all
-        - name: fmt
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
-        - name: fix
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
-        - name: run
-          default_what: default
-          whats: [default]
-          apply_guarded: false
-          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-          # entering the serialized mutation set (daemon/mcp must not take the
-          # checkout lock). accepts_apply unlocks the APPLY token only.
-          accepts_apply: true
-          apply_what: default
+          description: Show the complete selector-free public interface.
+          requires_apply: false
+        - name: audit
+          description: Inspect ownership, dependency, and generated-state health.
+          requires_apply: false
         - name: status
-          default_what: diagnostics
-          whats: [diagnostics]
-          apply_guarded: false
+          description: Report the resolved runtime and repository state.
+          requires_apply: false
+        - name: setup
+          description: Provision the declared environment and hooks.
+          requires_apply: true
+        - name: deps
+          description: Upgrade, lock, and conform every declared dependency.
+          requires_apply: true
+        - name: build
+          description: Build the project distribution artifacts.
+          requires_apply: true
+        - name: check
+          description: Run every configured non-test gate.
+          requires_apply: true
+        - name: test
+          description: Run the complete suite through the persistent testmon cache.
+          requires_apply: true
+        - name: fmt
+          description: Apply canonical formatting.
+          requires_apply: true
+        - name: fix
+          description: Apply every configured safe correction.
+          requires_apply: true
         - name: docs
-          # `validate` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          # `WHAT=all` remains the explicit full pipeline meta-selector.
-          default_what: validate
-          whats: [all, generate, fix, audit, build, validate]
-          # generate/fix materialize artifacts: the generated handler picks
-          # --apply or --check from APPLY, and the docs workflow calls
-          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
-          apply_guarded: true
-          apply_what: generate
+          description: Generate, repair, build, and validate documentation.
+          requires_apply: true
         - name: clean
-          default_what: status
-          whats: [status, generated]
-          # `clean generated` deletes generated output and calls _require_apply.
-          # `clean status` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          apply_guarded: true
-          apply_what: generated
-        # The release protocol: `plan` is the read-only decision (and guard),
-        # `version` opens the release pull request, `tag` marks the merged
-        # release commit, `build` produces the receipt, `publish` uploads what
-        # the receipt attests. Every mutation requires APPLY=Y.
-        - name: release
-          default_what: plan
-          whats: [plan, version, tag, build, publish]
-          apply_guarded: true
-          apply_what: version
+          description: Remove every declared disposable artifact.
+          requires_apply: true
+        - name: release-plan
+          description: Resolve the release decision through the public protocol.
+          requires_apply: true
+        - name: release-version
+          description: Materialize the planned version.
+          requires_apply: true
+        - name: release-tag
+          description: Tag the verified release commit.
+          requires_apply: true
+        - name: release-build
+          description: Build the release receipt and artifacts.
+          requires_apply: true
+        - name: publication
+          description: Publish only receipt-attested release artifacts.
+          requires_apply: true
         - name: gen
-          default_what: check
-          # `init` is the narrow package-initializer owner. It intentionally
-          # bypasses conform so regenerating lazy ``__init__.py`` files never
-          # discovers workspace topology or inspects external runtime state.
-          whats: [check, all, apply, init]
-          apply_guarded: true
-          apply_what: apply
+          description: Regenerate every managed projection atomically.
+          requires_apply: true
+        - name: conform
+          description: Prove generated projections are at their fixed point.
+          requires_apply: true
+        - name: initialize
+          description: Materialize the declared package initializer graph.
+          requires_apply: true
         - name: mod
-          default_what: check
-          whats: [check, all, apply]
-          # `mod` batch-applies the sgconfig ast-grep rules under the
-          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
-          # the read-only dry-run fixed-point after mutation.
-          apply_guarded: true
-          apply_what: apply
+          description: Apply the declared structural codemods.
+          requires_apply: true
+        - name: waza
+          description: Validate provider-neutral governance semantics with Waza.
+          requires_apply: true
+        - name: duplication
+          description: Run the canonical jscpd duplicate-code gate.
+          requires_apply: true
       custom_handler_policy:
         filename: custom.mk
-        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
-        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
-        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
-        # The validator must accept both shapes the runtime itself dispatches to, or
-        # every project that defines a custom WHAT handler fails `codegen conform`.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|work|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|work|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
+        target_pattern: "^(_custom-[a-z][a-z0-9-]*|(pre|post)-[a-z][a-z0-9-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -626,7 +563,6 @@ Infra:
       # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
       # watch/source-scan projections (order-sensitive, after .claude).
       - { name: .direnv, source_scan_ignore: true }
-      - { name: .code-review-graph }
       - { name: .codegraph }
       - { name: .dolt }
       - { name: .dolt_dropped_databases }
@@ -637,18 +573,12 @@ Infra:
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
       - { name: .pytest_cache, source_scan_ignore: true }
-      - { name: .test-tmp, source_scan_ignore: true }
-      - { name: .test-runtime, source_scan_ignore: true }
-      - { name: .testmondata, is_dir: false, source_scan_ignore: true }
-      - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
-      - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }
       - { name: .reports, source_scan_ignore: true }
       - { name: .ropeproject }
       - { name: .ruff_cache, source_scan_ignore: true }
       - { name: .scope }
       - { name: .serena }
       - { name: .sisyphus }
-      - { name: .state }
       - { name: .superpowers }
       - { name: .trash }
       - { name: .turbo }
@@ -757,9 +687,10 @@ Infra:
         }
 
     vscode:
-      # Canonical .vscode/settings.json content injected with merge semantics:
-      # scalar/list keys are enforced, map keys are union-merged (project entries
-      # are preserved). Recursive "**" venv search globs are forbidden: they make
+      # Canonical .vscode/settings.json content: scalar/list keys and the three
+      # artifact-derived exclude maps are exact projections; only maps declared
+      # in map_union_settings preserve project entries. Recursive "**" venv
+      # search globs are forbidden: they make
       # the Python Environments locator (pet) walk entire repository trees and
       # hang interpreter discovery on large monorepos.
       scalar_settings:
@@ -789,11 +720,12 @@ Infra:
     # NOTE(mro-0wuz, epic mro-hzox): declarative project-layout SSOT consumed by
     # the layout engine (codegen/layout.py) and the layout quality gate. Every
     # move/archive/gitignore decision derives from this section — the engine
-    # carries zero hardcoded layout knowledge. severity=warning keeps the gate
-    # report-only; flipping to error makes violations fail the check pipeline.
+    # carries zero hardcoded layout knowledge. Layout drift is blocking: a
+    # non-canonical entry must be classified at this SSOT before generation can
+    # proceed, so warnings can never masquerade as a successful gate.
     layout:
       version: 1
-      severity: warning
+      severity: error
       # Archive-not-delete root: archived entries land in <archive_root>/<project>/.
       archive_root: .bkp
       docs_target: docs
@@ -811,10 +743,11 @@ Infra:
         - CONTRIBUTING.md
         - AGENTS.md
         - CLAUDE.md
+        - GEMINI.md
         - conftest.py
         - mkdocs.yml
         - uv.lock
-        - sgconfig.yml
+        - mise.lock
       canonical_root_dotfiles:
         - .gitignore
         - .gitattributes
@@ -840,6 +773,8 @@ Infra:
         - docker
         - dbt_packages
         - ast-grep-rules
+        - ast-grep-rule-tests
+        - bin
       # Per-project-type extra canonical root files; the profile of a project
       # is resolved by matching its name against profile_project_patterns.
       profile_extra_root_files:
@@ -967,13 +902,12 @@ Infra:
       # External reference corpora (same class as docs/references/**).
       reference_root_dirs:
         - external-docs
-      # Per-project overrides: extra archives (with the matching .gitignore
-      # additions), explicit nested moves, and empty-directory archives.
+      # Per-project overrides: extra archives, explicit nested moves, and
+      # empty-directory archives. Shared runtime filenames are ignored once
+      # for every profile by the gitignore section below.
       project_overrides:
         flext-cli:
           archive_names:
-            - settings.json
-          gitignore_additions:
             - settings.json
         flext-core:
           archive_names:
@@ -981,17 +915,11 @@ Infra:
         flext-tap-oracle-wms:
           archive_names:
             - config.json
-          gitignore_additions:
-            - config.json
         flext-target-oracle-oic:
           archive_names:
             - config.json
-          gitignore_additions:
-            - config.json
         flext-oracle-oic:
           archive_names:
-            - config.json
-          gitignore_additions:
             - config.json
         flext-dbt-ldif:
           moves:
@@ -1142,9 +1070,6 @@ Infra:
       - path: .github/scripts/check-cqrs-compliance.sh
         owner: codegen
         policy: full
-      - path: .github/scripts/flext-law-loop.sh
-        owner: codegen
-        policy: full
       - path: .github/scripts/install-git-hooks.sh
         owner: codegen
         policy: full
@@ -1185,11 +1110,6 @@ Infra:
         owner: codegen
         policy: create-only
       - path: .envrc
-        owner: codegen
-        policy: full
-      # Why (ai-hub-qwoc): codegen owns the ast-grep contract end to end, so the
-      # rendered file is fully managed and never hand-edited.
-      - path: sgconfig.yml
         owner: codegen
         policy: full
       - path: .gitignore
@@ -1280,8 +1200,8 @@ Infra:
           - pyright>=1.1.411
           - pytest>=9.1.1
           - pytest-testmon>=2.2.0
-          - ruff>=0.16.0
-          - rumdl>=0.2.45
+          - ruff>=0.16.5
+          - rumdl>=0.2.62
           - vulture>=2.16
           - yamlfix>=1.19.1
         dependency_profiles:
@@ -1336,7 +1256,6 @@ Infra:
             - "!typings/"
             - "!libs/"
             - "!.vscode/"
-            - "!.code-review-graph/"
             - "!.claude/"
             - "!.claude-plugin/"
             # Provider surfaces are generated governance artifacts owned by the
@@ -1562,6 +1481,10 @@ Infra:
             - "**/dist/"
             - "**/build/"
             - "**/.eggs/"
+        - name: "Local runtime configuration"
+          patterns:
+            - "config.json"
+            - "settings.json"
         - name: "Skill validation temporary reports"
           patterns:
             - "baseline.json"
@@ -1803,11 +1726,6 @@ Infra:
           profiles: [workspace]
           delegate: render
           overwrite: false
-        - source: base/.github/scripts/flext-law-loop.sh.j2
-          destination: .github/scripts/flext-law-loop.sh
-          profiles: [workspace]
-          delegate: render
-          overwrite: false
         - source: base/.github/scripts/install-git-hooks.sh.j2
           destination: .github/scripts/install-git-hooks.sh
           profiles: [workspace]
@@ -1858,16 +1776,6 @@ Infra:
           overwrite: true
         - source: base/gitignore.j2
           destination: .gitignore
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
-        # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
-        # required surface. Without a generator it was hand-written in one
-        # repository and absent in another, so provider discovery failed closed
-        # with "missing declared file: sgconfig.yml". Rendering it from the SSOT
-        # gives every governed repository the same ast-grep contract.
-        - source: base/sgconfig.yml.j2
-          destination: sgconfig.yml
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false

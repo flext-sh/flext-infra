@@ -26,9 +26,6 @@ class FlextInfraModelsRefactorGrep:
             ],
             description="Relative directories scanned for candidate files",
         )
-        ignore_patterns: t.StrSequence = m.Field(
-            default_factory=tuple, description="Glob/file patterns ignored during scan"
-        )
         file_extensions: t.StrSequence = m.Field(
             default_factory=tuple,
             description="Allowed file extensions (empty = all by pattern)",

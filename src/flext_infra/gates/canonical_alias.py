@@ -48,17 +48,9 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     @staticmethod
     def _alias_files(project_dir: Path) -> p.Result[t.SequenceOf[Path]]:
         """Return Python files from configured namespace roots for alias checks."""
-        try:
-            files = {
-                file_path
-                for directory_name in u.Infra.namespace_scan_dirs(project_dir)
-                for file_path in u.Infra.iter_directory_python_files(
-                    project_dir / directory_name
-                )
-            }
-        except OSError as exc:
-            return r[t.SequenceOf[Path]].fail_op("canonical-alias file scan", exc)
-        return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
+        return u.Infra.iter_python_files(
+            m.Infra.SourceScanRequest(project_roots=(project_dir,))
+        )
 
     @override
     def check(
@@ -165,6 +157,8 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
                     ctx=ctx,
                 )
             edits = plan_result.value
+            if not edits:
+                return self.check(project_dir, ctx)
             updates = {edit.file_path: edit.updated_source for edit in edits}
             baseline_cycles = FlextInfraCyclicImportDetector.scan_project(
                 project_root=project_dir, rope_project=rope_project

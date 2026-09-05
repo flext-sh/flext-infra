@@ -201,16 +201,15 @@ class TestGateRegistry:
 def test_every_allowed_gate_resolves_in_the_registry() -> None:
     """Every gate the Make surface accepts must be instantiable.
 
-    flext-38p39: `format` sat in PROJECT_CHECK_GATES_ALLOWED_VALUES and
+    flext-38p39: `format` once sat in the canonical check-gate vocabulary and
     FlextInfraRuffFormatGate declared gate_id="format" with can_fix=True, but the
-    class was never listed in the registry. So `make check CHECK_GATES=format`
-    named a gate that silently resolved to nothing, and the one gate that could
-    repair formatting was unreachable from every verb.
+    class was never listed in the registry. The generated check command could
+    therefore name a gate that silently resolved to nothing.
     """
     registry = FlextInfraGateRegistry.default()
     unresolved = [
         gate_id
-        for gate_id in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES
+        for gate_id in c.Infra.CANONICAL_GATE_IDS
         if registry.get(gate_id) is None
     ]
 
@@ -230,21 +229,16 @@ def test_fixable_gate_vocabulary_matches_the_registry() -> None:
     ALLOWED (check never mutates) and not in FIXABLE (fix never formats).
     """
     registry = FlextInfraGateRegistry.default()
-    for gate_id in c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES:
-        gate_cls = registry.get(gate_id)
-        tm.that(gate_cls is not None, eq=True)
-        tm.that(gate_cls is not None and gate_cls.can_fix, eq=True)
-    check_fixable = {
+    registered_fixable = {
         gate_id
-        for gate_id in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES
+        for gate_id in c.Infra.CANONICAL_GATE_IDS
         if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
     }
-    check_fixable.difference_update({"format", "lint"})
-    tm.that(check_fixable <= set(c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES), eq=True)
+    tm.that(set(c.Infra.CANONICAL_FIXABLE_GATE_IDS), eq=registered_fixable)
     # `format` belongs to `make fmt` alone: absent from the read-only check
     # vocabulary AND from the fix vocabulary.
-    tm.that("format" not in c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES, eq=True)
-    tm.that("format" not in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES, eq=True)
+    tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS, eq=True)
+    tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_GATE_IDS, eq=True)
 
 
 __all__: t.StrSequence = []

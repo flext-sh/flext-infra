@@ -1,0 +1,25 @@
+# Test doubles hide observable runtime behavior and are forbidden in FLEXT tests.
+
+---
+id: ban-test-doubles
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+rule:
+  any:
+    - all:
+        - kind: identifier
+        - regex: '^(?:monkeypatch|mocker)$'
+        - inside:
+            kind: parameters
+            stopBy: end
+    - pattern: import unittest.mock
+    - pattern: from unittest.mock import $$$NAMES
+    - pattern: Mock($$$ARGS)
+    - pattern: MagicMock($$$ARGS)
+    - pattern: patch($$$ARGS)
+    - pattern: mock.patch($$$ARGS)
+message: >-
+  Test doubles are forbidden. Exercise the public facade and observable runtime
+  behavior through typed real fixtures.

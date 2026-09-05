@@ -175,28 +175,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 raise ValueError(msg)
             return self
 
-    class MiseToolchainPublication(m.ArbitraryTypesModel):
-        """One guarded replacement belonging to the current Mise transaction."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
-
-        before: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact destination state observed during preflight"),
-        ]
-        replacement: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact caller-owned staged replacement state"),
-        ]
-
-        @u.model_validator(mode="after")
-        def _validate_replacement_present(self) -> Self:
-            """Require every publication to own a materialized staged file."""
-            if self.replacement.content is None or self.replacement.mode is None:
-                msg = "Mise publication replacement must be present"
-                raise ValueError(msg)
-            return self
-
     class MiseToolchainJournalSource(m.ArbitraryTypesModel):
         """One immutable source identity guarded by a Mise transaction journal."""
 
@@ -237,7 +215,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ]
         original_backup: Annotated[
             t.NonEmptyStr | None,
-            m.Field(description="Workspace-relative original-byte backup"),
+            m.Field(description="Runtime-state-relative original-byte backup"),
         ] = None
         original_sha256: Annotated[
             str | None,
@@ -256,28 +234,34 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ),
         ] = None
         replacement_sha256: Annotated[
-            str,
+            str | None,
             m.Field(
                 pattern=r"^[0-9a-f]{64}$",
-                description="Exact replacement-byte SHA-256 identity",
+                description="Exact replacement-byte SHA-256, or None for deletion",
             ),
-        ]
+        ] = None
         replacement_mode: Annotated[
-            int,
+            int | None,
             m.Field(
-                ge=0, le=0o7777, strict=True, description="Replacement permission bits"
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Replacement permission bits, or None for deletion",
             ),
-        ]
+        ] = None
 
         @u.model_validator(mode="after")
         def _validate_original_tuple(self) -> Self:
-            """Require complete recovery identity exactly when original existed."""
+            """Require complete original and replacement identities."""
             original = (self.original_backup, self.original_sha256, self.original_mode)
             populated = tuple(value is not None for value in original)
             if (self.original_exists and not all(populated)) or (
                 not self.original_exists and any(populated)
             ):
                 msg = "Mise journal original recovery tuple is inconsistent"
+                raise ValueError(msg)
+            if (self.replacement_sha256 is None) is not (self.replacement_mode is None):
+                msg = "codegen journal replacement tuple is inconsistent"
                 raise ValueError(msg)
             return self
 
@@ -305,7 +289,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
-            Literal[3], m.Field(description="Exact journal schema version")
+            Literal[4], m.Field(description="Exact journal schema version")
         ]
         state: Annotated[
             Literal["staging", "prepared", "committed"],
@@ -321,6 +305,15 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         sources: Annotated[
             tuple[FlextInfraModelsCodegen.MiseToolchainJournalSource, ...],
             m.Field(description="Source identities used by staging"),
+        ]
+        created_directories: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Ordered workspace-relative destination directories absent "
+                    "before publication"
+                )
+            ),
         ]
         entries: Annotated[
             tuple[FlextInfraModelsCodegen.MiseToolchainJournalEntry, ...],

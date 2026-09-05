@@ -112,12 +112,6 @@ refactor:
     Config: "m.Tests.Config"
     Result: "m.Tests.Result"
 
-  # Arquivos e diretórios a ignorar
-  ignore_patterns:
-    - "__pycache__"
-    - ".venv"
-    - ".git"
-
   # Extensões de arquivo a processar
   file_extensions:
     - ".py"

@@ -6,25 +6,13 @@ import re
 from pathlib import Path
 from typing import Final
 
-from flext_cli import cli, u
+from flext_cli import cli
 from flext_core import r
-from flext_infra import m, p, t
+from flext_infra import c, m, p, t, u
 
-_SKIP_DIRS: Final[frozenset[str]] = frozenset({
-    "__pycache__",
-    "legado",
-    "legacy",
-    ".git",
-    ".venv",
-    "node_modules",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".pytest_cache",
-})
-_SKIP_SUFFIXES: Final[frozenset[str]] = frozenset({
+_SEMANTIC_EXCLUDED_PARTS: Final[frozenset[str]] = frozenset({"legado", "legacy"})
+_NON_TEXT_SUFFIXES: Final[frozenset[str]] = frozenset({
     ".db",
-    ".pyc",
-    ".pyo",
     ".so",
     ".png",
     ".jpg",
@@ -35,10 +23,7 @@ _SKIP_SUFFIXES: Final[frozenset[str]] = frozenset({
     ".zip",
     ".gz",
     ".whl",
-    ".lock",
-    ".bak",
 })
-_ASTGREP: Final[str] = "ast-grep"
 _RENAME_COLUMNS: Final[int] = 2
 
 
@@ -94,13 +79,17 @@ class FlextInfraApplyRenames:
         """Collect text candidates while excluding generated and binary trees."""
         files: list[Path] = []
         for root in roots:
+            tracked_files = u.Infra.git_tracked_scope_paths(root)
+            candidates = root.rglob("*") if tracked_files is None else tracked_files
             files.extend(
                 path
-                for path in root.rglob("*")
+                for path in candidates
                 if (
                     path.is_file()
-                    and not _SKIP_DIRS.intersection(path.parts)
-                    and path.suffix not in _SKIP_SUFFIXES
+                    and not _SEMANTIC_EXCLUDED_PARTS.intersection(
+                        path.relative_to(root).parts
+                    )
+                    and path.suffix not in _NON_TEXT_SUFFIXES
                 )
             )
         return tuple(files)
@@ -146,7 +135,7 @@ class FlextInfraApplyRenames:
         root_args = tuple(str(root) for root in roots)
         for old, new in pairs:
             run_result = u.Cli.run_raw((
-                _ASTGREP,
+                c.Infra.SG,
                 "run",
                 "-p",
                 old,

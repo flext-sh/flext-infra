@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
+from flext_infra import c, config
 from flext_infra import main as infra_main
 from flext_tests import tm
 from tests import u
@@ -57,15 +57,21 @@ class TestHandleLazyInit:
         tm.that(result, eq=0)
 
     def test_check_mode(self, real_git_repo: Path) -> None:
-        """Init respects --check flag."""
+        """Init check reports managed drift without mutating the repository."""
+        repository = _with_pep621_identity(real_git_repo)
+        pyproject = repository / c.Infra.PYPROJECT_FILENAME
+        before = pyproject.read_bytes()
+        makefile = repository / c.Infra.MAKEFILE_FILENAME
         result = infra_main([
             "codegen",
             "init",
             "--check",
             "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
+            str(repository),
         ])
-        tm.that(result, eq=0)
+        tm.that(result, ne=0)
+        tm.that(makefile.exists(), eq=False)
+        tm.that(pyproject.read_bytes(), eq=before)
 
     def test_enforce_mode(self, real_git_repo: Path) -> None:
         """Init in enforce mode (not check)."""
@@ -88,17 +94,6 @@ class TestMainCommandDispatch:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
-        ])
-        tm.that(result, eq=0)
-
-    def test_init_with_check_flag(self, real_git_repo: Path) -> None:
-        """main() init with --check flag parses correctly."""
-        result = infra_main([
-            "codegen",
-            "init",
-            "--check",
             "--workspace",
             str(_with_pep621_identity(real_git_repo)),
         ])

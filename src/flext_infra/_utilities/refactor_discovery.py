@@ -42,21 +42,15 @@ class FlextInfraUtilitiesRefactorDiscovery:
     def filter_refactor_files(
         files: t.SequenceOf[Path],
         *,
-        base_path: Path,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
-        ignore_patterns: set[str] | None = None,
         allowed_extensions: set[str] | None = None,
     ) -> Iterator[Path]:
-        """Filter candidate files by glob pattern, ignore list, and extension."""
-        ign = ignore_patterns or set()
+        """Filter Git-visible candidate files by glob pattern and extension."""
         ext = allowed_extensions or {c.Infra.EXT_PYTHON}
         for f in files:
             if not fnmatch.fnmatch(f.name, pattern):
                 continue
             if f.suffix not in ext:
-                continue
-            rel = str(f.relative_to(base_path))
-            if any(fnmatch.fnmatch(rel, ip) for ip in ign):
                 continue
             yield f
 
@@ -91,15 +85,10 @@ class FlextInfraUtilitiesRefactorDiscovery:
         files = FlextInfraUtilitiesRefactorDiscovery._configured_scan_files(
             project, refactor_config.project_scan_dirs
         )
-        ign = refactor_config.ignore_patterns
         ext = refactor_config.file_extensions
         return list(
             FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
-                files,
-                base_path=project,
-                pattern=pattern,
-                ignore_patterns=set(ign),
-                allowed_extensions=set(ext),
+                files, pattern=pattern, allowed_extensions=set(ext)
             )
         )
 
@@ -119,9 +108,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
         projects = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
             repository_root=root, scan_dirs=scan_dirs or None
         )
-        ign = refactor_config.ignore_patterns
         ext = refactor_config.file_extensions
-        ignore_patterns = set(ign)
         allowed_extensions = set(ext)
         all_files: t.MutableSequenceOf[Path] = []
         for proj in projects:
@@ -130,11 +117,7 @@ class FlextInfraUtilitiesRefactorDiscovery:
             )
             all_files.extend(
                 FlextInfraUtilitiesRefactorDiscovery.filter_refactor_files(
-                    files,
-                    base_path=proj,
-                    pattern=pattern,
-                    ignore_patterns=ignore_patterns,
-                    allowed_extensions=allowed_extensions,
+                    files, pattern=pattern, allowed_extensions=allowed_extensions
                 )
             )
         return all_files

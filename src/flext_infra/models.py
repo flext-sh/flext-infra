@@ -28,6 +28,7 @@ from flext_infra._models.refactor import FlextInfraModelsRefactor
 from flext_infra._models.release import FlextInfraModelsRelease
 from flext_infra._models.rope import FlextInfraModelsRope
 from flext_infra._models.scan import FlextInfraModelsScan
+from flext_infra._models.testmon import FlextInfraModelsTestmon
 from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._models.validate import FlextInfraModelsCore
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
@@ -68,6 +69,7 @@ class FlextInfraModels(m):
         FlextInfraModelsGit,
         FlextInfraModelsRope,
         FlextInfraModelsScan,
+        FlextInfraModelsTestmon,
         FlextInfraModelsCore,
         FlextInfraModelsBase,
     ):

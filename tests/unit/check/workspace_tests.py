@@ -12,7 +12,7 @@ import pytest
 
 from flext_cli import u as cli_u
 from flext_infra import c, main, r
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_tests import tm
 from tests import u as test_u
 
@@ -101,11 +101,10 @@ class TestFlextInfraWorkspaceChecker:
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
 
-    def test_resolve_gates_deduplicates(self) -> None:
-        """Test that resolve_gates removes duplicate gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
-        tm.ok(result)
-        tm.that(result.value.count("lint"), eq=1)
+    def test_resolve_gates_rejects_duplicates(self) -> None:
+        """Test that duplicate explicit gates fail before execution."""
+        result = FlextInfraWorkspaceChecker.resolve_gates([c.Infra.LINT, c.Infra.LINT])
+        tm.fail(result, has=f"duplicate gate '{c.Infra.LINT}'")
 
     def test_resolve_gates_with_invalid_gate(self) -> None:
         """Test that resolve_gates fails on invalid gate name."""

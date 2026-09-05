@@ -137,7 +137,8 @@ class RefactorRoutes(CliRouteBase):
         m.Cli.ResultCommandRoute(
             name="mod",
             help_text=(
-                "Batch-apply all ast-grep rules under the ruff/pyrefly rollback circuit"
+                "Apply ast-grep rules, prove fixed point, then require Ruff, "
+                "Pyrefly, and real LSP diagnostics"
             ),
             model_cls=FlextInfraCodemodBatchApply,
             handler=FlextInfraCodemodBatchApply.execute_command,

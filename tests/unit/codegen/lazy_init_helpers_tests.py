@@ -689,10 +689,10 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
 
-    def test_duplicate_public_export_resolved_by_canonical_scorer(
-        self, tmp_path: Path
+    def test_duplicate_public_export_fails_before_generation(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Duplicate public exports are resolved deterministically (warn + generate)."""
+        """Reject competing public owners without publishing a chosen projection."""
         repository_root, package_root = self._workspace(tmp_path)
         (package_root / "api.py").write_text(
             "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
@@ -705,8 +705,11 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
-        tm.that(init_content.startswith(c.Infra.AUTOGEN_HEADER), eq=True)
-        tm.that(exports_content, has="Shared")
+        init_path = package_root / c.Infra.INIT_PY
+        before = init_path.read_bytes()
+
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=2)
+        tm.that(init_path.read_bytes(), eq=before)
+        output = capsys.readouterr().out
+        tm.that(output, has="export collision for 'Shared'")
+        tm.that(output, has="refusing to apply")

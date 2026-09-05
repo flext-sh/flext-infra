@@ -96,7 +96,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         if rope_project is None:
             started_at = perf_counter()
             u.Cli.info(f"rope: opening workspace at {self._rope_repository_root}")
-            rope_project = u.Infra.init_rope_project(self._rope_repository_root)
+            rope_project = u.Infra.init_rope_workspace(self._rope_repository_root)
             self._rope_project = rope_project
             u.Cli.info(f"rope: workspace ready in {perf_counter() - started_at:.2f}s")
         return rope_project
@@ -451,10 +451,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     ) -> t.StrSequence:
         """Return public export names for one module path."""
         resolved_export_options = export_options or m.Infra.ExportOptions()
-        return u.Infra.get_module_export_names(
-            self.rope_project,
-            self._resource_for(file_path),
-            export_options=resolved_export_options,
+        return u.Infra.module_export_names_source(
+            self.source(file_path), export_options=resolved_export_options
         )
 
     def close(self) -> None:

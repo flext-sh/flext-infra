@@ -437,7 +437,7 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(ruff_check.success, eq=True)
         tm.that(ruff_check.value.exit_code, eq=0)
 
-    # flext-udpm5: `codegen lazy-init` (wired into `make gen WHAT=check|apply`)
+    # `codegen lazy-init` is wired into the selector-free `make gen APPLY=Y`.
     # dispatches through the same `execute_command` classmethod contract every
     # other codegen CLI route uses; prove it end to end without mocks.
     def test_execute_command_matches_public_cli_route_contract(

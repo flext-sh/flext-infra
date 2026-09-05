@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import main
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra import c, main
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_tests import tm
 from tests import u
 
@@ -51,10 +51,13 @@ class TestWorkspaceCheckCli:
         module_path.write_text(f'"""Fixture module."""\n\n{content}', encoding="utf-8")
         return module_path
 
-    def test_resolve_gates_deduplicates_explicit_gate(self) -> None:
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "pyrefly", "lint"])
-        tm.ok(result)
-        tm.that(result.value, eq=["lint", "pyrefly"])
+    def test_resolve_gates_rejects_duplicate_explicit_gate(self) -> None:
+        result = FlextInfraWorkspaceChecker.resolve_gates([
+            c.Infra.LINT,
+            c.Infra.PYREFLY,
+            c.Infra.LINT,
+        ])
+        tm.fail(result, has=f"duplicate gate '{c.Infra.LINT}'")
 
     @pytest.mark.parametrize(
         ("source", "expected_exit"),

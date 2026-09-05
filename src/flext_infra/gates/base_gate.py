@@ -271,11 +271,12 @@ class FlextInfraGate:
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
+        passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
             project_dir,
-            passed=result.exit_code == 0,
-            issues=(),
-            raw_output=self._fix_raw_output(result),
+            passed=passed,
+            issues=issues,
+            raw_output=self._raw_output(result),
             started=started,
         )
 
@@ -336,9 +337,8 @@ class FlextInfraGate:
         return result.value
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        """Return direct project-owned source directories only."""
-        candidates = ("src", "tests")
-        return self._dirs_with_py(project_dir, candidates)
+        """Return every first-class project-owned Python directory."""
+        return self._dirs_with_py(project_dir, c.Infra.CHECK_DIRS_REPOSITORY)
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:

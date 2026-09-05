@@ -17,22 +17,52 @@ if TYPE_CHECKING:
 
 def begin(
     plan: m.Infra.MiseToolchainWorkspacePlan,
+    managed_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
+    *,
+    source_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
 ) -> p.Result[m.Infra.MiseToolchainJournal]:
     """Build the durable staging authority before any disposable root exists."""
     sources: list[m.Infra.MiseToolchainJournalSource] = []
-    for project in plan.projects:
-        for source in project.config.sources:
-            encoded = _journal_source(plan, source)
-            if encoded.failure:
-                return r[m.Infra.MiseToolchainJournal].from_failure(encoded)
-            sources.append(encoded.value)
+    source_states = files.transaction_sources(plan, source_plans)
+    if source_states.failure:
+        return r[m.Infra.MiseToolchainJournal].from_failure(source_states)
+    for source in source_states.value:
+        encoded = _journal_source(plan, source)
+        if encoded.failure:
+            return r[m.Infra.MiseToolchainJournal].from_failure(encoded)
+        sources.append(encoded.value)
+    directory_targets = (
+        *(
+            path
+            for project in plan.projects
+            for path in (
+                project.layout.artifacts.config,
+                project.layout.artifacts.unix_launcher,
+                project.layout.artifacts.windows_launcher,
+                project.layout.artifacts.lock,
+            )
+        ),
+        *(item.path for item in managed_plans if not item.absent),
+    )
+    missing_directories = files.missing_parent_directories(
+        plan.layout, tuple(directory_targets)
+    )
+    if missing_directories.failure:
+        return r[m.Infra.MiseToolchainJournal].from_failure(missing_directories)
+    directory_selectors: list[str] = []
+    for directory in missing_directories.value:
+        selector = files.workspace_relative(plan.layout.scope_root, directory)
+        if selector.failure:
+            return r[m.Infra.MiseToolchainJournal].from_failure(selector)
+        directory_selectors.append(selector.value)
     try:
         return r[m.Infra.MiseToolchainJournal].ok(
             m.Infra.MiseToolchainJournal(
-                version=3,
+                version=4,
                 state="staging",
                 projects=tuple(project.layout.selector for project in plan.projects),
                 sources=tuple(sources),
+                created_directories=tuple(directory_selectors),
                 entries=(),
             )
         )
@@ -44,12 +74,14 @@ def begin(
 
 def prepare(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publications: tuple[m.Infra.MiseToolchainPublication, ...],
+    staging: m.Infra.MiseToolchainJournal,
+    publications: tuple[m.Cli.AtomicFilePublication, ...],
 ) -> p.Result[m.Infra.MiseToolchainJournal]:
     """Write every original backup and build the complete prepared journal."""
-    staging = begin(plan)
-    if staging.failure:
-        return r[m.Infra.MiseToolchainJournal].from_failure(staging)
+    if staging.state != "staging":
+        return r[m.Infra.MiseToolchainJournal].fail(
+            "prepared Mise journal requires its exact staging authority"
+        )
     entries: list[m.Infra.MiseToolchainJournalEntry] = []
     recovery_roots: set[Path] = set()
     for index, publication in enumerate(publications):
@@ -62,10 +94,11 @@ def prepare(
     try:
         return r[m.Infra.MiseToolchainJournal].ok(
             m.Infra.MiseToolchainJournal(
-                version=3,
+                version=4,
                 state="prepared",
-                projects=staging.value.projects,
-                sources=staging.value.sources,
+                projects=staging.projects,
+                sources=staging.sources,
+                created_directories=staging.created_directories,
                 entries=tuple(entries),
             )
         )
@@ -86,10 +119,11 @@ def commit(
     try:
         return r[m.Infra.MiseToolchainJournal].ok(
             m.Infra.MiseToolchainJournal(
-                version=3,
+                version=4,
                 state="committed",
                 projects=journal.projects,
                 sources=journal.sources,
+                created_directories=journal.created_directories,
                 entries=journal.entries,
             )
         )
@@ -113,9 +147,7 @@ def write(
             "Mise journal expected state belongs to another path"
         )
     written = u.Cli.atomic_write_binary_file_guarded(
-        expected,
-        content,
-        permission_mode=files.JOURNAL_MODE,
+        expected, content, permission_mode=files.JOURNAL_MODE
     )
     if written.failure:
         return r[m.Cli.AtomicFileState].fail(
@@ -135,14 +167,14 @@ def read(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
 ) -> p.Result[tuple[m.Infra.MiseToolchainJournal, m.Cli.AtomicFileState]]:
     """Parse the exact regular common journal through schema v3 only."""
-    return read_scope(layout.scope_root)
+    return read_state_root(layout.state_root)
 
 
-def read_scope(
-    scope_root: Path,
+def read_state_root(
+    state_root: Path,
 ) -> p.Result[tuple[m.Infra.MiseToolchainJournal, m.Cli.AtomicFileState]]:
-    """Parse the common journal without consulting current workspace topology."""
-    snapshot = state.journal_state_for_scope(scope_root)
+    """Parse the schema-v4 journal without consulting mutable source contents."""
+    snapshot = state.journal_state_at(state_root)
     result_type = r[tuple[m.Infra.MiseToolchainJournal, m.Cli.AtomicFileState]]
     if snapshot.failure:
         return result_type.from_failure(snapshot)
@@ -166,7 +198,7 @@ def cleanup(
     roots = state.remove_transaction_roots(layout)
     if roots.failure:
         return roots
-    removed = files.delete_state(journal_state)
+    removed = u.Cli.atomic_delete_binary_file_guarded(journal_state)
     if removed.failure:
         return r[bool].fail(removed.error or "cannot remove Mise journal")
     return r[bool].ok(True)
@@ -184,23 +216,25 @@ def _journal_source(
         return r[m.Infra.MiseToolchainJournalSource].from_failure(selector)
     return r[m.Infra.MiseToolchainJournalSource].ok(
         m.Infra.MiseToolchainJournalSource(
-            path=selector.value, sha256=files.digest(source.content), mode=source.mode
+            path=selector.value,
+            sha256=u.Cli.sha256_bytes(source.content),
+            mode=source.mode,
         )
     )
 
 
 def _journal_entry(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publication: m.Infra.MiseToolchainPublication,
+    publication: m.Cli.AtomicFilePublication,
     *,
     index: int,
     recovery_roots: set[Path],
 ) -> p.Result[m.Infra.MiseToolchainJournalEntry]:
     before = publication.before
     replacement = publication.replacement
-    if replacement.content is None or replacement.mode is None:
+    if (replacement.content is None) is not (replacement.mode is None):
         return r[m.Infra.MiseToolchainJournalEntry].fail(
-            f"Mise staged replacement is absent: {replacement.path}"
+            f"codegen staged replacement is incomplete: {replacement.path}"
         )
     selector = files.workspace_relative(plan.layout.scope_root, before.path)
     if selector.failure:
@@ -208,25 +242,10 @@ def _journal_entry(
     backup_selector: str | None = None
     original_sha: str | None = None
     if before.content is not None and before.mode is not None:
-        project = next(
-            (
-                item
-                for item in plan.projects
-                if before.path
-                in {
-                    item.config.before.path,
-                    item.artifacts.unix_launcher.path,
-                    item.artifacts.windows_launcher.path,
-                    item.artifacts.lock.path,
-                }
-            ),
-            None,
-        )
-        if project is None:
-            return r[m.Infra.MiseToolchainJournalEntry].fail(
-                f"Mise artifact has no project owner: {before.path}"
-            )
-        recovery_root = project.layout.transaction_root / "recovery"
+        project = files.project_for_path(plan.layout, before.path)
+        if project.failure:
+            return r[m.Infra.MiseToolchainJournalEntry].from_failure(project)
+        recovery_root = project.value.transaction_root / "recovery"
         if recovery_root not in recovery_roots:
             try:
                 recovery_root.mkdir(exist_ok=False)
@@ -236,16 +255,18 @@ def _journal_entry(
                 )
             recovery_roots.add(recovery_root)
         backup = recovery_root / f"{index:04d}.original"
-        written = process.write_new(backup, before.content, files.JOURNAL_MODE)
+        written = u.Cli.atomic_create_binary_file_guarded(
+            backup, before.content, permission_mode=files.JOURNAL_MODE
+        )
         if written.failure:
             return r[m.Infra.MiseToolchainJournalEntry].fail(
                 written.error or f"cannot back up Mise artifact: {before.path}"
             )
-        relative_backup = files.workspace_relative(plan.layout.scope_root, backup)
+        relative_backup = files.workspace_relative(plan.layout.state_root, backup)
         if relative_backup.failure:
             return r[m.Infra.MiseToolchainJournalEntry].from_failure(relative_backup)
         backup_selector = relative_backup.value
-        original_sha = files.digest(before.content)
+        original_sha = u.Cli.sha256_bytes(before.content)
     return r[m.Infra.MiseToolchainJournalEntry].ok(
         m.Infra.MiseToolchainJournalEntry(
             path=selector.value,
@@ -253,7 +274,11 @@ def _journal_entry(
             original_backup=backup_selector,
             original_sha256=original_sha,
             original_mode=before.mode,
-            replacement_sha256=files.digest(replacement.content),
+            replacement_sha256=(
+                None
+                if replacement.content is None
+                else u.Cli.sha256_bytes(replacement.content)
+            ),
             replacement_mode=replacement.mode,
         )
     )
@@ -265,6 +290,6 @@ __all__: list[str] = [
     "commit",
     "prepare",
     "read",
-    "read_scope",
+    "read_state_root",
     "write",
 ]

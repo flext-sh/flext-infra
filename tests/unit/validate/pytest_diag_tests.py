@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
+import pytest
+from defusedxml import ElementTree as DefusedET
+from flext_infra import FlextInfraPytestDiagExtractor
 from flext_tests import tm
 from tests import m
 
@@ -53,24 +55,23 @@ class TestPytestDiagExtractorBehavior:
         tm.that(report.failed_count, eq=0)
         tm.that(report.error_count, eq=0)
 
-    def test_extract_falls_back_to_log_when_xml_missing_or_invalid(
-        self, tmp_path: Path
-    ) -> None:
+    def test_extract_missing_xml_preserves_file_error(self, tmp_path: Path) -> None:
         log = tmp_path / "log.txt"
         log.write_text("FAILED test_case.py::test_foo")
         missing_xml = tmp_path / "missing.xml"
 
-        missing_report: m.Infra.PytestDiagnostics = tm.ok(
+        with pytest.raises(FileNotFoundError):
             _extractor(missing_xml, log).extract(missing_xml, log)
-        )
-        tm.that(missing_report.failed_cases, length_gt=0)
+
+    def test_extract_invalid_xml_preserves_parser_error(self, tmp_path: Path) -> None:
+        log = tmp_path / "log.txt"
+        log.write_text("")
 
         bad_xml = tmp_path / "bad.xml"
         bad_xml.write_text("invalid xml content")
-        invalid_report: m.Infra.PytestDiagnostics = tm.ok(
+
+        with pytest.raises(DefusedET.ParseError):
             _extractor(bad_xml, log).extract(bad_xml, log)
-        )
-        tm.that(invalid_report.failed_cases, length_gt=0)
 
     def test_extract_failed_and_error_tests_from_xml(self, tmp_path: Path) -> None:
         log = tmp_path / "log.txt"
@@ -79,7 +80,7 @@ class TestPytestDiagExtractorBehavior:
         fail_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="1" errors="0" skipped="0"><testcase name="test_fail"'
-            ' classname="TC"><failure message="fail">Traceback</failure>'
+            ' classname="TC" time="0.1"><failure message="fail">Traceback</failure>'
             "</testcase></testsuite></testsuites>"
         )
 
@@ -94,7 +95,7 @@ class TestPytestDiagExtractorBehavior:
         err_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="0" errors="1" skipped="0"><testcase name="test_err"'
-            ' classname="TC"><error message="err">Trace</error>'
+            ' classname="TC" time="0.1"><error message="err">Trace</error>'
             "</testcase></testsuite></testsuites>"
         )
 
@@ -110,7 +111,7 @@ class TestPytestDiagExtractorBehavior:
         skip_xml.write_text(
             '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1"'
             ' failures="0" errors="0" skipped="1"><testcase name="test_skip"'
-            ' classname="TC"><skipped message="skip"/>'
+            ' classname="TC" time="0.1"><skipped message="skip"/>'
             "</testcase></testsuite></testsuites>"
         )
 
@@ -131,20 +132,17 @@ class TestPytestDiagExtractorBehavior:
         )
         tm.that(slow_report.slow_entries, length_gt=0)
 
-    def test_extract_missing_log_is_graceful(self, tmp_path: Path) -> None:
+    def test_extract_missing_log_preserves_file_error(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
         junit.write_text(
             '<?xml version="1.0"?><testsuites>'
             '<testsuite name="t" tests="0"/></testsuites>'
         )
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        with pytest.raises(FileNotFoundError):
             _extractor(junit, tmp_path / "missing.txt").extract(
                 junit, tmp_path / "missing.txt"
             )
-        )
-
-        tm.that(report.warning_count, eq=0)
 
     def test_extract_unreadable_log_surfaces_failure(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"
@@ -155,10 +153,15 @@ class TestPytestDiagExtractorBehavior:
         log_is_dir = tmp_path / "log_is_dir"
         log_is_dir.mkdir()
 
-        tm.fail(_extractor(junit, log_is_dir).extract(junit, log_is_dir))
+        with pytest.raises(IsADirectoryError):
+            _extractor(junit, log_is_dir).extract(junit, log_is_dir)
 
-    def test_extract_warnings_and_error_block_from_log(self, tmp_path: Path) -> None:
-        junit = tmp_path / "missing.xml"
+    def test_extract_warnings_from_log(self, tmp_path: Path) -> None:
+        junit = tmp_path / "junit.xml"
+        junit.write_text(
+            '<?xml version="1.0"?><testsuites>'
+            '<testsuite name="t" tests="0"/></testsuites>'
+        )
         log = tmp_path / "log.txt"
         log.write_text(
             "=== FAILURES ===\n"
@@ -174,13 +177,16 @@ class TestPytestDiagExtractorBehavior:
             _extractor(junit, log).extract(junit, log)
         )
 
-        tm.that(report.error_traces, length_gt=0)
         tm.that(report.error_count, eq=0)
         tm.that(report.warning_lines, length_gt=0)
         tm.that(report.warning_count, eq=1)
 
     def test_extract_inline_warning_without_summary(self, tmp_path: Path) -> None:
-        junit = tmp_path / "missing.xml"
+        junit = tmp_path / "junit.xml"
+        junit.write_text(
+            '<?xml version="1.0"?><testsuites>'
+            '<testsuite name="t" tests="0"/></testsuites>'
+        )
         log = tmp_path / "log.txt"
         log.write_text("test_case.py:10: DeprecationWarning: test warning")
 
@@ -190,23 +196,20 @@ class TestPytestDiagExtractorBehavior:
 
         tm.that(report.warning_lines, length_gt=0)
 
-    def test_extract_slow_entries_from_log_when_xml_missing(
+    def test_extract_invalid_duration_preserves_value_error(
         self, tmp_path: Path
     ) -> None:
-        junit = tmp_path / "missing.xml"
+        junit = tmp_path / "junit.xml"
+        junit.write_text(
+            '<?xml version="1.0"?><testsuites><testsuite name="t" tests="1">'
+            '<testcase name="invalid" time="not-a-number"/>'
+            "</testsuite></testsuites>"
+        )
         log = tmp_path / "log.txt"
-        log.write_text(
-            "=== slowest durations ===\n"
-            "5.50s call     test_case.py::test_slow\n"
-            "0.50s call     test_case.py::test_fast\n"
-            "=== 2 passed in 6.00s ===\n"
-        )
+        log.write_text("")
 
-        report: m.Infra.PytestDiagnostics = tm.ok(
+        with pytest.raises(ValueError, match="not-a-number"):
             _extractor(junit, log).extract(junit, log)
-        )
-
-        tm.that(report.slow_entries, length_gt=0)
 
     def test_execute_writes_selected_output_files(self, tmp_path: Path) -> None:
         junit = tmp_path / "junit.xml"

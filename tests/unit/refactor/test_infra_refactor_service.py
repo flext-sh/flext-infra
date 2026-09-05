@@ -186,9 +186,7 @@ class TestsFlextInfraRefactorInfraRefactorService:
         service = FlextInfraRefactorService(config_path=config_path)
         loaded = service.load_rules()
         tm.ok(loaded)
-        results = service.refactor_project(
-            project_root, apply_safety=False, gates=("lint",)
-        )
+        results = service.refactor_project(project_root)
         file_results = [
             result for result in results if result.file_path != project_root
         ]
@@ -200,8 +198,8 @@ class TestsFlextInfraRefactorInfraRefactorService:
         tm.that(all(result.success for result in file_results), eq=True)
         tm.that(all(result.modified for result in file_results), eq=True)
 
-    def test_refactor_files_skips_non_python_inputs(self, tmp_path: Path) -> None:
-        """Return an explicit successful skip result for non-Python inputs."""
+    def test_refactor_files_rejects_non_python_inputs(self, tmp_path: Path) -> None:
+        """Reject inputs outside the public Python refactor contract."""
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir(parents=True)
         (rules_dir / "rules.yml").write_text(
@@ -226,6 +224,7 @@ class TestsFlextInfraRefactorInfraRefactorService:
         results = service.refactor_files([py_file, md_file], dry_run=True)
         tm.that(len(results), eq=2)
         md_result = next(item for item in results if item.file_path == md_file)
-        tm.that(md_result.success, eq=True)
+        tm.that(md_result.success, eq=False)
         tm.that(md_result.modified, eq=False)
-        tm.that(md_result.changes, has="Skipped non-Python file")
+        tm.that(md_result.error, has="unsupported refactor file")
+        tm.that(md_result.changes, eq=[])

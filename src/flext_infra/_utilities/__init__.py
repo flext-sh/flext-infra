@@ -3,15 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git as _git
-    from . import _rope as _rope
+    from . import _git as _git, _rope as _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
@@ -20,7 +18,6 @@ if TYPE_CHECKING:
     from ._git.remote import canonical_origin_remote, redact_origin_remote
     from ._git.repo import FlextInfraUtilitiesGitRepo
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
-    from ._git.semantic import FlextInfraUtilitiesGitSemanticMixin
     from ._git.semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
     from ._git.semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
     from ._git.semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
@@ -147,7 +144,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitScopeMixin",
     "FlextInfraUtilitiesGitSemanticIdentityMixin",
     "FlextInfraUtilitiesGitSemanticIndexMixin",
-    "FlextInfraUtilitiesGitSemanticMixin",
     "FlextInfraUtilitiesGitSemanticPathsMixin",
     "FlextInfraUtilitiesGitSemanticPublishMixin",
     "FlextInfraUtilitiesGitSemanticRefsMixin",
@@ -236,7 +232,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.remote": ("canonical_origin_remote", "redact_origin_remote"),
             "._git.repo": ("FlextInfraUtilitiesGitRepo",),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
-            "._git.semantic": ("FlextInfraUtilitiesGitSemanticMixin",),
             "._git.semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),
             "._git.semantic_index": ("FlextInfraUtilitiesGitSemanticIndexMixin",),
             "._git.semantic_paths": ("FlextInfraUtilitiesGitSemanticPathsMixin",),

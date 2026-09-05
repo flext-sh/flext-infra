@@ -5,79 +5,109 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Final
-
-from flext_infra import c, m, p, r, t, u
-
-_TOOL_TIMEOUT_SECONDS: Final[int] = 900
-
-
-class FlextInfraModGateSnapshot(m.ArbitraryTypesModel):
-    """Error-count snapshot of the two mod circuit gates."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-    ruff_errors: Annotated[
-        t.NonNegativeInt, m.Field(description="ruff check error count")
-    ]
-    pyrefly_errors: Annotated[
-        t.NonNegativeInt, m.Field(description="pyrefly error count")
-    ]
-
-
-class FlextInfraModScanReport(m.ArbitraryTypesModel):
-    """Verified actionable rewrite report."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-    nodes: Annotated[t.NonNegativeInt, m.Field(description="actionable node count")]
-    files: Annotated[
-        frozenset[Path], m.Field(description="files containing actionable nodes")
-    ]
+from flext_infra import c, config, m, p, r, t, u
+from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 
 
 class FlextInfraModGateEngine:
-    """Measure ruff/pyrefly counts and execute the ast-grep rule batch."""
+    """Execute ast-grep rewrites and strict static/LSP validation."""
+
+    @classmethod
+    def validate_rule_fixtures(cls, rules: t.SequenceOf[Path]) -> p.Result[bool]:
+        """Require fixtures at every installed rule owner's config root."""
+        rules_by_owner: dict[Path, list[Path]] = {}
+        for rule in rules:
+            owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
+            rules_by_owner.setdefault(owner, []).append(rule)
+        if not rules_by_owner:
+            return r.fail("discovered ast-grep rules have no fixture owner")
+        for config_root, owner_rules in sorted(rules_by_owner.items()):
+            active_rule_ids: set[str] = set()
+            for rule in owner_rules:
+                rule_ids, _fixable_ids = cls._rule_ids(rule).unwrap()
+                active_rule_ids.update(rule_ids)
+            FlextInfraCodemodSnapshotReconciler.reconcile(
+                config_root, frozenset(active_rule_ids)
+            )
+            cls._run_tool(
+                config_root, (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL)
+            ).unwrap()
+            cls._run_tool(config_root, (c.Infra.SG, c.Infra.TEST)).unwrap()
+        return r.ok(True)
 
     @staticmethod
-    def circuit_broken(
-        baseline: FlextInfraModGateSnapshot, final: FlextInfraModGateSnapshot
-    ) -> bool:
-        """Return True when either gate error count increased after the apply."""
-        return (
-            final.ruff_errors > baseline.ruff_errors
-            or final.pyrefly_errors > baseline.pyrefly_errors
+    def _run_tool(
+        root: Path,
+        command: t.StrSequence,
+        *,
+        env: t.StrMapping | None = None,
+        remove_env_keys: t.StrSequence = (),
+        finding_exit_code: int | None = None,
+        accept_apply_receipt: bool = False,
+    ) -> p.Result[p.Cli.CommandOutput]:
+        """Run one AST tool and preserve its documented finding status."""
+        sys.stderr.write(f"mod: start {' '.join(command)}\n")
+        sys.stderr.flush()
+        run = u.Cli.run_raw(
+            command,
+            cwd=root,
+            timeout=c.Infra.TIMEOUT_SHORT,
+            env=env,
+            remove_env_keys=remove_env_keys,
         )
-
-    @staticmethod
-    def _run_tool(root: Path, command: t.StrSequence) -> p.Result[p.Cli.CommandOutput]:
-        """Run one circuit tool and tolerate its findings exit codes."""
-        run = u.Cli.run_raw(command, cwd=root, timeout=_TOOL_TIMEOUT_SECONDS)
         if run.failure:
             return r[p.Cli.CommandOutput].fail(
                 run.error or f"tool execution failed: {command[0]}"
             )
         output = run.value
-        if output.exit_code not in {0, 1}:
-            detail = (output.stderr or output.stdout).strip()
-            return r[p.Cli.CommandOutput].fail(
-                detail or f"{command[0]} exited with code {output.exit_code}"
+        sys.stderr.write(
+            f"mod: finish {command[0]} exit={output.exit_code} "
+            f"duration={output.duration:.2f}s\n"
+        )
+        sys.stderr.flush()
+        if output.exit_code != 0:
+            if output.exit_code == finding_exit_code and output.stdout.strip():
+                return r[p.Cli.CommandOutput].ok(output)
+            detail = "\n".join(
+                stream.strip()
+                for stream in (output.stdout, output.stderr)
+                if stream.strip()
             )
+            return r[p.Cli.CommandOutput].fail(
+                f"{command[0]} exited with code {output.exit_code}: {detail}"
+            )
+        stderr = output.stderr.strip()
+        if stderr:
+            if accept_apply_receipt and FlextInfraModGateEngine._is_apply_receipt(
+                stderr
+            ):
+                return r[p.Cli.CommandOutput].ok(output)
+            diagnostics = tuple(
+                line for line in stderr.splitlines() if not line.startswith("INFO:")
+            )
+            if diagnostics:
+                return r[p.Cli.CommandOutput].fail(stderr)
+            sys.stderr.write(f"{stderr}\n")
+            sys.stderr.flush()
         return r[p.Cli.CommandOutput].ok(output)
 
     @staticmethod
-    def _count_json_lines(stdout: str) -> int:
-        """Count JSON-per-line findings (ast-grep ``--json=stream`` output)."""
-        count = 0
-        for raw_line in stdout.splitlines():
-            line = raw_line.strip()
-            if line and u.Cli.json_parse(line).success:
-                count += 1
-        return count
+    def _is_apply_receipt(stderr: str) -> bool:
+        """Recognize only ast-grep's successful update receipt."""
+        words = stderr.split()
+        return (
+            len(words) == 3
+            and words[0] == "Applied"
+            and words[1].isdigit()
+            and words[2] == "changes"
+        )
 
     @staticmethod
-    def _fixable_rule_ids(rule: Path) -> p.Result[frozenset[str]]:
+    def _rule_ids(rule: Path) -> p.Result[tuple[frozenset[str], frozenset[str]]]:
+        """Parse every document and return all IDs plus the fixable subset."""
         documents = rule.read_text(encoding="utf-8").split("\n---")
+        rule_ids: set[str] = set()
         fixable_ids: set[str] = set()
         for raw_document in documents:
             if not any(
@@ -92,144 +122,187 @@ class FlextInfraModGateEngine:
                 )
             rule_id = parsed.value.get("id")
             if not isinstance(rule_id, str) or not rule_id:
-                return r[frozenset[str]].fail(
-                    f"ast-grep rule document missing required id: {rule}"
-                )
+                return r.fail(f"ast-grep rule document missing required id: {rule}")
+            if rule_id in rule_ids:
+                return r.fail(f"duplicate ast-grep rule id {rule_id!r}: {rule}")
+            rule_ids.add(rule_id)
             if "fix" in parsed.value:
                 fixable_ids.add(rule_id)
-        return r[frozenset[str]].ok(frozenset(fixable_ids))
+        return r.ok((frozenset(rule_ids), frozenset(fixable_ids)))
 
     @staticmethod
-    def _actionable_findings(
-        stdout: str, fixable_ids: frozenset[str]
-    ) -> FlextInfraModScanReport:
+    def _parse_findings(
+        stdout: str, rule_ids: frozenset[str], fixable_ids: frozenset[str]
+    ) -> p.Result[m.Infra.ModScanReport]:
+        """Validate every JSONL finding without dropping malformed output."""
+        findings = 0
         nodes = 0
         files: set[Path] = set()
         for raw_line in stdout.splitlines():
-            parsed = u.Cli.json_parse(raw_line.strip())
-            if parsed.failure or not isinstance(parsed.value, Mapping):
+            line = raw_line.strip()
+            if not line:
                 continue
+            parsed = u.Cli.json_parse(line)
+            if parsed.failure:
+                return r.from_failure(parsed)
+            if not isinstance(parsed.value, Mapping):
+                return r.fail(f"ast-grep JSONL finding is not an object: {line}")
             finding = parsed.value
-            if finding.get("ruleId") not in fixable_ids:
-                continue
+            rule_id = finding.get("ruleId")
             text = finding.get("text")
-            replacement = finding.get("replacement")
             file = finding.get("file")
-            if not isinstance(text, str) or not isinstance(replacement, str):
-                continue
-            if text == replacement or not isinstance(file, str):
-                continue
-            nodes += 1
+            if (
+                rule_id not in rule_ids
+                or not isinstance(text, str)
+                or not isinstance(file, str)
+            ):
+                return r.fail(f"invalid ast-grep finding contract: {line}")
             files.add(Path(file))
-        return FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
-
-    @classmethod
-    def _count_tool_errors(cls, stdout: str) -> int:
-        """Count error items from array, object-with-errors, or JSONL output."""
-        parsed = u.Cli.json_parse(stdout.strip()) if stdout.strip() else None
-        if parsed is not None and parsed.success:
-            value = parsed.value
-            if isinstance(value, list):
-                return len(value)
-            if isinstance(value, Mapping):
-                errors = value.get("errors")
-                return len(errors) if isinstance(errors, list) else 0
-        return cls._count_json_lines(stdout)
-
-    @classmethod
-    def measure(cls, root: Path) -> p.Result[FlextInfraModGateSnapshot]:
-        """Capture the ruff + pyrefly error counts for one project root."""
-        ruff_run = cls._run_tool(
-            root,
-            (
-                c.Infra.RUFF,
-                c.Infra.VERB_CHECK,
-                ".",
-                "--no-fix",
-                "--output-format",
-                c.Infra.OUTPUT_JSON,
-                "--quiet",
-            ),
-        )
-        if ruff_run.failure:
-            return r[FlextInfraModGateSnapshot].from_failure(ruff_run)
-        pyrefly_run = cls._run_tool(
-            root,
-            (
-                c.Infra.PYREFLY,
-                c.Infra.CHECK,
-                ".",
-                "--config",
-                c.Infra.PYPROJECT_FILENAME,
-                "--python-interpreter-path",
-                sys.executable,
-                "--output-format",
-                c.Infra.OUTPUT_JSON,
-                "--summary=none",
-            ),
-        )
-        if pyrefly_run.failure:
-            return r[FlextInfraModGateSnapshot].from_failure(pyrefly_run)
-        return r[FlextInfraModGateSnapshot].ok(
-            FlextInfraModGateSnapshot(
-                ruff_errors=cls._count_tool_errors(ruff_run.value.stdout or ""),
-                pyrefly_errors=cls._count_tool_errors(pyrefly_run.value.stdout or ""),
+            if rule_id in fixable_ids:
+                replacement = finding.get("replacement")
+                if not isinstance(replacement, str):
+                    return r.fail(f"fixable ast-grep finding lacks replacement: {line}")
+                if text == replacement:
+                    continue
+                nodes += 1
+            findings += 1
+        return r.ok(
+            m.Infra.ModScanReport(
+                findings=findings, nodes=nodes, files=frozenset(files)
             )
         )
 
-    @staticmethod
-    def _count_fixable_findings(stdout: str, fixable_ids: frozenset[str]) -> int:
-        findings = 0
-        for raw_line in stdout.splitlines():
-            parsed = u.Cli.json_parse(raw_line.strip())
-            if parsed.failure or not isinstance(parsed.value, Mapping):
-                continue
-            if parsed.value.get("ruleId") in fixable_ids:
-                findings += 1
-        return findings
+    @classmethod
+    def validate(cls, root: Path, changed_files: t.SequenceOf[Path]) -> p.Result[bool]:
+        """Require zero Ruff, Pyrefly, LSP, and graph-analysis diagnostics."""
+        resolved_root = root.resolve()
+        python_files = tuple(
+            sorted({
+                resolved
+                for path in changed_files
+                if (
+                    resolved := (
+                        path if path.is_absolute() else resolved_root / path
+                    ).resolve()
+                ).is_file()
+                and resolved.suffix == c.Infra.EXT_PYTHON
+            })
+        )
+        snapshots = u.Infra.lint_snapshots(
+            python_files, resolved_root, gates=(c.Infra.RUFF, c.Infra.PYREFLY)
+        )
+        diagnostics = tuple(
+            f"{path.relative_to(resolved_root)}:{tool}: {message}"
+            for path, snapshot in snapshots.items()
+            for tool, messages in snapshot.items()
+            for message in messages
+        )
+        if diagnostics:
+            return r.fail("\n".join(diagnostics))
+        FlextInfraLspDiagnosticsDetector.validate(resolved_root, python_files).unwrap()
+        return cls._validate_code_review_graph(root)
+
+    @classmethod
+    def _validate_code_review_graph(cls, root: Path) -> p.Result[bool]:
+        """Refresh and query the external graph through its documented CLI."""
+        toolchain = config.Infra.codegen.toolchain
+        data_dir = (
+            root.resolve().parent
+            / toolchain.state_directory_name
+            / root.name
+            / toolchain.crg_namespace
+        )
+        u.Cli.ensure_dir(data_dir).unwrap()
+        environment = {c.Infra.CRG_DATA_DIR: str(data_dir)}
+        commands: tuple[t.StrSequence, ...] = (
+            (
+                c.Infra.CODE_REVIEW_GRAPH,
+                "update",
+                "--brief",
+                "--repo",
+                str(root),
+                "--data-dir",
+                str(data_dir),
+            ),
+            (
+                c.Infra.CODE_REVIEW_GRAPH,
+                "detect-changes",
+                "--base",
+                "HEAD",
+                "--brief",
+                "--repo",
+                str(root),
+            ),
+            (c.Infra.CODE_REVIEW_GRAPH, "refactor", "suggest", "--repo", str(root)),
+        )
+        for command in commands:
+            cls._run_tool(root, command, env=environment).unwrap()
+        return r[bool].ok(True)
 
     @classmethod
     def scan(
         cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool
-    ) -> p.Result[FlextInfraModScanReport]:
+    ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply actionable rewrite documents."""
+        findings = 0
         nodes = 0
         files: set[Path] = set()
-        for rule in rules:
-            fixable = cls._fixable_rule_ids(rule)
-            if fixable.failure:
-                return r[FlextInfraModScanReport].from_failure(fixable)
-            if not fixable.value:
-                continue
-            command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule)]
-            command.extend(("--json=stream", "."))
-            run = cls._run_tool(root, tuple(command))
+        detection_only: list[str] = []
+        known_rule_ids: set[str] = set()
+        targets = u.Infra.ast_grep_scan_targets(root)
+        total = len(rules)
+        for index, rule in enumerate(rules, start=1):
+            rule_contract = cls._rule_ids(rule).unwrap()
+            rule_ids, fixable_ids = rule_contract
+            duplicate_ids = known_rule_ids.intersection(rule_ids)
+            if duplicate_ids:
+                duplicates = ", ".join(sorted(duplicate_ids))
+                return r.fail(f"duplicate inherited ast-grep rule id(s): {duplicates}")
+            known_rule_ids.update(rule_ids)
+            sys.stderr.write(
+                f"mod: rule {index}/{total} {rule.name} {'apply' if fix else 'scan'}\n"
+            )
+            sys.stderr.flush()
+            scan_command = u.Infra.ast_grep_scan_command(
+                rule, targets=targets, json_stream=True
+            )
+            run = cls._run_tool(root, scan_command, finding_exit_code=1)
             if run.failure:
-                return r[FlextInfraModScanReport].from_failure(run)
-            report = cls._actionable_findings(run.value.stdout or "", fixable.value)
+                return r[m.Infra.ModScanReport].from_failure(run)
+            report = cls._parse_findings(
+                run.value.stdout or "", rule_ids, fixable_ids
+            ).unwrap()
+            findings += report.findings
             nodes += report.nodes
             files.update(report.files)
             if fix and report.nodes:
+                apply_command = u.Infra.ast_grep_scan_command(
+                    rule, targets=targets, update_all=True
+                )
                 apply_run = cls._run_tool(
-                    root,
-                    (
-                        c.Infra.SG,
-                        c.Infra.SCAN,
-                        "--rule",
-                        str(rule),
-                        "--update-all",
-                        ".",
-                    ),
+                    root, apply_command, accept_apply_receipt=True
                 )
                 if apply_run.failure:
-                    return r[FlextInfraModScanReport].from_failure(apply_run)
-        return r[FlextInfraModScanReport].ok(
-            FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
+                    return r[m.Infra.ModScanReport].from_failure(apply_run)
+            if fix and report.findings > report.nodes:
+                affected = ", ".join(
+                    path.as_posix() for path in sorted(report.files)
+                )
+                detection_only.append(
+                    f"{report.findings - report.nodes} detection-only finding(s) "
+                    f"from {rule.name} across {len(report.files)} file(s): {affected}"
+                )
+        if fix and detection_only:
+            details = "\n".join(detection_only)
+            return r.fail(
+                "detection-only findings require fix-forward after all automated "
+                f"rewrites:\n{details}"
+            )
+        return r[m.Infra.ModScanReport].ok(
+            m.Infra.ModScanReport(
+                findings=findings, nodes=nodes, files=frozenset(files)
+            )
         )
 
 
-__all__: list[str] = [
-    "FlextInfraModGateEngine",
-    "FlextInfraModGateSnapshot",
-    "FlextInfraModScanReport",
-]
+__all__: list[str] = ["FlextInfraModGateEngine"]

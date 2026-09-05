@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra._utilities._sort_keys import path_depth
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,17 +22,10 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> int:
         """Remove generated files outside the canonical package artifact set."""
-        try:
-            # flext-wkii.17.26 (codex): __unit__.py is obsolete on every surface.
-            self._remove_obsolete_generated_files(plan, check_only=check_only)
-            self._remove_obsolete_root_support(plan, check_only=check_only)
-            self._remove_generated_export_sidecars(plan, check_only=check_only)
-            self._remove_generated_typing_stub(plan, check_only=check_only)
-        except c.EXC_OS_VALUE as exc:
-            u.Cli.error(
-                f"cleaning generated sidecars for {plan.context.pkg_dir}: {exc}"
-            )
-            return -1
+        self._remove_obsolete_generated_files(plan, check_only=check_only)
+        self._remove_obsolete_root_support(plan, check_only=check_only)
+        self._remove_generated_export_sidecars(plan, check_only=check_only)
+        self._remove_generated_typing_stub(plan, check_only=check_only)
         return 0
 
     def _remove_obsolete_root_support(
@@ -69,16 +61,16 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 msg = f"unexpected obsolete root-support path type: {path}"
                 raise OSError(msg)
             stale_dirs.append(path)
-            for child in sorted(path.rglob("*")):
+            visible_files = u.Infra.git_tracked_scope_paths(path)
+            if visible_files is None:
+                visible_files = tuple(
+                    child for child in path.rglob("*") if child.is_file()
+                )
+            for child in visible_files:
                 if child.is_symlink():
                     msg = f"refusing to remove obsolete root-support symlink: {child}"
                     raise OSError(msg)
-                if child.is_dir():
-                    if child.name != "__pycache__":
-                        msg = f"unexpected directory in obsolete root support: {child}"
-                        raise OSError(msg)
-                    continue
-                if not child.is_file() or child.suffix not in {".py", ".pyi", ".pyc"}:
+                if not child.is_file() or child.suffix not in {".py", ".pyi"}:
                     msg = f"unexpected file in obsolete root support: {child}"
                     raise OSError(msg)
                 stale_files.append(child)
@@ -95,12 +87,14 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 for child in stale_dir.rglob("*")
                 if child.is_dir()
             ),
-            key=path_depth,
+            key=u.Infra.path_depth,
             reverse=True,
         ):
-            path.rmdir()
+            if not any(path.iterdir()):
+                path.rmdir()
         for path in stale_dirs:
-            path.rmdir()
+            if not any(path.iterdir()):
+                path.rmdir()
 
     def _remove_obsolete_generated_files(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False

@@ -32,6 +32,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
+        required_runtime_dependencies: t.StrSequence = (),
         uv_link_mode: str | None = None,
         uv_exclude_newer: str | None = None,
         dependency_cooldown_exclusions: t.StrSequence | None = None,
@@ -56,6 +57,11 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
+        cls._sync_runtime_dependencies(
+            project,
+            project_name=project_name,
+            required_runtime_dependencies=required_runtime_dependencies,
+        )
         cls._sync_dependency_groups(
             source,
             project_name=project_name,
@@ -126,6 +132,7 @@ class FlextInfraUtilitiesPyprojectConform:
         providers: t.SequenceOf[m.Infra.ProviderSpec],
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
+        required_runtime_dependencies: t.StrSequence = (),
     ) -> p.Result[str]:
         """Conform only internal requirements and their root workspace overlay."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -138,6 +145,11 @@ class FlextInfraUtilitiesPyprojectConform:
         if not isinstance(project_name_raw, str) or not project_name_raw.strip():
             return r[str].fail("[project].name must be a non-empty string")
         project_name = project_name_raw.strip()
+        cls._sync_runtime_dependencies(
+            project,
+            project_name=project_name,
+            required_runtime_dependencies=required_runtime_dependencies,
+        )
         workspace_context_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
@@ -193,6 +205,25 @@ class FlextInfraUtilitiesPyprojectConform:
         if u.Cli.toml_parse_text(rendered) is None:
             return r[str].fail("dependency conformance produced invalid TOML")
         return r[str].ok(rendered)
+
+    @staticmethod
+    def _sync_runtime_dependencies(
+        project: t.Cli.TomlTable,
+        *,
+        project_name: str,
+        required_runtime_dependencies: t.StrSequence,
+    ) -> None:
+        """Merge the distribution-owned runtime overlay by normalized name."""
+        required = tuple(
+            requirement
+            for requirement in required_runtime_dependencies
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) != project_name
+        )
+        current = u.Cli.toml_as_string_list(
+            u.Cli.toml_value(project, c.Infra.DEPENDENCIES)
+        )
+        merged = FlextInfraUtilitiesDependencies.dedupe_specs((*required, *current))
+        u.Cli.toml_sync_string_list(project, c.Infra.DEPENDENCIES, merged)
 
     @classmethod
     def _normalize_requirements(

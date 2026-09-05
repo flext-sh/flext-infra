@@ -8,10 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import c, config, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -89,15 +86,15 @@ class FlextInfraMiseWorkspacePlanner:
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 "Mise project selectors must be nonempty and unique"
             )
+        state_root = self.state_root(scope_root)
+        if state_root.failure:
+            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(state_root)
         projects: list[m.Infra.MiseToolchainProjectLayout] = []
         for selector in selectors:
-            project = self._project_layout(scope_root, selector)
+            project = self._project_layout(scope_root, state_root.value, selector)
             if project.failure:
                 return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(project)
             projects.append(project.value)
-        state_root = self._state_root(scope_root)
-        if state_root.failure:
-            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(state_root)
         return r[m.Infra.MiseToolchainWorkspaceLayout].ok(
             m.Infra.MiseToolchainWorkspaceLayout(
                 scope_root=scope_root,
@@ -221,27 +218,22 @@ class FlextInfraMiseWorkspacePlanner:
         layout: m.Infra.MiseToolchainProjectLayout,
         config_plan: m.Infra.CodegenFilePlan | None,
     ) -> p.Result[m.Infra.MiseToolchainProjectState]:
-        config_state = files.read_state(
+        current_sources = (
+            u.Infra.snapshot_config_sources(layout.root)
+        )
+        if current_sources.failure:
+            return r[m.Infra.MiseToolchainProjectState].from_failure(current_sources)
+        config_state = u.Cli.atomic_read_binary_file_state(
             layout.artifacts.config, required=config_plan is None
         )
         if config_state.failure:
             return r[m.Infra.MiseToolchainProjectState].from_failure(config_state)
         if config_plan is None:
-            current_sources = (
-                FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
-                    layout.root
-                )
-            )
-            if current_sources.failure:
-                return r[m.Infra.MiseToolchainProjectState].from_failure(
-                    current_sources
-                )
             if config_state.value.content is None:
                 return r[m.Infra.MiseToolchainProjectState].fail(
                     f"committed Mise configuration is absent: {layout.artifacts.config}"
                 )
             replacement_content = config_state.value.content
-            config_sources = current_sources.value
         else:
             if config_plan.absent or config_plan.blocked or not config_plan.rendered:
                 return r[m.Infra.MiseToolchainProjectState].fail(
@@ -253,14 +245,13 @@ class FlextInfraMiseWorkspacePlanner:
                     f"Mise configuration plan digest differs: {config_plan.path}"
                 )
             replacement_content = config_plan.rendered.encode(c.Cli.ENCODING_DEFAULT)
-            config_sources = config_plan.source_states
         artifacts: list[m.Cli.AtomicFileState] = []
         for path in (
             layout.artifacts.unix_launcher,
             layout.artifacts.windows_launcher,
             layout.artifacts.lock,
         ):
-            state = files.read_state(path, required=False)
+            state = u.Cli.atomic_read_binary_file_state(path, required=False)
             if state.failure:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(state)
             artifacts.append(state.value)
@@ -283,26 +274,29 @@ class FlextInfraMiseWorkspacePlanner:
                     before=config_state.value,
                     replacement_content=replacement_content,
                     replacement_mode=files.CONFIG_SPEC[1],
-                    sources=config_sources,
+                    sources=current_sources.value,
                 ),
                 artifacts=artifact_set,
             )
         )
 
     def _project_layout(
-        self, scope_root: Path, selector: str
+        self, scope_root: Path, state_root: Path, selector: str
     ) -> p.Result[m.Infra.MiseToolchainProjectLayout]:
         root = self._project_root(scope_root, selector)
         if root.failure:
             return r[m.Infra.MiseToolchainProjectLayout].from_failure(root)
-        state_root = self._state_root(root.value)
-        if state_root.failure:
-            return r[m.Infra.MiseToolchainProjectLayout].from_failure(state_root)
+        state_selector = files.ROOT_PROJECT_DIR_NAME if selector == "." else selector
         return r[m.Infra.MiseToolchainProjectLayout].ok(
             m.Infra.MiseToolchainProjectLayout(
                 selector=selector,
                 root=root.value,
-                transaction_root=state_root.value / files.TRANSACTION_DIR_NAME,
+                transaction_root=(
+                    state_root
+                    / files.PROJECTS_DIR_NAME
+                    / state_selector
+                    / files.TRANSACTION_DIR_NAME
+                ),
                 artifacts=m.Infra.MiseToolchainArtifactPaths(
                     config=root.value / files.CONFIG_SPEC[0],
                     unix_launcher=root.value / files.ARTIFACT_NAMES[0],
@@ -330,9 +324,15 @@ class FlextInfraMiseWorkspacePlanner:
             return r[Path].fail(f"Mise project escapes workspace: {selector}")
         return r[Path].ok(cursor)
 
-    def _state_root(self, root: Path) -> p.Result[Path]:
-        cursor = root.absolute()
-        for part in files.STATE_DIRECTORY.parts:
+    def state_root(self, scope_root: Path) -> p.Result[Path]:
+        """Resolve the canonical external state path without creating it."""
+        toolchain = config.Infra.codegen.toolchain
+        cursor = scope_root.absolute().parent
+        for part in (
+            toolchain.state_directory_name,
+            scope_root.name,
+            toolchain.mise_namespace,
+        ):
             cursor /= part
             if not cursor.exists() and not cursor.is_symlink():
                 continue

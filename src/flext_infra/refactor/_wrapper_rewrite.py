@@ -6,7 +6,6 @@ from operator import itemgetter
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -21,7 +20,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     Composed into FlextInfraWrapperRootNamespaceRefactor via inheritance;
     borrows repository_root + the include-init / dry-run flags + the wrapper
     package set from the facade via FLEXT. ``module_ast`` is typed ``object`` to
-    mirror the rope-AST abstraction (FlextInfraUtilitiesRopeAnalysis), which
+    mirror the public rope-AST utility facade, which
     deliberately avoids ``import ast`` at the consumer layer (tracked: flext-6flt).
     """
 
@@ -59,7 +58,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         if file_path.name == c.Infra.INIT_PY and (not self.include_init):
             return
         source = u.Cli.files_read_text(file_path).unwrap()
-        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+        pymodule = u.Infra.parse_string_module(source)
         if pymodule is None:
             return
         module_ast = pymodule.get_ast()
@@ -104,29 +103,29 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
     ) -> list[tuple[int, int, str]]:
         """Find every ``<alias>.Core.Tests`` chain and emit ``(start, end, repl)``."""
         rewrites: list[tuple[int, int, str]] = []
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
+        for node in u.Infra.walk_ast_nodes(module_ast):
             if (
-                FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Attribute"
+                u.Infra.node_kind(node) != "Attribute"
                 or getattr(node, "attr", "") != "Tests"
             ):
                 continue
             parent_attr = getattr(node, "value", None)
             if (
                 parent_attr is None
-                or FlextInfraUtilitiesRopeAnalysis.node_kind(parent_attr) != "Attribute"
+                or u.Infra.node_kind(parent_attr) != "Attribute"
                 or getattr(parent_attr, "attr", "") != "Core"
             ):
                 continue
             base_name = getattr(parent_attr, "value", None)
             if (
                 base_name is None
-                or FlextInfraUtilitiesRopeAnalysis.node_kind(base_name) != "Name"
+                or u.Infra.node_kind(base_name) != "Name"
             ):
                 continue
             base_id = getattr(base_name, "id", "")
             if base_id not in runtime_aliases:
                 continue
-            line_col = FlextInfraUtilitiesRopeAnalysis.line_col_range(node)
+            line_col = u.Infra.line_col_range(node)
             if line_col is None:
                 continue
             lineno, col_offset, end_lineno, end_col_offset = line_col
@@ -143,8 +142,8 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
         runtime_aliases: frozenset[str],
     ) -> bool:
         """Return whether any ``from wrapper.<sub> import <alias>`` exists."""
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(module_ast):
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "ImportFrom":
+        for node in u.Infra.walk_ast_nodes(module_ast):
+            if u.Infra.node_kind(node) != "ImportFrom":
                 continue
             module_name = getattr(node, "module", "") or ""
             parent, dot, child = module_name.partition(".")

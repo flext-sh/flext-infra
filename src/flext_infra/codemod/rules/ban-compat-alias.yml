@@ -24,10 +24,26 @@ rule:
         kind: expression_statement
         inside:
           kind: module
+    - not:
+        any:
+          - pattern: c = $NEW
+          - pattern: t = $NEW
+          - pattern: p = $NEW
+          - pattern: m = $NEW
+          - pattern: u = $NEW
+          - pattern: r = $NEW
+          - pattern: e = $NEW
+          - pattern: x = $NEW
+          - pattern: h = $NEW
+          - pattern: d = $NEW
+          - pattern: s = $NEW
+          - pattern: tm = $NEW
+          - pattern: tv = $NEW
+          - pattern: tt = $NEW
 constraints:
   OLD:
     kind: identifier
-    regex: '^[A-Za-z]\w*$'
+    regex: '^[A-Za-z][A-Za-z0-9_]+$'
   NEW:
     kind: identifier
     regex: '^[A-Za-z]\w*$'
@@ -38,11 +54,7 @@ message: >-
 note: >-
   Migration: keep only the canonical name ($NEW), delete the alias, update
   all importers of $OLD in the same change, and let pyrefly/mypy pinpoint
-  any missed consumer. If the alias is a deliberate public re-export, expose
-  the symbol through the owning facade `__init__` projection instead.
+  any missed consumer. The reserved c/t/p/m/u/r/e/x/h/d/s and tm/tv/tt names
+  are the canonical FLEXT facade objects, not compatibility names.
 files:
   - "**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/__pycache__/**"

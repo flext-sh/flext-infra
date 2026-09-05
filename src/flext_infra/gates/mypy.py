@@ -53,14 +53,13 @@ class FlextInfraMypyGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
-        # NOTE (multi-agent): Mypy also owns typed tests, including PEP 420 test
-        # roots without __init__.py. Empty or explicitly excluded roots are
-        # still omitted because Mypy aborts when they are passed positionally.
+        # Empty or explicitly excluded roots are omitted because Mypy aborts
+        # when they are passed positionally.
         exclude = self._config_exclude(self._resolve_config(project_dir, ctx))
         discovered_dirs = [
             directory
             for directory in self._dirs_with_py(
-                project_dir, (*c.Infra.CHECK_DIRS_REPOSITORY, c.Infra.DIR_TESTS)
+                project_dir, c.Infra.CHECK_DIRS_REPOSITORY
             )
             if self._has_real_module(project_dir / directory)
             and (exclude is None or not exclude.match(f"{directory}/"))

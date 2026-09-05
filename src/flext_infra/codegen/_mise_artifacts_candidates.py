@@ -15,15 +15,13 @@ if TYPE_CHECKING:
 
 def normalize_lock_mode(path: Path) -> p.Result[bool]:
     """Normalize an external lock output through guarded byte-mode publication."""
-    state = files.read_state(path, required=True)
+    state = u.Cli.atomic_read_binary_file_state(path, required=True)
     if state.failure:
         return r[bool].from_failure(state)
     if state.value.content is None or state.value.mode is None:
         return r[bool].fail(f"generated Mise lock is absent: {path}")
     return u.Cli.atomic_write_binary_file_guarded(
-        state.value,
-        state.value.content,
-        permission_mode=files.ARTIFACT_SPECS[2][1],
+        state.value, state.value.content, permission_mode=files.ARTIFACT_SPECS[2][1]
     )
 
 
@@ -31,7 +29,7 @@ def receipt_states(receipt: Path) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]
     """Capture the two exact launcher states from one validated receipt."""
     states: list[m.Cli.AtomicFileState] = []
     for name, expected_mode in files.ARTIFACT_SPECS[:2]:
-        state = files.read_state(receipt / name, required=True)
+        state = u.Cli.atomic_read_binary_file_state(receipt / name, required=True)
         if state.failure:
             return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
         if state.value.mode != expected_mode:
@@ -44,9 +42,9 @@ def receipt_states(receipt: Path) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]
 
 def publication_plan(
     projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
-) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
+) -> p.Result[tuple[m.Cli.AtomicFilePublication, ...]]:
     """Bind each staged artifact to its exact pre-lock destination state."""
-    publications: list[m.Infra.MiseToolchainPublication] = []
+    publications: list[m.Cli.AtomicFilePublication] = []
     for project, stage in zip(projects, stages, strict=True):
         before_states = (
             project.config.before,
@@ -57,21 +55,23 @@ def publication_plan(
         for before, (name, mode) in zip(
             before_states, files.PUBLICATION_SPECS, strict=True
         ):
-            replacement = files.read_state(stage / name, required=True)
+            replacement = u.Cli.atomic_read_binary_file_state(
+                stage / name, required=True
+            )
             if replacement.failure or replacement.value.content is None:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].fail(
+                return r[tuple[m.Cli.AtomicFilePublication, ...]].fail(
                     replacement.error or f"missing staged Mise artifact: {name}"
                 )
             if replacement.value.mode != mode:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].fail(
+                return r[tuple[m.Cli.AtomicFilePublication, ...]].fail(
                     f"staged Mise artifact mode differs: {stage / name}"
                 )
             publications.append(
-                m.Infra.MiseToolchainPublication(
+                m.Cli.AtomicFilePublication(
                     before=before, replacement=replacement.value
                 )
             )
-    return r[tuple[m.Infra.MiseToolchainPublication, ...]].ok(tuple(publications))
+    return r[tuple[m.Cli.AtomicFilePublication, ...]].ok(tuple(publications))
 
 
 __all__: list[str] = ["normalize_lock_mode", "publication_plan", "receipt_states"]

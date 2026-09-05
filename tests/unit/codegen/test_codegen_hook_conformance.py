@@ -234,7 +234,9 @@ class TestGitHookConformance:
         """Remove a generated projection excluded from the selected profile."""
         target = tmp_path / ".github/ci-template/ci.yml"
         target.parent.mkdir(parents=True)
-        target.write_text(f"{c.Infra.TEMPLATE_GENERATED_MARKER}\n", encoding="utf-8")
+        target.write_text(
+            f"# {c.Infra.TEMPLATE_GENERATED_MARKERS[0]}\n", encoding="utf-8"
+        )
 
         planned = FlextInfraCodegenConform.retired_projection_plans(
             tmp_path, c.Infra.MakeProfile.STANDALONE

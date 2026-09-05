@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config
 from flext_tests import tm
 from tests import c, u
 
@@ -105,6 +106,28 @@ def real_python_package(tmp_path: Path) -> Path:
     (src_dir / "__init__.py").write_text('"""Test package."""\n__version__ = "0.1.0"\n')
     (project_root / "pyproject.toml").write_text(
         '[project]\nname = "test-pkg"\nversion = "0.1.0"\n'
+    )
+    return project_root
+
+
+@pytest.fixture
+def cached_runner_project(tmp_path: Path) -> Path:
+    """Create a real one-test consumer for the public cached pytest runner."""
+    project_root = tmp_path / "cached_runner_project"
+    policy = config.Infra.codegen.make.testmon_cache
+    package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+    tests_root = project_root / policy.target_directory
+    package_root.mkdir(parents=True)
+    tests_root.mkdir(parents=True)
+    (package_root / "__init__.py").write_text(
+        "def answer() -> int:\n    return 42\n", encoding="utf-8"
+    )
+    (tests_root / "test_runtime.py").write_text(
+        "from flext_tests import tm\n"
+        "from runner_sample import answer\n\n"
+        "def test_runtime() -> None:\n"
+        "    tm.that(answer(), eq=42)\n",
+        encoding="utf-8",
     )
     return project_root
 
@@ -257,6 +280,7 @@ __all__: list[str] = [
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
+    "cached_runner_project",
     "real_docs_project",
     "real_makefile_project",
     "real_python_package",

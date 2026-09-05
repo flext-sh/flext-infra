@@ -57,7 +57,7 @@ class TestsFlextInfraGitFacet:
     def test_tracked_scope_does_not_borrow_an_ignoring_parent_repository(
         self, tmp_path: Path
     ) -> None:
-        """An explicitly selected ignored scope owns its filesystem contents."""
+        """An explicitly selected ignored scope remains excluded by its repository."""
         repository = tmp_path / "repository"
         repository.mkdir()
         test_u.Tests.initialize_git_repo(repository)
@@ -68,7 +68,7 @@ class TestsFlextInfraGitFacet:
 
         tracked = u.Infra.git_tracked_scope_paths(ignored_scope)
 
-        tm.that(tracked, eq=None)
+        tm.that(tracked, eq=[])
 
     def test_merge_no_edit_requires_a_non_fast_forward_merge(
         self, tmp_path: Path

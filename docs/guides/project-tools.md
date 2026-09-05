@@ -21,10 +21,11 @@ never grows a field for a single project's requirement.
 | Project development dependencies (linters, type checkers, test runners) | `pyproject.toml`, from `dependency_profiles` | `make setup` → `.venv` | `PATH_add .venv/bin` in the activation |
 | Host runtime tools shared by every shell and service | the host tool owner's registry, outside this repository | the host tool owner's generator into the user Mise registry | global Mise shims |
 
-`make setup` stays hermetic: it trusts and installs the project `.mise.toml`
-inside a scratch Mise home under `.test-tmp/` and writes nothing outside the
-project. Propagating a binary to the host is the host tool owner's job, never
-this generator's.
+`make setup APPLY=Y` stays hermetic: it trusts and installs the project
+`.mise.toml` inside the config-owned external runtime-state directory beside the
+checkout. Test invocations and Python bytecode use the same external state owner,
+so disposable caches never enter the source tree. Propagating a binary to the
+host is the host tool owner's job, never this generator's.
 
 ## Declaring a tool
 
@@ -77,9 +78,9 @@ edit the declaration, never `.gitignore`.
 ## Landing a declaration
 
 ```
-make gen WHAT=apply APPLY=Y
-make gen WHAT=check
-make setup
+make setup APPLY=Y
+make gen APPLY=Y
+make conform APPLY=Y
 ```
 
 The second `gen` must produce no diff. `mise.lock` now carries the tool, and

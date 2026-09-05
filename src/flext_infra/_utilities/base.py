@@ -36,10 +36,9 @@ class FlextInfraUtilitiesBase:
 
         Escalating inverted that rule. A verb invoked inside one member
         resolved every relative path against the superproject shared by all
-        sibling worktrees, so `FILE=` selectors rejected files that exist and
-        `.reports/tests/latest.txt` -- the canonical evidence artifact -- was
-        written to the shared root, where each project's run overwrote the
-        previous one's result.
+        sibling worktrees, so project-local inputs were resolved in the wrong
+        checkout and `.reports/tests/latest.txt` was written to the shared root,
+        where each project's run overwrote the previous one's evidence.
         """
         target = repository_root or Path.cwd()
         if target.is_file():
@@ -72,9 +71,33 @@ class FlextInfraUtilitiesBase:
         return names or None
 
     @staticmethod
-    def normalize_make_args(values: t.StrSequence) -> t.StrSequence:
-        """Return trimmed make arguments without blank entries."""
-        return tuple(item.strip() for item in values if item.strip())
+    def path_depth(path: Path) -> int:
+        """Return the number of components in a path."""
+        return len(path.parts)
+
+    @staticmethod
+    def path_depth_then_text(path: Path) -> tuple[int, str]:
+        """Order paths by depth and then their stable POSIX representation."""
+        return FlextInfraUtilitiesBase.path_depth(path), path.as_posix()
+
+    @staticmethod
+    def ast_grep_scan_command(
+        rule_path: Path,
+        *,
+        targets: t.StrSequence = (".",),
+        json_stream: bool = False,
+        update_all: bool = False,
+    ) -> t.StrSequence:
+        """Build one ast-grep scan command with explicit cwd-relative targets."""
+        if not targets or any(Path(target).is_absolute() for target in targets):
+            raise ValueError("ast-grep scan targets must be nonempty and cwd-relative")
+        command = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_path)]
+        if json_stream:
+            command.append("--json=stream")
+        if update_all:
+            command.append(c.Infra.SG_UPDATE_ALL)
+        command.extend(targets)
+        return tuple(command)
 
     @staticmethod
     def strongly_connected_components(
@@ -137,25 +160,6 @@ class FlextInfraUtilitiesBase:
             )
             return normalized_exit_code
         return raw_exit_code
-
-    @staticmethod
-    def resolve_what(verb: str, phase: str) -> p.Result[t.StrSequence]:
-        """Resolve a ``WHAT=`` phase against ``c.Infra.WHAT_PHASES`` (single SSOT).
-
-        Empty ``phase`` expands to every phase of ``verb`` (sorted); a non-empty
-        unknown phase is a usage failure listing the valid phases. Shared by the
-        orchestrator, check and validate groups so WHAT resolution lives in one
-        place.
-        """
-        phases = c.Infra.WHAT_PHASES.get(verb, frozenset())
-        if not phase:
-            return r[t.StrSequence].ok(tuple(sorted(phases)))
-        if phase not in phases:
-            valid = ", ".join(sorted(phases)) or "(none)"
-            return r[t.StrSequence].fail(
-                f"unknown WHAT '{phase}' for verb '{verb}' (valid: {valid})"
-            )
-        return r[t.StrSequence].ok((phase,))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesBase"]

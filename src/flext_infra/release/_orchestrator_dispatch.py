@@ -239,7 +239,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         return r[bool].fail(
             f"{c.Infra.PYPROJECT_FILENAME} version changed outside the release "
             f"protocol: {base_version} -> {version} (HEAD {head_oid.value.strip()[:12]} "
-            f"carries no {release_subject!r}); run `make release WHAT=version APPLY=Y` "
+            f"carries no {release_subject!r}); run `make release-version APPLY=Y` "
             "instead"
         )
 
@@ -350,8 +350,8 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         if stamped.failure:
             return stamped
         # Why: the lock records the project's own version, so the stamp
-        # refreshes it the way `make deps WHAT=lock APPLY=Y` does; otherwise
-        # `make deps` (uv lock --check) is red on the release lane.
+        # refreshes it as the selector-free dependency lifecycle does; otherwise
+        # the dependency audit is red on the release lane.
         locked = u.Cli.run_checked(
             [c.Infra.UV, "lock", "--project", str(root)], cwd=root
         )
@@ -379,7 +379,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return changelog
         # Why: README, docs/index and the API overview render the version, and
         # the docs generator owns them; the stamp regenerates its projections
-        # so `make gen WHAT=check` stays a fixed point on the release lane.
+        # so `make conform APPLY=Y` stays a fixed point on the release lane.
         return FlextInfraDocGenerator(
             workspace=root, projects=ctx.project_names or None, apply=True
         ).execute()

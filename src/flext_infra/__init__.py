@@ -3,39 +3,42 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-from .__version__ import __author__ as __author__
-from .__version__ import __author_email__ as __author_email__
-from .__version__ import __description__ as __description__
-from .__version__ import __license__ as __license__
-from .__version__ import __title__ as __title__
-from .__version__ import __url__ as __url__
-from .__version__ import __version__ as __version__
-from .__version__ import __version_info__ as __version_info__
+from .__version__ import (
+    __author__ as __author__,
+    __author_email__ as __author_email__,
+    __description__ as __description__,
+    __license__ as __license__,
+    __title__ as __title__,
+    __url__ as __url__,
+    __version__ as __version__,
+    __version_info__ as __version_info__,
+)
 
 if TYPE_CHECKING:
-    from . import check as check
-    from . import codegen as codegen
-    from . import codemod as codemod
-    from . import deps as deps
-    from . import detectors as detectors
-    from . import docs as docs
-    from . import fixers as fixers
-    from . import gates as gates
-    from . import maintenance as maintenance
-    from . import refactor as refactor
-    from . import release as release
-    from . import services as services
-    from . import transformers as transformers
-    from . import validate as validate
-    from . import workspace as workspace
     from flext_cli import d, e, h, r, x
 
+    from . import (
+        check as check,
+        codegen as codegen,
+        codemod as codemod,
+        deps as deps,
+        detectors as detectors,
+        docs as docs,
+        fixers as fixers,
+        gates as gates,
+        maintenance as maintenance,
+        refactor as refactor,
+        release as release,
+        services as services,
+        transformers as transformers,
+        validate as validate,
+        workspace as workspace,
+    )
     from ._config import config
     from ._settings import settings
     from .api import FlextInfra, infra
@@ -73,12 +76,8 @@ if TYPE_CHECKING:
     from .codegen.scaffolder import FlextInfraCodegenScaffolder
     from .codegen.version_file import FlextInfraCodegenVersionFile
     from .codemod.batch_apply import FlextInfraCodemodBatchApply
-    from .codemod.batch_gates import (
-        FlextInfraModGateEngine,
-        FlextInfraModGateSnapshot,
-        FlextInfraModScanReport,
-    )
-    from .codemod.discovery import discover_rule_ids, discover_rules
+    from .codemod.batch_gates import FlextInfraModGateEngine
+    from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
     from .deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
@@ -121,6 +120,7 @@ if TYPE_CHECKING:
     from .detectors.loose_test_function_detector import (
         FlextInfraLooseTestFunctionDetector,
     )
+    from .detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
     from .detectors.manual_protocol_detector import FlextInfraManualProtocolDetector
     from .detectors.manual_typing_alias_detector import (
         FlextInfraManualTypingAliasDetector,
@@ -282,16 +282,12 @@ if TYPE_CHECKING:
     from .validate.namespace_validator import FlextInfraNamespaceValidator
     from .validate.pytest_diag import FlextInfraPytestDiagExtractor
     from .validate.pytest_runner import FlextInfraPytestRunner
-    from .validate.pytest_selector import FlextInfraPytestSelectorValidator
     from .validate.runtime_census import FlextInfraRuntimeCensusValidator
     from .validate.scanner import FlextInfraTextPatternScanner
     from .validate.silent_failure import FlextInfraSilentFailureValidator
     from .validate.skill_validator import FlextInfraSkillValidator
     from .validate.stub_chain import FlextInfraStubSupplyChain
-    from .validate.testmon_db import (
-        FlextInfraTestmonCacheState,
-        FlextInfraTestmonDbInspector,
-    )
+    from .validate.testmon_db import FlextInfraTestmonDbInspector
     from .validate.tier_whitelist import FlextInfraValidateTierWhitelist
     from .workspace.detector import FlextInfraWorkspaceDetector
     from .workspace.environment_contracts import envrc_contract_violations
@@ -341,6 +337,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
     "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraConfigFixer",
     "FlextInfraConsolidateGroupsPhase",
@@ -397,13 +394,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraLocDeltaValidator",
     "FlextInfraLooseObjectDetector",
     "FlextInfraLooseTestFunctionDetector",
+    "FlextInfraLspDiagnosticsDetector",
     "FlextInfraManualCommandValidator",
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
     "FlextInfraModGateEngine",
-    "FlextInfraModGateSnapshot",
-    "FlextInfraModScanReport",
     "FlextInfraModels",
     "FlextInfraModernizeOrchestrator",
     "FlextInfraMypyGate",
@@ -425,7 +421,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraPyrightGate",
     "FlextInfraPytestDiagExtractor",
     "FlextInfraPytestRunner",
-    "FlextInfraPytestSelectorValidator",
     "FlextInfraPythonVersionEnforcer",
     "FlextInfraRefactorCastRemover",
     "FlextInfraRefactorCensus",
@@ -482,7 +477,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraSmellFixer",
     "FlextInfraSmellsGate",
     "FlextInfraStubSupplyChain",
-    "FlextInfraTestmonCacheState",
     "FlextInfraTestmonDbInspector",
     "FlextInfraTextPatternScanner",
     "FlextInfraTierWhitelistGate",
@@ -529,8 +523,6 @@ __all__: tuple[str, ...] = (
     "d",
     "deps",
     "detectors",
-    "discover_rule_ids",
-    "discover_rules",
     "docs",
     "docs_main",
     "e",
@@ -604,12 +596,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.version_file": ("FlextInfraCodegenVersionFile",),
             ".codemod": ("codemod",),
             ".codemod.batch_apply": ("FlextInfraCodemodBatchApply",),
-            ".codemod.batch_gates": (
-                "FlextInfraModGateEngine",
-                "FlextInfraModGateSnapshot",
-                "FlextInfraModScanReport",
-            ),
-            ".codemod.discovery": ("discover_rule_ids", "discover_rules"),
+            ".codemod.batch_gates": ("FlextInfraModGateEngine",),
+            ".codemod.snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
             ".constants": ("FlextInfraConstants", "c"),
             ".deps": ("deps",),
             ".deps.detection": ("FlextInfraDependencyDetectionService",),
@@ -660,6 +648,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".detectors.loose_test_function_detector": (
                 "FlextInfraLooseTestFunctionDetector",
             ),
+            ".detectors.lsp_diagnostics": ("FlextInfraLspDiagnosticsDetector",),
             ".detectors.manual_protocol_detector": (
                 "FlextInfraManualProtocolDetector",
             ),
@@ -858,16 +847,12 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validate.namespace_validator": ("FlextInfraNamespaceValidator",),
             ".validate.pytest_diag": ("FlextInfraPytestDiagExtractor",),
             ".validate.pytest_runner": ("FlextInfraPytestRunner",),
-            ".validate.pytest_selector": ("FlextInfraPytestSelectorValidator",),
             ".validate.runtime_census": ("FlextInfraRuntimeCensusValidator",),
             ".validate.scanner": ("FlextInfraTextPatternScanner",),
             ".validate.silent_failure": ("FlextInfraSilentFailureValidator",),
             ".validate.skill_validator": ("FlextInfraSkillValidator",),
             ".validate.stub_chain": ("FlextInfraStubSupplyChain",),
-            ".validate.testmon_db": (
-                "FlextInfraTestmonCacheState",
-                "FlextInfraTestmonDbInspector",
-            ),
+            ".validate.testmon_db": ("FlextInfraTestmonDbInspector",),
             ".validate.tier_whitelist": ("FlextInfraValidateTierWhitelist",),
             ".workspace": ("workspace",),
             ".workspace.detector": ("FlextInfraWorkspaceDetector",),

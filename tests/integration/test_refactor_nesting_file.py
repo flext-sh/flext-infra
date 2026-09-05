@@ -74,6 +74,14 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
         source = fixture_file.read_text(encoding="utf-8")
         target_dir = tmp_path / "nonstandard_dir"
         target_dir.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "pkg.py").write_text(
+            "class ResultHelpers:\n"
+            "    pass\n\n"
+            "class FlextUtilities:\n"
+            "    class ResultHelpers:\n"
+            "        pass\n",
+            encoding="utf-8",
+        )
         target_file = target_dir / "single_file_refactor_target.py"
         target_file.write_text(
             source
