@@ -1,0 +1,7 @@
+id: rewire-cli-process-outcome-failure-check
+valid:
+  - not u.Cli.process_succeeded(output.outcome)
+  - output.outcome.raw_return_code != c.Infra.GITLEAKS_LEAK_EXIT_CODE
+invalid:
+  - output.outcome.raw_return_code != 0
+  - c.Cli.EXIT_CODE_SUCCESS != output.outcome.raw_return_code
