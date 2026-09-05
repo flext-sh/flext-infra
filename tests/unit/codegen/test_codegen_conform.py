@@ -7,17 +7,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import os
-import shutil
-import stat
-import subprocess  # ruff:ignore[suspicious-subprocess-import]  Why: public CLI concurrency and crash recovery require a real child process.
 import sys
-import time
 import tomllib
 from difflib import unified_diff
 from pathlib import Path
 
 import pytest
-from filelock import UnixFileLock
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
 from flext_infra.deps import FlextInfraPyprojectModernizer
@@ -141,9 +136,6 @@ class TestCodegenConform:
     ) -> p.Result[m.Infra.CodegenResult]:
         """Apply conform with ``suffix`` appended to the rendered Makefile."""
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
-        u.Tests.write_standalone_workspace_manifest(
-            root, distribution, upstream="flext_cli"
-        )
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n',
@@ -1965,9 +1957,6 @@ class TestScriptDispatchMakefile:
             tm.that(makefile.stat().st_ino, eq=source.stat().st_ino)
         else:
             tm.that(stat.S_ISFIFO(os.lstat(makefile).st_mode), eq=True)
-
-    def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
-        """Gas Town owns lifecycle; generated Make exposes no work command."""
 
     def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
         """Gas City owns lanes; generated repositories expose no second lifecycle."""

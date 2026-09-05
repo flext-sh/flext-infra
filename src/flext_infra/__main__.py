@@ -22,7 +22,7 @@ def _run() -> None:
             f"INFO: recovered owner-declared managed conflicts: {recovered}\n"
         )
     from flext_cli import cli
-    from flext_infra import main
+    from flext_infra.cli import main
 
     cli.exit(main())
 
