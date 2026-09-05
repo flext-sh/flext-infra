@@ -1,0 +1,36 @@
+id: ban-pydantic-v1-api
+snapshots:
+  from pydantic import BaseModel, root_validator:
+    labels:
+    - source: from pydantic import BaseModel, root_validator
+      style: primary
+      start: 0
+      end: 46
+    - source: pydantic
+      style: secondary
+      start: 5
+      end: 13
+    - source: root_validator
+      style: secondary
+      start: 32
+      end: 46
+  from pydantic.v1 import BaseModel:
+    labels:
+    - source: from pydantic.v1 import BaseModel
+      style: primary
+      start: 0
+      end: 33
+    - source: pydantic.v1
+      style: secondary
+      start: 5
+      end: 16
+  import pydantic.v1 as legacy:
+    labels:
+    - source: import pydantic.v1 as legacy
+      style: primary
+      start: 0
+      end: 28
+    - source: pydantic.v1
+      style: secondary
+      start: 7
+      end: 18
