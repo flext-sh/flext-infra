@@ -13,6 +13,7 @@ from flext_cli import u
 from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
+from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 from flext_infra._utilities.deferred_self_reference_ast import (
     FlextInfraUtilitiesDeferredSelfReference,
@@ -98,6 +99,7 @@ class FlextInfraUtilities(u):
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,

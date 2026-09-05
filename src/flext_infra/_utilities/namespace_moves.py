@@ -20,7 +20,10 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.transformers import _header
+from flext_infra._utilities.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
+from flext_infra._utilities.transformer_header import _header
 from flext_infra.typings import t
 
 

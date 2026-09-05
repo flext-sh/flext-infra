@@ -51,7 +51,12 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text("mod: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(rules).unwrap()
         cli.display_text("mod: preflight complete AST inventory")
-        FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
+        preflight = FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
+        if preflight.detection_only:
+            return r.fail(
+                f"{preflight.detection_only} detection-only finding(s) require "
+                "semantic fix-forward before automated rewrites"
+            )
         cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
         applied = FlextInfraModGateEngine.scan(root, rules, fix=True).unwrap()
         cli.display_text("mod: verify AST fixed point")

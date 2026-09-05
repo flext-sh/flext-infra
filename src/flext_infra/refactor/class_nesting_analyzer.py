@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -34,36 +33,24 @@ class FlextInfraRefactorClassNestingAnalyzer:
                 violations=(),
                 per_file_counts={},
             )
-        scanner = FlextInfraRefactorLooseClassScanner()
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
         violations: t.MutableSequenceOf[m.Infra.ClassNestingViolation] = []
         for project_root, target_files in grouped_targets.items():
-            report = scanner.scan(project_root).unwrap()
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(
-                report.get(c.Infra.RK_VIOLATIONS, [])
-            )
-            parsed_violations: t.SequenceOf[m.Infra.LooseClassViolation] = [
-                m.Infra.LooseClassViolation.model_validate(item) for item in typed_items
-            ]
-            for parsed_violation in parsed_violations:
-                normalized_file = u.Infra.normalize_module_path(parsed_violation.file)
-                if target_files and normalized_file not in target_files:
-                    continue
-                line = parsed_violation.line if parsed_violation.line > 0 else 1
-                confidence = parsed_violation.confidence or c.Infra.SeverityLevel.LOW
-                violations.append(
-                    m.Infra.ClassNestingViolation(
-                        file=normalized_file,
-                        line=line,
-                        class_name=parsed_violation.class_name,
-                        target_namespace=parsed_violation.expected_prefix,
-                        confidence=confidence,
-                        rewrite_scope=c.Infra.RK_FILE,
-                    )
-                )
-                confidence_counts[confidence] += 1
-                per_file_counts[normalized_file] += 1
+            with u.Infra.open_project(project_root) as rope_project:
+                for module_path in sorted(target_files):
+                    file_path = (
+                        project_root / c.Infra.DEFAULT_SRC_DIR / module_path
+                    ).resolve()
+                    resource = u.Infra.get_resource_from_path(rope_project, file_path)
+                    if resource is None:
+                        raise FileNotFoundError(file_path)
+                    for plan in u.Infra.class_nesting_plans(
+                        project_root, file_path, rope_project, resource
+                    ):
+                        violations.append(plan)
+                        confidence_counts[plan.confidence] += 1
+                        per_file_counts[plan.file] += 1
         return m.Infra.ClassNestingReport(
             violations_count=len(violations),
             confidence_counts=dict(confidence_counts),
@@ -80,23 +67,13 @@ class FlextInfraRefactorClassNestingAnalyzer:
         for file_path in files:
             project_root = u.Infra.resolve_project_root(file_path)
             if project_root is None:
-                continue
-            module_path = cls._module_path_for_file(file_path, project_root)
-            if module_path is None:
-                continue
-            grouped.setdefault(project_root, set()).add(module_path)
+                msg = f"class-nesting target has no project root: {file_path}"
+                raise ValueError(msg)
+            module_path = file_path.resolve().relative_to(
+                (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
+            )
+            grouped.setdefault(project_root, set()).add(module_path.as_posix())
         return grouped
-
-    @classmethod
-    def _module_path_for_file(cls, file_path: Path, project_root: Path) -> str | None:
-        """Return the module path for a file."""
-        src_dir = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
-        resolved = file_path.resolve()
-        try:
-            relative = resolved.relative_to(src_dir)
-        except ValueError:
-            return None
-        return relative.as_posix()
 
 
 __all__: list[str] = ["FlextInfraRefactorClassNestingAnalyzer"]

@@ -24,7 +24,7 @@ from flext_infra.transformers.import_modernizer import (
 )
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from flext_infra.transformers.project_alias_migrator import (
+from flext_infra._utilities.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
 from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
@@ -35,7 +35,7 @@ from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnif
 
 if TYPE_CHECKING:
     from flext_infra import p, t
-    from flext_infra.transformers.base import FlextInfraRopeTransformer
+    from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 
 class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):

@@ -28,7 +28,7 @@ from flext_infra.transformers._canonical_t_import import (
 from flext_infra.transformers._typing_rewrite import (
     FlextInfraRefactorTypingUnifierRewriteMixin,
 )
-from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from pathlib import Path

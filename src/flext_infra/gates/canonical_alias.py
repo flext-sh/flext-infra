@@ -17,7 +17,9 @@ from flext_infra.detectors import (
     FlextInfraCyclicImportDetector,
 )
 from flext_infra.gates import FlextInfraGate
-from flext_infra.transformers import FlextInfraRefactorProjectAliasMigrator
+from flext_infra._utilities.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p

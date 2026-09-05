@@ -18,6 +18,40 @@ if TYPE_CHECKING:
 class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
 
+    def test_class_nesting_plans_derive_from_path_and_rope_ast(
+        self, tmp_path: Path
+    ) -> None:
+        """The public utility derives one plan without a mapping registry."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        module_path = package_root / "_utilities" / "sample.py"
+        tm.ok(u.Cli.ensure_dir(module_path.parent))
+        namespace = (
+            f"{u.derive_class_stem(package_root.name)}"
+            f"Utilities{u.derive_class_stem(module_path.stem)}"
+        )
+        loose_name = f"{namespace}Detail"
+        tm.ok(
+            u.Cli.files_write_text(
+                module_path,
+                f"class {namespace}:\n    pass\n\nclass {loose_name}:\n    pass\n",
+            )
+        )
+        with u.Infra.open_project(repository_root) as rope_project:
+            resource = tm.not_none(
+                u.Infra.get_resource_from_path(rope_project, module_path)
+            )
+            plans = u.Infra.class_nesting_plans(
+                repository_root, module_path, rope_project, resource
+            )
+        tm.that(plans, length=1)
+        plan = plans[0]
+        tm.that(plan.class_name, eq=loose_name)
+        tm.that(plan.target_namespace, eq=namespace)
+        tm.that(
+            plan.file,
+            eq=module_path.relative_to(repository_root / "src").as_posix(),
+        )
+
     def test_open_workspace_materializes_snapshot(self, tmp_path: Path) -> None:
         """Public service class exposes one typed workspace snapshot."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)

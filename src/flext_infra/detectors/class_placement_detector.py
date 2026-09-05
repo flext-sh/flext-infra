@@ -30,6 +30,17 @@ class FlextInfraClassPlacementDetector:
         file_path = ctx.file_path
         parts = file_path.parts
         violations: list[m.Infra.ClassPlacementViolation] = []
+        project_root = ctx.project_root or u.Infra.resolve_project_root(file_path)
+        nesting_plans = (
+            {
+                plan.class_name: plan
+                for plan in u.Infra.class_nesting_plans(
+                    project_root, file_path, ctx.rope_project, res
+                )
+            }
+            if project_root is not None
+            else {}
+        )
 
         governed_classes = (
             FlextInfraClassPlacementDetector._governed_classes_with_family(
@@ -46,7 +57,11 @@ class FlextInfraClassPlacementDetector:
                 continue
             violations.append(
                 FlextInfraClassPlacementDetector._violation_for_class(
-                    ctx=ctx, ci=ci, family=family, fixable=single_governed_class
+                    ctx=ctx,
+                    ci=ci,
+                    family=family,
+                    fixable=single_governed_class,
+                    nesting_plan=nesting_plans.get(ci.name),
                 )
             )
 
@@ -133,6 +148,7 @@ class FlextInfraClassPlacementDetector:
         ci: m.Infra.ClassInfo,
         family: str,
         fixable: bool,
+        nesting_plan: m.Infra.ClassNestingViolation | None,
     ) -> m.Infra.ClassPlacementViolation:
         """Build a ClassPlacementViolation for a misplaced class."""
         return m.Infra.ClassPlacementViolation(
@@ -143,7 +159,11 @@ class FlextInfraClassPlacementDetector:
             suggestion=FlextInfraClassPlacementDetector._suggestion_for_family(family),
             action="one_class_per_module",
             fixable=fixable,
-            target_facade=FlextInfraClassPlacementDetector._target_facade(ctx, family),
+            target_facade=(
+                nesting_plan.target_namespace
+                if nesting_plan is not None
+                else FlextInfraClassPlacementDetector._target_facade(ctx, family)
+            ),
             family=family,
         )
 

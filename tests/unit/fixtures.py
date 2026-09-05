@@ -136,8 +136,8 @@ def cached_runner_project(tmp_path: Path) -> Path:
 @pytest.fixture
 def mod_workspace(tmp_path: Path) -> Path:
     """Create the shared real workspace for the public refactor-mod CLI."""
-    project_document = u.read_project_document_cached(_PROJECT_ROOT)
-    project = u.build_project_metadata(_PROJECT_ROOT, project_document)
+    project_document = u.Infra.read_project_document_cached(_PROJECT_ROOT)
+    project = u.Infra.build_project_metadata(_PROJECT_ROOT, project_document)
     workspace = tmp_path / "mod_workspace"
     tm.ok(u.Cli.ensure_dir(workspace))
     tm.ok(
