@@ -1,0 +1,21 @@
+# ai-hub is an optional host runtime, never a Python dependency of flext-infra.
+# Runtime augmentation crosses this boundary only through installed commands,
+# hooks, MCP routes, or daemons. Git repository primitives remain in u.Infra;
+# GitHub provider operations remain in ai-hub.
+
+id: ban-ai-hub-library-boundary
+language: Python
+severity: error
+rule:
+  any:
+    - all:
+        - kind: import_statement
+        - regex: '^import\s+.*\bai_hub(?:\.[A-Za-z_][\w.]*)?\b'
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+ai_hub(?:\.[A-Za-z_][\w.]*)*\s+import\b'
+message: >-
+  flext-infra must not import ai-hub as a library. Use an optional public
+  ai-hub command, hook, MCP route, or daemon for host-runtime augmentation.
+files:
+  - "**/src/flext_infra/**/*.py"

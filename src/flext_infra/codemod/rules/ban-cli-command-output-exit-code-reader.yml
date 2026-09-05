@@ -29,7 +29,6 @@ files:
   - "flext-infra/src/flext_infra/deps/_detector_runtime_steps.py"
   - "flext-infra/src/flext_infra/codemod/batch_gates.py"
   - "flext-infra/src/flext_infra/codemod/rules/refactor/apply_renames.py"
-  - "flext-infra/src/flext_infra/_utilities/code_review_graph.py"
   - "flext-infra/src/flext_infra/_utilities/safety.py"
   - "flext-infra/src/flext_infra/_utilities/protected_edit_linting.py"
   - "flext-infra/src/flext_infra/_utilities/protected_edit_apply.py"
