@@ -1,9 +1,0 @@
-id: rewire-core-project-metadata
-snapshots:
-  u.Infra.build_project_metadata(root, document):
-    fixed: u.build_project_metadata(root, document)
-    labels:
-    - source: u.Infra.build_project_metadata(root, document)
-      style: primary
-      start: 0
-      end: 46

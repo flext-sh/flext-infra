@@ -394,8 +394,6 @@ class FlextInfraConstantsRefactor:
         "high": 2,
     })
     "Confidence level → priority rank mapping."
-    CLASS_PATTERN: Final[t.RegexPattern] = re.compile(r"[^A-Za-z0-9]+")
-    "Pattern to split class name fragments."
     MODEL_TOKENS: Final[t.StrSequence] = (
         "model",
         "schema",

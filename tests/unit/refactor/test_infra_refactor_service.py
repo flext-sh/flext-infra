@@ -114,28 +114,6 @@ class TestsFlextInfraRefactorInfraRefactorService:
         tm.ok(result)
         tm.that(service.rule_loader.rules, eq=[])
 
-    def test_service_keeps_file_rules_declarative(self, tmp_path: Path) -> None:
-        """Keep file-rule selection in the declarative loader contract."""
-        rules_dir = tmp_path / "rules"
-        rules_dir.mkdir(parents=True)
-        config_path = tmp_path / "settings.yml"
-        config_path.write_text("session: test\n", encoding="utf-8")
-        (rules_dir / "rules.yml").write_text(
-            (
-                "\nrules:\n"
-                "  - id: custom-import-rule\n"
-                "    enabled: true\n"
-                "    fix_action: replace_with_alias\n"
-            ).strip()
-            + "\n",
-            encoding="utf-8",
-        )
-        service = FlextInfraRefactorService(config_path=config_path)
-        service.set_rule_filters(["custom-import-rule"])
-        result = service.load_rules()
-        tm.ok(result)
-        tm.that(service.rule_loader.file_rules, eq=[])
-
     def test_rule_dispatch_drops_legacy_id_fallback_mapping(
         self, tmp_path: Path
     ) -> None:

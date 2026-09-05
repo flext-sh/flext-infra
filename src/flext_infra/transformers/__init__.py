@@ -16,19 +16,16 @@ if TYPE_CHECKING:
         FlextInfraCensusImportDiscoveryVisitor,
         FlextInfraCensusUsageCollector,
     )
-    from .class_nesting import FlextInfraRefactorClassNestingTransformer
     from .class_reconstructor import FlextInfraRefactorClassReconstructor
     from .cli_modernizer import FlextInfraRefactorCliModernizer
     from .compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .deprecated_remover import FlextInfraRefactorDeprecatedRemover
     from .future_import import FlextInfraRefactorFutureImport
     from .hardcoded_version import FlextInfraRefactorHardcodedVersion
-    from .helper_consolidation import FlextInfraHelperConsolidationTransformer
     from .import_bypass_remover import FlextInfraRefactorImportBypassRemover
     from .import_modernizer import FlextInfraRefactorImportModernizer
     from .lazy_import_fixer import FlextInfraRefactorLazyImportFixer
     from .logging_modernizer import FlextInfraRefactorLoggingModernizer
-    from .nested_class_propagation import FlextInfraNestedClassPropagationTransformer
     from .open_encoding import FlextInfraRefactorOpenEncoding
     from .pattern import FlextInfraRefactorPatternTransformer
     from .pattern_modernizer import FlextInfraRefactorPatternModernizer
@@ -54,10 +51,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraHelperConsolidationTransformer",
-    "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraRefactorCastRemover",
-    "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorCliModernizer",
     "FlextInfraRefactorCompatibilityAlias",
@@ -101,21 +95,16 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraCensusImportDiscoveryVisitor",
                 "FlextInfraCensusUsageCollector",
             ),
-            ".class_nesting": ("FlextInfraRefactorClassNestingTransformer",),
             ".class_reconstructor": ("FlextInfraRefactorClassReconstructor",),
             ".cli_modernizer": ("FlextInfraRefactorCliModernizer",),
             ".compatibility_alias": ("FlextInfraRefactorCompatibilityAlias",),
             ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
             ".future_import": ("FlextInfraRefactorFutureImport",),
             ".hardcoded_version": ("FlextInfraRefactorHardcodedVersion",),
-            ".helper_consolidation": ("FlextInfraHelperConsolidationTransformer",),
             ".import_bypass_remover": ("FlextInfraRefactorImportBypassRemover",),
             ".import_modernizer": ("FlextInfraRefactorImportModernizer",),
             ".lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
             ".logging_modernizer": ("FlextInfraRefactorLoggingModernizer",),
-            ".nested_class_propagation": (
-                "FlextInfraNestedClassPropagationTransformer",
-            ),
             ".open_encoding": ("FlextInfraRefactorOpenEncoding",),
             ".pattern": ("FlextInfraRefactorPatternTransformer",),
             ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),

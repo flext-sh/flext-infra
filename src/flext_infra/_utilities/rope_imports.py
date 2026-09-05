@@ -13,7 +13,6 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.transformers import FlextInfraRefactorProjectAliasMigrator
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -902,6 +901,11 @@ class FlextInfraUtilitiesRopeImports:
             )
             if resource is None:
                 continue
+            # Function-local: a module-level import would re-enter the package
+            # during init and capture the transient pre-cutover facade alias.
+            from flext_infra.transformers.project_alias_migrator import (
+                FlextInfraRefactorProjectAliasMigrator,
+            )
             transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
             updated, changes = transformer.transform(rope_project, resource)
             if changes:

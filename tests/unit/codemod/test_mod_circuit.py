@@ -79,3 +79,30 @@ class TestsFlextInfraModCliRoute:
         tm.that(second_console, has=str(report_path))
         tm.that(second_console, has=second_digest)
         tm.that(second_console, lacks=first_digest)
+
+    def test_apply_executes_safe_rewrites_before_reporting_detection_only_findings(
+        self, mod_workspace: Path
+    ) -> None:
+        """Keep automated fixes independent from semantic findings needing rewire."""
+        actionable_path = mod_workspace / "actionable.py"
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                actionable_path,
+                "publication = m.Infra.MiseToolchainPublication\n",
+            )
+        )
+
+        exit_code = infra_main([
+            "refactor",
+            "mod",
+            "--workspace",
+            str(mod_workspace),
+            "--apply",
+        ])
+        updated = tm.not_none(
+            tm.ok(u.Cli.atomic_read_binary_file_state(actionable_path, required=True)).content
+        ).decode(c.Cli.ENCODING_DEFAULT)
+
+        tm.that(exit_code, ne=0)
+        tm.that(updated, has="m.Cli.AtomicFilePublication")
+        tm.that(updated, lacks="m.Infra.MiseToolchainPublication")

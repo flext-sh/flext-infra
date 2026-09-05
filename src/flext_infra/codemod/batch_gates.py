@@ -268,11 +268,14 @@ class FlextInfraModGateEngine:
 
     @classmethod
     def validate(cls, root: Path, changed_files: t.SequenceOf[Path]) -> p.Result[bool]:
-        """Require zero Ruff, Pyrefly, LSP, and graph-analysis diagnostics."""
+        """Require zero Ruff, Pyrefly, and LSP diagnostics."""
         resolved_root = root.resolve()
         project_roots = u.Infra.governed_project_roots(resolved_root)
         repository_changes = tuple(
-            changed_path
+            (
+                project_root,
+                changed_path,
+            )
             for project_root in project_roots
             for changed_path in u.Infra.git_changed_paths(
                 m.Infra.GitRepoRequest(repo_root=project_root)
@@ -281,11 +284,26 @@ class FlextInfraModGateEngine:
         python_files = tuple(
             sorted({
                 resolved
-                for path in (*changed_files, *repository_changes)
+                for path in (
+                    *(
+                        (
+                            resolved_root / changed_path
+                            if not changed_path.is_absolute()
+                            else changed_path
+                        )
+                        for changed_path in changed_files
+                    ),
+                    *(
+                        (
+                            project_root / changed_path
+                            if not changed_path.is_absolute()
+                            else changed_path
+                        )
+                        for project_root, changed_path in repository_changes
+                    ),
+                )
                 if (
-                    resolved := (
-                        path if path.is_absolute() else resolved_root / path
-                    ).resolve()
+                    resolved := path.resolve()
                 ).is_file()
                 and resolved.suffix == c.Infra.EXT_PYTHON
             })

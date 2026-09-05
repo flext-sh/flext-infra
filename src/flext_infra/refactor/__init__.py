@@ -13,10 +13,6 @@ if TYPE_CHECKING:
     from .census import FlextInfraRefactorCensus
     from .class_nesting_analyzer import FlextInfraRefactorClassNestingAnalyzer
     from .classvar_constant_autofix import FlextInfraRefactorClassvarConstantAutofix
-    from .file_executor import (
-        FlextInfraClassNestingPostCheckGate,
-        FlextInfraRefactorFileExecutor,
-    )
     from .legacy_text_ops import FlextInfraRefactorLegacyTextOps
     from .loader import FlextInfraRefactorRuleLoader
     from .modernize_orchestrator import FlextInfraModernizeOrchestrator
@@ -32,7 +28,6 @@ if TYPE_CHECKING:
     from .wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
 __all__: tuple[str, ...] = (
     "FlextInfraAccessorMigrationOrchestrator",
-    "FlextInfraClassNestingPostCheckGate",
     "FlextInfraModernizeOrchestrator",
     "FlextInfraNamespaceEnforcer",
     "FlextInfraNamespaceEnforcerPhasesMixin",
@@ -40,7 +35,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassvarConstantAutofix",
-    "FlextInfraRefactorFileExecutor",
     "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorOrchestrator",
@@ -60,10 +54,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".class_nesting_analyzer": ("FlextInfraRefactorClassNestingAnalyzer",),
             ".classvar_constant_autofix": (
                 "FlextInfraRefactorClassvarConstantAutofix",
-            ),
-            ".file_executor": (
-                "FlextInfraClassNestingPostCheckGate",
-                "FlextInfraRefactorFileExecutor",
             ),
             ".legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
             ".loader": ("FlextInfraRefactorRuleLoader",),

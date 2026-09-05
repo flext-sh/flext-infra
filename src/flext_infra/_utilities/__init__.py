@@ -71,7 +71,6 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
-    from .policy import FlextInfraUtilitiesRefactorPolicy
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
@@ -174,7 +173,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceFlext",
     "FlextInfraUtilitiesRefactorNamespaceMoves",
-    "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
@@ -288,7 +286,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
-            ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
             ".process": ("FlextInfraUtilitiesProcess",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (

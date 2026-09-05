@@ -128,19 +128,13 @@ class FlextInfraRefactorLooseClassScanner:
         parts = rel_path.parts
         if len(parts) < c.Infra.MIN_PATH_DEPTH:
             return ""
-        pc = self._pascal_case
-        proj = pc(parts[0].split("_", maxsplit=1)[0])
-        dirs = "".join(pc(p) for p in parts[1:-1])
-        return f"{proj}{dirs}{pc(rel_path.stem)}"
+        return "".join(
+            u.derive_class_stem(part) for part in (*parts[:-1], rel_path.stem)
+        )
 
     def _has_private_directory(self, rel_path: Path) -> bool:
         """Has private directory."""
         return any(p.startswith("_") for p in rel_path.parent.parts[1:])
-
-    def _pascal_case(self, value: str) -> str:
-        """Pascal case."""
-        norm = c.Infra.CLASS_PATTERN.sub(" ", value.replace("_", " "))
-        return "".join(w.capitalize() for w in norm.split())
 
 
 __all__: list[str] = ["FlextInfraRefactorLooseClassScanner"]

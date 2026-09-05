@@ -170,10 +170,6 @@ if TYPE_CHECKING:
     from .refactor.classvar_constant_autofix import (
         FlextInfraRefactorClassvarConstantAutofix,
     )
-    from .refactor.file_executor import (
-        FlextInfraClassNestingPostCheckGate,
-        FlextInfraRefactorFileExecutor,
-    )
     from .refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
     from .refactor.loader import FlextInfraRefactorRuleLoader
     from .refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
@@ -209,25 +205,18 @@ if TYPE_CHECKING:
         FlextInfraCensusImportDiscoveryVisitor,
         FlextInfraCensusUsageCollector,
     )
-    from .transformers.class_nesting import FlextInfraRefactorClassNestingTransformer
     from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.cli_modernizer import FlextInfraRefactorCliModernizer
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.deprecated_remover import FlextInfraRefactorDeprecatedRemover
     from .transformers.future_import import FlextInfraRefactorFutureImport
     from .transformers.hardcoded_version import FlextInfraRefactorHardcodedVersion
-    from .transformers.helper_consolidation import (
-        FlextInfraHelperConsolidationTransformer,
-    )
     from .transformers.import_bypass_remover import (
         FlextInfraRefactorImportBypassRemover,
     )
     from .transformers.import_modernizer import FlextInfraRefactorImportModernizer
     from .transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
     from .transformers.logging_modernizer import FlextInfraRefactorLoggingModernizer
-    from .transformers.nested_class_propagation import (
-        FlextInfraNestedClassPropagationTransformer,
-    )
     from .transformers.open_encoding import FlextInfraRefactorOpenEncoding
     from .transformers.pattern import FlextInfraRefactorPatternTransformer
     from .transformers.pattern_modernizer import FlextInfraRefactorPatternModernizer
@@ -305,7 +294,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraClassNestingPostCheckGate",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
@@ -373,7 +361,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraGateFixerAdapter",
     "FlextInfraGateRegistry",
     "FlextInfraGitService",
-    "FlextInfraHelperConsolidationTransformer",
     "FlextInfraImportAliasDetector",
     "FlextInfraInjectCommentsPhase",
     "FlextInfraInlineImportDetector",
@@ -399,7 +386,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraNamespaceRules",
     "FlextInfraNamespaceSourceDetector",
     "FlextInfraNamespaceValidator",
-    "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraOrchestratorService",
     "FlextInfraPrivateImportBypassDetector",
     "FlextInfraProjectClassifier",
@@ -415,13 +401,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCastRemover",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
-    "FlextInfraRefactorClassNestingTransformer",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorClassvarConstantAutofix",
     "FlextInfraRefactorCliModernizer",
     "FlextInfraRefactorCompatibilityAlias",
     "FlextInfraRefactorDeprecatedRemover",
-    "FlextInfraRefactorFileExecutor",
     "FlextInfraRefactorFutureImport",
     "FlextInfraRefactorHardcodedVersion",
     "FlextInfraRefactorImportBypassRemover",
@@ -693,10 +677,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor.classvar_constant_autofix": (
                 "FlextInfraRefactorClassvarConstantAutofix",
             ),
-            ".refactor.file_executor": (
-                "FlextInfraClassNestingPostCheckGate",
-                "FlextInfraRefactorFileExecutor",
-            ),
             ".refactor.legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
             ".refactor.loader": ("FlextInfraRefactorRuleLoader",),
             ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
@@ -737,9 +717,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraCensusImportDiscoveryVisitor",
                 "FlextInfraCensusUsageCollector",
             ),
-            ".transformers.class_nesting": (
-                "FlextInfraRefactorClassNestingTransformer",
-            ),
             ".transformers.class_reconstructor": (
                 "FlextInfraRefactorClassReconstructor",
             ),
@@ -752,9 +729,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".transformers.future_import": ("FlextInfraRefactorFutureImport",),
             ".transformers.hardcoded_version": ("FlextInfraRefactorHardcodedVersion",),
-            ".transformers.helper_consolidation": (
-                "FlextInfraHelperConsolidationTransformer",
-            ),
             ".transformers.import_bypass_remover": (
                 "FlextInfraRefactorImportBypassRemover",
             ),
@@ -762,9 +736,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
             ".transformers.logging_modernizer": (
                 "FlextInfraRefactorLoggingModernizer",
-            ),
-            ".transformers.nested_class_propagation": (
-                "FlextInfraNestedClassPropagationTransformer",
             ),
             ".transformers.open_encoding": ("FlextInfraRefactorOpenEncoding",),
             ".transformers.pattern": ("FlextInfraRefactorPatternTransformer",),

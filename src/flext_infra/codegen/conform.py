@@ -1884,9 +1884,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"cannot parse reconciled project metadata from {root}"
             )
         document = m.PyprojectDocument.model_validate(payload)
-        return r[p.ProjectMetadata].ok(
-            u.Infra.build_project_metadata(root.resolve(), document)
-        )
+        return r[p.ProjectMetadata].ok(u.build_project_metadata(root.resolve(), document))
 
     def _plan_existing_templates(
         self,
