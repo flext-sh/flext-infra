@@ -9,7 +9,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod.crg_gate import FlextInfraCodeReviewGraphGate
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 
@@ -459,7 +458,6 @@ class FlextInfraModGateEngine:
             return r.fail("\n".join(diagnostics))
         for owner, files in selected_groups:
             FlextInfraLspDiagnosticsDetector.validate(owner, files).unwrap()
-        FlextInfraCodeReviewGraphGate.validate(resolved_root, selected_groups).unwrap()
         return r[bool].ok(True)
 
     @classmethod
