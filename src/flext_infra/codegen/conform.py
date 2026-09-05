@@ -419,6 +419,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 planned.error or "codegen conform planning failed"
             )
         plan = planned.value
+        mode = c.Infra.CodegenConformMode(request.mode)
         ancestry = self._validate_ancestry(plan)
         if ancestry.failure:
             return r[m.Infra.CodegenResult].from_failure(ancestry)

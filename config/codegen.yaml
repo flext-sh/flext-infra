@@ -256,7 +256,7 @@ Infra:
     # One owner of the infrastructure repository identity: the repository
     # utilities, the conform infra-repository resolution and the
     # provider-identity validation all read it. The `infrastructure_provider`
-    # key that duplicated `infra_repository.provider` is retired (#576).
+    # key that duplicated `infra_repository.provider` is retired (#576, #578).
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
