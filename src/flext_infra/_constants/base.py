@@ -215,6 +215,7 @@ class FlextInfraConstantsBase(
         "packaging",
         "pathspec",
         "pluggy",
+        "tomlkit",
         "trove-classifiers",
     })
     "Complete registry package set required by the isolated Hatch build backend."
