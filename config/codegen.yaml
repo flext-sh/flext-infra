@@ -253,14 +253,13 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
-    # Both keys are consumed today: infra_repository by the repository
-    # utilities and the conform infra-repository resolution, and
-    # infrastructure_provider by the provider-identity validation
-    # (flext-1wjg1.16.34 merge resolution; unify at the owner in a follow-up).
+    # One owner of the infrastructure repository identity: the repository
+    # utilities, the conform infra-repository resolution and the
+    # provider-identity validation all read it. The `infrastructure_provider`
+    # key that duplicated `infra_repository.provider` is retired.
     infra_repository:
       distribution: flext-infra
       provider: flext-sh
-    infrastructure_provider: flext-sh
 
     providers:
       - name: flext-sh
@@ -288,6 +287,14 @@ Infra:
         base_url: https://github.com/marlonsc
         branch: develop
     branch_policy:
+      # Consumed by the generated CI/docs workflow triggers (ci.yml.j2,
+      # docs.yml.j2) and by the branch-ancestry projection, so the key stays
+      # declared here rather than being inferred at render time.
+      ci_trigger_branches:
+        - dev
+        - develop
+        - 0.12.0-dev
+        - main
       technical_branch_patterns:
         - __dolt_remote_info__
         - dolt/*

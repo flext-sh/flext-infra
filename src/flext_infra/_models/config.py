@@ -2841,16 +2841,21 @@ class FlextInfraConfigModels:
 
         @u.model_validator(mode="after")
         def _validate_infrastructure_provider(self) -> Self:
-            """Require the tool distribution owner to resolve exactly once."""
+            """Require the tool distribution owner to resolve exactly once.
+
+            ``infra_repository`` is the single owner of that identity. The
+            separate ``infrastructure_provider`` key that duplicated it is
+            retired, so the check reads the surviving owner.
+            """
             matches = tuple(
                 provider
                 for provider in self.providers
-                if provider.name == self.infrastructure_provider
+                if provider.name == self.infra_repository.provider
             )
             if len(matches) != 1:
                 msg = (
-                    "infrastructure_provider must resolve exactly once in providers: "
-                    f"{self.infrastructure_provider}"
+                    "infra_repository.provider must resolve exactly once in "
+                    f"providers: {self.infra_repository.provider}"
                 )
                 raise ValueError(msg)
             return self
