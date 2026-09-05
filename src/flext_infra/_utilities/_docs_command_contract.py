@@ -62,10 +62,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                 elif selector is not None:
                     selector_name = selector.group(0).split("=", maxsplit=1)[0].strip()
                     issue = f"invented Make selector `{selector_name}`"
-                elif (
-                    verb_spec.requires_apply
-                    and not has_apply
-                ):
+                elif verb_spec.requires_apply and not has_apply:
                     issue = f"`make {verb}` requires `APPLY=Y`"
                 elif not verb_spec.requires_apply and has_apply:
                     issue = f"read-only `make {verb}` rejects `APPLY=Y`"
@@ -91,7 +88,11 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
     def docs_command_contract_issues(
         scope: m.Infra.DocScope,
     ) -> t.SequenceOf[m.Infra.AuditIssue]:
-        """Collect command-contract issues for every Markdown file in a scope."""
+        """Collect live guide/standard issues through typed scope discovery.
+
+        ``iter_scope_markdown_files`` owns every formal scope exclusion; this
+        detector carries no path allowlist or bypass.
+        """
         issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
         docs_root = scope.path / c.Infra.DIR_DOCS
         for path in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):

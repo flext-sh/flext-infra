@@ -81,8 +81,7 @@ class FlextInfraConstantsDocs:
     """Match quoted string literals, capturing the content."""
 
     DOCS_MAKE_COMMAND_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*(?:\$\s*)?make\s+(?P<verb>[a-z][a-z0-9_-]*)(?P<args>.*)$",
-        re.IGNORECASE,
+        r"^\s*(?:\$\s*)?make\s+(?P<verb>[a-z][a-z0-9_-]*)(?P<args>.*)$", re.IGNORECASE
     )
     """Match an executable Make command and capture its verb and arguments."""
     DOCS_FORBIDDEN_MAKE_SELECTOR_RE: Final[t.RegexPattern] = re.compile(
@@ -99,13 +98,15 @@ class FlextInfraConstantsDocs:
     })
     """Live documentation trees governed by the command contract."""
     DOCS_RAW_PYTEST_COMMAND_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*(?:\$\s*)?(?:(?:uv|poetry|pdm)\s+run\s+|"
+        r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
+        r"(?:(?:uv|poetry|pdm)\s+run\s+|"
         r"python(?:3(?:\.\d+)?)?\s+-m\s+)?pytest(?:\s|$)",
         re.IGNORECASE,
     )
     """Match direct pytest execution that bypasses the root Testmon verb."""
     DOCS_RAW_TOOL_COMMAND_RE: Final[t.RegexPattern] = re.compile(
-        r"^\s*(?:\$\s*)?(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|"
+        r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
+        r"(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit|"
         r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
         re.IGNORECASE,
     )

@@ -109,6 +109,17 @@ ruff check src
         ungoverned = docs_root / "architecture" / "historical.md"
         ungoverned.parent.mkdir(parents=True, exist_ok=True)
         u.write_file(ungoverned, "```bash\nruff check src\n```\n")
+        excluded = docs_root / "standards" / "historical" / "commands.md"
+        excluded.parent.mkdir(parents=True, exist_ok=True)
+        u.write_file(excluded, "```bash\nruff check src\n```\n")
+        u.write_file(
+            infra_test_workspace / "pyproject.toml",
+            (
+                "[project]\nname='infra-pkg'\nversion='0.0.0'\n\n"
+                "[tool.flext.docs]\n"
+                'exclude_docs=["standards/historical/**"]\n'
+            ),
+        )
         scope = m.Infra.DocScope(
             name="infra-pkg",
             path=infra_test_workspace,
@@ -119,10 +130,10 @@ ruff check src
         issues = u.Infra.docs_command_contract_issues(scope)
 
         tm.that(len(issues), eq=2)
-        tm.that({issue.file for issue in issues}, eq={
-            "docs/guides/nested/commands.md",
-            "docs/standards/nested/commands.md",
-        })
+        tm.that(
+            {issue.file for issue in issues},
+            eq={"docs/guides/nested/commands.md", "docs/standards/nested/commands.md"},
+        )
 
     @staticmethod
     def test_rejects_test_double_examples() -> None:
