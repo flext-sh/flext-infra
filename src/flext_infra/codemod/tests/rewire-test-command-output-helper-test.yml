@@ -1,7 +1,0 @@
-id: rewire-test-command-output-helper
-valid:
-  - u.Tests.create_command_output(stdout="ok")
-  - other.stub_run()
-invalid:
-  - u.Tests.stub_run(stdout="ok")
-  - TestsFlextInfraUtilities.Tests.stub_run(returncode=1)

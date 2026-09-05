@@ -679,13 +679,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def stub_run(
-            *, stdout: str = "", stderr: str = "", returncode: int = 0
-        ) -> m.Cli.CommandOutput:
-            """Provide the typed test helper `stub_run`."""
-            return TestsFlextInfraUtilities.Tests.create_command_output(stdout=stdout, stderr=stderr, exit_code=returncode)
-
-        @staticmethod
         def mk_project(
             root: Path,
             name: str,
