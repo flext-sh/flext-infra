@@ -28,7 +28,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
     """Plan ``__init__.py`` artifact sets per package directory."""
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
 
     def _plan_all_inits(
         self,
@@ -44,8 +44,8 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         for idx, pkg_dir in enumerate(pkg_dirs, start=1):
             if idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0:
                 rel_path = (
-                    pkg_dir.relative_to(self.workspace_root)
-                    if self.workspace_root in pkg_dir.parents
+                    pkg_dir.relative_to(self.repository_root)
+                    if self.repository_root in pkg_dir.parents
                     else pkg_dir
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")

@@ -42,6 +42,14 @@ def _build_namespace_family_expected_alias(
 class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     """Shared constants for refactor modules."""
 
+    CODEMOD_CONFIG_RELPATH: Final[Path] = Path("codemod/sgconfig.yml")
+    CODEMOD_SCOPE_KEY: Final[str] = "scope"
+    CODEMOD_SCOPE_UNIVERSAL: Final[str] = "universal"
+    CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
+    CODEMOD_RULE_DIRS_KEY: Final[str] = "ruleDirs"
+    CODEMOD_DOCUMENT_SEPARATOR_RE: Final[re.Pattern[str]] = re.compile(
+        r"(?m)^---\s*(?:#.*)?$"
+    )
     RK_REFACTOR: Final[str] = "refactor"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
     RK_IGNORE_PATTERNS: Final[str] = "ignore_patterns"
@@ -58,18 +66,8 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_CORE_ALIASES: Final[str] = "core_aliases"
     RK_CORE_PACKAGE: Final[str] = "core_package"
     RK_ALIAS_TO_SUBMODULE: Final[str] = "alias_to_submodule"
-    RK_QUALITY_GATES: Final[str] = "quality_gates"
-    RK_EXPECTED_BASE_CHAIN: Final[str] = "expected_base_chain"
-    RK_HELPER_NAME: Final[str] = "helper_name"
-    RK_CONFIDENCE_THRESHOLD: Final[str] = "confidence_threshold"
     RK_ALLOW_ALIASES: Final[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
-    RK_TARGET_NAME: Final[str] = "target_name"
-    RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
-    RK_FLEXT_VALID: Final[str] = "flext_valid"
-    RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
-    CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
-    CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
         RK_IGNORE_PATTERNS,
@@ -387,15 +385,8 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "high": 2,
     })
     "Confidence level → priority rank mapping."
-    REQUIRED_CLASS_TARGETS: Final[t.StrSequence] = (
-        "TimeoutEnforcer",
-        "CircuitBreakerManager",
-    )
-    "Class names always required in scanner output."
     CLASS_PATTERN: Final[t.RegexPattern] = re.compile(r"[^A-Za-z0-9]+")
     "Pattern to split class name fragments."
-    MAPPINGS_RELATIVE_PATH: Final[Path] = Path("rules") / "class-nesting-mappings.yml"
-    "Relative path from the refactor package to the nesting mappings YAML."
     MODEL_TOKENS: Final[t.StrSequence] = (
         "model",
         "schema",
@@ -525,22 +516,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Matches files that contain only a module docstring."
     MIN_METHODS_FOR_REORDER: Final[int] = 2
     "Minimum method count before class method reordering is attempted."
-
-    # --- Class nesting refactor constants (was: class ClassNesting) ---
-    NESTING_COERCE_KEYS: Final[t.StrSequence] = (
-        cb.RK_LOOSE_NAME,
-        RK_HELPER_NAME,
-        cb.RK_TARGET_NAMESPACE,
-        RK_TARGET_NAME,
-        cb.RK_REWRITE_SCOPE,
-        cb.RK_CONFIDENCE,
-    )
-    "Keys to coerce from string to typed values in nesting mappings."
-    NESTING_SECTION_KEYS: Final[t.StrSequence] = (
-        cb.RK_CLASS_NESTING,
-        cb.RK_HELPER_CONSOLIDATION,
-    )
-    "Top-level section keys in class nesting YAML configs."
 
     # --- Method category StrEnum (was: plain class MethodCategory) ---
     @unique

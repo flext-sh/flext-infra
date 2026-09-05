@@ -31,23 +31,28 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         result = service.plan_files()
 
         tm.that(result.success, eq=True)
-        plans = {plan.path: plan for plan in result.value}
+        analysis = result.value
+        tm.that(analysis.phase, eq="lazy-init")
+        plans = {plan.path: plan for plan in analysis.files}
         init_plan = plans[init_path.resolve()]
         tm.that(init_plan.project, eq=workspace_root.resolve())
         tm.that(init_plan.before.content, eq=before[init_path])
         tm.that(init_plan.desired_mode, eq=0o644)
-        tm.that(init_plan.desired_text, contains="FlextTestsModels")
-        tm.that(init_plan.requires_effect, eq=True)
+        tm.that(u.Tests.codegen_file_text(init_plan), contains="FlextTestsModels")
+        tm.that(u.Infra.codegen_file_requires_effect(init_plan), eq=True)
         source_paths = {state.path for state in init_plan.source_states}
         tm.that(module_path.resolve() in source_paths, eq=True)
         tm.that(
             any(path.name == "lazy_init_root.py.j2" for path in source_paths), eq=True
         )
+        input_paths = {state.path for state in analysis.inputs}
+        tm.that(source_paths.issubset(input_paths), eq=True)
+        tm.that(init_path.resolve() in input_paths, eq=True)
         unit_plan = plans[unit_path.resolve()]
         tm.that(unit_plan.before.content, eq=before[unit_path])
         tm.that(unit_plan.desired_content, eq=None)
         tm.that(unit_plan.desired_mode, eq=None)
-        tm.that(unit_plan.operation, eq="delete")
+        tm.that(u.Infra.codegen_file_requires_effect(unit_plan), eq=True)
         tm.that({path: path.read_bytes() for path in (init_path, unit_path)}, eq=before)
 
     def test_plan_files_includes_all_retired_generated_sidecars(
@@ -88,7 +93,12 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         result = u.Tests.create_lazy_init_service(workspace_root).plan_files()
 
         tm.that(result.success, eq=True)
-        deletes = {plan.path for plan in result.value if plan.operation == "delete"}
+        deletes = {
+            plan.path
+            for plan in result.value.files
+            if plan.desired_content is None
+            and u.Infra.codegen_file_requires_effect(plan)
+        }
         tm.that(expected_deletes.issubset(deletes), eq=True)
         tm.that({path: path.read_bytes() for path in expected_deletes}, eq=before)
 

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, override
 
-from flext_infra import c, u
+from flext_infra import c
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
@@ -20,17 +20,11 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
     """
 
     def __init__(
-        self,
-        class_renames: t.StrMapping,
-        policy_context: t.Infra.PolicyContext | None = None,
-        class_families: t.StrMapping | None = None,
-        on_change: t.Infra.ChangeCallback = None,
+        self, class_renames: t.StrMapping, on_change: t.Infra.ChangeCallback = None
     ) -> None:
-        """Initialize with class rename mappings and optional policy context."""
+        """Initialize with class rename mappings."""
         super().__init__(on_change=on_change)
         self._class_renames = class_renames
-        self._policy_context = policy_context
-        self._class_families = class_families or {}
 
     _description = "nested class propagation"
 
@@ -40,39 +34,30 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
         self.changes.clear()
         updated = source
         for old_name, rename_to in self._class_renames.items():
-            if not self._should_propagate(old_name, "propagate_imports"):
-                continue
-            if self._blocked_by_prefix(old_name):
-                continue
             rename_parts = rename_to.split(".")
             namespace = rename_parts[0]
             aliases = self._find_import_aliases(updated, old_name=old_name)
             updated = self._rewrite_import(
                 updated, old_name=old_name, namespace=namespace
             )
-            if self._should_propagate(old_name, "propagate_name_references"):
-                updated = self._qualify_name_references(
-                    updated, old_name=old_name, qualified=rename_to
+            updated = self._qualify_name_references(
+                updated, old_name=old_name, qualified=rename_to
+            )
+            updated = self._qualify_return_annotations(
+                updated, old_name=old_name, qualified=rename_to
+            )
+            nested_name = rename_parts[-1]
+            for alias_name in aliases:
+                qualified_alias = f"{alias_name}.{nested_name}"
+                updated = self._qualify_alias_references(
+                    updated, alias_name=alias_name, qualified=qualified_alias
                 )
                 updated = self._qualify_return_annotations(
-                    updated, old_name=old_name, qualified=rename_to
+                    updated, old_name=alias_name, qualified=qualified_alias
                 )
-                nested_name = rename_parts[-1]
-                for alias_name in aliases:
-                    qualified_alias = f"{alias_name}.{nested_name}"
-                    updated = self._qualify_alias_references(
-                        updated, alias_name=alias_name, qualified=qualified_alias
-                    )
-                    updated = self._qualify_return_annotations(
-                        updated, old_name=alias_name, qualified=qualified_alias
-                    )
-            if self._should_propagate(old_name, "propagate_attribute_references"):
-                updated = self._qualify_attribute_references(
-                    updated,
-                    old_name=old_name,
-                    rename_parts=rename_parts,
-                    aliases=aliases,
-                )
+            updated = self._qualify_attribute_references(
+                updated, old_name=old_name, rename_parts=rename_parts, aliases=aliases
+            )
         return updated, list(self.changes)
 
     def _rewrite_import(self, source: str, *, old_name: str, namespace: str) -> str:
@@ -162,37 +147,6 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
                 f"Qualified attribute reference: .{old_name} -> .{suffix}"
             )
         return new_source
-
-    def _should_propagate(self, symbol_name: str, policy_key: str) -> bool:
-        """Check policy for a specific propagation mode."""
-        policy: m.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
-            policy_context=self._policy_context,
-            symbol_families=self._class_families,
-            symbol_name=symbol_name,
-        )
-        if policy is None:
-            return True
-        if policy_key == "propagate_imports":
-            propagate_imports: bool = policy.propagate_imports
-            return propagate_imports
-        if policy_key == "propagate_name_references":
-            propagate_name_references: bool = policy.propagate_name_references
-            return propagate_name_references
-        if policy_key == "propagate_attribute_references":
-            propagate_attribute_references: bool = policy.propagate_attribute_references
-            return propagate_attribute_references
-        return False
-
-    def _blocked_by_prefix(self, symbol_name: str) -> bool:
-        """Check if symbol is blocked by prefix policy."""
-        policy: m.Infra.ClassNestingPolicy | None = u.Infra.policy_for_symbol(
-            policy_context=self._policy_context,
-            symbol_families=self._class_families,
-            symbol_name=symbol_name,
-        )
-        if policy is None:
-            return False
-        return any(symbol_name.startswith(p) for p in policy.blocked_reference_prefixes)
 
 
 __all__: list[str] = ["FlextInfraNestedClassPropagationTransformer"]

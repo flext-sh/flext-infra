@@ -10,7 +10,7 @@ from flext_infra.workspace.environment_provenance import (
 )
 from flext_tests import tm
 
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -160,4 +160,4 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "workspace": workspace
         })
 
-        tm.that(request.workspace_root, eq=workspace)
+        tm.that(request.repository_root, eq=workspace)

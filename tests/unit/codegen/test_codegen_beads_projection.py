@@ -6,11 +6,11 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m
+
+from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture, u as test_u
 
 
 class TestsCodegenBeadsProjection:
@@ -29,14 +29,7 @@ class TestsCodegenBeadsProjection:
 
     @staticmethod
     def _plan(root: Path) -> m.Infra.CodegenPlan:
-        for entry in config.Infra.codegen.templates.entries:
-            destination = entry.destination.format(
-                package_name="fixture_project", ns="fixture_project"
-            )
-            (root / destination).parent.mkdir(parents=True, exist_ok=True)
-        for managed in config.Infra.codegen.managed_files:
-            (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
-        result = FlextInfraCodegenConform(workspace_root=root).plan(
+        result = FlextInfraCodegenConform(repository_root=root).plan(
             m.Infra.CodegenConformRequest(
                 root=root,
                 scope=c.Infra.CodegenConformScope.SELF,
@@ -55,7 +48,7 @@ class TestsCodegenBeadsProjection:
         return (
             None
             if match is None or match.desired_content is None
-            else match.desired_text
+            else test_u.Tests.codegen_file_text(match)
         )
 
     def test_local_identity_renders_only_declarative_beads_files(

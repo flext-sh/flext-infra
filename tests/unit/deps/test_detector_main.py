@@ -22,9 +22,9 @@ class _DepsStub(
 
     @override
     def discover_project_paths(
-        self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
+        self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
-        del workspace_root, projects_filter
+        del repository_root, projects_filter
         return r[Sequence[Path]].ok([self._project])
 
     @override
@@ -67,9 +67,9 @@ class _DepsStub(
 
     @override
     def run_pip_check(
-        self, workspace_root: Path, venv_bin: Path
+        self, repository_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        del workspace_root, venv_bin
+        del repository_root, venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], 0))
 
 

@@ -4,7 +4,4 @@
 #
 # ast-grep project config. Rule directories are the domain declarations;
 # fixtures and snapshots only validate them, they never define the policy.
-ruleDirs:
-  - ast-grep-rules
-testConfigs:
-  - testDir: ast-grep-rule-tests
+ruleDirs: []

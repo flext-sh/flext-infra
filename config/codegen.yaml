@@ -14,24 +14,42 @@ Infra:
       python_version: "3.13"
       uv_link_mode: copy
       # Supported resolution environments for the generated lock. Windows is
-      # not a supported deployment target: the win32 split resolves meltano's
-      # structlog<26 cap against flext-core's structlog>=26.1 floor and is
-      # unsatisfiable, so uv must skip that split instead of failing the lock.
+      # not a deployment target, so uv skips that split instead of resolving it.
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-      # Moving selectors consumed by generated .mise.toml and CI. Freezing a
-      # major, minor, or patch here would create a second lock owner and prevent
-      # setup from converging the fleet on the newest published release.
-      uv_version: latest
-      kubectl_version: latest
-      helm_version: latest
-      kind_version: latest
-      direnv_version: latest
-      taplo_version: latest
-      ast_grep_version: latest
-      gitleaks_version: latest
-      scc_version: latest
-      kubeconform_version: latest
-      qlty_version: latest
+      # Fleet co-installability ceiling, projected to [tool.uv]
+      # constraint-dependencies of every generated pyproject. Every member lock
+      # resolves inside this range, so the floor rewrite (floors follow the
+      # lock) can never raise one member's floor above a cap another member
+      # carries transitively. meltano>=4.2.1 (flext-meltano and every Singer
+      # connector) caps structlog<26.
+      dependency_constraints: ["structlog<26"]
+      # Supply-chain cooldown SSOT (CWE-829): projected to uv exclude-newer and
+      # every Dependabot ecosystem so updates never raise floors that uv blocks.
+      dependency_cooldown_days: 7
+      # Security updates are not delayed by Dependabot; match that behavior in
+      # uv only for explicitly reviewed security floors.
+      dependency_cooldown_exclusions: [cryptography]
+      # Non-Python toolchain floors consumed by generated .mise.toml and CI.
+      # Patch releases float; minor and major do not. mise resolves the newest
+      # patch inside the declared minor.
+      uv_version: "0.12"
+      kubectl_version: "1.32"
+      helm_version: "3.19"
+      kind_version: "0.31"
+      direnv_version: "2.37"
+      taplo_version: "0.10"
+      ast_grep_version: "0.45"
+      gitleaks_version: "8.30"
+      scc_version: "4.0"
+      kubeconform_version: "0.8"
+      qlty_version: "0.642"
+      # jscpd (the `duplication` check gate) is an npm package with no bare mise
+      # registry alias; mise's npm backend provisions it on the pinned Node line
+      # so no gate ever resolves a runner or a version outside this SSOT.
+      node_version: "26.8"
+      jscpd_version: "5.1.2"
+      # Moving selector is deliberate: setup must always provision the newest
+      # Mise release instead of rejecting a newer binary than code generation.
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -39,22 +57,6 @@ Infra:
         - linux-arm64-musl
         - macos-x64
         - macos-arm64
-        - windows-x64
-      mise_lock_platform_exclusions:
-        # Keyed by full mise selector (that is the key the lock validator
-        # resolves). gc does not build for Windows: its process control uses
-        # syscall.Kill/Flock (unix-only), so no windows-x64 artifact can exist.
-        github:marlon-costa-dc/gascity:
-          - windows-x64
-        # ast-grep publishes no distinct musl assets; every unsupported pair is
-        # explicit so the offline validator rejects any additional omission.
-        # scc (loc-cap gate; see .mise.toml.j2) carries no exclusion: pinned to
-        # the aqua backend, its evergreen catch-all release rule ships real
-        # per-platform assets for every target platform, so it never falls
-        # back to a source build.
-        ast-grep:
-          - linux-x64-musl
-          - linux-arm64-musl
       protected_mise_tools:
         - beads
         - gascity
@@ -115,20 +117,18 @@ Infra:
           - convergence
           - step
 
-    # Why (ai-hub-qwoc): the ast-grep project contract for every governed
-    # repository. A provider manifest may declare sgconfig.yml as a required
-    # surface, so it is rendered from here instead of hand-written per repo.
+    # Root sgconfig.yml is only a repository-local delta. Shared and runtime
+    # rules come from installed provider package resources, so an ordinary
+    # consumer declares no local directories and never receives dangling paths.
     sgconfig:
-      rule_dirs:
-        - ast-grep-rules
-      test_dirs:
-        - ast-grep-rule-tests
+      rule_dirs: []
+      test_dirs: []
 
     # actions/checkout submodules mode for every generated workflow.
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
     # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through the override map.
+    # really exercise their declared_repositories in CI opt in through the override map.
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
@@ -140,7 +140,7 @@ Infra:
       flext-cli:
         # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
         - libreoffice-calc
-    # Per-distribution private workspace member auth for CI. The default
+    # Per-distribution private declared repository auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
@@ -237,6 +237,14 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
+    # One owner of the infrastructure repository identity: the repository
+    # utilities, the conform infra-repository resolution and the
+    # provider-identity validation all read it. The `infrastructure_provider`
+    # key that duplicated `infra_repository.provider` is retired (#576, #578).
+    infra_repository:
+      distribution: flext-infra
+      provider: flext-sh
+
     providers:
       - name: flext-sh
         organization: flext-sh
@@ -263,6 +271,14 @@ Infra:
         base_url: https://github.com/marlonsc
         branch: develop
     branch_policy:
+      # Consumed by the generated CI/docs workflow triggers (ci.yml.j2,
+      # docs.yml.j2) and by the branch-ancestry projection, so the key stays
+      # declared here rather than being inferred at render time.
+      ci_trigger_branches:
+        - dev
+        - develop
+        - 0.12.0-dev
+        - main
       technical_branch_patterns:
         - __dolt_remote_info__
         - dolt/*
@@ -287,9 +303,6 @@ Infra:
         - develop
         - dev
         - main
-    infra_repository:
-      distribution: flext-infra
-      provider: flext-sh
 
     profiles:
       - name: workspace
@@ -477,6 +490,11 @@ Infra:
           default_what: all
           whats: [all]
           apply_guarded: false
+          # APPLY is the fleet's single execution acknowledgement. Read-only
+          # gates accept it without changing behavior so every canonical gate
+          # has one uniform invocation shape.
+          accepts_apply: true
+          apply_what: all
         - name: test
           default_what: all
           # all = incremental testmon run; cache-* maintain .testmondata locally.
@@ -740,7 +758,7 @@ Infra:
         ruff.importStrategy: fromEnvironment
         ruff.lint.preview: true
         ruff.nativeServer: on
-        shellcheck.useWorkspaceRootAsCwd: true
+        shellcheck.useRepositoryRootAsCwd: true
       list_settings:
         python-envs.workspaceSearchPaths:
           - ./.venv
@@ -1237,6 +1255,11 @@ Infra:
           # every project owning src/, so the tool it shells out to must be a
           # declared dev dependency of every generated project.
           - bandit>=1.9.4
+          # Every generated Make verb routes through `python -m flext_infra` in
+          # the project venv, so `make setup` must provision the pinned generator
+          # itself (operator ruling 2026-09-05, flext-cee4z) instead of relying
+          # on it arriving transitively; the generator skips its own name.
+          - flext-infra
           - flext-tests
           # Floors let uv select released tools without a cap or downgrade path.
           # Every diagnostic from the resolved release remains blocking.
@@ -1377,10 +1400,6 @@ Infra:
             - "!Makefile"
             - "!Makefile.flext-docker"
             - "!*.mk"
-            # jscpd detector SSOT consumed by the committed `make duplication`
-            # target (flext-1sm3w); the deny-first root cannot swallow it.
-            - "!.jscpd.json"
-            - "!*.mk"
             # The generated toolchain lock pins every tool to a checksum. A
             # clean CI checkout must receive it, so the deny-first root cannot
             # swallow it; `make gen` owns its content.
@@ -1458,7 +1477,7 @@ Infra:
           patterns:
             - "!.agents/"
             - "!.agents/**"
-        - name: "WHITELIST: Agent skills owned by the workspace root"
+        - name: "WHITELIST: Agent skills owned by the repository root"
           profiles: [workspace]
           patterns:
             - "!.agents/skills/"
@@ -1855,9 +1874,9 @@ Infra:
           delegate: render
           overwrite: false
         # Ledger routing config: rendered only for repositories that own a
-        # ledger. The workspace root owns a shared ledger when a gitlink's
-        # `.beads` path is a symlink; real member `.beads` directories keep an
-        # independent ledger.
+        # ledger. The repository root owns a shared ledger when a gitlink's
+        # `.beads` path is a symlink; real declared-repository `.beads`
+        # directories keep an independent ledger.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace, standalone]

@@ -29,9 +29,9 @@ class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
 
     @override
     def create_pre_transformation_checkpoint(
-        self, workspace_root: Path, *, label: str = "flext-refactor-pre-transform"
+        self, repository_root: Path, *, label: str = "flext-refactor-pre-transform"
     ) -> p.Result[str]:
-        _ = workspace_root
+        _ = repository_root
         _ = label
         self.calls.append("checkpoint")
         return r[str].ok("checkpoint-ref")
@@ -39,13 +39,13 @@ class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
     @override
     def save_checkpoint_state(
         self,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         status: str,
         checkpoint_ref: str,
         processed_targets: t.StrSequence,
     ) -> p.Result[bool]:
-        _ = workspace_root
+        _ = repository_root
         _ = status
         _ = checkpoint_ref
         _ = processed_targets
@@ -53,8 +53,8 @@ class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
         return r[bool].ok(True)
 
     @override
-    def run_semantic_validation(self, workspace_root: Path) -> p.Result[bool]:
-        _ = workspace_root
+    def run_semantic_validation(self, repository_root: Path) -> p.Result[bool]:
+        _ = repository_root
         self.calls.append("validate")
         return r[bool].ok(True)
 
@@ -71,19 +71,19 @@ class RefactorSafetyStub(FlextInfraRefactorSafetyManager):
 
     @overload
     def rollback(
-        self, workspace_root: Path, checkpoint_ref: str = ""
+        self, repository_root: Path, checkpoint_ref: str = ""
     ) -> p.Result[bool]: ...
 
     @overload
-    def rollback(self, workspace_root: str, /) -> None: ...
+    def rollback(self, repository_root: str, /) -> None: ...
 
     @override
     def rollback(
-        self, workspace_root: Path | str, checkpoint_ref: str = ""
+        self, repository_root: Path | str, checkpoint_ref: str = ""
     ) -> p.Result[bool] | None:
         _ = checkpoint_ref
         self.calls.append("rollback")
-        if isinstance(workspace_root, Path):
+        if isinstance(repository_root, Path):
             return r[bool].ok(True)
         return None
 

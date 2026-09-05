@@ -41,6 +41,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     if TYPE_CHECKING:
         # Members provided by the composed dependency modernizer.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         @property
         def root(self) -> Path: ...
@@ -58,7 +59,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # default comes from the tomlsort SSOT. A property here would make the
         # field an incompatible override of a read-only descriptor.
         tomlsort_sort_first: t.StrSequence
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         def _reorder_document_inplace(
             self,
@@ -142,9 +142,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # disk discovery converges on the first post-write conformance pass.
         project_root_exists = path.is_file()
         effective_project_dir = path.parent if project_root_exists else None
-        effective_workspace_root = self.root if project_root_exists else None
+        effective_repository_root = self.root if project_root_exists else None
         paths_manager = FlextInfraExtraPathsManager(
-            workspace_root=self.root,
+            repository_root=self.root,
             generated_python_roots=generated_python_roots,
             analysis_exclusions=analysis_exclusions or (),
         )
@@ -188,7 +188,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                workspace_root=effective_workspace_root,
+                repository_root=effective_repository_root,
                 project_dir=effective_project_dir,
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,

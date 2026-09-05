@@ -10,24 +10,18 @@ from flext_infra import c, u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
     """Transform top-level classes into nested classes under namespace parents."""
 
     def __init__(
-        self,
-        mappings: t.StrMapping,
-        policy_context: t.Infra.PolicyContext,
-        class_families: t.StrMapping,
-        on_change: t.Infra.ChangeCallback = None,
+        self, mappings: t.StrMapping, on_change: t.Infra.ChangeCallback = None
     ) -> None:
-        """Initialize with class-to-namespace mappings and policy context."""
+        """Initialize with class-to-namespace mappings."""
         super().__init__(on_change=on_change)
         self._mappings = mappings
-        self._policy_context = policy_context
-        self._class_families = class_families
 
     @override
     def transform(
@@ -54,19 +48,13 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
         for class_name, target_namespace in self._mappings.items():
             if class_name not in existing_names:
                 continue
-            if not self._is_nesting_allowed(class_name, target_namespace):
-                continue
             collected[target_namespace].append(class_name)
         if not collected:
             no_changes: list[str] = []
             return source, no_changes
         updated = source
         for namespace, class_names in collected.items():
-            if not self._ns_op_allowed(class_names, namespace, "creation"):
-                continue
             ns_exists = namespace in existing_names
-            if ns_exists and not self._ns_op_allowed(class_names, namespace, "merge"):
-                continue
             updated = self._nest_classes(
                 updated,
                 namespace=namespace,
@@ -102,44 +90,6 @@ class FlextInfraRefactorClassNestingTransformer(FlextInfraRopeTransformer):
             )
             return appended
         return source.rstrip("\n") + f"\n\nclass {namespace}:\n{nested_block}\n"
-
-    def _is_nesting_allowed(self, class_name: str, target_namespace: str) -> bool:
-        """Is nesting allowed."""
-        policy = self._policy_for(class_name)
-        if policy is None:
-            return True
-        if not policy.enable_class_nesting:
-            return False
-        allowed: bool = u.Infra.target_allowed(
-            policy=policy, target_namespace=target_namespace
-        )
-        return allowed
-
-    def _ns_op_allowed(
-        self, class_names: t.StrSequence, target_namespace: str, operation: str
-    ) -> bool:
-        """Ns op allowed."""
-        for class_name in class_names:
-            policy = self._policy_for(class_name)
-            if policy is None:
-                continue
-            if operation == "creation" and not policy.allow_namespace_creation:
-                return False
-            if operation == "merge" and not policy.allow_existing_namespace_merge:
-                return False
-            if not u.Infra.target_allowed(
-                policy=policy, target_namespace=target_namespace
-            ):
-                return False
-        return True
-
-    def _policy_for(self, symbol_name: str) -> m.Infra.ClassNestingPolicy | None:
-        """Policy for."""
-        return u.Infra.policy_for_symbol(
-            policy_context=self._policy_context,
-            symbol_families=self._class_families,
-            symbol_name=symbol_name,
-        )
 
 
 __all__: list[str] = ["FlextInfraRefactorClassNestingTransformer"]

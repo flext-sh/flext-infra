@@ -31,8 +31,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
+                    dist="demo", workspace_repositories=()
                 ),
             )
         )
@@ -43,8 +42,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(repository,),
+                    dist="demo", workspace_repositories=(repository,)
                 ),
             )
         )
@@ -57,9 +55,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    has_devcontainer=False,
+                    dist="demo", workspace_repositories=(), has_devcontainer=False
                 ),
             )
         )
@@ -67,9 +63,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    has_devcontainer=True,
+                    dist="demo", workspace_repositories=(), has_devcontainer=True
                 ),
             )
         )

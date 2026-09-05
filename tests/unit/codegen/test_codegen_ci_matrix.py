@@ -178,6 +178,8 @@ class TestCodegenCiMatrix:
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
         tm.that(ci_job, has="permissions:\n      contents: read")
+        tm.that(jobs, has="merge-guard:")
+        tm.that(jobs, has="Block WIP heads from protected integration branches")
 
     def test_blocking_ci_does_not_configure_github_cli_auth(
         self, tmp_path: Path
@@ -248,12 +250,21 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        marker = "fetch-depth: 0\n\n      # make setup is the only toolchain installer."
+        # The empty include sits between the checkout and the credential-source
+        # step: no blank line may appear there, and exactly one separates the
+        # last step before the setup commentary from that commentary.
+        tm.that(
+            workflow, has="fetch-depth: 0\n      # Mise resolves GitHub credentials"
+        )
+        marker = (
+            '>> "$GITHUB_ENV"\n\n      # make setup is the only toolchain installer.'
+        )
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                "fetch-depth: 0\n\n\n      # make setup is the only toolchain installer."
+                '>> "$GITHUB_ENV"\n\n\n'
+                "      # make setup is the only toolchain installer."
             ),
         )
         root2 = self._render_project(tmp_path / "member-again")

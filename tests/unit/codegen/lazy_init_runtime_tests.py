@@ -16,7 +16,7 @@ class TestsFlextInfraLazyInitRuntime:
 
     @staticmethod
     def _generate_package(tmp_path: Path) -> tuple[Path, Path]:
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-runtime", package_name="flext_runtime"
         )
         package_root.joinpath("api.py").write_text(
@@ -28,14 +28,14 @@ class TestsFlextInfraLazyInitRuntime:
             "__all__ = ('FlextDemo', 'primary')\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        return workspace_root, package_root
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        return repository_root, package_root
 
     def test_generated_root_preserves_lazy_runtime_contract(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        workspace_root, package_root = self._generate_package(tmp_path)
-        monkeypatch.syspath_prepend(str(workspace_root / c.Infra.DEFAULT_SRC_DIR))
+        repository_root, package_root = self._generate_package(tmp_path)
+        monkeypatch.syspath_prepend(str(repository_root / c.Infra.DEFAULT_SRC_DIR))
 
         package = importlib.import_module("flext_runtime")
 
@@ -51,7 +51,7 @@ class TestsFlextInfraLazyInitRuntime:
     def test_generated_root_preserves_import_failures(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-failure", package_name="flext_failure"
         )
         package_root.joinpath("api.py").write_text(
@@ -60,8 +60,8 @@ class TestsFlextInfraLazyInitRuntime:
             "__all__ = ('FlextDemo',)\n",
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        monkeypatch.syspath_prepend(str(workspace_root / c.Infra.DEFAULT_SRC_DIR))
+        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
+        monkeypatch.syspath_prepend(str(repository_root / c.Infra.DEFAULT_SRC_DIR))
         package = importlib.import_module("flext_failure")
 
         with pytest.raises(ModuleNotFoundError, match="missing runtime dependency"):

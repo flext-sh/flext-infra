@@ -42,7 +42,7 @@ class TestsFlextInfraDepsModernizerPackaging:
         tm.that(len(changes) > 0, eq=True)
         tm.that(wheel["packages"], eq=["src/dcdoc"])
 
-    def test_workspace_root_with_matching_package_keeps_default_selection(
+    def test_repository_root_with_matching_package_keeps_default_selection(
         self, tool_config_document: m.Infra.ToolConfigDocument, tmp_path: Path
     ) -> None:
         """Monorepo root whose name matches src/<name> keeps hatchling defaults."""

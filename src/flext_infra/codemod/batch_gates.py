@@ -2,38 +2,12 @@
 
 from __future__ import annotations
 
-import sys
+
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Annotated, ClassVar, Final
-
 from flext_infra import c, m, p, r, t, u
-
-_TOOL_TIMEOUT_SECONDS: Final[int] = 900
-
-
-class FlextInfraModGateSnapshot(m.ArbitraryTypesModel):
-    """Error-count snapshot of the two mod circuit gates."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-    ruff_errors: Annotated[
-        t.NonNegativeInt, m.Field(description="ruff check error count")
-    ]
-    pyrefly_errors: Annotated[
-        t.NonNegativeInt, m.Field(description="pyrefly error count")
-    ]
-
-
-class FlextInfraModScanReport(m.ArbitraryTypesModel):
-    """Verified actionable rewrite report."""
-
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-    nodes: Annotated[t.NonNegativeInt, m.Field(description="actionable node count")]
-    files: Annotated[
-        frozenset[Path], m.Field(description="files containing actionable nodes")
-    ]
+from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 
 class FlextInfraModGateEngine:
@@ -41,7 +15,7 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def circuit_broken(
-        baseline: FlextInfraModGateSnapshot, final: FlextInfraModGateSnapshot
+        baseline: m.Infra.ModGateSnapshot, final: m.Infra.ModGateSnapshot
     ) -> bool:
         """Return True when either gate error count increased after the apply."""
         return (
@@ -52,7 +26,7 @@ class FlextInfraModGateEngine:
     @staticmethod
     def _run_tool(root: Path, command: t.StrSequence) -> p.Result[p.Cli.CommandOutput]:
         """Run one circuit tool and tolerate its findings exit codes."""
-        run = u.Cli.run_raw(command, cwd=root, timeout=_TOOL_TIMEOUT_SECONDS)
+        run = u.Cli.run_raw(command, cwd=root, timeout=c.Infra.TIMEOUT_SHORT)
         if run.failure:
             return r[p.Cli.CommandOutput].fail(
                 run.error or f"tool execution failed: {command[0]}"
@@ -76,33 +50,9 @@ class FlextInfraModGateEngine:
         return count
 
     @staticmethod
-    def _fixable_rule_ids(rule: Path) -> p.Result[frozenset[str]]:
-        documents = rule.read_text(encoding="utf-8").split("\n---")
-        fixable_ids: set[str] = set()
-        for raw_document in documents:
-            if not any(
-                line.strip() and not line.lstrip().startswith("#")
-                for line in raw_document.splitlines()
-            ):
-                continue
-            parsed = u.Cli.yaml_parse(raw_document)
-            if parsed.failure:
-                return r[frozenset[str]].fail(
-                    parsed.error or f"invalid ast-grep rule document in {rule}"
-                )
-            rule_id = parsed.value.get("id")
-            if not isinstance(rule_id, str) or not rule_id:
-                return r[frozenset[str]].fail(
-                    f"ast-grep rule document missing required id: {rule}"
-                )
-            if "fix" in parsed.value:
-                fixable_ids.add(rule_id)
-        return r[frozenset[str]].ok(frozenset(fixable_ids))
-
-    @staticmethod
     def _actionable_findings(
         stdout: str, fixable_ids: frozenset[str]
-    ) -> FlextInfraModScanReport:
+    ) -> m.Infra.ModScanReport:
         nodes = 0
         files: set[Path] = set()
         for raw_line in stdout.splitlines():
@@ -121,7 +71,7 @@ class FlextInfraModGateEngine:
                 continue
             nodes += 1
             files.add(Path(file))
-        return FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
+        return m.Infra.ModScanReport(nodes=nodes, files=frozenset(files))
 
     @classmethod
     def _count_tool_errors(cls, stdout: str) -> int:
@@ -137,65 +87,99 @@ class FlextInfraModGateEngine:
         return cls._count_json_lines(stdout)
 
     @classmethod
-    def measure(cls, root: Path) -> p.Result[FlextInfraModGateSnapshot]:
-        """Capture the ruff + pyrefly error counts for one project root."""
-        ruff_run = cls._run_tool(
-            root,
-            (
-                c.Infra.RUFF,
-                c.Infra.VERB_CHECK,
-                ".",
-                "--no-fix",
-                "--output-format",
-                c.Infra.OUTPUT_JSON,
-                "--quiet",
-            ),
+    def measure(cls, root: Path) -> p.Result[m.Infra.ModGateSnapshot]:
+        """Capture error counts through the canonical Ruff and Pyrefly gates."""
+        context = m.Infra.GateContext(
+            workspace=root,
+            reports_dir=root / c.Infra.REPORTS_DIR_NAME,
+            gate_mode="error",
         )
-        if ruff_run.failure:
-            return r[FlextInfraModGateSnapshot].from_failure(ruff_run)
-        pyrefly_run = cls._run_tool(
-            root,
-            (
-                c.Infra.PYREFLY,
-                c.Infra.CHECK,
-                ".",
-                "--config",
-                c.Infra.PYPROJECT_FILENAME,
-                "--python-interpreter-path",
-                sys.executable,
-                "--output-format",
-                c.Infra.OUTPUT_JSON,
-                "--summary=none",
-            ),
+        ruff_execution = FlextInfraRuffLintGate(root).check(root, context)
+        pyrefly_execution = FlextInfraPyreflyGate(root).check(root, context)
+        raw_diagnostics = tuple(
+            diagnostic
+            for execution in (ruff_execution, pyrefly_execution)
+            if not execution.result.passed
+            for diagnostic in (
+                *execution.result.errors,
+                *(issue.formatted for issue in execution.issues),
+                execution.raw_output.strip(),
+            )
+            if diagnostic
         )
-        if pyrefly_run.failure:
-            return r[FlextInfraModGateSnapshot].from_failure(pyrefly_run)
-        return r[FlextInfraModGateSnapshot].ok(
-            FlextInfraModGateSnapshot(
-                ruff_errors=cls._count_tool_errors(ruff_run.value.stdout or ""),
-                pyrefly_errors=cls._count_tool_errors(pyrefly_run.value.stdout or ""),
+        diagnostics: list[str] = []
+        for diagnostic in raw_diagnostics:
+            if diagnostic not in diagnostics:
+                diagnostics.append(diagnostic)
+        return r[m.Infra.ModGateSnapshot].ok(
+            m.Infra.ModGateSnapshot(
+                ruff_errors=(
+                    ruff_execution.error_count
+                    if ruff_execution.result.passed
+                    else max(1, ruff_execution.error_count)
+                ),
+                pyrefly_errors=(
+                    pyrefly_execution.error_count
+                    if pyrefly_execution.result.passed
+                    else max(1, pyrefly_execution.error_count)
+                ),
+                ruff_files=frozenset(
+                    path if path.is_absolute() else root / path
+                    for issue in ruff_execution.issues
+                    if (path := Path(issue.file)).name != "<ruff-output>"
+                ),
+                diagnostics=tuple(diagnostics),
             )
         )
 
+    @staticmethod
+    def normalize_imports(root: Path, file_paths: frozenset[Path]) -> p.Result[bool]:
+        """Normalize AST-rewritten imports through the public Rope utility."""
+        if not file_paths:
+            return r[bool].ok(False)
+        with u.Infra.open_project(root) as rope_project:
+            return u.Infra.normalize_imports(
+                rope_project,
+                file_paths=tuple(sorted(file_paths)),
+                preserve_canonical_aliases=True,
+            )
+
+    @staticmethod
+    def _count_fixable_findings(stdout: str, fixable_ids: frozenset[str]) -> int:
+        findings = 0
+        for raw_line in stdout.splitlines():
+            parsed = u.Cli.json_parse(raw_line.strip())
+            if parsed.failure or not isinstance(parsed.value, Mapping):
+                continue
+            if parsed.value.get("ruleId") in fixable_ids:
+                findings += 1
+        return findings
+
     @classmethod
     def scan(
-        cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool
-    ) -> p.Result[FlextInfraModScanReport]:
+        cls, root: Path, plan: m.Infra.CodemodRulePlan, *, fix: bool
+    ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply actionable rewrite documents."""
         nodes = 0
         files: set[Path] = set()
-        for rule in rules:
-            fixable = cls._fixable_rule_ids(rule)
-            if fixable.failure:
-                return r[FlextInfraModScanReport].from_failure(fixable)
-            if not fixable.value:
+        for ruleset in plan.rulesets:
+            fixable = frozenset(ruleset.fixable_rule_ids)
+            if not fixable:
                 continue
-            command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule)]
+            rule_filter = u.Infra.codemod_rule_filter(ruleset.fixable_rule_ids)
+            command: list[str] = [
+                c.Infra.SG,
+                c.Infra.SCAN,
+                "--config",
+                str(ruleset.config),
+                "--filter",
+                rule_filter,
+            ]
             command.extend(("--json=stream", "."))
             run = cls._run_tool(root, tuple(command))
             if run.failure:
-                return r[FlextInfraModScanReport].from_failure(run)
-            report = cls._actionable_findings(run.value.stdout or "", fixable.value)
+                return r[m.Infra.ModScanReport].from_failure(run)
+            report = cls._actionable_findings(run.value.stdout or "", fixable)
             nodes += report.nodes
             files.update(report.files)
             if fix and report.nodes:
@@ -204,21 +188,19 @@ class FlextInfraModGateEngine:
                     (
                         c.Infra.SG,
                         c.Infra.SCAN,
-                        "--rule",
-                        str(rule),
+                        "--config",
+                        str(ruleset.config),
+                        "--filter",
+                        rule_filter,
                         "--update-all",
                         ".",
                     ),
                 )
                 if apply_run.failure:
-                    return r[FlextInfraModScanReport].from_failure(apply_run)
-        return r[FlextInfraModScanReport].ok(
-            FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
+                    return r[m.Infra.ModScanReport].from_failure(apply_run)
+        return r[m.Infra.ModScanReport].ok(
+            m.Infra.ModScanReport(nodes=nodes, files=frozenset(files))
         )
 
 
-__all__: list[str] = [
-    "FlextInfraModGateEngine",
-    "FlextInfraModGateSnapshot",
-    "FlextInfraModScanReport",
-]
+__all__: list[str] = ["FlextInfraModGateEngine"]

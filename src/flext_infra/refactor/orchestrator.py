@@ -5,16 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, m, u
+from flext_infra.api import infra
 from flext_infra.refactor._orchestrator_dispatch import (
     FlextInfraRefactorOrchestratorDispatchMixin,
 )
 from flext_infra.refactor._orchestrator_scope import (
     FlextInfraRefactorOrchestratorScopeMixin,
 )
-from flext_infra.refactor.file_executor import (
-    FlextInfraClassNestingPostCheckGate,
-    FlextInfraRefactorFileExecutor,
-)
+from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
 
@@ -44,11 +42,6 @@ class FlextInfraRefactorOrchestrator(
         """Initialize the orchestrator with a loader and optional safety service."""
         self.loader = loader
         self.safety_manager = safety_manager or FlextInfraRefactorSafetyManager()
-        self._class_nesting_config: t.JsonMapping | None = None
-        self._class_nesting_policy_by_family: (
-            t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
-        ) = None
-        self._class_nesting_gate: FlextInfraClassNestingPostCheckGate | None = None
 
     @override
     def refactor_file(
@@ -59,18 +52,15 @@ class FlextInfraRefactorOrchestrator(
         gates: t.StrSequence | None = None,
     ) -> m.Infra.Result:
         """Refactor one file using the loader's current rule selections."""
-        try:
-            if file_path.suffix != c.Infra.EXT_PYTHON:
-                return self._skip_result(file_path)
-            return self._refactor_python_file(file_path, dry_run=dry_run, gates=gates)
-        except c.EXC_BROAD_IO_TYPE as exc:
-            return self._error_result(file_path, str(exc))
+        if file_path.suffix != c.Infra.EXT_PYTHON:
+            return self._skip_result(file_path)
+        return self._refactor_python_file(file_path, dry_run=dry_run, gates=gates)
 
     def _refactor_python_file(
         self, file_path: Path, *, dry_run: bool, gates: t.StrSequence | None
     ) -> m.Infra.Result:
         """Refactor one Python source file after caller-level exception handling."""
-        workspace_root = u.Infra.project_root(file_path) or file_path.parent
+        repository_root = u.Infra.project_root(file_path) or file_path.parent
         read = u.Cli.files_read_text(file_path)
         if read.failure:
             return self._error_result(
@@ -79,7 +69,7 @@ class FlextInfraRefactorOrchestrator(
         original = read.value
         current, all_changes = original, list[str]()
         current, error_result = self._apply_file_rules(
-            file_path, workspace_root, current, all_changes
+            file_path, repository_root, current, all_changes
         )
         if error_result is not None:
             return error_result
@@ -88,7 +78,7 @@ class FlextInfraRefactorOrchestrator(
         if not dry_run and modified:
             error_result = self._write_refactored_source(
                 file_path=file_path,
-                workspace_root=workspace_root,
+                repository_root=repository_root,
                 current=current,
                 original=original,
                 all_changes=all_changes,
@@ -105,7 +95,7 @@ class FlextInfraRefactorOrchestrator(
     def _apply_file_rules(
         self,
         file_path: Path,
-        workspace_root: Path,
+        repository_root: Path,
         current: str,
         all_changes: t.MutableSequenceOf[str],
     ) -> tuple[str, m.Infra.Result | None]:
@@ -113,8 +103,8 @@ class FlextInfraRefactorOrchestrator(
         if not self.loader.file_rules:
             return current, None
         updated_source = current
-        with u.Infra.open_project(workspace_root) as rope_project:
-            resource = u.Infra.get_resource_from_path(rope_project, file_path)
+        with infra.rope_workspace(repository_root) as rope_workspace:
+            resource = rope_workspace.resource(file_path)
             if resource is None:
                 return (
                     updated_source,
@@ -124,7 +114,7 @@ class FlextInfraRefactorOrchestrator(
                 )
             for kind, settings in self.loader.file_rules:
                 file_rule_result = self._apply_file_rule_selection(
-                    kind, settings, rope_project, resource, dry_run=True
+                    kind, settings, rope_workspace, file_path
                 )
                 if not file_rule_result.success:
                     return (
@@ -161,7 +151,7 @@ class FlextInfraRefactorOrchestrator(
         self,
         *,
         file_path: Path,
-        workspace_root: Path,
+        repository_root: Path,
         current: str,
         original: str,
         all_changes: t.MutableSequenceOf[str],
@@ -171,7 +161,7 @@ class FlextInfraRefactorOrchestrator(
         ok, report = u.Infra.protected_source_write(
             file_path,
             request=m.Infra.ProtectedSourceWriteRequest(
-                workspace=workspace_root,
+                workspace=repository_root,
                 updated_source=current,
                 keep_backup=True,
                 gates=gates,

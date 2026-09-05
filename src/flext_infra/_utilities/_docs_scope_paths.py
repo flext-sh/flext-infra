@@ -89,9 +89,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
                 )
             candidates.append(root / selector)
         for candidate in extra_roots:
-            lexical = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(
-                candidate
-            )
+            lexical = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(candidate)
             if not lexical.is_relative_to(root):
                 return r[tuple[Path, ...]].fail(
                     f"docs source root escapes workspace {root}: {lexical}"

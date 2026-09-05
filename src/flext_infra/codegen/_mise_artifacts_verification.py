@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import stat
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
@@ -51,9 +50,13 @@ def register_transaction_manifests(
         physical = _manifest_root_matches_created(directory, observed.value)
         if physical.failure:
             return result_type.from_failure(physical)
-        if any(entry.kind == "symlink" for entry in observed.value.entries):
+        aliases = tuple(
+            entry.path for entry in observed.value.entries if entry.kind == "symlink"
+        )
+        if aliases:
             return result_type.fail(
-                f"temporary tree contains an alias: {directory.path}"
+                "temporary tree contains aliases: "
+                + ", ".join(path.as_posix() for path in aliases)
             )
         if directory.manifest is not None:
             transition = _validate_manifest_transition(
@@ -114,7 +117,7 @@ def journal_topology(
     """Bind every journal selector and physical identity to the locked layout."""
     if layout.transaction_id != journal.transaction_id:
         return r[bool].fail("generation journal transaction id differs from layout")
-    scope = _directory_identity(layout.scope_root)
+    scope = files.physical_directory_identity(layout.scope_root)
     if scope.failure:
         return r[bool].from_failure(scope)
     if scope.value != (journal.scope_device, journal.scope_inode):
@@ -134,7 +137,7 @@ def journal_topology(
         directory_targets[target.value] = directory
     for recorded in journal.projects:
         project = by_selector[recorded.selector]
-        identity = _directory_identity(project.root)
+        identity = files.physical_directory_identity(project.root)
         if identity.failure:
             return r[bool].from_failure(identity)
         if identity.value != (recorded.device, recorded.inode):
@@ -143,28 +146,29 @@ def journal_topology(
             )
     for directory in journal.directories:
         project = by_selector[directory.project]
-        target = next(
-            path for path, candidate in directory_targets.items() if candidate == directory
+        resolved_target = next(
+            path
+            for path, candidate in directory_targets.items()
+            if candidate == directory
         )
-        if target == project.root or not target.is_relative_to(project.root):
+        if resolved_target == project.root or not resolved_target.is_relative_to(
+            project.root
+        ):
             return r[bool].fail(
                 f"generation directory escapes its project: {directory.path}"
             )
-        if directory.before is not None and directory.before.path != target:
+        if directory.before is not None and directory.before.path != resolved_target:
             return r[bool].fail(
                 f"generation directory preflight path differs: {directory.path}"
             )
         if directory.created is not None:
-            if directory.created.path != target:
+            if directory.created.path != resolved_target:
                 return r[bool].fail(
                     f"generation created directory path differs: {directory.path}"
                 )
-            parent = directory_targets.get(target.parent)
+            parent = directory_targets.get(resolved_target.parent)
             expected_parent = (
-                (
-                    directory.before.parent_device,
-                    directory.before.parent_inode,
-                )
+                (directory.before.parent_device, directory.before.parent_inode)
                 if directory.before is not None
                 else (
                     None
@@ -172,10 +176,11 @@ def journal_topology(
                     else (parent.created.device, parent.created.inode)
                 )
             )
-            if expected_parent is None or (
-                directory.created.parent_device,
-                directory.created.parent_inode,
-            ) != expected_parent:
+            if (
+                expected_parent is None
+                or (directory.created.parent_device, directory.created.parent_inode)
+                != expected_parent
+            ):
                 return r[bool].fail(
                     f"generation directory parent binding differs: {directory.path}"
                 )
@@ -184,7 +189,7 @@ def journal_topology(
             if (
                 directory.phase != "transaction"
                 or transaction_root is None
-                or not transaction_root.is_relative_to(target)
+                or not transaction_root.is_relative_to(resolved_target)
             ):
                 return r[bool].fail(
                     f"temporary directory escapes transaction root: {directory.path}"
@@ -247,6 +252,39 @@ def states_current(states: tuple[m.Cli.AtomicFileState, ...]) -> p.Result[bool]:
             return r[bool].from_failure(observed)
         if observed.value != expected:
             return r[bool].fail(f"generation state changed: {expected.path}")
+    return r[bool].ok(True)
+
+
+def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool]:
+    """Prove one published phase from its authenticated analysis receipt."""
+    destination_paths = frozenset(file.path for file in analysis.files)
+    source_state = states_current(
+        tuple(state for state in analysis.inputs if state.path not in destination_paths)
+    )
+    if source_state.failure:
+        return source_state
+    for plan in analysis.files:
+        observed = files.read_state(
+            plan.path, required=plan.desired_content is not None
+        )
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        current = observed.value
+        if (
+            current.content,
+            current.mode,
+            current.parent_device,
+            current.parent_inode,
+        ) != (
+            plan.desired_content,
+            plan.desired_mode,
+            plan.before.parent_device,
+            plan.before.parent_inode,
+        ):
+            return r[bool].fail(
+                f"published {analysis.phase} destination differs from receipt: "
+                f"{plan.path}"
+            )
     return r[bool].ok(True)
 
 
@@ -323,7 +361,7 @@ def live(
     source_before = sources(plan)
     if source_before.failure:
         return source_before
-    replacements: dict[Path, tuple[bytes, int | None]] = {}
+    replacements: dict[Path, tuple[bytes | None, int | None]] = {}
     for publication in publications or ():
         replacement = publication.replacement
         if replacement is None or replacement.content is None:
@@ -335,9 +373,7 @@ def live(
     if artifact_before.failure:
         return r[bool].from_failure(artifact_before)
     for project in plan.projects:
-        validated = owner.validate_artifacts(
-            project.layout.root, config_sources=project.config.sources
-        )
+        validated = owner.validate_artifacts(project.layout.root)
         if validated.failure:
             return r[bool].fail(
                 validated.error
@@ -382,9 +418,7 @@ def _validate_manifest_transition(
         if current_entry is None:
             if entry.kind == "file" and path in consumable:
                 continue
-            return r[bool].fail(
-                f"journaled temporary-tree entry is missing: {path}"
-            )
+            return r[bool].fail(f"journaled temporary-tree entry is missing: {path}")
         if entry.kind == "directory":
             if not _same_directory_identity(entry, current_entry):
                 return r[bool].fail(
@@ -392,9 +426,7 @@ def _validate_manifest_transition(
                 )
         elif current_entry != entry:
             return r[bool].fail(f"temporary-tree file identity changed: {path}")
-    additions = tuple(
-        entry for path, entry in current.items() if path not in expected
-    )
+    additions = tuple(entry for path, entry in current.items() if path not in expected)
     if additions and not allow_registered_additions:
         return r[bool].fail(
             f"unregistered temporary-tree entry exists: {additions[0].path}"
@@ -419,12 +451,8 @@ def _journal_file_specs(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     journal: m.Infra.CodegenTransactionJournal,
 ) -> p.Result[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]:
-    result_type = r[
-        dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
-    ]
-    specs: dict[
-        Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]
-    ] = {}
+    result_type = r[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]
+    specs: dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]] = {}
     for entry in journal.entries:
         selectors: tuple[tuple[_JournalFileRole, str | None], ...] = (
             ("desired", entry.desired_staging),
@@ -498,8 +526,7 @@ def _matches_journal_file(
 
 
 def _same_directory_identity(
-    expected: m.Cli.AtomicPhysicalTreeEntry,
-    observed: m.Cli.AtomicPhysicalTreeEntry,
+    expected: m.Cli.AtomicPhysicalTreeEntry, observed: m.Cli.AtomicPhysicalTreeEntry
 ) -> bool:
     return (
         expected.path,
@@ -538,9 +565,7 @@ def _manifest_root_matches_created(
 ) -> p.Result[bool]:
     created = directory.created
     if created is None:
-        return r[bool].fail(
-            f"temporary tree has no created identity: {directory.path}"
-        )
+        return r[bool].fail(f"temporary tree has no created identity: {directory.path}")
     root = manifest.root
     if (
         root.path,
@@ -569,7 +594,7 @@ def _manifest_root_matches_created(
 
 def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    replacements: dict[Path, tuple[bytes, int | None]],
+    replacements: dict[Path, tuple[bytes | None, int | None]],
 ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
     root_launchers: tuple[bytes, bytes] | None = None
     states: list[m.Cli.AtomicFileState] = []
@@ -640,24 +665,12 @@ def _file_identity(
     )
 
 
-def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
-    try:
-        observed = path.lstat()
-    except OSError as exc:
-        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
-    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
-        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
-    )
-    if not stat.S_ISDIR(observed.st_mode) or reparse:
-        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
-    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
-
-
 __all__: list[str] = [
     "authorized_cleanup_manifest",
     "destinations",
     "journal_topology",
     "live",
+    "phase_analysis_live",
     "publications_live",
     "register_transaction_manifests",
     "sources",

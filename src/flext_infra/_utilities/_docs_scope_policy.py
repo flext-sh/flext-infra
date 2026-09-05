@@ -13,9 +13,7 @@ from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
 
 
-class FlextInfraUtilitiesDocsScopePolicyMixin(
-    FlextInfraUtilitiesDocsScopeStateMixin
-):
+class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateMixin):
     """Interpret the authenticated docs policy for one project or workspace."""
 
     @staticmethod

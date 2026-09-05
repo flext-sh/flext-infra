@@ -36,7 +36,7 @@ class FlextInfraModelsWorktree:
 
         relative_path: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Repository path relative to the workspace root"),
+            m.Field(description="Repository path relative to the repository root"),
         ]
         source_root: Annotated[
             Path, m.Field(description="Original repository worktree root")
@@ -62,7 +62,7 @@ class FlextInfraModelsWorktree:
 
         relative_path: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Repository path relative to the workspace root"),
+            m.Field(description="Repository path relative to the repository root"),
         ]
         source_root: Annotated[
             Path, m.Field(description="Original repository worktree root")

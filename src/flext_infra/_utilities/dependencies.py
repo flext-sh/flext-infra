@@ -10,15 +10,14 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from flext_cli import u
+from flext_cli import p, r, u
+from flext_infra import t
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 from packaging.requirements import InvalidRequirement, Requirement
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
@@ -41,6 +40,29 @@ class FlextInfraUtilitiesDependencies:
             text = text.rsplit("/", maxsplit=1)[-1].strip()
         normalized = text.lower()
         return normalized or None
+
+    @staticmethod
+    def dependency_waves(
+        edges: t.MappingKV[str, t.StrSequence],
+    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
+        """Layer a dependency graph deterministically and reject every cycle."""
+        pending = {name: set(dependencies) for name, dependencies in edges.items()}
+        waves: t.MutableSequenceOf[t.StrSequence] = []
+        while pending:
+            ready = tuple(
+                sorted(name for name, blockers in pending.items() if not blockers)
+            )
+            if not ready:
+                return r[t.SequenceOf[t.StrSequence]].fail(
+                    "dependency cycle blocks topological order: "
+                    + ", ".join(sorted(pending))
+                )
+            waves.append(ready)
+            for name in ready:
+                del pending[name]
+            for blockers in pending.values():
+                blockers.difference_update(ready)
+        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
     @staticmethod
     def constraint_specifier(version: str) -> str:

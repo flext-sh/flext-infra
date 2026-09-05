@@ -120,6 +120,8 @@ class TestsRootArtifactOwnership:
                     'version = "0.1.0"\n'
                     'requires-python = ">=3.13,<3.14"\n'
                     "dependencies = []\n"
+                    "[project.urls]\n"
+                    'Repository = "https://github.com/flext-sh/flext-demo"\n'
                 ),
             )
         )
@@ -225,7 +227,9 @@ class TestsAncestryNetworkBoundary:
         monkeypatch.setattr(u.Cli, "run_raw", _record)
         request = m.Infra.CodegenConformRequest(root=root)
         tm.ok(
-            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
+            FlextInfraCodegenConform(repository_root=root, request=request).plan(
+                request
+            )
         )
 
         fetches = [entry for entry in recorded if "fetch" in entry[0]]

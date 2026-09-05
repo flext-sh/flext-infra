@@ -13,9 +13,17 @@ if TYPE_CHECKING:
     from . import _git as _git
     from . import _rope as _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
+    from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
+    from ._docs_generate_project import FlextInfraUtilitiesDocsGenerateProjectMixin
+    from ._docs_generate_root import FlextInfraUtilitiesDocsGenerateRootMixin
+    from ._docs_generate_sources import FlextInfraUtilitiesDocsGenerateSourcesMixin
     from ._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
+    from ._docs_scope_paths import FlextInfraUtilitiesDocsScopePathsMixin
+    from ._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
+    from ._docs_scope_projects import FlextInfraUtilitiesDocsScopeProjectsMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
+    from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
     from ._git.remote import canonical_origin_remote, redact_origin_remote
     from ._git.repo import FlextInfraUtilitiesGitRepo
@@ -51,7 +59,10 @@ if TYPE_CHECKING:
     from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
+    from .class_nesting import FlextInfraUtilitiesClassNesting
     from .codegen import FlextInfraUtilitiesCodegen
+    from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+    from .codemod_rules import FlextInfraUtilitiesCodemodRules
     from .deferred_self_reference_ast import (
         DeferredSelfReferenceFinding,
         collect_deferred_self_reference_findings,
@@ -77,7 +88,6 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
-    from .policy import FlextInfraUtilitiesRefactorPolicy
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
@@ -123,8 +133,11 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "DeferredSelfReferenceFinding",
     "FlextInfraUtilitiesBase",
+    "FlextInfraUtilitiesClassNesting",
     "FlextInfraUtilitiesCodegen",
+    "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesDependencies",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -135,11 +148,19 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
     "FlextInfraUtilitiesDocsGenerate",
+    "FlextInfraUtilitiesDocsGeneratePlanMixin",
+    "FlextInfraUtilitiesDocsGenerateProjectMixin",
+    "FlextInfraUtilitiesDocsGenerateRootMixin",
+    "FlextInfraUtilitiesDocsGenerateSourcesMixin",
     "FlextInfraUtilitiesDocsGithubLinks",
     "FlextInfraUtilitiesDocsRender",
     "FlextInfraUtilitiesDocsScope",
     "FlextInfraUtilitiesDocsScopeBuildMixin",
+    "FlextInfraUtilitiesDocsScopePathsMixin",
+    "FlextInfraUtilitiesDocsScopePolicyMixin",
+    "FlextInfraUtilitiesDocsScopeProjectsMixin",
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
+    "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationMixin",
@@ -184,7 +205,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceFlext",
     "FlextInfraUtilitiesRefactorNamespaceMoves",
-    "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
@@ -228,9 +248,17 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._docs_audit_detectors": ("FlextInfraUtilitiesDocsAuditDetectorsMixin",),
+            "._docs_generate_plan": ("FlextInfraUtilitiesDocsGeneratePlanMixin",),
+            "._docs_generate_project": ("FlextInfraUtilitiesDocsGenerateProjectMixin",),
+            "._docs_generate_root": ("FlextInfraUtilitiesDocsGenerateRootMixin",),
+            "._docs_generate_sources": ("FlextInfraUtilitiesDocsGenerateSourcesMixin",),
             "._docs_github_links": ("FlextInfraUtilitiesDocsGithubLinks",),
             "._docs_scope_build": ("FlextInfraUtilitiesDocsScopeBuildMixin",),
+            "._docs_scope_paths": ("FlextInfraUtilitiesDocsScopePathsMixin",),
+            "._docs_scope_policy": ("FlextInfraUtilitiesDocsScopePolicyMixin",),
+            "._docs_scope_projects": ("FlextInfraUtilitiesDocsScopeProjectsMixin",),
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
+            "._docs_scope_state": ("FlextInfraUtilitiesDocsScopeStateMixin",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
             "._git.remote": ("canonical_origin_remote", "redact_origin_remote"),
@@ -276,7 +304,10 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
+            ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
+            ".codegen_file_plan": ("FlextInfraUtilitiesCodegenFilePlan",),
+            ".codemod_rules": ("FlextInfraUtilitiesCodemodRules",),
             ".deferred_self_reference_ast": (
                 "DeferredSelfReferenceFinding",
                 "collect_deferred_self_reference_findings",
@@ -302,7 +333,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
-            ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
             ".process": ("FlextInfraUtilitiesProcess",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (

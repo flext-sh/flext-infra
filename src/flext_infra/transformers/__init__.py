@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from .deprecated_remover import FlextInfraRefactorDeprecatedRemover
     from .future_import import FlextInfraRefactorFutureImport
     from .hardcoded_version import FlextInfraRefactorHardcodedVersion
-    from .helper_consolidation import FlextInfraHelperConsolidationTransformer
     from .import_bypass_remover import FlextInfraRefactorImportBypassRemover
     from .import_modernizer import FlextInfraRefactorImportModernizer
     from .lazy_import_fixer import FlextInfraRefactorLazyImportFixer
@@ -55,7 +54,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraHelperConsolidationTransformer",
     "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraRefactorCastRemover",
     "FlextInfraRefactorClassNestingTransformer",
@@ -109,7 +107,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".deprecated_remover": ("FlextInfraRefactorDeprecatedRemover",),
             ".future_import": ("FlextInfraRefactorFutureImport",),
             ".hardcoded_version": ("FlextInfraRefactorHardcodedVersion",),
-            ".helper_consolidation": ("FlextInfraHelperConsolidationTransformer",),
             ".import_bypass_remover": ("FlextInfraRefactorImportBypassRemover",),
             ".import_modernizer": ("FlextInfraRefactorImportModernizer",),
             ".lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),

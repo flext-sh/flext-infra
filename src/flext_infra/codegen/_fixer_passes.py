@@ -50,9 +50,13 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
     def _run_lazy_init_preflight(ctx: m.Infra.FixContext, project_path: Path) -> None:
         """Preflight lazy-init plans and leave publication to conform."""
         plans = (
-            FlextInfraCodegenLazyInit(workspace_root=project_path).plan_files().unwrap()
+            FlextInfraCodegenLazyInit(repository_root=project_path)
+            .plan_files()
+            .unwrap()
         )
-        pending = tuple(plan for plan in plans if plan.requires_effect)
+        pending = tuple(
+            plan for plan in plans.files if u.Infra.codegen_file_requires_effect(plan)
+        )
         if pending:
             ctx.skip(
                 module=project_path.name,

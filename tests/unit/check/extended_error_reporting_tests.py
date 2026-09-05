@@ -109,9 +109,9 @@ class TestGateErrorReportingPublicBehavior:
         runner = u.Tests.command_runner(stderr="rumdl execution failed", returncode=2)
 
         def create_gate(
-            _registry: FlextInfraGateRegistry, _gate_id: str, workspace_root: Path
+            _registry: FlextInfraGateRegistry, _gate_id: str, repository_root: Path
         ) -> FlextInfraMarkdownGate:
-            return FlextInfraMarkdownGate(workspace_root, runner=runner)
+            return FlextInfraMarkdownGate(repository_root, runner=runner)
 
         monkeypatch.setattr(FlextInfraGateRegistry, "create", create_gate)
 
@@ -136,9 +136,9 @@ class TestGateErrorReportingPublicBehavior:
         runner = u.Tests.command_runner(stdout=diagnostic, returncode=1)
 
         def create_gate(
-            _registry: FlextInfraGateRegistry, _gate_id: str, workspace_root: Path
+            _registry: FlextInfraGateRegistry, _gate_id: str, repository_root: Path
         ) -> FlextInfraMarkdownGate:
-            return FlextInfraMarkdownGate(workspace_root, runner=runner)
+            return FlextInfraMarkdownGate(repository_root, runner=runner)
 
         monkeypatch.setattr(FlextInfraGateRegistry, "create", create_gate)
 

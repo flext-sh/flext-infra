@@ -21,9 +21,6 @@ if TYPE_CHECKING:
     from .models import TestsFlextInfraModels, TestsFlextInfraModels as m
     from .protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
     from .typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
-    from .unit.check.tests_workspace_check import (
-        test_workspace_check_main_returns_error_without_projects,
-    )
     from .unit.fixtures import (
         deptry_report_payload,
         models_resource,
@@ -82,7 +79,6 @@ __all__: tuple[str, ...] = (
     "services_resource",
     "t",
     "td",
-    "test_workspace_check_main_returns_error_without_projects",
     "tf",
     "tk",
     "tm",
@@ -104,9 +100,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor": ("refactor",),
             ".typings": ("TestsFlextInfraTypes", "t"),
             ".unit": ("unit",),
-            ".unit.check.tests_workspace_check": (
-                "test_workspace_check_main_returns_error_without_projects",
-            ),
             ".unit.fixtures": (
                 "deptry_report_payload",
                 "models_resource",

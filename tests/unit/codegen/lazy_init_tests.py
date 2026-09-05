@@ -45,14 +45,14 @@ class TestAllDirectoriesScanned:
     def test_src_dir_is_scanned(self, tmp_path: Path) -> None:
         """Scan public source packages in check mode."""
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)
 
     def test_tests_dir_is_scanned(self, tmp_path: Path) -> None:
         """Scan test packages in check mode."""
         _create_init_file(tmp_path / "tests" / "helpers", _VALID_TESTS_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)
 
@@ -89,7 +89,7 @@ class TestCheckOnlyMode:
             tmp_path / "tests" / "helpers", _VALID_TESTS_INIT
         )
         original_content = tests_init.read_text(encoding="utf-8")
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         tm.that(generator.plan_files().success, eq=True)
         tm.that(tests_init.read_text(encoding="utf-8"), eq=original_content)
 
@@ -101,7 +101,7 @@ class TestExcludedDirectories:
         """Exclude vendored test packages from discovery."""
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
         _create_init_file(tmp_path / "tests" / "vendor" / "pkg", _VALID_TESTS_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)
 
@@ -109,7 +109,7 @@ class TestExcludedDirectories:
         """Exclude virtual-environment test packages from discovery."""
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
         _create_init_file(tmp_path / "tests" / ".venv" / "pkg", _VALID_TESTS_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)
 
@@ -120,7 +120,7 @@ class TestExcludedDirectories:
             tmp_path / "pkg" / "container" / "venv" / "lib" / "site-packages" / "bad",
             _VALID_TESTS_INIT,
         )
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)
 
@@ -130,9 +130,9 @@ class TestExcludedDirectories:
         scratch_init = _create_init_file(
             tmp_path / ".test-runtime" / "invocation" / "tests", _VALID_TESTS_INIT
         )
-        result = FlextInfraCodegenLazyInit(workspace_root=tmp_path).plan_files()
+        result = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
         tm.ok(result)
-        tm.that({plan.path for plan in result.value}, lacks=scratch_init)
+        tm.that({plan.path for plan in result.value.files}, lacks=scratch_init)
 
 
 class TestEdgeCases:
@@ -140,7 +140,7 @@ class TestEdgeCases:
 
     def test_empty_workspace_returns_zero(self, tmp_path: Path) -> None:
         """Return zero changes for an empty workspace."""
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         tm.that(generator.plan_files().success, eq=True)
         tm.that(u.Tests.run_lazy_init(tmp_path), eq=0)
 
@@ -150,21 +150,21 @@ class TestEdgeCases:
         tests_dir = tmp_path / "tests" / "helpers"
         tests_dir.mkdir(parents=True)
         (tests_dir / "conftest.py").write_text("# conftest", encoding="utf-8")
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)
 
     def test_no_tests_dir_at_all(self, tmp_path: Path) -> None:
         """Process source packages when no tests directory exists."""
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)
 
     def test_execute_method_returns_flext_result(self, tmp_path: Path) -> None:
         """Expose execution status through the public result contract."""
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
-        generator = FlextInfraCodegenLazyInit(workspace_root=tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.execute()
         tm.that(result.success, eq=True)
         tm.that(type(result.value).__name__, eq="bool")

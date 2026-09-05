@@ -27,7 +27,9 @@ def stage_file_plans(
     result_type = r[tuple[m.Infra.CodegenStagedFile, ...]]
     if phase not in _PHASES:
         return result_type.fail(f"unsupported generation phase: {phase}")
-    changed = tuple(plan for plan in plans if plan.requires_effect)
+    changed = tuple(
+        plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
+    )
     paths = tuple(plan.path for plan in changed)
     if len(set(paths)) != len(paths):
         return result_type.fail(f"duplicate {phase} generation destination")

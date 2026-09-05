@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+
 from flext_infra import infra, m, u as infra_u
 from flext_infra.codegen import (
     FlextInfraCodegenCensus,
@@ -22,7 +23,6 @@ from flext_infra.codegen import (
 )
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
 from flext_tests import tm
-
 from tests import t, u
 
 if TYPE_CHECKING:
@@ -162,7 +162,7 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
     external_package = external_project / "src" / "external_project"
     tm.that(not external_package.joinpath("constants.py").exists(), eq=True)
     payload = infra.model_copy(
-        update={"workspace_root": tmp_path, "apply_changes": True}
+        update={"repository_root": tmp_path, "apply_changes": True}
     ).command_payload()
     census_before = FlextInfraCodegenCensus.model_validate(payload).run()
     scaffold_results_first = FlextInfraCodegenScaffolder.model_validate(payload).run(

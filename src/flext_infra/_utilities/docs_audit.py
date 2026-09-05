@@ -78,10 +78,10 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
         scope: m.Infra.DocScope, section: str, key: str
     ) -> t.StrSequence:
         """Read one list of policy tokens from the minimal root docs settings."""
-        workspace_root = (
+        repository_root = (
             scope.path if scope.name == c.Infra.RK_ROOT else scope.path.parent
         )
-        payload = FlextInfraUtilitiesDocsScope.load_config(workspace_root)
+        payload = FlextInfraUtilitiesDocsScope.load_config(repository_root)
         container = payload.get(section)
         if not isinstance(container, dict):
             return []

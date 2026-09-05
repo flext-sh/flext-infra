@@ -117,8 +117,8 @@ class FlextInfraModelsRefactor(
     class Checkpoint(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
         """Serialisable checkpoint state for refactor safety recovery."""
 
-        workspace_root: Annotated[
-            t.NonEmptyStr, m.Field(description="Workspace root path")
+        repository_root: Annotated[
+            t.NonEmptyStr, m.Field(description="Repository root path")
         ]
         status: Annotated[str, m.Field(description="Checkpoint status")] = "running"
         processed_targets: Annotated[
@@ -127,37 +127,6 @@ class FlextInfraModelsRefactor(
         updated_at: Annotated[
             str, m.Field(description="ISO 8601 timestamp of last update")
         ] = m.Field(default_factory=lambda: u.now().isoformat())
-
-    class ClassOccurrence(m.ArbitraryTypesModel):
-        """A single class definition occurrence within a source file."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
-        line: Annotated[
-            t.NonNegativeInt, m.Field(description="Line number (0 = unknown)")
-        ]
-        is_top_level: Annotated[
-            bool, m.Field(description="Whether class is at module top level")
-        ]
-
-    class LooseClassViolation(m.ArbitraryTypesModel):
-        """A detected loose-class naming violation with confidence."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        file: Annotated[t.NonEmptyStr, m.Field(description="Source file path")]
-        line: Annotated[t.PositiveInt, m.Field(description="Line number")]
-        class_name: Annotated[
-            t.NonEmptyStr, m.Field(description="Violating class name")
-        ]
-        expected_prefix: Annotated[
-            str, m.Field(description="Expected namespace prefix")
-        ]
-        rule: Annotated[t.NonEmptyStr, m.Field(description="Violated rule id")]
-        reason: Annotated[str, m.Field(description="Human-readable reason")]
-        confidence: Annotated[str, m.Field(description="Confidence level")]
-        score: Annotated[t.DecimalFraction, m.Field(description="Confidence score")]
 
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""

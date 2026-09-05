@@ -255,7 +255,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-079",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-079",),
         ).execute()
 
         tm.ok(report_result)
@@ -276,7 +278,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         stub.write_text("x: int\n", encoding="utf-8")
 
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-090",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-090",),
         ).execute()
 
         tm.ok(report_result)
@@ -296,7 +300,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         stub.write_text("x: int\n", encoding="utf-8")
 
         dry_run_result = FlextInfraRefactorCensus(
-            workspace_root=workspace,
+            repository_root=workspace,
             apply_changes=True,
             dry_run=True,
             include_local_scopes=False,
@@ -307,7 +311,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         tm.that(stub.exists(), eq=True)
 
         apply_result = FlextInfraRefactorCensus(
-            workspace_root=workspace,
+            repository_root=workspace,
             apply_changes=True,
             include_local_scopes=False,
             rules=("ENFORCE-090",),
@@ -328,7 +332,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-097",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-097",),
         ).execute()
 
         tm.ok(report_result)
@@ -352,7 +358,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             encoding="utf-8",
         )
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-080",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-080",),
         ).execute()
 
         tm.ok(report_result)

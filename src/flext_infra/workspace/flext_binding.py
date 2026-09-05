@@ -77,9 +77,9 @@ class FlextInfraFlextBindingService:
                 f"{workspace.error or 'manifest unreadable'}"
             )
         available = {
-            subproject.distribution: subproject
-            for subproject in workspace.value.subprojects
-            if subproject.package
+            declared_repository.distribution: declared_repository
+            for declared_repository in workspace.value.declared_repositories
+            if declared_repository.package
         }
         declared = cls._declared_distributions(consumer_root)
         if declared.failure:
@@ -106,9 +106,11 @@ class FlextInfraFlextBindingService:
         if workspace.failure:
             return r[int].fail(workspace.error or "workspace topology unreadable")
         paths = {
-            subproject.distribution: (flext_root / subproject.path).resolve()
-            for subproject in workspace.value.subprojects
-            if subproject.package
+            declared_repository.distribution: (
+                flext_root / declared_repository.path
+            ).resolve()
+            for declared_repository in workspace.value.declared_repositories
+            if declared_repository.package
         }
         editables: list[str] = []
         for name in targets:

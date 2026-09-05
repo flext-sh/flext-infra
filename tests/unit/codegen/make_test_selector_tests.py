@@ -126,7 +126,8 @@ class TestsMakeTestSelector:
                 "set -eu\n"
                 f'printf \'%s\\n\' "$*" >> "{uv_log}"\n'
                 'if [ "$1" = "--version" ]; then '
-                "printf 'uv 0.12.5\\n'; exit 0; fi\n"
+                f"printf 'uv {config.Infra.codegen.toolchain.uv_version}\\n'; "
+                "exit 0; fi\n"
                 'if [ "$1" = "venv" ]; then\n'
                 '  mkdir -p "$2/bin"\n'
                 "  cat > \"$2/bin/python\" <<'PYTHON'\n"
@@ -144,21 +145,11 @@ class TestsMakeTestSelector:
             (
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
-                "printf '2026.9.1\\n'; exit 0; fi\n"
+                f"printf '{test_u.Tests.mise_release()}\\n'; exit 0; fi\n"
+                f"{test_u.Tests.mise_generate_install_script_branch()}"
                 'case "$*" in *"exec -- uv --version"*) '
-                "printf 'uv 0.12.5\\n'; exit 0 ;; esac\n"
-                'case " $* " in *" generate install-script "*)\n'
-                '  while [ "$#" -gt 0 ]; do\n'
-                '    if [ "$1" = "--write" ]; then\n'
-                '      test "$#" -ge 2\n'
-                '      cp -- "$0" "$2"\n'
-                '      cp -- "$0" "$2.cmd"\n'
-                "      exit 0\n"
-                "    fi\n"
-                "    shift\n"
-                "  done\n"
-                "  exit 2\n"
-                ";; esac\n"
+                f"printf 'uv {config.Infra.codegen.toolchain.uv_version}\\n'; "
+                "exit 0 ;; esac\n"
                 'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
                 'if [ "$#" -gt 0 ]; then shift; exec "$@"; fi\n'
                 "exit 0\n"

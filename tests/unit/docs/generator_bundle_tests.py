@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 def _generator(workspace: Path) -> FlextInfraDocGenerator:
     """Return the public generator for the governed fixture project."""
     return FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
 
 
@@ -123,7 +123,7 @@ def test_selected_project_symlink_cannot_escape_workspace(tmp_path: Path) -> Non
     (workspace / "escaped").symlink_to(outside, target_is_directory=True)
 
     prepared = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["escaped"]
+        repository_root=workspace, selected_projects=["escaped"]
     ).prepare_bundle()
 
     tm.fail(prepared)

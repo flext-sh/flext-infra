@@ -4,8 +4,9 @@
 #
 # ast-grep project config. Rule directories are the domain declarations;
 # fixtures and snapshots only validate them, they never define the policy.
-ruleDirs:
+{% if rule_dirs %}ruleDirs:
 {% for rule_dir in rule_dirs %}  - {{ rule_dir }}
-{% endfor %}{% if test_dirs %}testConfigs:
+{% endfor %}{% else %}ruleDirs: []
+{% endif %}{% if test_dirs %}testConfigs:
 {% for test_dir in test_dirs %}  - testDir: {{ test_dir }}
 {% endfor %}{% endif -%}

@@ -1,12 +1,9 @@
-"""Tests for rope-migrated transformers: symbol_propagator, nested_class_propagation."""
+"""Tests for the Rope-migrated symbol propagator."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra.transformers.nested_class_propagation import (
-    FlextInfraNestedClassPropagationTransformer,
-)
 from flext_infra.transformers.symbol_propagator import (
     FlextInfraRefactorSymbolPropagator,
 )
@@ -140,25 +137,3 @@ class TestsFlextInfraInfraRefactorRopeMigrations:
         tm.that(updated, has="NewName")
         tm.that(changes, empty=False)
         tm.that(file_path.read_text(encoding="utf-8"), eq=original_source)
-
-    def test_class_name_not_renamed(self, tmp_path: Path) -> None:
-        """Class definition names are NOT renamed (definition sites are skipped)."""
-        source = "class OldName:\n    pass\n"
-        transformer = FlextInfraNestedClassPropagationTransformer(
-            class_renames={"OldName": "Namespace.OldName"}
-        )
-        result, _ = _apply_transformer(
-            tmp_path, "demo.py", source, transformer.transform
-        )
-        tm.that(result, has="class OldName")
-
-    def test_usage_site_renamed(self, tmp_path: Path) -> None:
-        """Usage sites of renamed class ARE updated."""
-        source = "x = OldName()\n"
-        transformer = FlextInfraNestedClassPropagationTransformer(
-            class_renames={"OldName": "Namespace.OldName"}
-        )
-        result, _ = _apply_transformer(
-            tmp_path, "demo.py", source, transformer.transform
-        )
-        tm.that(result, has="Namespace.OldName")

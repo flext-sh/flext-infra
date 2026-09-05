@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
-from flext_core import u
-from flext_infra import c, t
+
+from flext_infra import c, t, u
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -70,10 +70,10 @@ class FlextInfraModelsCheck:
 
         @classmethod
         def from_workspace_name(
-            cls, workspace_root: Path, project_name: str
+            cls, repository_root: Path, project_name: str
         ) -> FlextInfraModelsCheck.CheckProjectTarget:
             """Build a target from the public run_projects name contract."""
-            return cls(name=project_name, path=workspace_root / project_name)
+            return cls(name=project_name, path=repository_root / project_name)
 
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
@@ -132,18 +132,7 @@ class FlextInfraModelsCheck:
         @classmethod
         def _parse_rules(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
             """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            if value is None:
-                return ()
-            if isinstance(value, str):
-                return tuple(part.strip() for part in value.split(",") if part.strip())
-            normalized: list[str] = []
-            for part in value:
-                if not part:
-                    continue
-                normalized.extend(
-                    token.strip() for token in part.split(",") if token.strip()
-                )
-            return tuple(normalized)
+            return u.Infra.normalize_sequence_values(value) or ()
 
         @m.field_validator("projects", mode="before")
         @classmethod
@@ -151,18 +140,7 @@ class FlextInfraModelsCheck:
             cls, value: str | t.SequenceOf[str] | None
         ) -> t.StrSequence | None:
             """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            if value is None:
-                return None
-            if isinstance(value, str):
-                return tuple(part.strip() for part in value.split(",") if part.strip())
-            normalized: list[str] = []
-            for part in value:
-                if not part:
-                    continue
-                normalized.extend(
-                    token.strip() for token in part.split(",") if token.strip()
-                )
-            return tuple(normalized) or None
+            return u.Infra.normalize_sequence_values(value)
 
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""

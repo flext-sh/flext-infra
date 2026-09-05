@@ -43,8 +43,10 @@ class TestsReviewTemplateContracts:
         tm.that(
             "infra_repository" in m.Infra.ProjectRenderContext.model_fields, eq=False
         )
-        tm.that(text, lacks="SETUP_MISE_VERSION")
+        # The tracked, checksum-verified launcher is the pinned Mise owner; the
+        # toolchain SSOT declares no Mise version for the template to render.
         tm.that(text, has="override SETUP_MISE := $(TRACKED_MISE)")
+        tm.that(text, lacks="SETUP_MISE_VERSION")
         tm.that(text, has="setup: _bootstrap_setup_tools")
         tm.that(text, has="env -u MISE_INSTALL_PATH -u MISE_VERSION")
 
@@ -83,7 +85,7 @@ class TestsReviewTemplateContracts:
             text,
             has=(
                 "SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),"
-                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),"
+                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(DECLARED_REPOSITORIES),$(REQUESTED_PROJECTS)),"
                 "$(DEFAULT_PROJECTS))"
             ),
         )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
@@ -33,6 +34,91 @@ class FlextInfraModelsRefactorGrep:
             default_factory=tuple,
             description="Allowed file extensions (empty = all by pattern)",
         )
+
+    class CodemodRule(m.ArbitraryTypesModel):
+        """One validated ast-grep rule document from a composed provider."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        id: Annotated[t.NonEmptyStr, m.Field(description="Canonical ast-grep rule ID")]
+        digest: Annotated[
+            t.NonEmptyStr, m.Field(description="SHA-256 of the canonical rule document")
+        ]
+        provider: Annotated[
+            t.NonEmptyStr, m.Field(description="Distribution or local rule provider")
+        ]
+        resource: Annotated[
+            Path, m.Field(description="Rule document resource containing this ID")
+        ]
+        fixable: Annotated[
+            bool, m.Field(description="Whether the rule declares an automated fix")
+        ]
+
+    class CodemodRuleset(m.ArbitraryTypesModel):
+        """One provider config and its elected, conflict-free rule IDs."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        provider: Annotated[
+            t.NonEmptyStr, m.Field(description="Distribution or local rule provider")
+        ]
+        config: Annotated[
+            Path, m.Field(description="Provider-owned ast-grep sgconfig path")
+        ]
+        rule_ids: Annotated[
+            t.StrSequence, m.Field(description="Rule IDs elected from this provider")
+        ]
+        fixable_rule_ids: Annotated[
+            t.StrSequence,
+            m.Field(description="Elected rule IDs that declare an automated fix"),
+        ]
+
+    class CodemodRulePlan(m.ArbitraryTypesModel):
+        """Topologically composed dependency rules followed by the local delta."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        provider_order: Annotated[
+            t.StrSequence, m.Field(description="Dependency-first provider precedence")
+        ]
+        rules: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRule],
+            m.Field(description="Unique semantic rules with their elected owner"),
+        ]
+        rulesets: Annotated[
+            t.VariadicTuple[FlextInfraModelsRefactorGrep.CodemodRuleset],
+            m.Field(description="Executable provider configs in precedence order"),
+        ]
+
+    class ModGateSnapshot(m.ArbitraryTypesModel):
+        """Complete Ruff and Pyrefly evidence for one mod-circuit measurement."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        ruff_errors: Annotated[
+            t.NonNegativeInt, m.Field(description="Ruff error count")
+        ]
+        pyrefly_errors: Annotated[
+            t.NonNegativeInt, m.Field(description="Pyrefly error count")
+        ]
+        ruff_files: Annotated[
+            frozenset[Path],
+            m.Field(description="Files carrying Ruff findings in this measurement"),
+        ] = frozenset()
+        diagnostics: Annotated[
+            t.StrSequence,
+            m.Field(description="Unsuppressed diagnostics from every red gate"),
+        ]
+
+    class ModScanReport(m.ArbitraryTypesModel):
+        """Verified actionable rewrite report."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        nodes: Annotated[t.NonNegativeInt, m.Field(description="Actionable node count")]
+        files: Annotated[
+            frozenset[Path], m.Field(description="Files containing actionable nodes")
+        ]
 
     class MethodOrderRule(m.ContractModel):
         """A declarative method ordering rule for class reconstruction.
@@ -200,7 +286,7 @@ class FlextInfraModelsRefactorGrep:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-        workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
+        workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
         dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]
         files_scanned: Annotated[
             t.NonNegativeInt, m.Field(description="Total Python files scanned")

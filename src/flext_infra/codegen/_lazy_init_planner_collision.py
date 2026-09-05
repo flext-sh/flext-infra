@@ -92,10 +92,6 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             index[name] = winner
             return
         self._collision_count += 1
-        u.Cli.warning(
-            f"export collision for {name!r}: {existing} vs {target}; "
-            f"resolved by canonical policy scorer to {winner}"
-        )
         index[name] = winner
 
     def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:

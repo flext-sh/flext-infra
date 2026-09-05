@@ -13,7 +13,10 @@ from flext_cli import u
 from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
+from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -42,7 +45,6 @@ from flext_infra._utilities.namespace_facades import (
 from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
-from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -87,15 +89,18 @@ class FlextInfraUtilities(u):
 
         u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)
-        u.Infra.discover_projects(workspace_root)
+        u.Infra.discover_projects(repository_root)
         u.Infra.parse_semver("1.2.3")
     """
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCodegenFilePlan,
+        FlextInfraUtilitiesCodemodRules,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesProjectManagedArtifacts,
@@ -134,7 +139,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactorNamespaceCommon,
         FlextInfraUtilitiesRefactorNamespaceFacades,
         FlextInfraUtilitiesRefactorNamespaceMoves,
-        FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesSafety,

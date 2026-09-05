@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture
 
 
 class TestsWorktreeTopology(WorktreeFixture):
@@ -22,7 +22,7 @@ class TestsWorktreeTopology(WorktreeFixture):
         lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
         tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
@@ -51,7 +51,7 @@ class TestsWorktreeTopology(WorktreeFixture):
 
         updated = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=lane,
+                repository_root=lane,
                 operation=c.Infra.WorktreeOperation.UPDATE,
                 branch=branch,
                 base=base,
@@ -79,7 +79,7 @@ class TestsWorktreeTopology(WorktreeFixture):
         epic = Path(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.ADD,
                     branch=epic_branch,
                     base="HEAD",
@@ -91,7 +91,7 @@ class TestsWorktreeTopology(WorktreeFixture):
 
         child = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=child_branch,
                 base=epic_branch,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 from pathlib import Path
+import stat
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r
@@ -35,6 +36,20 @@ def digest(content: bytes) -> str:
 def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]:
     """Read exact state through the canonical descriptor-authenticated owner."""
     return u.Cli.atomic_read_binary_file_state(path, required=required)
+
+
+def physical_directory_identity(path: Path) -> p.Result[tuple[int, int]]:
+    """Return the device/inode identity of one physical directory."""
+    try:
+        observed = path.lstat()
+    except OSError as exc:
+        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
+    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
+        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+    )
+    if not stat.S_ISDIR(observed.st_mode) or reparse:
+        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
+    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
 
 
 def write_publication(publication: m.Infra.CodegenStagedFile) -> p.Result[bool]:
@@ -133,6 +148,7 @@ __all__: list[str] = [
     "TRANSACTION_DIR_PREFIX",
     "delete_state",
     "digest",
+    "physical_directory_identity",
     "read_state",
     "resolve_relative",
     "workspace_relative",

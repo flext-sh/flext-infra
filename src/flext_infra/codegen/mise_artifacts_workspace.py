@@ -28,7 +28,7 @@ class FlextInfraMiseWorkspacePlanner:
 
     def scope_identity(self) -> p.Result[m.Infra.GitIdentityReport]:
         """Resolve the physical Git identity that owns generation coordination."""
-        requested = self._owner.workspace_root.expanduser().absolute()
+        requested = self._owner.repository_root.expanduser().absolute()
         physical = self._physical_directory(requested)
         if physical.failure:
             return r[m.Infra.GitIdentityReport].from_failure(physical)
@@ -74,7 +74,7 @@ class FlextInfraMiseWorkspacePlanner:
         self, scope_root: Path | None = None, *, transaction_id: str | None = None
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held."""
-        requested = self._owner.workspace_root.expanduser().absolute()
+        requested = self._owner.repository_root.expanduser().absolute()
         resolved_scope = (
             self.scope_root() if scope_root is None else r[Path].ok(scope_root)
         )
@@ -88,14 +88,17 @@ class FlextInfraMiseWorkspacePlanner:
             )
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
-            for project in workspace.value.subprojects
+            for project in workspace.value.declared_repositories
         ):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 f"Git submodule is absent from governed workspace: {requested}"
             )
         selectors = (
             ".",
-            *(project.path.as_posix() for project in workspace.value.subprojects),
+            *(
+                project.path.as_posix()
+                for project in workspace.value.declared_repositories
+            ),
         )
         return self.layout_from_selectors(
             scope_root, selectors, transaction_id=transaction_id
@@ -180,7 +183,7 @@ class FlextInfraMiseWorkspacePlanner:
                 if project.artifacts.config in planned_paths
             )
         else:
-            requested = self._owner.workspace_root.expanduser().absolute()
+            requested = self._owner.repository_root.expanduser().absolute()
             selected = (
                 layout.projects
                 if requested == layout.scope_root
