@@ -12,6 +12,11 @@ valid:
         @abstractmethod
         def run(self) -> int: ...
   - |
+    from typing import overload
+
+    @overload
+    def run(value: int) -> str: ...
+  - |
     if TYPE_CHECKING:
         class RuntimeMixin:
             def run(self) -> int: ...

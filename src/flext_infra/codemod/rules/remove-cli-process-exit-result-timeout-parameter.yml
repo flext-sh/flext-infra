@@ -1,8 +1,6 @@
 id: remove-cli-process-exit-result-timeout-parameter
 language: Python
 severity: error
-files:
-  - "flext-cli/src/flext_cli/_utilities/_runtime_process_outcome.py"
 rule:
   pattern:
     context: |

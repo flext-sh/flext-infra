@@ -45,3 +45,14 @@ rule:
           stopBy: end
           has:
             pattern: "@abstractmethod"
+    - not:
+        inside:
+          kind: decorated_definition
+          stopBy: end
+          any:
+            - has:
+                kind: decorator
+                pattern: "@overload"
+            - has:
+                kind: decorator
+                pattern: "@typing.overload"
