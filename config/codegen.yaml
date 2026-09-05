@@ -1185,8 +1185,6 @@ Infra:
           # every project owning src/, so the tool it shells out to must be a
           # declared dev dependency of every generated project.
           - bandit>=1.9.4
-          # Mandatory make-mod graph analysis for every affected project.
-          - code-review-graph[all]>=2.3.8
           # Every generated Make verb routes through `python -m flext_infra` in
           # the project venv, so `make setup` must provision the pinned generator
           # itself (operator ruling 2026-09-05, flext-cee4z) instead of relying

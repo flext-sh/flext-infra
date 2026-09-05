@@ -117,12 +117,6 @@ class FlextInfraTypesBase:
 
     type DocsPhase = Literal["audit", "build", "fix", "generate", "validate"]
     "Closed string set selecting which docs orchestrator phase to execute."
-    type CodeReviewGraphStatus = Literal["ok"]
-    "Successful status emitted by the code-review-graph refactor contract."
-    type CodeReviewGraphSuggestionKind = Literal["move", "remove"]
-    "Exhaustive suggestion kinds emitted by code-review-graph 2.3.8."
-    type CodeReviewGraphVcs = Literal["git"]
-    "Version-control backend required by the make-mod graph gate."
     type LayoutRule = Literal["move", "archive", "gitignore", "review"]
     "Closed layout decision kinds produced by the layout engine."
     type LayoutStatus = Literal["planned", "applied", "skipped", "noop"]

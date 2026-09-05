@@ -256,58 +256,6 @@ class FlextInfraConstantsBase(
     "Ambient uv variables removed before a policy-bound release build."
     SG: Final[str] = "ast-grep"
     "Canonical ast-grep binary."
-    CODE_REVIEW_GRAPH: Final[str] = "code-review-graph"
-    "Canonical code-review-graph binary and external-state namespace."
-    CODE_REVIEW_GRAPH_DATABASE_FILENAME: Final[str] = "graph.db"
-    "Database filename defined by the code-review-graph CLI contract."
-    CRG_DATA_DIR: Final[str] = "CRG_DATA_DIR"
-    "Code-review-graph external database directory environment key."
-    CRG_HOME: Final[str] = "CRG_HOME"
-    "Code-review-graph registry-home environment key."
-    CODE_REVIEW_GRAPH_TIMEOUT_SECONDS: Final[int] = (
-        FlextInfraConstantsSharedInfra.TIMEOUT_SHORT
-        - FlextInfraConstantsSharedInfra.TIMEOUT_SHORT_POLL
-    )
-    "Bound ensuring every CRG invocation reports before 60 seconds."
-    CODE_REVIEW_GRAPH_INFO_LINE_PATTERNS: Final[tuple[str, ...]] = (
-        r"INFO: Progress: \d+/\d+ files parsed",
-        (
-            r"INFO: Python import resolution: \{'files_indexed': \d+, "
-            r"'imports_updated': \d+, 'imports_resolved': \d+, "
-            r"'imports_ambiguous': \d+\}"
-        ),
-        (
-            r"INFO: ReScript cross-module resolution: \{'files_indexed': \d+, "
-            r"'calls_resolved': \d+, 'imports_resolved': \d+\}"
-        ),
-        r"INFO: Spring DI resolver: resolved \d+ CALLS edges in \d+ Java files",
-        (
-            r"INFO: Spring event resolver: indexed \d+ events and emitted \d+ "
-            r"CALLS edges"
-        ),
-        r"INFO: Temporal resolver: resolved \d+ CALLS edges in \d+ Java files",
-        (
-            r"INFO: Terraform/HCL module resolution: \{'files_indexed': \d+, "
-            r"'references_resolved': \d+, 'imports_resolved': \d+\}"
-        ),
-        r"INFO: Scoped resolver: resolved \d+ CALLS edges across \d+ files",
-        r"INFO: Resolved \d+ evidence-backed bare (?:sources|targets) [A-Z_]+",
-        r"INFO: FTS index rebuilt: \d+ rows indexed",
-        r"INFO: Loaded \d+ unique nodes, \d+ edges",
-        r"INFO: Detecting communities with Leiden algorithm \(igraph\)",
-        r"INFO: Building igraph with \d+ nodes\.\.\.",
-        r"INFO: Running Leiden on \d+ nodes, \d+ edges\.\.\.",
-        r"INFO: Leiden complete, found \d+ partitions\. Computing cohesion\.\.\.",
-        r"INFO: Community detection complete: \d+ communities",
-        r"INFO: Split oversized community '.+' \(\d+ members\) into \d+",
-        r"INFO: find_dead_code: found \d+ dead symbols",
-        r"INFO: suggest_refactorings: produced \d+ suggestions",
-        r"INFO: Schema version \d+ -> \d+: running migrations",
-        r"INFO: Running migration v\d+",
-        r"INFO: Migration v\d+: .+",
-        r"INFO: Migrations complete, now at schema version \d+",
-    )
-    "Exhaustive benign INFO protocol accepted from code-review-graph 2.3.x."
     SG_CONFIG_FLAG: Final[str] = "--config"
     "Canonical ast-grep configuration-file option."
     SG_FILTER_FLAG: Final[str] = "--filter"
