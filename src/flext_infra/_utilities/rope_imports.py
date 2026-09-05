@@ -126,13 +126,13 @@ class FlextInfraUtilitiesRopeImports:
 
     @staticmethod
     def indexed_search_resources(
-        rope_workspace: p.AttributeProbe,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         resource: t.Infra.RopeResource,
         name: str,
         definition_path: Path,
         dependent_import_targets: t.StrSequence = (),
-    ) -> tuple[t.Infra.RopeResource, ...] | None:
+    ) -> tuple[t.Infra.RopeResource, ...]:
         """Build the minimal Rope resource set for semantic occurrence searches.
 
         The workspace name index already narrows the candidate module set to
@@ -140,31 +140,13 @@ class FlextInfraUtilitiesRopeImports:
         index into concrete Rope resources so callers can still rely on Rope's
         semantic identity checks without scanning the full project.
         """
-        name_index_getter = getattr(rope_workspace, "name_index", None)
-        resource_getter = getattr(rope_workspace, "resource", None)
-        if name_index_getter is None or resource_getter is None:
-            return None
-        occurrences = name_index_getter().get(name, ())
+        occurrences = rope_workspace.name_index().get(name, ())
         resolved_definition = definition_path.resolve()
         dependent_paths: frozenset[str] | None = None
-        import_dependents_getter = getattr(rope_workspace, "import_dependents", None)
-        if dependent_import_targets and callable(import_dependents_getter):
+        if dependent_import_targets:
             dependent_candidates: set[Path] = {resolved_definition}
             for import_target in dependent_import_targets:
-                dependent_paths_raw = import_dependents_getter(import_target)
-                if not isinstance(dependent_paths_raw, tuple):
-                    msg = (
-                        "rope import_dependents returned non-tuple for "
-                        f"{import_target}: {type(dependent_paths_raw).__name__}"
-                    )
-                    raise TypeError(msg)
-                for path in dependent_paths_raw:
-                    if not isinstance(path, Path):
-                        msg = (
-                            "rope import_dependents returned invalid path for "
-                            f"{import_target}: {type(path).__name__}"
-                        )
-                        raise TypeError(msg)
+                for path in rope_workspace.import_dependents(import_target):
                     dependent_candidates.add(path.resolve())
             dependent_paths = frozenset(str(path) for path in dependent_candidates)
         seen_paths = {str(resolved_definition)}
@@ -178,7 +160,7 @@ class FlextInfraUtilitiesRopeImports:
                 continue
             if cache_key in seen_paths:
                 continue
-            candidate_resource = resource_getter(resolved_path)
+            candidate_resource = rope_workspace.resource(resolved_path)
             if candidate_resource is None:
                 msg = (
                     "rope search resource unavailable for indexed path "

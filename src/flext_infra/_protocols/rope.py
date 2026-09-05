@@ -111,6 +111,8 @@ class FlextInfraProtocolsRope(Protocol):
             self,
         ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]: ...
 
+        def import_dependents(self, import_target: str) -> tuple[Path, ...]: ...
+
         def objects(
             self,
             file_path: Path,
