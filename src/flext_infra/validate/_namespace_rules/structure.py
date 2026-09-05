@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from flext_infra import c
 from flext_infra.validate._namespace_rules.base import FlextInfraNamespaceRulesBase
@@ -15,8 +15,6 @@ if TYPE_CHECKING:
 
 class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
     """Enforce one-class modules and explicit facade composition."""
-
-    _MINIMUM_INFRA_BASES: ClassVar[int] = 2
 
     @classmethod
     def check_structure(
@@ -100,7 +98,10 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             messages.append(
                 f"{filepath}:{cls.line(outer)} — facade must declare one nested Infra MRO"
             )
-        elif len(getattr(nested[0], "bases", ()) or ()) < cls._MINIMUM_INFRA_BASES:
+        elif (
+            len(getattr(nested[0], "bases", ()) or ())
+            < c.Infra.FACADE_MINIMUM_BASES
+        ):
             messages.append(
                 f"{filepath}:{cls.line(nested[0])} — Infra must explicitly compose its "
                 "private family through multiple inheritance"

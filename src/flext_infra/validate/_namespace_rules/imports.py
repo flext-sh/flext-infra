@@ -62,13 +62,10 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
             module = getattr(alias, "name", "")
             if not isinstance(module, str) or not module.startswith(package_name):
                 continue
-            messages.extend(
-                [
+            if getattr(alias, "asname", None):
+                messages.append(
                     f"{filepath}:{cls.line(node)} — local import aliases are forbidden"
-                ]
-                if getattr(alias, "asname", None)
-                else ()
-            )
+                )
             imported = cls.layer_of_module(module, package_name)
             violation = cls._reverse_import(owner, imported, type_only=type_only)
             if violation:

@@ -22,14 +22,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class FlextInfraPackagingValueError(ValueError):
-    """Raised when packaging inputs violate declared invariants."""
-
-
-class FlextInfraPackagingFileNotFoundError(FileNotFoundError):
-    """Raised when declared packaging sources are missing."""
-
-
 class FlextInfraEnsurePackagingPhase:
     """Ensure bounded Hatch wheel and source-distribution targets."""
 
@@ -102,7 +94,7 @@ class FlextInfraEnsurePackagingPhase:
                     "project package name is required when additional distribution "
                     "roots are declared"
                 )
-                raise FlextInfraPackagingValueError(msg)
+                raise ValueError(msg)
             return ()
         source_root = project_dir / c.Infra.DEFAULT_SRC_DIR
         missing_module = next(
@@ -115,7 +107,7 @@ class FlextInfraEnsurePackagingPhase:
         )
         if missing_module is not None:
             msg = f"declared project root module source is missing: {missing_module}"
-            raise FlextInfraPackagingFileNotFoundError(msg)
+            raise FileNotFoundError(msg)
         missing_package = next(
             (
                 source_root / package
@@ -130,7 +122,7 @@ class FlextInfraEnsurePackagingPhase:
                 "declared project root package source is missing a package "
                 f"initializer: {missing_package / c.Infra.INIT_PY}"
             )
-            raise FlextInfraPackagingFileNotFoundError(msg)
+            raise FileNotFoundError(msg)
         package_root = project_dir / c.Infra.DEFAULT_SRC_DIR / package_name
         present_dirs = tuple(
             data_dir

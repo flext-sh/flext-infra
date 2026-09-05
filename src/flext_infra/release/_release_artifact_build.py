@@ -65,12 +65,9 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         archive_result = self._archive_project(project_path, stage_path)
         if archive_result.failure:
             return r[t.Pair[m.Infra.SourceSnapshot, str]].from_failure(archive_result)
-        for result, _fallback in (
-            (self._validate_staged_source(stage_path), "source path policy failed"),
-            (
-                self._scan_staged_source(stage_path, gitleaks_config_path),
-                "secret scan failed",
-            ),
+        for result in (
+            self._validate_staged_source(stage_path),
+            self._scan_staged_source(stage_path, gitleaks_config_path),
         ):
             if result.failure:
                 return r[t.Pair[m.Infra.SourceSnapshot, str]].from_failure(result)
