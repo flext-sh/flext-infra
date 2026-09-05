@@ -35,7 +35,7 @@ class FlextInfraUtilitiesPrivateImportValidation:
             ):
                 msg = f"private import residue from {module} in {file_path}"
                 raise ValueError(msg)
-        for package, alias in public_imports.items():
+        for alias, package in public_imports.items():
             if not any(
                 isinstance(node, ast.ImportFrom)
                 and node.module == package
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesPrivateImportValidation:
                     imported.name == alias and imported.asname is None
                     for imported in node.names
                 )
-                for node in tree.body
+                for node in ast.walk(tree)
             ):
                 msg = f"public facade import {package}.{alias} missing in {file_path}"
                 raise ValueError(msg)

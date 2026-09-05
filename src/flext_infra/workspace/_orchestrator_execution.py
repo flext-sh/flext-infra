@@ -143,7 +143,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             live=True,
         )
-        return_code = proc_result.unwrap()
+        return_code = proc_result.unwrap().raw_return_code
         # flext-9v0d: GNU make exits 2 for any failed recipe, so recover the
         # child's real exit code from make's own error line in the log.
         if return_code != 0:

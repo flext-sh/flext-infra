@@ -23,14 +23,14 @@ class FlextInfraUtilitiesPrivateImportCst:
             self,
             *,
             removals: t.MappingKV[str, frozenset[str]],
+            obsolete_imports: t.MappingKV[str, frozenset[str]],
             replacements: t.StrMapping,
             public_imports: t.StrMapping,
         ) -> None:
             self.removals = removals
+            self.obsolete_imports = obsolete_imports
             self.replacements = replacements
-            self.public_imports = {alias: package for package, alias in public_imports.items()}
-            self.inserted_public_imports: set[tuple[str, str]] = set()
-            self.global_public_imports: set[tuple[str, str]] = set()
+            self.public_imports = dict(public_imports)
 
         @staticmethod
         def dotted_name(node: cst.BaseExpression | None) -> str | None:
@@ -82,37 +82,65 @@ class FlextInfraUtilitiesPrivateImportCst:
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
             """Remove migrated symbols from their exact private import."""
             module = self.dotted_name(original_node.module)
-            removed = self.removals.get(module or "")
+            module_name = module or ""
+            removed = self.removals.get(
+                module_name, frozenset()
+            ) | self.obsolete_imports.get(module_name, frozenset())
+            canonical = {
+                alias
+                for alias, package in self.public_imports.items()
+                if package == module_name
+            }
             if not removed or isinstance(updated_node.names, cst.ImportStar):
-                return updated_node
+                if not canonical or isinstance(updated_node.names, cst.ImportStar):
+                    return updated_node
             retained = [
                 imported
                 for imported in updated_node.names
                 if self.dotted_name(imported.name) not in removed
+                and not (
+                    self.dotted_name(imported.name) in canonical
+                    and imported.asname is None
+                )
             ]
-            targets = {
-                (package, alias)
-                for imported in original_node.names
-                if (symbol := self.dotted_name(imported.name)) in removed
-                and (
-                    reference := self.replacements.get(f"{module}.{symbol}")
-                )
-                is not None
-                and (alias := reference.split(".", 1)[0]) in self.public_imports
-                and (package := self.public_imports[alias])
-            }
             if retained:
-                self.global_public_imports.update(targets)
                 return updated_node.with_changes(names=retained)
-            if len(targets) == 1:
-                package, alias = targets.pop()
-                self.inserted_public_imports.add((package, alias))
-                return updated_node.with_changes(
-                    module=cst.parse_expression(package),
-                    names=(cst.ImportAlias(name=cst.Name(alias)),),
-                )
-            self.global_public_imports.update(targets)
             return cst.RemoveFromParent()
+
+    class _TypeCheckingImports(cst.CSTTransformer):
+        """Insert one canonical group for facades used only by annotations."""
+
+        def __init__(self, public_imports: t.StrMapping) -> None:
+            self.public_imports = public_imports
+            self.inserted = False
+
+        @override
+        def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
+            """Populate the first explicit ``TYPE_CHECKING`` block."""
+            if (
+                self.inserted
+                or not isinstance(original_node.test, cst.Name)
+                or original_node.test.value != "TYPE_CHECKING"
+            ):
+                return updated_node
+            if not isinstance(updated_node.body, cst.IndentedBlock):
+                msg = "TYPE_CHECKING boundary must use an indented block"
+                raise ValueError(msg)
+            grouped: dict[str, list[str]] = {}
+            for alias, package in sorted(self.public_imports.items()):
+                grouped.setdefault(package, []).append(alias)
+            imports = tuple(
+                cst.parse_statement(
+                    f"from {package} import {', '.join(aliases)}\n"
+                )
+                for package, aliases in sorted(grouped.items())
+            )
+            self.inserted = True
+            return updated_node.with_changes(
+                body=updated_node.body.with_changes(
+                    body=imports + updated_node.body.body
+                )
+            )
 
     @classmethod
     def rewrite_private_import_source(
@@ -120,26 +148,36 @@ class FlextInfraUtilitiesPrivateImportCst:
         source: str,
         *,
         removals: t.MappingKV[str, frozenset[str]],
+        obsolete_imports: t.MappingKV[str, frozenset[str]],
         replacements: t.StrMapping,
         public_imports: t.StrMapping,
+        runtime_public_imports: frozenset[str],
     ) -> str:
         """Return a binding-proven rewrite with required public imports."""
         transformer = cls._Transformer(
             removals=removals,
+            obsolete_imports=obsolete_imports,
             replacements=replacements,
             public_imports=public_imports,
         )
         rewritten = MetadataWrapper(cst.parse_module(source)).visit(transformer)
         context = CodemodContext()
-        for package, facade_alias in sorted(public_imports.items()):
-            target = (package, facade_alias)
-            if (
-                target in transformer.inserted_public_imports
-                and target not in transformer.global_public_imports
-            ):
-                continue
+        for facade_alias in sorted(runtime_public_imports):
+            package = public_imports[facade_alias]
             AddImportsVisitor.add_needed_import(context, package, facade_alias)
-        return rewritten.visit(AddImportsVisitor(context)).code
+        rewritten = rewritten.visit(AddImportsVisitor(context))
+        type_only_imports = {
+            alias: package
+            for alias, package in public_imports.items()
+            if alias not in runtime_public_imports
+        }
+        if type_only_imports:
+            type_imports = cls._TypeCheckingImports(type_only_imports)
+            rewritten = rewritten.visit(type_imports)
+            if not type_imports.inserted:
+                msg = "type-only facade migration has no TYPE_CHECKING boundary"
+                raise ValueError(msg)
+        return rewritten.code
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPrivateImportCst"]

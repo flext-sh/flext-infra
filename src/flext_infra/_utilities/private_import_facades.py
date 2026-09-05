@@ -16,6 +16,44 @@ class FlextInfraUtilitiesPrivateImportFacades:
     """Derive public paths from live facade inheritance, never a registry."""
 
     @staticmethod
+    def _facade_owner(
+        *,
+        sources: t.MappingKV[Path, str],
+        package: str,
+        facade_file: str,
+        facade_alias: str,
+    ) -> tuple[ast.Module, str] | None:
+        """Return the live facade syntax tree and its assigned root class."""
+        candidates = [
+            source
+            for path, source in sources.items()
+            if path.name == facade_file
+            and path.parent.name == package
+            and path.parent.parent.name == "src"
+        ]
+        if len(candidates) > 1:
+            msg = f"ambiguous public facade owner for {package}.{facade_file}"
+            raise ValueError(msg)
+        if not candidates:
+            return None
+        tree = ast.parse(candidates[0])
+        root_name = next(
+            (
+                node.value.id
+                for node in tree.body
+                if isinstance(node, ast.Assign)
+                and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Name)
+                and node.targets[0].id == facade_alias
+                and isinstance(node.value, ast.Name)
+            ),
+            None,
+        )
+        if root_name is None:
+            return None
+        return tree, root_name
+
+    @staticmethod
     def private_layer(module: str) -> tuple[str, str, str] | None:
         """Derive package, facade filename, and alias from namespace law."""
         parts = module.split(".")
@@ -39,19 +77,15 @@ class FlextInfraUtilitiesPrivateImportFacades:
         qualified: str,
     ) -> str | None:
         """Resolve one private class to exactly one inherited facade path."""
-        candidates = [
-            source
-            for path, source in sources.items()
-            if path.name == facade_file
-            and path.parent.name == package
-            and path.parent.parent.name == "src"
-        ]
-        if len(candidates) > 1:
-            msg = f"ambiguous public facade owner for {package}.{facade_file}"
-            raise ValueError(msg)
-        if not candidates:
+        owner = cls._facade_owner(
+            sources=sources,
+            package=package,
+            facade_file=facade_file,
+            facade_alias=facade_alias,
+        )
+        if owner is None:
             return None
-        tree = ast.parse(candidates[0])
+        tree, root_name = owner
         imports: dict[str, str] = {}
         for node in tree.body:
             if not isinstance(node, ast.ImportFrom) or not node.module:
@@ -64,18 +98,6 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 imported.asname or imported.name: f"{module}.{imported.name}"
                 for imported in node.names
             })
-        root_name = next(
-            (
-                node.value.id
-                for node in tree.body
-                if isinstance(node, ast.Assign)
-                and len(node.targets) == 1
-                and isinstance(node.targets[0], ast.Name)
-                and node.targets[0].id == facade_alias
-                and isinstance(node.value, ast.Name)
-            ),
-            None,
-        )
         root_class = next(
             (
                 node
@@ -112,6 +134,24 @@ class FlextInfraUtilitiesPrivateImportFacades:
             )
             raise ValueError(msg)
         return canonical.pop()
+
+    @classmethod
+    def public_root_name(
+        cls,
+        *,
+        sources: t.MappingKV[Path, str],
+        package: str,
+        facade_file: str,
+        facade_alias: str,
+    ) -> str | None:
+        """Return the public long name assigned to a canonical facade alias."""
+        owner = cls._facade_owner(
+            sources=sources,
+            package=package,
+            facade_file=facade_file,
+            facade_alias=facade_alias,
+        )
+        return owner[1] if owner is not None else None
 
     @staticmethod
     def require_unshadowed_alias(
