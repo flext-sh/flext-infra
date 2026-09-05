@@ -930,9 +930,7 @@ class TestCodegenConform:
         tm.that((root / ".env.example").exists(), eq=False)
         for required in ("Makefile", ".python-version", ".gitignore"):
             tm.that(plans[required].changed, eq=True)
-        # The toolchain seed travels as one set: a tree carrying the tracked
-        # launchers and lock also carries the configuration they answer, so
-        # that configuration is already conformed and plans no rewrite.
+        # Seeded with its lock (see copy_tracked_mise_seeds): already conformed.
         tm.that(plans[".mise.toml"].changed, eq=False)
 
         applied = FlextInfraCodegenConform.execute_request(request)

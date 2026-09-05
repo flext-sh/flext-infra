@@ -76,13 +76,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         projection of its own, so every conform route asks this one question
         here rather than repeating the pair of conditions.
         """
-        if destination not in {
-            c.Infra.BEADS_CONFIG_RELPATH,
-            c.Infra.BEADS_METADATA_RELPATH,
-        }:
-            return False
-        route: Path = repository_root / c.Infra.BEADS_DIRNAME
-        return route.is_symlink()
+        return (
+            destination
+            in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+            and (repository_root / c.Infra.BEADS_DIRNAME).is_symlink()
+        )
 
     @classmethod
     def _surface_contract(
