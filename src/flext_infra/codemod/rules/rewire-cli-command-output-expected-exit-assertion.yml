@@ -4,7 +4,9 @@ severity: error
 files:
   - "flext-cli/tests/unit/test_runtime_utilities_core.py"
 rule:
-  pattern: tm.that(output.exit_code, eq=case.exit_code)
+  any:
+    - pattern: tm.that(output.exit_code, eq=case.exit_code)
+    - pattern: tm.that(output.outcome.raw_return_code, eq=case.exit_code)
 fix: |
   tm.that(
       (

@@ -10,3 +10,4 @@ valid:
     )
 invalid:
   - tm.that(output.exit_code, eq=case.exit_code)
+  - tm.that(output.outcome.raw_return_code, eq=case.exit_code)
