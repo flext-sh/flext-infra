@@ -1946,6 +1946,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if snapshot.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(snapshot)
             resolved_artifacts = snapshot.value
+        if resolved_artifacts is None:
+            return r[m.Infra.CodegenArtifactComposition].fail(
+                f"project managed-artifact snapshot is absent: {repository_root}"
+            )
         composed = (
             FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml_from_snapshot(
                 resolved_artifacts.sources, rendered
@@ -1966,6 +1970,47 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_root_rel: str = workspace.project.repository_root_rel
             return project_root_rel
         return "."
+
+    @staticmethod
+    def _infra_repository(
+        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Resolve the repository that owns the infrastructure CLI.
+
+        The owner is read from the live workspace topology when that topology
+        declares it. A standalone consumer legitimately declares no
+        infrastructure subproject, so the reference is then derived from the
+        typed source and provider contracts. Either way nothing is read from a
+        generated pyproject or looked up in a project catalog.
+        """
+        source = codegen.infra_repository
+        matches = tuple(
+            item
+            for item in (workspace.repository, *workspace.subprojects)
+            if item.distribution == source.distribution
+        )
+        if len(matches) > 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "workspace topology declares more than one "
+                f"{source.distribution} checkout"
+            )
+        if matches:
+            return r[m.Infra.RepositoryRef].ok(matches[0])
+        provider_matches = tuple(
+            provider
+            for provider in config.Infra.codegen.providers
+            if provider.name == config.Infra.codegen.infrastructure_provider
+        )
+        if len(provider_matches) != 1:
+            return r[m.Infra.RepositoryRef].fail(
+                "infrastructure repository provider must resolve exactly once: "
+                f"{config.Infra.codegen.infrastructure_provider}"
+            )
+        return r[m.Infra.RepositoryRef].ok(
+            u.Infra.derived_repository_ref(
+                config.Infra.name, provider=provider_matches[0]
+            )
+        )
 
     @staticmethod
     def _repository_provider(
