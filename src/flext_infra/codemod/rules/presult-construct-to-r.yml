@@ -16,6 +16,12 @@ fix: 'r[$T].ok($$$A)'
 ---
 
 
+
+
+
+
+
+
 id: presult-construct-to-r-fail
 language: python
 severity: error
@@ -32,6 +38,12 @@ rule:
       stopBy: end
 fix: 'r[$T].fail($$$A)'
 ---
+
+
+
+
+
+
 
 
 id: presult-construction-without-r-import

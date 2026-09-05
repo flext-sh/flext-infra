@@ -26,7 +26,7 @@ class FlextInfraModelsRefactorRenames:
     class ApplyRenamesReport(m.ArbitraryTypesModel):
         """Summary of one CSV-driven rename pass."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         label: Annotated[t.NonEmptyStr, m.Field(description="Rename-list label")]
         files_scanned: Annotated[

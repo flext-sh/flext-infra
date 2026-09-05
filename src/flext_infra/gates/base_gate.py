@@ -332,7 +332,11 @@ class FlextInfraGate:
             return m.Cli.CommandOutput(
                 stdout="",
                 stderr=result.error or "command execution failed",
-                exit_code=1,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
             )
         return result.value
 

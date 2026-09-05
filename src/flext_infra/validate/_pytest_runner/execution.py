@@ -48,11 +48,8 @@ class FlextInfraPytestRunnerExecution(
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
         ).unwrap()
-        deadline = m.Cli.ProcessDeadline(
-            expires_at_monotonic=self.started_at_monotonic + pytest.run_timeout_seconds,
-            termination_grace_seconds=pytest.termination_grace_seconds,
-            timeout_exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
-        )
+        deadline = m.Cli.ProcessDeadline(expires_at_monotonic=self.started_at_monotonic + pytest.run_timeout_seconds,
+        termination_grace_seconds=pytest.termination_grace_seconds, )
         child_env = u.Cli.process_env(
             remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
             overrides={

@@ -68,7 +68,7 @@ class FlextInfraBanditGate(FlextInfraGate):
             )
             return False, issues
         issues.extend(self._bandit_issues(parsed_payload.unwrap()))
-        if not issues and result.exit_code != 0:
+        if not issues and result.outcome.raw_return_code != 0:
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -76,11 +76,11 @@ class FlextInfraBanditGate(FlextInfraGate):
                     line=0,
                     column=0,
                     code="TOOL_ERROR",
-                    message=f"bandit exited with code {result.exit_code}: {detail}",
+                    message=f"bandit exited with code {result.outcome.raw_return_code}: {detail}",
                     severity="ERROR",
                 )
             )
-        return result.exit_code == 0, issues
+        return result.outcome.raw_return_code == 0, issues
 
     @staticmethod
     def _parse_bandit_payload(
@@ -89,9 +89,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         """Parse Bandit JSON stdout into a typed payload mapping."""
         parsed_result = u.Cli.json_parse(stdout or "{}")
         if parsed_result.failure:
-            return r[t.MappingKV[str, t.Infra.InfraValue]].fail(
-                parsed_result.error or "Tool output parsing failed"
-            )
+            return r[t.MappingKV[str, t.Infra.InfraValue]].from_failure(parsed_result)
         raw_payload = parsed_result.unwrap()
         if not isinstance(raw_payload, Mapping):
             empty_mapping: t.MappingKV[str, t.Infra.InfraValue] = {}

@@ -31,7 +31,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         """Execute namespace validation for the configured repository root."""
         report_result = self.validate_project(self.repository_root)
         if report_result.failure:
-            return r[bool].fail(report_result.error or "namespace validation failed")
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(report.passed)
 
@@ -43,9 +43,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
             m.Infra.SourceScanRequest(project_roots=(project_root,))
         )
         if files_result.failure:
-            return r[m.Infra.ValidationReport].fail(
-                files_result.error or "Namespace validation failed: discovery failed"
-            )
+            return r[m.Infra.ValidationReport].from_failure(files_result)
         files = [
             py_file
             for py_file in files_result.value
@@ -119,13 +117,13 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         try:
             resource = u.Infra.fetch_python_resource(rope_project, path)
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.AST].fail(f"fetch_python_resource raised: {exc!s}")
+            return r[ast.AST].fail(f"fetch_python_resource raised: {exc!s}", exception=exc)
         if resource is None:
             return r[ast.AST].fail(f"no rope resource for {path}")
         try:
             pymodule = u.Infra.get_pymodule(rope_project, resource)
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.AST].fail(f"get_pymodule raised: {exc!s}")
+            return r[ast.AST].fail(f"get_pymodule raised: {exc!s}", exception=exc)
         ast_module = pymodule.get_ast()
         return r[ast.AST].ok(ast_module)
 

@@ -60,7 +60,7 @@ class FlextInfraModelsCheck:
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -77,7 +77,7 @@ class FlextInfraModelsCheck:
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         memory_limit_mb: Annotated[
             int,
@@ -361,7 +361,7 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         schema_uri: str = m.Field(
             "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",

@@ -29,7 +29,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[t.JsonMapping].fail(source.error or f"cannot read {path.name}")
+            return r[t.JsonMapping].from_failure(source)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
             return r[t.JsonMapping].fail(f"invalid TOML in {path.name}")
@@ -97,10 +97,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             for raw_entry in raw_entries:
                 normalized = cls._normalize_lock_entry(raw_selector, raw_entry)
                 if normalized.failure:
-                    return r[t.JsonMapping].fail(
-                        normalized.error
-                        or f"mise.lock contains an invalid entry for {raw_selector}"
-                    )
+                    return r[t.JsonMapping].from_failure(normalized)
                 normalized_entries.append(dict(normalized.value))
             normalized_tools[raw_selector] = normalized_entries
         return r[t.JsonMapping].ok({
@@ -219,9 +216,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             timeout=config.Infra.codegen.toolchain.mise_network_timeout_seconds,
         )
         if download.failure:
-            return r[str].fail(
-                download.error or f"checksum download failed for {selector}/{platform}"
-            )
+            return r[str].from_failure(download)
         if download.value.outcome.raw_return_code != 0:
             cause = download.value.stderr.strip() or "curl exited non-zero"
             return r[str].fail(
@@ -259,7 +254,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 digests[url] = digest
             header = self._platform_header(selector, platform)
             if header.failure:
-                return r[str].fail(header.error or "invalid mise.lock header")
+                return r[str].from_failure(header)
             marker = f"{header.value}\n"
             if hydrated.count(marker) != 1:
                 return r[str].fail(
@@ -278,13 +273,13 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         lock_path = root / "mise.lock"
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
-            return r[bool].fail(source.error or "cannot read mise.lock")
+            return r[bool].from_failure(source)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
             return r[bool].fail("invalid TOML in mise.lock")
         missing = self._missing_checksums(payload)
         if missing.failure:
-            return r[bool].fail(missing.error or "invalid mise.lock checksum metadata")
+            return r[bool].from_failure(missing)
         if not missing.value:
             return r[bool].ok(True)
         try:
@@ -296,12 +291,12 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                     runner=runner if runner is not None else u.Cli,
                 )
         except OSError as exc:
-            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}")
+            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}", exception=exc)
         if hydrated.failure:
-            return r[bool].fail(hydrated.error or "cannot hydrate mise.lock checksums")
+            return r[bool].from_failure(hydrated)
         write = u.Cli.atomic_write_text_file(lock_path, hydrated.value)
         if write.failure:
-            return r[bool].fail(write.error or "cannot publish hydrated mise.lock")
+            return r[bool].from_failure(write)
         return r[bool].ok(True)
 
     @staticmethod
@@ -358,7 +353,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one native staged bootstrap seed without executing live bytes."""
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[str].fail(source.error or f"missing generated Mise seed: {path}")
+            return r[str].from_failure(source)
         windows = path.name == "mise.cmd"
         release = (
             cls._assignment(source.value, "pinned_version")
@@ -370,7 +365,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         try:
             mode = path.stat().st_mode
         except OSError as exc:
-            return r[str].fail(f"cannot inspect generated Mise seed: {exc}")
+            return r[str].fail(f"cannot inspect generated Mise seed: {exc}", exception=exc)
         if not windows and not mode & 0o100:
             return r[str].fail("generated Unix Mise seed is not executable")
         checksums = (
@@ -420,7 +415,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one project's committed Mise artifacts entirely offline."""
         config_result = self._read_toml(project_root / ".mise.toml")
         if config_result.failure:
-            return r[bool].fail(config_result.error or "invalid .mise.toml")
+            return r[bool].from_failure(config_result)
         raw_settings = config_result.value.get("settings")
         raw_tool_config = config_result.value.get("tool_config")
         if (
@@ -432,23 +427,23 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].fail(".mise.toml must enable lockfile and locked mode")
         tools_result = self._tool_specifiers(config_result.value)
         if tools_result.failure:
-            return r[bool].fail(tools_result.error or "invalid .mise.toml tools")
+            return r[bool].from_failure(tools_result)
         lock_result = self._read_toml(project_root / "mise.lock")
         if lock_result.failure:
-            return r[bool].fail(lock_result.error or "invalid mise.lock")
+            return r[bool].from_failure(lock_result)
         normalized_lock = self._normalize_lock_payload(lock_result.value)
         if normalized_lock.failure:
-            return r[bool].fail(normalized_lock.error or "invalid mise.lock")
+            return r[bool].from_failure(normalized_lock)
         try:
             lock = m.Infra.MiseLockSpec.model_validate(normalized_lock.value)
         except c.ValidationError as exc:
-            return r[bool].fail(f"invalid mise.lock metadata: {exc}")
+            return r[bool].fail(f"invalid mise.lock metadata: {exc}", exception=exc)
         launcher_result = self.validate_launchers(project_root)
         if launcher_result.failure:
             return launcher_result
         exclusions = u.Infra.lock_platform_exclusions_from_snapshot(config_sources)
         if exclusions.failure:
-            return r[bool].fail(exclusions.error or "project Mise platforms invalid")
+            return r[bool].from_failure(exclusions)
         return self._validate_lock(
             lock,
             configured_tools=tools_result.value,

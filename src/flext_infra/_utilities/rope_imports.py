@@ -194,7 +194,7 @@ class FlextInfraUtilitiesRopeImports:
             *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
         ) as exc:
-            return r[bool].fail(f"rope organize_imports raised: {exc!s}")
+            return r[bool].fail(f"rope organize_imports raised: {exc!s}", exception=exc)
         if changes is None:
             return r[bool].ok(False)
         change_list_raw = getattr(changes, "changes", None)
@@ -254,9 +254,7 @@ class FlextInfraUtilitiesRopeImports:
                 continue
             organize_result = cls.organize_imports(rope_project, resource, apply=True)
             if organize_result.failure:
-                return r[bool].fail(
-                    organize_result.error or "rope organize_imports failed"
-                )
+                return r[bool].from_failure(organize_result)
             rope_changed = rope_changed or organize_result.unwrap_or(False)
         normalized_paths = tuple(str(path) for path in existing_paths)
         check_result = u.Cli.run_raw(
@@ -264,21 +262,19 @@ class FlextInfraUtilitiesRopeImports:
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if check_result.failure:
-            return r[bool].fail(check_result.error or "ruff check --fix failed")
+            return r[bool].from_failure(check_result)
         if preserve_canonical_aliases:
             restore_result = cls._ensure_canonical_alias_imports(
                 rope_project, canonical_imports
             )
             if restore_result.failure:
-                return r[bool].fail(
-                    restore_result.error or "canonical alias restore failed"
-                )
+                return r[bool].from_failure(restore_result)
             rope_changed = rope_changed or restore_result.unwrap_or(False)
         format_result = u.Cli.run_raw(
             ["ruff", "format", *normalized_paths], timeout=c.Infra.TIMEOUT_SHORT
         )
         if format_result.failure:
-            return r[bool].fail(format_result.error or "ruff format failed")
+            return r[bool].from_failure(format_result)
         return r[bool].ok(rope_changed)
 
     @classmethod
@@ -349,9 +345,7 @@ class FlextInfraUtilitiesRopeImports:
         try:
             tree = ast.parse(source)
         except SyntaxError as exc:
-            return r[frozenset[str]].fail(
-                f"source is not parseable after import cleanup: {exc!s}"
-            )
+            return r[frozenset[str]].fail(f"source is not parseable after import cleanup: {exc!s}", exception=exc)
         for node in ast.walk(tree):
             if isinstance(node, ast.Name) and node.id in alias_set:
                 referenced.add(node.id)
@@ -387,9 +381,7 @@ class FlextInfraUtilitiesRopeImports:
                 tuple(alias for _module_name, aliases in entries for alias in aliases),
             )
             if referenced_aliases_result.failure:
-                return r[bool].fail(
-                    referenced_aliases_result.error or "alias reference scan failed"
-                )
+                return r[bool].from_failure(referenced_aliases_result)
             referenced_aliases = referenced_aliases_result.unwrap_or(frozenset())
             current: dict[str, set[str]] = defaultdict(set)
             for import_stmt in cls.import_statements(module_imports):

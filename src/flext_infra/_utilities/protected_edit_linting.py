@@ -325,7 +325,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
                 if tool_name == c.Infra.MYPY
                 else error,
             )
-        elif run_result.success and run_result.value.exit_code != 0:
+        elif run_result.success and run_result.value.outcome.raw_return_code != 0:
             resource_diagnostic = (
                 FlextInfraUtilitiesResourceLimits.mypy_failure_diagnostic(
                     run_result.value

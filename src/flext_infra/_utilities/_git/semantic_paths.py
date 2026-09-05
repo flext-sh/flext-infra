@@ -32,7 +32,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git checkout restore failed: {exc}")
+            return r[m.Infra.GitBoolReport].fail(f"git checkout restore failed: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -46,7 +46,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git mv failed: {exc}")
+            return r[m.Infra.GitBoolReport].fail(f"git mv failed: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git rm --cached failed: {exc}")
+            return r[m.Infra.GitBoolReport].fail(f"git rm --cached failed: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -74,7 +74,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git rm failed: {exc}")
+            return r[m.Infra.GitBoolReport].fail(f"git rm failed: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -88,9 +88,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError:
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
-                f"failed to check tracked status: {exc}"
-            )
+            return r[m.Infra.GitBoolReport].fail(f"failed to check tracked status: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(value=bool(listed.strip()))
         )
@@ -106,7 +104,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git add failed: {exc}")
+            return r[m.Infra.GitBoolReport].fail(f"git add failed: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -123,7 +121,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"git restore failed: {exc}")
+            return r[m.Infra.GitBoolReport].fail(f"git restore failed: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -137,7 +135,7 @@ class FlextInfraUtilitiesGitSemanticPathsMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(f"git commit failed: {exc}")
+            return r[m.Infra.GitOidReport].fail(f"git commit failed: {exc}", exception=exc)
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=commit.hexsha))
 
 

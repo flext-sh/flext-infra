@@ -34,7 +34,7 @@ class FlextInfraUtilitiesSafety:
         )
         if (
             repo_check.failure
-            or repo_check.value.exit_code != 0
+            or repo_check.value.outcome.raw_return_code != 0
             or Path(repo_check.value.stdout.strip()).resolve() != repo.resolve()
         ):
             result = r[str].ok("")
@@ -42,7 +42,7 @@ class FlextInfraUtilitiesSafety:
             status_result = u.Cli.run_raw(
                 [c.Infra.GIT, "status", "--porcelain"], cwd=repo
             )
-            if status_result.failure or status_result.value.exit_code != 0:
+            if status_result.failure or status_result.value.outcome.raw_return_code != 0:
                 result = r[str].fail(status_result.error or "git status failed")
             elif not status_result.value.stdout.strip():
                 result = r[str].ok("")
@@ -66,7 +66,7 @@ class FlextInfraUtilitiesSafety:
         )
         if (
             repo_check.failure
-            or repo_check.value.exit_code != 0
+            or repo_check.value.outcome.raw_return_code != 0
             or Path(repo_check.value.stdout.strip()).resolve() != repo.resolve()
         ):
             return r[bool].ok(True)

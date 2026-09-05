@@ -162,9 +162,7 @@ class FlextInfraPyprojectModernizer(
                 analysis_exclusions=analysis_exclusions,
             )
             if conformed.failure:
-                return r[m.Infra.ToolingRuntimeContext].fail(
-                    conformed.error or f"tooling resolution failed: {path}"
-                )
+                return r[m.Infra.ToolingRuntimeContext].from_failure(conformed)
             source = conformed.value
         payload = u.Cli.toml_mapping_from_text(source)
         if payload is None:
@@ -300,9 +298,7 @@ class FlextInfraPyprojectModernizer(
         if project_kind is None and path.parent.resolve() != self.root.resolve():
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
-                return r[m.Infra.ToolingRuntimeContext].fail(
-                    classified.error or f"project classification failed: {path}"
-                )
+                return r[m.Infra.ToolingRuntimeContext].from_failure(classified)
             resolved_project_kind = classified.value
         try:
             environments = self._tooling_pyright_environments(raw_environments)

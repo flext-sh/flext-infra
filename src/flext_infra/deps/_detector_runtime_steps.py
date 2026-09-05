@@ -29,9 +29,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             root, projects_filter=params.project_names
         )
         if projects_result.failure:
-            return r[tuple[t.SequenceOf[Path], Path]].fail(
-                projects_result.error or "project discovery failed"
-            )
+            return r[tuple[t.SequenceOf[Path], Path]].from_failure(projects_result)
         projects: t.SequenceOf[Path] = projects_result.value
         if not projects:
             detector.log.error("deps_no_projects_found")
@@ -92,7 +90,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             detector.log.info("deps_deptry_running", project=project_name)
         deptry_result = deps_service.run_deptry(project_path, venv_bin)
         if deptry_result.failure:
-            return r[bool].fail(deptry_result.error or "deptry run failed")
+            return r[bool].from_failure(deptry_result)
         issues, _ = deptry_result.value
         project_payload = deps_service.build_project_report(project_name, issues)
         projects_report[project_name] = dict(project_payload.model_dump())
@@ -133,9 +131,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             project_path, limits_path=limits_path
         )
         if typings_result.failure:
-            return r[bool].fail(
-                typings_result.error or "typing dependency detection failed"
-            )
+            return r[bool].from_failure(typings_result)
         typings_report = typings_result.value
         projects_report[project_name][c.Infra.DIR_TYPINGS] = typings_report.model_dump()
         to_add: t.StrSequence = typings_report.to_add
@@ -150,7 +146,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                 timeout=c.Infra.TIMEOUT_MEDIUM,
                 env=env,
             )
-            poetry_failed = run_outcome.failure or run_outcome.value.exit_code != 0
+            poetry_failed = run_outcome.failure or run_outcome.value.outcome.raw_return_code != 0
             if poetry_failed:
                 detector.log.warning(
                     "deps_typings_add_failed", project=project_name, package=package
@@ -175,7 +171,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
             detector.log.info("deps_pip_check_running")
         pip_result = deps_service.run_pip_check(root, venv_bin)
         if pip_result.failure:
-            return r[bool].fail(pip_result.error or "pip check failed")
+            return r[bool].from_failure(pip_result)
         pip_lines, pip_exit = pip_result.value
         pip_ok = pip_exit == 0
         report_model.pip_check = self._pip_check_factory(ok=pip_ok, lines=pip_lines)

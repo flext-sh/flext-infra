@@ -38,18 +38,14 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
                 return beads_result
             allow_result = cls._allow_direnv_if_requested(request, runner=runner)
             if allow_result.failure:
-                return r[m.Infra.WorkspaceEnvironmentSyncResult].fail(
-                    allow_result.error or "direnv allow failed"
-                )
+                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(allow_result)
             return beads_result
         result = super().sync_environment_files(request)
         if result.failure:
             return result
         allow_result = cls._allow_direnv_if_requested(request, runner=runner)
         if allow_result.failure:
-            return r[m.Infra.WorkspaceEnvironmentSyncResult].fail(
-                allow_result.error or "direnv allow failed"
-            )
+            return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(allow_result)
         return result
 
     @classmethod
@@ -65,9 +61,7 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
             cls._BEADS_ENVRC_TEMPLATE, context=beads
         )
         if rendered.failure:
-            return r[result_type].fail(
-                rendered.error or "beads-workspace template render failed"
-            )
+            return r[result_type].from_failure(rendered)
         violations = envrc_contract_violations(
             rendered.value, root=request.repository_root, resolve_home=False
         )
@@ -81,7 +75,7 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
             envrc, rendered.value, apply=request.apply, force=request.force
         )
         if written.failure:
-            return r[result_type].fail(written.error or ".envrc write failed")
+            return r[result_type].from_failure(written)
         changed = (envrc,) if written.value else ()
         return r[result_type].ok(result_type(changed_files=changed))
 
@@ -103,9 +97,9 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
             timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         if result.failure:
-            return r[bool].fail(result.error or "direnv allow execution failed")
+            return r[bool].from_failure(result)
         output = result.value
-        if output.exit_code != 0:
+        if output.outcome.raw_return_code != 0:
             return r[bool].fail(
                 f"direnv allow failed for {request.repository_root}: "
                 f"{output.stderr.strip() or output.stdout.strip()}"
@@ -125,7 +119,7 @@ class FlextInfraWorkspaceEnvironmentSync(
         """Run one sync request through the composed mixin surface."""
         result = cls.sync_environment_files(request)
         if result.failure:
-            return r[t.Cli.ResultValue].fail(result.error or "environment sync failed")
+            return r[t.Cli.ResultValue].from_failure(result)
         return r[t.Cli.ResultValue].ok(
             tuple(str(path) for path in result.value.changed_files)
         )

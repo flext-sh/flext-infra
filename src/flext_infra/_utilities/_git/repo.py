@@ -40,7 +40,7 @@ class FlextInfraUtilitiesGitRepo:
         try:
             Git.refresh(resolved)
         except (FileNotFoundError, OSError) as exc:
-            return r[bool].fail(f"git binary refresh failed: {exc}")
+            return r[bool].fail(f"git binary refresh failed: {exc}", exception=exc)
         return r[bool].ok(True)
 
     @classmethod
@@ -58,7 +58,7 @@ class FlextInfraUtilitiesGitRepo:
         try:
             refreshed = cls.refresh_binary()
             if refreshed.failure:
-                return r[Repo].fail(refreshed.error or "git binary unavailable")
+                return r[Repo].from_failure(refreshed)
             repo = Repo(resolved, search_parent_directories=True)
         except (
             GitCommandNotFound,

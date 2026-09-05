@@ -46,7 +46,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and scan.exit_code not in {0, 1}:
+        if not issues and scan.outcome.raw_return_code not in {0, 1}:
             issues = (self._tool_failure_issue(scan),)
         return self._build_check_gate_execution(
             project_dir,
@@ -80,20 +80,32 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 ),
                 # jscpd itself exits 1 when it finds clones, so an absent binary
                 # must not borrow that code or the gate would read it as a scan.
-                exit_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
             )
         scope = self._render_scope_dirs()
         if scope.failure:
             return m.Cli.CommandOutput(
                 stdout="",
                 stderr=scope.error or "workspace scope resolution failed",
-                exit_code=1,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
             )
         if not scope.value:
             return m.Cli.CommandOutput(
                 stdout="",
                 stderr="jscpd scope resolved no source or test directories",
-                exit_code=1,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
             )
         config_path = self._render_config()
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
@@ -119,9 +131,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
-            return r[t.StrSequence].fail(
-                discovered.error or "workspace project discovery failed"
-            )
+            return r[t.StrSequence].from_failure(discovered)
         return r[t.StrSequence].ok(
             tuple(
                 str(project.path / candidate)
@@ -167,7 +177,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return m.Cli.CommandOutput(
             stdout=report_path.read_text(encoding="utf-8"),
             stderr=result.stderr,
-            exit_code=result.exit_code,
+            exit_code=result.outcome.raw_return_code,
         )
 
     @staticmethod
@@ -207,9 +217,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             return r[tuple[m.Infra.Issue, ...]].fail("jscpd returned empty JSON report")
         parsed = u.Cli.json_parse(scan.stdout)
         if parsed.failure:
-            return r[tuple[m.Infra.Issue, ...]].fail(
-                parsed.error or "jscpd returned invalid JSON report"
-            )
+            return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)
         data = u.Cli.json_as_mapping(parsed.value)
         prefix = str(project_dir)
         issues: list[m.Infra.Issue] = []

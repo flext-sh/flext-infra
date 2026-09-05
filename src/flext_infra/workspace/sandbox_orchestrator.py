@@ -60,9 +60,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
                 m.Infra.GitRepoRequest(repo_root=project_root)
             )
             if restored.failure:
-                return r[bool].fail(
-                    restored.error or f"sandbox rollback ({project_root.name}) failed"
-                )
+                return r[bool].from_failure(restored)
         return r[bool].ok(True)
 
     @override
@@ -70,7 +68,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
         """Snapshot → run-in-sandbox → propagate-to-live or rollback."""
         snapshot_result = self._snapshot()
         if snapshot_result.failure:
-            return r[bool].fail(snapshot_result.error or "sandbox snapshot failed")
+            return r[bool].from_failure(snapshot_result)
         sandbox_result = self._orchestrate_in(self._sandbox_path)
         if sandbox_result.failure:
             rollback = self._rollback_sandbox()

@@ -61,7 +61,7 @@ class FlextInfraValidateFreshImport(s[bool]):
                 )
                 continue
             output = smoke_result.value
-            rc = output.exit_code
+            rc = output.outcome.raw_return_code
             lines = (output.stderr.strip() or output.stdout.strip()).splitlines()
             last_line = lines[-1] if lines else ""
             if rc != 0:
@@ -100,7 +100,7 @@ class FlextInfraValidateFreshImport(s[bool]):
         """Execute the fresh-import validation CLI flow."""
         report_result = self.build_report(packages=self.packages)
         if report_result.failure:
-            return r[bool].fail(report_result.error or "fresh-import validation failed")
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

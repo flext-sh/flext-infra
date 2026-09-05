@@ -391,6 +391,46 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         tm.that("rumdl>=0.2.46" not in document["dependency-groups"]["dev"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
 
+    def test_host_runtime_packages_are_removed_from_dependency_surfaces(self) -> None:
+        """Host automation stays outside every generated Python environment."""
+        workspace = _workspace()
+        external_packages = config.Infra.codegen.scaffold.project.external_runtime_packages
+        external = external_packages[0]
+        source = f'''[project]
+name = "external-consumer"
+dependencies = ["{external}", "requests>=2"]
+
+[project.optional-dependencies]
+automation = ["{external}[all]>=1", "custom-plugin>=1"]
+
+[dependency-groups]
+dev = ["{external}>=1", "custom-tool>=1"]
+'''
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                providers=config.Infra.codegen.providers,
+                workspace=workspace,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+                external_runtime_packages=external_packages,
+            )
+        )
+        document = tomllib.loads(conformed)
+        dependency_surfaces = (
+            document["project"]["dependencies"],
+            document["project"]["optional-dependencies"]["automation"],
+            document["dependency-groups"]["dev"],
+        )
+        for requirements in dependency_surfaces:
+            tm.that(
+                external not in {
+                    u.Infra.dep_name(requirement) for requirement in requirements
+                },
+                eq=True,
+            )
+
     def test_exclude_dependencies_emit_for_standalone_without_project_key(self) -> None:
         """Standalone member CI needs scoped excludes without the routing key."""
         workspace = _workspace()

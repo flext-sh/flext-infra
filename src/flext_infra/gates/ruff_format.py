@@ -47,7 +47,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        if result.exit_code != 0 and result.stdout.strip():
+        if result.outcome.raw_return_code != 0 and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
                 raw = line.strip()
@@ -70,7 +70,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                             message="Would be reformatted",
                         )
                     )
-        return result.exit_code == 0, issues
+        return result.outcome.raw_return_code == 0, issues
 
     @override
     def _build_fix_command(

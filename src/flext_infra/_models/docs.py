@@ -136,7 +136,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
     class DocsPublicContract(m.ArbitraryTypesModel):
         """Exact project/config objects plus derived public API analysis."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 

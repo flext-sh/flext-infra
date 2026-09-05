@@ -82,9 +82,7 @@ class FlextInfraWorkspaceChecker(
         checker = cls(repository_root=params.workspace_path)
         project_targets_result = cls._resolve_project_targets(params)
         if project_targets_result.failure:
-            return r[bool].fail(
-                project_targets_result.error or "project resolution failed"
-            )
+            return r[bool].from_failure(project_targets_result)
         project_targets = project_targets_result.value
         gates = list(params.gates)
         if not gates:
@@ -105,7 +103,7 @@ class FlextInfraWorkspaceChecker(
             ctx=gate_ctx,
         )
         if run_result.failure:
-            return r[bool].fail(run_result.error or "check failed")
+            return r[bool].from_failure(run_result)
         failed_projects = [
             project for project in run_result.value if not project.passed
         ]
@@ -131,9 +129,7 @@ class FlextInfraWorkspaceChecker(
             )
         discovered = u.Infra.resolve_projects(params.workspace_path, ())
         if discovered.failure:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
-                discovered.error or "project discovery failed"
-            )
+            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(discovered)
         project_targets = tuple(
             m.Infra.CheckProjectTarget(name=project.name, path=project.path)
             for project in discovered.value
@@ -174,16 +170,12 @@ class FlextInfraWorkspaceChecker(
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                resolved_gates_result.error or "invalid gates"
-            )
+            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(resolved_gates_result)
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)
         if dir_ensure.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                dir_ensure.error or "failed to create report directory"
-            )
+            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(dir_ensure)
         effective_ctx = ctx or m.Infra.GateContext(
             workspace=self._repository_root, reports_dir=report_base
         )

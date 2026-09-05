@@ -132,7 +132,7 @@ class FlextInfraWorktreeProvisioning:
             try:
                 lane_venv.unlink()
             except OSError as exc:
-                return r.fail(f"failed to remove foreign lane environment link: {exc}")
+                return r.fail(f"failed to remove foreign lane environment link: {exc}", exception=exc)
         setup = u.Cli.run_live(
             (
                 c.Infra.MAKE,

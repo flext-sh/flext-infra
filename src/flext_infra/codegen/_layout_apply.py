@@ -34,9 +34,7 @@ class FlextInfraCodegenLayoutApplyMixin(
         if gitignore_patterns:
             applied = self._apply_gitignore(project_dir, gitignore_patterns)
             if applied.failure:
-                return r[m.Infra.LayoutProjectReport].fail(
-                    applied.error or "gitignore update failed"
-                )
+                return r[m.Infra.LayoutProjectReport].from_failure(applied)
             gitignore_status = applied.value
         for finding in report.findings:
             if finding.rule == "review":
@@ -47,9 +45,7 @@ class FlextInfraCodegenLayoutApplyMixin(
                 continue
             executed = self._execute_path_finding(project_dir, finding)
             if executed.failure:
-                return r[m.Infra.LayoutProjectReport].fail(
-                    executed.error or f"layout action failed: {finding.path}"
-                )
+                return r[m.Infra.LayoutProjectReport].from_failure(executed)
             findings.append(executed.value)
         return r[m.Infra.LayoutProjectReport].ok(
             report.model_copy(update={"findings": tuple(findings)})
@@ -76,9 +72,7 @@ class FlextInfraCodegenLayoutApplyMixin(
         if source.is_dir() and target.exists():
             merge = self._merge_directory(project_dir, source, target, finding.path)
             if merge.failure:
-                return r[m.Infra.LayoutFinding].fail(
-                    merge.error or f"docs merge failed: {finding.path}"
-                )
+                return r[m.Infra.LayoutFinding].from_failure(merge)
             if source.exists():
                 return r[m.Infra.LayoutFinding].ok(
                     finding.model_copy(
@@ -93,9 +87,7 @@ class FlextInfraCodegenLayoutApplyMixin(
             )
         moved = self._move_entry(project_dir, source, target, finding.path)
         if moved.failure:
-            return r[m.Infra.LayoutFinding].fail(
-                moved.error or f"move failed: {finding.path}"
-            )
+            return r[m.Infra.LayoutFinding].from_failure(moved)
         status: t.Infra.LayoutStatus = "applied"
         return r[m.Infra.LayoutFinding].ok(
             finding.model_copy(update={"status": status, "message": moved.value})
@@ -107,9 +99,7 @@ class FlextInfraCodegenLayoutApplyMixin(
         """Archive one entry into the archive root, preserving content."""
         archived = self._archive_path(project_dir, source, finding.path, finding)
         if archived.failure:
-            return r[m.Infra.LayoutFinding].fail(
-                archived.error or f"archive failed: {finding.path}"
-            )
+            return r[m.Infra.LayoutFinding].from_failure(archived)
         status, message = archived.value
         return r[m.Infra.LayoutFinding].ok(
             finding.model_copy(update={"status": status, "message": message})
@@ -126,7 +116,7 @@ class FlextInfraCodegenLayoutApplyMixin(
                 project_dir, file_path, target / rel, f"{source_rel}/{rel}"
             )
             if moved.failure:
-                return r[bool].fail(moved.error or f"merge move failed: {rel}")
+                return r[bool].from_failure(moved)
         self._prune_empty_dirs(source)
         return r[bool].ok(True)
 

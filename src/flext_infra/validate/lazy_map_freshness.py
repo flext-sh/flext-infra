@@ -75,9 +75,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         """Execute the freshness validation using ``self.repository_root``."""
         report_result = self.build_report(self.repository_root)
         if report_result.failure:
-            return r[bool].fail(
-                report_result.error or "lazy-map freshness validation failed"
-            )
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

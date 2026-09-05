@@ -30,9 +30,7 @@ class FlextInfraMiseWorkspacePlanner:
             return r[Path].from_failure(physical)
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
         if identity.failure:
-            return r[Path].fail(
-                identity.error or "cannot resolve Mise workspace Git identity"
-            )
+            return r[Path].from_failure(identity)
         if not identity.value.is_submodule:
             return r[Path].ok(requested)
         superproject_root = identity.value.superproject_root
@@ -59,9 +57,7 @@ class FlextInfraMiseWorkspacePlanner:
         scope_root = resolved_scope.value
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
         if workspace.failure:
-            return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
-                workspace.error or "cannot load governed Mise workspace"
-            )
+            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
             for project in workspace.value.declared_repositories

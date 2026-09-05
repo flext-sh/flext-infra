@@ -71,7 +71,7 @@ class FlextInfraOrchestratorService(
 
         resolved_projects = self._resolved_projects()
         if resolved_projects.failure:
-            return r[bool].fail(resolved_projects.error or "project resolution failed")
+            return r[bool].from_failure(resolved_projects)
 
         projects = resolved_projects.value
         if not projects:
@@ -86,9 +86,7 @@ class FlextInfraOrchestratorService(
             verb=self.verb,
         )
         if orchestrate_result.failure:
-            return r[bool].fail(
-                orchestrate_result.error or "orchestration completed with failures"
-            )
+            return r[bool].from_failure(orchestrate_result)
         return r[bool].ok(True)
 
 

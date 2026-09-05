@@ -1139,10 +1139,10 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         try:
             mover = u.Infra.create_move(rope_project, source_resource, offset)
         except c.EXC_BROAD_RUNTIME as exc:
-            return r[str].fail(f"create_move failed: {exc}")
+            return r[str].fail(f"create_move failed: {exc}", exception=exc)
         try:
             changes = mover.get_changes(target_resource)
             rope_project.do(changes)
         except c.EXC_BROAD_RUNTIME as exc:
-            return r[str].fail(f"rope move failed: {exc}")
+            return r[str].fail(f"rope move failed: {exc}", exception=exc)
         return r[str].ok(str(target_file))

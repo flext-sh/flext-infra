@@ -267,9 +267,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         file = files[0]
         authenticated = self._authenticated_managed_file(request.root, file.path)
         if authenticated.failure:
-            return r[m.Infra.CodegenResult].fail(
-                authenticated.error or "Makefile authentication failed"
-            )
+            return r[m.Infra.CodegenResult].from_failure(authenticated)
         current, identity = authenticated.value
         current_sha = u.Cli.sha256_content(current) if identity is not None else ""
         if current_sha != file.current_sha256:
@@ -282,16 +280,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             u.Cli.emit_raw(f"  write [1/1] {file.path}\n")
             promoted = u.Cli.atomic_write_text_file(file.path, file.rendered)
             if promoted.failure:
-                return r[m.Infra.CodegenResult].fail(
-                    promoted.error
-                    or f"stage=apply path={file.path}: atomic write failed"
-                )
+                return r[m.Infra.CodegenResult].from_failure(promoted)
             written = (file.path,)
         materialized = self._authenticated_managed_file(request.root, file.path)
         if materialized.failure:
-            return r[m.Infra.CodegenResult].fail(
-                materialized.error or "Makefile readback failed"
-            )
+            return r[m.Infra.CodegenResult].from_failure(materialized)
         materialized_content, _materialized_identity = materialized.value
         if (
             materialized_content != file.rendered
@@ -303,10 +296,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[m.Infra.CodegenResult].fail(
-                verified.error
-                or "stage=verify-fixed-point: Makefile verification failed"
-            )
+            return r[m.Infra.CodegenResult].from_failure(verified)
         residual = tuple(item for item in verified.value.files if item.changed)
         if residual:
             return r[m.Infra.CodegenResult].fail(
@@ -324,10 +314,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         lock_path = self.conform_transaction_lock_path(request.root)
         ensured = u.Cli.ensure_dir(lock_path.parent)
         if ensured.failure:
-            return r[m.Infra.CodegenResult].fail(
-                ensured.error
-                or f"codegen transaction directory failed: {lock_path.parent}"
-            )
+            return r[m.Infra.CodegenResult].from_failure(ensured)
         try:
             u.Cli.info(f"stage=wait-transaction-lock path={lock_path}")
             with UnixFileLock(
@@ -368,9 +355,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         planned = self.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenResult].fail(
-                planned.error or "codegen conform planning failed"
-            )
+            return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
         mode = c.Infra.CodegenConformMode(request.mode)
         ancestry = self._validate_ancestry(plan)
@@ -397,10 +382,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[m.Infra.CodegenResult].fail(
-                verified.error
-                or "stage=verify-fixed-point: post-apply conform verification failed"
-            )
+            return r[m.Infra.CodegenResult].from_failure(verified)
         verified_plan = verified.value
         residual = tuple(file for file in verified_plan.files if file.changed)
         if residual:
@@ -444,9 +426,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         planned = self.plan(request)
         if planned.failure:
-            return r[m.Infra.CodegenResult].fail(
-                planned.error or "codegen conform planning failed"
-            )
+            return r[m.Infra.CodegenResult].from_failure(planned)
         plan = planned.value
         mode = c.Infra.CodegenConformMode(request.mode)
         ancestry = self._validate_ancestry(plan)
@@ -479,10 +459,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[m.Infra.CodegenResult].fail(
-                verified.error
-                or "stage=verify-fixed-point: post-apply conform verification failed"
-            )
+            return r[m.Infra.CodegenResult].from_failure(verified)
         verified_plan = verified.value
         verified_configs = self._mise_config_plans(verified_plan)
         if verified_configs.failure:
@@ -552,9 +529,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         source_barrier = u.Cli.atomic_verify_binary_file_states(source_states)
         if source_barrier.failure:
-            return r[tuple[Path, ...]].fail(
-                source_barrier.error or "codegen source changed"
-            )
+            return r[tuple[Path, ...]].from_failure(source_barrier)
         written: list[Path] = []
         total_changed = len(changed)
         u.Cli.info(f"stage=apply changed={total_changed}")
@@ -569,9 +544,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if target.is_file():
                 current = u.Cli.files_read_text(target)
                 if current.failure:
-                    return r[tuple[Path, ...]].fail(
-                        current.error or f"managed file authentication failed: {target}"
-                    )
+                    return r[tuple[Path, ...]].from_failure(current)
                 current_sha = u.Cli.sha256_content(current.value)
             elif target.exists():
                 return r[tuple[Path, ...]].fail(
@@ -592,20 +565,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         error_code="E_CODEGEN_ABSENT_UNLINK",
                     )
                     if removed.failure:
-                        return r[tuple[Path, ...]].fail(
-                            removed.error or f"absent path unlink failed: {target}"
-                        )
+                        return r[tuple[Path, ...]].from_failure(removed)
                 written.append(file.path)
                 continue
             result = u.Cli.atomic_write_text_file(file.path, file.rendered)
             if result.failure:
-                return r[tuple[Path, ...]].fail(
-                    result.error
-                    or (
-                        f"stage=apply position={write_index}/{total_changed} "
-                        f"path={file.path}: atomic write failed"
-                    )
-                )
+                return r[tuple[Path, ...]].from_failure(result)
             if file.executable is not None:
                 current_mode = file.path.stat().st_mode
                 executable_bits = 0o111
@@ -634,9 +599,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository_root
             )
             if workspace_result.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    workspace_result.error or "workspace topology load failed"
-                )
+                return r[m.Infra.CodegenPlan].from_failure(workspace_result)
             workspace = workspace_result.value
         current_repository = workspace.repository
         if self.initial_workspace is None:
@@ -644,10 +607,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 root, workspace
             )
             if current_target_result.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    current_target_result.error
-                    or "repository conformance target resolution failed"
-                )
+                return r[m.Infra.CodegenPlan].from_failure(current_target_result)
             current_target = current_target_result.value
             current_repository = current_target.repository
         else:
@@ -670,10 +630,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 preference=config_spec.branch_policy.integration_branch_preference,
             )
             if baseline_result.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    baseline_result.error
-                    or f"integration baseline resolution failed: {root}"
-                )
+                return r[m.Infra.CodegenPlan].from_failure(baseline_result)
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
@@ -694,9 +651,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             request, workspace, current_repository
         )
         if selected_result.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                selected_result.error or "repository selection failed"
-            )
+            return r[m.Infra.CodegenPlan].from_failure(selected_result)
         selected = selected_result.value
         files: list[m.Infra.CodegenFilePlan] = []
         environments: list[m.Infra.UvEnvironmentPlan] = []
@@ -725,10 +680,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     root, workspace, repository
                 )
                 if repository_root_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        repository_root_result.error
-                        or f"invalid repository root: {repository.name}"
-                    )
+                    return r[m.Infra.CodegenPlan].from_failure(repository_root_result)
                 repository_root = repository_root_result.value
             if repository_root.exists() and not repository_root.is_dir():
                 return r[m.Infra.CodegenPlan].fail(
@@ -748,19 +700,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
                 if local_workspace_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        local_workspace_result.error
-                        or f"repository topology load failed: {repository_root}"
-                    )
+                    return r[m.Infra.CodegenPlan].from_failure(local_workspace_result)
                 local_workspace = local_workspace_result.value
                 target_result = FlextInfraWorkspaceDetector.conform_target(
                     repository_root, local_workspace
                 )
                 if target_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        target_result.error
-                        or f"repository target resolution failed: {repository_root}"
-                    )
+                    return r[m.Infra.CodegenPlan].from_failure(target_result)
                 target = target_result.value
             target_elapsed = time.monotonic() - stage_started
             u.Cli.info(
@@ -791,14 +737,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     contract=contract,
                 )
             if repository_plan.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    repository_plan.error
-                    or (
-                        f"stage=plan position={repository_index}/"
-                        f"{total_repositories} repository={repository.name}: "
-                        f"repository planning failed: {repository_root}"
-                    )
-                )
+                return r[m.Infra.CodegenPlan].from_failure(repository_plan)
             u.Cli.info(
                 f"  stage=repository-plan repository={repository.name} "
                 f"elapsed={time.monotonic() - stage_started:.2f}s"
@@ -813,14 +752,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 workspace=local_workspace,
             )
             if governed.failure:
-                return r[m.Infra.CodegenPlan].fail(
-                    governed.error
-                    or (
-                        f"stage=plan position={repository_index}/"
-                        f"{total_repositories} repository={repository.name}: "
-                        f"artifact ownership planning failed: {repository_root}"
-                    )
-                )
+                return r[m.Infra.CodegenPlan].from_failure(governed)
             u.Cli.info(
                 f"  stage=governed repository={repository.name} "
                 f"elapsed={time.monotonic() - stage_started:.2f}s"
@@ -832,14 +764,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_root, target.make_profile
                 )
                 if retired.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        retired.error
-                        or (
-                            f"stage=plan position={repository_index}/"
-                            f"{total_repositories} repository={repository.name}: "
-                            "profile-excluded projection planning failed"
-                        )
-                    )
+                    return r[m.Infra.CodegenPlan].from_failure(retired)
                 governed_paths = {item.path for item in governed.value}
                 files.extend(
                     item for item in retired.value if item.path not in governed_paths
@@ -861,14 +786,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if self.initial_workspace is None or (repository_root / ".git").exists():
                 ancestry_result = self._branch_ancestry_plan(target)
                 if ancestry_result.failure:
-                    return r[m.Infra.CodegenPlan].fail(
-                        ancestry_result.error
-                        or (
-                            f"stage=plan position={repository_index}/"
-                            f"{total_repositories} repository={repository.name}: "
-                            f"branch ancestry inventory failed: {repository_root}"
-                        )
-                    )
+                    return r[m.Infra.CodegenPlan].from_failure(ancestry_result)
                 ancestry_plans.append(ancestry_result.value)
             u.Cli.info(
                 f"  stage=ancestry repository={repository.name} "
@@ -918,17 +836,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else FlextInfraWorkspaceDetector.load_projection_workspace_spec(root)
         )
         if workspace_result.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                workspace_result.error or "declared workspace manifest load failed"
-            )
+            return r[m.Infra.CodegenPlan].from_failure(workspace_result)
         workspace = workspace_result.value
         target_result = FlextInfraWorkspaceDetector.declared_conform_target(
             root, workspace
         )
         if target_result.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                target_result.error or "declared conformance target is invalid"
-            )
+            return r[m.Infra.CodegenPlan].from_failure(target_result)
         target = target_result.value
         repository = target.repository
         u.Cli.info("stage=plan repositories=1")
@@ -947,9 +861,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             managed_artifacts=managed_artifacts.value,
         )
         if planned.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                planned.error or f"Makefile planning failed: {root}"
-            )
+            return r[m.Infra.CodegenPlan].from_failure(planned)
         governed = self._complete_governed_plans(
             root,
             planned.value,
@@ -959,9 +871,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace=workspace,
         )
         if governed.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                governed.error or f"Makefile ownership planning failed: {root}"
-            )
+            return r[m.Infra.CodegenPlan].from_failure(governed)
         return r[m.Infra.CodegenPlan].ok(
             m.Infra.CodegenPlan(
                 request=request,
@@ -1036,9 +946,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if path.is_file():
                 read = u.Cli.files_read_text(path)
                 if read.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        read.error or f"governed artifact read failed: {path}"
-                    )
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(read)
                 current = read.value
             digest = u.Cli.sha256_content(current) if path.is_file() else ""
             if (
@@ -1049,9 +957,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 # (vscode settings today) produce their rendered content here.
                 merged = FlextInfraCodegen.render_vscode_settings(root)
                 if merged.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        merged.error or f"vscode settings merge failed: {path}"
-                    )
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(merged)
                 if merged.value != current:
                     completed.append(
                         m.Infra.CodegenFilePlan(
@@ -1079,9 +985,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     project_dir=root,
                 )
                 if rendered_gitignore.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        rendered_gitignore.error or f"gitignore render failed: {path}"
-                    )
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered_gitignore)
                 if rendered_gitignore.value != current:
                     completed.append(
                         m.Infra.CodegenFilePlan(
@@ -1220,9 +1124,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # its own config/*.yaml and appended as one derived section.
             resolved = u.Infra.load_project_managed_artifacts(project_dir)
             if resolved.failure:
-                return r[str].fail(
-                    resolved.error or f"project artifact load failed: {project_dir}"
-                )
+                return r[str].from_failure(resolved)
             project_patterns = resolved.value.artifacts.Gitignore.patterns
             if project_patterns:
                 sections.append(
@@ -1365,9 +1267,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             analysis_exclusions=analysis_exclusions,
         )
         if tooling_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                tooling_result.error or f"tooling render failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_result)
         context_result = self._project_render_context(
             repository,
             target,
@@ -1377,9 +1277,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository_root=pyproject.parent,
         )
         if context_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                context_result.error or "project render context is invalid"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(context_result)
         context = context_result.value
         uv_exclude_dependencies = self._routed_uv_exclude_dependencies(
             repository, target, workspace, codegen
@@ -1476,29 +1374,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 project_context=context,
             )
             if artifact_context.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    artifact_context.error
-                    or f"artifact render context failed: {destination}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(artifact_context)
             rendered = u.Cli.template_render_authenticated(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    rendered.error
-                    or (
-                        f"stage=templates repository={repository.name} "
-                        f"template={entry.source}: template render failed"
-                    )
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
             rendered_content = self._compose_project_artifact(
                 root, destination, rendered.value.rendered
             )
             if rendered_content.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    rendered_content.error
-                    or f"managed artifact composition failed: {destination}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered_content)
             file_plan = self._file_plan(
                 root,
                 destination,
@@ -1509,10 +1395,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
             )
             if file_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    file_plan.error
-                    or f"managed file planning failed: {entry.destination}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
             planned.append(file_plan.value)
         if not contract.pyproject:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -1534,9 +1417,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             templates_root / pyproject_entry.source, context
         )
         if pyproject_render.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_render.error or "pyproject template render failed"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(pyproject_render)
         initial_tooling = modernizer.conform_source(
             pyproject_render.value.rendered,
             path=pyproject,
@@ -1548,9 +1429,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             analysis_exclusions=analysis_exclusions,
         )
         if initial_tooling.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                initial_tooling.error or f"initial tooling conform failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(initial_tooling)
         cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
             repository, codegen.toolchain
         )
@@ -1561,6 +1440,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
+            external_runtime_packages=(
+                codegen.scaffold.project.external_runtime_packages
+            ),
             required_runtime_dependencies=codegen.runtime_dependency_overlays.get(
                 repository.distribution, ()
             ),
@@ -1570,9 +1452,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                prepared_result.error or f"pyproject prepare failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(prepared_result)
         final_tooling = modernizer.conform_source(
             prepared_result.value,
             path=pyproject,
@@ -1583,9 +1463,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             analysis_exclusions=analysis_exclusions,
         )
         if final_tooling.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                final_tooling.error or f"final tooling conform failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(final_tooling)
         pyproject_plan = self._file_plan(
             root,
             c.Infra.PYPROJECT_FILENAME,
@@ -1593,9 +1471,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             source_states=pyproject_render.value.source_states,
         )
         if pyproject_plan.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_plan.error or f"pyproject planning failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(pyproject_plan)
         planned.append(pyproject_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
@@ -1654,9 +1530,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         pyproject_read = u.Cli.files_read_text(pyproject)
         if pyproject_read.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_read.error or f"pyproject read failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(pyproject_read)
         pyproject_source = self._reconcile_managed_pyproject(
             pyproject, pyproject_read.value, codegen
         )
@@ -1666,9 +1540,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         metadata = self._project_metadata_from_source(root, pyproject_source.value)
         if metadata.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                metadata.error or f"project metadata load failed: {root}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(metadata)
         report_pyproject_stage("metadata")
         dist = metadata.value.project.name
         if dist != repository.distribution:
@@ -1696,18 +1568,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
             )
             if dependency_result.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    dependency_result.error
-                    or f"pyproject dependency conform failed: {pyproject}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(dependency_result)
             dependency_plan = self._file_plan(
                 root, c.Infra.PYPROJECT_FILENAME, dependency_result.value
             )
             if dependency_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    dependency_plan.error
-                    or f"pyproject dependency planning failed: {pyproject}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(dependency_plan)
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=repository_root,
@@ -1736,9 +1602,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             report_pyproject_stage("tooling-context")
             if tooling_context.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    tooling_context.error or f"tooling render failed: {pyproject}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_context)
             return self._plan_existing_templates(
                 root=root,
                 repository=repository,
@@ -1759,6 +1623,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace_mode=target.make_profile,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
+            external_runtime_packages=(
+                codegen.scaffold.project.external_runtime_packages
+            ),
             required_runtime_dependencies=codegen.runtime_dependency_overlays.get(
                 repository.distribution, ()
             ),
@@ -1769,9 +1636,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         report_pyproject_stage("dependency-policy")
         if prepared_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                prepared_result.error or f"pyproject preparation failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(prepared_result)
         # Dependency topology is conformed before tooling so the modernizer is
         # the final owner of TOML ordering, comments, and type-checker settings.
         # It preserves the already canonical dependency source declarations.
@@ -1787,9 +1652,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         report_pyproject_stage("tooling-conform")
         if tooling_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                tooling_result.error or f"tooling conform failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_result)
         tooling_context = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
             package_name=metadata.value.package_name,
@@ -1802,9 +1665,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         report_pyproject_stage("tooling-context")
         if tooling_context.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                tooling_context.error or f"tooling render failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(tooling_context)
         pyproject_plan = self._file_plan(
             root,
             c.Infra.PYPROJECT_FILENAME,
@@ -1812,9 +1673,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             source_states=managed_artifacts.value.sources,
         )
         if pyproject_plan.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_plan.error or f"pyproject planning failed: {pyproject}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(pyproject_plan)
         planned = [pyproject_plan.value]
         if not contract.templates:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
@@ -1831,18 +1690,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             managed_artifacts=managed_artifacts.value,
         )
         if managed_result.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                managed_result.error or f"managed template planning failed: {root}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(managed_result)
         planned.extend(managed_result.value)
         if contract.custom:
             custom_result = self._plan_existing_custom(
                 root, codegen, profile=target.make_profile.value
             )
             if custom_result.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    custom_result.error or f"custom Make validation failed: {root}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(custom_result)
             planned.extend(custom_result.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
@@ -1978,9 +1833,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     # Keep the typed read result distinct from its string payload.
                     orphan_read = u.Cli.files_read_text(path)
                     if orphan_read.failure:
-                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                            orphan_read.error or f"orphan workflow read failed: {path}"
-                        )
+                        return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(orphan_read)
                     planned.append(
                         m.Infra.CodegenFilePlan(
                             path=path,
@@ -1997,9 +1850,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if managed.policy == "create-only" and path.is_file():
                 current = u.Cli.files_read_text(path)
                 if current.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        current.error or f"managed file read failed: {path}"
-                    )
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
                 file_plan = self._file_plan(
                     root,
                     entry.destination,
@@ -2007,10 +1858,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     executable=managed.executable,
                 )
                 if file_plan.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                        file_plan.error
-                        or f"managed file planning failed: {entry.destination}"
-                    )
+                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
                 planned.append(file_plan.value)
                 continue
             if managed.policy == "create-only" and path.exists():
@@ -2032,17 +1880,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 managed_artifacts=managed_artifacts.resolution,
             )
             if artifact_context.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    artifact_context.error
-                    or f"managed artifact context failed: {entry.destination}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(artifact_context)
             rendered = u.Cli.template_render_authenticated(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    rendered.error or f"template render failed: {entry.source}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(rendered)
             rendered_content = rendered.value.rendered
             composed = self._compose_project_artifact(
                 root,
@@ -2051,10 +1894,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 managed_artifacts=managed_artifacts,
             )
             if composed.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    composed.error
-                    or f"managed artifact composition failed: {entry.destination}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(composed)
             rendered_content = composed.value.rendered
             conflict_marker = u.Infra.first_merge_conflict_marker(rendered_content)
             if conflict_marker is not None:
@@ -2074,10 +1914,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ),
             )
             if file_plan.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    file_plan.error
-                    or f"managed file planning failed: {entry.destination}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(file_plan)
             planned.append(file_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
@@ -2190,10 +2027,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         for repository in workspace.declared_repositories:
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
-                return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].fail(
-                    provider.error
-                    or f"declared_repository provider is invalid: {repository.name}"
-                )
+                return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].from_failure(provider)
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
                     repository=repository,
@@ -2316,9 +2150,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination.startswith(".github/"):
             provider = self._repository_provider(repository, codegen)
             if provider.failure:
-                return r[p.Model].fail(
-                    provider.error or "workflow provider resolution failed"
-                )
+                return r[p.Model].from_failure(provider)
             workspace_repositories = (
                 tuple(workspace.declared_repositories)
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
@@ -2397,9 +2229,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             gitlinks = self._managed_gitlinks(workspace, codegen)
             if gitlinks.failure:
-                return r[p.Model].fail(
-                    gitlinks.error or "managed Gitlink resolution failed"
-                )
+                return r[p.Model].from_failure(gitlinks)
             cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
                 repository, codegen.toolchain
             )
@@ -2458,9 +2288,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 repository, target, workspace, codegen, tooling_runtime=tooling_runtime
             )
             if make_context.failure:
-                return r[p.Model].fail(
-                    make_context.error or "custom Make render context failed"
-                )
+                return r[p.Model].from_failure(make_context)
             return r[p.Model].ok(make_context.value)
         if project_context is not None:
             return r[p.Model].ok(project_context)
@@ -2478,10 +2306,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             managed_artifacts=managed_artifacts,
         )
         if context_result.failure:
-            return r[p.Model].fail(
-                context_result.error
-                or f"managed artifact context failed: {destination}"
-            )
+            return r[p.Model].from_failure(context_result)
         return r[p.Model].ok(context_result.value)
 
     @staticmethod
@@ -2502,9 +2327,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         gitlinks = FlextInfraCodegenConform._managed_gitlinks(workspace, codegen)
         if gitlinks.failure:
-            return r[m.Infra.MakeRenderContext].fail(
-                gitlinks.error or "managed Gitlink resolution failed"
-            )
+            return r[m.Infra.MakeRenderContext].from_failure(gitlinks)
         cooldown_exclusions, cooldown_overrides = (
             FlextInfraCodegenConform._dependency_cooldown_policy(
                 repository, codegen.toolchain
@@ -2592,16 +2415,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository, target, workspace, codegen, tooling_runtime=tooling_runtime
         )
         if make_context.failure:
-            return r[m.Infra.ProjectRenderContext].fail(
-                make_context.error or "Make render context resolution failed"
-            )
+            return r[m.Infra.ProjectRenderContext].from_failure(make_context)
         repository_provider = FlextInfraCodegenConform._repository_provider(
             repository, codegen
         )
         if repository_provider.failure:
-            return r[m.Infra.ProjectRenderContext].fail(
-                repository_provider.error or "repository provider resolution failed"
-            )
+            return r[m.Infra.ProjectRenderContext].from_failure(repository_provider)
         flext_provider = repository_provider.value
         packaged_data_dirs = (
             tuple(
@@ -2646,9 +2465,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else r[str].ok(config.Infra.initial_project_version)
         )
         if version_result.failure:
-            return r[m.Infra.ProjectRenderContext].fail(
-                version_result.error or f"project version unresolved: {repository_root}"
-            )
+            return r[m.Infra.ProjectRenderContext].from_failure(version_result)
         return r[m.Infra.ProjectRenderContext].ok(
             m.Infra.ProjectRenderContext(
                 **make_context.value.model_dump(
@@ -2757,14 +2574,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(())
         read = u.Cli.files_read_text(path)
         if read.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                read.error or f"custom Make read failed: {path}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(read)
         validation = self.validate_custom_make(read.value, policy)
         if validation.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                validation.error or f"invalid custom Make handlers: {path}"
-            )
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(validation)
         digest = u.Cli.sha256_content(read.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((
             m.Infra.CodegenFilePlan(
@@ -2890,9 +2703,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             root, path, allow_missing_parent=True
         )
         if authenticated.failure:
-            return r[m.Infra.CodegenFilePlan].fail(
-                authenticated.error or f"managed file read failed: {path}"
-            )
+            return r[m.Infra.CodegenFilePlan].from_failure(authenticated)
         # The destination identity is re-authenticated under the transaction
         # lock immediately before promotion, so the plan keeps only the content
         # digest proving the destination did not move after planning.
@@ -3249,9 +3060,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             current = u.Cli.files_read_text(path)
             if current.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    current.error or f"retired projection read failed: {path}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
             if not cls._is_generator_owned(current.value):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"retired projection is not generator-owned: {path}"
@@ -3267,9 +3076,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             current = u.Cli.files_read_text(path)
             if current.failure:
-                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                    current.error or f"profile-excluded projection read failed: {path}"
-                )
+                return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
             if not cls._is_generator_owned(current.value):
                 continue
             planned.append(cls._absent_file_plan(path, current.value))

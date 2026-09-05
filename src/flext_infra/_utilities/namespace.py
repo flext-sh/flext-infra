@@ -490,9 +490,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].fail(
-                validation.error or "namespace validation failed"
-            )
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
         report = validation.unwrap()
         parsed: list[m.Infra.CensusViolation] = []
         for violation in report.violations:

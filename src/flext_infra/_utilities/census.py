@@ -662,9 +662,7 @@ class FlextInfraUtilitiesRefactorCensus:
             )
         )
         if updates_result.failure:
-            return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
-            )
+            return r[bool].from_failure(updates_result)
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 
@@ -723,9 +721,7 @@ class FlextInfraUtilitiesRefactorCensus:
             )
         )
         if updates_result.failure:
-            return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
-            )
+            return r[bool].from_failure(updates_result)
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 

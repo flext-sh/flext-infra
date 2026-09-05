@@ -79,7 +79,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         self, scan: p.Cli.CommandOutput, rule_path: Path
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Turn one rule scan into issues; a scanner crash is never a silent pass."""
-        if scan.exit_code != 0 and not scan.stdout.strip():
+        if scan.outcome.raw_return_code != 0 and not scan.stdout.strip():
             return (
                 m.Infra.Issue(
                     file=c.Infra.PYPROJECT_FILENAME,

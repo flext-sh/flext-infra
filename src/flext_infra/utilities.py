@@ -15,6 +15,9 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra._utilities.compatibility_aliases import (
+    FlextInfraUtilitiesCompatibilityAliases,
+)
 from flext_infra._utilities.deferred_self_reference_ast import (
     FlextInfraUtilitiesDeferredSelfReference,
 )
@@ -47,6 +50,7 @@ from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
+from flext_infra._utilities.private_imports import FlextInfraUtilitiesPrivateImports
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
@@ -106,6 +110,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCompatibilityAliases,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesProjectManagedArtifacts,
@@ -138,6 +143,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
         FlextInfraUtilitiesManagedConflicts,
+        FlextInfraUtilitiesPrivateImports,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRefactorCensus,

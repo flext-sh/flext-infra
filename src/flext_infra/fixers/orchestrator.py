@@ -79,7 +79,7 @@ class FlextInfraEnforcementFixerOrchestrator(
             return r[str].ok("No fixable enforcement rules selected.")
         projects = self._resolve_projects()
         if projects.failure:
-            return r[str].fail(projects.error or "unable to resolve projects")
+            return r[str].from_failure(projects)
         all_results: list[m.Infra.ProjectFixResult] = []
         for project in projects.value:
             project_result = self._fix_project(project, selected_rules)
@@ -125,9 +125,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         """Resolve the project list from CLI selection or workspace discovery."""
         projects_result = u.Infra.projects(self.repository_root)
         if projects_result.failure:
-            return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
-                projects_result.error or "workspace discovery failed"
-            )
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].from_failure(projects_result)
         discovered = tuple(projects_result.unwrap())
         selected_projects: t.StrSequence = (
             self.project_names if self.project_names is not None else ()

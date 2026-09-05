@@ -203,10 +203,8 @@ def create_transaction_roots(
     except OSError as exc:
         cleanup = _remove_exact(tuple(created))
         if cleanup.failure:
-            return r[bool].fail(
-                f"create Mise transaction roots failed ({exc}); "
-                f"cleanup failed ({cleanup.error})"
-            )
+            return r[bool].fail(f"create Mise transaction roots failed ({exc}); "
+            f"cleanup failed ({cleanup.error})", exception=exc)
         return r[bool].fail_op("create Mise transaction roots", exc)
     return r[bool].ok(True)
 

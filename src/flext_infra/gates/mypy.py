@@ -171,11 +171,11 @@ class FlextInfraMypyGate(FlextInfraGate):
                     )
             except c.ValidationError:
                 continue
-        if (not issues) and result.exit_code != 0:
+        if (not issues) and result.outcome.raw_return_code != 0:
             message = (result.stderr or result.stdout).strip()
             if not message:
                 message = (
-                    f"mypy exited with code {result.exit_code} without JSON diagnostics"
+                    f"mypy exited with code {result.outcome.raw_return_code} without JSON diagnostics"
                 )
             issues.append(
                 m.Infra.Issue(
@@ -187,7 +187,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return result.exit_code == 0, issues
+        return result.outcome.raw_return_code == 0, issues
 
 
 __all__: list[str] = ["FlextInfraMypyGate"]

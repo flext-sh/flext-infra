@@ -180,9 +180,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         """Build one validation report for the selected workspace projects."""
         projects_result = u.Infra.projects(self.repository_root)
         if projects_result.failure:
-            return r[m.Infra.ValidationReport].fail(
-                projects_result.error or "project discovery failed"
-            )
+            return r[m.Infra.ValidationReport].from_failure(projects_result)
         projects = self._selected_projects(projects_result.unwrap())
         if not projects:
             return r[m.Infra.ValidationReport].ok(
@@ -213,7 +211,7 @@ class FlextInfraRuntimeCensusValidator(s[bool]):
         """Execute runtime census and collapse the report to ``r[bool]``."""
         report_result = self.build_report()
         if report_result.failure:
-            return r[bool].fail(report_result.error or "runtime census failed")
+            return r[bool].from_failure(report_result)
         report = report_result.value
         if report.passed:
             return r[bool].ok(True)

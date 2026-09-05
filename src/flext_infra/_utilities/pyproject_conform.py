@@ -32,6 +32,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace_mode: c.Infra.MakeProfile,
         toolchain: p.Infra.ToolchainSpec,
         required_dev_dependencies: t.StrSequence,
+        external_runtime_packages: t.StrSequence = (),
         required_runtime_dependencies: t.StrSequence = (),
         uv_link_mode: str | None = None,
         uv_exclude_newer: str | None = None,
@@ -69,6 +70,9 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
             required_dev_dependencies=required_dev_dependencies,
         )
+        cls._remove_external_runtime_packages(
+            source, package_names=external_runtime_packages
+        )
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
@@ -78,13 +82,11 @@ class FlextInfraUtilitiesPyprojectConform:
             canonicalize_all=True,
         )
         if normalized.failure:
-            return r[str].fail(normalized.error or "dependency normalization failed")
+            return r[str].from_failure(normalized)
         cls._remove_legacy_tooling(source)
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
-            return r[str].fail(
-                typecheck_paths.error or "type checker path conformance failed"
-            )
+            return r[str].from_failure(typecheck_paths)
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
@@ -107,7 +109,7 @@ class FlextInfraUtilitiesPyprojectConform:
             uv_environments=toolchain.uv_environments,
         )
         if sources_result.failure:
-            return r[str].fail(sources_result.error or "uv source conformance failed")
+            return r[str].from_failure(sources_result)
         provenance_result = cls._validate_dependency_provenance(
             source,
             project_name=project_name,
@@ -115,9 +117,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
-            return r[str].fail(
-                provenance_result.error or "dependency provenance validation failed"
-            )
+            return r[str].from_failure(provenance_result)
 
         rendered = u.Cli.toml_dumps(source)
         if u.Cli.toml_parse_text(rendered) is None:
@@ -133,6 +133,7 @@ class FlextInfraUtilitiesPyprojectConform:
         workspace: p.Infra.WorkspaceSpec,
         workspace_mode: c.Infra.MakeProfile,
         required_runtime_dependencies: t.StrSequence = (),
+        external_runtime_packages: t.StrSequence = (),
     ) -> p.Result[str]:
         """Conform only internal requirements and their root workspace overlay."""
         source = u.Cli.toml_parse_text(pyproject_content)
@@ -150,6 +151,9 @@ class FlextInfraUtilitiesPyprojectConform:
             project_name=project_name,
             required_runtime_dependencies=required_runtime_dependencies,
         )
+        cls._remove_external_runtime_packages(
+            source, package_names=external_runtime_packages
+        )
         workspace_context_root = cls._is_workspace_context_root(
             project_name=project_name,
             workspace=workspace,
@@ -160,9 +164,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 source, workspace=workspace, providers=providers
             )
             if sources_result.failure:
-                return r[str].fail(
-                    sources_result.error or "uv source conformance failed"
-                )
+                return r[str].from_failure(sources_result)
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
@@ -172,7 +174,7 @@ class FlextInfraUtilitiesPyprojectConform:
             canonicalize_all=False,
         )
         if normalized.failure:
-            return r[str].fail(normalized.error or "dependency normalization failed")
+            return r[str].from_failure(normalized)
         cls._sync_workspace_dependency_group(
             source,
             project_name=project_name,
@@ -190,7 +192,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         )
         if sources_result.failure:
-            return r[str].fail(sources_result.error or "uv source conformance failed")
+            return r[str].from_failure(sources_result)
         provenance_result = cls._validate_dependency_provenance(
             source,
             project_name=project_name,
@@ -198,9 +200,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
-            return r[str].fail(
-                provenance_result.error or "dependency provenance validation failed"
-            )
+            return r[str].from_failure(provenance_result)
         rendered = u.Cli.toml_dumps(source)
         if u.Cli.toml_parse_text(rendered) is None:
             return r[str].fail("dependency conformance produced invalid TOML")
@@ -224,6 +224,51 @@ class FlextInfraUtilitiesPyprojectConform:
         )
         merged = FlextInfraUtilitiesDependencies.dedupe_specs((*required, *current))
         u.Cli.toml_sync_string_list(project, c.Infra.DEPENDENCIES, merged)
+
+    @classmethod
+    def _remove_external_runtime_packages(
+        cls,
+        document: t.Cli.TomlDocument,
+        *,
+        package_names: t.StrSequence,
+    ) -> None:
+        """Remove host-owned automation from every Python dependency surface."""
+        prohibited = frozenset(
+            name
+            for requirement in package_names
+            if (name := FlextInfraUtilitiesDependencies.dep_name(requirement))
+        )
+        if not prohibited:
+            return
+        project = u.Cli.toml_ensure_table(document, c.Infra.PROJECT)
+        cls._remove_dependency_names(project, c.Infra.DEPENDENCIES, prohibited)
+        optional = u.Cli.toml_table_child(project, c.Infra.OPTIONAL_DEPENDENCIES)
+        groups = u.Cli.toml_table_child(document, c.Infra.DEPENDENCY_GROUPS)
+        for section in (optional, groups):
+            if section is None:
+                continue
+            for group_name in tuple(section):
+                cls._remove_dependency_names(section, group_name, prohibited)
+
+    @staticmethod
+    def _remove_dependency_names(
+        container: t.Cli.TomlDocument | t.Cli.TomlTable,
+        key: str,
+        prohibited: frozenset[str],
+    ) -> None:
+        """Remove normalized package names from one dependency array."""
+        requirements = u.Cli.toml_as_string_list(u.Cli.toml_value(container, key))
+        if not requirements:
+            return
+        retained = tuple(
+            requirement
+            for requirement in requirements
+            if FlextInfraUtilitiesDependencies.dep_name(requirement) not in prohibited
+        )
+        if retained:
+            u.Cli.toml_sync_string_list(container, key, retained)
+            return
+        u.Cli.toml_remove_key_if_present(container, key)
 
     @classmethod
     def _normalize_requirements(
@@ -313,9 +358,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 workspace_dependencies=workspace_dependencies,
             )
             if normalized.failure:
-                return r[bool].fail(
-                    normalized.error or f"normalize dependency group {key} failed"
-                )
+                return r[bool].from_failure(normalized)
             normalized_items.append(normalized.value)
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
@@ -360,21 +403,16 @@ class FlextInfraUtilitiesPyprojectConform:
             dependency_name, repositories=repositories, providers=providers
         )
         if reference_result.failure:
-            return r[str].fail(
-                reference_result.error
-                or f"repository resolution failed: {dependency_name}"
-            )
+            return r[str].from_failure(reference_result)
         reference = reference_result.value
         provider = FlextInfraUtilitiesRepository.repository_provider(
             reference, providers
         )
         if provider.failure:
-            return r[str].fail(
-                provider.error or "repository provider resolution failed"
-            )
+            return r[str].from_failure(provider)
         git_url = cls._git_requirement_url(reference.url)
         if git_url.failure:
-            return r[str].fail(git_url.error or "repository URL validation failed")
+            return r[str].from_failure(git_url)
         canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
@@ -831,7 +869,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace, providers=providers
         )
         if resolved_result.failure:
-            return r[bool].fail(resolved_result.error or "repository resolution failed")
+            return r[bool].from_failure(resolved_result)
         expected_sources = resolved_result.value
         if tuple(sources) != tuple(expected_sources):
             return r[bool].fail("root uv workspace sources differ from workspace SSOT")

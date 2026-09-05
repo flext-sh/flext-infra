@@ -35,17 +35,17 @@ class FlextInfraCodegenVscodeMixin:
         )
         read_result = cls._read_existing_settings(settings_path)
         if read_result.failure:
-            return r[str].fail(read_result.error or "VS Code settings read failed")
+            return r[str].from_failure(read_result)
         settings: t.MutableJsonMapping = {
             key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
         applied = cls._apply_canonical_settings(settings, repository_root)
         if applied.failure:
-            return r[str].fail(applied.error or "VS Code settings merge failed")
+            return r[str].from_failure(applied)
         serialized = u.Cli.json_dumps(dict(settings), indent=2)
         if serialized.failure:
-            return r[str].fail(serialized.error or "VS Code settings serialize failed")
+            return r[str].from_failure(serialized)
         return r[str].ok(serialized.value + "\n")
 
     @classmethod
@@ -56,14 +56,10 @@ class FlextInfraCodegenVscodeMixin:
             return r[t.JsonMapping].ok(empty_settings)
         read_result = u.Cli.files_read_text(settings_path)
         if read_result.failure:
-            return r[t.JsonMapping].fail(
-                read_result.error or "VS Code settings read failed"
-            )
+            return r[t.JsonMapping].from_failure(read_result)
         parsed = u.Cli.json_parse(cls._normalize_jsonc(read_result.value))
         if parsed.failure:
-            return r[t.JsonMapping].fail(
-                parsed.error or "VS Code settings JSONC parse failed"
-            )
+            return r[t.JsonMapping].from_failure(parsed)
         if not isinstance(parsed.value, Mapping):
             return r[t.JsonMapping].fail("VS Code settings root must be an object")
         return r[t.JsonMapping].ok(

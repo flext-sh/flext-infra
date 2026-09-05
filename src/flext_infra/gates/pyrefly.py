@@ -110,11 +110,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         severity=c.Infra.ERROR,
                     )
                 )
-        if (not issues) and result.exit_code != 0:
+        if (not issues) and result.outcome.raw_return_code != 0:
             message = (result.stderr or result.stdout).strip()
             if not message:
                 message = (
-                    f"pyrefly exited with code {result.exit_code} "
+                    f"pyrefly exited with code {result.outcome.raw_return_code} "
                     "without JSON diagnostics"
                 )
             issues.append(
@@ -127,7 +127,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return result.exit_code == 0, issues
+        return result.outcome.raw_return_code == 0, issues
 
     @staticmethod
     def _parse_error_issue(message: str) -> m.Infra.Issue:

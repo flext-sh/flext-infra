@@ -131,16 +131,14 @@ class FlextInfraExtraPathsSyncMixin:
             return r[bool].fail(f"pyproject not found: {pyproject_path}")
         doc_result = u.Cli.toml_read_document(pyproject_path)
         if doc_result.failure:
-            return r[bool].fail(doc_result.error or f"failed to read {pyproject_path}")
+            return r[bool].from_failure(doc_result)
         changes = self.sync_doc(
             doc_result.value, project_dir=pyproject_path.parent, is_root=is_root
         )
         if changes and (not dry_run):
             write_result = u.Cli.toml_write_document(pyproject_path, doc_result.value)
             if write_result.failure:
-                return r[bool].fail(
-                    write_result.error or f"failed to write {pyproject_path}"
-                )
+                return r[bool].from_failure(write_result)
         return r[bool].ok(bool(changes))
 
     def sync_extra_paths(
@@ -161,9 +159,7 @@ class FlextInfraExtraPathsSyncMixin:
                     pyproject, dry_run=dry_run, is_root=project_dir == self.root
                 )
                 if sync_result.failure:
-                    return r[int].fail(
-                        sync_result.error or f"sync failed for {pyproject}"
-                    )
+                    return r[int].from_failure(sync_result)
                 if sync_result.value and (not dry_run):
                     updated_selected += 1
                     u.Cli.info(f"Updated {pyproject}")
@@ -188,7 +184,7 @@ class FlextInfraExtraPathsSyncMixin:
                 pyproject, dry_run=dry_run, is_root=target == self.root
             )
             if sync_result.failure:
-                return r[int].fail(sync_result.error or f"sync failed for {pyproject}")
+                return r[int].from_failure(sync_result)
             if sync_result.value and (not dry_run):
                 updated += 1
                 u.Cli.info(f"Updated {pyproject}")

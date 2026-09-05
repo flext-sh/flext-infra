@@ -254,10 +254,7 @@ def live(
             project.layout.root, config_sources=project.config.sources
         )
         if validated.failure:
-            return r[bool].fail(
-                validated.error
-                or f"published Mise validation failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(validated)
     artifact_after = _artifact_snapshot(plan, replacements)
     if artifact_after.failure:
         return r[bool].from_failure(artifact_after)

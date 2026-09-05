@@ -167,9 +167,7 @@ class FlextInfraMiseRecovery:
                 permission_mode=entry.original_mode,
             )
             if created.failure:
-                return r[m.Cli.AtomicFilePublication].fail(
-                    created.error or f"cannot prepare Mise restore: {entry.path}"
-                )
+                return r[m.Cli.AtomicFilePublication].from_failure(created)
             candidate = u.Cli.atomic_read_binary_file_state(
                 candidate_path, required=True
             )
@@ -202,16 +200,11 @@ class FlextInfraMiseRecovery:
                     )
                 restored = u.Cli.atomic_apply_file_publication_guarded(candidate)
                 if restored.failure:
-                    return r[bool].fail(
-                        restored.error or f"Mise restore failed: {action.entry.path}"
-                    )
+                    return r[bool].from_failure(restored)
             elif action.operation == "delete":
                 removed = u.Cli.atomic_delete_binary_file_guarded(action.current)
                 if removed.failure:
-                    return r[bool].fail(
-                        removed.error
-                        or f"Mise rollback delete failed: {action.entry.path}"
-                    )
+                    return r[bool].from_failure(removed)
         return r[bool].ok(True)
 
     @staticmethod

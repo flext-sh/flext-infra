@@ -39,14 +39,10 @@ class FlextInfraApplyRenames:
 
         read_result = u.Cli.files_read_text(csv_path)
         if read_result.failure:
-            return r[t.SequenceOf[tuple[str, str]]].fail(
-                read_result.error or f"failed to read rename list: {csv_path}"
-            )
+            return r[t.SequenceOf[tuple[str, str]]].from_failure(read_result)
         rows_result = u.Cli.csv_loads(read_result.value)
         if rows_result.failure:
-            return r[t.SequenceOf[tuple[str, str]]].fail(
-                rows_result.error or f"failed to parse rename list: {csv_path}"
-            )
+            return r[t.SequenceOf[tuple[str, str]]].from_failure(rows_result)
         rows = rows_result.value
         if not rows or rows[0] != ["old", "new"]:
             return r[t.SequenceOf[tuple[str, str]]].fail(
@@ -145,7 +141,7 @@ class FlextInfraApplyRenames:
                 *root_args,
             ))
             if run_result.failure:
-                return r[bool].fail(run_result.error or "ast-grep execution failed")
+                return r[bool].from_failure(run_result)
             output = run_result.value
             if output.outcome.raw_return_code != 0:
                 detail = output.stderr.strip() or output.stdout.strip()
@@ -165,9 +161,7 @@ class FlextInfraApplyRenames:
             if updated != text:
                 write_result = u.Cli.atomic_write_text_file(path, updated)
                 if write_result.failure:
-                    return r[bool].fail(
-                        write_result.error or f"failed to write rename target: {path}"
-                    )
+                    return r[bool].from_failure(write_result)
         return r[bool].ok(True)
 
     @classmethod

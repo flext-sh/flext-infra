@@ -260,9 +260,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         for file_path in file_paths:
             read = u.Cli.files_read_text(file_path)
             if read.failure:
-                return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
-                    read.error or f"canonical-alias source read failed: {file_path}"
-                )
+                return r[tuple[m.Infra.SemanticMigrationEdit, ...]].from_failure(read)
             transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
             try:
                 updated, changes = transformer.apply_to_source(read.value)
@@ -291,9 +289,9 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if result.failure:
             raise RuntimeError(result.error or "ruff format failed")
         output = result.value
-        if output.exit_code != 0:
+        if output.outcome.raw_return_code != 0:
             detail = (output.stderr or output.stdout).strip()
-            msg = f"ruff format failed ({output.exit_code}): {detail or 'no output'}"
+            msg = f"ruff format failed ({output.outcome.raw_return_code}): {detail or 'no output'}"
             raise RuntimeError(msg)
 
     def _fix_failure_result(

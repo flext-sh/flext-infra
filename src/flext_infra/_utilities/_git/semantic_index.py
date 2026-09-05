@@ -37,7 +37,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitNumstatReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitNumstatReport].fail(f"git numstat read failed: {exc}")
+            return r[m.Infra.GitNumstatReport].fail(f"git numstat read failed: {exc}", exception=exc)
         return r[m.Infra.GitNumstatReport].ok(
             m.Infra.GitNumstatReport(subject=subject.strip(), numstat=numstat)
         )
@@ -53,9 +53,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitFingerprintInputsReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitFingerprintInputsReport].fail(
-                f"failed to capture fingerprint inputs: {exc}"
-            )
+            return r[m.Infra.GitFingerprintInputsReport].fail(f"failed to capture fingerprint inputs: {exc}", exception=exc)
         return r[m.Infra.GitFingerprintInputsReport].ok(
             m.Infra.GitFingerprintInputsReport(
                 paths_z=paths_z, index_z=index_z, head=head
@@ -92,9 +90,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(
-                f"failed to update-index gitlink: {exc}"
-            )
+            return r[m.Infra.GitBoolReport].fail(f"failed to update-index gitlink: {exc}", exception=exc)
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -112,7 +108,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitOidReport].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(f"failed to read gitlink spec: {exc}")
+            return r[m.Infra.GitOidReport].fail(f"failed to read gitlink spec: {exc}", exception=exc)
         if not output.strip():
             return r[m.Infra.GitOidReport].fail(
                 f"Git gitlink is missing from the index: {request.reference}"
@@ -138,9 +134,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             repo = cls._repo(request.repo_root)
             staged = repo.git.ls_files("--stage", "--", request.reference)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitOidReport].fail(
-                f"failed to read the staged gitlink for {request.reference}: {exc}"
-            )
+            return r[m.Infra.GitOidReport].fail(f"failed to read the staged gitlink for {request.reference}: {exc}", exception=exc)
         for line in staged.splitlines():
             fields = line.split()
             if len(fields) >= _STAGED_GITLINK_FIELDS and fields[0] == _GITLINK_MODE:

@@ -61,7 +61,7 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         except GitCommandError as exc:
             return r[Repo].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[Repo].fail(f"failed to inspect clean worktree: {exc}")
+            return r[Repo].fail(f"failed to inspect clean worktree: {exc}", exception=exc)
         if "\nlocked" in f"\n{entry}":
             return r[Repo].fail(f"locked worktree: {worktree_root}")
         if dirty:
@@ -84,7 +84,7 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         except GitCommandError as exc:
             return r[bool].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"failed to remove worktree: {exc}")
+            return r[bool].fail(f"failed to remove worktree: {exc}", exception=exc)
         return r[bool].ok(True)
 
     @classmethod
@@ -94,14 +94,14 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         """Remove an explicitly selected clean worktree and prune metadata."""
         preflight = cls._preflight_clean_worktree(source_root, worktree_root)
         if preflight.failure:
-            return r[bool].fail(preflight.error or "clean worktree preflight failed")
+            return r[bool].from_failure(preflight)
         try:
             preflight.value.git.worktree("remove", "--force", str(worktree_root))
             preflight.value.git.worktree("prune")
         except GitCommandError as exc:
             return r[bool].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"failed to remove clean worktree: {exc}")
+            return r[bool].fail(f"failed to remove clean worktree: {exc}", exception=exc)
         return r[bool].ok(True)
 
 

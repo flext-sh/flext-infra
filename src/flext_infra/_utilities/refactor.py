@@ -78,7 +78,7 @@ class FlextInfraUtilitiesRefactor:
         )
         write_result = u.Cli.json_write(output_path, normalized_payload)
         if write_result.failure:
-            return r[bool].fail(write_result.error or "impact map write failed")
+            return r[bool].from_failure(write_result)
         return r[bool].ok(True)
 
     @staticmethod

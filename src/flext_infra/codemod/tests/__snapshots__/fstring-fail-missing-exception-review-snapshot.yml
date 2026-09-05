@@ -8,7 +8,12 @@ snapshots:
             f"read failed: {error}",
             error_code="READ",
         )
-  : labels:
+  : fixed: |
+      try:
+          read()
+      except OSError as error:
+          return r[str].fail(f"read failed: {error}", error_code="READ", exception=error)
+    labels:
     - source: |-
         r[str].fail(
                 f"read failed: {error}",
@@ -58,7 +63,12 @@ snapshots:
             f"read failed: {exc}",
             error_code="READ",
         )
-  : labels:
+  : fixed: |
+      try:
+          read()
+      except OSError as exc:
+          return r[str].fail(f"read failed: {exc}", error_code="READ", exception=exc)
+    labels:
     - source: |-
         r[str].fail(
                 f"read failed: {exc}",

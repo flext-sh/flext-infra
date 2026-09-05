@@ -40,7 +40,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         """Discover wrapper files, rewrite ``Core.Tests`` chains, persist results."""
         scan = self._scan_workspace()
         if scan.failure:
-            return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
+            return r[t.JsonPayload].from_failure(scan)
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
         accumulator = m.Infra.WrapperRewriteAccumulator()
         metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
@@ -77,18 +77,14 @@ class FlextInfraWrapperRootNamespaceRefactor(
         )
         resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
-            return r[
-                tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-            ].fail(resolved.error or "project resolution failed")
+            return r[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
                 project_roots=tuple(project.path for project in resolved.value)
             )
         )
         if iter_result.failure:
-            return r[
-                tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-            ].fail(iter_result.error or "python file iteration failed")
+            return r[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]].from_failure(iter_result)
         project_runtime_aliases = {
             project.path.name: frozenset(layout.runtime_aliases)
             for project in resolved.value

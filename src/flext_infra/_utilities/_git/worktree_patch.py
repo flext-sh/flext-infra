@@ -39,7 +39,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
         except GitCommandError as exc:
             return r[bool].fail(str(exc))
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"git apply --check failed: {exc}")
+            return r[bool].fail(f"git apply --check failed: {exc}", exception=exc)
         return r[bool].ok(True)
 
     @classmethod
@@ -139,7 +139,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
                 target.write_bytes(content)
             return r[bool].fail("git apply failed on ignored additions")
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"git apply failed: {exc}")
+            return r[bool].fail(f"git apply failed: {exc}", exception=exc)
         return r[bool].ok(True)
 
     @classmethod
@@ -155,7 +155,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
             collision_result = cls._git_apply_with_ignored_additions(delta)
             if collision_result.success:
                 return cls._git_apply_gitlinks(delta.source_root, delta.patch)
-            return r[bool].fail(check_result.error or collision_result.error)
+            return r[bool].from_failure(check_result)
         try:
             repo = cls._repo(delta.source_root)
             with git_stdin(delta.patch) as istream:
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
                 return cls._git_apply_gitlinks(delta.source_root, delta.patch)
             return r[bool].fail("git apply failed")
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"git apply failed: {exc}")
+            return r[bool].fail(f"git apply failed: {exc}", exception=exc)
         return cls._git_apply_gitlinks(delta.source_root, delta.patch)
 
 

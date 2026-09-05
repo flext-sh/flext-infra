@@ -90,22 +90,22 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             u.Cli.emit_raw(f"[{idx}/{total}] START {project} {verb}\n")
             cmd_output = self._run_project(project, verb, idx).unwrap()
             results.append(cmd_output)
-            succeeded = cmd_output.exit_code == 0
+            succeeded = cmd_output.outcome.raw_return_code == 0
             state = "PASS" if succeeded else "FAIL"
             u.Cli.emit_raw(
                 f"[{idx}/{total}] {state} {project} {verb} "
-                f"exit={cmd_output.exit_code} duration={cmd_output.duration:.2f}s\n"
+                f"exit={cmd_output.outcome.raw_return_code} duration={cmd_output.duration:.2f}s\n"
             )
             if not succeeded:
                 u.Cli.emit_raw(
                     f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} "
                     f"total={total} completed={idx} passed={idx - 1} failed=1 "
-                    f"exit={cmd_output.exit_code}\n"
+                    f"exit={cmd_output.outcome.raw_return_code}\n"
                 )
                 return r.fail(
                     f"orchestration stopped at first failure: {project} "
-                    f"exit={cmd_output.exit_code}"
-                    f"{self._exit_classification(cmd_output.exit_code)}"
+                    f"exit={cmd_output.outcome.raw_return_code}"
+                    f"{self._exit_classification(cmd_output.outcome.raw_return_code)}"
                 )
         u.Cli.emit_raw(
             f"summary scope={c.Infra.RK_WORKSPACE} verb={verb} total={total} "
@@ -171,7 +171,11 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             m.Cli.CommandOutput(
                 stdout=str(log_path),
                 stderr=stderr,
-                exit_code=return_code,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=return_code,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
                 duration=round(elapsed, 2),
             )
         )

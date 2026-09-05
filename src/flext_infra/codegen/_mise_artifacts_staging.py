@@ -221,10 +221,7 @@ class FlextInfraMiseStaging:
             return r[bool].from_failure(locked)
         hydrated = self._owner.hydrate_lock_checksums_at(stage_root)
         if hydrated.failure:
-            return r[bool].fail(
-                hydrated.error
-                or f"Mise checksum hydration failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(hydrated)
         normalized = candidates.normalize_lock_mode(stage_root / "mise.lock")
         if normalized.failure:
             return normalized
@@ -262,10 +259,7 @@ class FlextInfraMiseStaging:
             stage_root, config_sources=project.config.sources
         )
         if validated.failure:
-            return r[bool].fail(
-                validated.error
-                or f"Mise artifact validation failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(validated)
         return r[bool].ok(True)
 
 

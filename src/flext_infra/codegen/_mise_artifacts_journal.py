@@ -151,9 +151,7 @@ def write(
         expected, content, permission_mode=files.JOURNAL_MODE
     )
     if written.failure:
-        return r[m.Cli.AtomicFileState].fail(
-            written.error or "cannot publish Mise transaction journal"
-        )
+        return r[m.Cli.AtomicFileState].from_failure(written)
     observed = state.journal_state(layout)
     if observed.failure:
         return r[m.Cli.AtomicFileState].from_failure(observed)
@@ -201,7 +199,7 @@ def cleanup(
         return roots
     removed = u.Cli.atomic_delete_binary_file_guarded(journal_state)
     if removed.failure:
-        return r[bool].fail(removed.error or "cannot remove Mise journal")
+        return r[bool].from_failure(removed)
     return r[bool].ok(True)
 
 
@@ -260,9 +258,7 @@ def _journal_entry(
             backup, before.content, permission_mode=files.JOURNAL_MODE
         )
         if written.failure:
-            return r[m.Infra.MiseToolchainJournalEntry].fail(
-                written.error or f"cannot back up Mise artifact: {before.path}"
-            )
+            return r[m.Infra.MiseToolchainJournalEntry].from_failure(written)
         relative_backup = files.workspace_relative(plan.layout.state_root, backup)
         if relative_backup.failure:
             return r[m.Infra.MiseToolchainJournalEntry].from_failure(relative_backup)

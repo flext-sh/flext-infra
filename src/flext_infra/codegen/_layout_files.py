@@ -26,7 +26,7 @@ class FlextInfraCodegenLayoutFilesMixin:
         if not target.exists():
             moved = self._move_path(project_dir, source, target)
             if moved.failure:
-                return r[str].fail(moved.error or "move failed")
+                return r[str].from_failure(moved)
             return r[str].ok(f"moved {source.name} -> {target.name}")
         if (
             source.is_file()
@@ -35,11 +35,11 @@ class FlextInfraCodegenLayoutFilesMixin:
         ):
             archived = self._archive_path(project_dir, source, archive_rel)
             if archived.failure:
-                return r[str].fail(archived.error or "identical-source archive failed")
+                return r[str].from_failure(archived)
             return r[str].ok(f"identical target kept; source archived: {source.name}")
         archived = self._archive_path(project_dir, source, archive_rel)
         if archived.failure:
-            return r[str].fail(archived.error or "collision archive failed")
+            return r[str].from_failure(archived)
         return r[str].ok(
             f"collision: target kept, source archived for review: {source.name}"
         )
@@ -63,9 +63,7 @@ class FlextInfraCodegenLayoutFilesMixin:
             ):
                 removed = self._remove_tracked_or_unlinked(project_dir, source)
                 if removed.failure:
-                    return r[t.Pair[t.Infra.LayoutStatus, str]].fail(
-                        removed.error or "duplicate removal failed"
-                    )
+                    return r[t.Pair[t.Infra.LayoutStatus, str]].from_failure(removed)
                 return r[t.Pair[t.Infra.LayoutStatus, str]].ok((
                     "applied",
                     f"{base_message} (already archived; duplicate removed)",
@@ -76,9 +74,7 @@ class FlextInfraCodegenLayoutFilesMixin:
             ))
         moved = self._archive_move(project_dir, source, target)
         if moved.failure:
-            return r[t.Pair[t.Infra.LayoutStatus, str]].fail(
-                moved.error or "archive move failed"
-            )
+            return r[t.Pair[t.Infra.LayoutStatus, str]].from_failure(moved)
         return r[t.Pair[t.Infra.LayoutStatus, str]].ok(("applied", base_message))
 
     def _move_path(
@@ -95,7 +91,7 @@ class FlextInfraCodegenLayoutFilesMixin:
                 )
             )
             if moved.failure:
-                return r[bool].fail(moved.error or "git mv execution failed")
+                return r[bool].from_failure(moved)
             return r[bool].ok(True)
         source.rename(target)
         return r[bool].ok(True)
@@ -117,7 +113,7 @@ class FlextInfraCodegenLayoutFilesMixin:
                 )
             )
             if untracked.failure:
-                return r[bool].fail(untracked.error or "git rm execution failed")
+                return r[bool].from_failure(untracked)
         source.rename(target)
         return r[bool].ok(True)
 
@@ -133,7 +129,7 @@ class FlextInfraCodegenLayoutFilesMixin:
                 )
             )
             if removed.failure:
-                return r[bool].fail(removed.error or "git rm execution failed")
+                return r[bool].from_failure(removed)
             return r[bool].ok(True)
         source.unlink()
         return r[bool].ok(True)

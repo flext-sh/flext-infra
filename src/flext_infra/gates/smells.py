@@ -54,7 +54,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and scan.exit_code != 0:
+        if not issues and scan.outcome.raw_return_code != 0:
             issues = (self._tool_failure_issue(scan),)
         auto_issues = [issue for issue in issues if self._is_auto_fixable(issue)]
         changes: list[str] = []
@@ -78,7 +78,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             if verified.success
             else (self._failure_issue(verified.error),)
         )
-        if not remaining and verified_scan.exit_code != 0:
+        if not remaining and verified_scan.outcome.raw_return_code != 0:
             remaining = (self._tool_failure_issue(verified_scan),)
         return self._build_check_gate_execution(
             project_dir,
@@ -108,7 +108,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and scan.exit_code != 0:
+        if not issues and scan.outcome.raw_return_code != 0:
             issues = (self._tool_failure_issue(scan),)
         return self._build_check_gate_execution(
             project_dir,
@@ -137,7 +137,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and result.exit_code != 0:
+        if not issues and result.outcome.raw_return_code != 0:
             issues = (self._tool_failure_issue(result),)
         return not issues, issues
 
@@ -152,7 +152,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
             output = m.Cli.CommandOutput(
                 stdout="",
                 stderr=f"{c.Infra.QLTY_BINARY} binary not found on PATH",
-                exit_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
             )
         else:
             self._materialize_scan_config()
@@ -244,9 +248,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             return r[tuple[m.Infra.Issue, ...]].fail("qlty returned empty SARIF output")
         parsed = u.Cli.json_parse(sarif_json)
         if parsed.failure:
-            return r[tuple[m.Infra.Issue, ...]].fail(
-                parsed.error or "qlty returned invalid SARIF output"
-            )
+            return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)
         data = u.Cli.json_as_mapping(parsed.value)
         prefix = f"{project_name}/"
         return r[tuple[m.Infra.Issue, ...]].ok(

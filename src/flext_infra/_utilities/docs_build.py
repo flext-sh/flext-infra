@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocsBuild:
                     passed=False,
                 )
             output = completed.value
-            if output.exit_code == 0:
+            if output.outcome.raw_return_code == 0:
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,
@@ -171,7 +171,7 @@ class FlextInfraUtilitiesDocsBuild:
                 reason=(
                     reason_lines[-1]
                     if reason_lines
-                    else f"mkdocs exited {output.exit_code} ({settings.name})"
+                    else f"mkdocs exited {output.outcome.raw_return_code} ({settings.name})"
                 ),
                 site_dir=site_dir.as_posix(),
                 passed=False,

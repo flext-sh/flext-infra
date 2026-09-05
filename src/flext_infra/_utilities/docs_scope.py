@@ -86,9 +86,7 @@ class FlextInfraUtilitiesDocsScope:
             repository_root
         )
         if discover_result.failure:
-            return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                discover_result.error or "discovery failed"
-            )
+            return r[t.SequenceOf[mw.ProjectInfo]].from_failure(discover_result)
         projects = list(discover_result.value)
         resolved_repository_root = repository_root.resolve()
         if all(

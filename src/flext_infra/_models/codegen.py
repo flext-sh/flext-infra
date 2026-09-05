@@ -19,7 +19,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainArtifactPaths(m.ArbitraryTypesModel):
         """Canonical live toolchain-bundle destinations for one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         config: Annotated[
             Path, m.Field(description="Generated Mise configuration destination")
@@ -33,7 +33,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Workspace-relative project selector")
@@ -53,7 +53,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainWorkspaceLayout(m.ArbitraryTypesModel):
         """Stable recovery topology independent of mutable source contents."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         scope_root: Annotated[Path, m.Field(description="Resolved transaction scope")]
         state_root: Annotated[
@@ -67,7 +67,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainConfigState(m.ArbitraryTypesModel):
         """Current destination plus the exact planned Mise configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         before: Annotated[
             m.Cli.AtomicFileState,
@@ -98,7 +98,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainProjectState(m.ArbitraryTypesModel):
         """Immutable source and destination snapshot for one project layout."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegen.MiseToolchainProjectLayout,
@@ -136,7 +136,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainArtifactSet(m.ArbitraryTypesModel):
         """Named file states that prevent artifact-order ambiguity."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         unix_launcher: Annotated[
             m.Cli.AtomicFileState, m.Field(description="Observed Unix launcher state")
@@ -153,7 +153,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
         """One stable layout plus a coherent mutable-state snapshot."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegen.MiseToolchainWorkspaceLayout,
@@ -178,7 +178,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainJournalSource(m.ArbitraryTypesModel):
         """One immutable source identity guarded by a Mise transaction journal."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         path: Annotated[
             t.NonEmptyStr,
@@ -206,7 +206,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainJournalEntry(m.ArbitraryTypesModel):
         """Recoverable before/after identity for one published Mise artifact."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         path: Annotated[
             t.NonEmptyStr,
@@ -273,7 +273,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainRecoveryAction(m.ArbitraryTypesModel):
         """One preclassified recovery decision with no live effect applied."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         entry: Annotated[
             FlextInfraModelsCodegen.MiseToolchainJournalEntry,
@@ -291,7 +291,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainJournal(m.ArbitraryTypesModel):
         """Persisted recovery contract for one workspace-wide Mise publication."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
             Literal[4], m.Field(description="Exact journal schema version")
@@ -397,7 +397,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class ScaffoldDirRequest(m.ArbitraryTypesModel):
         """Directory-level scaffold request and accumulation state."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, revalidate_instances="never"
         )
 
@@ -847,7 +847,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         module: Annotated[str, m.Field(description="Module containing the violation")]
         rule: Annotated[str, m.Field(description="Rule that was violated")]
@@ -876,7 +876,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenPipelineState(m.ArbitraryTypesModel):
         """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", arbitrary_types_allowed=True
         )
 

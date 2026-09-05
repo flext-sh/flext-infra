@@ -45,7 +45,7 @@ class FlextInfraUtilitiesSnapshot:
         ])
         if outcome.failure:
             return r[Path].fail_op("rsync snapshot", outcome.error or "")
-        if outcome.value.exit_code != 0:
+        if outcome.value.outcome.raw_return_code != 0:
             return r[Path].fail_op("rsync snapshot", outcome.value.stderr.strip())
         return r[Path].ok(dst.resolve())
 

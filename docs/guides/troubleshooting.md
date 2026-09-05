@@ -1,11 +1,7 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/troubleshooting.md`; adjust that source, never this projection. -->
 
-# flext-infra - flext-infra - flext-infra - Troubleshooting
-
-> Project profile: `flext-infra`
-
-> Project profile: `flext-infra`
+# flext-infra - Troubleshooting
 
 <!-- TOC START -->
 - [Establish the command surface](#establish-the-command-surface)

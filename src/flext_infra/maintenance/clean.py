@@ -56,7 +56,7 @@ class FlextInfraCleanService(s[int]):
             u.Cli.info(f"clean: remove {target.relative_to(self.repository_root)}")
             outcome = u.Cli.files_delete(target)
             if outcome.failure:
-                return r[int].fail(outcome.error or f"failed to remove {target}")
+                return r[int].from_failure(outcome)
             removed += 1
         u.Cli.info(f"clean: removed {removed} broken managed workspace link(s)")
         return r[int].ok(0)

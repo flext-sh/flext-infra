@@ -46,9 +46,7 @@ class FlextInfraMiseRuntime:
             return r[Path].from_failure(created)
         seed_validation = self._owner.validate_seed(seed)
         if seed_validation.failure:
-            return r[Path].fail(
-                seed_validation.error or "captured Mise seed is invalid"
-            )
+            return r[Path].from_failure(seed_validation)
         environment = process.credential_environment(scratch, credential_command)
         updated = process.run(
             (str(seed), "self-update", "--yes", "--no-plugins"),
@@ -101,7 +99,7 @@ class FlextInfraMiseRuntime:
             return r[Path].from_failure(exact_modes)
         validation = self._owner.validate_launchers(receipt)
         if validation.failure:
-            return r[Path].fail(validation.error or "generated Mise receipt is invalid")
+            return r[Path].from_failure(validation)
         launcher = receipt / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
         runtime = process.run(
             (str(launcher), "--version"),
@@ -136,9 +134,7 @@ class FlextInfraMiseRuntime:
                 state.value, state.value.content, permission_mode=mode
             )
             if normalized.failure:
-                return r[bool].fail(
-                    normalized.error or f"cannot normalize Mise receipt mode: {name}"
-                )
+                return r[bool].from_failure(normalized)
         return r[bool].ok(True)
 
 

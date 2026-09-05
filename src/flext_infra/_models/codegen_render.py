@@ -16,7 +16,7 @@ class FlextInfraModelsCodegenRender:
     class ModuleSkeletonRenderContext(m.ContractModel):
         """Validated context for one generated module skeleton."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, str_strip_whitespace=False
         )
 
@@ -30,7 +30,7 @@ class FlextInfraModelsCodegenRender:
     class MkdocsRenderContext(m.ContractModel):
         """Validated common context for a generated MkDocs configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=True, str_strip_whitespace=False
         )
 
@@ -52,7 +52,7 @@ class FlextInfraModelsCodegenRender:
     class LazyInitRootRender(m.ArbitraryTypesModel):
         """Template context for one lazy public root ``__init__.py``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")
@@ -77,7 +77,7 @@ class FlextInfraModelsCodegenRender:
     class StaticPackageInitRender(m.ArbitraryTypesModel):
         """Template context for a non-root static ``__init__.py``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         autogen_header: t.NonEmptyStr = m.Field(description="Generated file header.")
         docstring: t.NonEmptyStr = m.Field(description="Generated module docstring.")

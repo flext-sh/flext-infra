@@ -91,7 +91,7 @@ class FlextInfraUtilitiesPyproject:
             taplo_version, process_timeout_seconds
         )
         if taplo.failure:
-            return r[str].fail(taplo.error or "Taplo executable resolution failed")
+            return r[str].from_failure(taplo)
         command = [str(taplo.value), "format", "-", "--stdin-filepath", relative_path]
         if config_path is not None:
             command.extend(("--config", str(config_path)))
@@ -102,7 +102,7 @@ class FlextInfraUtilitiesPyproject:
             timeout=process_timeout_seconds,
         )
         if result.failure:
-            return r[str].fail(result.error or "taplo format failed")
+            return r[str].from_failure(result)
         output = result.value
         if output.outcome.raw_return_code != 0:
             detail = (output.stderr or output.stdout).strip()

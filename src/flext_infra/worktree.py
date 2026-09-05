@@ -37,7 +37,7 @@ class FlextInfraWorktreeService(s[str]):
             m.Infra.GitRepoRequest(repo_root=self.repository_root)
         )
         if primary.failure:
-            return r[Path].fail(primary.error or "failed to resolve primary worktree")
+            return r[Path].from_failure(primary)
         return r[Path].ok(primary.value.primary_root)
 
     def _validated_branch(self) -> p.Result[str]:
