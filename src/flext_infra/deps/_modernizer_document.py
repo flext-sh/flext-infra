@@ -35,6 +35,10 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
+class FlextInfraPyprojectModernizationError(RuntimeError):
+    """Raised when pyproject modernization invariants break."""
+
+
 class FlextInfraPyprojectModernizerDocumentMixin:
     """Read, classify, and process one parsed pyproject document state."""
 
@@ -337,13 +341,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             before = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             expected_before = normalized_original.encode(c.Cli.ENCODING_DEFAULT)
             if before.content != expected_before:
-                raise RuntimeError(f"pyproject changed during modernization: {path}")
+                msg = f"pyproject changed during modernization: {path}"
+                raise FlextInfraPyprojectModernizationError(msg)
             u.Cli.atomic_write_text_file_guarded(before, normalized_rendered).unwrap()
             published = u.Cli.atomic_read_binary_file_state(
                 path, required=True
             ).unwrap()
             if published.content != normalized_rendered.encode(c.Cli.ENCODING_DEFAULT):
-                raise RuntimeError(f"pyproject publication differs after write: {path}")
+                msg = f"pyproject publication differs after write: {path}"
+                raise FlextInfraPyprojectModernizationError(msg)
         return changes
 
 

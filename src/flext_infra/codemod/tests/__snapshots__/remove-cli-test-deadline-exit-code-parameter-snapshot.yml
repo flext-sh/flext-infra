@@ -1,0 +1,16 @@
+id: remove-cli-test-deadline-exit-code-parameter
+snapshots:
+  ? |
+    def _deadline(*, seconds: float, grace: float, exit_code: int = 124) -> Deadline:
+        return Deadline(seconds=seconds, grace=grace)
+  : fixed: |+
+      def _deadline(*, seconds: float, grace: float) -> Deadline:
+          return Deadline(seconds=seconds, grace=grace)
+
+    labels:
+    - source: |-
+        def _deadline(*, seconds: float, grace: float, exit_code: int = 124) -> Deadline:
+            return Deadline(seconds=seconds, grace=grace)
+      style: primary
+      start: 0
+      end: 131

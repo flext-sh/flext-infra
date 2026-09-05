@@ -1,5 +1,0 @@
-id: rewire-cli-atomic-publication-before-path
-valid:
-  - 'u.Cli.info(f"mise-toolchain: publish {publication.before.path}")'
-invalid:
-  - 'u.Cli.info(f"mise-toolchain: publish {before.path}")'

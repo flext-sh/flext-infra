@@ -1,9 +1,0 @@
-id: rewire-cli-atomic-publication-unchanged
-snapshots:
-  u.Cli.atomic_file_publication_unchanged(publication):
-    fixed: u.Cli.atomic_file_publication_is_unchanged(publication)
-    labels:
-    - source: u.Cli.atomic_file_publication_unchanged(publication)
-      style: primary
-      start: 0
-      end: 52

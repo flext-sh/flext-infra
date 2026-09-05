@@ -27,33 +27,33 @@ def prepare_state_roots(layout: m.Infra.MiseToolchainWorkspaceLayout) -> p.Resul
         )
         if prepared.failure:
             return prepared
+        destination_parents = {
+            artifact.parent
+            for artifact in (
+                project.artifacts.config,
+                project.artifacts.unix_launcher,
+                project.artifacts.windows_launcher,
+                project.artifacts.lock,
+            )
+        }
+        absent_parent = next(
+            (parent for parent in destination_parents if not parent.is_dir()), None
+        )
+        if absent_parent is not None:
+            return r[bool].fail(
+                f"Mise destination parent is absent: {absent_parent}"
+            )
         try:
             staging_device = project.transaction_root.parent.stat().st_dev
-            destination_parents = {
-                artifact.parent
-                for artifact in (
-                    project.artifacts.config,
-                    project.artifacts.unix_launcher,
-                    project.artifacts.windows_launcher,
-                    project.artifacts.lock,
-                )
-            }
-            absent_parent = next(
-                (parent for parent in destination_parents if not parent.is_dir()), None
-            )
-            if absent_parent is not None:
-                return r[bool].fail(
-                    f"Mise destination parent is absent: {absent_parent}"
-                )
             destination_devices = {
                 parent.stat().st_dev for parent in destination_parents
             }
-            if destination_devices != {staging_device}:
-                return r[bool].fail(
-                    f"Mise state is not on destination filesystem: {project.selector}"
-                )
         except OSError as exc:
             return r[bool].fail_op("inspect Mise state filesystem", exc)
+        if destination_devices != {staging_device}:
+            return r[bool].fail(
+                f"Mise state is not on destination filesystem: {project.selector}"
+            )
     return r[bool].ok(True)
 
 
@@ -101,57 +101,30 @@ def lock_holder(lock_path: Path) -> p.Result[str]:
     inode_records: list[str] = []
     for record in records:
         fields = record.split()
-        if len(fields) < 6 or fields[5].rsplit(":", 1)[-1] != inode:
+        match fields:
+            case [_, _, _, _, pid, observed_identity, *_]:
+                pass
+            case _:
+                continue
+        if observed_identity.rsplit(":", 1)[-1] != inode:
             continue
         inode_records.append(record)
-        pid = fields[4]
-        descriptor_matches: list[Path] = []
-        try:
-            for descriptor in Path(f"/proc/{pid}/fd").iterdir():
-                try:
-                    descriptor_state = descriptor.stat()
-                    descriptor_target = descriptor.readlink()
-                except FileNotFoundError:
-                    continue
-                if (
-                    descriptor_state.st_ino == lock_state.st_ino
-                    and descriptor_target == lock_path
-                ):
-                    descriptor_matches.append(descriptor)
-        except OSError as exc:
-            return r[str].fail_op(
-                f"inspect Mise lock-holder descriptors for process {pid}", exc
-            )
-        if fields[5] != identity and not descriptor_matches:
+        descriptors = _matching_lock_descriptors(lock_path, lock_state, pid)
+        if descriptors.failure:
+            return r[str].from_failure(descriptors)
+        descriptor_matches = descriptors.value
+        if observed_identity != identity and not descriptor_matches:
             continue
-        try:
-            command = (
-                Path(f"/proc/{pid}/cmdline")
-                .read_bytes()
-                .replace(b"\0", b" ")
-                .decode("utf-8")
-                .strip()
-            )
-            cwd = Path(f"/proc/{pid}/cwd").readlink()
-            stat_fields = (
-                Path(f"/proc/{pid}/stat")
-                .read_text(encoding="utf-8")
-                .split(") ", maxsplit=1)[1]
-                .split()
-            )
-            start_seconds = int(stat_fields[19]) / int(os.sysconf("SC_CLK_TCK"))
-            uptime_seconds = float(
-                Path("/proc/uptime").read_text(encoding="utf-8").split(maxsplit=1)[0]
-            )
-            elapsed_seconds = uptime_seconds - start_seconds
-        except (OSError, UnicodeDecodeError, ValueError) as exc:
-            return r[str].fail_op(f"inspect Mise lock-holder process {pid}", exc)
+        process = _lock_process_details(pid)
+        if process.failure:
+            return r[str].from_failure(process)
+        command, cwd, elapsed_seconds = process.value
         if not command:
             return r[str].fail(f"Mise lock-holder process has no command: pid={pid}")
         return r[str].ok(
             f"pid={pid} elapsed={elapsed_seconds:.2f}s cwd={cwd} command={command} "
             f"descriptors={descriptor_matches} "
-            f"observed_lock_identity={fields[5]} expected_lock_identity={identity}"
+            f"observed_lock_identity={observed_identity} expected_lock_identity={identity}"
         )
     if inode_records:
         return r[str].fail(
@@ -160,6 +133,65 @@ def lock_holder(lock_path: Path) -> p.Result[str]:
         )
     return r[str].fail(
         f"Mise lock has no observable holder: path={lock_path} identity={identity}"
+    )
+
+
+def _matching_lock_descriptors(
+    lock_path: Path, lock_state: os.stat_result, pid: str
+) -> p.Result[tuple[Path, ...]]:
+    """Return live descriptors that prove one process owns the exact lock path."""
+    try:
+        descriptors = tuple(Path(f"/proc/{pid}/fd").iterdir())
+    except OSError as exc:
+        return r[tuple[Path, ...]].fail_op(
+            f"inspect Mise lock-holder descriptors for process {pid}", exc
+        )
+    matches: list[Path] = []
+    for descriptor in descriptors:
+        try:
+            descriptor_state = descriptor.stat()
+            descriptor_target = descriptor.readlink()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            return r[tuple[Path, ...]].fail_op(
+                f"inspect Mise lock-holder descriptor {descriptor}", exc
+            )
+        if (
+            descriptor_state.st_ino == lock_state.st_ino
+            and descriptor_target == lock_path
+        ):
+            matches.append(descriptor)
+    return r[tuple[Path, ...]].ok(tuple(matches))
+
+
+def _lock_process_details(pid: str) -> p.Result[tuple[str, Path, float]]:
+    """Read observable command, cwd, and elapsed runtime for one process."""
+    try:
+        command = (
+            Path(f"/proc/{pid}/cmdline")
+            .read_bytes()
+            .replace(b"\0", b" ")
+            .decode("utf-8")
+            .strip()
+        )
+        cwd = Path(f"/proc/{pid}/cwd").readlink()
+        stat_fields = (
+            Path(f"/proc/{pid}/stat")
+            .read_text(encoding="utf-8")
+            .split(") ", maxsplit=1)[1]
+            .split()
+        )
+        start_seconds = int(stat_fields[19]) / int(os.sysconf("SC_CLK_TCK"))
+        uptime_seconds = float(
+            Path("/proc/uptime").read_text(encoding="utf-8").split(maxsplit=1)[0]
+        )
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        return r[tuple[str, Path, float]].fail_op(
+            f"inspect Mise lock-holder process {pid}", exc
+        )
+    return r[tuple[str, Path, float]].ok(
+        (command, cwd, uptime_seconds - start_seconds)
     )
 
 
@@ -247,17 +279,25 @@ def validate_transaction_roots(
 
 def _prepare_state_root(anchor: Path, target: Path) -> p.Result[bool]:
     cursor = anchor.absolute()
+    relative = target.absolute().relative_to(cursor)
+    for part in relative.parts:
+        cursor /= part
+        prepared = _prepare_physical_state_directory(cursor)
+        if prepared.failure:
+            return prepared
+    return r[bool].ok(True)
+
+
+def _prepare_physical_state_directory(target: Path) -> p.Result[bool]:
+    """Create and authenticate one physical directory in a state path."""
     try:
-        relative = target.absolute().relative_to(cursor)
-        for part in relative.parts:
-            cursor /= part
-            if not cursor.exists() and not cursor.is_symlink():
-                cursor.mkdir(mode=0o700, exist_ok=False)
-            state = cursor.lstat()
-            if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
-                return r[bool].fail(f"Mise state path is not physical: {cursor}")
+        if not target.exists() and not target.is_symlink():
+            target.mkdir(mode=0o700, exist_ok=False)
+        state = target.lstat()
     except OSError as exc:
         return r[bool].fail_op("prepare persistent Mise state", exc)
+    if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
+        return r[bool].fail(f"Mise state path is not physical: {target}")
     return r[bool].ok(True)
 
 

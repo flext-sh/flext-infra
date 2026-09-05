@@ -1,9 +1,0 @@
-id: rewire-cli-process-timeout-result-code
-snapshots:
-  primary_exit = timeout_exit_code:
-    fixed: primary_exit = c.Cli.PROCESS_TIMEOUT_EXIT_CODE
-    labels:
-    - source: primary_exit = timeout_exit_code
-      style: primary
-      start: 0
-      end: 32

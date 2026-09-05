@@ -1,5 +1,0 @@
-id: rewire-cli-atomic-publication-unchanged
-valid:
-  - u.Cli.atomic_file_publication_is_unchanged(publication)
-invalid:
-  - u.Cli.atomic_file_publication_unchanged(publication)

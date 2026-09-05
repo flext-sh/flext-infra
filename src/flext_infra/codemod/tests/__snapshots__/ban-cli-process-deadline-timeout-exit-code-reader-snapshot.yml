@@ -1,8 +1,0 @@
-id: ban-cli-process-deadline-timeout-exit-code-reader
-snapshots:
-  deadline.timeout_exit_code:
-    labels:
-    - source: deadline.timeout_exit_code
-      style: primary
-      start: 0
-      end: 26

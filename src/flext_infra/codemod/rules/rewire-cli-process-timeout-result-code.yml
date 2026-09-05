@@ -1,9 +1,0 @@
-id: rewire-cli-process-timeout-result-code
-language: Python
-severity: error
-files:
-  - "flext-cli/src/flext_cli/_utilities/_runtime_process_outcome.py"
-rule:
-  pattern: primary_exit = timeout_exit_code
-fix: primary_exit = c.Cli.PROCESS_TIMEOUT_EXIT_CODE
-message: Resolve timeout status from the canonical CLI constant.

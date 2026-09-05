@@ -1,9 +1,0 @@
-id: rewire-cli-atomic-publication-unchanged
-language: Python
-severity: error
-files:
-  - "flext-infra/src/flext_infra/codegen/_mise_artifacts_publication.py"
-rule:
-  pattern: u.Cli.atomic_file_publication_unchanged($PUBLICATION)
-fix: u.Cli.atomic_file_publication_is_unchanged($PUBLICATION)
-message: Use the published public atomic-publication equality owner.

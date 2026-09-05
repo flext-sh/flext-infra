@@ -1,9 +1,0 @@
-id: rewire-cli-atomic-publication-before-path
-language: Python
-severity: error
-files:
-  - "flext-infra/src/flext_infra/codegen/_mise_artifacts_publication.py"
-rule:
-  pattern: 'u.Cli.info(f"mise-toolchain: publish {before.path}")'
-fix: 'u.Cli.info(f"mise-toolchain: publish {publication.before.path}")'
-message: Read the before-image path from the publication receipt.

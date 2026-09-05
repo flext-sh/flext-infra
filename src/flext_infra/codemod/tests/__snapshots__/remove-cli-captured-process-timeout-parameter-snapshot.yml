@@ -1,0 +1,16 @@
+id: remove-cli-captured-process-timeout-parameter
+snapshots:
+  ? |
+    def _captured_process_result(command: str, *, timed_out: bool, timeout_exit_code: int) -> Result:
+        return outcome
+  : fixed: |+
+      def _captured_process_result(command: str, *, timed_out: bool) -> Result:
+          return outcome
+
+    labels:
+    - source: |-
+        def _captured_process_result(command: str, *, timed_out: bool, timeout_exit_code: int) -> Result:
+            return outcome
+      style: primary
+      start: 0
+      end: 116

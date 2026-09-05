@@ -1,5 +1,0 @@
-id: remove-cli-process-timeout-exit-code-argument
-valid:
-  - cls._process_exit_result(command, timed_out=timed_out)
-invalid:
-  - cls._process_exit_result(command, timed_out=timed_out, timeout_exit_code=timeout_exit_code)

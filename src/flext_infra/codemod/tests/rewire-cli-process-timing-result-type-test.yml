@@ -1,5 +1,0 @@
-id: rewire-cli-process-timing-result-type
-valid:
-  - "result: p.Result[tuple[float | None, float]]"
-invalid:
-  - "result: p.Result[tuple[float | None, float, int]]"

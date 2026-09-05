@@ -1,6 +1,0 @@
-id: ban-cli-process-deadline-timeout-exit-code-reader
-valid:
-  - deadline.termination_grace_seconds
-  - c.Cli.PROCESS_TIMEOUT_EXIT_CODE
-invalid:
-  - deadline.timeout_exit_code
