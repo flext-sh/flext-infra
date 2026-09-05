@@ -1730,7 +1730,10 @@ Infra:
             - "*.db"
             - ".beads-credential-key"
             - ".worktrees/"
-            - "legado/"
+            # Anchored: the root-level legacy tree only. Unanchored it also
+            # matched every nested legado/ and blocked tracked trees in
+            # consumers (cosmos-main).
+            - "/legado/"
         - name: "Beads ledger identity (workspace and standalone; see mro-9wv8)"
           profiles: [workspace, standalone]
           patterns:
