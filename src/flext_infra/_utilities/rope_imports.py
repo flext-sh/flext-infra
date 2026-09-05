@@ -244,7 +244,7 @@ class FlextInfraUtilitiesRopeImports:
                     rope_project, existing_paths
                 )
             except ValueError as exc:
-                return r[bool].fail(str(exc))
+                return r[bool].fail(str(exc), exception=exc)
         rope_changed = False
         for file_path in existing_paths:
             resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(

@@ -35,10 +35,8 @@ class TestBanditAndMarkdownGates:
                 True,
                 (
                     r.ok(
-                        u.Tests.stub_run(
-                            stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
-                            returncode=1,
-                        )
+                        u.Tests.create_command_output(stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
+                        returncode=1,)
                     ),
                 ),
                 False,
@@ -46,7 +44,7 @@ class TestBanditAndMarkdownGates:
             ),
             (
                 True,
-                (r.ok(u.Tests.stub_run(stdout="invalid json", returncode=1)),),
+                (r.ok(u.Tests.create_command_output(stdout="invalid json", returncode=1)),),
                 False,
                 1,
             ),
@@ -90,9 +88,7 @@ class TestBanditAndMarkdownGates:
                 "# Test\n",
                 None,
                 r.ok(
-                    u.Tests.stub_run(
-                        stdout="README.md:1:1: [MD001] Heading level", returncode=1
-                    )
+                    u.Tests.create_command_output(stdout="README.md:1:1: [MD001] Heading level", returncode=1)
                 ),
                 False,
                 1,
@@ -101,7 +97,7 @@ class TestBanditAndMarkdownGates:
             (
                 "# Test\n",
                 None,
-                r.ok(u.Tests.stub_run(stderr="rumdl failed", returncode=1)),
+                r.ok(u.Tests.create_command_output(stderr="rumdl failed", returncode=1)),
                 False,
                 1,
                 "rumdl failed",
@@ -146,7 +142,7 @@ class TestBanditAndMarkdownGates:
         project_dir = u.Tests.mk_project(tmp_path, "markdown-settings-project")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
         (project_dir / ".markdownlint.json").write_text("{}", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = self.make_runner(r.ok(u.Tests.create_command_output()))
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)
         _ = gate.check(project_dir, self.make_ctx(tmp_path))
@@ -161,7 +157,7 @@ class TestBanditAndMarkdownGates:
         local_config = project_dir / ".markdownlint.json"
         local_config.write_text('{"MD013": false}', encoding="utf-8")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = self.make_runner(r.ok(u.Tests.create_command_output()))
 
         _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
             project_dir, self.make_ctx(tmp_path)
@@ -177,7 +173,7 @@ class TestBanditAndMarkdownGates:
         beads_dir = project_dir / ".beads"
         beads_dir.mkdir()
         (beads_dir / "historical.md").write_text("broken", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = self.make_runner(r.ok(u.Tests.create_command_output()))
 
         _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
             project_dir, self.make_ctx(tmp_path)
@@ -199,7 +195,7 @@ class TestBanditAndMarkdownGates:
         projected = project_dir / provider_root / "skills" / "projected.md"
         projected.parent.mkdir(parents=True)
         projected.write_text("not project-owned markdown", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = self.make_runner(r.ok(u.Tests.create_command_output()))
 
         _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
             project_dir, self.make_ctx(tmp_path)
@@ -215,7 +211,7 @@ class TestBanditAndMarkdownGates:
         project_owned = project_dir / ".github" / "prompts" / "project.md"
         project_owned.parent.mkdir(parents=True)
         project_owned.write_text("project-owned markdown", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = self.make_runner(r.ok(u.Tests.create_command_output()))
 
         _ = FlextInfraMarkdownGate(tmp_path, runner=runner).check(
             project_dir, self.make_ctx(tmp_path)
@@ -318,7 +314,7 @@ class TestBanditAndMarkdownGates:
         """
         project_dir = u.Tests.mk_project(tmp_path, "markdown-fix-project")
         (project_dir / "README.md").write_text("# Title   \n", encoding="utf-8")
-        runner = self.make_runner(r.ok(u.Tests.stub_run()))
+        runner = self.make_runner(r.ok(u.Tests.create_command_output()))
         context = m.Infra.GateContext(
             workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
         )

@@ -1,0 +1,27 @@
+id: rewire-test-command-output-helper
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+rule:
+  pattern: $OWNER.stub_run($$$ARGS)
+constraints:
+  OWNER:
+    regex: '^(?:u\.Tests|TestsFlextInfraUtilities\.Tests)$'
+message: Use the single typed command-output fixture factory.
+fix: $OWNER.create_command_output($$$ARGS)
+---
+id: rewire-test-command-output-return-code
+language: Python
+severity: error
+files:
+  - "**/tests/**/*.py"
+rule:
+  any:
+    - pattern: $OWNER.create_command_output(returncode=$CODE)
+    - pattern: $OWNER.create_command_output($$$BEFORE, returncode=$CODE, $$$AFTER)
+constraints:
+  OWNER:
+    regex: '^(?:u\.Tests|TestsFlextInfraUtilities\.Tests)$'
+message: Use the causal command-output fixture exit-code parameter.
+fix: $OWNER.create_command_output($$$BEFORE, exit_code=$CODE, $$$AFTER)

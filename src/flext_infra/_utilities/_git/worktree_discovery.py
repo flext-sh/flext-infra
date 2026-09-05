@@ -157,7 +157,7 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
             repo = cls._repo(repository_root)
             status = repo.git.submodule("status", "--recursive")
         except GitCommandError as exc:
-            return r[t.SequenceOf[Path]].fail(str(exc))
+            return r[t.SequenceOf[Path]].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[t.SequenceOf[Path]].fail(f"failed to discover Git submodules: {exc}", exception=exc)
         paths: t.MutableSequenceOf[Path] = []

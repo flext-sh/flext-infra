@@ -661,9 +661,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Provide the typed test helper `command_runner`."""
             return TestsFlextInfraUtilities.Tests.DeptryRunner(
                 r.ok(
-                    TestsFlextInfraUtilities.Tests.stub_run(
-                        stdout=stdout, stderr=stderr, returncode=returncode
-                    )
+                    TestsFlextInfraUtilities.Tests.create_command_output(stdout=stdout, stderr=stderr, returncode=returncode)
                 )
             )
 

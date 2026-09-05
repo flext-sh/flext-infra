@@ -10,10 +10,10 @@ rule:
   any:
     - all:
         - kind: import_statement
-        - regex: '^import\s+.*\bai_hub(?:\.[A-Za-z_][\w.]*)?\b'
+        - regex: '^import\s+.*\bai_hub(?:_client|\.[A-Za-z_][\w.]*)?\b'
     - all:
         - kind: import_from_statement
-        - regex: '^from\s+ai_hub(?:\.[A-Za-z_][\w.]*)*\s+import\b'
+        - regex: '^from\s+ai_hub(?:_client|\.[A-Za-z_][\w.]*)*\s+import\b'
     - all:
         - kind: import_statement
         - regex: '^import\s+.*\bcode_review_graph(?:\.[A-Za-z_][\w.]*)?\b'

@@ -30,7 +30,7 @@ class FlextInfraUtilitiesGitSemanticWorktreeMixin(
             repo = cls._repo(request.repo_root)
             text = cls._git_add_worktree_args(repo, request)
         except GitCommandError as exc:
-            return r[m.Infra.GitTextReport].fail(str(exc))
+            return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitTextReport].fail(f"failed to add worktree for {request.branch}: {exc}", exception=exc)
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))

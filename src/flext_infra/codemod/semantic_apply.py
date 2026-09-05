@@ -17,10 +17,41 @@ class FlextInfraCodemodSemanticApply:
     @classmethod
     def apply(cls, root: Path, preflight: m.Infra.ModScanReport) -> None:
         """Apply deferred-model, API-alias, and private-import cutovers."""
-        original = cls._source_inventory(root)
+        original = cls._source_inventory(root, preflight)
         working = dict(original)
         changed: set[Path] = set()
 
+        future_annotations: list[m.Infra.SemanticMigrationEdit] = []
+        for file_path in sorted({
+            (root / finding.file).resolve()
+            for finding in preflight.entries
+            if finding.rule_id == "require-future-annotations"
+        }):
+            original_source = working.get(file_path)
+            if original_source is None:
+                state = u.Cli.atomic_read_binary_file_state(
+                    file_path, required=True
+                ).unwrap()
+                content = state.content
+                if content is None:
+                    msg = (
+                        "authenticated source disappeared during mod preflight: "
+                        f"{file_path}"
+                    )
+                    raise ValueError(msg)
+                original_source = content.decode(c.Cli.ENCODING_DEFAULT)
+                working[file_path] = original_source
+            updated_source = u.Infra.ensure_future_annotations(original_source)
+            if updated_source != original_source:
+                future_annotations.append(
+                    m.Infra.SemanticMigrationEdit(
+                        file_path=file_path,
+                        original_source=original_source,
+                        updated_source=updated_source,
+                        changes=("inserted canonical future annotations import",),
+                    )
+                )
+        cls._apply_plan(working, future_annotations, changed)
         deferred = cls._deferred_model_edits(working)
         cls._apply_plan(working, deferred, changed)
         alias_findings = tuple(
@@ -45,14 +76,17 @@ class FlextInfraCodemodSemanticApply:
 
         cli.display_text(
             "mod: semantic cutover "
+            f"future_annotations={len(future_annotations)} "
             f"deferred_models={len(deferred)} alias_files={len(aliases)} "
             f"private_import_files={len(private_imports)}"
         )
         cls._publish(original, working, changed)
 
     @staticmethod
-    def _source_inventory(root: Path) -> t.MappingKV[Path, str]:
-        """Read every governed Python source through authenticated file state."""
+    def _source_inventory(
+        root: Path, preflight: m.Infra.ModScanReport
+    ) -> t.MappingKV[Path, str]:
+        """Read governed sources and every Python path reported by preflight."""
         project_roots = u.Infra.governed_project_roots(root)
         scan_dirs = m.Infra.RefactorConfig().project_scan_dirs
         paths = {
@@ -61,6 +95,11 @@ class FlextInfraCodemodSemanticApply:
             for directory in scan_dirs
             for path in u.Infra.iter_directory_python_files(project_root / directory)
         }
+        paths.update(
+            path
+            for finding in preflight.entries
+            if (path := (root / finding.file).resolve()).suffix == c.Infra.EXT_PYTHON
+        )
         sources: dict[Path, str] = {}
         for path in sorted(paths):
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
@@ -139,4 +178,3 @@ class FlextInfraCodemodSemanticApply:
 
 
 __all__: list[str] = ["FlextInfraCodemodSemanticApply"]
-

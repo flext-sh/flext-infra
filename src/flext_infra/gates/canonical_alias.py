@@ -265,7 +265,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             try:
                 updated, changes = transformer.apply_to_source(read.value)
             except ValueError as exc:
-                return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(str(exc))
+                return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(str(exc), exception=exc)
             if changes and updated != read.value:
                 edits.append(
                     m.Infra.SemanticMigrationEdit(

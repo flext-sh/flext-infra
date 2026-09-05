@@ -683,7 +683,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 object_name=candidate.object_name,
                 error=str(exc),
             )
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         finally:
             rope.refresh(preserve_indexes=True, validate_project=False)
         if applied:

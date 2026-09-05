@@ -74,7 +74,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         try:
             selected_rules = self._selected_rules()
         except ValueError as exc:
-            return r[str].fail(str(exc))
+            return r[str].fail(str(exc), exception=exc)
         if not selected_rules:
             return r[str].ok("No fixable enforcement rules selected.")
         projects = self._resolve_projects()

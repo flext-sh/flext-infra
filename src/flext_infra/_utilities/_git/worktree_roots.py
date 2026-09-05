@@ -72,7 +72,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         try:
             top_level = repo.git.rev_parse("--show-toplevel").strip()
         except GitCommandError as exc:
-            return r[Path].fail(str(exc))
+            return r[Path].fail(str(exc), exception=exc)
         return r[Path].ok(Path(top_level).resolve())
 
     @classmethod
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 "--path", "--get", "core.worktree", with_exceptions=False
             ).strip()
         except GitCommandError as exc:
-            return r[Path].fail(str(exc))
+            return r[Path].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[Path].fail(f"failed to resolve primary worktree: {exc}", exception=exc)
 
@@ -106,7 +106,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 ).strip()
                 git_dir = Path(git_dir_text).resolve()
             except GitCommandError as exc:
-                return r[Path].fail(str(exc))
+                return r[Path].fail(str(exc), exception=exc)
             if git_dir != common_dir:
                 listed = repo.git.worktree("list", "--porcelain")
                 registered = tuple(

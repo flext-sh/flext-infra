@@ -49,7 +49,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
                 )
             report = cls._collect_identity_facts(repo, requested_path=request.repo_root)
         except GitCommandError as exc:
-            return r[m.Infra.GitIdentityReport].fail(str(exc))
+            return r[m.Infra.GitIdentityReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitIdentityReport].fail(f"failed to resolve Git identity: {exc}", exception=exc)
         return r[m.Infra.GitIdentityReport].ok(report)

@@ -57,7 +57,7 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
             porcelain = repo.git.status("--porcelain", "--untracked-files=all")
             lifecycle = cls._lifecycle_porcelain(repo, repo_path, porcelain)
         except GitCommandError as exc:
-            return r[m.Infra.GitStatusReport].fail(str(exc))
+            return r[m.Infra.GitStatusReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitStatusReport].fail(f"git status failed: {exc}", exception=exc)
         return r[m.Infra.GitStatusReport].ok(
@@ -91,7 +91,7 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
             )
             relative_paths = tuple(dict.fromkeys((*changed, *repo.untracked_files)))
         except GitCommandError as exc:
-            return r[t.SequenceOf[Path]].fail(str(exc))
+            return r[t.SequenceOf[Path]].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[t.SequenceOf[Path]].fail(f"git changed paths failed: {exc}", exception=exc)
         return r[t.SequenceOf[Path]].ok(

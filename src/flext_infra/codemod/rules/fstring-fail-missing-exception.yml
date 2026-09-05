@@ -40,14 +40,6 @@ constraints:
     regex: '^r(?:\[.+\])?$'
 fix: '$R.fail($MESSAGE, exception=$EXC)'
 ---
-
-
-
-
-
-
-
-
 id: fstring-fail-missing-exception-review
 language: python
 severity: error
@@ -91,8 +83,6 @@ constraints:
     regex: '^r(?:\[.+\])?$'
 fix: '$R.fail($MESSAGE, $NAME=$VALUE, exception=$EXC)'
 ---
-
-
 id: fstring-fail-missing-exception-positional-review
 language: python
 severity: error

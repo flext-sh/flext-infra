@@ -1,5 +1,7 @@
 """Attached-repository worktree topology behavior."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c, m

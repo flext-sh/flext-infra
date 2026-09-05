@@ -4,7 +4,6 @@ severity: error
 message: >-
   Converting a caught exception to str discards the typed cause. Select the
   contextual e.fail_* factory; if none fits, preserve exception= explicitly.
-  Detection only.
 rule:
   pattern: $R.fail(str($EXC))
   inside:
@@ -22,3 +21,4 @@ rule:
 constraints:
   R:
     regex: '^r(?:\[.+\])?$'
+fix: '$R.fail(str($EXC), exception=$EXC)'

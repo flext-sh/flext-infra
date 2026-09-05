@@ -30,6 +30,12 @@ snapshots:
       style: primary
       start: 0
       end: 47
+  from ai_hub_client import Client:
+    labels:
+    - source: from ai_hub_client import Client
+      style: primary
+      start: 0
+      end: 32
   from code_review_graph import Graph:
     labels:
     - source: from code_review_graph import Graph
@@ -48,6 +54,12 @@ snapshots:
       style: primary
       start: 0
       end: 33
+  import ai_hub_client:
+    labels:
+    - source: import ai_hub_client
+      style: primary
+      start: 0
+      end: 20
   import code_review_graph:
     labels:
     - source: import code_review_graph

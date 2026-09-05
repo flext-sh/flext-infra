@@ -44,7 +44,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
                 worktree_root, gitlink_exclusions, excluded, message
             )
         except GitCommandError as exc:
-            return r[str].fail(str(exc))
+            return r[str].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[str].fail(f"failed to create checkpoint: {exc}", exception=exc)
         return r[str].ok(commit_sha)
@@ -168,7 +168,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
                 *exclusions,
             ).encode(c.Cli.ENCODING_DEFAULT)
         except GitCommandError as exc:
-            return r[m.Infra.RepositoryDelta].fail(str(exc))
+            return r[m.Infra.RepositoryDelta].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.RepositoryDelta].fail(f"failed to capture operation patch: {exc}", exception=exc)
         # git apply rejects a patch whose final line has no terminating newline

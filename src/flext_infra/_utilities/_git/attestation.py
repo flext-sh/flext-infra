@@ -130,7 +130,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 )
             repo.git.tag("--sign", "--annotate", "--message", serialized.value, tag)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GateAttestationReport].fail(str(exc))
+            return r[m.Infra.GateAttestationReport].fail(str(exc), exception=exc)
         return r[m.Infra.GateAttestationReport].ok(
             cls._attestation_report(tag, predicate)
         )
@@ -208,7 +208,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 item for item in cls._repo(repo_root).tags if item.name == tag
             )
         except (OSError, StopIteration) as exc:
-            return r[m.Infra.GateAttestationPredicate].fail(str(exc))
+            return r[m.Infra.GateAttestationPredicate].fail(str(exc), exception=exc)
         if tag_ref.tag is None:
             return r[m.Infra.GateAttestationPredicate].fail(
                 f"attestation is not an annotated tag: {tag}"
@@ -226,7 +226,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
         try:
             predicate = m.Infra.GateAttestationPredicate.model_validate(parsed.value)
         except ValueError as exc:
-            return r[m.Infra.GateAttestationPredicate].fail(str(exc))
+            return r[m.Infra.GateAttestationPredicate].fail(str(exc), exception=exc)
         return r[m.Infra.GateAttestationPredicate].ok(predicate)
 
     @classmethod

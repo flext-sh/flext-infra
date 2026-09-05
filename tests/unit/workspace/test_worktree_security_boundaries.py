@@ -1,5 +1,7 @@
 """Security contracts for real Git worktree boundaries."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest

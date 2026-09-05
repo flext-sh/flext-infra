@@ -61,7 +61,7 @@ class FlextInfraModGateEngine:
         """Return every non-empty YAML document in one rule file."""
         documents = tuple(rule.read_text(encoding="utf-8").split("\n---"))
         return tuple(
-            document
+            document.strip("\n")
             for document in documents
             if any(
                 line.strip() and not line.lstrip().startswith("#")

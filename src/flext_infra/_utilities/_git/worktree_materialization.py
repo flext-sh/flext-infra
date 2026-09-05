@@ -58,7 +58,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 head_result.value,
             ])
         except GitCommandError as exc:
-            return r[str].fail(str(exc))
+            return r[str].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[str].fail(f"failed to add detached worktree: {exc}", exception=exc)
         return head_result
@@ -77,7 +77,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
             repo = cls._repo(source_root)
             untracked = repo.git.ls_files("--others", "--exclude-standard", "-z")
         except GitCommandError as exc:
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[bool].fail(f"failed to list untracked files: {exc}", exception=exc)
         for raw_path in untracked.split("\0"):
@@ -122,7 +122,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 "--binary", c.Infra.GIT_HEAD, "--", ".", *pathspecs
             ).encode(c.Cli.ENCODING_DEFAULT)
         except GitCommandError as exc:
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[bool].fail(f"failed to capture dirty patch: {exc}", exception=exc)
         if patch_bytes:
@@ -136,7 +136,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 with git_stdin(patch_bytes) as istream:
                     worktree_repo.git.apply("--binary", "-", istream=istream)
             except GitCommandError as exc:
-                return r[bool].fail(str(exc))
+                return r[bool].fail(str(exc), exception=exc)
             except (OSError, ValueError) as exc:
                 return r[bool].fail(f"dirty patch did not apply: {exc}", exception=exc)
         return cls._git_copy_untracked(source_root, worktree_root, tuple(excluded))

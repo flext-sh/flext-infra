@@ -37,7 +37,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
             with git_stdin(patch) as istream:
                 repo.git.apply("--check", "--binary", *direction, "-", istream=istream)
         except GitCommandError as exc:
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[bool].fail(f"git apply --check failed: {exc}", exception=exc)
         return r[bool].ok(True)
@@ -103,7 +103,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
                         current.as_posix(),
                     )
                 except GitCommandError as exc:
-                    return r[bool].fail(str(exc))
+                    return r[bool].fail(str(exc), exception=exc)
                 except (OSError, ValueError) as exc:
                     return r[bool].fail(f"failed to apply gitlink: {current}: {exc}")
         return r[bool].ok(True)

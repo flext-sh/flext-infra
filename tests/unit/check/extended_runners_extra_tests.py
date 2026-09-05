@@ -55,7 +55,7 @@ class TestExtendedRunnerExtras:
         )
         _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.stub_run(stdout='{"generalDiagnostics": []}'))
+            r.ok(u.Tests.create_command_output(stdout='{"generalDiagnostics": []}'))
         ])
 
         result = u.Tests.run_gate_check(
