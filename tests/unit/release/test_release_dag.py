@@ -112,7 +112,9 @@ class TestsFlextInfraReleaseDag:
                 first_record.append(line)
                 if not line.rstrip().endswith("\\"):
                     break
-            constraints_path.write_text("\n".join(first_record) + "\n", encoding="utf-8")
+            constraints_path.write_text(
+                "\n".join(first_record) + "\n", encoding="utf-8"
+            )
 
             result = u.Tests.run_release_main(
                 workspace,
@@ -144,7 +146,9 @@ class TestsFlextInfraReleaseDag:
             """
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             templates = project / "src" / "flext_a" / "templates" / ".github"
@@ -191,7 +195,9 @@ class TestsFlextInfraReleaseDag:
             )
             lock_lines = ["version = 1", ""]
             for sibling in c.Tests.RELEASE_INTERNAL_DEPENDENCIES:
-                source = f"https://github.com/flext-sh/{sibling}.git?rev=0.12.0-dev#0000"
+                source = (
+                    f"https://github.com/flext-sh/{sibling}.git?rev=0.12.0-dev#0000"
+                )
                 lock_lines.extend([
                     "[[package]]",
                     f'name = "{sibling}"',
@@ -347,10 +353,14 @@ class TestsFlextInfraReleaseDag:
             """
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
-            (project / ".env.example").write_text("FLEXT_A_LOG_LEVEL=INFO\n", encoding="utf-8")
+            (project / ".env.example").write_text(
+                "FLEXT_A_LOG_LEVEL=INFO\n", encoding="utf-8"
+            )
             u.Tests.commit_git_changes(project, "add the generated environment example")
 
             _ = u.Tests.run_release_main(

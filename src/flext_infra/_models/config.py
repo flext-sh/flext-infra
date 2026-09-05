@@ -496,7 +496,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
-<<<<<<< HEAD
         ci_trigger_branches: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -504,7 +503,6 @@ class FlextInfraConfigModels:
                 description="Fleet branches receiving blocking generated CI triggers",
             ),
         ]
-=======
         integration_branch_preference: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -520,7 +518,6 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = FlextInfraConstantsSharedInfra.INTEGRATION_BRANCH_PREFERENCE
->>>>>>> origin/0.12.0-dev
 
         @u.model_validator(mode="after")
         def _validate_technical_patterns(self) -> Self:
@@ -626,7 +623,9 @@ class FlextInfraConfigModels:
                     or fields[0] != "github.com"
                     or fields[1] != "ssh-ed25519"
                 ):
-                    msg = "private submodule known_hosts must pin github.com ssh-ed25519"
+                    msg = (
+                        "private submodule known_hosts must pin github.com ssh-ed25519"
+                    )
                     raise ValueError(msg)
             return self
 
@@ -2830,9 +2829,6 @@ class FlextInfraConfigModels:
             ),
         ]
 
-<<<<<<< HEAD
-        @m.computed_field
-=======
         @u.model_validator(mode="after")
         def _validate_infrastructure_provider(self) -> Self:
             """Require the tool distribution owner to resolve exactly once."""
@@ -2849,8 +2845,7 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             return self
 
-        @m.computed_field()
->>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
+        @m.computed_field
         @property
         def vscode_files_exclude_map(self) -> Mapping[str, bool]:
             """Derived VS Code ``files.exclude`` entries from the artifact SSOT."""

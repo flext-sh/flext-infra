@@ -22,26 +22,29 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
     directories = (
         scratch / "seed" / "bin",
         scratch / "receipt" / "bin",
-        *(scratch / name for name in (
-            "home",
-            "appdata",
-            "xdg-config",
-            "xdg-data",
-            "xdg-cache",
-            "xdg-state",
-            "gh-config",
-            "config",
-            "data",
-            "cache",
-            "state",
-            "tmp",
-            "system-config",
-            "system-data",
-            "system-installs",
-            "system-shims",
-            "installs",
-            "shims",
-        )),
+        *(
+            scratch / name
+            for name in (
+                "home",
+                "appdata",
+                "xdg-config",
+                "xdg-data",
+                "xdg-cache",
+                "xdg-state",
+                "gh-config",
+                "config",
+                "data",
+                "cache",
+                "state",
+                "tmp",
+                "system-config",
+                "system-data",
+                "system-installs",
+                "system-shims",
+                "installs",
+                "shims",
+            )
+        ),
     )
     try:
         for directory in directories:
@@ -152,18 +155,11 @@ def validate_credential_source(
 
 
 def run(
-    command: t.StrSequence,
-    *,
-    cwd: Path,
-    env: t.StrMapping,
-    operation: str,
+    command: t.StrSequence, *, cwd: Path, env: t.StrMapping, operation: str
 ) -> p.Result[str]:
     """Run one Mise process and reject nonzero status or any Mise warning."""
     executed = u.Cli.run_raw(
-        command,
-        cwd=cwd,
-        env=env,
-        remove_env_keys=tuple(os.environ),
+        command, cwd=cwd, env=env, remove_env_keys=tuple(os.environ)
     )
     if executed.failure:
         return r[str].fail(executed.error or f"{operation} failed to execute")
@@ -179,11 +175,7 @@ def run(
 def write_new(path: Path, content: bytes, mode: int) -> p.Result[bool]:
     """Create exact isolated state through the canonical atomic owner."""
     return u.Cli.atomic_write_binary_file_guarded(
-        path,
-        content,
-        expected_bytes=None,
-        expected_mode=None,
-        permission_mode=mode,
+        path, content, expected_bytes=None, expected_mode=None, permission_mode=mode
     )
 
 

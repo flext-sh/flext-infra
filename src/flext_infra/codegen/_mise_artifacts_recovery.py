@@ -38,9 +38,7 @@ class FlextInfraMiseRecovery:
         if classified.failure:
             return r[bool].from_failure(classified)
         if journal.state == "prepared":
-            candidates = self._prepare_restore_candidates(
-                layout, classified.value
-            )
+            candidates = self._prepare_restore_candidates(layout, classified.value)
             if candidates.failure:
                 return r[bool].from_failure(candidates)
             restored = self._restore(classified.value, candidates.value)
@@ -93,9 +91,7 @@ class FlextInfraMiseRecovery:
                 operation = "delete"
             actions.append(
                 m.Infra.MiseToolchainRecoveryAction(
-                    entry=entry,
-                    current=current.value,
-                    operation=operation,
+                    entry=entry, current=current.value, operation=operation
                 )
             )
         return result_type.ok(tuple(actions))
@@ -133,9 +129,7 @@ class FlextInfraMiseRecovery:
                 f"Mise recovery tuple is incomplete: {entry.path}"
             )
         backup_path = files.resolve_relative(
-            layout.scope_root,
-            entry.original_backup,
-            purpose="Mise recovery backup",
+            layout.scope_root, entry.original_backup, purpose="Mise recovery backup"
         )
         if backup_path.failure:
             return r[m.Infra.MiseToolchainPublication].from_failure(backup_path)
@@ -144,9 +138,10 @@ class FlextInfraMiseRecovery:
             return r[m.Infra.MiseToolchainPublication].fail(
                 backup.error or f"Mise recovery backup is absent: {entry.path}"
             )
-        if backup.value.mode != files.JOURNAL_MODE or files.digest(
-            backup.value.content
-        ) != entry.original_sha256:
+        if (
+            backup.value.mode != files.JOURNAL_MODE
+            or files.digest(backup.value.content) != entry.original_sha256
+        ):
             return r[m.Infra.MiseToolchainPublication].fail(
                 f"Mise recovery backup identity differs: {entry.path}"
             )
@@ -174,8 +169,7 @@ class FlextInfraMiseRecovery:
             )
         return r[m.Infra.MiseToolchainPublication].ok(
             m.Infra.MiseToolchainPublication(
-                before=action.current,
-                replacement=candidate.value,
+                before=action.current, replacement=candidate.value
             )
         )
 
@@ -194,8 +188,7 @@ class FlextInfraMiseRecovery:
                 restored = files.write_publication(candidate)
                 if restored.failure:
                     return r[bool].fail(
-                        restored.error
-                        or f"Mise restore failed: {action.entry.path}"
+                        restored.error or f"Mise restore failed: {action.entry.path}"
                     )
             elif action.operation == "delete":
                 removed = files.delete_state(action.current)
