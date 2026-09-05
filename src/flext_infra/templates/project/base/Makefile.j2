@@ -152,6 +152,7 @@ setup:
 
 _require-environment:
 	@if [ ! -x "$(RUNTIME_PYTHON)" ]; then printf 'ERROR: missing environment interpreter %s; run make setup {{ make.apply_variable }}={{ make.apply_value }}\n' "$(RUNTIME_PYTHON)" >&2; exit 2; fi
+	@mkdir -p "$(PROJECT_SCRATCH_ROOT)" "$(TESTMON_STATE_ROOT)" "$(PYTHONPYCACHEPREFIX)"
 
 _setup-lifecycle: _setup-submodules
 	$(if $(filter pre-setup,$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) pre-setup)
