@@ -1,0 +1,9 @@
+id: remove-cli-process-exit-result-timeout-parameter
+valid:
+  - |
+    def _process_exit_result(command: str, *, timed_out: bool) -> Result:
+        return outcome
+invalid:
+  - |
+    def _process_exit_result(command: str, *, timed_out: bool, timeout_exit_code: int) -> Result:
+        return outcome

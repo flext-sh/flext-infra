@@ -1,0 +1,15 @@
+id: remove-cli-captured-process-timeout-parameter
+language: Python
+severity: error
+files:
+  - "flext-cli/src/flext_cli/_utilities/_runtime_process_outcome.py"
+rule:
+  pattern:
+    context: |
+      def _captured_process_result($$$BEFORE, timeout_exit_code: int) -> $RETURN:
+          $$$BODY
+    selector: function_definition
+fix: |
+  def _captured_process_result($$$BEFORE) -> $RETURN:
+      $$$BODY
+message: Remove timeout policy from captured ProcessOutcome construction.

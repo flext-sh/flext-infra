@@ -1,0 +1,10 @@
+id: remove-cli-test-deadline-exit-code-argument
+language: Python
+severity: error
+files:
+  - "flext-cli/tests/unit/test_runtime_streamed_process.py"
+  - "flext-cli/tests/unit/test_runtime_process_containment.py"
+rule:
+  pattern: _deadline($$$BEFORE, exit_code=$CODE, $$$AFTER)
+fix: _deadline($$$BEFORE, $$$AFTER)
+message: Remove obsolete timeout exit-code arguments from deadline fixtures.

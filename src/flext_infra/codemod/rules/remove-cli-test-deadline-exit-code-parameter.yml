@@ -1,0 +1,16 @@
+id: remove-cli-test-deadline-exit-code-parameter
+language: Python
+severity: error
+files:
+  - "flext-cli/tests/unit/test_runtime_streamed_process.py"
+  - "flext-cli/tests/unit/test_runtime_process_containment.py"
+rule:
+  pattern:
+    context: |
+      def _deadline(*, seconds: float, grace: float, exit_code: int = 124) -> $RETURN:
+          $$$BODY
+    selector: function_definition
+fix: |
+  def _deadline(*, seconds: float, grace: float) -> $RETURN:
+      $$$BODY
+message: Remove the obsolete exit-code selector from public deadline fixtures.
