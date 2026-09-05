@@ -1,0 +1,11 @@
+# Project metadata is a generic filesystem-independent utility owned by
+# flext-core. Package-specific Infra namespaces must consume that public owner.
+id: rewire-core-project-metadata
+language: Python
+severity: error
+files:
+  - "flext-infra/src/**/*.py"
+rule:
+  pattern: u.Infra.build_project_metadata($$$ARGS)
+fix: u.build_project_metadata($$$ARGS)
+message: Consume generic project metadata construction through the canonical u facade.
