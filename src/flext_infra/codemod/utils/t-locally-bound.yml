@@ -7,18 +7,6 @@
 id: t-locally-bound
 language: python
 rule:
-  kind: import_from_statement
   any:
-    - has:
-        kind: aliased_import
-        pattern: $SOURCE as t
-        stopBy: end
-    - all:
-        - has:
-            pattern: t
-            stopBy: end
-        - not:
-            has:
-              kind: aliased_import
-              pattern: t as $ALIAS
-              stopBy: end
+    - pattern: from $$$MODULE import t
+    - pattern: from $$$MODULE import $$$SOURCE as t

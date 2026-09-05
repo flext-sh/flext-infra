@@ -5,7 +5,9 @@ severity: error
 rule:
   all:
     - kind: keyword_argument
-    - pattern: exit_code=$CODE
+    - has:
+        field: name
+        regex: "^exit_code$"
     - inside:
         any:
           - pattern: m.Cli.CommandOutput($$$ARGS)

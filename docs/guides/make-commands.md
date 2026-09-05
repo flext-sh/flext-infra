@@ -1,7 +1,11 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/make-commands.md`; adjust that source, never this projection. -->
 
-# flext-infra - FLEXT Make Commands
+# flext-infra - flext-infra - flext-infra - FLEXT Make Commands
+
+> Project profile: `flext-infra`
+
+> Project profile: `flext-infra`
 
 <!-- TOC START -->
 - [Discover commands](#discover-commands)

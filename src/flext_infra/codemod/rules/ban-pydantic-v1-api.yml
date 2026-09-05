@@ -16,33 +16,19 @@ ignores:
   - "**/*_pb2_grpc.py"
 rule:
   any:
+    - pattern: from pydantic.v1 import $$$NAMES
+    - pattern: import pydantic.v1 as $$$ALIAS
     - all:
-        - kind: import_from_statement
-        - has:
-            field: module_name
-            kind: dotted_name
-            regex: "^pydantic\\.v1(?:\\.|$)"
-    - all:
-        - kind: import_statement
-        - has:
-            stopBy: end
-            kind: dotted_name
-            regex: "^pydantic\\.v1(?:\\.|$)"
-    - all:
-        - kind: import_from_statement
-        - has:
-            field: module_name
-            kind: identifier
-            regex: "^pydantic$"
+        - pattern: from pydantic import $$$NAMES
         - has:
             stopBy: end
             any:
               - all:
                   - kind: identifier
-                    regex: "^(?:root_validator|validator)$"
                   - not:
                       inside:
                         kind: aliased_import
+                  - regex: "^(?:root_validator|validator)$"
               - kind: aliased_import
                 any:
                   - pattern: validator as $ALIAS

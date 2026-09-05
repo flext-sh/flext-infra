@@ -1,7 +1,11 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/using-flext-cli.md`; adjust that source, never this projection. -->
 
-# flext-infra - Using flext-cli
+# flext-infra - flext-infra - flext-infra - Using flext-cli
+
+> Project profile: `flext-infra`
+
+> Project profile: `flext-infra`
 
 > Project profile: `flext-infra`
 

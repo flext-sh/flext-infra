@@ -1,7 +1,11 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/development.md`; adjust that source, never this projection. -->
 
-# flext-infra - Development
+# flext-infra - flext-infra - flext-infra - Development
+
+> Project profile: `flext-infra`
+
+> Project profile: `flext-infra`
 
 <!-- TOC START -->
 - [Start at the workspace root](#start-at-the-workspace-root)

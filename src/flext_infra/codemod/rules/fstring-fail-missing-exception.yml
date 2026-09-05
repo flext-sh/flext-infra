@@ -40,6 +40,8 @@ constraints:
     regex: '^r(?:\[.+\])?$'
 fix: '$R.fail($MESSAGE, exception=$EXC)'
 ---
+
+
 id: fstring-fail-missing-exception-review
 language: python
 severity: error

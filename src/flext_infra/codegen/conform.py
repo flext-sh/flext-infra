@@ -2946,11 +2946,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "provider baseline command failed: "
                 f"command={' '.join(baseline_command)}; error={baseline_result.error}"
             )
-        if baseline_result.value.exit_code != 0:
+        if baseline_result.value.outcome.raw_return_code != 0:
             return r[m.Infra.BranchAncestryPlan].fail(
                 "provider baseline ref is missing: "
                 f"{baseline_reference}; command={' '.join(baseline_command)}; "
-                f"exit={baseline_result.value.exit_code}; "
+                f"exit={baseline_result.value.outcome.raw_return_code}; "
                 f"stderr={baseline_result.value.stderr.strip() or '<empty>'}"
             )
         baseline_sha = baseline_result.value.stdout.strip()
@@ -2979,7 +2979,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # live baseline tip remains the correct anchor.
             verify_command = (c.Infra.GIT, "cat-file", "-t", triggering_sha)
             verify_result = u.Cli.run_raw(verify_command, cwd=root)
-            if verify_result.success and verify_result.value.exit_code == 0:
+            if (
+                verify_result.success
+                and verify_result.value.outcome.raw_return_code == 0
+            ):
                 merge_base_command = (
                     c.Infra.GIT,
                     "merge-base",
@@ -2993,12 +2996,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"command={' '.join(merge_base_command)}; "
                         f"error={merge_base_result.error}"
                     )
-                if merge_base_result.value.exit_code != 0:
+                if merge_base_result.value.outcome.raw_return_code != 0:
                     return r[m.Infra.BranchAncestryPlan].fail(
                         "triggering commit shares no history with the baseline: "
                         f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
                         f"command={' '.join(merge_base_command)}; "
-                        f"exit={merge_base_result.value.exit_code}; "
+                        f"exit={merge_base_result.value.outcome.raw_return_code}; "
                         f"stderr={merge_base_result.value.stderr.strip() or '<empty>'}"
                     )
                 baseline_sha = merge_base_result.value.stdout.strip()
@@ -3013,13 +3016,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             cwd=root,
         )
         pending_merge_includes_baseline = (
-            pending_merge_result.success and pending_merge_result.value.exit_code == 0
+            pending_merge_result.success
+            and pending_merge_result.value.outcome.raw_return_code == 0
         )
         current_branch_result = u.Cli.run_raw(
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
         current_branch_ref = ""
-        if current_branch_result.success and current_branch_result.value.exit_code == 0:
+        if (
+            current_branch_result.success
+            and current_branch_result.value.outcome.raw_return_code == 0
+        ):
             current_branch = current_branch_result.value.stdout.strip()
             if current_branch != "HEAD":
                 current_branch_ref = f"refs/heads/{current_branch}"
@@ -3036,11 +3043,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "cannot enumerate governed refs: "
                 f"command={' '.join(refs_command)}; error={refs_result.error}"
             )
-        if refs_result.value.exit_code != 0:
+        if refs_result.value.outcome.raw_return_code != 0:
             return r[m.Infra.BranchAncestryPlan].fail(
                 "cannot enumerate governed refs: "
                 f"command={' '.join(refs_command)}; "
-                f"exit={refs_result.value.exit_code}; "
+                f"exit={refs_result.value.outcome.raw_return_code}; "
                 f"stderr={refs_result.value.stderr.strip() or '<empty>'}"
             )
         observations: list[tuple[str, str]] = []
@@ -3061,11 +3068,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"command={' '.join(worktrees_command)}; "
                 f"error={worktrees_result.error}"
             )
-        if worktrees_result.value.exit_code != 0:
+        if worktrees_result.value.outcome.raw_return_code != 0:
             return r[m.Infra.BranchAncestryPlan].fail(
                 "cannot enumerate registered worktrees: "
                 f"command={' '.join(worktrees_command)}; "
-                f"exit={worktrees_result.value.exit_code}; "
+                f"exit={worktrees_result.value.outcome.raw_return_code}; "
                 f"stderr={worktrees_result.value.stderr.strip() or '<empty>'}"
             )
         worktree_path = ""
@@ -3156,14 +3163,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"{reference}; command={' '.join(ancestry_command)}; "
                         f"error={ancestry_result.error}"
                     )
-                if ancestry_result.value.exit_code not in {0, 1}:
+                if ancestry_result.value.outcome.raw_return_code not in {0, 1}:
                     return r[m.Infra.BranchAncestryPlan].fail(
                         "Git ancestry validation failed: "
                         f"{reference}; command={' '.join(ancestry_command)}; "
-                        f"exit={ancestry_result.value.exit_code}; "
+                        f"exit={ancestry_result.value.outcome.raw_return_code}; "
                         f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
                     )
-                ancestor = ancestry_result.value.exit_code == 0
+                ancestor = ancestry_result.value.outcome.raw_return_code == 0
                 if not ancestor and policy_reference == current_branch_ref:
                     ancestor = pending_merge_includes_baseline
             references.append(

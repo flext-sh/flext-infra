@@ -14,8 +14,18 @@ rule:
     - all:
         - kind: import_from_statement
         - regex: '^from\s+ai_hub(?:\.[A-Za-z_][\w.]*)*\s+import\b'
+    - all:
+        - kind: import_statement
+        - regex: '^import\s+.*\bcode_review_graph(?:\.[A-Za-z_][\w.]*)?\b'
+    - all:
+        - kind: import_from_statement
+        - regex: '^from\s+code_review_graph(?:\.[A-Za-z_][\w.]*)*\s+import\b'
+    - all:
+        - kind: identifier
+        - regex: '(?i)(?:code_?review_?graph|(?:^|_)crg(?:_|$))'
 message: >-
-  flext-infra must not import ai-hub as a library. Use an optional public
-  ai-hub command, hook, MCP route, or daemon for host-runtime augmentation.
+  flext-infra must not import ai-hub/CRG libraries or implement CRG wrappers,
+  models, constants, gates, or lifecycle. Use an optional public ai-hub
+  command, hook, MCP route, or daemon for host-runtime augmentation.
 files:
   - "**/src/flext_infra/**/*.py"

@@ -1,7 +1,11 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/skill-automation-pattern.md`; adjust that source, never this projection. -->
 
-# flext-infra - Skill Automation Pattern
+# flext-infra - flext-infra - flext-infra - Skill Automation Pattern
+
+> Project profile: `flext-infra`
+
+> Project profile: `flext-infra`
 
 <!-- TOC START -->
 - [Ownership](#ownership)

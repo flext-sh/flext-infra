@@ -1,7 +1,11 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/migration-to-v0.13.0.md`; adjust that source, never this projection. -->
 
-# flext-infra - Migration to v0.13.0
+# flext-infra - flext-infra - flext-infra - Migration to v0.13.0
+
+> Project profile: `flext-infra`
+
+> Project profile: `flext-infra`
 
 > Project profile: `flext-infra`
 

@@ -54,9 +54,12 @@ class FlextInfraCodegenGenerationRenderersMixin(
         if pipe_result.failure:
             raise ValueError(pipe_result.error or "ruff formatting pipeline failed")
         output = pipe_result.unwrap()
-        if output.exit_code != 0:
+        if output.outcome.raw_return_code != 0:
             detail = (output.stderr or output.stdout).strip()
-            msg = f"ruff formatting pipeline failed ({output.exit_code}): {detail}"
+            msg = (
+                f"ruff formatting pipeline failed "
+                f"({output.outcome.raw_return_code}): {detail}"
+            )
             raise ValueError(msg)
         rendered_output: str = (
             t.Infra.STR_ADAPTER.validate_python(output.stdout).rstrip() + "\n"

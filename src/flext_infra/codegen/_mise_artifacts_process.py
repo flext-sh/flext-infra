@@ -177,10 +177,10 @@ def run(
     if executed.failure:
         return r[str].from_failure(executed)
     output = executed.value.stdout + executed.value.stderr
-    if executed.value.exit_code != 0:
+    if executed.value.outcome.raw_return_code != 0:
         return _process_failure(
             operation,
-            exit_code=executed.value.exit_code,
+            exit_code=executed.value.outcome.raw_return_code,
             stdout=executed.value.stdout,
             stderr=executed.value.stderr,
         )

@@ -68,8 +68,10 @@ def test_flext_law_requires_automated_structural_rewires() -> None:
     for required in (
         "`make mod APPLY=Y`",
         "`ast-grep` rewrites",
-        "Code Review Graph CLI impact/refactor analysis",
+        "Rope semantic refactors",
         "`pyright-langserver` diagnostics",
+        "GitHub and CRG belong to ai-hub",
+        "never imports ai-hub or CRG as a library",
         "Repetitive manual call-site editing is prohibited",
     ):
         tm.that(law, has=required)

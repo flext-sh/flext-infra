@@ -100,7 +100,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             "status",
             "--porcelain",
         ])
-        if result.failure or result.value.exit_code != 0:
+        if result.failure or result.value.outcome.raw_return_code != 0:
             return []
         for line in (
             entry.strip() for entry in result.value.stdout.splitlines() if entry.strip()
@@ -162,9 +162,9 @@ class FlextInfraCodegenQualityGate(s[bool]):
         output = (run.value.stderr or run.value.stdout or "").strip()
         lines = [line for line in output.splitlines() if line.strip()]
         return {
-            "passed": run.value.exit_code == 0,
+            "passed": run.value.outcome.raw_return_code == 0,
             "detail": " | ".join(lines[:5]) if lines else "ok",
-            "exit_code": run.value.exit_code,
+            "exit_code": run.value.outcome.raw_return_code,
         }
 
     @classmethod

@@ -1,7 +1,11 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/security.md`; adjust that source, never this projection. -->
 
-# flext-infra - Security Guide
+# flext-infra - flext-infra - flext-infra - Security Guide
+
+> Project profile: `flext-infra`
+
+> Project profile: `flext-infra`
 
 > Project profile: `flext-infra`
 

@@ -15,10 +15,6 @@ snapshots:
       style: primary
       start: 65
       end: 129
-    - source: t
-      style: secondary
-      start: 22
-      end: 23
     - source: from flext_cli import t
       style: secondary
       start: 0
@@ -46,10 +42,6 @@ snapshots:
       style: primary
       start: 69
       end: 136
-    - source: t
-      style: secondary
-      start: 26
-      end: 27
     - source: from flext_ldif import c, t
       style: secondary
       start: 0

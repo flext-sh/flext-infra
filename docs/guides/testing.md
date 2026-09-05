@@ -1,7 +1,11 @@
 <!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
 <!-- Source of truth: `docs/guides/testing.md`; adjust that source, never this projection. -->
 
-# flext-infra - Testing
+# flext-infra - flext-infra - flext-infra - Testing
+
+> Project profile: `flext-infra`
+
+> Project profile: `flext-infra`
 
 <!-- TOC START -->
 - [Test design](#test-design)

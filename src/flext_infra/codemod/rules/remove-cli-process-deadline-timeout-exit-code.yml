@@ -3,11 +3,6 @@ id: remove-cli-process-deadline-timeout-exit-code
 language: Python
 severity: error
 rule:
-  all:
-    - kind: keyword_argument
-    - pattern: timeout_exit_code=$CODE
-    - inside:
-        pattern: m.Cli.ProcessDeadline($$$ARGS)
-        stopBy: end
-fix: ""
+  pattern: "m.Cli.ProcessDeadline($$$BEFORE, timeout_exit_code=$CODE, $$$AFTER)"
+fix: "m.Cli.ProcessDeadline($$$BEFORE, $$$AFTER)"
 message: ProcessDeadline carries timing only; remove the timeout exit-code selector.

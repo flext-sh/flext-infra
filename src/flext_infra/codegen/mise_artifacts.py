@@ -222,7 +222,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[str].fail(
                 download.error or f"checksum download failed for {selector}/{platform}"
             )
-        if download.value.exit_code != 0:
+        if download.value.outcome.raw_return_code != 0:
             cause = download.value.stderr.strip() or "curl exited non-zero"
             return r[str].fail(
                 f"checksum download failed for {selector}/{platform}: {cause}"

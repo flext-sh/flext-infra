@@ -7,3 +7,8 @@ invalid:
   - import ai_hub.services.crg as crg
   - from ai_hub import api
   - from ai_hub.services.crg import AiHubCrgService
+  - import code_review_graph
+  - from code_review_graph import Graph
+  - CRG_HOME = ".state/crg"
+  - "def code_review_graph_run(): ..."
+  - "class FlextInfraCodeReviewGraphGate: ..."
