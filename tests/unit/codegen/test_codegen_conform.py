@@ -22,7 +22,7 @@ from flext_tests import tm
 
 from tests import c, m, p, r, u
 
-pytestmark = pytest.mark.slow
+pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]
 
 
 def _conform_target(
@@ -658,7 +658,10 @@ class TestCodegenConform:
         first_result = tm.ok(first)
         tm.that(bool(first_result.written_files), eq=True)
         tm.that(
-            tuple(file.path for file in first_result.plan.files if file.changed), eq=()
+            tuple(
+                file.path for file in first_result.plan.files if file.requires_effect
+            ),
+            eq=(),
         )
         makefile_plan = next(
             item
@@ -666,7 +669,7 @@ class TestCodegenConform:
             if item.path.name == c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
-            makefile_plan.rendered,
+            makefile_plan.desired_text,
             has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}",
         )
         tm.that(first_result.plan.request.root, eq=root.resolve())
@@ -886,12 +889,11 @@ class TestCodegenConform:
         env_plan = plans[".env.example"]
         tm.that(env_plan.owner, eq="codegen")
         tm.that(env_plan.policy, eq="create-only")
-        tm.that(env_plan.changed, eq=False)
-        tm.that(env_plan.blocked, eq=False)
-        tm.that(env_plan.current_sha256, eq="")
+        tm.that(env_plan.requires_effect, eq=False)
+        tm.that(env_plan.before.content, eq=None)
         tm.that((root / ".env.example").exists(), eq=False)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
-            tm.that(plans[required].changed, eq=True)
+            tm.that(plans[required].requires_effect, eq=True)
 
         applied = FlextInfraCodegenConform.execute_request(request)
         tm.ok(applied)
@@ -989,12 +991,12 @@ class TestCodegenConform:
             for item in second.files
             if item.path.name == c.Infra.PYPROJECT_FILENAME
         )
-        rendered_tooling = tomllib.loads(first_pyproject.rendered)["tool"]
+        rendered_tooling = tomllib.loads(first_pyproject.desired_text)["tool"]
         report = rendered_tooling["coverage"]["report"]
         addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
         pytest_policy = config.Infra.tooling.tools.pytest
 
-        tm.that(second_pyproject.rendered, eq=first_pyproject.rendered)
+        tm.that(second_pyproject.desired_text, eq=first_pyproject.desired_text)
         tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
         tm.that(addopts, lacks="--session-timeout")
         tm.that(addopts >= set(pytest_policy.standard_addopts), eq=True)
@@ -1034,7 +1036,7 @@ class TestCodegenConform:
             for item in plan.files
             if item.path == root / "src/consumer/__init__.py"
         )
-        tm.that(package_root.rendered, lacks='"r"')
+        tm.that(package_root.desired_text, lacks='"r"')
 
         declared_workspace = workspace.model_copy(
             update={"project": project.model_copy(update={"inherited_facets": ("r",)})}
@@ -1051,8 +1053,8 @@ class TestCodegenConform:
             for item in declared_plan.files
             if item.path == root / "src/consumer/__init__.py"
         )
-        tm.that(declared_root.rendered, has='"r"')
-        tm.that(declared_root.rendered, has="from flext_cli import r as r")
+        tm.that(declared_root.desired_text, has='"r"')
+        tm.that(declared_root.desired_text, has="from flext_cli import r as r")
 
     def test_make_context_accepts_manifest_without_project_metadata(
         self, tmp_path: Path
@@ -1160,7 +1162,9 @@ class TestCodegenConform:
             tuple(file.path.name for file in planned.value.files),
             eq=("pyproject.toml",),
         )
-        tm.that(tuple(file.changed for file in planned.value.files), eq=(False,))
+        tm.that(
+            tuple(file.requires_effect for file in planned.value.files), eq=(False,)
+        )
         exit_code = main([
             "codegen",
             "conform",
@@ -1413,7 +1417,7 @@ class TestScriptDispatchMakefile:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        rendered: str = makefile.rendered
+        rendered: str = makefile.desired_text
         return rendered
 
     def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
@@ -1546,18 +1550,10 @@ class TestScriptDispatchMakefile:
             lacks=["$(FLEXT_INFRA_BOOTSTRAP)", "codegen init", "deps modernize"],
         )
         tm.that(gen_check_body, lacks=["codegen init", "deps modernize"])
-        # flext-udpm5: continuous gen check regenerates lazy inits (drift check),
-        # distinct from the bootstrap-only `codegen init`/`_builtin_gen_init`
-        # selector above, and runs after conform / before the docs check.
+        # One public conform invocation owns the complete generation transaction.
         tm.that(
             gen_check_body,
-            has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --check',
-        )
-        tm.that(
-            gen_check_body.index("codegen conform")
-            < gen_check_body.index("codegen lazy-init")
-            < gen_check_body.index("_generated_docs"),
-            eq=True,
+            lacks=["codegen lazy-init", "docs generate", "_generated_docs"],
         )
         # The apply semantics live on _builtin_gen_all; _builtin_gen_apply aliases it.
         gen_all_body = rendered.split("_builtin_gen_all:", 1)[1].split("\n\n", 1)[0]
@@ -1575,25 +1571,12 @@ class TestScriptDispatchMakefile:
             ],
         )
         tm.that("_require_apply" in gen_all_body, eq=True)
-        credential_preflight = "MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR"
-        tm.that(credential_preflight in gen_all_body, eq=True)
-        tm.that(
-            gen_all_body.index(credential_preflight)
-            < gen_all_body.index("codegen conform"),
-            eq=True,
-        )
-        # flext-udpm5: continuous gen apply regenerates lazy inits after conform
-        # and before the generated-docs write, so config drift never lands stale.
+        tm.that(gen_all_body, lacks="MISE_GITHUB_CREDENTIAL_COMMAND")
         tm.that(
             gen_all_body,
-            has='codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply',
+            lacks=["codegen lazy-init", "docs generate", "_generated_docs"],
         )
-        tm.that(
-            gen_all_body.index("codegen conform")
-            < gen_all_body.index("codegen lazy-init")
-            < gen_all_body.index("_generated_docs"),
-            eq=True,
-        )
+        tm.that("define _generated_docs" in rendered, eq=False)
         gen_apply_body = rendered.split("_builtin_gen_apply:", 1)[1].split("\n\n", 1)[0]
         tm.that("_builtin_gen_all" in gen_apply_body, eq=True)
         gen_init_body = rendered.split("_builtin_gen_init:", 1)[1].split("\n\n", 1)[0]

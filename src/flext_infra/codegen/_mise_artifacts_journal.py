@@ -1,9 +1,10 @@
-"""Typed crash journal and recovery-backup publication for Mise artifacts."""
+"""Durable journal for one extensible workspace generation transaction."""
 
 from __future__ import annotations
 
+import stat
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
 from flext_infra import c, m, u
@@ -17,263 +18,530 @@ if TYPE_CHECKING:
 
 def begin(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-) -> p.Result[m.Infra.MiseToolchainJournal]:
-    """Build the durable staging authority before any disposable root exists."""
-    sources: list[m.Infra.MiseToolchainJournalSource] = []
+    *,
+    transaction_id: str,
+    sources: tuple[tuple[str, m.Cli.AtomicFileState], ...] = (),
+    directories: tuple[m.Infra.CodegenJournalDirectory, ...] = (),
+) -> p.Result[m.Infra.CodegenTransactionJournal]:
+    """Build staging authority before any disposable transaction root exists."""
+    physical_scope = _directory_identity(plan.layout.scope_root)
+    if physical_scope.failure:
+        return r[m.Infra.CodegenTransactionJournal].from_failure(physical_scope)
+    projects: list[m.Infra.CodegenJournalProject] = []
     for project in plan.projects:
-        for source in project.config.sources:
-            encoded = _journal_source(plan, source)
-            if encoded.failure:
-                return r[m.Infra.MiseToolchainJournal].from_failure(encoded)
-            sources.append(encoded.value)
+        physical_project = _directory_identity(project.layout.root)
+        if physical_project.failure:
+            return r[m.Infra.CodegenTransactionJournal].from_failure(physical_project)
+        projects.append(
+            m.Infra.CodegenJournalProject(
+                selector=project.layout.selector,
+                device=physical_project.value[0],
+                inode=physical_project.value[1],
+            )
+        )
+    encoded_sources = _merge_sources((), sources)
+    if encoded_sources.failure:
+        return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
     try:
-        return r[m.Infra.MiseToolchainJournal].ok(
-            m.Infra.MiseToolchainJournal(
-                version=3,
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            m.Infra.CodegenTransactionJournal(
+                version=7,
+                transaction_id=transaction_id,
+                scope_device=physical_scope.value[0],
+                scope_inode=physical_scope.value[1],
                 state="staging",
-                projects=tuple(project.layout.selector for project in plan.projects),
-                sources=tuple(sources),
+                projects=tuple(projects),
+                sources=encoded_sources.value,
+                directories=directories,
                 entries=(),
             )
         )
     except c.ValidationError as exc:
-        return r[m.Infra.MiseToolchainJournal].fail_op(
-            "validate staging Mise journal", exc
+        return r[m.Infra.CodegenTransactionJournal].fail_op(
+            "validate staging codegen journal", exc
         )
 
 
-def prepare(
+def append_prepared(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publications: tuple[m.Infra.MiseToolchainPublication, ...],
-) -> p.Result[m.Infra.MiseToolchainJournal]:
-    """Write every original backup and build the complete prepared journal."""
-    staging = begin(plan)
-    if staging.failure:
-        return r[m.Infra.MiseToolchainJournal].from_failure(staging)
-    entries: list[m.Infra.MiseToolchainJournalEntry] = []
+    journal: m.Infra.CodegenTransactionJournal,
+    publications: tuple[m.Infra.CodegenStagedFile, ...],
+    *,
+    sources: tuple[tuple[str, m.Cli.AtomicFileState], ...] = (),
+) -> p.Result[m.Infra.CodegenTransactionJournal]:
+    """Back up one complete phase and return its extended prepared authority."""
+    if journal.state not in {"staging", "prepared"}:
+        return r[m.Infra.CodegenTransactionJournal].fail(
+            "only staging or prepared codegen journal accepts a phase"
+        )
+    topology = _validate_physical_topology(plan, journal)
+    if topology.failure:
+        return r[m.Infra.CodegenTransactionJournal].from_failure(topology)
+    existing_paths = {entry.path for entry in journal.entries}
+    entries = list(journal.entries)
     recovery_roots: set[Path] = set()
-    for index, publication in enumerate(publications):
+    for offset, publication in enumerate(publications, start=len(entries)):
+        target = files.workspace_relative(
+            plan.layout.scope_root, publication.before.path
+        )
+        if target.failure:
+            return r[m.Infra.CodegenTransactionJournal].from_failure(target)
+        if target.value in existing_paths:
+            return r[m.Infra.CodegenTransactionJournal].fail(
+                f"multiple generation phases own one destination: {target.value}"
+            )
         entry = _journal_entry(
-            plan, publication, index=index, recovery_roots=recovery_roots
+            plan, publication, index=offset, recovery_roots=recovery_roots
         )
         if entry.failure:
-            return r[m.Infra.MiseToolchainJournal].from_failure(entry)
+            return r[m.Infra.CodegenTransactionJournal].from_failure(entry)
         entries.append(entry.value)
+        existing_paths.add(entry.value.path)
+    encoded_sources = _merge_sources(journal.sources, sources)
+    if encoded_sources.failure:
+        return r[m.Infra.CodegenTransactionJournal].from_failure(encoded_sources)
     try:
-        return r[m.Infra.MiseToolchainJournal].ok(
-            m.Infra.MiseToolchainJournal(
-                version=3,
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            m.Infra.CodegenTransactionJournal(
+                version=7,
+                transaction_id=journal.transaction_id,
+                scope_device=journal.scope_device,
+                scope_inode=journal.scope_inode,
                 state="prepared",
-                projects=staging.value.projects,
-                sources=staging.value.sources,
+                projects=journal.projects,
+                sources=encoded_sources.value,
+                directories=journal.directories,
                 entries=tuple(entries),
             )
         )
     except c.ValidationError as exc:
-        return r[m.Infra.MiseToolchainJournal].fail_op(
-            "validate prepared Mise journal", exc
+        return r[m.Infra.CodegenTransactionJournal].fail_op(
+            "validate prepared codegen journal", exc
         )
 
 
-def commit(
-    journal: m.Infra.MiseToolchainJournal,
-) -> p.Result[m.Infra.MiseToolchainJournal]:
-    """Validate the only legal prepared-to-committed journal transition."""
-    if journal.state != "prepared":
-        return r[m.Infra.MiseToolchainJournal].fail(
-            "only a prepared Mise journal can be committed"
+def append_directories(
+    journal: m.Infra.CodegenTransactionJournal,
+    directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+) -> p.Result[m.Infra.CodegenTransactionJournal]:
+    """Extend durable directory authority before materializing any new path."""
+    if journal.state not in {"staging", "prepared"}:
+        return r[m.Infra.CodegenTransactionJournal].fail(
+            "only staging or prepared codegen journal accepts directories"
+        )
+    existing = {directory.path for directory in journal.directories}
+    duplicate = next(
+        (directory.path for directory in directories if directory.path in existing),
+        None,
+    )
+    if duplicate is not None:
+        return r[m.Infra.CodegenTransactionJournal].fail(
+            f"generation directory already has an owner: {duplicate}"
         )
     try:
-        return r[m.Infra.MiseToolchainJournal].ok(
-            m.Infra.MiseToolchainJournal(
-                version=3,
-                state="committed",
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            m.Infra.CodegenTransactionJournal(
+                version=7,
+                transaction_id=journal.transaction_id,
+                scope_device=journal.scope_device,
+                scope_inode=journal.scope_inode,
+                state=journal.state,
                 projects=journal.projects,
                 sources=journal.sources,
+                directories=(*journal.directories, *directories),
                 entries=journal.entries,
             )
         )
     except c.ValidationError as exc:
-        return r[m.Infra.MiseToolchainJournal].fail_op(
-            "validate committed Mise journal", exc
+        return r[m.Infra.CodegenTransactionJournal].fail_op(
+            "validate extended codegen directory journal", exc
+        )
+
+
+def commit(
+    journal: m.Infra.CodegenTransactionJournal,
+) -> p.Result[m.Infra.CodegenTransactionJournal]:
+    """Validate the sole prepared-to-committed transition."""
+    if journal.state != "prepared":
+        return r[m.Infra.CodegenTransactionJournal].fail(
+            "only a prepared codegen journal can be committed"
+        )
+    try:
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            m.Infra.CodegenTransactionJournal(
+                version=7,
+                transaction_id=journal.transaction_id,
+                scope_device=journal.scope_device,
+                scope_inode=journal.scope_inode,
+                state="committed",
+                projects=journal.projects,
+                sources=journal.sources,
+                directories=journal.directories,
+                entries=journal.entries,
+            )
+        )
+    except c.ValidationError as exc:
+        return r[m.Infra.CodegenTransactionJournal].fail_op(
+            "validate committed codegen journal", exc
+        )
+
+
+def begin_recovery(
+    journal: m.Infra.CodegenTransactionJournal,
+    candidates: tuple[m.Infra.CodegenStagedFile | None, ...],
+) -> p.Result[m.Infra.CodegenTransactionJournal]:
+    """Persist every rollback replacement identity before the first restore."""
+    if journal.state != "prepared" or len(candidates) != len(journal.entries):
+        return r[m.Infra.CodegenTransactionJournal].fail(
+            "codegen recovery candidates differ from prepared journal"
+        )
+    entries: list[m.Infra.CodegenJournalEntry] = []
+    for entry, candidate in zip(journal.entries, candidates, strict=True):
+        replacement = None if candidate is None else candidate.replacement
+        if entry.original_exists and (
+            replacement is None or replacement.content is None
+        ):
+            return r[m.Infra.CodegenTransactionJournal].fail(
+                f"codegen rollback candidate is incomplete: {entry.path}"
+            )
+        entry_data = entry.model_dump()
+        entry_data.update({
+            "rollback_exists": entry.original_exists,
+            "rollback_parent_device": entry.original_parent_device,
+            "rollback_parent_inode": entry.original_parent_inode,
+            "rollback_sha256": (
+                None
+                if replacement is None or replacement.content is None
+                else files.digest(replacement.content)
+            ),
+            "rollback_mode": None if replacement is None else replacement.mode,
+            "rollback_device": None if replacement is None else replacement.device,
+            "rollback_inode": None if replacement is None else replacement.inode,
+            "rollback_link_count": (
+                None if replacement is None else replacement.link_count
+            ),
+            "rollback_file_attributes": (
+                None if replacement is None else replacement.file_attributes
+            ),
+            "rollback_reparse_tag": (
+                None if replacement is None else replacement.reparse_tag
+            ),
+        })
+        try:
+            entries.append(m.Infra.CodegenJournalEntry.model_validate(entry_data))
+        except c.ValidationError as exc:
+            return r[m.Infra.CodegenTransactionJournal].fail_op(
+                "validate recovering codegen journal entry", exc
+            )
+    try:
+        return r[m.Infra.CodegenTransactionJournal].ok(
+            m.Infra.CodegenTransactionJournal(
+                version=7,
+                transaction_id=journal.transaction_id,
+                scope_device=journal.scope_device,
+                scope_inode=journal.scope_inode,
+                state="recovering",
+                projects=journal.projects,
+                sources=journal.sources,
+                directories=journal.directories,
+                entries=tuple(entries),
+            )
+        )
+    except c.ValidationError as exc:
+        return r[m.Infra.CodegenTransactionJournal].fail_op(
+            "validate recovering codegen journal", exc
         )
 
 
 def write(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-    journal: m.Infra.MiseToolchainJournal,
+    journal: m.Infra.CodegenTransactionJournal,
     *,
     expected: m.Cli.AtomicFileState,
 ) -> p.Result[m.Cli.AtomicFileState]:
-    """Create or transition the common journal with exact bytes and mode."""
+    """Create or transition the common journal with full-state CAS."""
     content = journal.model_dump_json(indent=2).encode(c.Cli.ENCODING_DEFAULT)
-    journal_path = layout.state_root / files.JOURNAL_NAME
-    if expected.path != journal_path:
+    if expected.path != layout.journal_path:
         return r[m.Cli.AtomicFileState].fail(
-            "Mise journal expected state belongs to another path"
+            "codegen journal expected state belongs to another path"
         )
     written = u.Cli.atomic_write_binary_file_guarded(
-        journal_path,
-        content,
-        expected_bytes=expected.content,
-        expected_mode=expected.mode,
-        permission_mode=files.JOURNAL_MODE,
+        expected, content, permission_mode=files.JOURNAL_MODE
     )
     if written.failure:
         return r[m.Cli.AtomicFileState].fail(
-            written.error or "cannot publish Mise transaction journal"
+            written.error or "cannot publish codegen transaction journal"
         )
     observed = state.journal_state(layout)
     if observed.failure:
         return r[m.Cli.AtomicFileState].from_failure(observed)
+    observed_snapshot = state.journal_snapshot(observed.value)
+    if observed_snapshot is None:
+        return r[m.Cli.AtomicFileState].fail(
+            "published codegen journal parent disappeared"
+        )
     if (
-        observed.value.content != content
-        or observed.value.mode != files.JOURNAL_MODE
+        observed_snapshot.content != content
+        or observed_snapshot.mode != files.JOURNAL_MODE
     ):
         return r[m.Cli.AtomicFileState].fail(
-            "published Mise journal differs from staged bytes or mode"
+            "published codegen journal differs from exact bytes or mode"
         )
-    return observed
+    return r[m.Cli.AtomicFileState].ok(observed_snapshot)
 
 
 def read(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[tuple[m.Infra.MiseToolchainJournal, m.Cli.AtomicFileState]]:
-    """Parse the exact regular common journal through schema v3 only."""
-    return read_scope(layout.scope_root)
-
-
-def read_scope(
-    scope_root: Path,
-) -> p.Result[tuple[m.Infra.MiseToolchainJournal, m.Cli.AtomicFileState]]:
-    """Parse the common journal without consulting current workspace topology."""
-    snapshot = state.journal_state_for_scope(scope_root)
-    result_type = r[tuple[m.Infra.MiseToolchainJournal, m.Cli.AtomicFileState]]
+) -> p.Result[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+    """Parse the typed v7 journal without deriving a second filesystem path."""
+    snapshot = state.journal_state(layout)
+    result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
     if snapshot.failure:
         return result_type.from_failure(snapshot)
-    if snapshot.value.content is None:
-        return result_type.fail("Mise transaction journal is absent")
-    if snapshot.value.mode != files.JOURNAL_MODE:
-        return result_type.fail("Mise transaction journal mode is not 0600")
+    journal_snapshot = state.journal_snapshot(snapshot.value)
+    if journal_snapshot is None or journal_snapshot.content is None:
+        return result_type.fail("codegen transaction journal is absent")
+    if journal_snapshot.mode != files.JOURNAL_MODE:
+        return result_type.fail("codegen transaction journal mode is not 0600")
     try:
-        journal = m.Infra.MiseToolchainJournal.model_validate_json(
-            snapshot.value.content
+        journal = m.Infra.CodegenTransactionJournal.model_validate_json(
+            journal_snapshot.content
         )
     except c.ValidationError as exc:
-        return result_type.fail_op("validate Mise transaction journal", exc)
-    return result_type.ok((journal, snapshot.value))
+        return result_type.fail_op("validate codegen transaction journal", exc)
+    return result_type.ok((journal, journal_snapshot))
 
 
 def cleanup(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
     journal_state: m.Cli.AtomicFileState,
 ) -> p.Result[bool]:
-    """Retain recovery authority until every disposable root is removed."""
-    roots = state.remove_transaction_roots(layout)
-    if roots.failure:
-        return roots
+    """Retain journal authority until all journal-authorized cleanup completes."""
+    directories = state.cleanup_journaled_directories(
+        layout,
+        journal,
+        include_generated=journal.state != "committed",
+    )
+    if directories.failure:
+        return directories
     removed = files.delete_state(journal_state)
     if removed.failure:
-        return r[bool].fail(removed.error or "cannot remove Mise journal")
+        return r[bool].fail(removed.error or "cannot remove codegen journal")
     return r[bool].ok(True)
 
 
 def _journal_source(
-    plan: m.Infra.MiseToolchainWorkspacePlan,
-    source: m.Cli.AtomicFileState,
-) -> p.Result[m.Infra.MiseToolchainJournalSource]:
-    if source.content is None or source.mode is None:
-        return r[m.Infra.MiseToolchainJournalSource].fail(
-            f"journal source is absent: {source.path}"
+    phase: str, source: m.Cli.AtomicFileState
+) -> p.Result[m.Infra.CodegenJournalSource]:
+    if (
+        source.content is None
+        or source.mode is None
+        or source.device is None
+        or source.inode is None
+        or source.link_count != 1
+    ):
+        return r[m.Infra.CodegenJournalSource].fail(
+            f"generation source is absent or incomplete: {source.path}"
         )
-    selector = files.workspace_relative(plan.layout.scope_root, source.path)
-    if selector.failure:
-        return r[m.Infra.MiseToolchainJournalSource].from_failure(selector)
-    return r[m.Infra.MiseToolchainJournalSource].ok(
-        m.Infra.MiseToolchainJournalSource(
-            path=selector.value,
+    return r[m.Infra.CodegenJournalSource].ok(
+        m.Infra.CodegenJournalSource(
+            phase=phase,
+            path=source.path,
+            parent_device=source.parent_device,
+            parent_inode=source.parent_inode,
             sha256=files.digest(source.content),
             mode=source.mode,
+            device=source.device,
+            inode=source.inode,
+            link_count=source.link_count,
+            file_attributes=source.file_attributes,
+            reparse_tag=source.reparse_tag,
         )
     )
+
+
+def _merge_sources(
+    existing: tuple[m.Infra.CodegenJournalSource, ...],
+    sources: tuple[tuple[str, m.Cli.AtomicFileState], ...],
+) -> p.Result[tuple[m.Infra.CodegenJournalSource, ...]]:
+    result_type = r[tuple[m.Infra.CodegenJournalSource, ...]]
+    by_key = {(source.phase, source.path): source for source in existing}
+    order = [(source.phase, source.path) for source in existing]
+    for phase, source in sources:
+        encoded = _journal_source(phase, source)
+        if encoded.failure:
+            return result_type.from_failure(encoded)
+        key = (encoded.value.phase, encoded.value.path)
+        previous = by_key.get(key)
+        if previous is not None and previous != encoded.value:
+            return result_type.fail(
+                f"generation source changed between phases: {encoded.value.path}"
+            )
+        if previous is None:
+            by_key[key] = encoded.value
+            order.append(key)
+    return result_type.ok(tuple(by_key[key] for key in order))
 
 
 def _journal_entry(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publication: m.Infra.MiseToolchainPublication,
+    publication: m.Infra.CodegenStagedFile,
     *,
     index: int,
     recovery_roots: set[Path],
-) -> p.Result[m.Infra.MiseToolchainJournalEntry]:
+) -> p.Result[m.Infra.CodegenJournalEntry]:
     before = publication.before
-    replacement = publication.replacement
-    if replacement.content is None or replacement.mode is None:
-        return r[m.Infra.MiseToolchainJournalEntry].fail(
-            f"Mise staged replacement is absent: {replacement.path}"
+    project = next(
+        (item for item in plan.projects if item.layout.root == publication.project),
+        None,
+    )
+    if project is None or project.layout.transaction_root is None:
+        return r[m.Infra.CodegenJournalEntry].fail(
+            f"generation publication has no transaction participant: {before.path}"
         )
     selector = files.workspace_relative(plan.layout.scope_root, before.path)
     if selector.failure:
-        return r[m.Infra.MiseToolchainJournalEntry].from_failure(selector)
+        return r[m.Infra.CodegenJournalEntry].from_failure(selector)
     backup_selector: str | None = None
     original_sha: str | None = None
-    if before.content is not None and before.mode is not None:
-        project = next(
-            (
-                item
-                for item in plan.projects
-                if before.path
-                in {
-                    item.config.before.path,
-                    item.artifacts.unix_launcher.path,
-                    item.artifacts.windows_launcher.path,
-                    item.artifacts.lock.path,
-                }
-            ),
-            None,
-        )
-        if project is None:
-            return r[m.Infra.MiseToolchainJournalEntry].fail(
-                f"Mise artifact has no project owner: {before.path}"
+    if before.content is not None:
+        if (
+            before.mode is None
+            or before.device is None
+            or before.inode is None
+            or before.link_count != 1
+        ):
+            return r[m.Infra.CodegenJournalEntry].fail(
+                f"generation original identity is incomplete: {before.path}"
             )
         recovery_root = project.layout.transaction_root / "recovery"
         if recovery_root not in recovery_roots:
-            try:
-                recovery_root.mkdir(exist_ok=False)
-            except OSError as exc:
-                return r[m.Infra.MiseToolchainJournalEntry].fail_op(
-                    "create Mise recovery directory", exc
+            if recovery_root.exists() or recovery_root.is_symlink():
+                inventory = u.Cli.atomic_inventory_physical_tree(recovery_root)
+                if inventory.failure:
+                    return r[m.Infra.CodegenJournalEntry].from_failure(inventory)
+            else:
+                directory_before = u.Cli.atomic_read_empty_directory_state(
+                    recovery_root, required=False
                 )
+                if directory_before.failure:
+                    return r[m.Infra.CodegenJournalEntry].from_failure(directory_before)
+                created = u.Cli.atomic_create_empty_directory_guarded(
+                    directory_before.value, permission_mode=0o700
+                )
+                if created.failure:
+                    return r[m.Infra.CodegenJournalEntry].from_failure(created)
             recovery_roots.add(recovery_root)
-        backup = recovery_root / f"{index:04d}.original"
+        backup = recovery_root / f"{index:06d}.original"
         written = process.write_new(backup, before.content, files.JOURNAL_MODE)
         if written.failure:
-            return r[m.Infra.MiseToolchainJournalEntry].fail(
-                written.error or f"cannot back up Mise artifact: {before.path}"
+            return r[m.Infra.CodegenJournalEntry].fail(
+                written.error or f"cannot back up generated file: {before.path}"
             )
         relative_backup = files.workspace_relative(plan.layout.scope_root, backup)
         if relative_backup.failure:
-            return r[m.Infra.MiseToolchainJournalEntry].from_failure(relative_backup)
+            return r[m.Infra.CodegenJournalEntry].from_failure(relative_backup)
         backup_selector = relative_backup.value
         original_sha = files.digest(before.content)
-    return r[m.Infra.MiseToolchainJournalEntry].ok(
-        m.Infra.MiseToolchainJournalEntry(
+    replacement = publication.replacement
+    desired_exists = replacement is not None
+    incomplete_replacement = replacement is not None and any((
+        replacement.content is None,
+        replacement.mode is None,
+        replacement.device is None,
+        replacement.inode is None,
+        replacement.link_count != 1,
+    ))
+    if incomplete_replacement:
+        return r[m.Infra.CodegenJournalEntry].fail(
+            f"generation staged identity is incomplete: {before.path}"
+        )
+    return r[m.Infra.CodegenJournalEntry].ok(
+        m.Infra.CodegenJournalEntry(
+            phase=publication.phase,
+            project=project.layout.selector,
             path=selector.value,
             original_exists=before.content is not None,
+            original_parent_device=before.parent_device,
+            original_parent_inode=before.parent_inode,
             original_backup=backup_selector,
             original_sha256=original_sha,
             original_mode=before.mode,
-            replacement_sha256=files.digest(replacement.content),
-            replacement_mode=replacement.mode,
+            original_device=before.device,
+            original_inode=before.inode,
+            original_link_count=cast("Literal[1] | None", before.link_count),
+            original_file_attributes=before.file_attributes,
+            original_reparse_tag=before.reparse_tag,
+            desired_exists=desired_exists,
+            desired_parent_device=before.parent_device,
+            desired_parent_inode=before.parent_inode,
+            desired_sha256=(
+                files.digest(replacement.content)
+                if replacement is not None and replacement.content is not None
+                else None
+            ),
+            desired_mode=None if replacement is None else replacement.mode,
+            desired_device=None if replacement is None else replacement.device,
+            desired_inode=None if replacement is None else replacement.inode,
+            desired_link_count=(
+                None
+                if replacement is None
+                else cast("Literal[1]", replacement.link_count)
+            ),
+            desired_file_attributes=(
+                None if replacement is None else replacement.file_attributes
+            ),
+            desired_reparse_tag=(
+                None if replacement is None else replacement.reparse_tag
+            ),
         )
     )
 
 
+def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
+    try:
+        observed = path.lstat()
+    except OSError as exc:
+        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
+    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
+        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+    )
+    if not stat.S_ISDIR(observed.st_mode) or reparse:
+        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
+    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
+
+
+def _validate_physical_topology(
+    plan: m.Infra.MiseToolchainWorkspacePlan, journal: m.Infra.CodegenTransactionJournal
+) -> p.Result[bool]:
+    scope = _directory_identity(plan.layout.scope_root)
+    if scope.failure:
+        return r[bool].from_failure(scope)
+    if scope.value != (journal.scope_device, journal.scope_inode):
+        return r[bool].fail("generation scope changed during transaction")
+    expected = tuple(project.layout.selector for project in plan.projects)
+    observed = tuple(project.selector for project in journal.projects)
+    if observed != expected:
+        return r[bool].fail("generation project topology changed during transaction")
+    for planned, recorded in zip(plan.projects, journal.projects, strict=True):
+        identity = _directory_identity(planned.layout.root)
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        if identity.value != (recorded.device, recorded.inode):
+            return r[bool].fail(
+                f"generation project changed during transaction: {recorded.selector}"
+            )
+    return r[bool].ok(True)
+
+
 __all__: list[str] = [
+    "append_directories",
+    "append_prepared",
     "begin",
+    "begin_recovery",
     "cleanup",
     "commit",
-    "prepare",
     "read",
-    "read_scope",
     "write",
 ]

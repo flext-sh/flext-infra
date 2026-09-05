@@ -57,9 +57,7 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
 
         core_pkg = c.Infra.PKG_CORE_UNDERSCORE
         pkg_match = re.search(
-            rf"^from\s+{re.escape(core_pkg)}\s+import\s+([^\n]+)",
-            source,
-            re.MULTILINE,
+            rf"^from\s+{re.escape(core_pkg)}\s+import\s+([^\n]+)", source, re.MULTILINE
         )
         if pkg_match:
             names = pkg_match.group(1).strip()

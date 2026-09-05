@@ -31,8 +31,7 @@ class FlextInfraReleaseOrchestrator(
         m.Field(description="Publish receipt-verified artifacts to the package index"),
     ] = False
     pr_title: Annotated[
-        str,
-        m.Field(description="Pull-request title to validate against the protocol"),
+        str, m.Field(description="Pull-request title to validate against the protocol")
     ] = ""
 
 

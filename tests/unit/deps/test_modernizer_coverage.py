@@ -113,6 +113,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         )
 
         member_path = tmp_path / "arbitrary-member" / "pyproject.toml"
+        member_path.parent.mkdir()
         member_source = """[project]
 name = "arbitrary-member"
 dependencies = ["flext-core", "flext-cli", "flext-ldap"]

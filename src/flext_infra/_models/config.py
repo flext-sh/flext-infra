@@ -11,7 +11,7 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import m, u
+from flext_cli import c, m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
@@ -207,6 +207,77 @@ class FlextInfraConfigModels:
             Mapping[t.NonEmptyStr, tuple[FlextInfraConfigModels.MiseLockToolSpec, ...]],
             m.Field(description="Exactly resolved generated tool set"),
         ]
+
+    class MiseBootstrapEnvironmentSpec(_ConfigContract):
+        """Validated environment contract rendered into generated Mise setup."""
+
+        storage_root_variable: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Required caller variable naming persistent storage"),
+        ]
+        runtime_directory: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Storage-relative Mise runtime directory"),
+        ]
+        fixed_environment: Annotated[
+            tuple[tuple[str, str], ...],
+            m.Field(min_length=1, description="Literal fail-closed Mise settings"),
+        ]
+        transient_environment: Annotated[
+            tuple[tuple[t.NonEmptyStr, t.NonEmptyStr], ...],
+            m.Field(min_length=1, description="Scratch-relative environment paths"),
+        ]
+        persistent_environment: Annotated[
+            tuple[tuple[t.NonEmptyStr, t.NonEmptyStr], ...],
+            m.Field(min_length=1, description="Storage-relative environment paths"),
+        ]
+        empty_files: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Scratch-relative empty policy files"),
+        ]
+        passthrough_environment: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(min_length=1, description="Explicitly reinjected host variables"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_environment_contract(self) -> Self:
+            """Reject shell-unsafe, ambiguous, or escaping generated values."""
+            groups = (
+                self.fixed_environment,
+                self.transient_environment,
+                self.persistent_environment,
+            )
+            names = [name for group in groups for name, _ in group]
+            names.extend(self.passthrough_environment)
+            if len(names) != len(set(names)):
+                msg = "Mise bootstrap environment variables must be globally unique"
+                raise ValueError(msg)
+            for name in names:
+                normalized = name.replace("_", "A")
+                if not normalized.isalnum() or name != name.upper():
+                    msg = f"invalid Mise bootstrap environment variable: {name}"
+                    raise ValueError(msg)
+            persistent = dict(self.persistent_environment)
+            if persistent.get(self.storage_root_variable) != ".":
+                msg = "Mise storage variable must own the persistent root"
+                raise ValueError(msg)
+            for _name, value in self.fixed_environment:
+                if any(character in value for character in ("'", "\n", "\r", "\0")):
+                    msg = "Mise fixed environment values must be literal-shell safe"
+                    raise ValueError(msg)
+            relative_paths = (
+                *(value for _, value in self.transient_environment),
+                *(value for _, value in self.persistent_environment),
+                self.runtime_directory,
+                *self.empty_files,
+            )
+            for value in relative_paths:
+                path = Path(value)
+                if path.is_absolute() or ".." in path.parts:
+                    msg = f"Mise bootstrap path must stay below its owner: {value}"
+                    raise ValueError(msg)
+            return self
 
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
@@ -613,7 +684,9 @@ class FlextInfraConfigModels:
                     or fields[0] != "github.com"
                     or fields[1] != "ssh-ed25519"
                 ):
-                    msg = "private submodule known_hosts must pin github.com ssh-ed25519"
+                    msg = (
+                        "private submodule known_hosts must pin github.com ssh-ed25519"
+                    )
                     raise ValueError(msg)
             return self
 
@@ -741,6 +814,22 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical Make CI token contract for ENV CI=Y"),
+        ]
+        mise_bootstrap: Annotated[
+            FlextInfraConfigModels.MiseBootstrapEnvironmentSpec,
+            m.Field(description="Strict Mise environment projected into containers"),
+        ]
+
+    class EnvrcRenderSpec(_ConfigContract):
+        """Typed input consumed only by the generated project ``.envrc``."""
+
+        environment_path_prepends: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Project-relative executable paths"),
+        ]
+        mise_bootstrap: Annotated[
+            FlextInfraConfigModels.MiseBootstrapEnvironmentSpec,
+            m.Field(description="Strict persistent Mise storage contract"),
         ]
 
     class UvPackageSelectorSpec(_ConfigContract):
@@ -1525,10 +1614,15 @@ class FlextInfraConfigModels:
                 )
             ),
         ]
-        executable: Annotated[
-            bool | None,
-            m.Field(description="Required executable state when mode is governed"),
-        ] = None
+        mode: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Exact permission bits owned by generated publication",
+            ),
+        ] = 0o644
         conflict_sections: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -1917,6 +2011,11 @@ class FlextInfraConfigModels:
     class MakefileRenderSpec(MakeCommandContext):
         """Field-only render input for an existing repository Makefile."""
 
+        mise_bootstrap: Annotated[
+            FlextInfraConfigModels.MiseBootstrapEnvironmentSpec,
+            m.Field(description="Generated strict Mise bootstrap environment"),
+        ]
+
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
@@ -2166,6 +2265,11 @@ class FlextInfraConfigModels:
 
     class MakeRenderContext(MakeCommandContext):
         """Typed input consumed by the generated Make surface."""
+
+        mise_bootstrap: Annotated[
+            FlextInfraConfigModels.MiseBootstrapEnvironmentSpec,
+            m.Field(description="Generated strict Mise bootstrap environment"),
+        ]
 
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -3434,12 +3538,29 @@ class FlextInfraConfigModels:
         ] = ()
 
     class CodegenFilePlan(_ConfigContract):
-        """Expected content and current state for one managed file."""
+        """Exact before state and desired state for one managed file."""
 
+        project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
-        rendered: Annotated[str, m.Field(description="Fully rendered expected content")]
-        expected_sha256: Annotated[
-            t.NonEmptyStr, m.Field(description="SHA-256 of expected content")
+        before: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Descriptor-authenticated state captured by planning"),
+        ]
+        desired_content: Annotated[
+            bytes | None,
+            m.Field(
+                strict=True,
+                description="Exact desired bytes, or None for an absent destination",
+            ),
+        ]
+        desired_mode: Annotated[
+            int | None,
+            m.Field(
+                ge=0,
+                le=0o7777,
+                strict=True,
+                description="Exact desired mode, or None for an absent destination",
+            ),
         ]
         source_states: Annotated[
             tuple[m.Cli.AtomicFileState, ...],
@@ -3456,26 +3577,56 @@ class FlextInfraConfigModels:
             Literal["full", "merge", "create-only", "delegated", "manual"] | None,
             m.Field(description="Governed root artifact policy"),
         ] = None
-        current_sha256: Annotated[
-            str, m.Field(description="SHA-256 of current content, empty when missing")
-        ] = ""
-        executable: Annotated[
-            bool | None,
-            m.Field(description="Required executable state when mode is governed"),
-        ] = None
-        changed: Annotated[bool, m.Field(description="Whether content differs")]
-        absent: Annotated[
-            bool,
-            m.Field(
-                description=(
-                    "When true, apply removes the path instead of writing rendered"
+
+        @u.model_validator(mode="after")
+        def _validate_publication_identity(self) -> Self:
+            """Bind one complete desired state to its exact project and target."""
+            if not self.project.is_absolute() or not self.path.is_absolute():
+                msg = "codegen project and path must be absolute"
+                raise ValueError(msg)
+            if self.before.path != self.path:
+                msg = "codegen before state belongs to another path"
+                raise ValueError(msg)
+            try:
+                self.path.relative_to(self.project)
+            except ValueError as exc:
+                msg = f"codegen path escapes owning project: {self.path}"
+                raise ValueError(msg) from exc
+            desired = (self.desired_content, self.desired_mode)
+            if any(value is None for value in desired) != all(
+                value is None for value in desired
+            ):
+                msg = (
+                    "codegen desired bytes and mode must be present or absent together"
                 )
-            ),
-        ] = False
-        blocked: Annotated[
-            bool, m.Field(description="Whether unrecognized WIP blocks application")
-        ] = False
-        reason: Annotated[str, m.Field(description="Blocking explanation")] = ""
+                raise ValueError(msg)
+            return self
+
+        @property
+        def operation(self) -> Literal["noop", "create", "replace", "mode", "delete"]:
+            """Derive the only authorized effect from before and desired states."""
+            if self.desired_content is None:
+                return "delete" if self.before.content is not None else "noop"
+            if self.before.content is None:
+                return "create"
+            if self.before.content != self.desired_content:
+                return "replace"
+            if self.before.mode != self.desired_mode:
+                return "mode"
+            return "noop"
+
+        @property
+        def requires_effect(self) -> bool:
+            """Whether publication must change the destination."""
+            return self.operation != "noop"
+
+        @property
+        def desired_text(self) -> str:
+            """Decode one present text artifact through the canonical encoding."""
+            if self.desired_content is None:
+                msg = f"absent codegen plan has no text payload: {self.path}"
+                raise ValueError(msg)
+            return self.desired_content.decode(c.Cli.ENCODING_DEFAULT)
 
     class CodegenPlan(_ConfigContract):
         """Fully validated plan produced before any managed-file write."""

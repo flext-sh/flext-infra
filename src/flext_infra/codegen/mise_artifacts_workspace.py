@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import m, u
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
@@ -23,38 +23,61 @@ class FlextInfraMiseWorkspacePlanner:
     """Resolve layout once, then snapshot mutable inputs only under the lock."""
 
     def __init__(self, owner: p.Infra.MiseArtifactsOwner) -> None:
+        """Initialize workspace planning for the configured artifact owner."""
         self._owner = owner
 
-    def scope_root(self) -> p.Result[Path]:
-        """Resolve the stable lock scope from physical Git identity only."""
+    def scope_identity(self) -> p.Result[m.Infra.GitIdentityReport]:
+        """Resolve the physical Git identity that owns generation coordination."""
         requested = self._owner.workspace_root.expanduser().absolute()
         physical = self._physical_directory(requested)
         if physical.failure:
-            return r[Path].from_failure(physical)
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
+            return r[m.Infra.GitIdentityReport].from_failure(physical)
+        identity = self._exact_git_identity(requested)
         if identity.failure:
-            return r[Path].fail(
-                identity.error or "cannot resolve Mise workspace Git identity"
-            )
+            return identity
         if not identity.value.is_submodule:
-            return r[Path].ok(requested)
+            return identity
         superproject_root = identity.value.superproject_root
         if superproject_root is None:
-            return r[Path].fail(
+            return r[m.Infra.GitIdentityReport].fail(
                 f"Git submodule has no Mise coordination root: {requested}"
             )
         scope_root = superproject_root.expanduser().absolute()
         physical_scope = self._physical_directory(scope_root)
         if physical_scope.failure:
-            return r[Path].from_failure(physical_scope)
-        return r[Path].ok(scope_root)
+            return r[m.Infra.GitIdentityReport].from_failure(physical_scope)
+        return self._exact_git_identity(scope_root)
+
+    def scope_root(self) -> p.Result[Path]:
+        """Return the authenticated generation coordination root."""
+        identity = self.scope_identity()
+        if identity.failure:
+            return r[Path].from_failure(identity)
+        return r[Path].ok(identity.value.repo_root)
+
+    @staticmethod
+    def _exact_git_identity(requested: Path) -> p.Result[m.Infra.GitIdentityReport]:
+        """Reject Git parent discovery when the requested path is not its root."""
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
+        if identity.failure:
+            return r[m.Infra.GitIdentityReport].fail(
+                identity.error or "cannot resolve Mise workspace Git identity"
+            )
+        if identity.value.repo_root != requested:
+            return r[m.Infra.GitIdentityReport].fail(
+                "Mise workspace request is not the exact Git worktree root: "
+                f"requested={requested} resolved={identity.value.repo_root}"
+            )
+        return identity
 
     def layout(
-        self, scope_root: Path | None = None
+        self, scope_root: Path | None = None, *, transaction_id: str | None = None
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held."""
         requested = self._owner.workspace_root.expanduser().absolute()
-        resolved_scope = self.scope_root() if scope_root is None else r[Path].ok(scope_root)
+        resolved_scope = (
+            self.scope_root() if scope_root is None else r[Path].ok(scope_root)
+        )
         if resolved_scope.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(resolved_scope)
         scope_root = resolved_scope.value
@@ -74,19 +97,49 @@ class FlextInfraMiseWorkspacePlanner:
             ".",
             *(project.path.as_posix() for project in workspace.value.subprojects),
         )
-        return self.layout_from_selectors(scope_root, selectors)
+        return self.layout_from_selectors(
+            scope_root, selectors, transaction_id=transaction_id
+        )
 
     def layout_from_selectors(
-        self, scope_root: Path, selectors: tuple[str, ...]
+        self,
+        scope_root: Path,
+        selectors: tuple[str, ...],
+        *,
+        transaction_id: str | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Rebuild exact topology from already authenticated journal selectors."""
+        identity = self._exact_git_identity(scope_root)
+        if identity.failure:
+            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(identity)
+        return self._layout_from_identity(
+            identity.value, selectors, transaction_id=transaction_id
+        )
+
+    def journal_layout(
+        self, identity: m.Infra.GitIdentityReport
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Build the no-effect journal layout from the descriptor-locked identity."""
+        return self._layout_from_identity(identity, (".",), transaction_id=None)
+
+    def _layout_from_identity(
+        self,
+        identity: m.Infra.GitIdentityReport,
+        selectors: tuple[str, ...],
+        *,
+        transaction_id: str | None,
+    ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
+        """Build one typed layout from an already exact scope identity."""
         if not selectors or len(set(selectors)) != len(selectors):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 "Mise project selectors must be nonempty and unique"
             )
+        scope_root = identity.repo_root
         projects: list[m.Infra.MiseToolchainProjectLayout] = []
         for selector in selectors:
-            project = self._project_layout(scope_root, selector)
+            project = self._project_layout(
+                scope_root, selector, transaction_id=transaction_id
+            )
             if project.failure:
                 return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(project)
             projects.append(project.value)
@@ -97,6 +150,8 @@ class FlextInfraMiseWorkspacePlanner:
             m.Infra.MiseToolchainWorkspaceLayout(
                 scope_root=scope_root,
                 state_root=state_root.value,
+                journal_path=identity.git_dir / files.JOURNAL_NAME,
+                transaction_id=transaction_id,
                 projects=tuple(projects),
             )
         )
@@ -141,6 +196,8 @@ class FlextInfraMiseWorkspacePlanner:
             m.Infra.MiseToolchainWorkspaceLayout(
                 scope_root=layout.scope_root,
                 state_root=layout.state_root,
+                journal_path=layout.journal_path,
+                transaction_id=layout.transaction_id,
                 projects=selected,
             )
         )
@@ -149,6 +206,8 @@ class FlextInfraMiseWorkspacePlanner:
         self,
         scope_root: Path,
         config_plans: tuple[m.Infra.CodegenFilePlan, ...],
+        *,
+        transaction_id: str | None = None,
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Derive exact selected project topology from the locked conform plan."""
         if not config_plans:
@@ -163,21 +222,26 @@ class FlextInfraMiseWorkspacePlanner:
                     f"invalid Mise configuration plan path: {plan.path}"
                 )
             try:
-                selector = plan.path.parent.absolute().relative_to(
-                    scope_root.absolute()
-                ).as_posix()
+                selector = (
+                    plan.path.parent
+                    .absolute()
+                    .relative_to(scope_root.absolute())
+                    .as_posix()
+                )
             except ValueError:
                 return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                     f"Mise configuration plan escapes scope: {plan.path}"
                 )
             selectors.append(selector)
             expected_paths.append(plan.path)
-        layout = self.layout_from_selectors(scope_root, tuple(selectors))
+        layout = self.layout_from_selectors(
+            scope_root, tuple(selectors), transaction_id=transaction_id
+        )
         if layout.failure:
             return layout
-        if tuple(project.artifacts.config for project in layout.value.projects) != tuple(
-            expected_paths
-        ):
+        if tuple(
+            project.artifacts.config for project in layout.value.projects
+        ) != tuple(expected_paths):
             return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
                 "Mise configuration plan paths differ from derived topology"
             )
@@ -207,10 +271,7 @@ class FlextInfraMiseWorkspacePlanner:
                 return r[m.Infra.MiseToolchainWorkspacePlan].from_failure(project)
             projects.append(project.value)
         return r[m.Infra.MiseToolchainWorkspacePlan].ok(
-            m.Infra.MiseToolchainWorkspacePlan(
-                layout=layout,
-                projects=tuple(projects),
-            )
+            m.Infra.MiseToolchainWorkspacePlan(layout=layout, projects=tuple(projects))
         )
 
     @staticmethod
@@ -240,16 +301,11 @@ class FlextInfraMiseWorkspacePlanner:
             replacement_content = config_state.value.content
             config_sources = current_sources.value
         else:
-            if config_plan.absent or config_plan.blocked or not config_plan.rendered:
+            if config_plan.desired_content is None:
                 return r[m.Infra.MiseToolchainProjectState].fail(
                     f"invalid Mise configuration plan: {config_plan.path}"
                 )
-            expected_sha256 = u.Cli.sha256_content(config_plan.rendered)
-            if config_plan.expected_sha256 != expected_sha256:
-                return r[m.Infra.MiseToolchainProjectState].fail(
-                    f"Mise configuration plan digest differs: {config_plan.path}"
-                )
-            replacement_content = config_plan.rendered.encode(c.Cli.ENCODING_DEFAULT)
+            replacement_content = config_plan.desired_content
             config_sources = config_plan.source_states
         artifacts: list[m.Cli.AtomicFileState] = []
         for path in (
@@ -262,9 +318,7 @@ class FlextInfraMiseWorkspacePlanner:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(state)
             artifacts.append(state.value)
         artifact_set = m.Infra.MiseToolchainArtifactSet(
-            unix_launcher=artifacts[0],
-            windows_launcher=artifacts[1],
-            lock=artifacts[2],
+            unix_launcher=artifacts[0], windows_launcher=artifacts[1], lock=artifacts[2]
         )
         native_seed = (
             artifact_set.windows_launcher
@@ -289,7 +343,7 @@ class FlextInfraMiseWorkspacePlanner:
         )
 
     def _project_layout(
-        self, scope_root: Path, selector: str
+        self, scope_root: Path, selector: str, *, transaction_id: str | None = None
     ) -> p.Result[m.Infra.MiseToolchainProjectLayout]:
         root = self._project_root(scope_root, selector)
         if root.failure:
@@ -301,7 +355,11 @@ class FlextInfraMiseWorkspacePlanner:
             m.Infra.MiseToolchainProjectLayout(
                 selector=selector,
                 root=root.value,
-                transaction_root=state_root.value / files.TRANSACTION_DIR_NAME,
+                transaction_root=(
+                    state_root.value / f"{files.TRANSACTION_DIR_PREFIX}{transaction_id}"
+                    if transaction_id is not None
+                    else None
+                ),
                 artifacts=m.Infra.MiseToolchainArtifactPaths(
                     config=root.value / files.CONFIG_SPEC[0],
                     unix_launcher=root.value / files.ARTIFACT_NAMES[0],

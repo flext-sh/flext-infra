@@ -253,7 +253,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         if applied:
             self._ruff_fix_touched_files(touched_paths)
             if not stub_only:
-                self._regenerate_inits_via_codegen()
+                self._preflight_inits_via_codegen()
             rope.reload()
         return frozenset(applied)
 
@@ -493,11 +493,9 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             drop.update(range(start, end + 1))
         return [line for index, line in enumerate(lines, start=1) if index not in drop]
 
-    def _regenerate_inits_via_codegen(self) -> None:
-        """Regenerate every ``__init__.py`` via the canonical lazy-init service."""
-        FlextInfraCodegenLazyInit(workspace_root=self.root).generate_inits(
-            check_only=False
-        )
+    def _preflight_inits_via_codegen(self) -> None:
+        """Prove initializer planning before conform publishes the transaction."""
+        FlextInfraCodegenLazyInit(workspace_root=self.root).plan_files().unwrap()
 
 
 def _find_parent(tree: ast.AST, target: ast.AST) -> ast.AST | None:

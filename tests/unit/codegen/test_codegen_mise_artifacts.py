@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_infra import config, m, p, r, u
+from flext_infra import config, m, r, u
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
+from tests import u as test_u
 
 
 class TestsCodegenMiseArtifacts:
@@ -134,6 +135,17 @@ class TestsCodegenMiseArtifacts:
             include_checksum=include_checksum,
             extra_lock_selector=extra_lock_selector,
         )
+        (root / "pyproject.toml").write_text(
+            "[project]\n"
+            f'name = "{config.Infra.name}"\n'
+            'version = "0.1.0"\n'
+            'requires-python = ">=3.13,<3.14"\n'
+            "dependencies = []\n",
+            encoding="utf-8",
+        )
+        test_u.Tests.write_project_beads_config(root, config.Infra.name)
+        upstream = test_u.Tests.repository_ref(config.Infra.name).url
+        test_u.Tests.initialize_git_repo(root, origin_url=upstream)
         return root
 
     def test_complete_artifacts_validate_without_running_mise(
@@ -141,10 +153,16 @@ class TestsCodegenMiseArtifacts:
     ) -> None:
         root = self._project(tmp_path / "project")
 
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
+        service = FlextInfraCodegenMiseArtifacts.model_validate({
             "workspace_root": root,
             "check_only": True,
-        }).execute()
+        })
+        tm.that(service.workspace_root, eq=root)
+        tm.that((root / ".git").is_dir(), eq=True)
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+        tm.ok(identity)
+        tm.that(identity.value.is_submodule, eq=False)
+        result = service.execute()
 
         tm.ok(result, eq=True)
 
@@ -158,43 +176,27 @@ class TestsCodegenMiseArtifacts:
 
         tm.fail(result, has="checksum")
 
-    def test_explicit_apply_hydrates_missing_checksums_before_offline_validation(
+    def test_explicit_apply_is_rejected_by_validation_service(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)
-        commands: list[tuple[str, ...]] = []
+        lock_path = root / "mise.lock"
+        before = lock_path.read_bytes()
 
-        def run_raw(command: tuple[str, ...], *, cwd: Path) -> r[m.Cli.CommandOutput]:
-            commands.append(command)
-            output_index = command.index("--output") + 1
-            artifact = Path(command[output_index])
-            tm.that(artifact.parent, eq=cwd)
-            artifact.write_bytes(b"resolved immutable artifact")
-            return r[m.Cli.CommandOutput].ok(
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
-            )
+        def reject_run_raw(*_args: object, **_kwargs: object) -> r[m.Cli.CommandOutput]:
+            return r[m.Cli.CommandOutput].fail("validation service invoked a writer")
 
-        monkeypatch.setattr(u.Cli, "run_raw", run_raw)
+        monkeypatch.setattr(u.Cli, "run_raw", reject_run_raw)
 
         apply_result = FlextInfraCodegenMiseArtifacts.model_validate({
             "workspace_root": root,
             "apply_changes": True,
         }).execute()
-        check_result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
-            "check_only": True,
-        }).execute()
 
-        tm.ok(apply_result, eq=True)
-        tm.ok(check_result, eq=True)
-        tm.that(commands, len=len(config.Infra.codegen.toolchain.mise_lock_platforms))
-        tm.that(
-            (root / "mise.lock").read_text(encoding="utf-8"), has='checksum = "sha256:'
-        )
+        tm.fail(apply_result, has="owned by codegen conform")
+        tm.that(lock_path.read_bytes(), eq=before)
 
-    def test_explicit_apply_rejects_unsafe_checksum_source(
-        self, tmp_path: Path
-    ) -> None:
+    def test_validation_rejects_unsafe_checksum_source(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)
         lock_path = root / "mise.lock"
         lock_path.write_text(
@@ -206,7 +208,7 @@ class TestsCodegenMiseArtifacts:
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "workspace_root": root,
-            "apply_changes": True,
+            "check_only": True,
         }).execute()
 
         tm.fail(result, has="not safe")
@@ -264,99 +266,12 @@ class TestsCodegenMiseArtifacts:
 
         tm.ok(result, eq=True)
 
-    @classmethod
-    def _member(cls, root: Path, name: str, *, identical: bool) -> Path:
-        member = root / name
-        member.mkdir()
-        root_config = (root / ".mise.toml").read_text(encoding="utf-8")
-        member_config = (
-            root_config
-            if identical
-            else root_config.replace("lockfile = true", "lockfile = false")
-        )
-        (member / ".mise.toml").write_text(member_config, encoding="utf-8")
-        cls._write_launchers(member)
-        (member / "mise.lock").write_text("lockfile_version = 0\n", encoding="utf-8")
-        return member
-
-    def test_from_root_applies_byte_identical_member_lock(
-        self, tmp_path: Path
-    ) -> None:
-        root = self._project(tmp_path / "root")
-        member = self._member(root, "member-identical", identical=True)
-        expected_lock = (root / "mise.lock").read_text(encoding="utf-8")
-
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
-            "project_filter": "member-identical",
-            "from_root": True,
-            "apply_changes": True,
-        }).execute()
-
-        tm.ok(result, eq=True)
-        tm.that((member / "mise.lock").read_text(encoding="utf-8"), eq=expected_lock)
-
-    def test_from_root_rejects_materially_different_member(
-        self, tmp_path: Path
-    ) -> None:
-        root = self._project(tmp_path / "root")
-        member = self._member(root, "member-different", identical=False)
-        unchanged_lock = (member / "mise.lock").read_text(encoding="utf-8")
-
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
-            "project_filter": "member-different",
-            "from_root": True,
-            "apply_changes": True,
-        }).execute()
-
-        tm.fail(result, has="not identical")
-        tm.that(
-            (member / "mise.lock").read_text(encoding="utf-8"),
-            eq=unchanged_lock,
-        )
-
-    def test_from_root_requires_explicit_apply(self, tmp_path: Path) -> None:
-        root = self._project(tmp_path / "root")
-        _member = self._member(root, "member-identical", identical=True)
-
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
-            "project_filter": "member-identical",
-            "from_root": True,
-        }).execute()
-
-        tm.fail(result, has="requires explicit --apply")
-
-    def test_from_root_fails_causally_after_post_copy_divergence(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        root = self._project(tmp_path / "root")
-        _member = self._member(root, "member-identical", identical=True)
-        original_write = u.Cli.atomic_write_text_file
-
-        def write_divergent_lock(path: Path, content: str) -> p.Result[bool]:
-            if path.name == "mise.lock":
-                content = f"{content}# diverged\n"
-            return original_write(path, content)
-
-        monkeypatch.setattr(u.Cli, "atomic_write_text_file", write_divergent_lock)
-
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
-            "project_filter": "member-identical",
-            "from_root": True,
-            "apply_changes": True,
-        }).execute()
-
-        tm.fail(result, has="mise.lock diverged after atomic propagation")
-
-    def test_project_selector_is_cli_exposed(self) -> None:
-        """The propagation selector reaches the schema-driven CLI as --project."""
+    def test_project_filter_is_internal_to_make_propagation(self) -> None:
+        """Keep project selection on the Make propagation boundary."""
         field = FlextInfraCodegenMiseArtifacts.model_fields["project_filter"]
 
-        tm.that(field.alias, eq="project")
-        tm.that(field.exclude, ne=True)
+        tm.that(field.alias, none=True)
+        tm.that(field.exclude, eq=True)
 
 
 __all__: tuple[str, ...] = ()

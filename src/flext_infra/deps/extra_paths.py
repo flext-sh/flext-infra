@@ -13,15 +13,12 @@ per clone (flext-c6di).
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 class FlextInfraExtraPathsManager(
     FlextInfraExtraPathsSyncMixin, FlextInfraProjectSelectionServiceBase[bool]
@@ -38,6 +35,13 @@ class FlextInfraExtraPathsManager(
             description="Analyzer roots the active codegen plan materializes",
         ),
     ] = ()
+    analysis_exclusions: Annotated[
+        t.StrSequence,
+        m.Field(
+            default=(),
+            description="Workspace-relative paths excluded from analyzer discovery",
+        ),
+    ] = ()
 
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
@@ -52,6 +56,15 @@ class FlextInfraExtraPathsManager(
     def workspace_project_names(self) -> t.StrSequence:
         """Managed workspace project names backing dependency resolution."""
         return tuple(sorted(self._workspace_project_names))
+
+    @property
+    def analysis_excluded_top_dirs(self) -> frozenset[str]:
+        """Return first path segments from the caller's validated topology."""
+        return frozenset(
+            Path(path).parts[0]
+            for path in self.analysis_exclusions
+            if Path(path).parts
+        )
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -179,7 +192,12 @@ class FlextInfraExtraPathsManager(
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         # flext-j47u (codex): never reread an on-disk Pyright table while its
         # in-memory payload is being conformed; include only real production roots.
-        discovered_python_roots = set(u.Infra.discover_python_dirs(project_dir))
+        discovered_python_roots = set(
+            u.Infra.discover_python_dirs(
+                project_dir,
+                workspace_excluded_top_dirs=self.analysis_excluded_top_dirs,
+            )
+        )
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
                 tuple(

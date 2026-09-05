@@ -218,12 +218,15 @@ class FlextInfraCodegenPipelineStagesMixin:
     def _stage_lazy_init(
         self, ctx: m.Cli.PipelineStageContext
     ) -> p.Result[m.Cli.PipelineStageResult]:
-        """Run lazy-init __init__.py generation."""
+        """Measure lazy-init drift without publishing outside conform."""
 
         def _action() -> int:
-            dry_run = bool(ctx.settings.get(c.Infra.PIPELINE_KEY_DRY_RUN, False))
-            lazy_init = FlextInfraCodegenLazyInit(workspace_root=ctx.repository_root)
-            return lazy_init.generate_inits(check_only=dry_run)
+            plans = (
+                FlextInfraCodegenLazyInit(workspace_root=ctx.repository_root)
+                .plan_files()
+                .unwrap()
+            )
+            return sum(plan.requires_effect for plan in plans)
 
         return self._run_stage(
             c.Infra.PipelineStage.LAZY_INIT,

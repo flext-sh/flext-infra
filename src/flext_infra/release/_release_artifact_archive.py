@@ -29,7 +29,9 @@ class FlextInfraReleaseArtifactArchiveMixin:
             return f"unsafe staged source path: {name}"
         # Why: a file codegen owns (`.env.example`) is a projection of the
         # fleet template, never a secret; only its name matches the pattern.
-        if any(name == item.path.as_posix() for item in config.Infra.codegen.managed_files):
+        if any(
+            name == item.path.as_posix() for item in config.Infra.codegen.managed_files
+        ):
             return ""
         blocked_suffixes = (".jks", ".key", ".keystore", ".p12", ".pem", ".pfx")
         for part in path.parts:

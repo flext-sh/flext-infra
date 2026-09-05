@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import operator
 from fnmatch import fnmatch
-from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,6 +11,7 @@ from flext_cli import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import FlextInfraConstants as c
@@ -25,9 +25,32 @@ class FlextInfraUtilitiesDocsScope:
     """Utility helpers for docs scope policy and project classification."""
 
     @staticmethod
-    @cache
-    def _project_state(project_root: str) -> mw.ProjectPyprojectState:
-        """Return cached parsed pyproject state for one project root.
+    def _absolute_lexical(path: Path) -> Path:
+        """Return an absolute lexical path without dereferencing aliases."""
+        if ".." in path.parts:
+            msg = f"docs path cannot contain parent traversal: {path}"
+            raise ValueError(msg)
+        return path if path.is_absolute() else path.absolute()
+
+    @staticmethod
+    def _physical_directory_exists(path: Path) -> bool:
+        """Return presence only after descriptor-authenticated traversal."""
+        planned = u.Cli.atomic_plan_directory_chain(path)
+        if planned.failure:
+            raise ValueError(planned.error or f"docs directory is unsafe: {path}")
+        return not planned.value.directories
+
+    @staticmethod
+    def _physical_file_exists(path: Path) -> bool:
+        """Return file presence only after descriptor-authenticated inspection."""
+        state = u.Cli.atomic_read_binary_file_state(path, required=False)
+        if state.failure:
+            raise ValueError(state.error or f"docs file is unsafe: {path}")
+        return state.value.content is not None
+
+    @staticmethod
+    def _project_state(project_root: Path) -> mw.ProjectPyprojectState:
+        """Return freshly parsed pyproject state for one project root.
 
         When the pyproject is absent or empty, the returned state carries
         empty ``project_name``/``package_name`` (legitimate "not a project"
@@ -35,9 +58,30 @@ class FlextInfraUtilitiesDocsScope:
         ``[project].name``, :meth:`project_name_from_payload` raises — no
         silent fallback to directory-name.
         """
-        root = Path(project_root)
+        root = FlextInfraUtilitiesDocsScope._absolute_lexical(project_root)
         pyproject_path = root / c.Infra.PYPROJECT_FILENAME
-        payload = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject_path)
+        snapshot = u.Cli.atomic_read_binary_file_state(pyproject_path, required=False)
+        if snapshot.failure:
+            raise ValueError(
+                snapshot.error or f"cannot inspect docs pyproject: {pyproject_path}"
+            )
+        if snapshot.value.content is None:
+            payload: t.JsonMapping = {}
+        else:
+            try:
+                source = snapshot.value.content.decode(c.Cli.ENCODING_DEFAULT)
+            except UnicodeDecodeError as exc:
+                msg = f"docs pyproject is not valid UTF-8: {pyproject_path}"
+                raise ValueError(msg) from exc
+            parsed = u.Cli.toml_mapping_from_text(source)
+            if parsed is None:
+                msg = f"docs pyproject TOML is invalid: {pyproject_path}"
+                raise ValueError(msg)
+            validated = FlextInfraUtilitiesPyproject.validate_infra_payload(parsed)
+            if validated is None:
+                msg = f"docs pyproject payload is invalid: {pyproject_path}"
+                raise ValueError(msg)
+            payload = validated
         docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         dependency_names = tuple(
             FlextInfraUtilitiesDependencies.declared_dependency_names_from_payload(
@@ -74,8 +118,68 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def project_state(project_root: Path) -> mw.ProjectPyprojectState:
-        """Return the centralized parsed state for one project root."""
-        return FlextInfraUtilitiesDocsScope._project_state(str(project_root.resolve()))
+        """Return one fresh state bound to authenticated pyproject bytes."""
+        return FlextInfraUtilitiesDocsScope._project_state(project_root)
+
+    @staticmethod
+    def docs_workspace_roots(
+        workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
+    ) -> p.Result[tuple[Path, ...]]:
+        """Return existing physical roots from one stable workspace topology."""
+        try:
+            return FlextInfraUtilitiesDocsScope._docs_workspace_roots(
+                workspace_root, extra_roots
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            return r[tuple[Path, ...]].fail_op("docs workspace discovery", exc)
+
+    @staticmethod
+    def _docs_workspace_roots(
+        workspace_root: Path, extra_roots: t.SequenceOf[Path]
+    ) -> p.Result[tuple[Path, ...]]:
+        """Discover roots while the public boundary owns exception conversion."""
+        root = FlextInfraUtilitiesDocsScope._absolute_lexical(workspace_root)
+        if not FlextInfraUtilitiesDocsScope._physical_directory_exists(root):
+            return r[tuple[Path, ...]].fail(f"docs workspace root is missing: {root}")
+        manifest_path = root / c.Infra.GITMODULES
+        manifest_before = u.Cli.atomic_read_binary_file_state(
+            manifest_path, required=False
+        )
+        if manifest_before.failure:
+            return r[tuple[Path, ...]].from_failure(manifest_before)
+        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(root)
+        if declared.failure:
+            return r[tuple[Path, ...]].from_failure(declared)
+        manifest_after = u.Cli.atomic_read_binary_file_state(
+            manifest_path, required=False
+        )
+        if manifest_after.failure:
+            return r[tuple[Path, ...]].from_failure(manifest_after)
+        if manifest_after.value != manifest_before.value:
+            return r[tuple[Path, ...]].fail(
+                f"docs workspace topology changed during discovery: {manifest_path}"
+            )
+        candidates = [root]
+        for declared_path in declared.value:
+            selector = Path(declared_path)
+            if selector.is_absolute() or ".." in selector.parts:
+                return r[tuple[Path, ...]].fail(
+                    f"invalid docs workspace member path: {selector}"
+                )
+            candidates.append(root / selector)
+        for candidate in extra_roots:
+            lexical = FlextInfraUtilitiesDocsScope._absolute_lexical(candidate)
+            if not lexical.is_relative_to(root):
+                return r[tuple[Path, ...]].fail(
+                    f"docs source root escapes workspace {root}: {lexical}"
+                )
+            candidates.append(lexical)
+        roots = [
+            candidate
+            for candidate in dict.fromkeys(candidates)
+            if FlextInfraUtilitiesDocsScope._physical_directory_exists(candidate)
+        ]
+        return r[tuple[Path, ...]].ok(tuple(roots))
 
     @staticmethod
     def resolve_projects(
@@ -88,9 +192,11 @@ class FlextInfraUtilitiesDocsScope:
                 discover_result.error or "discovery failed"
             )
         projects = list(discover_result.value)
-        resolved_workspace_root = workspace_root.resolve()
+        resolved_workspace_root = FlextInfraUtilitiesDocsScope._absolute_lexical(
+            workspace_root
+        )
         if all(
-            project.path.resolve() != resolved_workspace_root for project in projects
+            project.path != resolved_workspace_root for project in projects
         ):
             root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
                 resolved_workspace_root,
@@ -108,7 +214,7 @@ class FlextInfraUtilitiesDocsScope:
         for project in projects:
             by_name.setdefault(project.name, project)
             by_name.setdefault(project.path.name, project)
-            project_path = project.path.resolve()
+            project_path = project.path
             if project_path == resolved_workspace_root:
                 by_name.setdefault(".", project)
             elif project_path.is_relative_to(resolved_workspace_root):
@@ -133,27 +239,21 @@ class FlextInfraUtilitiesDocsScope:
 
     @staticmethod
     def _workspace_subproject_path_set(workspace_root: Path) -> frozenset[Path]:
-        """Return resolved subprojects declared by this root's ``.gitmodules``."""
-        resolved_root = workspace_root.resolve()
-        return frozenset(
-            (resolved_root / path).resolve()
-            for path in FlextInfraUtilitiesPyproject.workspace_project_paths(
-                resolved_root
-            )
-        )
+        """Return lexical subprojects freshly read from this root's manifest."""
+        resolved_root = FlextInfraUtilitiesDocsScope._absolute_lexical(workspace_root)
+        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(resolved_root)
+        if declared.failure:
+            raise ValueError(declared.error or f"invalid workspace: {resolved_root}")
+        return frozenset(resolved_root / path for path in declared.value)
 
     @staticmethod
     def _project_info_for_entry(
         entry: Path, *, workspace_subprojects: frozenset[Path]
     ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
-        entry = entry.resolve()
-        pyproject = entry / c.Infra.PYPROJECT_FILENAME
-        if not pyproject.is_file():
-            return None
-        # Pre-validate [project].name BEFORE triggering the strict cached state builder.
-        payload_preview = FlextInfraUtilitiesPyproject.pyproject_payload(pyproject)
-        project_section = payload_preview.get("project")
+        entry = FlextInfraUtilitiesDocsScope._absolute_lexical(entry)
+        project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
+        project_section = project_state.payload.get("project")
         project_name = (
             project_section.get("name") if isinstance(project_section, dict) else None
         )
@@ -163,13 +263,16 @@ class FlextInfraUtilitiesDocsScope:
             or not project_name.strip()
         ):
             return None
-        project_state = FlextInfraUtilitiesDocsScope.project_state(entry)
         is_workspace_subproject = entry in workspace_subprojects
         enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
-        has_src = (entry / c.Infra.DEFAULT_SRC_DIR).is_dir()
-        has_tests = (entry / c.Infra.DIR_TESTS).is_dir()
+        has_src = FlextInfraUtilitiesDocsScope._physical_directory_exists(
+            entry / c.Infra.DEFAULT_SRC_DIR
+        )
+        has_tests = FlextInfraUtilitiesDocsScope._physical_directory_exists(
+            entry / c.Infra.DIR_TESTS
+        )
         has_deps = bool(project_section.get("dependencies"))
         if (
             not is_workspace_subproject
@@ -183,7 +286,9 @@ class FlextInfraUtilitiesDocsScope:
         # workspace/standalone classification.
         make_profile = (
             c.Infra.MakeProfile.WORKSPACE
-            if (entry / c.Infra.GITMODULES).is_file()
+            if FlextInfraUtilitiesDocsScope._physical_file_exists(
+                entry / c.Infra.GITMODULES
+            )
             else c.Infra.MakeProfile.STANDALONE
         )
         project_info: mw.ProjectInfo = mw.ProjectInfo.model_construct(
@@ -219,15 +324,20 @@ class FlextInfraUtilitiesDocsScope:
     def load_config(workspace_root: Path) -> t.JsonMapping:
         """Load the minimal docs policy settings if present."""
         path = FlextInfraUtilitiesDocsScope.config_path(workspace_root)
-        empty: t.JsonMapping = {}
-        if not path.exists():
-            return empty
-        result = u.Cli.json_read(path)
-        if result.success:
-            value = result.value
-            if isinstance(value, dict):
-                return dict(value)
-        return empty
+        state = u.Cli.atomic_read_binary_file_state(path, required=False)
+        if state.failure:
+            raise ValueError(state.error or f"docs config is unsafe: {path}")
+        if state.value.content is None:
+            return {}
+        parsed = u.Cli.json_loads(state.value.content)
+        if parsed.failure:
+            raise ValueError(parsed.error or f"docs config JSON is invalid: {path}")
+        value = parsed.value
+        if not isinstance(value, dict):
+            msg = f"docs config root must be a mapping: {path}"
+            raise TypeError(msg)
+        validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+        return dict(validated)
 
     @staticmethod
     def excluded_roots(workspace_root: Path) -> t.Infra.StrSet:
@@ -329,17 +439,17 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def project_package_name(project_root: Path) -> str:
         """Return the primary Python package name for a project."""
-        return FlextInfraUtilitiesPyproject.project_package_name(project_root)
+        return FlextInfraUtilitiesDocsScope.project_state(project_root).package_name
 
     @staticmethod
     def discover_projects(
         workspace_root: Path,
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``."""
-        if not workspace_root.exists() or not workspace_root.is_dir():
-            return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                f"discovery failed: invalid workspace root {workspace_root}"
-            )
+        roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(workspace_root)
+        if roots.failure:
+            return r[t.SequenceOf[mw.ProjectInfo]].from_failure(roots)
+        workspace_root = roots.value[0]
         excluded = FlextInfraUtilitiesDocsScope.excluded_roots(workspace_root)
         workspace_subprojects = (
             FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(workspace_root)
@@ -353,8 +463,10 @@ class FlextInfraUtilitiesDocsScope:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
             if (
-                project_root == workspace_root.resolve()
-                and not (project_root / c.Infra.DEFAULT_SRC_DIR).is_dir()
+                project_root == workspace_root
+                and not FlextInfraUtilitiesDocsScope._physical_directory_exists(
+                    project_root / c.Infra.DEFAULT_SRC_DIR
+                )
             ):
                 continue
             project_info = FlextInfraUtilitiesDocsScope._project_info_for_entry(
@@ -362,7 +474,7 @@ class FlextInfraUtilitiesDocsScope:
             )
             if project_info is None:
                 continue
-            if project_root == workspace_root.resolve():
+            if project_root == workspace_root:
                 root_project = project_info
                 continue
             projects.append(project_info)

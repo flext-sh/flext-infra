@@ -645,7 +645,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 path,
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
-                f"printf '%s\\n' '{config.Infra.codegen.toolchain.mise_version}'; exit; fi\n"
+                "printf '%s\\n' '2026.9.1'; exit; fi\n"
                 f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
                 f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
                 'if [ "$1" = "trust" ]; then exit; fi\n'
@@ -828,7 +828,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 rendered = u.Cli.template_render(policy_source, policy_context)
                 if rendered.failure:
-                    msg = rendered.error or f"release policy render failed: {policy_path}"
+                    msg = (
+                        rendered.error or f"release policy render failed: {policy_path}"
+                    )
                     raise RuntimeError(msg)
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)
@@ -1391,10 +1393,47 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
-            """Provide the typed test helper `run_lazy_init`."""
-            return FlextInfraCodegenLazyInit(
-                workspace_root=workspace_root
-            ).generate_inits(check_only=check_only)
+            """Materialize immutable lazy-init plans only inside test workspaces."""
+            service = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+            planned = service.plan_files()
+            if planned.failure:
+                return 1
+            changed = tuple(plan for plan in planned.value if plan.requires_effect)
+            if check_only:
+                return len(changed)
+            materialized = TestsFlextInfraUtilities.Tests.materialize_lazy_init(service)
+            return 0 if materialized.success else 1
+
+        @staticmethod
+        def materialize_lazy_init(service: FlextInfraCodegenLazyInit) -> p.Result[bool]:
+            """Publish one service plan through canonical guarded file primitives."""
+            planned = service.plan_files()
+            return TestsFlextInfraUtilities.Tests.materialize_codegen_plans(planned)
+
+        @staticmethod
+        def materialize_codegen_plans(
+            planned: p.Result[tuple[m.Infra.CodegenFilePlan, ...]],
+        ) -> p.Result[bool]:
+            """Publish immutable codegen plans only inside test workspaces."""
+            if planned.failure:
+                return r[bool].from_failure(planned)
+            changed = tuple(plan for plan in planned.value if plan.requires_effect)
+            for plan in changed:
+                if plan.desired_content is None:
+                    result = u.Cli.atomic_delete_binary_file_guarded(plan.before)
+                else:
+                    if plan.desired_mode is None:
+                        return r[bool].fail(
+                            f"lazy-init plan has no desired mode: {plan.path}"
+                        )
+                    result = u.Cli.atomic_write_binary_file_guarded(
+                        plan.before,
+                        plan.desired_content,
+                        permission_mode=plan.desired_mode,
+                    )
+                if result.failure:
+                    return r[bool].from_failure(result)
+            return r[bool].ok(True)
 
         @staticmethod
         def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:

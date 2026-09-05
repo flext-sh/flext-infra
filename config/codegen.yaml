@@ -449,7 +449,7 @@ Infra:
             local_checkout: ~/flext/flext-infra
           - organization: datacosmos-br
             repository: ai-hub
-            branch: develop
+            branch: dev
             local_checkout: ~/.ai-hub
           - organization: datacosmos-br
             repository: cosmos-docgen
@@ -1116,15 +1116,19 @@ Infra:
       - path: .github/scripts/check-beads-policy.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: .github/scripts/check-cqrs-compliance.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: .github/scripts/flext-law-loop.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: .github/scripts/install-git-hooks.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: tests/fixtures/ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
@@ -1956,7 +1960,7 @@ Infra:
           destination: config/beads.yaml
           profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/src/__init__.py.j2
           destination: "src/{package_name}/__init__.py"
           profiles: [workspace, standalone]

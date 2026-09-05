@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from git import Repo
@@ -12,19 +12,10 @@ from flext_cli import u as cli_u
 from flext_infra import m, p, u
 from flext_tests import tm
 
-_OPEN_REPOSITORIES: list[Repo] = []
 
-
-@pytest.fixture(autouse=True)
-def close_git_repositories() -> Iterator[None]:
-    yield
-    while _OPEN_REPOSITORIES:
-        _OPEN_REPOSITORIES.pop().close()
-
-
-def _signed_repository(root: Path) -> tuple[Repo, Path]:
+def _signed_repository(root: Path, repositories: list[Repo]) -> tuple[Repo, Path]:
     repo = Repo.init(root)
-    _OPEN_REPOSITORIES.append(repo)
+    repositories.append(repo)
     with repo.config_writer() as config:
         config.set_value("user", "name", "Attestation Test")
         config.set_value("user", "email", "attestation@example.test")
@@ -61,6 +52,19 @@ def _signed_repository(root: Path) -> tuple[Repo, Path]:
     return repo, allowed_signers
 
 
+@pytest.fixture
+def signed_repository_factory() -> Iterator[Callable[[Path], tuple[Repo, Path]]]:
+    """Create and close only repositories explicitly owned by one test."""
+    repositories: list[Repo] = []
+
+    def create(root: Path) -> tuple[Repo, Path]:
+        return _signed_repository(root, repositories)
+
+    yield create
+    while repositories:
+        repositories.pop().close()
+
+
 def _request(root: Path) -> m.Infra.GateAttestationCreateRequest:
     return m.Infra.GateAttestationCreateRequest(
         workspace=str(root),
@@ -82,8 +86,10 @@ def _verify(
     )
 
 
-def test_signed_gate_attestation_round_trip_is_local(tmp_path: Path) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+def test_signed_gate_attestation_round_trip_is_local(
+    tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
+) -> None:
+    repo, allowed_signers = signed_repository_factory(tmp_path)
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
 
     tm.ok(created)
@@ -96,8 +102,10 @@ def test_signed_gate_attestation_round_trip_is_local(tmp_path: Path) -> None:
     tm.that(verified.unwrap().signer, eq="attester@example.test")
 
 
-def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+def test_gate_attestation_normalizes_network_remote_git_suffix(
+    tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
+) -> None:
+    repo, allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     repo.remote("origin").set_url("https://github.example/flext/fixture")
 
@@ -109,9 +117,9 @@ def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -
 
 
 def test_gate_attestation_verifies_selected_commit_with_equal_tree(
-    tmp_path: Path,
+    tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
 ) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+    repo, allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     selected_sha = repo.head.commit.hexsha
     selected_tree = repo.head.commit.tree.hexsha
@@ -123,8 +131,10 @@ def test_gate_attestation_verifies_selected_commit_with_equal_tree(
     tm.that(verified.unwrap().commit_sha, eq=selected_sha)
 
 
-def test_gate_attestation_rejects_incomplete_coverage(tmp_path: Path) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+def test_gate_attestation_rejects_incomplete_coverage(
+    tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
+) -> None:
+    repo, allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
 
     verified = _verify(tmp_path, allowed_signers, repo.head.commit.hexsha, "check")
@@ -133,8 +143,10 @@ def test_gate_attestation_rejects_incomplete_coverage(tmp_path: Path) -> None:
     tm.that(verified.error or "", has="exactly match")
 
 
-def test_gate_attestation_rejects_duplicate_gate_coverage(tmp_path: Path) -> None:
-    _repo, _allowed_signers = _signed_repository(tmp_path)
+def test_gate_attestation_rejects_duplicate_gate_coverage(
+    tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
+) -> None:
+    _repo, _allowed_signers = signed_repository_factory(tmp_path)
     values = _request(tmp_path).model_dump()
     values["gates"] = ("gen", "check", "test", "test")
 

@@ -36,10 +36,19 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     def build_report(self) -> p.Result[t.JsonMapping]:
         """Execute quality gate and return structured report payload."""
-        FlextInfraCodegenLazyInit(workspace_root=self.workspace_root).generate_inits()
+        lazy_plans = FlextInfraCodegenLazyInit(
+            workspace_root=self.workspace_root
+        ).plan_files()
+        if lazy_plans.failure:
+            return r[t.JsonMapping].from_failure(lazy_plans)
+        pending_lazy = tuple(plan for plan in lazy_plans.value if plan.requires_effect)
+        if pending_lazy:
+            paths = ", ".join(str(plan.path) for plan in pending_lazy)
+            return r[t.JsonMapping].fail(
+                f"lazy-init artifacts require codegen conform: {paths}"
+            )
         census = FlextInfraRefactorCensus(
-            include_local_scopes=False,
-            kinds=("constant",),
+            include_local_scopes=False, kinds=("constant",)
         ).model_copy(update={"workspace_root": self.workspace_root})
         census_report = census.build_report()
         modified_files = self.modified_python_files(self.workspace_root)

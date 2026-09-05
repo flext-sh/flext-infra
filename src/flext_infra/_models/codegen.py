@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import stat
 from collections.abc import MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
@@ -16,19 +17,34 @@ from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
+    class MiseToolchainLockLease(m.ArbitraryTypesModel):
+        """Authenticated Git HEAD state plus its locked native descriptor."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        descriptor: Annotated[
+            int,
+            m.Field(
+                ge=0,
+                strict=True,
+                exclude=True,
+                description="Caller-owned locked descriptor",
+            ),
+        ]
+        state: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Exact HEAD bytes, mode, leaf, and parent identity"),
+        ]
+
     class MiseToolchainArtifactPaths(m.ArbitraryTypesModel):
         """Canonical live toolchain-bundle destinations for one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         config: Annotated[
             Path, m.Field(description="Generated Mise configuration destination")
         ]
-        unix_launcher: Annotated[
-            Path, m.Field(description="Unix launcher destination")
-        ]
+        unix_launcher: Annotated[Path, m.Field(description="Unix launcher destination")]
         windows_launcher: Annotated[
             Path, m.Field(description="Windows launcher destination")
         ]
@@ -37,18 +53,18 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Workspace-relative project selector")
         ]
         root: Annotated[Path, m.Field(description="Resolved project root")]
         transaction_root: Annotated[
-            Path,
-            m.Field(description="Persistent transaction root on this project filesystem"),
-        ]
+            Path | None,
+            m.Field(
+                description="Persistent transaction root on this project filesystem"
+            ),
+        ] = None
         artifacts: Annotated[
             FlextInfraModelsCodegen.MiseToolchainArtifactPaths,
             m.Field(description="Canonical artifact destinations"),
@@ -57,14 +73,25 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainWorkspaceLayout(m.ArbitraryTypesModel):
         """Stable recovery topology independent of mutable source contents."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         scope_root: Annotated[Path, m.Field(description="Resolved transaction scope")]
         state_root: Annotated[
-            Path, m.Field(description="Persistent common lock and journal directory")
+            Path, m.Field(description="Persistent scope transaction staging directory")
         ]
+        journal_path: Annotated[
+            Path,
+            m.Field(
+                description="Direct journal under the authenticated scope Git directory"
+            ),
+        ]
+        transaction_id: Annotated[
+            str | None,
+            m.Field(
+                pattern=r"^[0-9a-f]{32}$",
+                description="Current unpredictable transaction identity, if mutating",
+            ),
+        ] = None
         projects: Annotated[
             tuple[FlextInfraModelsCodegen.MiseToolchainProjectLayout, ...],
             m.Field(min_length=1, description="Ordered complete workspace topology"),
@@ -73,9 +100,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainConfigState(m.ArbitraryTypesModel):
         """Current destination plus the exact planned Mise configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         before: Annotated[
             m.Cli.AtomicFileState,
@@ -106,9 +131,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainProjectState(m.ArbitraryTypesModel):
         """Immutable source and destination snapshot for one project layout."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegen.MiseToolchainProjectLayout,
@@ -146,13 +169,10 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainArtifactSet(m.ArbitraryTypesModel):
         """Named file states that prevent artifact-order ambiguity."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         unix_launcher: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Observed Unix launcher state"),
+            m.Cli.AtomicFileState, m.Field(description="Observed Unix launcher state")
         ]
         windows_launcher: Annotated[
             m.Cli.AtomicFileState,
@@ -166,9 +186,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
         """One stable layout plus a coherent mutable-state snapshot."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegen.MiseToolchainWorkspaceLayout,
@@ -182,45 +200,141 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         @u.model_validator(mode="after")
         def _validate_project_layouts(self) -> Self:
             """Bind every mutable project snapshot to the exact stable layout."""
-            if tuple(project.layout for project in self.projects) != self.layout.projects:
+            if (
+                tuple(project.layout for project in self.projects)
+                != self.layout.projects
+            ):
                 msg = "Mise project snapshots differ from workspace layout"
                 raise ValueError(msg)
             return self
 
-    class MiseToolchainPublication(m.ArbitraryTypesModel):
-        """One guarded replacement belonging to the current Mise transaction."""
+    class CodegenStagedFile(m.ArbitraryTypesModel):
+        """One destination state and its optional destination-local replacement."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
+        phase: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Generation phase that owns this publication"),
+        ]
+        project: Annotated[
+            Path,
+            m.Field(description="Absolute physical project owning the destination"),
+        ]
         before: Annotated[
             m.Cli.AtomicFileState,
             m.Field(description="Exact destination state observed during preflight"),
         ]
         replacement: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact caller-owned staged replacement state"),
-        ]
+            m.Cli.AtomicFileState | None,
+            m.Field(description="Exact staged state, or None for a planned deletion"),
+        ] = None
 
         @u.model_validator(mode="after")
-        def _validate_replacement_present(self) -> Self:
-            """Require every publication to own a materialized staged file."""
-            if self.replacement.content is None or self.replacement.mode is None:
-                msg = "Mise publication replacement must be present"
+        def _validate_publication(self) -> Self:
+            """Bind a complete staged state to one physical project destination."""
+            if not self.project.is_absolute() or not self.before.path.is_relative_to(
+                self.project
+            ):
+                msg = "codegen publication destination is outside its project"
+                raise ValueError(msg)
+            replacement = self.replacement
+            if replacement is not None and (
+                replacement.content is None or replacement.mode is None
+            ):
+                msg = "codegen staged replacement must be present"
                 raise ValueError(msg)
             return self
 
-    class MiseToolchainJournalSource(m.ArbitraryTypesModel):
-        """One immutable source identity guarded by a Mise transaction journal."""
+    class CodegenJournalProject(m.ArbitraryTypesModel):
+        """One journal participant bound to its physical directory identity."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
+        selector: Annotated[
+            t.NonEmptyStr, m.Field(description="Workspace-relative project selector")
+        ]
+        device: Annotated[
+            int, m.Field(ge=0, strict=True, description="Project directory device")
+        ]
+        inode: Annotated[
+            int, m.Field(gt=0, strict=True, description="Project directory inode")
+        ]
+
+        @u.field_validator("selector")
+        @classmethod
+        def _validate_selector(cls, value: str) -> str:
+            relative = Path(value)
+            if (
+                relative.is_absolute()
+                or relative.as_posix() != value
+                or ".." in relative.parts
+            ):
+                msg = f"unsafe codegen project selector: {value}"
+                raise ValueError(msg)
+            return value
+
+    class CodegenJournalDirectory(m.ArbitraryTypesModel):
+        """One directory proven absent before a journal-authorized creation."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        phase: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Generation phase that owns the directory"),
+        ]
+        project: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Journal project selector owning the directory"),
+        ]
         path: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Workspace-relative committed source path"),
+            m.Field(description="Workspace-relative directory proven absent"),
+        ]
+        disposition: Annotated[
+            Literal["temporary", "generated"],
+            m.Field(description="Commit-time retention policy for the directory"),
+        ]
+
+        @u.field_validator("path")
+        @classmethod
+        def _validate_path(cls, value: str) -> str:
+            """Keep the durable authority lexical and inside the workspace."""
+            relative = Path(value)
+            if (
+                relative.is_absolute()
+                or relative.as_posix() != value
+                or value in {"", "."}
+                or ".." in relative.parts
+            ):
+                msg = f"unsafe codegen journal directory: {value}"
+                raise ValueError(msg)
+            return value
+
+        @u.model_validator(mode="after")
+        def _validate_disposition(self) -> Self:
+            """Bind transaction paths to temporary cleanup semantics."""
+            if (self.phase == "transaction") != (
+                self.disposition == "temporary"
+            ):
+                msg = "transaction phase and temporary disposition must coincide"
+                raise ValueError(msg)
+            return self
+
+    class CodegenJournalSource(m.ArbitraryTypesModel):
+        """One immutable full source identity guarded by a generation journal."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        phase: Annotated[
+            t.NonEmptyStr, m.Field(description="Generation phase that consumed source")
+        ]
+        path: Annotated[Path, m.Field(description="Absolute authenticated source path")]
+        parent_device: Annotated[
+            int, m.Field(ge=0, strict=True, description="Source parent device")
+        ]
+        parent_inode: Annotated[
+            int, m.Field(gt=0, strict=True, description="Source parent inode")
         ]
         sha256: Annotated[
             str,
@@ -232,30 +346,72 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         mode: Annotated[
             int,
             m.Field(
-                ge=0,
-                le=0o7777,
-                strict=True,
-                description="Exact source permission bits",
+                ge=0, le=0o7777, strict=True, description="Exact source permission bits"
             ),
         ]
+        device: Annotated[
+            int, m.Field(ge=0, strict=True, description="Source device identity")
+        ]
+        inode: Annotated[
+            int, m.Field(gt=0, strict=True, description="Source inode identity")
+        ]
+        link_count: Annotated[
+            Literal[1], m.Field(description="Unique physical source link count")
+        ]
+        file_attributes: Annotated[
+            int | None, m.Field(ge=0, strict=True, description="Host file attributes")
+        ] = None
+        reparse_tag: Annotated[
+            int | None, m.Field(ge=0, strict=True, description="Host reparse tag")
+        ] = None
 
-    class MiseToolchainJournalEntry(m.ArbitraryTypesModel):
-        """Recoverable before/after identity for one published Mise artifact."""
+        @u.field_validator("path")
+        @classmethod
+        def _validate_source_path(cls, value: Path) -> Path:
+            """Reject relative or lexically escaping source identities."""
+            if not value.is_absolute() or ".." in value.parts:
+                msg = f"unsafe generation source path: {value}"
+                raise ValueError(msg)
+            return value
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        @u.model_validator(mode="after")
+        def _validate_source_physical_state(self) -> Self:
+            """Reject a persisted source identity that represents a reparse point."""
+            marker = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            if self.reparse_tag not in {None, 0} or (
+                self.file_attributes is not None and bool(self.file_attributes & marker)
+            ):
+                msg = f"generation source is a reparse point: {self.path}"
+                raise ValueError(msg)
+            return self
 
+    class CodegenJournalEntry(m.ArbitraryTypesModel):
+        """Recoverable full before/after identity for one generated file."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        phase: Annotated[
+            t.NonEmptyStr, m.Field(description="Generation phase owning this entry")
+        ]
+        project: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Journal project selector owning this entry"),
+        ]
         path: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Workspace-relative live artifact destination"),
+            m.Field(description="Workspace-relative live file destination"),
         ]
         original_exists: Annotated[
             bool,
             m.Field(
-                strict=True,
-                description="Whether the destination existed at preflight",
+                strict=True, description="Whether the destination existed at preflight"
             ),
+        ]
+        original_parent_device: Annotated[
+            int, m.Field(ge=0, strict=True, description="Original parent device")
+        ]
+        original_parent_inode: Annotated[
+            int, m.Field(gt=0, strict=True, description="Original parent inode")
         ]
         original_backup: Annotated[
             t.NonEmptyStr | None,
@@ -277,22 +433,104 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 description="Exact original permission bits when present",
             ),
         ] = None
-        replacement_sha256: Annotated[
-            str,
+        original_device: Annotated[
+            int | None,
+            m.Field(ge=0, strict=True, description="Original device identity"),
+        ] = None
+        original_inode: Annotated[
+            int | None,
+            m.Field(gt=0, strict=True, description="Original inode identity"),
+        ] = None
+        original_link_count: Annotated[
+            Literal[1] | None,
+            m.Field(description="Original unique physical link count"),
+        ] = None
+        original_file_attributes: Annotated[
+            int | None,
+            m.Field(ge=0, strict=True, description="Original host attributes"),
+        ] = None
+        original_reparse_tag: Annotated[
+            int | None, m.Field(ge=0, strict=True, description="Original reparse tag")
+        ] = None
+        desired_exists: Annotated[
+            bool, m.Field(strict=True, description="Whether publication leaves a file")
+        ]
+        desired_parent_device: Annotated[
+            int, m.Field(ge=0, strict=True, description="Desired live parent device")
+        ]
+        desired_parent_inode: Annotated[
+            int, m.Field(gt=0, strict=True, description="Desired live parent inode")
+        ]
+        desired_sha256: Annotated[
+            str | None,
             m.Field(
                 pattern=r"^[0-9a-f]{64}$",
-                description="Exact replacement-byte SHA-256 identity",
+                description="Exact desired-byte SHA-256 identity",
             ),
-        ]
-        replacement_mode: Annotated[
-            int,
+        ] = None
+        desired_mode: Annotated[
+            int | None,
             m.Field(
-                ge=0,
-                le=0o7777,
-                strict=True,
-                description="Replacement permission bits",
+                ge=0, le=0o7777, strict=True, description="Desired permission bits"
             ),
-        ]
+        ] = None
+        desired_device: Annotated[
+            int | None,
+            m.Field(ge=0, strict=True, description="Staged replacement device"),
+        ] = None
+        desired_inode: Annotated[
+            int | None,
+            m.Field(gt=0, strict=True, description="Staged replacement inode"),
+        ] = None
+        desired_link_count: Annotated[
+            Literal[1] | None,
+            m.Field(description="Staged replacement unique link count"),
+        ] = None
+        desired_file_attributes: Annotated[
+            int | None, m.Field(ge=0, strict=True, description="Staged host attributes")
+        ] = None
+        desired_reparse_tag: Annotated[
+            int | None, m.Field(ge=0, strict=True, description="Staged reparse tag")
+        ] = None
+        rollback_exists: Annotated[
+            bool | None,
+            m.Field(
+                strict=True,
+                description="Recovery target presence once rollback is durable",
+            ),
+        ] = None
+        rollback_parent_device: Annotated[
+            int | None,
+            m.Field(ge=0, strict=True, description="Rollback live parent device"),
+        ] = None
+        rollback_parent_inode: Annotated[
+            int | None,
+            m.Field(gt=0, strict=True, description="Rollback live parent inode"),
+        ] = None
+        rollback_sha256: Annotated[
+            str | None,
+            m.Field(pattern=r"^[0-9a-f]{64}$", description="Rollback bytes identity"),
+        ] = None
+        rollback_mode: Annotated[
+            int | None,
+            m.Field(ge=0, le=0o7777, strict=True, description="Rollback mode"),
+        ] = None
+        rollback_device: Annotated[
+            int | None, m.Field(ge=0, strict=True, description="Rollback staged device")
+        ] = None
+        rollback_inode: Annotated[
+            int | None, m.Field(gt=0, strict=True, description="Rollback staged inode")
+        ] = None
+        rollback_link_count: Annotated[
+            Literal[1] | None, m.Field(description="Rollback staged unique link count")
+        ] = None
+        rollback_file_attributes: Annotated[
+            int | None,
+            m.Field(ge=0, strict=True, description="Rollback host attributes"),
+        ] = None
+        rollback_reparse_tag: Annotated[
+            int | None, m.Field(ge=0, strict=True, description="Rollback reparse tag")
+        ] = None
 
         @u.model_validator(mode="after")
         def _validate_original_tuple(self) -> Self:
@@ -301,6 +539,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 self.original_backup,
                 self.original_sha256,
                 self.original_mode,
+                self.original_device,
+                self.original_inode,
+                self.original_link_count,
             )
             populated = tuple(value is not None for value in original)
             if (self.original_exists and not all(populated)) or (
@@ -308,17 +549,83 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ):
                 msg = "Mise journal original recovery tuple is inconsistent"
                 raise ValueError(msg)
+            if not self.original_exists and (
+                self.original_file_attributes is not None
+                or self.original_reparse_tag is not None
+            ):
+                msg = "absent codegen original cannot contain host metadata"
+                raise ValueError(msg)
+            desired = (
+                self.desired_sha256,
+                self.desired_mode,
+                self.desired_device,
+                self.desired_inode,
+                self.desired_link_count,
+            )
+            desired_populated = tuple(value is not None for value in desired)
+            if (self.desired_exists and not all(desired_populated)) or (
+                not self.desired_exists and any(desired_populated)
+            ):
+                msg = "codegen journal desired identity is inconsistent"
+                raise ValueError(msg)
+            if not self.desired_exists and (
+                self.desired_file_attributes is not None
+                or self.desired_reparse_tag is not None
+            ):
+                msg = "absent codegen desired state cannot contain host metadata"
+                raise ValueError(msg)
+            rollback = (
+                self.rollback_sha256,
+                self.rollback_mode,
+                self.rollback_device,
+                self.rollback_inode,
+                self.rollback_link_count,
+            )
+            rollback_populated = tuple(value is not None for value in rollback)
+            rollback_parent = (self.rollback_parent_device, self.rollback_parent_inode)
+            parent_populated = tuple(value is not None for value in rollback_parent)
+            if self.rollback_exists is None and (
+                any(rollback_populated) or any(parent_populated)
+            ):
+                msg = "codegen journal rollback identity has no presence state"
+                raise ValueError(msg)
+            if self.rollback_exists is not None and not all(parent_populated):
+                msg = "codegen journal rollback parent identity is incomplete"
+                raise ValueError(msg)
+            if self.rollback_exists is True and not all(rollback_populated):
+                msg = "codegen journal rollback identity is incomplete"
+                raise ValueError(msg)
+            if self.rollback_exists is False and any(rollback_populated):
+                msg = "absent codegen rollback cannot contain file identity"
+                raise ValueError(msg)
+            if self.rollback_exists is False and (
+                self.rollback_file_attributes is not None
+                or self.rollback_reparse_tag is not None
+            ):
+                msg = "absent codegen rollback cannot contain host metadata"
+                raise ValueError(msg)
+            marker = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+            physical = (
+                (self.original_file_attributes, self.original_reparse_tag),
+                (self.desired_file_attributes, self.desired_reparse_tag),
+                (self.rollback_file_attributes, self.rollback_reparse_tag),
+            )
+            if any(
+                reparse not in {None, 0}
+                or (attributes is not None and bool(attributes & marker))
+                for attributes, reparse in physical
+            ):
+                msg = f"codegen journal contains a reparse identity: {self.path}"
+                raise ValueError(msg)
             return self
 
-    class MiseToolchainRecoveryAction(m.ArbitraryTypesModel):
+    class CodegenRecoveryAction(m.ArbitraryTypesModel):
         """One preclassified recovery decision with no live effect applied."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         entry: Annotated[
-            FlextInfraModelsCodegen.MiseToolchainJournalEntry,
+            FlextInfraModelsCodegen.CodegenJournalEntry,
             m.Field(description="Journal entry owning the recovery decision"),
         ]
         current: Annotated[
@@ -330,59 +637,126 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             m.Field(description="Only authorized recovery effect for the target"),
         ]
 
-    class MiseToolchainJournal(m.ArbitraryTypesModel):
-        """Persisted recovery contract for one workspace-wide Mise publication."""
+    class CodegenTransactionJournal(m.ArbitraryTypesModel):
+        """Persisted recovery contract for one workspace-wide generation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
-            frozen=True, extra="forbid"
-        )
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
-            Literal[3], m.Field(description="Exact journal schema version")
+            Literal[7], m.Field(description="Exact journal schema version")
+        ]
+        transaction_id: Annotated[
+            str,
+            m.Field(
+                pattern=r"^[0-9a-f]{32}$",
+                description="Unpredictable generation transaction identity",
+            ),
+        ]
+        scope_device: Annotated[
+            int, m.Field(ge=0, strict=True, description="Scope directory device")
+        ]
+        scope_inode: Annotated[
+            int, m.Field(gt=0, strict=True, description="Scope directory inode")
         ]
         state: Annotated[
-            Literal["staging", "prepared", "committed"],
+            Literal["staging", "prepared", "recovering", "committed"],
             m.Field(description="Durable publication transition state"),
         ]
         projects: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            tuple[FlextInfraModelsCodegen.CodegenJournalProject, ...],
             m.Field(
                 min_length=1,
                 description="Ordered project selectors owned by this transaction",
             ),
         ]
         sources: Annotated[
-            tuple[FlextInfraModelsCodegen.MiseToolchainJournalSource, ...],
+            tuple[FlextInfraModelsCodegen.CodegenJournalSource, ...],
             m.Field(description="Source identities used by staging"),
         ]
+        directories: Annotated[
+            tuple[FlextInfraModelsCodegen.CodegenJournalDirectory, ...],
+            m.Field(description="Directories whose prior absence authorizes creation"),
+        ]
         entries: Annotated[
-            tuple[FlextInfraModelsCodegen.MiseToolchainJournalEntry, ...],
+            tuple[FlextInfraModelsCodegen.CodegenJournalEntry, ...],
             m.Field(description="Recoverable artifact transitions"),
         ]
 
         @u.model_validator(mode="after")
         def _validate_lifecycle(self) -> Self:
             """Bind staging and publication payloads to one safe project set."""
-            if self.projects[0] != "." and "." in self.projects:
+            selectors = tuple(project.selector for project in self.projects)
+            if selectors[0] != "." and "." in selectors:
                 msg = "Mise root selector must be first when present"
                 raise ValueError(msg)
-            if len(set(self.projects)) != len(self.projects):
+            if len(set(selectors)) != len(selectors):
                 msg = "Mise journal project selectors must be unique"
                 raise ValueError(msg)
-            for selector in self.projects:
-                relative = Path(selector)
-                if (
-                    relative.is_absolute()
-                    or relative.as_posix() != selector
-                    or ".." in relative.parts
-                ):
-                    msg = f"unsafe Mise journal project selector: {selector}"
-                    raise ValueError(msg)
             if self.state == "staging" and self.entries:
-                msg = "staging Mise journal must not authorize live transitions"
+                msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
-            if self.state != "staging" and not self.entries:
-                msg = "published Mise journal must contain recovery entries"
+            if self.state == "staging" and any(
+                directory.disposition != "temporary"
+                for directory in self.directories
+            ):
+                msg = "staging codegen journal can authorize only temporary paths"
+                raise ValueError(msg)
+            entry_paths = tuple(entry.path for entry in self.entries)
+            if len(set(entry_paths)) != len(entry_paths):
+                msg = "codegen journal destination paths must be unique"
+                raise ValueError(msg)
+            if any(entry.project not in selectors for entry in self.entries):
+                msg = "codegen journal entry has no project participant"
+                raise ValueError(msg)
+            directory_paths = tuple(directory.path for directory in self.directories)
+            if len(set(directory_paths)) != len(directory_paths):
+                msg = "codegen journal directory paths must be unique"
+                raise ValueError(msg)
+            if any(
+                directory.project not in selectors for directory in self.directories
+            ):
+                msg = "codegen journal directory has no project participant"
+                raise ValueError(msg)
+            recovery_declared = tuple(
+                entry.rollback_exists is not None for entry in self.entries
+            )
+            if self.state == "recovering" and not all(recovery_declared):
+                msg = "recovering codegen journal lacks rollback identities"
+                raise ValueError(msg)
+            if self.state != "recovering" and any(recovery_declared):
+                msg = "non-recovering codegen journal contains rollback identities"
+                raise ValueError(msg)
+            return self
+
+    class CodegenTransactionSession(m.ArbitraryTypesModel):
+        """Immutable cursor for one live prepared generation transaction."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        plan: Annotated[
+            FlextInfraModelsCodegen.MiseToolchainWorkspacePlan,
+            m.Field(description="Locked Mise adapter plan and physical layout"),
+        ]
+        journal: Annotated[
+            FlextInfraModelsCodegen.CodegenTransactionJournal,
+            m.Field(description="Latest durable prepared journal payload"),
+        ]
+        journal_state: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Exact journal CAS state for the next transition"),
+        ]
+        written_files: Annotated[
+            tuple[Path, ...],
+            m.Field(description="Ordered destinations published by completed phases"),
+        ] = ()
+
+        @u.model_validator(mode="after")
+        def _validate_cursor(self) -> Self:
+            if self.journal.state != "prepared":
+                msg = "active codegen transaction session must remain prepared"
+                raise ValueError(msg)
+            if self.plan.layout.transaction_id != self.journal.transaction_id:
+                msg = "codegen session layout and journal transaction ids differ"
                 raise ValueError(msg)
             return self
 

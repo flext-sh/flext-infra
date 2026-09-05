@@ -5,6 +5,7 @@ from __future__ import annotations
 import operator
 from pathlib import Path
 
+from flext_infra import config
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -13,6 +14,12 @@ from flext_infra.typings import t
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
     """Rope-backed workspace indexing helpers."""
+
+    @staticmethod
+    def _excluded_parts() -> frozenset[str]:
+        """Resolve analyzer exclusions from the generated artifact SSOT."""
+        ignored = frozenset[str](config.Infra.codegen.source_scan_ignored)
+        return frozenset[str]((*c.Infra.ITERATION_EXCLUDED_PARTS, *ignored))
 
     @staticmethod
     def _project_root_for_file(workspace_root: Path, file_path: Path) -> Path | None:
@@ -64,15 +71,26 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         )
 
     @staticmethod
+    def _inside_nested_repository(path: Path, workspace_root: Path) -> bool:
+        """Exclude nested Git repositories and registered worktrees from indexing."""
+        return any(
+            (parent / ".git").exists() or (parent / ".git").is_symlink()
+            for parent in path.parents
+            if parent != workspace_root and parent.is_relative_to(workspace_root)
+        )
+
+    @classmethod
     def _python_and_stub_file_paths(
-        rope_project: t.Infra.RopeProject, resolved_root: Path
+        cls, rope_project: t.Infra.RopeProject, resolved_root: Path
     ) -> tuple[Path, ...]:
         """Return indexed sources, declared wrapper modules, and typing stubs."""
         python_paths = {
             path.resolve()
             for path in FlextInfraUtilitiesRopeCore.python_file_paths(rope_project)
-            if not set(path.relative_to(resolved_root).parts)
-            & c.Infra.ITERATION_EXCLUDED_PARTS
+            if not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
+            and not FlextInfraUtilitiesRopeAnalysisWorkspace._inside_nested_repository(
+                path, resolved_root
+            )
         }
         # flext-pulj (codex): Rope's source roots omit tests/examples/scripts;
         # index those declared wrapper surfaces so explicitly targeted codegen
@@ -84,15 +102,19 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             if wrapper_root.is_dir()
             for path in wrapper_root.rglob("*.py")
             if path.is_file()
-            and not set(path.relative_to(resolved_root).parts)
-            & c.Infra.ITERATION_EXCLUDED_PARTS
+            and not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
+            and not FlextInfraUtilitiesRopeAnalysisWorkspace._inside_nested_repository(
+                path, resolved_root
+            )
         }
         stub_paths = {
             path.resolve()
             for path in resolved_root.rglob("*.pyi")
             if path.is_file()
-            and not set(path.relative_to(resolved_root).parts)
-            & c.Infra.ITERATION_EXCLUDED_PARTS
+            and not set(path.relative_to(resolved_root).parts) & cls._excluded_parts()
+            and not FlextInfraUtilitiesRopeAnalysisWorkspace._inside_nested_repository(
+                path, resolved_root
+            )
         }
         return tuple(
             sorted(python_paths | wrapper_paths | stub_paths, key=Path.as_posix)

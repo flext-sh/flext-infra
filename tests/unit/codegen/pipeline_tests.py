@@ -196,8 +196,8 @@ def test_codegen_pipeline_end_to_end(tmp_path: Path) -> None:
         project_b_fixed.violations_skipped
     )
     tm.that(any(v.rule.startswith("NS-002") for v in all_violations), eq=True)
-    unmapped_count = FlextInfraCodegenLazyInit.model_validate(payload).generate_inits()
-    tm.that(unmapped_count, gte=0)
+    lazy_plan = FlextInfraCodegenLazyInit.model_validate(payload).plan_files()
+    tm.that(lazy_plan.success, eq=True)
     census_after = FlextInfraCodegenCensus.model_validate(payload).run()
     before_total = sum(report.total for report in census_before)
     after_total = sum(report.total for report in census_after)

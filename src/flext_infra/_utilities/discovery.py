@@ -218,7 +218,11 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def discover_python_dirs(
-        cls, project_dir: Path, *, skip_dirs: frozenset[str] | None = None
+        cls,
+        project_dir: Path,
+        *,
+        skip_dirs: frozenset[str] | None = None,
+        workspace_excluded_top_dirs: frozenset[str] | None = None,
     ) -> t.StrSequence:
         """Return top-level directories that contain at least one Python file."""
         if not project_dir.is_dir():
@@ -226,7 +230,11 @@ class FlextInfraUtilitiesDiscovery(
         effective_skip = (
             skip_dirs if skip_dirs is not None else c.Infra.PYTHON_DISCOVERY_SKIP_DIRS
         )
-        workspace_excluded = cls._workspace_excluded_top_dirs(project_dir)
+        workspace_excluded = (
+            workspace_excluded_top_dirs
+            if workspace_excluded_top_dirs is not None
+            else cls._workspace_excluded_top_dirs(project_dir)
+        )
         return [
             subdir.name
             for subdir in sorted(project_dir.iterdir())
@@ -276,7 +284,11 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def analyzer_python_roots(
-        cls, project_dir: Path, declared: t.StrSequence
+        cls,
+        project_dir: Path,
+        declared: t.StrSequence,
+        *,
+        workspace_excluded_top_dirs: frozenset[str] | None = None,
     ) -> t.StrSequence:
         """Return the Python roots every analyzer surface must agree on.
 
@@ -294,7 +306,10 @@ class FlextInfraUtilitiesDiscovery(
         never a root of this one: workspace subprojects are Python directories
         too, and each is analyzed under its own local configuration.
         """
-        discovered = cls.discover_python_dirs(project_dir)
+        discovered = cls.discover_python_dirs(
+            project_dir,
+            workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+        )
         return (
             *declared,
             *(

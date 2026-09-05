@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
+from packaging.requirements import InvalidRequirement, Requirement
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -126,9 +127,27 @@ class FlextInfraUtilitiesDependencies:
                     ):
                         locked_version = locked_versions.get(dependency_name)
                         if locked_version is not None:
-                            rewritten = (
-                                f"{head}{cls.constraint_specifier(locked_version)}"
+                            try:
+                                parsed = Requirement(requirement_part.strip())
+                            except InvalidRequirement:
+                                parsed = None
+                            if parsed is not None and not parsed.specifier.contains(
+                                locked_version, prereleases=True
+                            ):
+                                return None
+                            retained = (
+                                ()
+                                if parsed is None
+                                else tuple(
+                                    str(specifier)
+                                    for specifier in parsed.specifier
+                                    if specifier.operator in {"<", "<=", "!="}
+                                )
                             )
+                            constraint = cls.constraint_specifier(locked_version)
+                            if retained:
+                                constraint = ",".join((constraint, *retained))
+                            rewritten = f"{head}{constraint}"
                             marker_text = marker_part.strip()
                             if marker_separator and marker_text:
                                 rewritten = f"{rewritten}; {marker_text}"

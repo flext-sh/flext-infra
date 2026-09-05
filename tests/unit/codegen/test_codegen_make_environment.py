@@ -86,7 +86,9 @@ class TestsCodegenMakeEnvironment:
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
         tm.ok(
-            u.Cli.atomic_write_text_file(project_root / "Makefile", makefile.rendered)
+            u.Cli.atomic_write_text_file(
+                project_root / "Makefile", makefile.desired_text
+            )
         )
         return project_root, workspace_root
 

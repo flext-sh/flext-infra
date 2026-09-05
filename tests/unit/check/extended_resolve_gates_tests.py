@@ -16,11 +16,6 @@ from flext_tests import tm
 class TestWorkspaceCheckerResolveGates:
     """Test FlextInfraWorkspaceChecker.resolve_gates."""
 
-    @pytest.fixture(autouse=True)
-    def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Gate resolution assumes CI unset unless a test sets CI=Y."""
-        monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
-
     def test_resolve_gates_type_is_rejected(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["type"])
         tm.fail(result, has="unknown gate")

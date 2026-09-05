@@ -48,9 +48,7 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             for item in config.Infra.codegen.managed_files
             if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
         )
-        rendered = (
-            "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
-        )
+        rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
         blocked = tuple(
             item.path.as_posix()
             for item in committed

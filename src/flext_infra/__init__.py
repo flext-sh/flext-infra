@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from .cli import FlextInfraCli, docs_main, main
     from .codegen.census import FlextInfraCodegenCensus
     from .codegen.codegen_generation import FlextInfraCodegenGeneration
+    from .codegen.codegen_transaction import FlextInfraCodegenTransaction
     from .codegen.conform import FlextInfraCodegenConform
     from .codegen.consolidator import FlextInfraCodegenConsolidator
     from .codegen.constants_quality_gate import FlextInfraCodegenQualityGate
@@ -58,15 +59,13 @@ if TYPE_CHECKING:
     from .codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
-    from .codegen.managed_conflicts_bootstrap import (
-        ManagedConflictBootstrapError,
-        prepare_managed_conflicts,
-    )
     from .codegen.managed_conflicts_core import (
         ManagedConflictError,
         recover_managed_toml,
     )
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
+    from .codegen.mise_artifacts_lock import FlextInfraMiseLock
+    from .codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
     from .codegen.pipeline import FlextInfraCodegenPipeline
     from .codegen.project_new import FlextInfraCodegenProjectNew
     from .codegen.py_typed import FlextInfraCodegenPyTyped
@@ -338,6 +337,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenPyTyped",
     "FlextInfraCodegenQualityGate",
     "FlextInfraCodegenScaffolder",
+    "FlextInfraCodegenTransaction",
     "FlextInfraCodegenVersionFile",
     "FlextInfraCodemodBatchApply",
     "FlextInfraCompatibilityAliasDetector",
@@ -399,6 +399,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
+    "FlextInfraMiseLock",
+    "FlextInfraMiseWorkspacePlanner",
     "FlextInfraModGateEngine",
     "FlextInfraModGateSnapshot",
     "FlextInfraModScanReport",
@@ -504,7 +506,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraWrapperRootNamespaceRefactor",
     "GateContractInfraError",
     "GateContractUsageError",
-    "ManagedConflictBootstrapError",
     "ManagedConflictError",
     "RefactorRoutes",
     "ValidationCommandRoutes",
@@ -541,7 +542,6 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
-    "prepare_managed_conflicts",
     "r",
     "recover_managed_toml",
     "refactor",
@@ -577,6 +577,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen": ("codegen",),
             ".codegen.census": ("FlextInfraCodegenCensus",),
             ".codegen.codegen_generation": ("FlextInfraCodegenGeneration",),
+            ".codegen.codegen_transaction": ("FlextInfraCodegenTransaction",),
             ".codegen.conform": ("FlextInfraCodegenConform",),
             ".codegen.consolidator": ("FlextInfraCodegenConsolidator",),
             ".codegen.constants_quality_gate": ("FlextInfraCodegenQualityGate",),
@@ -586,15 +587,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
-            ".codegen.managed_conflicts_bootstrap": (
-                "ManagedConflictBootstrapError",
-                "prepare_managed_conflicts",
-            ),
             ".codegen.managed_conflicts_core": (
                 "ManagedConflictError",
                 "recover_managed_toml",
             ),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
+            ".codegen.mise_artifacts_lock": ("FlextInfraMiseLock",),
+            ".codegen.mise_artifacts_workspace": ("FlextInfraMiseWorkspacePlanner",),
             ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),
             ".codegen.py_typed": ("FlextInfraCodegenPyTyped",),

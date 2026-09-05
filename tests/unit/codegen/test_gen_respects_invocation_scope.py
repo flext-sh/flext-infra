@@ -103,6 +103,7 @@ def test_gen_has_one_codegen_owner() -> None:
     """Each gen recipe delegates its mode to one conform owner."""
     text = _template_text()
     assert "CODEGEN_PROJECT_ARGS" not in text
+    assert "define _generated_docs" not in text
 
     bodies = _recipe_bodies()
     expected_modes = {"_builtin_gen_check": "check", "_builtin_gen_all": "apply"}
@@ -114,6 +115,9 @@ def test_gen_has_one_codegen_owner() -> None:
         assert all('--scope "$(CODEGEN_SCOPE)"' in line for line in conform_lines)
         assert all("deps modernize" not in line for line in bodies[target])
         assert all("deps extra-paths" not in line for line in bodies[target])
+        assert all("codegen lazy-init" not in line for line in bodies[target])
+        assert all("docs generate" not in line for line in bodies[target])
+        assert all("_generated_docs" not in line for line in bodies[target])
 
 
 def test_gen_init_is_a_direct_hermetic_owner_route() -> None:

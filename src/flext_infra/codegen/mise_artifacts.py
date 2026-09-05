@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
@@ -15,9 +14,7 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra.base import s
-from flext_infra.codegen._mise_artifacts_transaction import (
-    FlextInfraCodegenMiseArtifactTransaction,
-)
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -271,15 +268,30 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].fail(missing.error or "invalid mise.lock checksum metadata")
         if not missing.value:
             return r[bool].ok(True)
-        try:
-            with TemporaryDirectory(
-                prefix=".mise-checksum.", dir=root
-            ) as raw_scratch:
-                hydrated = self._hydrate_source(
-                    source.value, missing.value, Path(raw_scratch)
-                )
-        except OSError as exc:
-            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}")
+        scratch = root / ".mise-checksum"
+        planned = u.Cli.atomic_plan_directory_chain(scratch)
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        if tuple(planned.value.directories) != (scratch,):
+            return r[bool].fail(f"Mise checksum scratch already exists: {scratch}")
+        created = u.Cli.atomic_create_directory_chain_guarded(
+            planned.value, permission_mode=0o700
+        )
+        if created.failure:
+            return r[bool].from_failure(created)
+        hydrated = self._hydrate_source(source.value, missing.value, scratch)
+        inventory = u.Cli.atomic_inventory_physical_tree(scratch)
+        if inventory.failure:
+            return r[bool].fail(
+                f"{hydrated.error or 'Mise checksum hydration completed'}; "
+                f"scratch inventory failed: {inventory.error}"
+            )
+        cleanup = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
+        if cleanup.failure:
+            return r[bool].fail(
+                f"{hydrated.error or 'Mise checksum hydration completed'}; "
+                f"scratch cleanup failed: {cleanup.error}"
+            )
         if hydrated.failure:
             return r[bool].fail(hydrated.error or "cannot hydrate mise.lock checksums")
         write = u.Cli.atomic_write_text_file(lock_path, hydrated.value)
@@ -348,7 +360,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             if windows
             else cls._shell_launcher_version(source.value)
         )
-        if not cls.is_mise_release(release):
+        if release is None or not cls.is_mise_release(release):
             return r[str].fail(f"Mise seed has an invalid release: {path}")
         try:
             mode = path.stat().st_mode
@@ -360,27 +372,29 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             ("sum_x64", "sum_arm64")
             if windows
             else (
-            "checksum_linux_x86_64",
-            "checksum_linux_x86_64_musl",
-            "checksum_linux_arm64",
-            "checksum_linux_arm64_musl",
-            "checksum_linux_armv7",
-            "checksum_linux_armv7_musl",
-            "checksum_macos_x86_64",
-            "checksum_macos_arm64",
-            "checksum_linux_x86_64_zstd",
-            "checksum_linux_x86_64_musl_zstd",
-            "checksum_linux_arm64_zstd",
-            "checksum_linux_arm64_musl_zstd",
-            "checksum_linux_armv7_zstd",
-            "checksum_linux_armv7_musl_zstd",
-            "checksum_macos_x86_64_zstd",
-            "checksum_macos_arm64_zstd",
+                "checksum_linux_x86_64",
+                "checksum_linux_x86_64_musl",
+                "checksum_linux_arm64",
+                "checksum_linux_arm64_musl",
+                "checksum_linux_armv7",
+                "checksum_linux_armv7_musl",
+                "checksum_macos_x86_64",
+                "checksum_macos_arm64",
+                "checksum_linux_x86_64_zstd",
+                "checksum_linux_x86_64_musl_zstd",
+                "checksum_linux_arm64_zstd",
+                "checksum_linux_arm64_musl_zstd",
+                "checksum_linux_armv7_zstd",
+                "checksum_linux_armv7_musl_zstd",
+                "checksum_macos_x86_64_zstd",
+                "checksum_macos_arm64_zstd",
             )
         )
         for checksum_name in checksums:
             assignment = cls._assignment(source.value, checksum_name)
-            digest = assignment if windows or assignment is None else assignment.split()[0]
+            digest = (
+                assignment if windows or assignment is None else assignment.split()[0]
+            )
             if not cls._is_sha256(digest):
                 return r[str].fail(
                     f"Mise seed checksum missing in {path.name}: {checksum_name}"
@@ -396,10 +410,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return r[bool].ok(True)
 
     def validate_artifacts(
-        self,
-        project_root: Path,
-        *,
-        config_sources: tuple[m.Cli.AtomicFileState, ...],
+        self, project_root: Path, *, config_sources: tuple[m.Cli.AtomicFileState, ...]
     ) -> p.Result[bool]:
         """Validate one project's committed Mise artifacts entirely offline."""
         config_result = self._read_toml(project_root / ".mise.toml")
@@ -430,10 +441,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         launcher_result = self.validate_launchers(project_root)
         if launcher_result.failure:
             return launcher_result
-        exclusions = (
-            FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions_from_snapshot(
-                config_sources
-            )
+        exclusions = FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions_from_snapshot(
+            config_sources
         )
         if exclusions.failure:
             return r[bool].fail(exclusions.error or "project Mise platforms invalid")
@@ -484,11 +493,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Validate only; conform is the sole writable toolchain owner."""
-        transaction = FlextInfraCodegenMiseArtifactTransaction(self)
+        transaction = FlextInfraCodegenTransaction(self)
         if not self.effective_dry_run:
-            return r[bool].fail(
-                "Mise artifact publication is owned by codegen conform"
-            )
+            return r[bool].fail("Mise artifact publication is owned by codegen conform")
         return transaction.validate()
 
 

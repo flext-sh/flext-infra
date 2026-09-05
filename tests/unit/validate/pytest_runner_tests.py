@@ -39,22 +39,22 @@ def _dump_real_profile(path: Path) -> None:
     path.write_bytes(marshal.dumps(stats))
 
 
-def _sentinel_worker_budget(
-    _runner: FlextInfraPytestRunner, _policy: object
-) -> int:
+def _sentinel_worker_budget(_runner: FlextInfraPytestRunner, _policy: object) -> int:
     """Return a value that cannot coincide with the shipped worker ceiling."""
     return 7
 
 
 class TestsFlextInfraPytestRunner:
-    @pytest.fixture(autouse=True)
+    """Prove exact argv, hard deadline propagation, and durable artifacts."""
+
+    pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
+
+    @pytest.fixture
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Local argv contracts assume opt-in tokens unset unless a test sets them."""
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
         monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
         monkeypatch.delenv(c.Infra.PYTEST_ENV_PROFILE, raising=False)
-
-    """Prove exact argv, hard deadline propagation, and durable artifacts."""
 
     @staticmethod
     def _runner(
@@ -128,11 +128,7 @@ class TestsFlextInfraPytestRunner:
             "parallel_worker_memory_gb",
             "expected",
         ),
-        [
-            (2, 20, 16, 2, 2),
-            (16, 3, 64, 2, 3),
-            (16, 20, 5, 2, 2),
-        ],
+        [(2, 20, 16, 2, 2), (16, 3, 64, 2, 3), (16, 20, 5, 2, 2)],
     )
     def test_full_workers_are_independently_bounded_by_each_resource(
         self,
@@ -154,9 +150,7 @@ class TestsFlextInfraPytestRunner:
         policy = type(configured_policy).model_validate(payload)
         monkeypatch.setattr(os, "cpu_count", lambda: cpu_count)
         monkeypatch.setattr(
-            FlextInfraPytestRunner,
-            "_memory_gb",
-            staticmethod(lambda: memory_gb),
+            FlextInfraPytestRunner, "_memory_gb", staticmethod(lambda: memory_gb)
         )
 
         workers = runner.parallel_worker_budget(policy)
@@ -169,9 +163,7 @@ class TestsFlextInfraPytestRunner:
         runner = self._runner(tmp_path)
         report_dir = tmp_path / ".reports" / "tests" / "run"
         monkeypatch.setattr(
-            FlextInfraPytestRunner,
-            "parallel_worker_budget",
-            _sentinel_worker_budget,
+            FlextInfraPytestRunner, "parallel_worker_budget", _sentinel_worker_budget
         )
 
         tm.that(runner.build_command(report_dir), has=("-n", "7"))

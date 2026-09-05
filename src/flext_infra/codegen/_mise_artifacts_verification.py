@@ -1,7 +1,9 @@
-"""Topology, source, and live-state verification for Mise transactions."""
+"""Physical topology, source, destination, and real-consumer verification."""
 
 from __future__ import annotations
 
+import stat
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
@@ -12,110 +14,116 @@ from flext_infra._utilities.project_managed_artifacts import (
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p
 
 
 def journal_topology(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-    journal: m.Infra.MiseToolchainJournal,
+    journal: m.Infra.CodegenTransactionJournal,
 ) -> p.Result[bool]:
-    """Bind every untrusted journal selector to the stable workspace layout."""
-    if journal.projects != tuple(project.selector for project in layout.projects):
-        return r[bool].fail("Mise journal project topology differs from layout")
-    source_topology = _journal_source_topology(layout, journal.sources)
-    if source_topology.failure:
-        return source_topology
-    if journal.state == "staging":
-        return r[bool].ok(True)
-    if len(journal.entries) != len(layout.projects) * len(files.PUBLICATION_SPECS):
-        return r[bool].fail("Mise journal entry count differs from project topology")
-    expected_entries: list[tuple[str, int]] = []
-    entry_projects: list[m.Infra.MiseToolchainProjectLayout] = []
-    for project in layout.projects:
-        for artifact, (_name, mode) in zip(
-            (
-                project.artifacts.config,
-                project.artifacts.unix_launcher,
-                project.artifacts.windows_launcher,
-                project.artifacts.lock,
-            ),
-            files.PUBLICATION_SPECS,
-            strict=True,
-        ):
-            selector = files.workspace_relative(layout.scope_root, artifact)
-            if selector.failure:
-                return r[bool].from_failure(selector)
-            expected_entries.append((selector.value, mode))
-            entry_projects.append(project)
-    observed_entries = tuple(
-        (entry.path, entry.replacement_mode) for entry in journal.entries
-    )
-    if observed_entries != tuple(expected_entries):
-        return r[bool].fail("Mise journal artifact topology differs from workspace")
-    for index, (entry, project) in enumerate(
-        zip(journal.entries, entry_projects, strict=True)
+    """Bind every journal selector and physical identity to the locked layout."""
+    if layout.transaction_id != journal.transaction_id:
+        return r[bool].fail("generation journal transaction id differs from layout")
+    scope = _directory_identity(layout.scope_root)
+    if scope.failure:
+        return r[bool].from_failure(scope)
+    if scope.value != (journal.scope_device, journal.scope_inode):
+        return r[bool].fail("generation journal scope identity differs from layout")
+    if tuple(project.selector for project in journal.projects) != tuple(
+        project.selector for project in layout.projects
     ):
-        expected_backup: str | None = None
-        if entry.original_exists:
-            relative = files.workspace_relative(
-                layout.scope_root,
-                project.transaction_root / "recovery" / f"{index:04d}.original",
+        return r[bool].fail("generation journal project topology differs from layout")
+    by_selector = {project.selector: project for project in layout.projects}
+    for recorded in journal.projects:
+        project = by_selector[recorded.selector]
+        identity = _directory_identity(project.root)
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        if identity.value != (recorded.device, recorded.inode):
+            return r[bool].fail(
+                f"generation project identity changed: {recorded.selector}"
             )
-            if relative.failure:
-                return r[bool].from_failure(relative)
-            expected_backup = relative.value
-        if entry.original_backup != expected_backup:
-            return r[bool].fail("Mise journal backup topology differs from workspace")
+    for directory in journal.directories:
+        project = by_selector[directory.project]
+        target = files.resolve_relative(
+            layout.scope_root,
+            directory.path,
+            purpose="journaled generation directory",
+        )
+        if target.failure:
+            return r[bool].from_failure(target)
+        if (
+            target.value == project.root
+            or not target.value.is_relative_to(project.root)
+        ):
+            return r[bool].fail(
+                f"generation directory escapes its project: {directory.path}"
+            )
+        if directory.disposition == "temporary":
+            transaction_root = project.transaction_root
+            if (
+                directory.phase != "transaction"
+                or transaction_root is None
+                or not transaction_root.is_relative_to(target.value)
+            ):
+                return r[bool].fail(
+                    f"temporary directory escapes transaction root: {directory.path}"
+                )
+    for entry in journal.entries:
+        project = by_selector[entry.project]
+        target = files.resolve_relative(
+            layout.scope_root, entry.path, purpose="generated destination"
+        )
+        if target.failure:
+            return r[bool].from_failure(target)
+        if not target.value.is_relative_to(project.root):
+            return r[bool].fail(f"generation entry escapes its project: {entry.path}")
+        if entry.original_backup is None:
+            continue
+        if project.transaction_root is None:
+            return r[bool].fail("generation recovery layout has no transaction root")
+        backup = files.resolve_relative(
+            layout.scope_root,
+            entry.original_backup,
+            purpose="generation recovery backup",
+        )
+        if backup.failure:
+            return r[bool].from_failure(backup)
+        if backup.value.parent != project.transaction_root / "recovery":
+            return r[bool].fail(
+                f"generation backup escapes its recovery root: {entry.path}"
+            )
     return r[bool].ok(True)
 
 
-def sources(
-    plan: m.Infra.MiseToolchainWorkspacePlan,
-    journal: m.Infra.MiseToolchainJournal | None = None,
-) -> p.Result[bool]:
-    """Prove source topology, bytes, and modes still equal one snapshot."""
-    expected_states: list[m.Cli.AtomicFileState] = []
-    for project in plan.projects:
-        config_sources = (
-            FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
-                project.layout.root
-            )
+def states_current(states: tuple[m.Cli.AtomicFileState, ...]) -> p.Result[bool]:
+    """Prove every full file state still equals its authenticated snapshot."""
+    for expected in states:
+        observed = files.read_state(
+            expected.path, required=expected.content is not None
         )
-        if config_sources.failure:
-            return r[bool].from_failure(config_sources)
-        expected = project.config.sources
-        current = config_sources.value
-        if current != expected:
-            return r[bool].fail(
-                f"Mise sources changed: {project.layout.selector}"
-            )
-        expected_states.extend(expected)
-    if journal is None:
-        return r[bool].ok(True)
-    topology = _journal_source_topology(plan.layout, journal.sources)
-    if topology.failure:
-        return topology
-    if len(journal.sources) != len(expected_states):
-        return r[bool].fail("Mise journal source count differs from snapshot")
-    for expected, recorded in zip(expected_states, journal.sources, strict=True):
-        selector = files.workspace_relative(plan.layout.scope_root, expected.path)
-        if selector.failure:
-            return r[bool].from_failure(selector)
-        if (
-            expected.content is None
-            or expected.mode is None
-            or recorded.path != selector.value
-            or files.digest(expected.content) != recorded.sha256
-            or expected.mode != recorded.mode
-        ):
-            return r[bool].fail(f"Mise source differs from journal: {expected.path}")
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        if observed.value != expected:
+            return r[bool].fail(f"generation state changed: {expected.path}")
+    return r[bool].ok(True)
+
+
+def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
+    """Prove every Mise config source still equals its full snapshot."""
+    for project in plan.projects:
+        current = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
+            project.layout.root
+        )
+        if current.failure:
+            return r[bool].from_failure(current)
+        if current.value != project.config.sources:
+            return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
     return r[bool].ok(True)
 
 
 def destinations(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
-    """Prove every live destination still equals the locked preflight snapshot."""
+    """Prove all Mise destinations still equal the locked preflight snapshot."""
     for project in plan.projects:
         expected_states = (
             project.config.before,
@@ -123,33 +131,65 @@ def destinations(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
             project.artifacts.windows_launcher,
             project.artifacts.lock,
         )
-        for expected in expected_states:
-            observed = files.read_state(expected.path, required=False)
-            if observed.failure:
-                return r[bool].from_failure(observed)
-            if observed.value != expected:
+        current = states_current(expected_states)
+        if current.failure:
+            return current
+    return r[bool].ok(True)
+
+
+def publications_live(
+    publications: tuple[m.Infra.CodegenStagedFile, ...],
+) -> p.Result[bool]:
+    """Prove live destinations have the exact staged inode or planned absence."""
+    for publication in publications:
+        observed = files.read_state(publication.before.path, required=False)
+        if observed.failure:
+            return r[bool].from_failure(observed)
+        replacement = publication.replacement
+        if replacement is None:
+            if (
+                observed.value.content is not None
+                or observed.value.parent_device != publication.before.parent_device
+                or observed.value.parent_inode != publication.before.parent_inode
+            ):
                 return r[bool].fail(
-                    f"Mise destination changed after preflight: {expected.path}"
+                    "deleted generation destination or its parent changed: "
+                    f"{publication.before.path}"
                 )
+            continue
+        current = observed.value
+        if _file_identity(
+            current,
+            parent_device=current.parent_device,
+            parent_inode=current.parent_inode,
+        ) != _file_identity(
+            replacement,
+            parent_device=publication.before.parent_device,
+            parent_inode=publication.before.parent_inode,
+        ):
+            return r[bool].fail(
+                f"live generation destination differs from staged identity: {current.path}"
+            )
     return r[bool].ok(True)
 
 
 def live(
     owner: p.Infra.MiseArtifactsOwner,
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publications: tuple[m.Infra.MiseToolchainPublication, ...] | None = None,
+    publications: tuple[m.Infra.CodegenStagedFile, ...] | None = None,
 ) -> p.Result[bool]:
-    """Exercise each real artifact consumer and compare exact bytes plus modes."""
+    """Exercise every real Mise consumer while guarding sources and live bytes."""
     source_before = sources(plan)
     if source_before.failure:
         return source_before
-    replacements = {
-        publication.before.path: (
-            publication.replacement.content,
-            publication.replacement.mode,
-        )
-        for publication in publications or ()
-    }
+    replacements: dict[Path, tuple[bytes, int | None]] = {}
+    for publication in publications or ():
+        replacement = publication.replacement
+        if replacement is None or replacement.content is None:
+            return r[bool].fail(
+                f"Mise replacement is absent: {publication.before.path}"
+            )
+        replacements[publication.before.path] = (replacement.content, replacement.mode)
     artifact_before = _artifact_snapshot(plan, replacements)
     if artifact_before.failure:
         return r[bool].from_failure(artifact_before)
@@ -160,8 +200,7 @@ def live(
         if validated.failure:
             return r[bool].fail(
                 validated.error
-                or "published Mise validation failed for "
-                f"{project.layout.selector}"
+                or f"published Mise validation failed for {project.layout.selector}"
             )
     artifact_after = _artifact_snapshot(plan, replacements)
     if artifact_after.failure:
@@ -171,11 +210,6 @@ def live(
     source_after = sources(plan)
     if source_after.failure:
         return source_after
-    artifact_final = _artifact_snapshot(plan, replacements)
-    if artifact_final.failure:
-        return r[bool].from_failure(artifact_final)
-    if artifact_final.value != artifact_after.value:
-        return r[bool].fail("published Mise artifacts changed after validation")
     return r[bool].ok(True)
 
 
@@ -183,7 +217,6 @@ def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
     replacements: dict[Path, tuple[bytes, int | None]],
 ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-    """Capture and validate one complete ordered artifact-state barrier."""
     root_launchers: tuple[bytes, bytes] | None = None
     states: list[m.Cli.AtomicFileState] = []
     for project in plan.projects:
@@ -226,42 +259,51 @@ def _artifact_snapshot(
     return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
 
 
-def _journal_source_topology(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-    sources_to_validate: tuple[m.Infra.MiseToolchainJournalSource, ...],
-) -> p.Result[bool]:
-    grouped: dict[Path, list[str]] = {project.root: [] for project in layout.projects}
-    seen: set[str] = set()
-    for source in sources_to_validate:
-        if source.path in seen:
-            return r[bool].fail(f"duplicate Mise journal source: {source.path}")
-        seen.add(source.path)
-        resolved = files.resolve_relative(
-            layout.scope_root, source.path, purpose="Mise journal source"
-        )
-        if resolved.failure:
-            return r[bool].from_failure(resolved)
-        owners = tuple(
-            project
-            for project in layout.projects
-            if resolved.value.parent == project.root / "config"
-            and resolved.value.suffix == ".yaml"
-        )
-        if len(owners) != 1:
-            return r[bool].fail(f"Mise journal source is outside topology: {source.path}")
-        grouped[owners[0].root].append(source.path)
-    expected_order: list[str] = []
-    for project in layout.projects:
-        project_sources = grouped[project.root]
-        expected_group = sorted(project_sources)
-        if project_sources != expected_group:
-            return r[bool].fail(
-                f"Mise journal source topology differs for {project.selector}"
-            )
-        expected_order.extend(expected_group)
-    if tuple(source.path for source in sources_to_validate) != tuple(expected_order):
-        return r[bool].fail("Mise journal source order differs from workspace")
-    return r[bool].ok(True)
+def _file_identity(
+    value: m.Cli.AtomicFileState, *, parent_device: int, parent_inode: int
+) -> tuple[
+    int,
+    int,
+    bytes | None,
+    int | None,
+    int | None,
+    int | None,
+    int | None,
+    int | None,
+    int | None,
+]:
+    """Return every physical and byte field except the intentionally moved path."""
+    return (
+        parent_device,
+        parent_inode,
+        value.content,
+        value.mode,
+        value.device,
+        value.inode,
+        value.link_count,
+        value.file_attributes,
+        value.reparse_tag,
+    )
 
 
-__all__: list[str] = ["destinations", "journal_topology", "live", "sources"]
+def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
+    try:
+        observed = path.lstat()
+    except OSError as exc:
+        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
+    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
+        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+    )
+    if not stat.S_ISDIR(observed.st_mode) or reparse:
+        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
+    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
+
+
+__all__: list[str] = [
+    "destinations",
+    "journal_topology",
+    "live",
+    "publications_live",
+    "sources",
+    "states_current",
+]

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -231,7 +231,9 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         subjects = self._subjects(root, base_oid, merges_only=False)
         if subjects.failure:
             return r[bool].fail(subjects.error or "git log failed")
-        if any(u.Infra.is_release_subject(subject, version) for subject in subjects.value):
+        if any(
+            u.Infra.is_release_subject(subject, version) for subject in subjects.value
+        ):
             return r[bool].ok(True)
         release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
         return r[bool].fail(
@@ -272,7 +274,9 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self.logger.info("release_version_pull_request", version=plan.value.next)
         return r[bool].ok(True)
 
-    def _preflight_version(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
+    def _preflight_version(
+        self, root: Path, plan: m.Infra.ReleasePlan
+    ) -> p.Result[bool]:
         """Require a clean checkout on the integration branch and a free tag."""
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
         if status.failure:
@@ -306,7 +310,13 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         # continue the same lane, whether it already exists locally or only
         # on the remote, and never fail on "branch already exists".
         local = u.Cli.capture(
-            [c.Infra.GIT, "rev-parse", "--verify", "--quiet", f"refs/heads/{c.Infra.RELEASE_BRANCH}"],
+            [
+                c.Infra.GIT,
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                f"refs/heads/{c.Infra.RELEASE_BRANCH}",
+            ],
             cwd=root,
         )
         fetch = u.Cli.run_checked(
@@ -370,9 +380,13 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         # Why: README, docs/index and the API overview render the version, and
         # the docs generator owns them; the stamp regenerates its projections
         # so `make gen WHAT=check` stays a fixed point on the release lane.
-        return FlextInfraDocGenerator(
-            workspace=root, projects=ctx.project_names or None, apply=True
-        ).execute()
+        return FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.ALL,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        ).map(lambda _result: True)
 
     def _commit_release(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
         """Commit the stamped SSOT and every projection regenerated from it.

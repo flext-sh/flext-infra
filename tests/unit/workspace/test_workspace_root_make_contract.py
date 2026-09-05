@@ -84,7 +84,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         tuple(
             item.path
             for item in planned.files
-            if item.path in protected_paths and item.changed
+            if item.path in protected_paths and item.requires_effect
         ),
         empty=True,
     )
@@ -92,7 +92,7 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
         if planned_file.path in protected_paths:
             continue
         planned_file.path.parent.mkdir(parents=True, exist_ok=True)
-        planned_file.path.write_text(planned_file.rendered, encoding="utf-8")
+        planned_file.path.write_text(planned_file.desired_text, encoding="utf-8")
     for project_name in project_names:
         _write_child_makefile(workspace_root / project_name, exit_code=0)
     return workspace_root, project_names

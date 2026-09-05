@@ -65,9 +65,12 @@ class TestsCodegenCatalogExtensions:
         tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
     def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
-        toolchain = config.Infra.codegen.toolchain
-
-        tm.that(toolchain.mise_version, eq="latest")
+        template = (
+            Path(__file__).parents[3]
+            / "src/flext_infra/templates/project/base/tool_bootstrap_recipe.j2"
+        ).read_text(encoding="utf-8")
+        tm.that(template, has="https://github.com/jdx/mise/releases/latest")
+        tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -84,7 +87,10 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_setup_conform" in content, eq=False)
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
-        tm.that(content, has='direnv allow "$(PROJECT_ROOT)"')
+        tm.that(
+            content,
+            has='"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow',
+        )
         mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
         tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
         tm.that("_builtin_gen_check:" in content, eq=True)
@@ -119,7 +125,7 @@ class TestsCodegenCatalogExtensions:
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
-        rendered = tomllib.loads(tm.ok(result))
+        rendered = tomllib.loads(tm.ok(result).rendered)
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(
@@ -255,6 +261,17 @@ class TestsCodegenCatalogExtensions:
             )
         )
         declared_gitmodules = gitmodules.read_bytes()
+        project = workspace.project
+        assert project is not None
+        for entry in config.Infra.codegen.templates.entries:
+            if root.role not in entry.profiles:
+                continue
+            destination = entry.destination.format(
+                package_name=project.package_name, ns=project.namespace_attribute
+            )
+            (workspace_root / destination).parent.mkdir(parents=True, exist_ok=True)
+        for managed in config.Infra.codegen.managed_files:
+            (workspace_root / managed.path).parent.mkdir(parents=True, exist_ok=True)
 
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
@@ -274,13 +291,15 @@ class TestsCodegenCatalogExtensions:
             for file in plan.files
             if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
-        tm.that(root_makefile.rendered, has=f"WORKSPACE_SUBPROJECTS := {member.name}")
+        tm.that(
+            root_makefile.desired_text, has=f"WORKSPACE_SUBPROJECTS := {member.name}"
+        )
         gitmodules_plan = next(
             file for file in plan.files if file.path == gitmodules.resolve()
         )
         tm.that(gitmodules_plan.policy, eq="manual")
-        tm.that(gitmodules_plan.changed, eq=False)
-        tm.that(gitmodules_plan.rendered.encode(), eq=declared_gitmodules)
+        tm.that(gitmodules_plan.requires_effect, eq=False)
+        tm.that(gitmodules_plan.desired_content, eq=declared_gitmodules)
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 

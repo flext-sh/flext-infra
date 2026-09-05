@@ -53,6 +53,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
         project=test_u.Tests.project_spec(repository.name),
     )
     workspace_root = tmp_path / "workspace"
+    workspace_root.mkdir()
     request = m.Infra.CodegenConformRequest(
         root=workspace_root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,
@@ -68,7 +69,7 @@ def _render_root_makefile(tmp_path: Path) -> str:
         fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME
     )
     tm.that(makefile_plans, len=1)
-    rendered: str = makefile_plans[0].rendered
+    rendered: str = makefile_plans[0].desired_text
     return rendered
 
 

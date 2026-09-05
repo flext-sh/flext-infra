@@ -29,7 +29,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         identity = cls._config_directory_identity(config_dir)
         if identity.failure:
             return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(identity)
-        if identity.value is None:
+        if not identity.value:
             return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
         paths = cls._config_yaml_paths(config_dir, identity.value)
         if paths.failure:
@@ -75,24 +75,30 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         return r[tuple[int, ...]].ok(cls._directory_state_key(state))
 
     @classmethod
-    def _config_directory_identity(
-        cls, config_dir: Path,
-    ) -> p.Result[tuple[int, ...] | None]:
+    def _config_directory_identity(cls, config_dir: Path) -> p.Result[tuple[int, ...]]:
         try:
             state = config_dir.lstat()
         except FileNotFoundError:
-            return r[tuple[int, ...] | None].ok(None)
+            return r[tuple[int, ...]].ok(())
         except OSError as exc:
-            return r[tuple[int, ...] | None].fail_op(
-                "inspect project config directory", exc
-            )
+            return r[tuple[int, ...]].fail_op("inspect project config directory", exc)
         attributes = getattr(state, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
         if not stat.S_ISDIR(state.st_mode) or attributes & reparse:
-            return r[tuple[int, ...] | None].fail(
+            return r[tuple[int, ...]].fail(
                 f"project config path is not a physical directory: {config_dir}"
             )
-        return r[tuple[int, ...] | None].ok(cls._directory_state_key(state))
+        return r[tuple[int, ...]].ok(cls._directory_state_key(state))
+
+    @staticmethod
+    def empty_snapshot() -> m.Infra.ProjectManagedArtifactsSnapshot:
+        """Return the explicit managed-artifact state for a future scaffold."""
+        return m.Infra.ProjectManagedArtifactsSnapshot(
+            sources=(),
+            resolution=m.Infra.ProjectManagedArtifactsResolution(
+                artifacts=m.Infra.ProjectManagedArtifactsConfig(), mise_tool_sources={}
+            ),
+        )
 
     @classmethod
     def _config_yaml_paths(
@@ -103,9 +109,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 sorted(path for path in config_dir.iterdir() if path.suffix == ".yaml")
             )
         except OSError as exc:
-            return r[tuple[Path, ...]].fail_op(
-                "enumerate project config sources", exc
-            )
+            return r[tuple[Path, ...]].fail_op("enumerate project config sources", exc)
         current = cls._config_directory_identity(config_dir)
         if current.failure:
             return r[tuple[Path, ...]].from_failure(current)
@@ -145,7 +149,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 ):
                     continue
                 if selector == tool.selector:
-                    break
+                    return r[bool].fail(
+                        "project Mise selector collides with fleet tool "
+                        f"{selector!r} in {source}; protected tool {owner!r} is "
+                        "owned exclusively by the fleet toolchain"
+                    )
                 return r[bool].fail(
                     "project Mise selector declares an alternate distribution "
                     f"for fleet identity {owner!r}: {selector!r} in "
@@ -155,14 +163,12 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def load_project_managed_artifacts(
-        cls, project_dir: Path,
+        cls, project_dir: Path
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Snapshot every YAML once and parse that exact source set."""
         snapshot = cls.snapshot_project_managed_artifacts(project_dir)
         if snapshot.failure:
-            return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(
-                snapshot
-            )
+            return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(snapshot)
         return r[m.Infra.ProjectManagedArtifactsResolution].ok(
             snapshot.value.resolution
         )
@@ -184,8 +190,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
             return r[m.Infra.ProjectManagedArtifactsSnapshot].from_failure(resolution)
         return r[m.Infra.ProjectManagedArtifactsSnapshot].ok(
             m.Infra.ProjectManagedArtifactsSnapshot(
-                sources=source_snapshot.value,
-                resolution=resolution.value,
+                sources=source_snapshot.value, resolution=resolution.value
             )
         )
 
@@ -194,11 +199,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...]
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one caller-owned immutable project YAML snapshot."""
-        empty = m.Infra.ProjectManagedArtifactsResolution(
-            artifacts=m.Infra.ProjectManagedArtifactsConfig(), mise_tool_sources={}
-        )
         if not source_snapshot:
-            return r[m.Infra.ProjectManagedArtifactsResolution].ok(empty)
+            return r[m.Infra.ProjectManagedArtifactsResolution].ok(
+                cls.empty_snapshot().resolution
+            )
         ruff_ignores: dict[str, set[str]] = {}
         mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: dict[str, Path] = {}
@@ -277,9 +281,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def compose_mise_toml_from_snapshot(
-        cls,
-        source_snapshot: tuple[m.Cli.AtomicFileState, ...],
-        rendered: str,
+        cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...], rendered: str
     ) -> p.Result[str]:
         """Add local tools from one caller-owned immutable YAML snapshot."""
         resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)

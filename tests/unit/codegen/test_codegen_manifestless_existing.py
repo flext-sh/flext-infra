@@ -77,17 +77,17 @@ class TestCodegenManifestlessExisting:
             sum(file.path == root / "pyproject.toml" for file in initial_plan.files),
             eq=1,
         )
-        tm.that(plans["pyproject.toml"].changed, eq=False)
+        tm.that(plans["pyproject.toml"].requires_effect, eq=False)
 
         missing_create_only = plans[".env.example"]
         tm.that(missing_create_only.policy, eq="create-only")
-        tm.that(missing_create_only.changed, eq=False)
+        tm.that(missing_create_only.requires_effect, eq=False)
         tm.that((root / ".env.example").exists(), eq=False)
         for relative, content in preserved.items():
-            tm.that(plans[relative].changed, eq=False)
+            tm.that(plans[relative].requires_effect, eq=False)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
-            tm.that(plans[required].changed, eq=True)
+            tm.that(plans[required].requires_effect, eq=True)
 
         tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
         tm.that((root / ".env.example").exists(), eq=False)
@@ -101,7 +101,9 @@ class TestCodegenManifestlessExisting:
             )
         )
         verified = tm.ok(fixed_point)
-        tm.that(tuple(file.path for file in verified.files if file.changed), eq=())
+        tm.that(
+            tuple(file.path for file in verified.files if file.requires_effect), eq=()
+        )
 
     def test_existing_root_rejects_non_regular_create_only_destination(
         self, infra_git_repo: Path

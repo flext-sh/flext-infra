@@ -124,6 +124,7 @@ class TestsMakeTestSelector:
             uv,
             (
                 "#!/bin/sh\n"
+                "set -eu\n"
                 f'printf \'%s\\n\' "$*" >> "{uv_log}"\n'
                 'if [ "$1" = "--version" ]; then '
                 f"printf 'uv {toolchain.uv_version}.0\\n'; exit 0; fi\n"
@@ -144,9 +145,21 @@ class TestsMakeTestSelector:
             (
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
-                f"printf '{toolchain.mise_version}\\n'; exit 0; fi\n"
+                "printf '2026.9.1\\n'; exit 0; fi\n"
                 'case "$*" in *"exec -- uv --version"*) '
                 f"printf 'uv {toolchain.uv_version}.0\\n'; exit 0 ;; esac\n"
+                'case " $* " in *" generate install-script "*)\n'
+                '  while [ "$#" -gt 0 ]; do\n'
+                '    if [ "$1" = "--write" ]; then\n'
+                '      test "$#" -ge 2\n'
+                '      cp -- "$0" "$2"\n'
+                '      cp -- "$0" "$2.cmd"\n'
+                "      exit 0\n"
+                "    fi\n"
+                "    shift\n"
+                "  done\n"
+                "  exit 2\n"
+                ";; esac\n"
                 'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
                 'if [ "$#" -gt 0 ]; then shift; exec "$@"; fi\n'
                 "exit 0\n"

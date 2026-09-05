@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, m
+from flext_infra import config, m, u
 from flext_infra.codegen import _mise_artifacts_candidates as candidates
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_process as process
@@ -25,40 +25,37 @@ class FlextInfraMiseStaging:
         self._runtime = FlextInfraMiseRuntime(owner)
 
     def stage(
-        self,
-        plan: m.Infra.MiseToolchainWorkspacePlan,
-        *,
-        credential_command: str,
-    ) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
+        self, plan: m.Infra.MiseToolchainWorkspacePlan
+    ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
         """Generate, hydrate, and validate all destination-local candidates."""
+        coordinator = plan.projects[0]
+        if coordinator.layout.transaction_root is None:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
+                "Mise staging requires an explicit transaction coordinator"
+            )
+        seed_name = "mise.cmd" if os.name == "nt" else "mise"
+        seed = files.read_state(
+            plan.layout.scope_root / "bin" / seed_name, required=True
+        )
+        if seed.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(seed)
+        runtime_scratch = coordinator.layout.transaction_root / "runtime"
         receipt = self._runtime.latest_receipt(
-            plan.projects[0], credential_command=credential_command
+            seed.value, scratch=runtime_scratch
         )
         if receipt.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                receipt
-            )
-        runtime_scratch = plan.projects[0].layout.transaction_root / "runtime"
-        environment = process.credential_environment(
-            runtime_scratch, credential_command
-        )
-        launcher = receipt.value / "bin" / (
-            "mise.cmd" if os.name == "nt" else "mise"
-        )
-        credential = process.validate_credential_source(
-            launcher, cwd=runtime_scratch, env=environment
-        )
-        if credential.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                credential
-            )
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(receipt)
+        environment = process.environment(runtime_scratch)
+        launcher = receipt.value / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
         receipt_states = candidates.receipt_states(receipt.value)
         if receipt_states.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                receipt_states
-            )
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(receipt_states)
         stages: list[Path] = []
         for project in plan.projects:
+            if project.layout.transaction_root is None:
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
+                    f"Mise transaction root is absent: {project.layout.selector}"
+                )
             stage_root = project.layout.transaction_root / "stage"
             staged = self._stage_project(
                 project,
@@ -68,9 +65,7 @@ class FlextInfraMiseStaging:
                 environment=environment,
             )
             if staged.failure:
-                return r[
-                    tuple[m.Infra.MiseToolchainPublication, ...]
-                ].from_failure(staged)
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(staged)
             stages.append(stage_root)
         return candidates.publication_plan(plan.projects, tuple(stages))
 
@@ -84,12 +79,18 @@ class FlextInfraMiseStaging:
         environment: dict[str, str],
     ) -> p.Result[bool]:
         """Build and validate one project without reading mutable source bytes."""
-        try:
-            (stage_root / "bin").mkdir(parents=True, exist_ok=False)
-        except OSError as exc:
-            return r[bool].fail_op(
-                f"create Mise stage for {project.layout.selector}", exc
+        stage_plan = u.Cli.atomic_plan_directory_chain(stage_root / "bin")
+        if stage_plan.failure:
+            return r[bool].from_failure(stage_plan)
+        if tuple(stage_plan.value.directories) != (stage_root, stage_root / "bin"):
+            return r[bool].fail(
+                f"Mise stage already exists for {project.layout.selector}"
             )
+        created = u.Cli.atomic_create_directory_chain_guarded(
+            stage_plan.value, permission_mode=0o700
+        )
+        if created.failure:
+            return r[bool].from_failure(created)
         config_write = process.write_new(
             stage_root / files.CONFIG_SPEC[0],
             project.config.replacement_content,

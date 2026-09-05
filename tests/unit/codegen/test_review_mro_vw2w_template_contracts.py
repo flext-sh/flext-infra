@@ -20,11 +20,7 @@ _RELEASE = _TEMPLATES / ".github" / "workflows" / "release.yml.j2"
 _CI = _TEMPLATES / ".github" / "workflows" / "ci.yml.j2"
 _DOCS = _TEMPLATES / ".github" / "workflows" / "docs.yml.j2"
 _PRIVATE_SUBMODULES = (
-    _TEMPLATES
-    / ".github"
-    / "workflows"
-    / "_fragments"
-    / "private_submodules_init.j2"
+    _TEMPLATES / ".github" / "workflows" / "_fragments" / "private_submodules_init.j2"
 )
 
 
@@ -47,7 +43,8 @@ class TestsReviewTemplateContracts:
         tm.that(
             "infra_repository" in m.Infra.ProjectRenderContext.model_fields, eq=False
         )
-        tm.that(text, has="SETUP_MISE_VERSION := {{ mise_version }}")
+        tm.that(text, lacks="SETUP_MISE_VERSION")
+        tm.that(text, has="override SETUP_MISE := $(TRACKED_MISE)")
         tm.that(text, has="setup: _bootstrap_setup_tools")
         tm.that(text, has="env -u MISE_INSTALL_PATH -u MISE_VERSION")
 

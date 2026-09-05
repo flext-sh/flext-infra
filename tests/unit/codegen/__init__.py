@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .lazy_init_bootstrap_package_tests import (
         TestsFlextInfraLazyInitBootstrapPackage,
     )
+    from .lazy_init_file_plan_tests import TestsFlextInfraCodegenLazyInitFilePlans
     from .lazy_init_fixture_settings_tests import (
         TestsFlextInfraLazyInitFixtureSettingsCollision,
     )
@@ -74,6 +75,7 @@ __all__: tuple[str, ...] = (
     "TestsCodegenMakeEnvironment",
     "TestsFlextInfraCodegenConformProgress",
     "TestsFlextInfraCodegenGeneration",
+    "TestsFlextInfraCodegenLazyInitFilePlans",
     "TestsFlextInfraCodegenLazyInitService",
     "TestsFlextInfraCodegenManagedConflicts",
     "TestsFlextInfraCodegenPipelinePerformance",
@@ -115,6 +117,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_bootstrap_package_tests": (
                 "TestsFlextInfraLazyInitBootstrapPackage",
             ),
+            ".lazy_init_file_plan_tests": ("TestsFlextInfraCodegenLazyInitFilePlans",),
             ".lazy_init_fixture_settings_tests": (
                 "TestsFlextInfraLazyInitFixtureSettingsCollision",
             ),

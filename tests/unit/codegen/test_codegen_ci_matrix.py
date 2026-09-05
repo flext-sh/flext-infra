@@ -87,15 +87,16 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
-    def test_latest_mise_uses_the_actions_native_default(self, tmp_path: Path) -> None:
-        """The action resolves an omitted version; literal latest becomes vlatest."""
+    def test_latest_mise_is_owned_only_by_make_setup(self, tmp_path: Path) -> None:
+        """Generated workflows never install Mise or uv beside make setup."""
         root = self._render_project(tmp_path / "external")
         workflows = root / ".github" / "workflows"
 
         for workflow in workflows.glob("*.yml"):
             content = workflow.read_text(encoding="utf-8")
-            if "jdx/mise-action" in content:
-                tm.that(content, lacks="version: latest")
+            tm.that(content, lacks="jdx/mise-action")
+            tm.that(content, lacks="astral-sh/setup-uv")
+            tm.that(content, lacks="Install direnv")
 
     def test_external_attestation_orchestration_is_not_generated_by_flext(
         self, tmp_path: Path

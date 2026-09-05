@@ -21,11 +21,7 @@ def normalize_lock_mode(path: Path) -> p.Result[bool]:
     if state.value.content is None or state.value.mode is None:
         return r[bool].fail(f"generated Mise lock is absent: {path}")
     return u.Cli.atomic_write_binary_file_guarded(
-        path,
-        state.value.content,
-        expected_bytes=state.value.content,
-        expected_mode=state.value.mode,
-        permission_mode=files.ARTIFACT_SPECS[2][1],
+        state.value, state.value.content, permission_mode=files.ARTIFACT_SPECS[2][1]
     )
 
 
@@ -45,11 +41,10 @@ def receipt_states(receipt: Path) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]
 
 
 def publication_plan(
-    projects: tuple[m.Infra.MiseToolchainProjectState, ...],
-    stages: tuple[Path, ...],
-) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
+    projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
+) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
     """Bind each staged artifact to its exact pre-lock destination state."""
-    publications: list[m.Infra.MiseToolchainPublication] = []
+    publications: list[m.Infra.CodegenStagedFile] = []
     for project, stage in zip(projects, stages, strict=True):
         before_states = (
             project.config.before,
@@ -62,20 +57,22 @@ def publication_plan(
         ):
             replacement = files.read_state(stage / name, required=True)
             if replacement.failure or replacement.value.content is None:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].fail(
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     replacement.error or f"missing staged Mise artifact: {name}"
                 )
             if replacement.value.mode != mode:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].fail(
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     f"staged Mise artifact mode differs: {stage / name}"
                 )
             publications.append(
-                m.Infra.MiseToolchainPublication(
+                m.Infra.CodegenStagedFile(
+                    phase="mise",
+                    project=project.layout.root,
                     before=before,
                     replacement=replacement.value,
                 )
             )
-    return r[tuple[m.Infra.MiseToolchainPublication, ...]].ok(tuple(publications))
+    return r[tuple[m.Infra.CodegenStagedFile, ...]].ok(tuple(publications))
 
 
 __all__: list[str] = ["normalize_lock_mode", "publication_plan", "receipt_states"]

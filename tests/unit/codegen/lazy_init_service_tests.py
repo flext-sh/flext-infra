@@ -43,7 +43,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = "flext_test_selected"
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
 
         tm.that(result.success, eq=True)
         tm.that((selected_root / c.Infra.INIT_PY).read_bytes(), ne=b"")
@@ -90,7 +90,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = "flext_test_selected"
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
         selected_generated = selected_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
@@ -122,7 +122,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service = u.Tests.create_lazy_init_service(workspace_root)
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
         generated_root = package_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
@@ -175,7 +175,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = "flext_test_selected"
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
         generated_root = selected_root.joinpath(c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
@@ -205,7 +205,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = c.Infra.DIR_EXAMPLES
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
         generated = examples_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.that(result.success, eq=True)
@@ -249,7 +249,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = c.Infra.DIR_TESTS
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
         generated = tests_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
 
         tm.that(result.success, eq=True)
@@ -317,7 +317,7 @@ class TestsFlextInfraCodegenLazyInitService:
         apply_service.target_module = "flext_test_project"
         apply_service.apply_changes = True
 
-        apply_result = apply_service.execute()
+        apply_result = u.Tests.materialize_lazy_init(apply_service)
         generated_init = init_path.read_bytes()
         check_service = u.Tests.create_lazy_init_service(workspace_root)
         check_service.target_module = "flext_test_project"
@@ -344,7 +344,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = "flext_missing"
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
 
         tm.that(result.success, eq=False)
         tm.that(init_path.read_bytes(), eq=original_init)
@@ -375,7 +375,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = "flext_shared"
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
 
         tm.that(result.success, eq=False)
         tm.that(first_init.read_bytes(), eq=first_before)
@@ -383,30 +383,6 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that((first_root / "__unit__.py").exists(), eq=False)
         tm.that((second_root / "__unit__.py").exists(), eq=False)
         tm.that(service.modified_files, eq=())
-
-    # flext-96j2.4 (agent: claude): the batched lint stage validates the whole
-    # changed set in one Ruff invocation and flags any dirty artifact.
-    def test_batch_lint_flags_dirty_generated_artifact(self, tmp_path: Path) -> None:
-        """Batched lint reports a Ruff-dirty generated file and passes clean ones."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        service = u.Tests.create_lazy_init_service(workspace_root)
-        clean_file = package_root / "clean_generated.py"
-        clean_file.write_text(
-            '"""Clean generated artifact."""\n\nfrom __future__ import annotations\n',
-            encoding="utf-8",
-        )
-        dirty_file = package_root / "dirty_generated.py"
-        dirty_file.write_text(
-            '"""Dirty generated artifact."""\n\nimport os\n', encoding="utf-8"
-        )
-
-        clean_errors = service.batch_lint_generated((str(clean_file),))
-        dirty_errors = service.batch_lint_generated((str(dirty_file),))
-        empty_errors = service.batch_lint_generated(())
-
-        tm.that(clean_errors, eq=0)
-        tm.that(dirty_errors, gt=0)
-        tm.that(empty_errors, eq=0)
 
     # flext-96j2.4 (agent: claude): lint runs as one batched stage at the end of
     # generation, not per rendered template. Applied initializers must still be
@@ -424,7 +400,7 @@ class TestsFlextInfraCodegenLazyInitService:
         service.target_module = "flext_test_project"
         service.apply_changes = True
 
-        result = service.execute()
+        result = u.Tests.materialize_lazy_init(service)
 
         tm.that(result.success, eq=True)
         tm.that(service.modified_files, eq=(str(init_path),))
@@ -437,13 +413,10 @@ class TestsFlextInfraCodegenLazyInitService:
         tm.that(ruff_check.success, eq=True)
         tm.that(ruff_check.value.exit_code, eq=0)
 
-    # flext-udpm5: `codegen lazy-init` (wired into `make gen WHAT=check|apply`)
-    # dispatches through the same `execute_command` classmethod contract every
-    # other codegen CLI route uses; prove it end to end without mocks.
-    def test_execute_command_matches_public_cli_route_contract(
+    def test_execute_command_rejects_publication_outside_conform(
         self, tmp_path: Path
     ) -> None:
-        """The `codegen lazy-init` CLI route applies through execute_command."""
+        """The public route checks plans while conform alone owns publication."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
@@ -456,16 +429,19 @@ class TestsFlextInfraCodegenLazyInitService:
 
         apply_result = FlextInfraCodegenLazyInit.execute_command(apply_service)
         applied_init = init_path.read_bytes()
+        materialized = u.Tests.materialize_lazy_init(apply_service)
         check_service = u.Tests.create_lazy_init_service(workspace_root)
         check_service.target_module = "flext_test_project"
         check_service.check_only = True
 
         check_result = FlextInfraCodegenLazyInit.execute_command(check_service)
 
-        tm.that(apply_result.success, eq=True)
-        tm.that(applied_init, ne=original_init)
+        tm.that(apply_result.success, eq=False)
+        tm.that(apply_result.error, has="publication is owned by codegen conform")
+        tm.that(applied_init, eq=original_init)
+        tm.that(materialized.success, eq=True)
         tm.that(check_result.success, eq=True)
-        tm.that(init_path.read_bytes(), eq=applied_init)
+        tm.that(init_path.read_bytes(), ne=original_init)
 
     # flext-udpm5: reproduces flext_ldif.servers._base's exact shape -- a
     # doubly-nested package whose modules import the project root's own
@@ -509,7 +485,7 @@ class TestsFlextInfraCodegenLazyInitService:
         apply_service.target_module = "flext_test_project.servers._base"
         apply_service.apply_changes = True
 
-        apply_result = apply_service.execute()
+        apply_result = u.Tests.materialize_lazy_init(apply_service)
         applied_init = init_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         check_service = u.Tests.create_lazy_init_service(workspace_root)
         check_service.target_module = "flext_test_project.servers._base"
@@ -566,7 +542,7 @@ class TestsFlextInfraCodegenLazyInitService:
         apply_service.target_module = c.Infra.DIR_TESTS
         apply_service.apply_changes = True
 
-        apply_result = apply_service.execute()
+        apply_result = u.Tests.materialize_lazy_init(apply_service)
         generated_tests_init = tests_init.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         check_service = u.Tests.create_lazy_init_service(workspace_root)
         check_service.target_module = c.Infra.DIR_TESTS

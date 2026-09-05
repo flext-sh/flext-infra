@@ -23,7 +23,9 @@ if TYPE_CHECKING:
 class TestFlextInfraWorkspaceChecker:
     """Test suite for FlextInfraWorkspaceChecker."""
 
-    @pytest.fixture(autouse=True)
+    pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
+
+    @pytest.fixture
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
 

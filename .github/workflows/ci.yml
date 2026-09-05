@@ -50,9 +50,9 @@ jobs:
           submodules: false
           fetch-depth: 0
 
-      # make setup is the only toolchain installer. Its committed Mise seed
-      # resolves and executes the newest signed Mise release, then installs the
-      # exact tool versions recorded in mise.lock before any other Make verb.
+      # make setup is the only toolchain installer. It bootstraps the newest
+      # released Mise, installs the committed fleet toolchain, publishes that
+      # environment through GITHUB_PATH, and prepares the project runtime.
       - name: Restore testmon cache
         id: testmon-restore
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0

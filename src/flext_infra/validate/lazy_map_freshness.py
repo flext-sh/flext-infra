@@ -45,16 +45,12 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
             r with ValidationReport listing each stale ``__init__.py`` as a violation.
 
         """
-        generator = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
-        try:
-            errors = generator.generate_inits(check_only=True)
-        except OSError as exc:
-            return r[m.Infra.ValidationReport].fail_op("lazy-map freshness scan", exc)
-        if errors > 0:
-            return r[m.Infra.ValidationReport].fail(
-                f"lazy-map freshness scan errored in {errors} package(s)"
-            )
-        modified = tuple(generator.modified_files)
+        planned = FlextInfraCodegenLazyInit(workspace_root=workspace_root).plan_files()
+        if planned.failure:
+            return r[m.Infra.ValidationReport].from_failure(planned)
+        modified = tuple(
+            str(plan.path) for plan in planned.value if plan.requires_effect
+        )
         violations: t.MutableSequenceOf[str] = [
             f"stale lazy map: {path}" for path in modified
         ]

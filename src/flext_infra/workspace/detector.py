@@ -513,33 +513,40 @@ class FlextInfraWorkspaceDetector(
                 return r[m.Infra.WorkspaceSpec].fail(
                     f"Git submodule has no superproject: {resolved_root}"
                 )
-            inherited = cls.load_workspace_spec(superproject_root)
-            if inherited.failure:
+            inherited_beads = cls.load_beads_spec(superproject_root)
+            if inherited_beads.failure:
                 return r[m.Infra.WorkspaceSpec].fail(
-                    inherited.error or "workspace member ledger inheritance failed"
+                    inherited_beads.error
+                    or "workspace member ledger inheritance failed"
                 )
-            member = next(
-                (
-                    item
-                    for item in inherited.value.subprojects
-                    if (superproject_root / item.path).resolve() == resolved_root
-                ),
-                None,
-            )
-            if member is None:
+            try:
+                member_path = resolved_root.relative_to(superproject_root)
+            except ValueError:
                 return r[m.Infra.WorkspaceSpec].fail(
-                    "Git submodule is not declared as a governed workspace member: "
+                    f"Git submodule escapes its superproject: {resolved_root}"
+                )
+            baseline = u.Infra.repository_baseline_branch(superproject_root)
+            loaded_member = cls._load_subproject(
+                superproject_root,
+                member_path,
+                integration_branch=baseline.value if baseline.success else None,
+                workspace_beads=inherited_beads.value,
+            )
+            if loaded_member.failure or isinstance(loaded_member.value, Path):
+                return r[m.Infra.WorkspaceSpec].fail(
+                    loaded_member.error
+                    or "Git submodule is not declared as a governed workspace member: "
                     f"{resolved_root}"
                 )
             route_error = cls._submodule_beads_route_error(
-                resolved_root, superproject_root, inherited.value.beads
+                resolved_root, superproject_root, inherited_beads.value
             )
             if route_error is not None:
                 return r[m.Infra.WorkspaceSpec].fail(
                     "workspace member must inherit the workspace Beads ledger: "
                     f"{route_error}"
                 )
-            beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited.value.beads)
+            beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited_beads.value)
         if beads_result.failure:
             return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
         beads = beads_result
@@ -681,12 +688,21 @@ class FlextInfraWorkspaceDetector(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
         """Load exclusions for governed repositories; ignore ungoverned trees."""
-        if not cls._beads_path(repository_root.expanduser().resolve()).is_file():
+        resolved_root = repository_root.expanduser().resolve()
+        if not cls._beads_path(resolved_root).is_file():
             return r[tuple[Path, ...]].ok(())
-        origin = cls._git_origin_url(repository_root)
+        # External analysis exclusions are declared exclusively by this
+        # checkout's own .gitmodules. A workspace member may inherit its Beads
+        # ledger from the parent, but that does not make the parent's complete
+        # repository graph part of the member's analyzer scope. Loading the
+        # inherited workspace here revalidated every sibling once per tooling
+        # phase and turned one member conform into thousands of Git processes.
+        if not (resolved_root / c.Infra.GITMODULES).is_file():
+            return r[tuple[Path, ...]].ok(())
+        origin = cls._git_origin_url(resolved_root)
         if origin.failure or cls._declared_provider_for_url(origin.value) is None:
             return r[tuple[Path, ...]].ok(())
-        workspace = cls.load_workspace_spec(repository_root)
+        workspace = cls.load_workspace_spec(resolved_root)
         if workspace.failure:
             return r[tuple[Path, ...]].fail(workspace.error)
         return r[tuple[Path, ...]].ok(

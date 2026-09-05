@@ -235,7 +235,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         conversion_path.unlink()
         check_service = u.Tests.create_lazy_init_service(workspace_root)
-        tm.that(check_service.generate_inits(check_only=True), eq=0)
+        tm.that(check_service.plan_files().success, eq=True)
         tm.that(self._generated_init(package_root), eq=generated)
 
     def test_private_subpackage_facade_never_becomes_root_public(
@@ -384,7 +384,14 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
         check_service = u.Tests.create_lazy_init_service(workspace_root)
-        tm.that(check_service.generate_inits(check_only=True), eq=0)
+        tm.that(
+            tuple(
+                plan
+                for plan in tm.ok(check_service.plan_files())
+                if plan.requires_effect
+            ),
+            empty=True,
+        )
         tm.that(check_service.modified_files, empty=True)
 
     def test_root_aliases_follow_transitive_parent_exports_from_source(
@@ -521,8 +528,12 @@ class TestsFlextInfraLazyInitHelpers:
         service = u.Tests.create_lazy_init_service(workspace_root).model_copy(
             update={"target_module": "flext_child"}
         )
-        tm.that(service.generate_inits(), eq=0)
-        generated = self._generated_exports(package_root)
+        planned = tm.ok(service.plan_files())
+        generated = next(
+            plan.desired_text
+            for plan in planned
+            if plan.path == package_root.joinpath(c.Infra.INIT_PY).resolve()
+        )
 
         tm.that(generated, lacks='"x"')
         tm.that(generated, lacks='"flext_parent": ("x",)')

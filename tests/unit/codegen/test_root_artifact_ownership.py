@@ -186,6 +186,16 @@ class TestsAncestryNetworkBoundary:
         tests_init = root / "tests" / "__init__.py"
         tests_init.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        for relative_parent in (
+            ".beads",
+            ".github/ci-template",
+            ".github/prompts",
+            ".github/scripts",
+            ".github/workflows",
+            "config",
+            "tests/fixtures/ci/docker",
+        ):
+            root.joinpath(relative_parent).mkdir(parents=True, exist_ok=True)
         u.Tests.commit_git_changes(root, "Seed manifest-less topology")
 
         recorded: list[tuple[tuple[str, ...], int | None]] = []

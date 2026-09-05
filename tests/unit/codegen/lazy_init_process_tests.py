@@ -48,9 +48,9 @@ class TestsFlextInfraLazyInitProcessing:
         original = init_path.read_bytes()
         service = u.Tests.create_lazy_init_service(workspace_root)
 
-        result = service.generate_inits(check_only=True)
+        result = service.plan_files()
 
-        tm.that(result, eq=0)
+        tm.that(result.success, eq=True)
         tm.that(init_path.read_bytes(), eq=original)
         tm.that(str(init_path) in service.modified_files, eq=True)
 
@@ -73,9 +73,7 @@ class TestsFlextInfraLazyInitProcessing:
             alias="worker",
             docstring="Worker.",
         )
-        apply_service = u.Tests.create_lazy_init_service(workspace_root)
-
-        apply_result = apply_service.generate_inits(check_only=False)
+        apply_result = u.Tests.run_lazy_init(workspace_root)
         generated_paths = tuple(
             package_dir / c.Infra.INIT_PY
             for package_dir in (level_two, level_three, level_four)
@@ -103,7 +101,7 @@ class TestsFlextInfraLazyInitProcessing:
             cwd=workspace_root,
         ).unwrap()
         check_service = u.Tests.create_lazy_init_service(workspace_root)
-        check_result = check_service.generate_inits(check_only=True)
+        check_result = u.Tests.run_lazy_init(workspace_root, check_only=True)
         after = tuple(path.read_bytes() for path in generated_paths)
 
         tm.that(apply_result, eq=0)

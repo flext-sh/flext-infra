@@ -2,18 +2,24 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from flext_cli import u
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_cli import u as cli_u
+from flext_core import r
+from flext_infra import config
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
-from flext_infra import config
+from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+
+type _DocsRenderedArtifact = t.Triple[Path, Path, str | None]
 
 
 class FlextInfraUtilitiesDocsGenerate:
@@ -26,173 +32,329 @@ class FlextInfraUtilitiesDocsGenerate:
         return [f"{scope.package_name}.{module}" for module in declared]
 
     @staticmethod
-    def _prune_generated_tree(
-        root: Path, expected: t.SequenceOf[Path], *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Prune stale files from one tool-owned generated tree."""
-        if not root.exists():
-            return []
-        expected_paths = {path.resolve() for path in expected}
-        removed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
-        for path in sorted(root.rglob("*.md")):
-            if path.resolve() in expected_paths:
-                continue
-            if apply:
-                path.unlink(missing_ok=True)
-            removed.append(
-                m.Infra.GeneratedFile(path=path.as_posix(), changed=True, written=apply)
-            )
-        return removed
+    def _directory_sort_key(path: Path) -> tuple[int, str]:
+        """Return the stable parent-first ordering key for a directory."""
+        return len(path.parts), path.as_posix()
 
     @staticmethod
-    def docs_project_generated_files(
-        scope: m.Infra.DocScope, *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Generate the managed docs artifacts for one FLEXT project."""
-        contract = FlextInfraUtilitiesDocsApi.public_contract(
+    def _source_directory_exists(path: Path) -> p.Result[bool]:
+        """Return source-directory presence after physical path authentication."""
+        planned = cli_u.Cli.atomic_plan_directory_chain(path)
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        return r[bool].ok(not planned.value.directories)
+
+    @staticmethod
+    def _source_tree_files(
+        root: Path,
+        *,
+        recursive: bool,
+        suffixes: frozenset[str],
+        excluded_names: frozenset[str] = frozenset(),
+    ) -> p.Result[tuple[Path, ...]]:
+        """List regular source files through one authenticated tree inventory."""
+        planned = cli_u.Cli.atomic_plan_directory_chain(root)
+        if planned.failure:
+            return r[tuple[Path, ...]].from_failure(planned)
+        if planned.value.directories:
+            return r[tuple[Path, ...]].ok(())
+        inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
+        if inventory.failure:
+            return r[tuple[Path, ...]].from_failure(inventory)
+        return r[tuple[Path, ...]].ok(
+            tuple(
+                entry.path
+                for entry in inventory.value.entries
+                if entry.kind == "file"
+                and entry.path.suffix in suffixes
+                and entry.path.name not in excluded_names
+                and (recursive or entry.path.parent == root)
+            )
+        )
+
+    @staticmethod
+    def docs_source_paths(
+        workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
+    ) -> p.Result[tuple[Path, ...]]:
+        """Discover every physical source consumed by one docs render."""
+        roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
+            workspace_root, extra_roots
+        )
+        if roots.failure:
+            return r[tuple[Path, ...]].from_failure(roots)
+        paths: set[Path] = set()
+        for root in roots.value:
+            for fixed_path in (
+                root / c.Infra.GITMODULES,
+                root / c.Infra.PYPROJECT_FILENAME,
+                root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,
+            ):
+                state = cli_u.Cli.atomic_read_binary_file_state(
+                    fixed_path, required=False
+                )
+                if state.failure:
+                    return r[tuple[Path, ...]].from_failure(state)
+                if state.value.content is not None:
+                    paths.add(fixed_path)
+            config_paths = FlextInfraUtilitiesDocsGenerate._source_tree_files(
+                root / "config",
+                recursive=False,
+                suffixes=frozenset({".yaml", ".yml"}),
+            )
+            if config_paths.failure:
+                return r[tuple[Path, ...]].from_failure(config_paths)
+            paths.update(config_paths.value)
+            source_paths = FlextInfraUtilitiesDocsGenerate._source_tree_files(
+                root / c.Infra.DEFAULT_SRC_DIR,
+                recursive=True,
+                suffixes=frozenset({".py"}),
+            )
+            if source_paths.failure:
+                return r[tuple[Path, ...]].from_failure(source_paths)
+            paths.update(source_paths.value)
+            guide_paths = FlextInfraUtilitiesDocsGenerate._source_tree_files(
+                root / c.Infra.DIR_DOCS / "guides",
+                recursive=False,
+                suffixes=frozenset({".md"}),
+                excluded_names=frozenset({"README.md"}),
+            )
+            if guide_paths.failure:
+                return r[tuple[Path, ...]].from_failure(guide_paths)
+            paths.update(guide_paths.value)
+        templates_root = Path(__file__).absolute().parent.parent / "templates"
+        paths.update({
+            templates_root / c.Infra.TEMPLATE_MKDOCS_PROJECT,
+            templates_root / c.Infra.TEMPLATE_MKDOCS_ROOT,
+        })
+        return r[tuple[Path, ...]].ok(tuple(sorted(paths)))
+
+    @staticmethod
+    def docs_verify_sources(
+        workspace_root: Path,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+        *,
+        extra_roots: t.SequenceOf[Path] = (),
+    ) -> p.Result[bool]:
+        """Require exact source topology and physical states to remain unchanged."""
+        discovered = FlextInfraUtilitiesDocsGenerate.docs_source_paths(
+            workspace_root, extra_roots
+        )
+        if discovered.failure:
+            return r[bool].from_failure(discovered)
+        expected_paths = tuple(state.path for state in source_states)
+        if discovered.value != expected_paths:
+            added = sorted(set(discovered.value).difference(expected_paths))
+            removed = sorted(set(expected_paths).difference(discovered.value))
+            return r[bool].fail(
+                "docs source topology changed during planning: "
+                f"added={[path.as_posix() for path in added]}, "
+                f"removed={[path.as_posix() for path in removed]}"
+            )
+        current = FlextInfraUtilitiesDocsContract.docs_snapshot_sources(
+            discovered.value
+        )
+        if current.failure:
+            return r[bool].from_failure(current)
+        for expected, observed in zip(source_states, current.value, strict=True):
+            if observed != expected:
+                return r[bool].fail(
+                    f"docs source changed during planning: {expected.path}"
+                )
+        return r[bool].ok(True)
+
+    @staticmethod
+    def docs_normalize_artifacts(
+        artifacts: t.SequenceOf[_DocsRenderedArtifact],
+    ) -> p.Result[tuple[_DocsRenderedArtifact, ...]]:
+        """Validate one unique lexical owner and target without dereferencing."""
+        normalized: list[_DocsRenderedArtifact] = []
+        targets: set[Path] = set()
+        for project, target, content in artifacts:
+            if (
+                not project.is_absolute()
+                or not target.is_absolute()
+                or ".." in project.parts
+                or ".." in target.parts
+            ):
+                return r[tuple[_DocsRenderedArtifact, ...]].fail(
+                    f"docs publication paths must be absolute and lexical: {target}"
+                )
+            try:
+                target.relative_to(project)
+            except ValueError:
+                return r[tuple[_DocsRenderedArtifact, ...]].fail(
+                    f"docs publication target escapes project {project}: {target}"
+                )
+            if target in targets:
+                return r[tuple[_DocsRenderedArtifact, ...]].fail(
+                    f"duplicate docs publication target: {target}"
+                )
+            targets.add(target)
+            normalized.append((project, target, content))
+        return r[tuple[_DocsRenderedArtifact, ...]].ok(tuple(normalized))
+
+    @staticmethod
+    def docs_required_directories(
+        bundle: m.Infra.DocsGenerationBundle,
+    ) -> p.Result[tuple[Path, ...]]:
+        """Return unique target directories ordered parent before child."""
+        required: set[Path] = set()
+        for scoped in bundle.scopes:
+            for artifact in scoped.artifacts:
+                if artifact.desired_content is None:
+                    continue
+                parent = scoped.scope.path
+                for part in artifact.relative_path.parent.parts:
+                    parent /= part
+                    required.add(parent)
+        return r[tuple[Path, ...]].ok(
+            tuple(
+                sorted(
+                    required, key=FlextInfraUtilitiesDocsGenerate._directory_sort_key
+                )
+            )
+        )
+
+    @staticmethod
+    def docs_file_plans(
+        bundle: m.Infra.DocsGenerationBundle,
+    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+        """Snapshot targets from the canonical rendered artifact inventory."""
+        workspace_root = bundle.scopes[0].scope.path
+        scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
+        stable = FlextInfraUtilitiesDocsGenerate.docs_verify_sources(
+            workspace_root, bundle.source_states, extra_roots=scope_roots
+        )
+        if stable.failure:
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
+        plans: list[m.Infra.CodegenFilePlan] = []
+        for scoped in bundle.scopes:
+            for artifact in scoped.artifacts:
+                planned = FlextInfraUtilitiesDocsContract.docs_file_plan(
+                    scoped.scope.path,
+                    scoped.scope.path / artifact.relative_path,
+                    artifact.desired_content,
+                    desired_mode=artifact.desired_mode,
+                    source_states=bundle.source_states,
+                )
+                if planned.failure:
+                    return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
+                plans.append(planned.value)
+        stable = FlextInfraUtilitiesDocsGenerate.docs_verify_sources(
+            workspace_root, bundle.source_states, extra_roots=scope_roots
+        )
+        if stable.failure:
+            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
+        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(tuple(plans))
+
+    @staticmethod
+    def _prune_generated_tree_artifacts(
+        project: Path, root: Path, rendered: t.SequenceOf[tuple[Path, str]]
+    ) -> p.Result[tuple[_DocsRenderedArtifact, ...]]:
+        """Describe stale files owned by one generated tree as absent artifacts."""
+        planned = cli_u.Cli.atomic_plan_directory_chain(root)
+        if planned.failure:
+            return r[tuple[_DocsRenderedArtifact, ...]].from_failure(planned)
+        if planned.value.directories:
+            return r[tuple[_DocsRenderedArtifact, ...]].ok(())
+        inventory = cli_u.Cli.atomic_inventory_physical_tree(root)
+        if inventory.failure:
+            return r[tuple[_DocsRenderedArtifact, ...]].from_failure(inventory)
+        expected_paths = {
+            path for path, _content in rendered if path.is_relative_to(root)
+        }
+        return r[tuple[_DocsRenderedArtifact, ...]].ok(
+            tuple(
+                (project, entry.path, None)
+                for entry in inventory.value.entries
+                if entry.kind == "file"
+                and entry.path.suffix == ".md"
+                and entry.path not in expected_paths
+            )
+        )
+
+    @staticmethod
+    def docs_project_artifacts(
+        scope: m.Infra.DocScope,
+    ) -> p.Result[tuple[_DocsRenderedArtifact, ...]]:
+        """Render the complete target inventory for one FLEXT project."""
+        analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
             scope.path, scope.package_name
         )
+        contract = FlextInfraUtilitiesDocsContract.docs_current_project_contract(
+            scope.path, analyzed_contract
+        )
         module_names = FlextInfraUtilitiesDocsGenerate._module_names(scope)
-        expected_generated: t.MutableSequenceOf[Path] = [
-            scope.path / "docs/api-reference/generated/overview.md",
-            scope.path / "docs/api-reference/generated/public-api.md",
-            scope.path / "docs/api-reference/generated/modules/index.md",
-        ]
-        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+        rendered: list[tuple[Path, str]] = [
+            (
                 scope.path / "README.md",
                 FlextInfraUtilitiesDocsRender.docs_project_readme(scope, contract),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 scope.path / "docs/index.md",
                 FlextInfraUtilitiesDocsRender.docs_project_index(scope, contract),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 scope.path / "docs/guides/README.md",
                 FlextInfraUtilitiesDocsRender.docs_guides_index(scope),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 scope.path / "docs/api-reference/README.md",
                 FlextInfraUtilitiesDocsRender.docs_api_readme(scope, contract),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 scope.path / "mkdocs.yml",
                 FlextInfraUtilitiesDocsRender.docs_project_mkdocs(
                     scope, contract, module_names
                 ),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 scope.path / "docs/api-reference/generated/modules/index.md",
                 FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 scope.path / "docs/api-reference/generated/overview.md",
                 FlextInfraUtilitiesDocsRender.docs_overview_page(scope, contract),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 scope.path / "docs/api-reference/generated/public-api.md",
                 FlextInfraUtilitiesDocsRender.docs_directive_page(
                     f"{scope.name} Public API", scope.package_name
                 ),
-                apply=apply,
             ),
         ]
         for module_name in module_names:
             relative = module_name.removeprefix(f"{scope.package_name}.").replace(
                 ".", "/"
             )
-            expected_generated.append(
-                scope.path / "docs/api-reference/generated/modules" / f"{relative}.md"
-            )
-            files.append(
-                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    scope.path
-                    / "docs/api-reference/generated/modules"
-                    / f"{relative}.md",
-                    FlextInfraUtilitiesDocsRender.docs_directive_page(
-                        module_name, module_name
-                    ),
-                    apply=apply,
-                )
-            )
-        files.extend(
-            FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
-                scope.path / "docs/api-reference/generated",
-                expected_generated,
-                apply=apply,
-            )
-        )
-        return files
-
-    @staticmethod
-    def docs_project_guides_files(
-        scope: m.Infra.DocScope, *, workspace_root: Path, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Return project guide files managed by generation.
-
-        Guide propagation is intentionally disabled; curated guides stay local.
-        """
-        _ = scope
-        _ = workspace_root
-        _ = apply
-        return []
-
-    @staticmethod
-    def docs_project_mkdocs_files(
-        scope: m.Infra.DocScope, *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Return the managed mkdocs settings file when it does not exist yet."""
-        path = scope.path / "mkdocs.yml"
-        if path.exists():
-            return []
-        contract = FlextInfraUtilitiesDocsApi.public_contract(
-            scope.path, scope.package_name
-        )
-        module_names = FlextInfraUtilitiesDocsGenerate._module_names(scope)
-        return [
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                path,
-                FlextInfraUtilitiesDocsRender.docs_project_mkdocs(
-                    scope, contract, module_names
+            rendered.append((
+                scope.path / "docs/api-reference/generated/modules" / f"{relative}.md",
+                FlextInfraUtilitiesDocsRender.docs_directive_page(
+                    module_name, module_name
                 ),
-                apply=apply,
-                overwrite=False,
-            )
-        ]
+            ))
+        pruned = FlextInfraUtilitiesDocsGenerate._prune_generated_tree_artifacts(
+            scope.path, scope.path / "docs/api-reference/generated", rendered
+        )
+        if pruned.failure:
+            return r[tuple[_DocsRenderedArtifact, ...]].from_failure(pruned)
+        return FlextInfraUtilitiesDocsGenerate.docs_normalize_artifacts((
+            *((scope.path, path, content) for path, content in rendered),
+            *pruned.value,
+        ))
 
     @staticmethod
-    def docs_root_generated_files(
-        workspace_root: Path, *, apply: bool, projects: t.StrSequence | None = None
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Generate root workspace docs artifacts from discovered FLEXT projects.
-
-        The root site is an AGGREGATE of every workspace project, so scope
-        discovery always enumerates all projects: honoring a ``projects``
-        filter here would produce a partial aggregate whose prune step
-        deletes the pages of every filtered-out project (flext-o6h5 incident).
-        """
-        _ = projects
+    def docs_root_artifacts(
+        workspace_root: Path, scopes: t.SequenceOf[m.Infra.DocScope]
+    ) -> p.Result[tuple[_DocsRenderedArtifact, ...]]:
+        """Render aggregate root targets from the complete discovered project set."""
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             workspace_root
         )
         exclude_docs = FlextInfraUtilitiesDocsRender.as_string_sequence(
             workspace_contract, "exclude_docs"
         )
-        scopes_result = FlextInfraUtilitiesDocs.build_scopes(
-            workspace_root, None, c.Infra.DEFAULT_DOCS_OUTPUT_DIR
-        )
-        scopes = (
-            [scope for scope in scopes_result.value if scope.name != c.Infra.RK_ROOT]
-            if scopes_result.success
-            else []
-        )
+        project_scopes = [scope for scope in scopes if scope.name != c.Infra.RK_ROOT]
         catalog_entries: t.MutableSequenceOf[dict[str, str]] = []
         class_counts: dict[str, int] = {}
         # flext-o6h5 (agent: kimi) — root site aggregates per-project module
@@ -200,18 +362,28 @@ class FlextInfraUtilitiesDocsGenerate:
         # and src paths feed the mkdocstrings resolution block.
         scope_modules: dict[str, list[str]] = {}
         src_paths: t.MutableSequenceOf[str] = []
-        for scope in scopes:
+        for scope in project_scopes:
             class_counts[scope.project_class] = (
                 class_counts.get(scope.project_class, 0) + 1
             )
-            project_contract = FlextInfraUtilitiesDocsApi.public_contract(
+            analyzed_contract = FlextInfraUtilitiesDocsApi.public_contract(
                 scope.path, scope.package_name
+            )
+            project_contract = (
+                FlextInfraUtilitiesDocsContract.docs_current_project_contract(
+                    scope.path, analyzed_contract
+                )
             )
             scope_modules[scope.name] = FlextInfraUtilitiesDocsGenerate._module_names(
                 scope
             )
             src_dir = scope.path / "src"
-            if src_dir.is_dir():
+            src_exists = FlextInfraUtilitiesDocsGenerate._source_directory_exists(
+                src_dir
+            )
+            if src_exists.failure:
+                return r[tuple[_DocsRenderedArtifact, ...]].from_failure(src_exists)
+            if src_exists.value:
                 src_paths.append(src_dir.relative_to(workspace_root).as_posix())
             catalog_entries.append({
                 "name": scope.name,
@@ -220,53 +392,36 @@ class FlextInfraUtilitiesDocsGenerate:
                 "description": str(project_contract.get("description", "")).strip(),
                 "api_page": f"../../api-reference/generated/{scope.name}.md",
             })
-        expected_api_generated: t.MutableSequenceOf[Path] = [
-            workspace_root / "docs/api-reference/generated/overview.md"
-        ]
-        expected_project_generated: t.MutableSequenceOf[Path] = [
-            workspace_root / "docs/projects/generated/catalog.md"
-        ]
-        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = [
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+        rendered: list[tuple[Path, str]] = [
+            (
                 workspace_root / "mkdocs.yml",
                 FlextInfraUtilitiesDocsRender.docs_root_mkdocs(
                     workspace_contract, src_paths
                 ),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 workspace_root / "docs/api-reference/generated/overview.md",
                 FlextInfraUtilitiesDocsRender.docs_root_overview_page(
                     workspace_contract,
-                    project_count=len(scopes),
+                    project_count=len(project_scopes),
                     class_counts=class_counts,
                 ),
-                apply=apply,
             ),
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
+            (
                 workspace_root / "docs/projects/generated/catalog.md",
                 FlextInfraUtilitiesDocsRender.docs_project_catalog_page(
                     catalog_entries, exclude_docs=exclude_docs
                 ),
-                apply=apply,
             ),
         ]
         projects_index_entries: t.MutableSequenceOf[dict[str, str]] = []
-        for scope in scopes:
-            expected_api_generated.append(
-                workspace_root / "docs/api-reference/generated" / f"{scope.name}.md"
-            )
-            files.append(
-                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    workspace_root
-                    / "docs/api-reference/generated"
-                    / f"{scope.name}.md",
-                    FlextInfraUtilitiesDocsRender.docs_directive_page(
-                        f"{scope.name} Public API", scope.package_name
-                    ),
-                    apply=apply,
-                )
-            )
+        for scope in project_scopes:
+            rendered.append((
+                workspace_root / "docs/api-reference/generated" / f"{scope.name}.md",
+                FlextInfraUtilitiesDocsRender.docs_directive_page(
+                    f"{scope.name} Public API", scope.package_name
+                ),
+            ))
             # flext-o6h5 (agent: kimi) — per-project module pages reuse the
             # exact project-scope renderers (docs_modules_index +
             # docs_directive_page); index lives inside modules/ so relative
@@ -278,31 +433,21 @@ class FlextInfraUtilitiesDocsGenerate:
                 / scope.name
                 / "modules"
             )
-            expected_api_generated.append(modules_root / "index.md")
-            files.append(
-                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    modules_root / "index.md",
-                    FlextInfraUtilitiesDocsRender.docs_modules_index(
-                        scope, module_names
-                    ),
-                    apply=apply,
-                )
-            )
+            rendered.append((
+                modules_root / "index.md",
+                FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
+            ))
             for module_name in module_names:
                 relative = module_name.removeprefix(f"{scope.package_name}.").replace(
                     ".", "/"
                 )
                 module_path = modules_root / f"{relative}.md"
-                expected_api_generated.append(module_path)
-                files.append(
-                    FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                        module_path,
-                        FlextInfraUtilitiesDocsRender.docs_directive_page(
-                            module_name, module_name
-                        ),
-                        apply=apply,
-                    )
-                )
+                rendered.append((
+                    module_path,
+                    FlextInfraUtilitiesDocsRender.docs_directive_page(
+                        module_name, module_name
+                    ),
+                ))
             projects_index_entries.append({
                 "name": scope.name,
                 "module_count": str(len(module_names)),
@@ -310,158 +455,45 @@ class FlextInfraUtilitiesDocsGenerate:
         projects_index_path = (
             workspace_root / "docs/api-reference/generated/projects/index.md"
         )
-        expected_api_generated.append(projects_index_path)
-        files.append(
-            FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                projects_index_path,
-                FlextInfraUtilitiesDocsRender.docs_root_projects_index(
-                    projects_index_entries
-                ),
-                apply=apply,
+        rendered.append((
+            projects_index_path,
+            FlextInfraUtilitiesDocsRender.docs_root_projects_index(
+                projects_index_entries
+            ),
+        ))
+        api_pruned = FlextInfraUtilitiesDocsGenerate._prune_generated_tree_artifacts(
+            workspace_root,
+            workspace_root / "docs/api-reference/generated",
+            rendered,
+        )
+        if api_pruned.failure:
+            return r[tuple[_DocsRenderedArtifact, ...]].from_failure(api_pruned)
+        projects_pruned = (
+            FlextInfraUtilitiesDocsGenerate._prune_generated_tree_artifacts(
+                workspace_root, workspace_root / "docs/projects/generated", rendered
             )
         )
-        files.extend(
-            FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
-                workspace_root / "docs/api-reference/generated",
-                expected_api_generated,
-                apply=apply,
-            )
-        )
-        files.extend(
-            FlextInfraUtilitiesDocsGenerate._prune_generated_tree(
-                workspace_root / "docs/projects/generated",
-                expected_project_generated,
-                apply=apply,
-            )
-        )
-        return files
+        if projects_pruned.failure:
+            return r[tuple[_DocsRenderedArtifact, ...]].from_failure(projects_pruned)
+        return FlextInfraUtilitiesDocsGenerate.docs_normalize_artifacts((
+            *((workspace_root, path, content) for path, content in rendered),
+            *api_pruned.value,
+            *projects_pruned.value,
+        ))
 
     @staticmethod
-    def docs_sanitize_scope_fences(
-        scope: m.Infra.DocScope, *, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Remove unsupported ``notest`` qualifiers from code fence info lines."""
-        changed: t.MutableSequenceOf[m.Infra.GeneratedFile] = []
-        docs_root = scope.path / "docs"
-        if not docs_root.exists():
-            return changed
-        for path in sorted(docs_root.rglob("*.md")):
-            content = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            sanitized = c.Infra.FENCE_NOTEST_RE.sub(r"```\1", content)
-            if sanitized == content:
-                continue
-            changed.append(
-                FlextInfraUtilitiesDocsContract.docs_write_if_needed(
-                    path, sanitized, apply=apply
-                )
-            )
-        return changed
-
-    @staticmethod
-    def docs_generate_scope(
+    def docs_scope_artifacts(
         scope: m.Infra.DocScope,
         *,
-        apply: bool,
         workspace_root: Path,
-        projects: t.StrSequence | None = None,
-    ) -> m.Infra.DocsPhaseReport:
-        """Generate one scope and persist the standard reports."""
-        files: t.MutableSequenceOf[m.Infra.GeneratedFile] = list(
-            FlextInfraUtilitiesDocsGenerate.docs_root_generated_files(
-                workspace_root, apply=apply, projects=projects
+        aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
+    ) -> p.Result[tuple[_DocsRenderedArtifact, ...]]:
+        """Return the rendered artifact inventory for one docs scope."""
+        if scope.name == c.Infra.RK_ROOT:
+            return FlextInfraUtilitiesDocsGenerate.docs_root_artifacts(
+                workspace_root, aggregate_scopes
             )
-            if scope.name == c.Infra.RK_ROOT
-            else FlextInfraUtilitiesDocsGenerate.docs_project_generated_files(
-                scope, apply=apply
-            )
-        )
-        files.extend(
-            FlextInfraUtilitiesDocsGenerate.docs_sanitize_scope_fences(
-                scope, apply=apply
-            )
-        )
-        changed = u.count(files, lambda item: item.changed)
-        generated = u.count(files, lambda item: item.written)
-        files_payload: t.JsonList = [
-            {"path": item.path, "changed": item.changed, "written": item.written}
-            for item in files
-        ]
-        summary_payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python({
-            c.Infra.RK_SUMMARY: {
-                c.Infra.RK_SCOPE: scope.name,
-                "changed": changed,
-                "generated": generated,
-                "apply": apply,
-            },
-            "files": files_payload,
-        })
-        _ = u.Cli.json_write(
-            scope.report_dir / "generate-summary.json", summary_payload
-        )
-        _ = FlextInfraUtilitiesDocs.write_markdown(
-            scope.report_dir / "generate-report.md",
-            [
-                "# Docs Generate Report",
-                "",
-                f"Scope: {scope.name}",
-                f"Generated files: {generated}",
-            ],
-        )
-        return m.Infra.DocsPhaseReport(
-            phase="generate",
-            scope=scope.name,
-            changed_files=changed,
-            generated=generated,
-            applied=apply,
-            source="code-docstring-ssot",
-            items=[
-                m.Infra.DocsPhaseItemModel(
-                    phase="generate", path=item.path, written=item.written
-                )
-                for item in files
-            ],
-            result=(
-                c.Infra.ResultStatus.OK
-                if apply or changed == 0
-                else c.Infra.ResultStatus.FAIL
-            ),
-            reason=f"changes:{changed}",
-            passed=apply or changed == 0,
-        )
-
-    @staticmethod
-    def docs_project_guide_content(
-        content: str, project_name: str, guide_name: str
-    ) -> str:
-        """Return guide content normalized for project-local publication."""
-        lines = content.splitlines()
-        title = Path(guide_name).stem.replace("_", " ").replace("-", " ").strip()
-        body_lines = lines
-        for index, line in enumerate(lines):
-            match = c.Infra.HEADING_RE.match(line)
-            if match is None:
-                continue
-            title = match.group(1).strip() or title
-            body_lines = lines[index + 1 :]
-            break
-        body = "\n".join(body_lines).lstrip()
-        heading = f"# {project_name} - {title}"
-        return f"{heading}\n\n{body}".rstrip() + "\n"
-
-    @staticmethod
-    def docs_sanitize_internal_anchor_links(content: str) -> str:
-        """Replace local markdown links with plain text while preserving externals."""
-
-        def sanitize_link(match: re.Match[str]) -> str:
-            target = match.group(2)
-            return (
-                match.group(0)
-                if target.startswith(("http://", "https://", "#", "mailto:"))
-                else match.group(1)
-            )
-
-        pattern: re.Pattern[str] = c.Infra.MARKDOWN_LINK_RE
-        return re.sub(pattern, sanitize_link, content)
+        return FlextInfraUtilitiesDocsGenerate.docs_project_artifacts(scope)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGenerate"]
