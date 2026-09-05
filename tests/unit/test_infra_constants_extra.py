@@ -13,14 +13,14 @@ from tests import c
 class TestsFlextInfraInfraConstantsExtra:
     """Tests for Check namespace constants."""
 
-    def test_check_dirs_subproject_is_list(self) -> None:
-        tm.that(c.Infra.CHECK_DIRS_SUBPROJECT, is_=tuple)
+    def test_check_dirs_declared_repository_is_list(self) -> None:
+        tm.that(c.Infra.CHECK_DIRS_REPOSITORY, is_=tuple)
 
-    def test_check_dirs_subproject_is_productive_src_only(self) -> None:
-        tm.that(c.Infra.CHECK_DIRS_SUBPROJECT, eq=("src",))
+    def test_check_dirs_declared_repository_is_productive_src_only(self) -> None:
+        tm.that(c.Infra.CHECK_DIRS_REPOSITORY, eq=("src",))
 
     def test_check_dirs_are_strings(self) -> None:
-        for d in c.Infra.CHECK_DIRS_SUBPROJECT:
+        for d in c.Infra.CHECK_DIRS_REPOSITORY:
             tm.that(d, is_=str)
 
     def test_github_repo_url_constant(self) -> None:

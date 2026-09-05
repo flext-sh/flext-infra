@@ -47,9 +47,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     kind: ClassVar[str] = "rope"
     _PRIVATE_NAMESPACE_MIN_PARTS: ClassVar[int] = 2
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used to open rope projects."""
-        super().__init__(workspace_root)
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used to open rope projects."""
+        super().__init__(repository_root)
 
     @staticmethod
     def _build_project_fix_result(
@@ -298,7 +298,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 detect_ctx = m.Infra.DetectorContext(
                     file_path=file_path,
@@ -361,7 +361,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         skipped: list[m.Infra.SkippedViolation] = []
         failed: list[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in self._collect_file_paths(project_dir, violations):
                 resource = u.Infra.get_resource_from_path(rope_project, file_path)
                 if resource is None:
@@ -533,7 +533,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 detect_ctx = m.Infra.DetectorContext(
                     file_path=file_path,
@@ -639,7 +639,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         skipped: list[m.Infra.SkippedViolation] = []
         failed: list[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in self._collect_file_paths(project_dir, violations):
                 detect_ctx = m.Infra.DetectorContext(
                     file_path=file_path,
@@ -811,7 +811,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         failed: list[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
 
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for _rule, probe in violations:
                 file_path_str = getattr(probe, "file_path", "")
                 file_path = Path(file_path_str)
@@ -961,7 +961,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 ),
             )
         package_dir = layout.package_dir
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 resource = u.Infra.fetch_python_resource(
                     rope_project, file_path, skip_protected=True, skip_settings=True

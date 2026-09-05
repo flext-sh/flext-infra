@@ -226,7 +226,7 @@ class FlextInfraModelsRelease:
 
     class ReleasePhaseDispatchConfig(
         mm.ProjectNamesListMixin,
-        mm.WorkspaceRootPathMixin,
+        mm.RepositoryRootPathMixin,
         mm.VersionTagMixin,
         m.ArbitraryTypesModel,
     ):

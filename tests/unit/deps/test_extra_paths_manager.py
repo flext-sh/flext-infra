@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from tests import t
 
 
-def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
-    return ExtraPathsTestSupport.manager(workspace_root)
+def _manager(repository_root: Path | None = None) -> FlextInfraExtraPathsManager:
+    return ExtraPathsTestSupport.manager(repository_root)
 
 
 class TestsFlextInfraExtraPathsManager:
@@ -99,14 +99,15 @@ class TestsFlextInfraExtraPathsManager:
         self, tmp_path: Path
     ) -> None:
         """An existing empty env_dir is not reintroduced after conform removes it."""
-        (tmp_path / "src" / "demo").mkdir(parents=True)
-        (tmp_path / "src" / "demo" / "__init__.py").write_text("", encoding="utf-8")
-        (tmp_path / "tests").mkdir()
-        (tmp_path / "tests" / "test_demo.py").write_text("", encoding="utf-8")
-        (tmp_path / "examples").mkdir()
+        project = u.Tests.mk_project(tmp_path, "demo")
+        (project / "src" / "demo").mkdir(parents=True)
+        (project / "src" / "demo" / "__init__.py").write_text("", encoding="utf-8")
+        (project / "tests").mkdir()
+        (project / "tests" / "test_demo.py").write_text("", encoding="utf-8")
+        (project / "examples").mkdir()
 
-        includes = _manager(tmp_path).pyrefly_project_includes(
-            project_dir=tmp_path, is_root=False
+        includes = _manager(project).pyrefly_project_includes(
+            project_dir=project, is_root=False
         )
 
         tm.that(includes, eq=["src/**/*.py*", "tests/**/*.py*"])

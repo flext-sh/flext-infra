@@ -42,7 +42,7 @@ class FlextInfraCleanService(s[int]):
         return tuple(
             path
             for name in spec.cache_dirs
-            for path in self.workspace_root.rglob(name)
+            for path in self.repository_root.rglob(name)
             if path.is_dir()
         )
 
@@ -52,7 +52,7 @@ class FlextInfraCleanService(s[int]):
         return tuple(
             path
             for name in (*spec.root_dirs, *spec.root_files)
-            if (path := self.workspace_root / name).exists()
+            if (path := self.repository_root / name).exists()
         )
 
     def _trace_files(self) -> tuple[Path, ...]:
@@ -61,22 +61,22 @@ class FlextInfraCleanService(s[int]):
         return tuple(
             path
             for pattern in spec.trace_globs
-            for path in self.workspace_root.rglob(pattern)
+            for path in self.repository_root.rglob(pattern)
             if path.is_file()
         )
 
     @override
     def execute(self) -> p.Result[int]:
         """Report the disposable residue, removing it when apply is requested."""
-        if not self.workspace_root.is_dir():
-            return r[int].fail(f"workspace is not a directory: {self.workspace_root}")
+        if not self.repository_root.is_dir():
+            return r[int].fail(f"workspace is not a directory: {self.repository_root}")
         targets = (*self._cache_dirs(), *self._root_entries(), *self._trace_files())
         if not targets:
             u.Cli.info("clean: no disposable artifacts")
             return r[int].ok(0)
         if not self.apply_changes:
             for target in targets:
-                u.Cli.info(f"  {target.relative_to(self.workspace_root)}")
+                u.Cli.info(f"  {target.relative_to(self.repository_root)}")
             apply_token = config.Infra.codegen.make.apply_variable
             apply_value = config.Infra.codegen.make.apply_value
             u.Cli.info(

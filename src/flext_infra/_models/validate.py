@@ -34,7 +34,7 @@ class FlextInfraModelsCore:
 
         rules_list: Annotated[t.JsonList, m.Field(description="Rules to evaluate")]
         skill_dir: Annotated[Path, m.Field(description="Skill directory path")]
-        root: Annotated[Path, m.Field(description="Workspace root path")]
+        root: Annotated[Path, m.Field(description="Repository root path")]
         mode: Annotated[
             c.Infra.OperationMode, m.Field(description="Skill validation mode")
         ]
@@ -47,7 +47,7 @@ class FlextInfraModelsCore:
         rules: Annotated[
             t.MappingKV[str, t.Infra.InfraValue], m.Field(description="Rules payload")
         ]
-        root: Annotated[Path, m.Field(description="Workspace root path")]
+        root: Annotated[Path, m.Field(description="Repository root path")]
         skill_name: Annotated[str, m.Field(description="Skill folder name")]
         mode: Annotated[
             c.Infra.OperationMode, m.Field(description="Skill validation mode")

@@ -55,8 +55,8 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         reuse the same validation rules and avoid ad-hoc multi-parameter calls.
         """
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Workspace root for docs generation")
+        repository_root: Annotated[
+            Path, m.Field(description="Repository root for docs generation")
         ]
         projects: Annotated[
             t.StrSequence | None, m.Field(description="Optional selected project names")
@@ -91,7 +91,7 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         )
 
     class DocScope(m.ArbitraryTypesModel):
-        """Documentation scope targeting a project or workspace root."""
+        """Documentation scope targeting a project or repository root."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
         path: Annotated[Path, m.Field(description="Absolute path to scope root")]

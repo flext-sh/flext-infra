@@ -43,8 +43,8 @@ class FlextInfraValidateImportCycles(s[bool]):
 
     _MIN_CYCLE_SIZE: ClassVar[int] = 2
 
-    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
-        """Scan ``workspace_root`` for runtime import cycles via rope.
+    def build_report(self, repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
+        """Scan ``repository_root`` for runtime import cycles via rope.
 
         Detection is scoped per project root: each governed project is an
         independent import unit with its own ``sys.path`` at test/runtime, so
@@ -54,14 +54,14 @@ class FlextInfraValidateImportCycles(s[bool]):
         root is scanned as one unit.
 
         Args:
-            workspace_root: Path under which to discover and scan projects.
+            repository_root: Path under which to discover and scan projects.
 
         Returns:
             r with ValidationReport listing each cyclic SCC as a violation.
 
         """
         try:
-            graphs = self._build_graphs(workspace_root)
+            graphs = self._build_graphs(repository_root)
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail_op("import-cycles scan", exc)
         total_modules = 0
@@ -92,23 +92,23 @@ class FlextInfraValidateImportCycles(s[bool]):
         )
 
     def _build_graphs(
-        self, workspace_root: Path
+        self, repository_root: Path
     ) -> list[tuple[str, MutableMapping[str, set[str]]]]:
         """Build one import graph per governed project root (one import unit).
 
-        Falls back to a single graph over ``workspace_root`` when no governed
+        Falls back to a single graph over ``repository_root`` when no governed
         project roots are discoverable, preserving behaviour for bare synthetic
         trees used by unit tests.
         """
-        roots = u.Infra.discover_project_roots(workspace_root)
+        roots = u.Infra.discover_project_roots(repository_root)
         if not roots:
-            return [("", self._build_graph(workspace_root))]
+            return [("", self._build_graph(repository_root))]
         return [(root.name, self._build_graph(root)) for root in roots]
 
-    def _build_graph(self, workspace_root: Path) -> MutableMapping[str, set[str]]:
+    def _build_graph(self, repository_root: Path) -> MutableMapping[str, set[str]]:
         """Build ``{module_name: {imported_modules}}`` via rope."""
         graph: MutableMapping[str, set[str]] = {}
-        with u.Infra.open_project(workspace_root) as project:
+        with u.Infra.open_project(repository_root) as project:
             for resource in u.Infra.python_resources(project):
                 module_name_result = self._module_name_for(project, resource)
                 if module_name_result.failure:
@@ -163,8 +163,8 @@ class FlextInfraValidateImportCycles(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Execute the cycle-detection CLI flow using ``self.workspace_root``."""
-        report_result = self.build_report(self.workspace_root)
+        """Execute the cycle-detection CLI flow using ``self.repository_root``."""
+        report_result = self.build_report(self.repository_root)
         if report_result.failure:
             return r[bool].fail(
                 report_result.error or "import-cycles validation failed"

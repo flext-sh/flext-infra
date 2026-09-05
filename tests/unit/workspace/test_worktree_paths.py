@@ -19,7 +19,7 @@ class TestsWorktreePaths(WorktreeFixture):
 
         listed = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository, operation=c.Infra.WorktreeOperation.LIST
+                repository_root=repository, operation=c.Infra.WorktreeOperation.LIST
             ).execute()
         )
 
@@ -33,7 +33,7 @@ class TestsWorktreePaths(WorktreeFixture):
 
         added = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
@@ -53,7 +53,7 @@ class TestsWorktreePaths(WorktreeFixture):
 
         removed = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.REMOVE,
                 branch=branch,
                 apply_changes=True,
@@ -76,7 +76,7 @@ class TestsWorktreePaths(WorktreeFixture):
 
         added = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
@@ -109,7 +109,7 @@ class TestsWorktreePaths(WorktreeFixture):
 
         added = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
@@ -145,7 +145,7 @@ class TestsWorktreePaths(WorktreeFixture):
         tm.that(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=first,
+                    repository_root=first,
                     operation=c.Infra.WorktreeOperation.ADD,
                     branch=branch,
                     base="HEAD",
@@ -158,7 +158,7 @@ class TestsWorktreePaths(WorktreeFixture):
         tm.that(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=second,
+                    repository_root=second,
                     operation=c.Infra.WorktreeOperation.ADD,
                     branch=branch,
                     base="HEAD",

@@ -65,10 +65,10 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeWorkspaceDsl(Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
-        workspace_root: Path
+        repository_root: Path
 
         @property
-        def rope_workspace_root(self) -> Path: ...
+        def rope_repository_root(self) -> Path: ...
 
         @property
         def rope_project(self) -> t.Infra.RopeProject: ...
@@ -291,7 +291,7 @@ class FlextInfraProtocolsRope(Protocol):
         def project_root(file_path: Path) -> Path | None: ...
 
         @staticmethod
-        def init_rope_project(workspace_root: Path) -> t.Infra.RopeProject: ...
+        def init_rope_project(repository_root: Path) -> t.Infra.RopeProject: ...
 
         @staticmethod
         def get_resource_from_path(

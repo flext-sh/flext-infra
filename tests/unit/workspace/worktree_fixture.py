@@ -167,7 +167,7 @@ class WorktreeFixture:
 
     @classmethod
     def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
-        """Declare governed subprojects from the configured provider contract."""
+        """Declare governed declared_repositories from the configured provider contract."""
         provider = u.Tests.provider()
         path = root / c.Infra.GITMODULES
         path.write_text(

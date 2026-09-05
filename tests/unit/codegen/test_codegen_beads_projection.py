@@ -29,7 +29,7 @@ class TestsCodegenBeadsProjection:
 
     @staticmethod
     def _plan(root: Path) -> m.Infra.CodegenPlan:
-        result = FlextInfraCodegenConform(workspace_root=root).plan(
+        result = FlextInfraCodegenConform(repository_root=root).plan(
             m.Infra.CodegenConformRequest(
                 root=root,
                 scope=c.Infra.CodegenConformScope.SELF,
