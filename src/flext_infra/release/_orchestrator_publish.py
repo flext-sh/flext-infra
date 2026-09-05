@@ -29,7 +29,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         """Return the receipt directory of the declared version."""
         return (
             u.Cli.resolve_report_dir(
-                ctx.workspace_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
+                ctx.repository_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
             )
             / ctx.tag
         )
@@ -89,7 +89,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         ctx: m.Infra.ReleasePhaseDispatchConfig, report: m.Infra.BuildReport
     ) -> p.Result[bool]:
         """Create or refresh the GitHub release with the receipt's artifacts."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         assets = [
             artifact.path for record in report.records for artifact in record.artifacts
         ]
@@ -151,7 +151,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
                     "always",
                     *paths,
                 ],
-                cwd=ctx.workspace_root,
+                cwd=ctx.repository_root,
             )
             if uploaded.failure:
                 return uploaded

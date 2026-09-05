@@ -82,7 +82,7 @@ class TestsReviewTemplateContracts:
             text,
             has=(
                 "SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),"
-                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),"
+                "$(if $(filter .,$(REQUESTED_PROJECTS)),$(DECLARED_REPOSITORIES),$(REQUESTED_PROJECTS)),"
                 "$(DEFAULT_PROJECTS))"
             ),
         )

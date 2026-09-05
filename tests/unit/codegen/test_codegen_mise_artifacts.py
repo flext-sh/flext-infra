@@ -142,7 +142,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -152,7 +152,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", include_checksum=False)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -177,11 +177,11 @@ class TestsCodegenMiseArtifacts:
         monkeypatch.setattr(u.Cli, "run_raw", run_raw)
 
         apply_result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "apply_changes": True,
         }).execute()
         check_result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -205,7 +205,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "apply_changes": True,
         }).execute()
 
@@ -215,7 +215,7 @@ class TestsCodegenMiseArtifacts:
         root = self._project(tmp_path / "project", platforms=("linux-x64",))
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -227,7 +227,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -238,7 +238,7 @@ class TestsCodegenMiseArtifacts:
         self._write_launchers(root, windows_version="2000.1.1")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -258,7 +258,7 @@ class TestsCodegenMiseArtifacts:
         )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "check_only": True,
         }).execute()
 
@@ -285,7 +285,7 @@ class TestsCodegenMiseArtifacts:
         expected_lock = (root / "mise.lock").read_text(encoding="utf-8")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-identical",
             "from_root": True,
             "apply_changes": True,
@@ -302,7 +302,7 @@ class TestsCodegenMiseArtifacts:
         unchanged_lock = (member / "mise.lock").read_text(encoding="utf-8")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-different",
             "from_root": True,
             "apply_changes": True,
@@ -316,7 +316,7 @@ class TestsCodegenMiseArtifacts:
         _member = self._member(root, "member-identical", identical=True)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-identical",
             "from_root": True,
         }).execute()
@@ -338,7 +338,7 @@ class TestsCodegenMiseArtifacts:
         monkeypatch.setattr(u.Cli, "atomic_write_text_file", write_divergent_lock)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "project_filter": "member-identical",
             "from_root": True,
             "apply_changes": True,

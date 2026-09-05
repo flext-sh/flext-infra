@@ -61,7 +61,7 @@ class FlextInfraUtilitiesDocsValidate:
                 )
 
     @staticmethod
-    def docs_load_required_skills(workspace_root: Path) -> p.Result[t.StrSequence]:
+    def docs_load_required_skills(repository_root: Path) -> p.Result[t.StrSequence]:
         """Load the required skills list from the architecture settings.
 
         Returns ``r.ok([])`` only when the config file is genuinely absent.
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesDocsValidate:
         propagates as ``r.fail(...)`` so callers see the config defect
         instead of a silent empty list — fail-fast over fail-quiet.
         """
-        settings = workspace_root / "docs/architecture/architecture_config.json"
+        settings = repository_root / "docs/architecture/architecture_config.json"
         if not settings.exists():
             return r[t.StrSequence].ok([])
         return (

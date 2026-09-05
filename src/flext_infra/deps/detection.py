@@ -107,7 +107,7 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         )
 
     def discover_project_paths(
-        self, workspace_root: Path, projects_filter: t.StrSequence | None = None
+        self, repository_root: Path, projects_filter: t.StrSequence | None = None
     ) -> p.Result[t.SequenceOf[Path]]:
         """Discover project paths with pyproject.toml in workspace.
 
@@ -116,9 +116,9 @@ class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis
         """
         names = projects_filter or []
         result = (
-            self.selector.resolve_projects(workspace_root, names)
+            self.selector.resolve_projects(repository_root, names)
             if self.selector is not None
-            else u.Infra.resolve_projects(workspace_root, names)
+            else u.Infra.resolve_projects(repository_root, names)
         )
         if result.failure:
             return r[t.SequenceOf[Path]].fail(

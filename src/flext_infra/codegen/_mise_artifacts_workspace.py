@@ -27,7 +27,7 @@ class FlextInfraMiseWorkspacePlanner:
 
     def scope_root(self) -> p.Result[Path]:
         """Resolve the stable lock scope from physical Git identity only."""
-        requested = self._owner.workspace_root.expanduser().absolute()
+        requested = self._owner.repository_root.expanduser().absolute()
         physical = self._physical_directory(requested)
         if physical.failure:
             return r[Path].from_failure(physical)
@@ -53,7 +53,7 @@ class FlextInfraMiseWorkspacePlanner:
         self, scope_root: Path | None = None
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held."""
-        requested = self._owner.workspace_root.expanduser().absolute()
+        requested = self._owner.repository_root.expanduser().absolute()
         resolved_scope = self.scope_root() if scope_root is None else r[Path].ok(scope_root)
         if resolved_scope.failure:
             return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(resolved_scope)
@@ -125,7 +125,7 @@ class FlextInfraMiseWorkspacePlanner:
                 if project.artifacts.config in planned_paths
             )
         else:
-            requested = self._owner.workspace_root.expanduser().absolute()
+            requested = self._owner.repository_root.expanduser().absolute()
             selected = (
                 layout.projects
                 if requested == layout.scope_root

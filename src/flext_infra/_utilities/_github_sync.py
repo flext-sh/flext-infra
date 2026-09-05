@@ -43,19 +43,21 @@ class FlextInfraUtilitiesGithubSyncMixin:
 
     @classmethod
     def _github_resolve_source_workflow(
-        cls, workspace_root: Path, source_workflow: Path | None = None
+        cls, repository_root: Path, source_workflow: Path | None = None
     ) -> p.Result[Path]:
         """Github resolve source workflow."""
         if source_workflow is not None:
             candidate = (
                 source_workflow
                 if source_workflow.is_absolute()
-                else workspace_root / source_workflow
+                else repository_root / source_workflow
             ).resolve()
             if candidate.exists():
                 return r[Path].ok(candidate)
             return r[Path].fail(f"missing source workflow: {candidate}")
-        default_source = (workspace_root / ".github" / "workflows" / "ci.yml").resolve()
+        default_source = (
+            repository_root / ".github" / "workflows" / "ci.yml"
+        ).resolve()
         if default_source.exists():
             return r[Path].ok(default_source)
         return r[Path].fail(f"missing source workflow: {default_source}")

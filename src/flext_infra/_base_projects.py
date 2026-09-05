@@ -24,7 +24,7 @@ class FlextInfraProjectSelectionMixin:
 
     @property
     def root(self) -> Path:
-        """Workspace root supplied by the composed service base."""
+        """Repository root supplied by the composed service base."""
         raise NotImplementedError
 
     @property
@@ -34,7 +34,7 @@ class FlextInfraProjectSelectionMixin:
 
     @property
     def project_dirs(self) -> t.SequenceOf[Path] | None:
-        """Resolve selected project directories relative to the workspace root."""
+        """Resolve selected project directories relative to the repository root."""
         names = ub.normalize_sequence_values(self.selected_projects)
         if names is None:
             return None
@@ -42,7 +42,7 @@ class FlextInfraProjectSelectionMixin:
 
     def run_scoped_docs(
         self,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         output_dir: Path | str | None,
         handler: Callable[[m.Infra.DocScope], m.Infra.DocsPhaseReport],
@@ -50,7 +50,7 @@ class FlextInfraProjectSelectionMixin:
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Run one docs phase across the resolved governed scopes."""
         return FlextInfraUtilitiesDocs.run_scoped(
-            workspace_root,
+            repository_root,
             projects=self.selected_projects if projects is None else projects,
             output_dir=u.Cli.resolve_optional_path(
                 output_dir, default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)

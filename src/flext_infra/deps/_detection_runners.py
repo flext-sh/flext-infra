@@ -150,7 +150,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         ))
 
     def run_pip_check(
-        self, workspace_root: Path, venv_bin: Path
+        self, repository_root: Path, venv_bin: Path
     ) -> p.Result[t.Pair[t.StrSequence, int]]:
         """Run pip check to detect dependency conflicts in workspace."""
         pip = venv_bin / "pip"
@@ -159,7 +159,7 @@ class FlextInfraDependencyDetectionRunnersMixin:
         env = {"VIRTUAL_ENV": str(venv_bin.parent)}
         result = self._run_raw(
             [str(pip), c.Infra.VERB_CHECK],
-            cwd=workspace_root,
+            cwd=repository_root,
             timeout=c.Infra.TIMEOUT_SHORT,
             env=env,
         )

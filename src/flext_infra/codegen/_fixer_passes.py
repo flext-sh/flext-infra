@@ -51,7 +51,7 @@ class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
         ctx: m.Infra.FixContext, project_path: Path
     ) -> None:
         """Regenerate lazy ``__init__.py`` files and record skip on errors."""
-        lazy_generator = FlextInfraCodegenLazyInit(workspace_root=project_path)
+        lazy_generator = FlextInfraCodegenLazyInit(repository_root=project_path)
         lazy_errors = lazy_generator.generate_inits(check_only=False)
         ctx.files_modified |= set(lazy_generator.modified_files)
         if lazy_errors > 0:

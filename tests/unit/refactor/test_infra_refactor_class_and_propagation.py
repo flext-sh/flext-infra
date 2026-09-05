@@ -99,12 +99,12 @@ class TestsFlextInfraRefactorInfraRefactorClassAndPropagation:
             "id": "migrate-project-root-to-workspace",
             "enabled": True,
             "target_simple_names": ["migrate"],
-            "keyword_renames": {"project_root": "workspace_root"},
+            "keyword_renames": {"project_root": "repository_root"},
         })
         updated = FlextInfraRefactorSignaturePropagator(
             migrations=[migration]
         ).apply_to_source(source)
-        tm.that(updated, has="migrate(workspace_root=root, dry_run=True)")
+        tm.that(updated, has="migrate(repository_root=root, dry_run=True)")
 
     def test_signature_propagation_removes_and_adds_keywords(self) -> None:
         source = "run(legacy=True)\n"

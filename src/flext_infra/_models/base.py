@@ -106,7 +106,7 @@ class FlextInfraModelsBase:
         }
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Repository root used for lint and pytest checks")
         ]
         updated_source: Annotated[
             str, m.Field(description="Replacement source content to write")
@@ -123,7 +123,7 @@ class FlextInfraModelsBase:
         """Validated options for transactionally writing multiple sources."""
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Repository root used for lint and pytest checks")
         ]
         expected_sources: Annotated[
             t.MappingKV[Path, str],
@@ -148,7 +148,7 @@ class FlextInfraModelsBase:
         """Validated options for a protected single-file edit pipeline."""
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Repository root used for lint and pytest checks")
         ]
         before_source: Annotated[
             str, m.Field(description="Original source text used for diff and restore")
