@@ -334,10 +334,6 @@ def _journal_source_topology(
             return r[bool].fail(
                 f"Mise journal source enters transaction state: {source.path}"
             )
-        if resolved.value.is_relative_to(layout.scope_root.absolute()):
-            owner = files.project_for_path(layout, resolved.value)
-            if owner.failure:
-                return r[bool].from_failure(owner)
     observed_order = tuple(source.path for source in sources_to_validate)
     if observed_order != tuple(sorted(observed_order)):
         return r[bool].fail("codegen journal source order differs from workspace")
