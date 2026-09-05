@@ -12,7 +12,6 @@
 # Detection-only: the correct replacement is to delete the wrapper and call
 # the real owner directly, updating every consumer in the same cutover.
 
----
 id: ban-pass-through-wrapper
 language: Python
 severity: error

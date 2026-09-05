@@ -13,7 +13,6 @@
 # Detection-only: the correct replacement is to rename at the owner and
 # update every consumer in the same cutover.
 
----
 id: ban-compat-alias
 language: Python
 severity: error

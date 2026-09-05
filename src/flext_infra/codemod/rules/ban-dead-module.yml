@@ -12,7 +12,6 @@
 # Detection-only: the correct replacement is either a real facade projection
 # or deletion of the dead package shell.
 
----
 id: ban-dead-init-module
 language: Python
 severity: error

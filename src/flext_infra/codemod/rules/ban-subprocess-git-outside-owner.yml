@@ -7,7 +7,6 @@
 # Detection-only: the correct replacement is the typed semantic method
 # that owns the operation. The message names the facade to use.
 
----
 id: ban-direct-gitpython
 language: Python
 rule:

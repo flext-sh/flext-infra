@@ -18,7 +18,6 @@
 # Detection-only: the correct replacement depends on which SSOT owns the
 # value in that context, so an automatic rewrite would guess.
 
----
 id: ban-hardcoded-config
 language: Python
 severity: error

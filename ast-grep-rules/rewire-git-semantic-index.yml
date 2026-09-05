@@ -9,13 +9,3 @@ rule:
     regex: '^flext_infra\._utilities\._git\.semantic$'
 fix: from flext_infra._utilities._git.semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
 message: Rewire the Git scope mixin to the canonical semantic index owner.
----
-id: rewire-git-semantic-index-name
-language: Python
-severity: error
-rule:
-  pattern: FlextInfraUtilitiesGitSemanticMixin
-fix: FlextInfraUtilitiesGitSemanticIndexMixin
-message: Rewire consumers to the canonical Git semantic index class.
-ignores:
-  - "**/_utilities/_git/semantic.py"

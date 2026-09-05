@@ -1,6 +1,5 @@
 # Remove callers' ability to bypass the single mandatory refactor validation path.
 
----
 id: remove-refactor-validation-selector
 language: Python
 severity: error

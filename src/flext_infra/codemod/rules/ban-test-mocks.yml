@@ -1,6 +1,5 @@
 # Test doubles hide observable runtime behavior and are forbidden in FLEXT tests.
 
----
 id: ban-test-doubles
 language: Python
 severity: error

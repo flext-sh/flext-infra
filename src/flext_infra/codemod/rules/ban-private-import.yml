@@ -5,7 +5,6 @@
 # every other consumer uses the public c/t/p/m/u/r/e/x/h/d/s facade. Generated
 # initializers are the projection owner and are excluded by construction.
 
----
 id: ban-private-import
 language: Python
 severity: error
