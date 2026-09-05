@@ -467,6 +467,10 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 toolchain.mise_lock_platform_exclusions.get(selector, ())
             ) | project_exclusions.get(selector, frozenset())
             expected_platforms = declared_platforms - excluded
+            if selector.startswith(tuple(c.Infra.MISE_PLATFORM_INDEPENDENT_BACKENDS)):
+                # A platform-independent backend (npm) installs one artifact on
+                # every platform, so `mise lock` records no platform metadata.
+                expected_platforms = frozenset()
             actual_platforms = frozenset(entry.platforms)
             if actual_platforms != expected_platforms:
                 return r[bool].fail(

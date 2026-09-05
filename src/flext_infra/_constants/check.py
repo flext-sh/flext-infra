@@ -219,9 +219,8 @@ class FlextInfraConstantsCheck:
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
     DUPLICATION_GATE_MODE: Final[GateMode] = GateMode.WARN
     "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
-    JSCPD_RUNNER: Final[str] = "npx"
-    JSCPD_PACKAGE: Final[str] = "jscpd"
-    JSCPD_VERSION: Final[str] = "5.1.2"
+    JSCPD_BINARY: Final[str] = "jscpd"
+    "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"
     JSCPD_MIN_LINES: Final[int] = 8
     JSCPD_REPORT_DIRNAME: Final[str] = ".reports/jscpd"

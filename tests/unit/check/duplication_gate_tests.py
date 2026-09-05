@@ -1,13 +1,13 @@
 """Tests for the jscpd code-duplication gate (report-only posture, warnings always).
 
-The gate runs one workspace jscpd scan through ``npx``, reads jscpd's JSON
-report from disk (jscpd never writes findings to stdout), maps each clone side
-inside ``project_dir`` to an issue naming its counterpart, emits one
-``FlextSmellViolation`` warning per finding on every run, and passes while
-``DUPLICATION_GATE_MODE`` is WARN. A failed/absent runner surfaces as a visible
-issue instead of a silent pass. All assertions run against a literal report
-fixture written by an owned temporary ``npx`` executable, exercising only the
-public gate boundary.
+The gate runs one workspace scan through the mise-provisioned ``jscpd``
+binary, reads jscpd's JSON report from disk (jscpd never writes findings to
+stdout), maps each clone side inside ``project_dir`` to an issue naming its
+counterpart, emits one ``FlextSmellViolation`` warning per finding on every
+run, and passes while ``DUPLICATION_GATE_MODE`` is WARN. A failed/absent binary
+surfaces as a visible issue instead of a silent pass. All assertions run
+against a literal report fixture written by an owned temporary ``jscpd``
+executable, exercising only the public gate boundary.
 """
 
 from __future__ import annotations
@@ -55,27 +55,15 @@ def _report_fixture(project: Path) -> str:
                 "format": "python",
                 "lines": 12,
                 "tokens": 61,
-                "firstFile": {
-                    "name": own_a,
-                    "startLoc": {"line": 3, "column": 4},
-                },
-                "secondFile": {
-                    "name": own_test,
-                    "startLoc": {"line": 9, "column": 0},
-                },
+                "firstFile": {"name": own_a, "startLoc": {"line": 3, "column": 4}},
+                "secondFile": {"name": own_test, "startLoc": {"line": 9, "column": 0}},
             },
             {
                 "format": "python",
                 "lines": 8,
                 "tokens": 40,
-                "firstFile": {
-                    "name": foreign,
-                    "startLoc": {"line": 1, "column": 0},
-                },
-                "secondFile": {
-                    "name": own_a,
-                    "startLoc": {"line": 20, "column": 2},
-                },
+                "firstFile": {"name": foreign, "startLoc": {"line": 1, "column": 0}},
+                "secondFile": {"name": own_a, "startLoc": {"line": 20, "column": 2}},
             },
         ],
         "statistics": {},
@@ -94,15 +82,15 @@ def _runner_gate(
     stderr: str = "",
     exit_code: int = 0,
 ) -> FlextInfraDuplicationGate:
-    """Return a gate backed by an ``npx`` executable at the external boundary.
+    """Return a gate backed by a ``jscpd`` executable at the external boundary.
 
-    Unlike a stdout-reporting scanner, the fake ``npx`` must locate the
-    ``--output`` directory jscpd is told to write into and place the report
+    Unlike a stdout-reporting scanner, the fake ``jscpd`` must locate the
+    ``--output`` directory it is told to write into and place the report
     file there; ``report=None`` leaves no file behind (a crashed run).
     """
     binary_dir = tmp_path / "bin"
     binary_dir.mkdir()
-    runner = binary_dir / c.Infra.JSCPD_RUNNER
+    runner = binary_dir / c.Infra.JSCPD_BINARY
     report_name = c.Infra.JSCPD_REPORT_FILENAME
     write_report = (
         ""
@@ -125,7 +113,6 @@ def _runner_gate(
     )
     runner.chmod(0o755)
     monkeypatch.setenv("PATH", str(binary_dir), prepend=":")
-    FlextInfraDuplicationGate._scan_cache.clear()
     return FlextInfraDuplicationGate(tmp_path)
 
 
@@ -168,7 +155,10 @@ class TestDuplicationGate:
         )
         tm.that(all(issue.code == "duplication" for issue in issues), eq=True)
         tm.that(
-            all(str(project.parent / "other-project") not in issue.file for issue in issues),
+            all(
+                str(project.parent / "other-project") not in issue.file
+                for issue in issues
+            ),
             eq=True,
         )
         by_line = {(issue.file, issue.line): issue for issue in issues}
@@ -210,7 +200,7 @@ class TestDuplicationGate:
         with pytest.warns(core_e.SmellViolation):
             first = gate.check(project, _ctx(tmp_path))
         # Retire the runner: a re-scan would now fail loudly instead of passing.
-        (tmp_path / "bin" / c.Infra.JSCPD_RUNNER).unlink()
+        (tmp_path / "bin" / c.Infra.JSCPD_BINARY).unlink()
 
         with pytest.warns(core_e.SmellViolation):
             second = gate.check(project, _ctx(tmp_path))
@@ -238,7 +228,6 @@ class TestDuplicationGate:
         project = _project(tmp_path)
         (tmp_path / "empty-bin").mkdir()
         monkeypatch.setenv("PATH", str(tmp_path / "empty-bin"))
-        FlextInfraDuplicationGate._scan_cache.clear()
         gate = FlextInfraDuplicationGate(tmp_path)
 
         with pytest.warns(core_e.SmellViolation):
@@ -246,7 +235,7 @@ class TestDuplicationGate:
 
         tm.that(execution.result.passed, eq=True)
         tm.that(len(execution.issues), eq=1)
-        tm.that(execution.issues[0].message, has=c.Infra.JSCPD_RUNNER)
+        tm.that(execution.issues[0].message, has=c.Infra.JSCPD_BINARY)
         tm.that(execution.issues[0].message, has="not found")
 
     def test_config_is_rendered_from_typed_ssot(

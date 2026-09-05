@@ -407,6 +407,16 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
+        def node_version(self) -> str:
+            """Compatible Node.js major.minor line (runtime for npm-backed tools)."""
+            ...
+
+        @property
+        def jscpd_version(self) -> str:
+            """Exact jscpd duplication detector version."""
+            ...
+
+        @property
         def uv_version(self) -> str:
             """Compatible uv major.minor line."""
             ...

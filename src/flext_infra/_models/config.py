@@ -321,6 +321,13 @@ class FlextInfraConfigModels:
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
         ]
+        node_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+        ]
+        jscpd_version: Annotated[
+            t.NonEmptyStr,
+            _tool_version_field("Exact jscpd duplication detector version"),
+        ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
@@ -2442,6 +2449,13 @@ class FlextInfraConfigModels:
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
+        ]
+        node_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+        ]
+        jscpd_version: Annotated[
+            t.NonEmptyStr,
+            _tool_version_field("Exact jscpd duplication detector version"),
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")

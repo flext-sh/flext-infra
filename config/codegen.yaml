@@ -42,6 +42,11 @@ Infra:
       scc_version: "4.0"
       kubeconform_version: "0.8"
       qlty_version: "0.642"
+      # jscpd (the `duplication` check gate) is an npm package with no bare mise
+      # registry alias; mise's npm backend provisions it on the pinned Node line
+      # so no gate ever resolves a runner or a version outside this SSOT.
+      node_version: "26.8"
+      jscpd_version: "5.1.2"
       # Moving selector is deliberate: setup must always provision the newest
       # Mise release instead of rejecting a newer binary than code generation.
       mise_lock_platforms:
@@ -1262,6 +1267,11 @@ Infra:
           # every project owning src/, so the tool it shells out to must be a
           # declared dev dependency of every generated project.
           - bandit>=1.9.4
+          # Every generated Make verb routes through `python -m flext_infra` in
+          # the project venv, so `make setup` must provision the pinned generator
+          # itself (operator ruling 2026-09-05, flext-cee4z) instead of relying
+          # on it arriving transitively; the generator skips its own name.
+          - flext-infra
           - flext-tests
           # Floors let uv select released tools without a cap or downgrade path.
           # Every diagnostic from the resolved release remains blocking.
@@ -1402,10 +1412,6 @@ Infra:
           patterns:
             - "!Makefile"
             - "!Makefile.flext-docker"
-            - "!*.mk"
-            # jscpd detector SSOT consumed by the committed `make duplication`
-            # target (flext-1sm3w); the deny-first root cannot swallow it.
-            - "!.jscpd.json"
             - "!*.mk"
             # The generated toolchain lock pins every tool to a checksum. A
             # clean CI checkout must receive it, so the deny-first root cannot

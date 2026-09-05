@@ -87,8 +87,13 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         if binary is None:
             return m.Cli.CommandOutput(
                 stdout="",
-                stderr=f"{c.Infra.JSCPD_RUNNER} (Node.js) not found on PATH",
-                exit_code=1,
+                stderr=(
+                    f"{c.Infra.JSCPD_BINARY} not found on PATH; `make setup` "
+                    "provisions it from codegen.toolchain.jscpd_version"
+                ),
+                # jscpd itself exits 1 when it finds clones, so an absent binary
+                # must not borrow that code or the gate would read it as a scan.
+                exit_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
             )
         scope = self._render_scope_dirs()
         if not scope:
@@ -97,8 +102,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
         cmd = (
             binary,
-            "--yes",
-            f"{c.Infra.JSCPD_PACKAGE}@{c.Infra.JSCPD_VERSION}",
             "--no-gitignore",
             "--config",
             str(config_path),
@@ -134,12 +137,13 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         source; regenerating with unchanged constants produces byte-identical
         content (idempotent).
         """
+        ignore: list[t.JsonValue] = list(c.Infra.JSCPD_IGNORE_PATTERNS)
         config: t.JsonMapping = {
             "absolute": True,
             "noTips": True,
             "noColors": True,
             "mode": c.Infra.JSCPD_MODE,
-            "ignore": list(c.Infra.JSCPD_IGNORE_PATTERNS),
+            "ignore": ignore,
             "reporters": ["json"],
             "minLines": c.Infra.JSCPD_MIN_LINES,
         }
@@ -156,7 +160,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     def _load_report(
         report_dir: Path, result: p.Cli.CommandOutput
     ) -> p.Cli.CommandOutput:
-        """jscpd writes its JSON report to disk; stdout carries console noise only."""
+        """Load the JSON report jscpd writes to disk; stdout carries console noise only."""
         report_path = report_dir / c.Infra.JSCPD_REPORT_FILENAME
         if not report_path.is_file():
             return result
@@ -168,8 +172,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
     @staticmethod
     def _resolve_binary() -> str | None:
-        """Locate npx (the jscpd launcher) on PATH; None when absent."""
-        return shutil.which(c.Infra.JSCPD_RUNNER)
+        """Locate the mise-provisioned jscpd on PATH; None when absent."""
+        return shutil.which(c.Infra.JSCPD_BINARY)
 
     def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass."""
