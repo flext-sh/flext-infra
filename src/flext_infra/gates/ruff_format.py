@@ -37,7 +37,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         """Build check command."""
         _ = project_dir, ctx
         return self._python_module_command(
-            c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs, "--quiet"
+            c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs
         )
 
     @override

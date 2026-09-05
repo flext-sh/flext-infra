@@ -11,6 +11,7 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
+from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 
 
 class FlextInfraModGateEngine:
@@ -398,7 +399,7 @@ class FlextInfraModGateEngine:
 
     @classmethod
     def validate(cls, root: Path, changed_files: t.SequenceOf[Path]) -> p.Result[bool]:
-        """Require zero Ruff, Pyrefly, and LSP diagnostics."""
+        """Require canonical formatting and zero Ruff, Pyrefly, or LSP errors."""
         resolved_root = root.resolve()
         project_roots = u.Infra.governed_project_roots(resolved_root)
         repository_changes = tuple(
@@ -445,6 +446,21 @@ class FlextInfraModGateEngine:
         selected_groups = tuple(
             (owner, tuple(files)) for owner, files in files_by_root.items() if files
         )
+        for owner, files in selected_groups:
+            format_execution = FlextInfraRuffFormatGate(owner).check_files(
+                files,
+                owner,
+                m.Infra.GateContext(
+                    workspace=owner,
+                    reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
+                    check_only=True,
+                ),
+            )
+            if not format_execution.result.passed:
+                return r.fail(
+                    format_execution.raw_output
+                    or "\n".join(format_execution.result.errors)
+                )
         snapshots: dict[Path, t.Infra.LintSnapshot] = {}
         for index, (owner, files) in enumerate(selected_groups, start=1):
             sys.stderr.write(

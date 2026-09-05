@@ -56,6 +56,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraCodemodSemanticApply.apply(root, preflight)
         cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
         applied = FlextInfraModGateEngine.scan(root, rules, fix=True).unwrap()
+        cli.display_text(
+            "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
+        )
+        FlextInfraModGateEngine.validate(root, tuple(applied.files)).unwrap()
         cli.display_text("mod: verify AST fixed point")
         remaining = FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
         if remaining.actionable or remaining.detection_only:
@@ -65,8 +69,6 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 "after apply; "
                 "changes retained for mandatory fix-forward repair"
             )
-        cli.display_text("mod: require zero Ruff, Pyrefly, and LSP diagnostics")
-        FlextInfraModGateEngine.validate(root, tuple(applied.files)).unwrap()
         cli.display_text(
             f"mod: applied {applied.actionable} node(s) across "
             f"{len(applied.files)} file(s)"

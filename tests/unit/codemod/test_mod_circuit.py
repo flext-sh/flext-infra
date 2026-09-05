@@ -80,14 +80,14 @@ class TestsFlextInfraModCliRoute:
         tm.that(second_console, has=second_digest)
         tm.that(second_console, lacks=first_digest)
 
-    def test_apply_rejects_detection_only_findings_before_any_rewrite(
-        self, mod_workspace: Path
+    def test_apply_validates_rewrites_before_reporting_detection_only_findings(
+        self, mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Require the complete semantic plan before the first file mutation."""
+        """Reject an unformatted rewrite before the later findings-only result."""
         actionable_path = mod_workspace / "actionable.py"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                actionable_path, "publication = m.Infra.MiseToolchainPublication\n"
+                actionable_path, "publication=m.Infra.MiseToolchainPublication\n"
             )
         )
 
@@ -98,6 +98,8 @@ class TestsFlextInfraModCliRoute:
             str(mod_workspace),
             "--apply",
         ])
+        console_capture = capsys.readouterr()
+        console = console_capture.out + console_capture.err
         updated = tm.not_none(
             tm.ok(
                 u.Cli.atomic_read_binary_file_state(actionable_path, required=True)
@@ -105,5 +107,7 @@ class TestsFlextInfraModCliRoute:
         ).decode(c.Cli.ENCODING_DEFAULT)
 
         tm.that(exit_code, ne=0)
-        tm.that(updated, has="m.Infra.MiseToolchainPublication")
-        tm.that(updated, lacks="m.Cli.AtomicFilePublication")
+        tm.that(updated, has="m.Cli.AtomicFilePublication")
+        tm.that(updated, lacks="m.Infra.MiseToolchainPublication")
+        tm.that(console, has="Would reformat")
+        tm.that(console, has=str(actionable_path))
