@@ -285,14 +285,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
                     scope_root, committed_state.error or "cannot commit Mise journal"
                 )
             )
-        changed = tuple(
-            item.before.path
-            for item in staged.value
-            if (
-                item.before.content != item.replacement.content
-                or item.before.mode != item.replacement.mode
-            )
-        )
+        changed = tuple(item.before.path for item in staged.value if not item.unchanged)
         cleaned = journal_io.cleanup(layout, committed_state.value)
         if cleaned.failure:
             return result_type.from_failure(cleaned)

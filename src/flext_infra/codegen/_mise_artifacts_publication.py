@@ -25,9 +25,7 @@ def publish(
         return source_check
     changed = 0
     for publication in publications:
-        before = publication.before
-        replacement = publication.replacement
-        if before.content == replacement.content and before.mode == replacement.mode:
+        if publication.unchanged:
             continue
         written = files.write_publication(publication)
         if written.failure:
