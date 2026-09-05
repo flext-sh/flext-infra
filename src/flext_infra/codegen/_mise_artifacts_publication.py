@@ -26,7 +26,7 @@ def publish(
     changed = 0
     for publication in publications:
         before = publication.before
-        if u.Cli.atomic_file_publication_unchanged(publication):
+        if u.Cli.atomic_file_publication_is_unchanged(publication):
             continue
         u.Cli.info(f"mise-toolchain: publish {before.path}")
         written = u.Cli.atomic_apply_file_publication_guarded(publication)
