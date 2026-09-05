@@ -389,16 +389,14 @@ class FlextInfraUtilitiesSilentFailure:
         tree: ast.Module, source: str
     ) -> list[_SilentFailureFinding]:
         """Collect all silent-failure findings from a rope-backed module AST."""
-        findings = _collect_silent_failure_findings(tree, source)
-        return findings
+        return _collect_silent_failure_findings(tree, source)
 
     @staticmethod
     def collect_silent_failure_fixes(
         tree: ast.Module, source: str, *, kinds: set[str] | frozenset[str] | None = None
     ) -> list[tuple[int, int, str]]:
         """Return deterministic auto-fix replacements for silent failures."""
-        fixes = _collect_silent_failure_fixes(tree, source, kinds=kinds)
-        return fixes
+        return _collect_silent_failure_fixes(tree, source, kinds=kinds)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesSilentFailure"]

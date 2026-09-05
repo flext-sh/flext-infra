@@ -30,12 +30,12 @@ class FlextInfraCodemodSnapshotReconciler:
             raw_test_configs, str
         ):
             msg = f"invalid ast-grep testConfigs contract: {config_path}"
-            raise ValueError(msg)
+            raise TypeError(msg)
         removed = 0
         for raw_test_config in raw_test_configs:
             if not isinstance(raw_test_config, Mapping):
                 msg = f"ast-grep testConfig must be a mapping: {config_path}"
-                raise ValueError(msg)
+                raise TypeError(msg)
             raw_test_dir = raw_test_config.get(c.Infra.CODEMOD_TEST_DIR_KEY)
             if not isinstance(raw_test_dir, str) or not raw_test_dir.strip():
                 msg = f"ast-grep testConfig lacks testDir: {config_path}"

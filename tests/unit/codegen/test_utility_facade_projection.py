@@ -84,13 +84,13 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
         self._write(facade, original)
 
-        with pytest.raises(ValueError, match="ambiguous u.Infra owner"):
+        with pytest.raises(ValueError, match=r"ambiguous u\.Infra owner"):
             u.Infra.project_semantic_utility_owners(
                 pkg_dir=package, ctx=m.Infra.FixContext()
             )
         tm.that(facade.read_text(), eq=original)
 
-    @pytest.mark.parametrize("present", ("semantic_apply.py", "utilities.py"))
+    @pytest.mark.parametrize("present", ["semantic_apply.py", "utilities.py"])
     def test_rejects_incomplete_semantic_artifact_pair(
         self, tmp_path: Path, present: str
     ) -> None:

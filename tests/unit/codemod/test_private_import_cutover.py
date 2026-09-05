@@ -140,5 +140,38 @@ class TestsFlextInfraPrivateImportCutover:
                 ),
             )
 
+    def test_accepts_alias_owned_by_removed_private_import(
+        self, tmp_path: Path
+    ) -> None:
+        """Replace the old import binding with its public facade atomically."""
+        facade_path = tmp_path / "flext-sample/src/flext_sample/models.py"
+        consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
+        private_import = (
+            "from flext_sample._models.base import FlextSampleModelsBase as m"
+        )
+        sources = {
+            facade_path: (
+                "from flext_sample._models.base import FlextSampleModelsBase\n\n"
+                "class FlextSampleModels:\n"
+                "    class Metadata(FlextSampleModelsBase):\n"
+                "        pass\n\n"
+                "m = FlextSampleModels\n"
+            ),
+            consumer_path: f"{private_import}\n\nmetadata = m.Metadata()\n",
+        }
+
+        edits = u.Infra.plan_private_import_cutover(
+            root=tmp_path,
+            sources=sources,
+            findings=(
+                self._finding(consumer_path.relative_to(tmp_path), private_import),
+            ),
+        )
+        updated = edits[0].updated_source
+
+        tm.that(updated, has="from flext_sample import m")
+        tm.that(updated, has="metadata = m.Metadata()")
+        tm.that(updated, lacks=private_import)
+
 
 __all__: list[str] = ["TestsFlextInfraPrivateImportCutover"]

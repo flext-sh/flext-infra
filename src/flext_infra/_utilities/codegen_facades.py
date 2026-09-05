@@ -32,7 +32,8 @@ class FlextInfraUtilitiesCodegenFacades:
         owners_dir = pkg_dir / c.Infra.FAMILY_DIRECTORIES["u"]
         semantic_exists, facade_exists = semantic_path.is_file(), facade_path.is_file()
         if semantic_exists != facade_exists:
-            raise ValueError(f"incomplete semantic utility artifacts in {pkg_dir}")
+            message = f"incomplete semantic utility artifacts in {pkg_dir}"
+            raise ValueError(message)
         if not semantic_exists:
             return
         owners, ancestors = cls._utility_owners(owners_dir)
@@ -56,7 +57,8 @@ class FlextInfraUtilitiesCodegenFacades:
                 continue
             if len(candidates) != 1:
                 detail = ", ".join(f"{module}:{name}" for module, name in candidates)
-                raise ValueError(f"ambiguous u.Infra owner for {method}: {detail}")
+                message = f"ambiguous u.Infra owner for {method}: {detail}"
+                raise ValueError(message)
             module, class_name = candidates[0]
             additions.append((module, class_name))
             reachable.update(cls._reachable_bases((class_name,), ancestors))
@@ -69,7 +71,8 @@ class FlextInfraUtilitiesCodegenFacades:
         updated = cls._insert_bases(updated, namespace, additions)
         written = u.Cli.atomic_write_text_file(facade_path, updated)
         if written.failure:
-            raise OSError(written.error or f"writing utility facade {facade_path}")
+            message = written.error or f"writing utility facade {facade_path}"
+            raise OSError(message)
         ctx.files_modified.add(str(facade_path))
         for module, class_name in additions:
             ctx.fix(
@@ -133,12 +136,14 @@ class FlextInfraUtilitiesCodegenFacades:
     ) -> tuple[ast.ClassDef, ast.ClassDef]:
         facades = tuple(node for node in tree.body if isinstance(node, ast.ClassDef))
         if len(facades) != 1:
-            raise ValueError(f"expected one utility facade class in {path}")
+            message = f"expected one utility facade class in {path}"
+            raise ValueError(message)
         nested = tuple(
             node for node in facades[0].body if isinstance(node, ast.ClassDef)
         )
         if len(nested) != 1:
-            raise ValueError(f"expected one utility namespace class in {path}")
+            message = f"expected one utility namespace class in {path}"
+            raise ValueError(message)
         return facades[0], nested[0]
 
     @staticmethod
@@ -147,7 +152,8 @@ class FlextInfraUtilitiesCodegenFacades:
             return base.id
         if isinstance(base, ast.Attribute):
             return base.attr
-        raise ValueError(f"unsupported utility facade base: {ast.dump(base)}")
+        message = f"unsupported utility facade base: {ast.dump(base)}"
+        raise ValueError(message)
 
     @staticmethod
     def _reachable_bases(
@@ -185,10 +191,12 @@ class FlextInfraUtilitiesCodegenFacades:
         additions: t.SequenceOf[tuple[str, str]],
     ) -> str:
         if not namespace.bases:
-            raise ValueError("utility namespace has no canonical base chain")
+            message = "utility namespace has no canonical base chain"
+            raise ValueError(message)
         last_base = namespace.bases[-1]
         if last_base.end_lineno is None:
-            raise ValueError("utility namespace base has no source span")
+            message = "utility namespace base has no source span"
+            raise ValueError(message)
         lines = source.splitlines(keepends=True)
         indent = " " * last_base.col_offset
         lines[last_base.end_lineno : last_base.end_lineno] = [

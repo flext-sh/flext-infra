@@ -49,14 +49,14 @@ from flext_infra._utilities.namespace_facades import (
 from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
-from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.private_imports import FlextInfraUtilitiesPrivateImports
+from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
-from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,

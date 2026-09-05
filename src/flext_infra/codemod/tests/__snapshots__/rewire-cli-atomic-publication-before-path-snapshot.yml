@@ -1,0 +1,9 @@
+id: rewire-cli-atomic-publication-before-path
+snapshots:
+  'u.Cli.info(f"mise-toolchain: publish {before.path}")':
+    fixed: 'u.Cli.info(f"mise-toolchain: publish {publication.before.path}")'
+    labels:
+    - source: 'u.Cli.info(f"mise-toolchain: publish {before.path}")'
+      style: primary
+      start: 0
+      end: 52

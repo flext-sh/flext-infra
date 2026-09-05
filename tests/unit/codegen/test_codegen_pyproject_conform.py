@@ -396,7 +396,7 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
         workspace = _workspace()
         external_packages = config.Infra.codegen.scaffold.project.external_runtime_packages
         external = external_packages[0]
-        source = f'''[project]
+        source = f"""[project]
 name = "external-consumer"
 dependencies = ["{external}", "requests>=2"]
 
@@ -405,7 +405,7 @@ automation = ["{external}[all]>=1", "custom-plugin>=1"]
 
 [dependency-groups]
 dev = ["{external}>=1", "custom-tool>=1"]
-'''
+"""
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 source,

@@ -146,8 +146,7 @@ class FlextInfraUtilitiesRopeImports:
         if dependent_import_targets:
             dependent_candidates: set[Path] = {resolved_definition}
             for import_target in dependent_import_targets:
-                for path in rope_workspace.import_dependents(import_target):
-                    dependent_candidates.add(path.resolve())
+                dependent_candidates.update(path.resolve() for path in rope_workspace.import_dependents(import_target))
             dependent_paths = frozenset(str(path) for path in dependent_candidates)
         seen_paths = {str(resolved_definition)}
         resources: list[t.Infra.RopeResource] = [resource]

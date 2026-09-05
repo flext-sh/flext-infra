@@ -89,9 +89,6 @@ class FlextInfraUtilitiesPrivateImports:
             public_imports: dict[str, str] = {}
             for private_module, symbol, qualified, package, reference in file_specs:
                 facade_alias = reference.split(".", 1)[0]
-                FlextInfraUtilitiesPrivateImportFacades.require_unshadowed_alias(
-                    tree, package, facade_alias, file_path
-                )
                 previous_package = next(
                     (
                         owner
@@ -113,6 +110,10 @@ class FlextInfraUtilitiesPrivateImports:
                 removals.setdefault(private_module, set()).add(symbol)
                 replacements[qualified] = reference
                 public_imports[package] = facade_alias
+            for package, facade_alias in public_imports.items():
+                FlextInfraUtilitiesPrivateImportFacades.require_unshadowed_alias(
+                    tree, package, facade_alias, file_path, removals
+                )
             rewritten = FlextInfraUtilitiesPrivateImportCst.rewrite_private_import_source(
                 source,
                 removals={key: frozenset(value) for key, value in removals.items()},
@@ -142,4 +143,3 @@ class FlextInfraUtilitiesPrivateImports:
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPrivateImports"]
-

@@ -148,4 +148,3 @@ class FlextInfraUtilitiesCompatibilityAliases:
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCompatibilityAliases"]
-

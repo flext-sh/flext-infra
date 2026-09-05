@@ -290,9 +290,11 @@ class TestMainEntryPoint:
         lock_mode = lock_state.mode
         tm.that(lock_mode is None, eq=False)
         if lock_mode is None:
-            raise AssertionError("required Mise lock has no permission mode")
+            msg = "required Mise lock has no permission mode"
+            raise AssertionError(msg)
         if lock_state.content is None:
-            raise AssertionError("required Mise lock has no bytes")
+            msg = "required Mise lock has no bytes"
+            raise AssertionError(msg)
         corrupted = lock_state.content + b"\ninvalid = [\n"
         tm.ok(
             u.Cli.atomic_write_binary_file_guarded(

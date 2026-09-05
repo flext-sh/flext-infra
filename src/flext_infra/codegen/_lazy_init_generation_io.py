@@ -36,7 +36,8 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
     def _require_generated_removal(path: Path, content: str | None) -> None:
         """Reject deletion of a handwritten file at a generated-artifact path."""
         if content is not None and not content.startswith(c.Infra.AUTOGEN_HEADERS):
-            raise OSError(f"refusing to remove handwritten file: {path}")
+            message = f"refusing to remove handwritten file: {path}"
+            raise OSError(message)
 
     def _write_generated_file(
         self, path: Path, generated: str, previous: str | None

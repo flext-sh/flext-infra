@@ -115,16 +115,28 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
     @staticmethod
     def require_unshadowed_alias(
-        tree: ast.Module, package: str, alias: str, file_path: Path
+        tree: ast.Module,
+        package: str,
+        alias: str,
+        file_path: Path,
+        removals: t.MappingKV[str, t.Infra.StrSet],
     ) -> None:
         """Reject any binding that would shadow the inserted public facade."""
         allowed_imports = {
             id(node)
             for node in tree.body
             if isinstance(node, ast.ImportFrom)
-            and node.module == package
             and any(
-                imported.name == alias and imported.asname is None
+                (
+                    node.module == package
+                    and imported.name == alias
+                    and imported.asname is None
+                )
+                or (
+                    node.module in removals
+                    and imported.name in removals[node.module]
+                    and (imported.asname or imported.name) == alias
+                )
                 for imported in node.names
             )
         }
