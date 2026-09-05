@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from defusedxml import ElementTree as DefusedET
+
 from flext_infra import FlextInfraPytestDiagExtractor
 from flext_tests import tm
 from tests import m

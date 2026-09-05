@@ -88,7 +88,8 @@ class FlextInfraModelsScan:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         rule_file: Annotated[
-            t.NonEmptyStr, m.Field(description="Rule document file producing the finding")
+            t.NonEmptyStr,
+            m.Field(description="Rule document file producing the finding"),
         ]
         rule_id: Annotated[
             t.NonEmptyStr, m.Field(description="Exact ast-grep rule identifier")
@@ -102,14 +103,17 @@ class FlextInfraModelsScan:
         ]
         text: Annotated[str, m.Field(description="Exact matched source text")]
         replacement: Annotated[
-            str | None, m.Field(description="Exact replacement when the rule provides one")
+            str | None,
+            m.Field(description="Exact replacement when the rule provides one"),
         ] = None
         actionable: Annotated[
             bool, m.Field(description="Whether applying the rule changes source bytes")
         ]
         payload: Annotated[
             t.JsonMapping,
-            m.Field(description="Complete validated ast-grep finding without field loss"),
+            m.Field(
+                description="Complete validated ast-grep finding without field loss"
+            ),
         ]
 
     class ModScanReport(m.ArbitraryTypesModel):

@@ -184,16 +184,13 @@ class FlextInfraModGateEngine:
                 or not isinstance(file, str)
                 or not isinstance(source_range, Mapping)
                 or (
-                    raw_replacement is not None
-                    and not isinstance(raw_replacement, str)
+                    raw_replacement is not None and not isinstance(raw_replacement, str)
                 )
             ):
                 return r.fail(f"invalid ast-grep finding contract: {line}")
             file_path = Path(file)
             files.add(file_path)
-            replacement = (
-                raw_replacement if isinstance(raw_replacement, str) else None
-            )
+            replacement = raw_replacement if isinstance(raw_replacement, str) else None
             actionable = False
             if rule_id in fixable_ids:
                 if not isinstance(replacement, str):

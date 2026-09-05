@@ -9,8 +9,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import m
 from flext_cli import m as cli_m
+from flext_core import m
 from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._models.census import FlextInfraModelsCensus
 from flext_infra._models.check import FlextInfraModelsCheck

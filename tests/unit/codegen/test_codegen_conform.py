@@ -17,15 +17,14 @@ from pathlib import Path
 
 import pytest
 from filelock import UnixFileLock
+
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
-from tests import c, m, p, r, t, u
-
+from tests import c, m, t, u
 
 _CAPTURE_MODULE_OUTPUT = (
     # Run the real ``flext_infra`` module entry with its stage output mirrored

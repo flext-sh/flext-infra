@@ -276,11 +276,11 @@ def services_resource(
 
 
 __all__: list[str] = [
+    "cached_runner_project",
     "deptry_report_payload",
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
-    "cached_runner_project",
     "real_docs_project",
     "real_makefile_project",
     "real_python_package",

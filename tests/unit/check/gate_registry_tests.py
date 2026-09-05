@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraCanonicalAliasGate
-
 from tests import c, m, t, tm
 
 if TYPE_CHECKING:

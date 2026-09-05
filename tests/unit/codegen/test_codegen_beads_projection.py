@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-
 from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 

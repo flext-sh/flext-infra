@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final, Literal
+from typing import TYPE_CHECKING, Final
 
 from flext_core import c
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
@@ -45,7 +45,7 @@ class FlextInfraConstantsRefactor:
         Path(cb.REPORTS_DIR_NAME) / "refactor" / "mod-findings.json"
     )
     "Canonical single-file evidence snapshot for the latest mod scan."
-    MOD_SCAN_REPORT_SCHEMA_VERSION: Final[Literal[1]] = 1
+    MOD_SCAN_REPORT_SCHEMA_VERSION: Final = 1
     "Exact structured mod evidence schema version."
     MOD_SCAN_REPORT_MODE: Final[int] = 0o644
     "Canonical permission bits for structured mod evidence."

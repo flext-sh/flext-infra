@@ -74,7 +74,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
         verified_scan = self._workspace_scan()
         verified = self._issues_from_sarif(verified_scan.stdout, project_dir.name)
         remaining = self._drop_generated_projections(
-            verified.value if verified.success else (self._failure_issue(verified.error),)
+            verified.value
+            if verified.success
+            else (self._failure_issue(verified.error),)
         )
         if not remaining and verified_scan.exit_code != 0:
             remaining = (self._tool_failure_issue(verified_scan),)

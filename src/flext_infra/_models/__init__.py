@@ -34,7 +34,6 @@ if TYPE_CHECKING:
     from .enforcement import FlextInfraModelsEnforcement
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
-    from .github import FlextInfraModelsGithub
     from .layout import FlextInfraModelsLayout
     from .mixins import FlextInfraModelsMixins
     from .refactor import FlextInfraModelsRefactor
@@ -74,7 +73,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
     "FlextInfraModelsGitIdentity",
-    "FlextInfraModelsGithub",
     "FlextInfraModelsLayout",
     "FlextInfraModelsMixins",
     "FlextInfraModelsNamespaceEnforcer",
@@ -122,7 +120,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".enforcement": ("FlextInfraModelsEnforcement",),
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
-            ".github": ("FlextInfraModelsGithub",),
             ".layout": ("FlextInfraModelsLayout",),
             ".mixins": ("FlextInfraModelsMixins",),
             ".refactor": ("FlextInfraModelsRefactor",),

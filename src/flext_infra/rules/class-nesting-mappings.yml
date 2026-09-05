@@ -629,42 +629,6 @@ class_nesting:
   target_name: FlextInfraGitService
   confidence: low
   reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraConstantsGithub
-  current_file: flext-core/src/flext_infra/github/_constants.py
-  target_namespace: FlextGithubConstants
-  target_name: FlextInfraConstantsGithub
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraWorkflowLinter
-  current_file: flext-core/src/flext_infra/github/linter.py
-  target_namespace: FlextGithubLinter
-  target_name: FlextInfraWorkflowLinter
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraPrManager
-  current_file: flext-core/src/flext_infra/github/pr.py
-  target_namespace: FlextGithubPr
-  target_name: FlextInfraPrManager
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraPrWorkspaceManager
-  current_file: flext-core/src/flext_infra/github/pr_workspace.py
-  target_namespace: FlextGithubPrWorkspace
-  target_name: FlextInfraPrWorkspaceManager
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: SyncOperation
-  current_file: flext-core/src/flext_infra/github/workflows.py
-  target_namespace: FlextGithubWorkflows
-  target_name: SyncOperation
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
-- loose_name: FlextInfraWorkflowSyncer
-  current_file: flext-core/src/flext_infra/github/workflows.py
-  target_namespace: FlextGithubWorkflows
-  target_name: FlextInfraWorkflowSyncer
-  confidence: medium
-  reason: top_level_class_without_namespace_prefix
 - loose_name: FlextInfraPythonVersionEnforcer
   current_file: flext-core/src/flext_infra/maintenance/python_version.py
   target_namespace: FlextMaintenancePythonVersion

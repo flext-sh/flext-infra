@@ -10,12 +10,11 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator
-
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
 )
+from pydantic import AfterValidator
 
 from flext_core import m, t
 

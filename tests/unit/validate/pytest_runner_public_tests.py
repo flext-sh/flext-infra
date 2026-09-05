@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from flext_infra import FlextInfraPytestRunner, c, config, u
+from flext_infra import FlextInfraPytestRunner, config, u
 from flext_tests import tm
 
 

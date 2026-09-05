@@ -235,11 +235,7 @@ class TestsFlextInfraModCliRoute:
                 scope=(".",),
             )
         )
-        replaced = m.Infra.ModScanEvidence.model_validate_json(
-            report_path.read_bytes()
-        )
+        replaced = m.Infra.ModScanEvidence.model_validate_json(report_path.read_bytes())
         tm.that(replaced.findings, eq=0)
         tm.that(replaced.entries, empty=True)
-        tm.that(
-            empty_receipt.sha256, eq=u.Cli.sha256_bytes(report_path.read_bytes())
-        )
+        tm.that(empty_receipt.sha256, eq=u.Cli.sha256_bytes(report_path.read_bytes()))

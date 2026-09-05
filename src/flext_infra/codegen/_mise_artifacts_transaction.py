@@ -7,13 +7,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from filelock import FileLock, Timeout
+
 from flext_core import r
 from flext_infra import m, settings
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_journal as journal_io
-from flext_infra.codegen import _mise_artifacts_publication as publication
-from flext_infra.codegen import _mise_artifacts_state as state
-from flext_infra.codegen import _mise_artifacts_verification as verify
+from flext_infra.codegen import (
+    _mise_artifacts_files as files,
+    _mise_artifacts_journal as journal_io,
+    _mise_artifacts_publication as publication,
+    _mise_artifacts_state as state,
+    _mise_artifacts_verification as verify,
+)
 from flext_infra.codegen._codegen_file_staging import FlextInfraCodegenFileStaging
 from flext_infra.codegen._mise_artifacts_recovery import FlextInfraMiseRecovery
 from flext_infra.codegen._mise_artifacts_staging import FlextInfraMiseStaging

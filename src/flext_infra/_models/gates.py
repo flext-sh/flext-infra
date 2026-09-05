@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import u

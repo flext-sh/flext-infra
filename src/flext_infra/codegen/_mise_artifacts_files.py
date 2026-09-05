@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, m
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -247,10 +247,10 @@ __all__: list[str] = [
     "TRANSACTION_DIR_NAME",
     "create_directories",
     "missing_parent_directories",
+    "project_for_path",
     "remove_created_directories",
     "resolve_relative",
     "resolve_source",
-    "project_for_path",
     "source_selector",
     "transaction_sources",
     "workspace_relative",

@@ -6,8 +6,8 @@ import tomllib
 from typing import TYPE_CHECKING, Literal
 
 import pytest
-from flext_infra import c, config
-from flext_infra import main as infra_main
+
+from flext_infra import c, config, main as infra_main
 from flext_tests import tm
 from tests import t, u
 

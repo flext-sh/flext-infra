@@ -147,9 +147,9 @@ class FlextInfraUtilitiesRefactor:
             totals_by_rule=dict(sorted(rule_totals.items())),
             entries=report.entries,
         )
-        content = (
-            evidence.model_dump_json(indent=2) + "\n"
-        ).encode(c.Cli.ENCODING_DEFAULT)
+        content = (evidence.model_dump_json(indent=2) + "\n").encode(
+            c.Cli.ENCODING_DEFAULT
+        )
         report_path = root.resolve() / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
         prepared = u.Cli.ensure_dir(report_path.parent)
         if prepared.failure:
@@ -158,9 +158,7 @@ class FlextInfraUtilitiesRefactor:
         if before.failure:
             return r[m.Infra.ModScanEvidenceReceipt].from_failure(before)
         written = u.Cli.atomic_write_binary_file_guarded(
-            before.value,
-            content,
-            permission_mode=c.Infra.MOD_SCAN_REPORT_MODE,
+            before.value, content, permission_mode=c.Infra.MOD_SCAN_REPORT_MODE
         )
         if written.failure:
             return r[m.Infra.ModScanEvidenceReceipt].from_failure(written)
@@ -176,9 +174,7 @@ class FlextInfraUtilitiesRefactor:
             )
         return r[m.Infra.ModScanEvidenceReceipt].ok(
             m.Infra.ModScanEvidenceReceipt(
-                path=report_path,
-                sha256=u.Cli.sha256_bytes(content),
-                evidence=evidence,
+                path=report_path, sha256=u.Cli.sha256_bytes(content), evidence=evidence
             )
         )
 
