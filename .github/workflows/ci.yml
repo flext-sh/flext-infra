@@ -43,12 +43,23 @@ jobs:
     timeout-minutes: 60
     env:
       CI: Y
+      # Mise resolves GitHub credentials only through the declared command
+      # (never a token in the environment). The Mise transaction strips the
+      # inherited environment, so on a runner that command reads the job's own
+      # token from the file the step below writes.
+      MISE_GITHUB_CREDENTIAL_COMMAND: cat ${{ runner.temp }}/mise-github-token
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           submodules: false
           fetch-depth: 0
+      - name: Declare the Mise GitHub credential source
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          install -m 600 /dev/null "$RUNNER_TEMP/mise-github-token"
+          printf '%s' "$GITHUB_TOKEN" > "$RUNNER_TEMP/mise-github-token"
 
       # make setup is the only toolchain installer. Its committed Mise seed
       # resolves and executes the newest signed Mise release, then installs the
