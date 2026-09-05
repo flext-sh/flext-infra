@@ -1,0 +1,9 @@
+id: rewire-cli-local-run-to-file-return-outcome
+snapshots:
+  'cls._execute_streamed_process(command).map(lambda output: output.outcome.raw_return_code)':
+    fixed: 'cls._execute_streamed_process(command).map(lambda output: output.outcome)'
+    labels:
+    - source: 'cls._execute_streamed_process(command).map(lambda output: output.outcome.raw_return_code)'
+      style: primary
+      start: 0
+      end: 89
