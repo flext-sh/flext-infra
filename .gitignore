@@ -233,7 +233,7 @@ secrets.yml
 *.db
 .beads-credential-key
 .worktrees/
-legado/
+/legado/
 
 # Beads ledger identity (workspace and standalone; see mro-9wv8)
 !.beads/metadata.json
