@@ -637,13 +637,15 @@ class TestsFlextInfraLazyInitHelpers:
         tests_unit_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitConstants:\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__ = ("TestsFlextDemoUnitConstants",)\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_unit_root.joinpath(c.Infra.MODELS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitModels:\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__ = ("TestsFlextDemoUnitModels",)\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 

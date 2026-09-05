@@ -24,10 +24,7 @@ class FlextInfraModelsBase:
         """Structured process outcome propagated through a Result failure."""
 
         exit_code: Annotated[
-            int, m.Field(ge=0, le=255, description="Process-compatible exit code")
-        ]
-        raw_exit_code: Annotated[
-            int, m.Field(description="Raw subprocess return code before signal mapping")
+            int, m.Field(description="Exact subprocess return code without remapping")
         ]
         classification: Annotated[
             t.NonEmptyStr,

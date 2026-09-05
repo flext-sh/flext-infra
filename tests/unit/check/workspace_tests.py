@@ -23,10 +23,6 @@ if TYPE_CHECKING:
 class TestFlextInfraWorkspaceChecker:
     """Test suite for FlextInfraWorkspaceChecker."""
 
-    @pytest.fixture(autouse=True)
-    def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
-
     def test_init_creates_instance(self) -> None:
         """Test that checker initializes with default repository root."""
         checker = FlextInfraWorkspaceChecker()

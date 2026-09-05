@@ -188,11 +188,7 @@ class FlextInfraConstantsCheck:
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
-    SMELLS_GATE_MODE: Final[GateMode] = GateMode.WARN
-    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
     QLTY_BINARY: Final[str] = "qlty"
-    QLTY_BINARY_FALLBACK_SUFFIX: Final[str] = ".qlty/bin/qlty"
-    "Joined to Path.home() when the binary is absent from PATH."
     SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
         "smells",
         "--all",
@@ -219,8 +215,6 @@ class FlextInfraConstantsCheck:
     # --- jscpd duplication gate SSOT (operator 2026-09-04: flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
-    DUPLICATION_GATE_MODE: Final[GateMode] = GateMode.WARN
-    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
     JSCPD_BINARY: Final[str] = "jscpd"
     "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"

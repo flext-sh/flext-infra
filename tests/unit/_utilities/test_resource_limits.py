@@ -46,28 +46,34 @@ class TestsFlextInfraUtilitiesResourceLimits:
         with pytest.raises(ValueError, match="greater than 0"):
             m.Infra.MypyResourceLimit(memory_limit_mb=0, timeout_seconds=0)
 
-    def test_mypy_resource_limit_parses_environment_at_boundary(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_mypy_resource_limit_parses_environment_at_boundary(self) -> None:
         """Convert valid process text once before strict model validation."""
-        monkeypatch.setenv(c.Infra.MYPY_MEMORY_LIMIT_MB_ENV, "1024")
-        monkeypatch.setenv(c.Infra.MYPY_TIMEOUT_SECONDS_ENV, "120")
-
-        limit = u.Infra.mypy_resource_limit()
+        with tm.scope(
+            env={
+                c.Infra.MYPY_MEMORY_LIMIT_MB_ENV: "1024",
+                c.Infra.MYPY_TIMEOUT_SECONDS_ENV: "120",
+            }
+        ):
+            limit = u.Infra.mypy_resource_limit()
 
         tm.that(limit.memory_limit_mb, eq=1024)
         tm.that(limit.timeout_seconds, eq=120)
 
     @pytest.mark.parametrize("invalid_value", ["", "1024.0", "-1", " 1024"])
     def test_mypy_resource_limit_rejects_non_integer_environment(
-        self, monkeypatch: pytest.MonkeyPatch, invalid_value: str
+        self, invalid_value: str
     ) -> None:
         """Reject non-integer process text before constructing the strict model."""
-        monkeypatch.setenv(c.Infra.MYPY_MEMORY_LIMIT_MB_ENV, invalid_value)
-        monkeypatch.setenv(c.Infra.MYPY_TIMEOUT_SECONDS_ENV, "120")
-
-        with pytest.raises(
-            ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
+        with (
+            tm.scope(
+                env={
+                    c.Infra.MYPY_MEMORY_LIMIT_MB_ENV: invalid_value,
+                    c.Infra.MYPY_TIMEOUT_SECONDS_ENV: "120",
+                }
+            ),
+            pytest.raises(
+                ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
+            ),
         ):
             u.Infra.mypy_resource_limit()
 

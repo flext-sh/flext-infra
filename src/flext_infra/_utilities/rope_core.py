@@ -40,10 +40,8 @@ class FlextInfraUtilitiesRopeCore(
         resolved_root = repository_root.resolve()
         project_roots = tuple(
             project_root
-            for project_root in (
-                FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
-                    resolved_root
-                )
+            for project_root in FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
+                resolved_root
             )
             if project_root.resolve().is_relative_to(resolved_root)
         )

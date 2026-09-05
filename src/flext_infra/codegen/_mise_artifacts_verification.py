@@ -146,12 +146,12 @@ def sources(
     expected_states = files.transaction_sources(plan, source_plans)
     if expected_states.failure:
         return r[bool].from_failure(expected_states)
-    for expected in expected_states.value:
-        current = u.Cli.atomic_read_binary_file_state(expected.path, required=True)
-        if current.failure:
-            return r[bool].from_failure(current)
-        if current.value != expected:
-            return r[bool].fail(f"codegen source changed: {expected.path}")
+    verified = u.Cli.atomic_verify_binary_file_states(expected_states.value)
+    if verified.failure:
+        return r[bool].fail(
+            "codegen source verification failed: "
+            f"{verified.error or 'physical state changed'}"
+        )
     if journal is None:
         return r[bool].ok(True)
     topology = _journal_source_topology(plan.layout, journal.sources)
@@ -160,7 +160,7 @@ def sources(
     if len(journal.sources) != len(expected_states.value):
         return r[bool].fail("codegen journal source count differs from snapshot")
     for expected, recorded in zip(expected_states.value, journal.sources, strict=True):
-        selector = files.workspace_relative(plan.layout.scope_root, expected.path)
+        selector = files.source_selector(plan.layout.scope_root, expected.path)
         if selector.failure:
             return r[bool].from_failure(selector)
         if (
@@ -330,14 +330,17 @@ def _journal_source_topology(
         if source.path in seen:
             return r[bool].fail(f"duplicate Mise journal source: {source.path}")
         seen.add(source.path)
-        resolved = files.resolve_relative(
-            layout.scope_root, source.path, purpose="Mise journal source"
-        )
+        resolved = files.resolve_source(layout.scope_root, source.path)
         if resolved.failure:
             return r[bool].from_failure(resolved)
-        owner = files.project_for_path(layout, resolved.value)
-        if owner.failure:
-            return r[bool].from_failure(owner)
+        if resolved.value.is_relative_to(layout.scope_root.absolute()):
+            owner = files.project_for_path(layout, resolved.value)
+            if owner.failure:
+                return r[bool].from_failure(owner)
+        elif resolved.value.is_relative_to(layout.state_root.absolute()):
+            return r[bool].fail(
+                f"Mise journal source enters transaction state: {source.path}"
+            )
     observed_order = tuple(source.path for source in sources_to_validate)
     if observed_order != tuple(sorted(observed_order)):
         return r[bool].fail("codegen journal source order differs from workspace")

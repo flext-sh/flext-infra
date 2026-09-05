@@ -120,7 +120,7 @@ endef
 
 define RUN_PUBLIC
 	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) pre-$(1))
-	@$(SELF_MAKE) _builtin-$(1)
+	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) _custom-$(1),@$(SELF_MAKE) _builtin-$(1))
 	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) post-$(1))
 endef
 
@@ -283,5 +283,7 @@ _builtin-duplication:
 
 {%- for verb in extra_verbs %}
 _builtin-{{ verb.name }}:
-	$(if $(filter _custom-{{ verb.name }},$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) _custom-{{ verb.name }},{% if script_dispatch %}@$(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "{{ verb.name }}"{% else %}@printf 'ERROR: declared operation {{ verb.name }} has no implementation\n' >&2; exit 2{% endif %})
+{% if script_dispatch %}	@$(UV_RUN) python "$(PROJECT_ROOT)/{{ script_dispatch.dispatcher }}" "{{ verb.name }}"
+{% else %}	@printf 'ERROR: declared operation {{ verb.name }} has no implementation\n' >&2; exit 2
+{% endif %}
 {%- endfor %}

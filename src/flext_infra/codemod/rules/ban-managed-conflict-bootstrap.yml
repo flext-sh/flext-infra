@@ -1,0 +1,16 @@
+# Managed conflict recovery is planned in memory and published by the common
+# CodegenFilePlan transaction. A pre-facade bootstrap would be a second writer
+# outside the workspace lock and crash journal.
+id: ban-managed-conflict-bootstrap-import
+language: Python
+severity: error
+rule:
+  pattern: from flext_infra.codegen.managed_conflicts_bootstrap import $$$NAMES
+message: Plan managed conflict recovery through FlextInfraCodegenConform.
+---
+id: ban-managed-conflict-bootstrap-call
+language: Python
+severity: error
+rule:
+  pattern: prepare_managed_conflicts($$$ARGS)
+message: Plan managed conflict recovery through FlextInfraCodegenConform.

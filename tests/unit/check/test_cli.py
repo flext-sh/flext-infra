@@ -65,13 +65,8 @@ class TestWorkspaceCheckCli:
         ids=["passing_project", "failing_project"],
     )
     def test_run_cli_lint_exit_code_matches_source_validity(
-        self,
-        tmp_path: Path,
-        source: str,
-        expected_exit: int,
-        monkeypatch: pytest.MonkeyPatch,
+        self, tmp_path: Path, source: str, expected_exit: int
     ) -> None:
-        monkeypatch.delenv("CI", raising=False)
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", source)
 
@@ -89,9 +84,8 @@ class TestWorkspaceCheckCli:
         tm.that(exit_code, eq=expected_exit)
 
     def test_run_cli_returns_one_for_report_directory_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
-        monkeypatch.delenv("CI", raising=False)
         workspace = self._create_workspace(tmp_path)
         _ = self._write_module(workspace, "flext-core", "value = 1\n")
         blocked = tmp_path / "blocked"
@@ -133,9 +127,8 @@ class TestWorkspaceCheckCli:
         tm.that(exit_code, eq=0)
 
     def test_run_cli_never_rewrites_source_because_check_is_read_only(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
-        monkeypatch.delenv("CI", raising=False)
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(workspace, "flext-core", "def broken(:\n")
 
@@ -159,10 +152,7 @@ class TestWorkspaceCheckCli:
             eq='"""Fixture module."""\n\ndef broken(:\n',
         )
 
-    def test_run_cli_check_only_preserves_source(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.delenv("CI", raising=False)
+    def test_run_cli_check_only_preserves_source(self, tmp_path: Path) -> None:
         workspace = self._create_workspace(tmp_path)
         module_path = self._write_module(
             workspace, "flext-core", "import os\n\nvalue = 1\n"

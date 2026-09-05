@@ -211,7 +211,7 @@ def _journal_source(
         return r[m.Infra.MiseToolchainJournalSource].fail(
             f"journal source is absent: {source.path}"
         )
-    selector = files.workspace_relative(plan.layout.scope_root, source.path)
+    selector = files.source_selector(plan.layout.scope_root, source.path)
     if selector.failure:
         return r[m.Infra.MiseToolchainJournalSource].from_failure(selector)
     return r[m.Infra.MiseToolchainJournalSource].ok(

@@ -113,13 +113,12 @@ class TestExtendedRunnerExtras:
         tm.that(len(result.issues), eq=1)
 
     def test_bandit_uses_workspace_interpreter_with_sanitized_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Prove the gate cannot bind a host or mise-provided executable."""
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
-        monkeypatch.setenv("PATH", "/usr/bin:/bin")
-
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+        with tm.scope(env={"PATH": "/usr/bin:/bin"}):
+            result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())

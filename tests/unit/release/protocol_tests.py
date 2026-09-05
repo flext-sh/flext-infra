@@ -7,7 +7,6 @@ subject is the pull-request title.
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
@@ -16,8 +15,6 @@ from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 def _plan(workspace: Path) -> m.Infra.ReleasePlan:
@@ -390,22 +387,21 @@ class TestsFlextInfraReleaseProtocol:
         """The release pull request."""
 
         @staticmethod
-        def test_apply_opens_the_release_pull_request(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
+        def test_apply_opens_the_release_pull_request(tmp_path: Path) -> None:
             """Stamp, commit on the release lane, push it, and open the pull request."""
             workspace = _release_lane_workspace(tmp_path)
             gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            monkeypatch.setenv(
-                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-            )
             integration = u.Tests.integration_branch(workspace)
             # flext-core caches the parsed pyproject per process; a warm cache
             # holding the pre-stamp document must not leak into the projections.
             tm.ok(u.read_project_metadata(workspace))
 
             result = u.Tests.run_release_main(
-                workspace, "--phase", "version", "--apply"
+                workspace,
+                "--phase",
+                "version",
+                "--apply",
+                executable_dir=tmp_path / "bin",
             )
 
             tm.that(result, eq=0)
@@ -471,23 +467,30 @@ class TestsFlextInfraReleaseProtocol:
 
         @staticmethod
         def test_rerun_continues_the_lane_without_a_second_commit(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+            tmp_path: Path,
         ) -> None:
             """A retry from the integration branch is idempotent on the open lane."""
             workspace = _release_lane_workspace(tmp_path)
             u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            monkeypatch.setenv(
-                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-            )
             integration = u.Tests.integration_branch(workspace)
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
+                u.Tests.run_release_main(
+                    workspace,
+                    "--phase",
+                    "version",
+                    "--apply",
+                    executable_dir=tmp_path / "bin",
+                ),
                 eq=0,
             )
             tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
 
             result = u.Tests.run_release_main(
-                workspace, "--phase", "version", "--apply"
+                workspace,
+                "--phase",
+                "version",
+                "--apply",
+                executable_dir=tmp_path / "bin",
             )
 
             tm.that(result, eq=0)
@@ -572,18 +575,19 @@ class TestsFlextInfraReleaseProtocol:
         """Tagging the merged release commit."""
 
         @staticmethod
-        def test_merged_release_commit_is_tagged_and_pushed(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
+        def test_merged_release_commit_is_tagged_and_pushed(tmp_path: Path) -> None:
             """After the release pull request merges, HEAD earns its tag once."""
             workspace = _release_lane_workspace(tmp_path)
             u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            monkeypatch.setenv(
-                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-            )
             integration = u.Tests.integration_branch(workspace)
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
+                u.Tests.run_release_main(
+                    workspace,
+                    "--phase",
+                    "version",
+                    "--apply",
+                    executable_dir=tmp_path / "bin",
+                ),
                 eq=0,
             )
             # GitHub merges the release pull request under its title plus the
@@ -604,8 +608,12 @@ class TestsFlextInfraReleaseProtocol:
                 )
             )
 
-            first = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
-            second = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
+            first = u.Tests.run_release_main(
+                workspace, "--phase", "tag", "--apply", executable_dir=tmp_path / "bin"
+            )
+            second = u.Tests.run_release_main(
+                workspace, "--phase", "tag", "--apply", executable_dir=tmp_path / "bin"
+            )
 
             tm.that(first, eq=0)
             tm.that(second, eq=0)

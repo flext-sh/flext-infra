@@ -61,10 +61,6 @@ if TYPE_CHECKING:
     from .codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
-    from .codegen.managed_conflicts_bootstrap import (
-        ManagedConflictBootstrapError,
-        prepare_managed_conflicts,
-    )
     from .codegen.managed_conflicts_core import (
         ManagedConflictError,
         recover_managed_toml,
@@ -500,7 +496,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraWrapperRootNamespaceRefactor",
     "GateContractInfraError",
     "GateContractUsageError",
-    "ManagedConflictBootstrapError",
     "ManagedConflictError",
     "RefactorRoutes",
     "ValidationCommandRoutes",
@@ -535,7 +530,6 @@ __all__: tuple[str, ...] = (
     "main",
     "maintenance",
     "p",
-    "prepare_managed_conflicts",
     "r",
     "recover_managed_toml",
     "refactor",
@@ -580,10 +574,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
-            ".codegen.managed_conflicts_bootstrap": (
-                "ManagedConflictBootstrapError",
-                "prepare_managed_conflicts",
-            ),
             ".codegen.managed_conflicts_core": (
                 "ManagedConflictError",
                 "recover_managed_toml",

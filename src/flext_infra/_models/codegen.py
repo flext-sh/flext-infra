@@ -182,7 +182,12 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
 
         path: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Workspace-relative committed source path"),
+            m.Field(
+                description=(
+                    "Workspace-relative source path, or canonical absolute path for "
+                    "an installed read-only template"
+                )
+            ),
         ]
         sha256: Annotated[
             str,

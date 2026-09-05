@@ -81,6 +81,18 @@ class FlextInfraUtilitiesBase:
         return FlextInfraUtilitiesBase.path_depth(path), path.as_posix()
 
     @staticmethod
+    def first_merge_conflict_marker(content: str) -> str | None:
+        """Return the first Git merge-control line in rendered content."""
+        return next(
+            (
+                line
+                for line in content.splitlines()
+                if line.startswith(("<<<<<<< ", "||||||| ", ">>>>>>> "))
+            ),
+            None,
+        )
+
+    @staticmethod
     def ast_grep_scan_command(
         rule_path: Path,
         *,
@@ -150,16 +162,6 @@ class FlextInfraUtilitiesBase:
         if exit_code >= c.Infra.PROCESS_SIGNAL_EXIT_OFFSET:
             return f"signal={exit_code - c.Infra.PROCESS_SIGNAL_EXIT_OFFSET}"
         return "failure"
-
-    @staticmethod
-    def normalize_process_exit_code(raw_exit_code: int) -> int:
-        """Map a subprocess signal return code into the portable shell domain."""
-        if raw_exit_code < 0:
-            normalized_exit_code: int = (
-                c.Infra.PROCESS_SIGNAL_EXIT_OFFSET - raw_exit_code
-            )
-            return normalized_exit_code
-        return raw_exit_code
 
 
 __all__: list[str] = ["FlextInfraUtilitiesBase"]

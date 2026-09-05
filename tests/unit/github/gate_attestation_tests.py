@@ -2,35 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from pathlib import Path
 
-from git import Repo
 import pytest
 
 from flext_cli import u as cli_u
 from flext_infra import m, p, u
 from flext_tests import tm
-
-_OPEN_REPOSITORIES: list[Repo] = []
-
-
-@pytest.fixture(autouse=True)
-def close_git_repositories() -> Iterator[None]:
-    yield
-    while _OPEN_REPOSITORIES:
-        _OPEN_REPOSITORIES.pop().close()
+from tests import u as test_u
 
 
-def _signed_repository(root: Path) -> tuple[Repo, Path]:
-    repo = Repo.init(root)
-    _OPEN_REPOSITORIES.append(repo)
-    with repo.config_writer() as config:
-        config.set_value("user", "name", "Attestation Test")
-        config.set_value("user", "email", "attestation@example.test")
-        config.set_value("gpg", "format", "ssh")
-        config.set_value("commit", "gpgsign", "false")
-    repo.create_remote("origin", "https://github.example/flext/fixture.git")
+def _signed_repository(
+    root: Path, *, remote_suffix: str = ".git"
+) -> tuple[Path, Path, str]:
+    root.mkdir(parents=True, exist_ok=True)
     key_path = root / "signing_key"
     tm.ok(
         cli_u.Cli.run_raw(
@@ -38,8 +23,6 @@ def _signed_repository(root: Path) -> tuple[Repo, Path]:
             cwd=root,
         )
     )
-    with repo.config_writer() as config:
-        config.set_value("user", "signingkey", str(key_path))
     (root / "tracked.txt").write_text("attested\n", encoding="utf-8")
     (root / "Makefile").write_text(
         ".PHONY: gen check test\n"
@@ -51,14 +34,27 @@ def _signed_repository(root: Path) -> tuple[Repo, Path]:
     (root / "pyproject.toml").write_text(
         "[project]\nname='fixture'\n", encoding="utf-8"
     )
-    repo.index.add(["Makefile", "pyproject.toml", "tracked.txt"])
-    repo.index.commit("test: create base revision")
+    provider = test_u.Tests.provider()
+    test_u.Tests.initialize_git_repo(
+        root,
+        origin_url=(f"{provider.base_url.rstrip('/')}/gate-attestation{remote_suffix}"),
+        config_values={
+            "user.name": "Attestation Test",
+            "user.email": "attestation@example.test",
+            "gpg.format": "ssh",
+            "commit.gpgsign": "false",
+            "user.signingkey": str(key_path),
+        },
+    )
     allowed_signers = root / "allowed_signers"
     public_key = key_path.with_suffix(".pub").read_text(encoding="utf-8").strip()
     allowed_signers.write_text(
         f"attester@example.test {public_key}\n", encoding="utf-8"
     )
-    return repo, allowed_signers
+    head = tm.ok(
+        u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=root))
+    ).oid
+    return root, allowed_signers, head
 
 
 def _request(root: Path) -> m.Infra.GateAttestationCreateRequest:
@@ -83,40 +79,44 @@ def _verify(
 
 
 def test_signed_gate_attestation_round_trip_is_local(tmp_path: Path) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+    repository, allowed_signers, head = _signed_repository(tmp_path)
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
 
     tm.ok(created)
-    tm.that(created.unwrap().tag, eq=f"attest/gates/v1/{repo.head.commit.hexsha}")
-    tm.that(repo.tags[created.unwrap().tag].commit.hexsha, eq=repo.head.commit.hexsha)
-    verified = _verify(
-        tmp_path, allowed_signers, repo.head.commit.hexsha, "gen", "check", "test"
+    tm.that(created.unwrap().tag, eq=f"attest/gates/v1/{head}")
+    tagged = tm.ok(
+        u.Infra.git_resolve_commit(
+            m.Infra.GitCommitishRequest(
+                repo_root=repository, commitish=created.unwrap().tag
+            )
+        )
     )
+    tm.that(tagged.oid, eq=head)
+    verified = _verify(tmp_path, allowed_signers, head, "gen", "check", "test")
     tm.ok(verified)
     tm.that(verified.unwrap().signer, eq="attester@example.test")
 
 
 def test_gate_attestation_normalizes_network_remote_git_suffix(tmp_path: Path) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+    _repository, allowed_signers, head = _signed_repository(tmp_path, remote_suffix="")
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
-    repo.remote("origin").set_url("https://github.example/flext/fixture")
 
-    tm.ok(
-        _verify(
-            tmp_path, allowed_signers, repo.head.commit.hexsha, "gen", "check", "test"
-        )
-    )
+    tm.ok(_verify(tmp_path, allowed_signers, head, "gen", "check", "test"))
 
 
 def test_gate_attestation_verifies_selected_commit_with_equal_tree(
     tmp_path: Path,
 ) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+    repository, allowed_signers, selected_sha = _signed_repository(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
-    selected_sha = repo.head.commit.hexsha
-    selected_tree = repo.head.commit.tree.hexsha
-    repo.index.commit("test: later equal-tree commit")
-    tm.that(repo.head.commit.tree.hexsha, eq=selected_tree)
+    later = tm.ok(
+        u.Infra.git_commit(
+            m.Infra.GitCommitRequest(
+                repo_root=repository, message="test: later equal-tree commit"
+            )
+        )
+    )
+    tm.that(later.oid, ne=selected_sha)
 
     verified = _verify(tmp_path, allowed_signers, selected_sha, "gen", "check", "test")
     tm.ok(verified)
@@ -124,17 +124,17 @@ def test_gate_attestation_verifies_selected_commit_with_equal_tree(
 
 
 def test_gate_attestation_rejects_incomplete_coverage(tmp_path: Path) -> None:
-    repo, allowed_signers = _signed_repository(tmp_path)
+    _repository, allowed_signers, head = _signed_repository(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
 
-    verified = _verify(tmp_path, allowed_signers, repo.head.commit.hexsha, "check")
+    verified = _verify(tmp_path, allowed_signers, head, "check")
 
     tm.fail(verified)
     tm.that(verified.error or "", has="exactly match")
 
 
 def test_gate_attestation_rejects_duplicate_gate_coverage(tmp_path: Path) -> None:
-    _repo, _allowed_signers = _signed_repository(tmp_path)
+    _repository, _allowed_signers, _head = _signed_repository(tmp_path)
     values = _request(tmp_path).model_dump()
     values["gates"] = ("gen", "check", "test", "test")
 

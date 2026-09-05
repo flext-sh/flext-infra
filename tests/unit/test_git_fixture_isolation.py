@@ -12,22 +12,21 @@ from tests import c, u as test_u
 
 
 def test_initialize_git_repo_ignores_inherited_git_local_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     poison = tmp_path / "poison"
     poison.mkdir()
     tm.ok(u.Cli.run_checked(["git", "init", "-b", "main"], cwd=poison))
     target = tmp_path / "target"
     target.mkdir()
-    for key, value in {
+    poisoned_environment = {
         "GIT_DIR": str(poison / ".git"),
         "GIT_WORK_TREE": str(poison),
         "GIT_INDEX_FILE": str(poison / ".git" / "index"),
         "GIT_COMMON_DIR": str(poison / ".git"),
-    }.items():
-        monkeypatch.setenv(key, value)
-
-    test_u.Tests.initialize_git_repo(target)
+    }
+    with tm.scope(env=poisoned_environment):
+        test_u.Tests.initialize_git_repo(target)
 
     tm.that((target / ".git").is_dir(), eq=True)
     resolved = tm.ok(

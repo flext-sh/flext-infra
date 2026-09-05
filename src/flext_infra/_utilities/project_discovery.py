@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_infra.constants import c
 from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
@@ -66,6 +67,20 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         ordered.extend(non_root_candidates)
         return ordered
+
+    @classmethod
+    def discover_rope_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
+        """Return every direct Python project sharing one Rope workspace root."""
+        resolved_root = repository_root.resolve()
+        declared = cls.discover_project_candidates(resolved_root)
+        direct = tuple(
+            child.resolve()
+            for child in sorted(resolved_root.iterdir(), key=lambda path: path.name)
+            if child.is_dir()
+            and not child.name.startswith(".")
+            and (child / c.Infra.PYPROJECT_FILENAME).is_file()
+        )
+        return tuple(sorted({*declared, *direct}, key=Path.as_posix))
 
     @classmethod
     def ast_grep_scan_targets(cls, repository_root: Path) -> t.StrSequence:

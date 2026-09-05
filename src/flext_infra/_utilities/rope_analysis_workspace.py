@@ -58,18 +58,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     @staticmethod
     def _python_and_stub_files(resolved_root: Path) -> tuple[tuple[Path, Path], ...]:
         """Return owned Python paths paired with their declared project root."""
-        declared = FlextInfraUtilitiesProjectDiscovery.discover_project_roots(
-            resolved_root
-        )
-        project_roots = {resolved_root, *(path.resolve() for path in declared)}
-        if not (resolved_root / c.Infra.GITMODULES).is_file():
-            project_roots.update(
-                path.resolve()
-                for path in resolved_root.iterdir()
-                if path.is_dir()
-                and not path.name.startswith(".")
-                and (path / c.Infra.PYPROJECT_FILENAME).is_file()
-            )
+        project_roots = {
+            resolved_root,
+            *FlextInfraUtilitiesProjectDiscovery.discover_rope_project_roots(
+                resolved_root
+            ),
+        }
         scan_roots = {c.Infra.DEFAULT_SRC_DIR, *c.Infra.ROOT_WRAPPER_SEGMENTS}
         files: set[tuple[Path, Path]] = set()
         for project_root in sorted(project_roots):

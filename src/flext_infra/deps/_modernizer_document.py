@@ -336,8 +336,16 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if normalized_rendered == normalized_original:
             return ()
         if not dry_run:
-            # Persist the same normalized value used for change detection.
-            u.write_file(path, normalized_rendered, encoding=c.Cli.ENCODING_DEFAULT)
+            before = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
+            expected_before = normalized_original.encode(c.Cli.ENCODING_DEFAULT)
+            if before.content != expected_before:
+                raise RuntimeError(f"pyproject changed during modernization: {path}")
+            u.Cli.atomic_write_text_file_guarded(before, normalized_rendered).unwrap()
+            published = u.Cli.atomic_read_binary_file_state(
+                path, required=True
+            ).unwrap()
+            if published.content != normalized_rendered.encode(c.Cli.ENCODING_DEFAULT):
+                raise RuntimeError(f"pyproject publication differs after write: {path}")
         return changes
 
 

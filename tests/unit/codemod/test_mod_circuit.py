@@ -196,7 +196,7 @@ class TestsFlextInfraModCliRoute:
         root = _repo(
             tmp_path,
             "u.Infra.serialization_lock_execute(paths, timeout)\n",
-            project_name=project.name,
+            project_name=project.project.name,
         )
 
         exit_code = infra_main(["refactor", "mod", "--workspace", str(root)])

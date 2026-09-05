@@ -22,6 +22,7 @@ from flext_infra.base import s
 from flext_infra.codegen._mise_artifacts_transaction import (
     FlextInfraCodegenMiseArtifactTransaction,
 )
+from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -546,6 +547,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         plan: m.Infra.CodegenPlan, changed: tuple[m.Infra.CodegenFilePlan, ...]
     ) -> p.Result[tuple[Path, ...]]:
         """Apply one prevalidated set of ordinary non-toolchain files."""
+        source_states = tuple(
+            source for file in plan.files for source in file.source_states
+        )
+        source_barrier = u.Cli.atomic_verify_binary_file_states(source_states)
+        if source_barrier.failure:
+            return r[tuple[Path, ...]].fail(
+                source_barrier.error or "codegen source changed"
+            )
         written: list[Path] = []
         total_changed = len(changed)
         u.Cli.info(f"stage=apply changed={total_changed}")
@@ -1223,7 +1232,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
         context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
-        return u.Cli.template_render(templates_root / entry.source, context)
+        rendered = u.Cli.template_render_authenticated(
+            templates_root / entry.source, context
+        )
+        if rendered.failure:
+            return r[str].from_failure(rendered)
+        return r[str].ok(rendered.value.rendered)
 
     @staticmethod
     def _select_repositories(
@@ -1466,7 +1480,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     artifact_context.error
                     or f"artifact render context failed: {destination}"
                 )
-            rendered = u.Cli.template_render(
+            rendered = u.Cli.template_render_authenticated(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:
@@ -1478,7 +1492,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
             rendered_content = self._compose_project_artifact(
-                root, destination, rendered.value
+                root, destination, rendered.value.rendered
             )
             if rendered_content.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1489,7 +1503,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 root,
                 destination,
                 rendered_content.value.rendered,
-                source_states=rendered_content.value.source_states,
+                source_states=(
+                    *rendered.value.source_states,
+                    *rendered_content.value.source_states,
+                ),
             )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1513,7 +1530,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 "pyproject template is missing from codegen configuration"
             )
-        pyproject_render = u.Cli.template_render(
+        pyproject_render = u.Cli.template_render_authenticated(
             templates_root / pyproject_entry.source, context
         )
         if pyproject_render.failure:
@@ -1521,7 +1538,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pyproject_render.error or "pyproject template render failed"
             )
         initial_tooling = modernizer.conform_source(
-            pyproject_render.value,
+            pyproject_render.value.rendered,
             path=pyproject,
             format_source=False,
             root_modules=project.root_modules,
@@ -1570,7 +1587,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 final_tooling.error or f"final tooling conform failed: {pyproject}"
             )
         pyproject_plan = self._file_plan(
-            root, c.Infra.PYPROJECT_FILENAME, final_tooling.value
+            root,
+            c.Infra.PYPROJECT_FILENAME,
+            final_tooling.value,
+            source_states=pyproject_render.value.source_states,
         )
         if pyproject_plan.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1632,7 +1652,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"existing repository has no pyproject.toml: {root}; "
                 "scaffold templates are available only through codegen new"
             )
-        metadata = u.read_project_metadata(root)
+        pyproject_read = u.Cli.files_read_text(pyproject)
+        if pyproject_read.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
+                pyproject_read.error or f"pyproject read failed: {pyproject}"
+            )
+        pyproject_source = self._reconcile_managed_pyproject(
+            pyproject, pyproject_read.value, codegen
+        )
+        if pyproject_source.failure:
+            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
+                pyproject_source
+            )
+        metadata = self._project_metadata_from_source(root, pyproject_source.value)
         if metadata.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 metadata.error or f"project metadata load failed: {root}"
@@ -1650,17 +1682,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 managed_artifacts
             )
         report_pyproject_stage("managed-artifacts")
-        pyproject_read = u.Cli.files_read_text(pyproject)
-        if pyproject_read.failure:
-            return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
-                pyproject_read.error or f"pyproject read failed: {pyproject}"
-            )
         uv_exclude_dependencies = self._routed_uv_exclude_dependencies(
             repository, target, workspace, codegen
         )
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
-                pyproject_read.value,
+                pyproject_source.value,
                 providers=codegen.providers,
                 workspace=workspace,
                 workspace_mode=target.make_profile,
@@ -1726,7 +1753,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository, codegen.toolchain
         )
         prepared_result = u.Infra.pyproject_conform(
-            pyproject_read.value,
+            pyproject_source.value,
             providers=codegen.providers,
             workspace=workspace,
             workspace_mode=target.make_profile,
@@ -1779,7 +1806,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 tooling_context.error or f"tooling render failed: {pyproject}"
             )
         pyproject_plan = self._file_plan(
-            root, c.Infra.PYPROJECT_FILENAME, tooling_result.value
+            root,
+            c.Infra.PYPROJECT_FILENAME,
+            tooling_result.value,
+            source_states=managed_artifacts.value.sources,
         )
         if pyproject_plan.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1815,6 +1845,53 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             planned.extend(custom_result.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
+
+    @staticmethod
+    def _reconcile_managed_pyproject(
+        path: Path, source: str, codegen: m.Infra.CodegenConfigSpec
+    ) -> p.Result[str]:
+        """Plan declared conflict recovery without changing the live file."""
+        markers = ("<<<<<<< ", "||||||| ", ">>>>>>> ")
+        if not any(line.startswith(markers) for line in source.splitlines()):
+            return r[str].ok(source)
+        owner = next(
+            (
+                managed
+                for managed in codegen.managed_files
+                if managed.path == Path(c.Infra.PYPROJECT_FILENAME)
+            ),
+            None,
+        )
+        if owner is None or not owner.conflict_sections:
+            return r[str].fail(
+                f"managed pyproject conflict has no declared owner: {path}"
+            )
+        recovered = FlextInfraCodegenManagedConflicts.recover_toml(
+            source, conflict_sections=owner.conflict_sections
+        )
+        if recovered.failure:
+            return r[str].from_failure(recovered)
+        u.Cli.info(f"planned owner-declared managed conflict recovery: {path}")
+        return recovered
+
+    @staticmethod
+    def _project_metadata_from_source(
+        root: Path, source: str
+    ) -> p.Result[p.ProjectMetadata]:
+        """Build metadata from the same in-memory source used by the file plan."""
+        payload = u.Cli.toml_mapping_from_text(source)
+        if payload is None:
+            return r[p.ProjectMetadata].fail(
+                f"cannot parse reconciled project metadata from {root}"
+            )
+        try:
+            document = m.PyprojectDocument.model_validate(payload)
+            metadata = u.build_project_metadata(root.resolve(), document)
+        except c.ValidationError as exc:
+            return r[p.ProjectMetadata].fail_op(
+                f"validate reconciled project metadata from {root}", exc
+            )
+        return r[p.ProjectMetadata].ok(metadata)
 
     def _plan_existing_templates(
         self,
@@ -1964,14 +2041,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     artifact_context.error
                     or f"managed artifact context failed: {entry.destination}"
                 )
-            rendered = u.Cli.template_render(
+            rendered = u.Cli.template_render_authenticated(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     rendered.error or f"template render failed: {entry.source}"
                 )
-            rendered_content = rendered.value
+            rendered_content = rendered.value.rendered
             composed = self._compose_project_artifact(
                 root,
                 entry.destination,
@@ -1984,14 +2061,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     or f"managed artifact composition failed: {entry.destination}"
                 )
             rendered_content = composed.value.rendered
-            conflict_marker = next(
-                (
-                    line
-                    for line in rendered_content.splitlines()
-                    if line.startswith(("<<<<<<< ", "||||||| ", ">>>>>>> "))
-                ),
-                None,
-            )
+            conflict_marker = u.Infra.first_merge_conflict_marker(rendered_content)
             if conflict_marker is not None:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     "rendered template contains a merge conflict marker: "
@@ -2003,7 +2073,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 entry.destination,
                 rendered_content,
                 executable=managed.executable,
-                source_states=composed.value.source_states,
+                source_states=(
+                    *rendered.value.source_states,
+                    *(
+                        composed.value.source_states
+                        or managed_artifacts.sources
+                    ),
+                ),
             )
             if file_plan.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -2811,14 +2887,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Compare one expected output and mark whether it changed."""
         path = root / relative_path
-        conflict_marker = next(
-            (
-                line
-                for line in rendered.splitlines()
-                if line.startswith(("<<<<<<< ", "||||||| ", ">>>>>>> "))
-            ),
-            None,
-        )
+        conflict_marker = u.Infra.first_merge_conflict_marker(rendered)
         if conflict_marker is not None:
             return r[m.Infra.CodegenFilePlan].fail(
                 "rendered managed file contains a merge-conflict marker "

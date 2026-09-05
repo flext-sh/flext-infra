@@ -83,19 +83,20 @@ def _lane(repository: Path, branch: str) -> Path:
     )
 
 
-def test_setup_runs_in_lane_and_creates_real_local_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_setup_runs_in_lane_and_creates_real_local_environment(tmp_path: Path) -> None:
     repository = _repository(tmp_path)
     primary_sentinel = repository / _VENV_NAME / "primary-sentinel"
     primary_sentinel.parent.mkdir()
     primary_sentinel.write_text("untouched\n", encoding="utf-8")
     lane = _lane(repository, "feature/isolated-environment")
-    monkeypatch.setenv("MAKEFILES", str(tmp_path / "hostile.mk"))
-    monkeypatch.setenv("GNUMAKEFLAGS", "--eval=hostile")
-    monkeypatch.setenv("PYTHONPATH", str(tmp_path / "hostile-pythonpath"))
-
-    tm.ok(FlextInfraWorktreeService.setup_lane(lane))
+    with tm.scope(
+        env={
+            "MAKEFILES": str(tmp_path / "hostile.mk"),
+            "GNUMAKEFLAGS": "--eval=hostile",
+            "PYTHONPATH": str(tmp_path / "hostile-pythonpath"),
+        }
+    ):
+        tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
     lane_venv = lane / _VENV_NAME
     assert lane_venv.is_dir()

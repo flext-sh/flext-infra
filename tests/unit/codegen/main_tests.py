@@ -157,10 +157,10 @@ class TestMainEntryPoint:
         )
         tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
 
-    def test_apply_bootstraps_managed_conflict_before_facade_imports(
+    def test_managed_conflict_is_planned_and_published_atomically(
         self, infra_git_repo: Path
     ) -> None:
-        """Repair invalid target metadata through the real process entrypoint."""
+        """Keep live bytes unchanged until the public transaction commits."""
         root = infra_git_repo
         project_root = Path(__file__).resolve().parents[3]
         tm.ok(
@@ -193,39 +193,62 @@ class TestMainEntryPoint:
             encoding="utf-8",
         )
 
-        result = u.Cli.run_raw(
-            [
-                sys.executable,
-                "-m",
-                "flext_infra",
-                "codegen",
-                "conform",
-                "--root",
-                str(root),
-                "--scope",
-                "self",
-                "--mode",
-                "apply",
-            ],
-            cwd=root,
-            env={"PYTHONPATH": str(root / "src")},
+        pyproject = root / "pyproject.toml"
+        before = pyproject.read_bytes()
+        state_root = root / ".state" / "mise-artifacts"
+        command = [
+            sys.executable,
+            "-m",
+            "flext_infra",
+            "codegen",
+            "conform",
+            "--root",
+            str(root),
+            "--scope",
+            "self",
+            "--mode",
+        ]
+        checked = u.Cli.run_raw(
+            [*command, "check"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
+        tm.ok(checked)
+        tm.that(checked.value.exit_code, eq=1)
+        tm.that(pyproject.read_bytes(), eq=before)
+        tm.that((state_root / "journal.json").exists(), eq=False)
+        tm.that((state_root / "transaction").exists(), eq=False)
 
-        tm.ok(result)
-        tm.that(
-            result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
+        applied = u.Cli.run_raw(
+            [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
+        tm.ok(applied)
         tm.that(
-            result.value.stdout + result.value.stderr,
-            contains="recovered owner-declared managed conflicts",
+            applied.value.exit_code,
+            eq=0,
+            msg=applied.value.stderr or applied.value.stdout,
         )
-        rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
+        rendered = pyproject.read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
         payload = tomllib.loads(rendered)
         tm.that(
             payload["tool"]["pytest"]["ini_options"]["addopts"],
             has=(f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"),
         )
+        tm.that((state_root / "journal.json").exists(), eq=False)
+        tm.that((state_root / "transaction").exists(), eq=False)
+
+        published = pyproject.read_bytes()
+        fixed_point = u.Cli.run_raw(
+            [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
+        )
+        tm.ok(fixed_point)
+        tm.that(
+            fixed_point.value.exit_code,
+            eq=0,
+            msg=fixed_point.value.stderr or fixed_point.value.stdout,
+        )
+        tm.that(pyproject.read_bytes(), eq=published)
+        tm.that((state_root / "journal.json").exists(), eq=False)
+        tm.that((state_root / "transaction").exists(), eq=False)
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""

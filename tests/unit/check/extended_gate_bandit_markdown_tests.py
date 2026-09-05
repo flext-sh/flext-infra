@@ -224,16 +224,15 @@ class TestBanditAndMarkdownGates:
         tm.that(runner.commands[0], has=str(project_owned.relative_to(project_dir)))
 
     def test_markdown_uses_uv_managed_tool_with_sanitized_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Prove the real gate cannot bind a host or mise-provided executable."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-managed-tool")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
-        monkeypatch.setenv("PATH", "/usr/bin:/bin")
-
-        result = FlextInfraMarkdownGate(tmp_path).check(
-            project_dir, self.make_ctx(tmp_path)
-        )
+        with tm.scope(env={"PATH": "/usr/bin:/bin"}):
+            result = FlextInfraMarkdownGate(tmp_path).check(
+                project_dir, self.make_ctx(tmp_path)
+            )
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())

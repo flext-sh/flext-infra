@@ -447,11 +447,11 @@ Infra:
             local_checkout: ~/flext/flext-infra
           - organization: datacosmos-br
             repository: ai-hub
-            branch: develop
+            branch: dev
             local_checkout: ~/.ai-hub
           - organization: datacosmos-br
             repository: cosmos-docgen
-            branch: develop
+            branch: dev
             local_checkout: ~/cosmos-docgen
           - organization: datacosmos-br
             repository: cosmos-main

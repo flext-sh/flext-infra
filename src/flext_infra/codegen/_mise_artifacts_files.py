@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
@@ -38,6 +39,37 @@ def workspace_relative(root: Path, path: Path) -> p.Result[str]:
     if not selector or selector == "." or ".." in relative.parts:
         return r[str].fail(f"invalid workspace artifact path: {path}")
     return r[str].ok(selector)
+
+
+def source_selector(root: Path, path: Path) -> p.Result[str]:
+    """Encode an authenticated source inside the scope or by canonical absolute path."""
+    absolute_root = root.absolute()
+    candidate = path.absolute()
+    if candidate.is_relative_to(absolute_root):
+        return workspace_relative(absolute_root, candidate)
+    if (
+        not path.is_absolute()
+        or not path.name
+        or ".." in path.parts
+        or Path(os.path.normpath(path)) != path
+    ):
+        return r[str].fail(f"invalid external codegen source path: {path}")
+    return r[str].ok(path.as_posix())
+
+
+def resolve_source(root: Path, selector: str) -> p.Result[Path]:
+    """Resolve one canonical journal source without widening write ownership."""
+    candidate = Path(selector)
+    if not candidate.is_absolute():
+        return resolve_relative(root, selector, purpose="Mise journal source")
+    if (
+        not candidate.name
+        or ".." in candidate.parts
+        or Path(os.path.normpath(candidate)) != candidate
+        or candidate.is_relative_to(root.absolute())
+    ):
+        return r[Path].fail(f"unsafe external Mise journal source path: {selector}")
+    return r[Path].ok(candidate)
 
 
 def resolve_relative(root: Path, selector: str, *, purpose: str) -> p.Result[Path]:
@@ -195,7 +227,7 @@ def transaction_sources(
         by_path[source.path] = source
     ordered: list[tuple[str, m.Cli.AtomicFileState]] = []
     for source in by_path.values():
-        selector = workspace_relative(plan.layout.scope_root, source.path)
+        selector = source_selector(plan.layout.scope_root, source.path)
         if selector.failure:
             return result_type.from_failure(selector)
         ordered.append((selector.value, source))
@@ -217,7 +249,9 @@ __all__: list[str] = [
     "missing_parent_directories",
     "remove_created_directories",
     "resolve_relative",
+    "resolve_source",
     "project_for_path",
+    "source_selector",
     "transaction_sources",
     "workspace_relative",
 ]

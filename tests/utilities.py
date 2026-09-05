@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
@@ -1092,15 +1093,23 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return workspace
 
         @staticmethod
-        def run_release_main(repository_root: Path, *arguments: str) -> int:
+        def run_release_main(
+            repository_root: Path, *arguments: str, executable_dir: Path | None = None
+        ) -> int:
             """Run the public release CLI against one real test workspace."""
-            return main([
-                "release",
-                "run",
-                "--workspace",
-                str(repository_root),
-                *arguments,
-            ])
+            environment = (
+                {"PATH": f"{executable_dir}{os.pathsep}{os.environ['PATH']}"}
+                if executable_dir is not None
+                else {}
+            )
+            with tm.scope(env=environment):
+                return main([
+                    "release",
+                    "run",
+                    "--workspace",
+                    str(repository_root),
+                    *arguments,
+                ])
 
         @staticmethod
         def integration_branch(repo_root: Path) -> str:
@@ -1318,7 +1327,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
-        def initialize_git_repo(repo_root: Path, origin_url: str | None = None) -> None:
+        def initialize_git_repo(
+            repo_root: Path,
+            origin_url: str | None = None,
+            *,
+            config_values: t.StrMapping | None = None,
+        ) -> None:
             """Initialize and commit a deterministic Git fixture.
 
             The initial commit allows an empty tree so fixtures that seed
@@ -1334,6 +1348,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
             bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))
             bootstrap(repo_root, ("config", "user.name", "Flext Tests"))
+            for key, value in sorted((config_values or {}).items()):
+                bootstrap(repo_root, ("config", key, value))
             bootstrap(
                 repo_root,
                 ("remote", "add", c.Infra.GIT_ORIGIN, origin_url or str(repo_root)),

@@ -160,6 +160,9 @@ class FlextInfraCodegenMiseArtifactTransaction:
         if plan.failure:
             return result_type.from_failure(plan)
         source_plans = (*config_plans, *managed_plans)
+        source_barrier = verify.sources(plan.value, source_plans=source_plans)
+        if source_barrier.failure:
+            return result_type.from_failure(source_barrier)
         reuse_live = self._can_reuse_live(plan.value)
         credential_command = settings.Infra.mise_github_credential_command
         if not reuse_live and (

@@ -61,7 +61,7 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
             path, content, permission_mode=0o600
         )
         if written.failure:
-            return written
+            return r[bool].from_failure(written)
     return r[bool].ok(True)
 
 
@@ -180,7 +180,7 @@ def run(
     if executed.value.exit_code != 0:
         return _process_failure(
             operation,
-            raw_exit_code=executed.value.exit_code,
+            exit_code=executed.value.exit_code,
             stdout=executed.value.stdout,
             stderr=executed.value.stderr,
         )
@@ -218,7 +218,7 @@ def run_live(
     if executed.value != 0:
         return _process_failure(
             operation,
-            raw_exit_code=executed.value,
+            exit_code=executed.value,
             stdout=output.value,
             stderr="",
             combined=True,
@@ -230,26 +230,18 @@ def run_live(
 
 
 def _process_failure(
-    operation: str,
-    *,
-    raw_exit_code: int,
-    stdout: str,
-    stderr: str,
-    combined: bool = False,
+    operation: str, *, exit_code: int, stdout: str, stderr: str, combined: bool = False
 ) -> p.Result[str]:
     """Preserve one child status and its exact captured diagnostic channels."""
-    exit_code = u.Infra.normalize_process_exit_code(raw_exit_code)
-    classification = u.Infra.classify_process_exit(raw_exit_code)
-    outcome = m.Infra.ProcessExit(
-        exit_code=exit_code, raw_exit_code=raw_exit_code, classification=classification
-    )
+    classification = u.Infra.classify_process_exit(exit_code)
+    outcome = m.Infra.ProcessExit(exit_code=exit_code, classification=classification)
     if combined:
         diagnostics = f"combined_stdout_stderr:\n{stdout}"
     else:
         diagnostics = f"stdout:\n{stdout}\nstderr:\n{stderr}"
     return r[str].fail(
-        f"{operation} failed: raw_exit_code={raw_exit_code} "
-        f"exit_code={exit_code} classification={classification}\n{diagnostics}",
+        f"{operation} failed: exit_code={exit_code} "
+        f"classification={classification}\n{diagnostics}",
         error_code=c.Infra.PROCESS_EXIT_ERROR_CODE,
         error_data=outcome,
     )

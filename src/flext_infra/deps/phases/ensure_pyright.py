@@ -316,8 +316,17 @@ class FlextInfraEnsurePyrightConfigPhase:
         analysis_exclusions: t.StrSequence | None,
     ) -> t.StrSequence:
         """Resolve the one analyzer-root set consumed by includes and environments."""
+        project_root = repository_root if is_root else project_dir
+        configured_dirs = self._tool_config.tools.pyright.path_rules.env_dirs
+        effective_declared = declared_python_dirs
+        if (
+            not effective_declared
+            and not declared_python_dirs_are_complete
+            and project_root is not None
+        ):
+            effective_declared = self._existing_paths(project_root, configured_dirs)
         declared = self._declared_environment_dirs(
-            tuple(dict.fromkeys((*declared_python_dirs, *generated_roots)))
+            tuple(dict.fromkeys((*effective_declared, *generated_roots)))
         )
         if (
             is_root

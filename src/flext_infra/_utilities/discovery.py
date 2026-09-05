@@ -465,6 +465,14 @@ class FlextInfraUtilitiesDiscovery(
                 return r[t.SequenceOf[Path]].fail(
                     f"explicit project path is not accessible: {scan_root}"
                 )
+            if project_paths is not None:
+                project_file = scan_root / c.Infra.PYPROJECT_FILENAME
+                if not project_file.is_file():
+                    return r[t.SequenceOf[Path]].fail(
+                        f"explicit project lacks {c.Infra.PYPROJECT_FILENAME}: {scan_root}"
+                    )
+                all_files.append(project_file)
+                continue
             try:
                 all_files.extend(
                     sorted(
@@ -478,14 +486,6 @@ class FlextInfraUtilitiesDiscovery(
                 )
             except OSError as exc:
                 return r[t.SequenceOf[Path]].fail_op("pyproject file scan", exc)
-        if project_paths is not None:
-            all_files = [
-                path
-                for path in all_files
-                if any(
-                    path.is_relative_to(project_path) for project_path in project_paths
-                )
-            ]
         return r[t.SequenceOf[Path]].ok(all_files)
 
     @classmethod
