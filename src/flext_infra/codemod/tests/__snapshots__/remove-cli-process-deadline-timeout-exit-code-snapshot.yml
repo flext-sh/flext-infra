@@ -6,9 +6,12 @@ snapshots:
         termination_grace_seconds=grace,
         timeout_exit_code=124,
     )
-  : fixed: |
-      m.Cli.ProcessDeadline(expires_at_monotonic=expires_at,
-      termination_grace_seconds=grace, )
+  : fixed: |+
+      m.Cli.ProcessDeadline(
+          expires_at_monotonic=expires_at,
+          termination_grace_seconds=grace,
+      )
+
     labels:
     - source: |-
         m.Cli.ProcessDeadline(

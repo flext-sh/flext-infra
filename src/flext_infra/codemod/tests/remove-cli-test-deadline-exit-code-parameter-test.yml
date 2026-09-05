@@ -1,9 +1,0 @@
-id: remove-cli-test-deadline-exit-code-parameter
-valid:
-  - |
-    def _deadline(*, seconds: float, grace: float) -> Deadline:
-        return Deadline(seconds=seconds, grace=grace)
-invalid:
-  - |
-    def _deadline(*, seconds: float, grace: float, exit_code: int = 124) -> Deadline:
-        return Deadline(seconds=seconds, grace=grace)
