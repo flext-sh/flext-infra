@@ -104,9 +104,11 @@ class FlextInfraUtilitiesPyproject:
         if result.failure:
             return r[str].fail(result.error or "taplo format failed")
         output = result.value
-        if output.exit_code != 0:
+        if output.outcome.raw_return_code != 0:
             detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
+            return r[str].fail(
+                f"taplo format failed ({output.outcome.raw_return_code}): {detail}"
+            )
         return r[str].ok(output.stdout)
 
     @staticmethod
@@ -127,7 +129,7 @@ class FlextInfraUtilitiesPyproject:
             cwd=binary.parent,
             timeout=process_timeout_seconds,
         )
-        if identified.failure or identified.value.exit_code != 0:
+        if identified.failure or identified.value.outcome.raw_return_code != 0:
             return r[Path].fail(
                 identified.error or "resolved Taplo executable failed identity check"
             )

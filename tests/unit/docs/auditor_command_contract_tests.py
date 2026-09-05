@@ -34,6 +34,19 @@ make check APPLY=Y
         tm.that(issues, eq=[])
 
     @staticmethod
+    def test_ignores_prose_that_begins_with_make() -> None:
+        content = """# Scope
+
+Make surfaces and documentation are changed at their canonical owner.
+"""
+
+        issues = u.Infra.docs_command_contract_content_issues(
+            content, relative_path="docs/guides/make-commands.md"
+        )
+
+        tm.that(issues, eq=[])
+
+    @staticmethod
     def test_rejects_invented_make_selectors() -> None:
         content = """```bash
 make test PROJECT=flext-demo MATCH=unit

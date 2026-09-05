@@ -18,6 +18,12 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
     if TYPE_CHECKING:
         _modified_files: t.Infra.StrSet
 
+        @staticmethod
+        def _read_generated_file(path: Path) -> str | None: ...
+
+        @staticmethod
+        def _require_generated_removal(path: Path, content: str | None) -> None: ...
+
     def _cleanup_generated_support_files(
         self, plan: m.Infra.LazyInitPlan, *, check_only: bool = False
     ) -> int:
@@ -53,6 +59,9 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 msg = f"refusing to remove obsolete root-support symlink: {path}"
                 raise OSError(msg)
             if path.is_file():
+                self._require_generated_removal(
+                    path, self._read_generated_file(path)
+                )
                 stale_files.append(path)
                 continue
             if not path.exists():
@@ -73,6 +82,9 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
                 if not child.is_file() or child.suffix not in {".py", ".pyi"}:
                     msg = f"unexpected file in obsolete root support: {child}"
                     raise OSError(msg)
+                self._require_generated_removal(
+                    child, self._read_generated_file(child)
+                )
                 stale_files.append(child)
         for path in stale_files:
             self._modified_files.add(str(path))
@@ -144,6 +156,9 @@ class FlextInfraCodegenLazyInitGenerationRegistryMixin:
             for path in stale_paths:
                 if not path.is_file():
                     continue
+                self._require_generated_removal(
+                    path, self._read_generated_file(path)
+                )
                 if check_only:
                     self._modified_files.add(str(path))
                     continue

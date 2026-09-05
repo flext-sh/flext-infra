@@ -32,6 +32,12 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         """Read existing initializer content when present."""
         return self._read_generated_file(plan.context.init_path)
 
+    @staticmethod
+    def _require_generated_removal(path: Path, content: str | None) -> None:
+        """Reject deletion of a handwritten file at a generated-artifact path."""
+        if content is not None and not content.startswith(c.Infra.AUTOGEN_HEADERS):
+            raise OSError(f"refusing to remove handwritten file: {path}")
+
     def _write_generated_file(
         self, path: Path, generated: str, previous: str | None
     ) -> None:
@@ -49,6 +55,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
     ) -> t.Infra.LazyInitWriteResult:
         """Record generated artifact removals without writing."""
         init_path = plan.context.init_path
+        self._require_generated_removal(init_path, self._read_previous_init(plan))
         if init_path.is_file():
             self._modified_files.add(str(init_path))
         self._cleanup_generated_support_files(plan, check_only=True)
@@ -58,6 +65,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
         """Remove the initializer and every obsolete generated sidecar."""
         init_path = plan.context.init_path
         try:
+            self._require_generated_removal(init_path, self._read_previous_init(plan))
             if init_path.is_file():
                 init_path.unlink()
                 self._modified_files.add(str(init_path))
