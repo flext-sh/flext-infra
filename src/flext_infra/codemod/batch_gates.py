@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra.codemod.crg_gate import FlextInfraCodeReviewGraphGate
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 
@@ -44,7 +45,9 @@ class FlextInfraModGateEngine:
                     owner_rules=owner_rules,
                 )
                 cls._run_tool(
-                    temp_root, (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL)
+                    temp_root,
+                    (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL),
+                    accept_apply_receipt=True,
                 ).unwrap()
                 cls._run_tool(temp_root, (c.Infra.SG, c.Infra.TEST)).unwrap()
                 cls._sync_rule_fixture_root(
@@ -183,6 +186,10 @@ class FlextInfraModGateEngine:
                 and output.stdout.strip()
             ):
                 return r[p.Cli.CommandOutput].ok(output)
+            if accept_apply_receipt and FlextInfraModGateEngine._is_update_receipt(
+                output.stdout, output.stderr
+            ):
+                return r[p.Cli.CommandOutput].ok(output)
             detail = "\n".join(
                 stream.strip()
                 for stream in (output.stdout, output.stderr)
@@ -210,6 +217,20 @@ class FlextInfraModGateEngine:
                 return count.isdigit()
             case _:
                 return False
+
+    @staticmethod
+    def _is_update_receipt(stdout: str, stderr: str) -> bool:
+        """Recognize ast-grep's ``--update-all`` snapshot update receipt."""
+        combined = "\n".join(
+            stream for stream in (stdout.strip(), stderr.strip()) if stream
+        )
+        if not combined:
+            return False
+        return any(
+            line.startswith("[Updated] Rule ")
+            and "snapshot baseline has been updated" in line
+            for line in combined.splitlines()
+        )
 
     @staticmethod
     def _path_depth(path: Path) -> int:
@@ -447,6 +468,7 @@ class FlextInfraModGateEngine:
             return r.fail("\n".join(diagnostics))
         for owner, files in selected_groups:
             FlextInfraLspDiagnosticsDetector.validate(owner, files).unwrap()
+        FlextInfraCodeReviewGraphGate.validate(resolved_root, selected_groups).unwrap()
         return r[bool].ok(True)
 
     @classmethod
