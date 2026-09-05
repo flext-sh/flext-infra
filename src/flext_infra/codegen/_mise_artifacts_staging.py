@@ -97,6 +97,25 @@ class FlextInfraMiseStaging:
             )
         return candidates.publication_plan(plan.projects, tuple(stages))
 
+    @staticmethod
+    def _lock_resolution_is_required(
+        project: m.Infra.MiseToolchainProjectState,
+    ) -> bool:
+        """Return whether this project's lock must be resolved from the network.
+
+        ``mise lock --bump`` re-resolves every declared selector against its
+        remote registry. That is required exactly when the declaration changed
+        or no lock exists yet. When the rendered configuration is byte-identical
+        to the published one and a lock is already present, the lock already
+        answers that declaration: re-resolving would make generation depend on
+        the network and on upstream release timing, so the same sources would
+        stop producing the same bytes.
+        """
+        return (
+            project.artifacts.lock.content is None
+            or project.config.before.content != project.config.replacement_content
+        )
+
     def _stage_project(
         self,
         project: m.Infra.MiseToolchainProjectState,
@@ -134,27 +153,35 @@ class FlextInfraMiseStaging:
             copied = process.write_new(stage_root / name, source.content, mode)
             if copied.failure:
                 return copied
-        project_environment = dict(environment)
-        project_environment.update({
-            "MISE_CEILING_PATHS": str(stage_root.parent),
-            "MISE_TRUSTED_CONFIG_PATHS": str(stage_root),
-        })
-        locked = process.run(
-            (
-                str(launcher),
-                "-C",
-                str(stage_root),
-                "lock",
-                "--bump",
-                "--platform",
-                ",".join(config.Infra.codegen.toolchain.mise_lock_platforms),
-            ),
-            cwd=stage_root,
-            env=project_environment,
-            operation=f"Mise lock generation for {project.layout.selector}",
-        )
-        if locked.failure:
-            return r[bool].from_failure(locked)
+        lock_before = project.artifacts.lock
+        if lock_before.content is not None:
+            copied_lock = process.write_new(
+                stage_root / "mise.lock", lock_before.content, 0o644
+            )
+            if copied_lock.failure:
+                return copied_lock
+        if self._lock_resolution_is_required(project):
+            project_environment = dict(environment)
+            project_environment.update({
+                "MISE_CEILING_PATHS": str(stage_root.parent),
+                "MISE_TRUSTED_CONFIG_PATHS": str(stage_root),
+            })
+            locked = process.run(
+                (
+                    str(launcher),
+                    "-C",
+                    str(stage_root),
+                    "lock",
+                    "--bump",
+                    "--platform",
+                    ",".join(config.Infra.codegen.toolchain.mise_lock_platforms),
+                ),
+                cwd=stage_root,
+                env=project_environment,
+                operation=f"Mise lock generation for {project.layout.selector}",
+            )
+            if locked.failure:
+                return r[bool].from_failure(locked)
         hydrated = self._owner.hydrate_lock_checksums_at(stage_root)
         if hydrated.failure:
             return r[bool].fail(

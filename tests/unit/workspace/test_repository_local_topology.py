@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -31,10 +32,15 @@ class TestsRepositoryLocalTopology:
             issue_prefix=name,
         )
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        exclusion = f"{observed.repository.distribution}-excluded"
+        override = f"{observed.repository.distribution}-overridden"
+        cutoff = datetime.now(UTC).isoformat()
         declared = observed.repository.model_copy(
             update={
                 "checkout": c.Infra.CheckoutKind.INDEPENDENT,
                 "uv_link_mode": "clone",
+                "dependency_cooldown_exclusions": (exclusion,),
+                "dependency_cooldown_overrides": {override: cutoff},
             }
         )
         tm.ok(
@@ -52,33 +58,10 @@ class TestsRepositoryLocalTopology:
 
         tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
         tm.that(workspace.repository.uv_link_mode, eq="clone")
-
-    def test_selected_workspace_manifest_rejects_removed_cooldown_input(
-        self, tmp_path: Path
-    ) -> None:
-        """The final schema rejects the retired dependency-delay contract."""
-        root = tmp_path / "manifest-retired-cooldown"
-        name = "fixture-retired-cooldown"
-        WorktreeFixture.initialize_governed_project(
-            root,
-            name,
-            workspace=name,
-            database=name.replace("-", "_"),
-            issue_prefix=name,
+        tm.that(workspace.repository.dependency_cooldown_exclusions, eq=(exclusion,))
+        tm.that(
+            workspace.repository.dependency_cooldown_overrides, eq={override: cutoff}
         )
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        declared = observed.repository.model_dump(mode="json")
-        declared["dependency_cooldown_exclusions"] = ["retired-package"]
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {"version": 3, "name": name, "repository": declared},
-            )
-        )
-
-        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
-
-        tm.fail(result, has="dependency_cooldown_exclusions")
 
     def test_selected_workspace_manifest_rejects_git_contradiction(
         self, tmp_path: Path

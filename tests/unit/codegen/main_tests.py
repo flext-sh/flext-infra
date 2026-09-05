@@ -16,8 +16,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import config
+from flext_infra import c, config
 from flext_infra import main as infra_main
+from flext_infra.services.cli_routes import CliRouteService
 from flext_tests import tm
 from tests import u
 
@@ -45,64 +46,40 @@ def _with_pep621_identity(repo: Path) -> Path:
 class TestHandleLazyInit:
     """Tests for direct init command dispatch."""
 
-    def test_success(self, real_git_repo: Path) -> None:
-        """Init returns 0 on empty workspace."""
-        result = infra_main([
+    @staticmethod
+    def _init(repo: Path, mode: str) -> int:
+        """Run one bootstrap init through the public CLI entry point."""
+        return infra_main([
             "codegen",
             "init",
-            "--apply",
+            mode,
             "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
+            str(_with_pep621_identity(repo)),
         ])
-        tm.that(result, eq=0)
 
-    def test_check_mode(self, real_git_repo: Path) -> None:
-        """Init respects --check flag."""
-        result = infra_main([
-            "codegen",
-            "init",
-            "--check",
-            "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
-        ])
-        tm.that(result, eq=0)
+    def test_check_reports_drift_while_the_dispatcher_is_absent(
+        self, real_git_repo: Path
+    ) -> None:
+        """A checkout without the generated dispatcher is drift, never clean.
 
-    def test_enforce_mode(self, real_git_repo: Path) -> None:
-        """Init in enforce mode (not check)."""
-        result = infra_main([
-            "codegen",
-            "init",
-            "--apply",
-            "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
-        ])
-        tm.that(result, eq=0)
+        Check mode answers one question: does the checkout already carry the
+        projection this generator would write? A bare repository does not, so
+        reporting success there would let a stale or missing Makefile pass the
+        gate that exists to catch exactly that.
+        """
+        tm.that(self._init(real_git_repo, "--check"), ne=0)
+
+    def test_apply_bootstraps_the_dispatcher_to_a_fixed_point(
+        self, real_git_repo: Path
+    ) -> None:
+        """Apply writes the dispatcher and a following check finds no drift."""
+        tm.that(self._init(real_git_repo, "--apply"), eq=0)
+
+        tm.that(self._init(real_git_repo, "--check"), eq=0)
 
 
 class TestMainCommandDispatch:
     """Tests for main() command routing."""
-
-    def test_init_command(self, real_git_repo: Path) -> None:
-        """main() with init command returns 0."""
-        result = infra_main([
-            "codegen",
-            "init",
-            "--apply",
-            "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
-        ])
-        tm.that(result, eq=0)
-
-    def test_init_with_check_flag(self, real_git_repo: Path) -> None:
-        """main() init with --check flag parses correctly."""
-        result = infra_main([
-            "codegen",
-            "init",
-            "--check",
-            "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
-        ])
-        tm.that(result, eq=0)
 
     def test_unknown_command(self) -> None:
         """main() with unknown command returns non-zero exit code."""
@@ -135,32 +112,33 @@ class TestMainCommandDispatch:
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 
-    def test_entry_point_returns_int(self, real_git_repo: Path) -> None:
-        """main() returns an integer exit code."""
-        result = infra_main([
-            "codegen",
-            "init",
-            "--apply",
-            "--workspace",
-            str(_with_pep621_identity(real_git_repo)),
-        ])
-        tm.that(type(result).__name__, eq="int")
-
     def test_entry_point_via_sys_exit(self) -> None:
-        """The root process entrypoint works via subprocess."""
+        """The root process entrypoint serves each route's own declared help.
+
+        The expectation is read from the route table that renders the help, so
+        renaming or rewording a command keeps this contract honest instead of
+        freezing yesterday's wording in the test.
+        """
+        route = next(
+            item
+            for item in CliRouteService.route_table_for(c.Infra.CLI_GROUP_CODEGEN)
+            if item.name == "init"
+        )
+
         result = u.Cli.run_raw([
             sys.executable,
             "-m",
             "flext_infra",
-            "codegen",
-            "init",
+            c.Infra.CLI_GROUP_CODEGEN,
+            route.name,
             "--help",
         ])
+
         tm.ok(result)
         tm.that(
             result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
         )
-        tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
+        tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
 
     def test_apply_bootstraps_managed_conflict_before_facade_imports(
         self, infra_git_repo: Path

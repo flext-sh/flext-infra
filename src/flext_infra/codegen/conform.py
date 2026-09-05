@@ -54,10 +54,36 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return link_mode
 
     @staticmethod
-    def _member_beads_is_linked(repository_root: Path) -> bool:
-        """Return whether this gitlink routes an inherited workspace ledger."""
-        route: Path = repository_root / c.Infra.BEADS_DIRNAME
-        return route.is_symlink()
+    def _dependency_cooldown_policy(
+        repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
+    ) -> tuple[tuple[str, ...], dict[str, str]]:
+        """Compose fleet defaults with the repository's narrower policy."""
+        exclusions = dict.fromkeys(toolchain.dependency_cooldown_exclusions)
+        overrides = dict(toolchain.dependency_cooldown_overrides)
+        for package in repository.dependency_cooldown_exclusions:
+            overrides.pop(package, None)
+            exclusions[package] = None
+        for package, cutoff in repository.dependency_cooldown_overrides.items():
+            exclusions.pop(package, None)
+            overrides[package] = cutoff
+        return tuple(exclusions), overrides
+
+    @staticmethod
+    def _beads_projection_is_inherited(destination: str, repository_root: Path) -> bool:
+        """Return whether a tracked ledger route disowns this Beads projection.
+
+        Governed members track ``.beads`` as a symlink into the superproject
+        ledger. The route is the declaration: it holds in the workspace, where
+        it resolves, and in a standalone clone of the same member, where it
+        dangles outside the checkout. Either way the member owns no Beads
+        projection of its own, so every conform route asks this one question
+        here rather than repeating the pair of conditions.
+        """
+        return (
+            destination
+            in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
+            and (repository_root / c.Infra.BEADS_DIRNAME).is_symlink()
+        )
 
     @classmethod
     def _surface_contract(
@@ -1054,7 +1080,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if relative in {
                 Path(c.Infra.BEADS_CONFIG_RELPATH),
                 Path(c.Infra.BEADS_METADATA_RELPATH),
-            } and FlextInfraCodegenConform._member_beads_is_linked(root):
+            } and FlextInfraCodegenConform._beads_projection_is_inherited(
+                relative.as_posix(), root
+            ):
                 continue
             path = root / relative
             if path.exists() and not path.is_file():
@@ -1455,7 +1483,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if destination in {
                 c.Infra.BEADS_CONFIG_RELPATH,
                 c.Infra.BEADS_METADATA_RELPATH,
-            } and self._member_beads_is_linked(root):
+            } and self._beads_projection_is_inherited(destination, root):
                 continue
             relative = Path(destination)
             if relative.is_absolute() or ".." in relative.parts:
@@ -1497,12 +1525,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
-            if destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and self._member_beads_is_linked(root):
-                # A linked gitlink inherits the workspace ledger; planning a
-                # member-local projection would create a second identity.
+            if self._beads_projection_is_inherited(destination, root):
+                # A tracked ledger route inherits the workspace ledger; planning
+                # a member-local projection would create a second identity, and
+                # in a standalone clone the route dangles outside the checkout.
                 continue
             if (
                 destination == c.Infra.BEADS_METADATA_RELPATH
@@ -1595,6 +1621,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 initial_tooling.error or f"initial tooling conform failed: {pyproject}"
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             initial_tooling.value,
             providers=codegen.providers,
@@ -1603,6 +1632,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1766,6 +1797,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 contract=contract,
                 managed_artifacts=managed_artifacts.value,
             )
+        cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+            repository, codegen.toolchain
+        )
         prepared_result = u.Infra.pyproject_conform(
             pyproject_read.value,
             providers=codegen.providers,
@@ -1774,6 +1808,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
+            dependency_cooldown_exclusions=cooldown_exclusions,
+            dependency_cooldown_overrides=cooldown_overrides,
             uv_exclude_dependencies=uv_exclude_dependencies,
         )
         if prepared_result.failure:
@@ -1897,10 +1933,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
-            if entry.destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and self._member_beads_is_linked(root):
+            if self._beads_projection_is_inherited(entry.destination, root):
                 # Mirror the delegated-template path so both conform routes
                 # preserve the same inherited-ledger ownership rule.
                 continue
@@ -2151,10 +2184,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
-        if destination in {
-            c.Infra.BEADS_CONFIG_RELPATH,
-            c.Infra.BEADS_METADATA_RELPATH,
-        } and self._member_beads_is_linked(repository_root):
+        if self._beads_projection_is_inherited(destination, repository_root):
             return r[p.Model].fail(
                 "linked workspace member cannot own a Beads projection: "
                 f"{repository.name}; ledger is inherited from the workspace root"
@@ -2275,6 +2305,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         ))
                     ),
                     python_version=codegen.toolchain.python_version,
+                    dependency_cooldown_days=(
+                        codegen.toolchain.dependency_cooldown_days
+                    ),
                     github_actions=codegen.github_actions,
                     make=codegen.make,
                     workspace_repositories=workspace_repositories,
@@ -2330,6 +2363,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[p.Model].fail(
                     gitlinks.error or "managed Gitlink resolution failed"
                 )
+            cooldown_exclusions, cooldown_overrides = self._dependency_cooldown_policy(
+                repository, codegen.toolchain
+            )
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
@@ -2350,6 +2386,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository, codegen.toolchain
                     ),
                     uv_version=codegen.toolchain.uv_version,
+                    uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
+                    dependency_cooldown_exclusions=cooldown_exclusions,
+                    dependency_cooldown_overrides=cooldown_overrides,
                     make=codegen.make,
                     extra_verbs=repository.extra_verbs,
                     script_dispatch=repository.script_dispatch,
@@ -2431,6 +2470,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.MakeRenderContext].fail(
                 gitlinks.error or "managed Gitlink resolution failed"
             )
+        cooldown_exclusions, cooldown_overrides = (
+            FlextInfraCodegenConform._dependency_cooldown_policy(
+                repository, codegen.toolchain
+            )
+        )
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
@@ -2451,6 +2495,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 uv_link_mode=FlextInfraCodegenConform._link_mode(
                     repository, codegen.toolchain
                 ),
+                uv_exclude_newer=codegen.toolchain.uv_exclude_newer,
+                dependency_cooldown_exclusions=cooldown_exclusions,
+                dependency_cooldown_overrides=cooldown_overrides,
                 # ProjectRenderContext replaces this with the composed map.
                 # Pass the neutral value explicitly so Pydantic never deep-copies
                 # the MappingProxyType model default while building the base.

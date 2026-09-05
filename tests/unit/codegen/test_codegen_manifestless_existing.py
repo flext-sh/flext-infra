@@ -45,13 +45,7 @@ class TestCodegenManifestlessExisting:
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         u.Tests.write_project_beads_config(root, config.Infra.name)
         u.Tests.copy_tracked_mise_seeds(root)
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifestless tree"],
-                cwd=root,
-            )
-        )
+        u.Tests.commit_git_changes(root, "Seed manifestless tree")
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(derived.repository.name, eq=repository.name)
@@ -87,8 +81,9 @@ class TestCodegenManifestlessExisting:
         for relative, content in preserved.items():
             tm.that(u.Infra.codegen_file_requires_effect(plans[relative]), eq=False)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".python-version", ".gitignore"):
             tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
+        tm.that(u.Infra.codegen_file_requires_effect(plans[".mise.toml"]), eq=False)
 
         tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
         tm.that((root / ".env.example").exists(), eq=False)

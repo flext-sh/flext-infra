@@ -690,6 +690,12 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
+        dependency_cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=1, le=90, description="Shared uv and Dependabot dependency cooldown"
+            ),
+        ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
@@ -1814,6 +1820,25 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Repository-scoped packages explicitly exempted from the "
+                    "fleet dependency cooldown"
+                )
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Repository-scoped package cutoffs projected to uv "
+                    "exclude-newer-package"
+                ),
+            ),
+        ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
@@ -1832,6 +1857,32 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+
+        @u.model_validator(mode="after")
+        def _validate_dependency_cooldown_policy(self) -> Self:
+            """Reject duplicate or contradictory repository cooldown entries."""
+            if len(set(self.dependency_cooldown_exclusions)) != len(
+                self.dependency_cooldown_exclusions
+            ):
+                msg = "repository dependency cooldown exclusions must be unique"
+                raise ValueError(msg)
+            overlap = set(self.dependency_cooldown_exclusions).intersection(
+                self.dependency_cooldown_overrides
+            )
+            if overlap:
+                msg = (
+                    "repository dependency cooldown package cannot be both excluded "
+                    f"and overridden: {', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            return self
+
+        @u.field_serializer("dependency_cooldown_overrides", when_used="json")
+        def _serialize_dependency_cooldown_overrides(
+            self, value: t.StrMapping
+        ) -> dict[str, str]:
+            """Project the immutable mapping through JSON/template boundaries."""
+            return dict(value)
 
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -1977,6 +2028,21 @@ class FlextInfraConfigModels:
         uv_version: Annotated[
             t.NonEmptyStr,
             m.Field(description="mise-owned uv version used by bootstrap validation"),
+        ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Packages exempted from uv dependency cooldown"),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
+            ),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -2131,6 +2197,20 @@ class FlextInfraConfigModels:
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Import package name")
         ]
+        root_modules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Additional top-level Python modules shipped by the project",
+            ),
+        ] = ()
+        root_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Additional top-level Python packages shipped by the project",
+            ),
+        ] = ()
         class_stem: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical public facade class stem")
         ]
@@ -2234,6 +2314,21 @@ class FlextInfraConfigModels:
         ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
+        ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Packages exempted from uv dependency cooldown"),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
+            ),
         ]
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],

@@ -270,8 +270,17 @@ python-interpreter-path = "../.venv/bin/python"
         document = tomllib.loads(first)
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
-        tm.that(document["tool"]["uv"], lacks="exclude-newer")
-        tm.that(document["tool"]["uv"], lacks="exclude-newer-package")
+        tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
+        expected_exclude_newer_package: dict[str, bool | str] = {
+            package: False
+            for package in toolchain.dependency_cooldown_exclusions
+            if package not in toolchain.dependency_cooldown_overrides
+        }
+        expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
+        tm.that(
+            document["tool"]["uv"]["exclude-newer-package"],
+            eq=expected_exclude_newer_package,
+        )
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
