@@ -35,13 +35,13 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
     ] = c.Infra.OperationMode.BASELINE
 
     @staticmethod
-    def _render_template(workspace_root: Path, template: str, skill: str) -> Path:
+    def _render_template(repository_root: Path, template: str, skill: str) -> Path:
         """Render a skill path template."""
         rendered = template.replace("{skill}", skill)
         candidate = Path(rendered)
         if candidate.is_absolute():
             return candidate
-        return (workspace_root / candidate).resolve()
+        return (repository_root / candidate).resolve()
 
     def _apply_baseline_comparison(
         self,
@@ -85,7 +85,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
     def build_report(
         self,
-        workspace_root: Path,
+        repository_root: Path,
         skill_name: str,
         *,
         mode: c.Infra.OperationMode = c.Infra.OperationMode.BASELINE,
@@ -94,7 +94,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         """Validate a single skill across workspace projects.
 
         Args:
-            workspace_root: Root directory of the workspace.
+            repository_root: Root directory of the workspace.
             skill_name: Name of the skill folder to validate.
             mode: Validation mode ("baseline" or "strict").
 
@@ -103,7 +103,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
         """
         try:
-            return self._build_skill_report(workspace_root, skill_name, mode)
+            return self._build_skill_report(repository_root, skill_name, mode)
         except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[m.Infra.ValidationReport].fail_op("skill validation", exc)
 
@@ -180,10 +180,10 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         )
 
     def _build_skill_report(
-        self, workspace_root: Path, skill_name: str, mode: c.Infra.OperationMode
+        self, repository_root: Path, skill_name: str, mode: c.Infra.OperationMode
     ) -> p.Result[m.Infra.ValidationReport]:
         """Build a skill validation report after path resolution."""
-        root = workspace_root.resolve()
+        root = repository_root.resolve()
         skills_dir = root / c.Infra.SKILLS_DIR
         rules_path = skills_dir / skill_name / "rules.yml"
         if not rules_path.exists():
@@ -230,7 +230,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
     def execute(self) -> p.Result[bool]:
         """Execute the skill-validation CLI flow."""
         report_result = self.build_report(
-            self.workspace_root, self.skill, mode=self.mode
+            self.repository_root, self.skill, mode=self.mode
         )
         if report_result.failure:
             return r[bool].fail(report_result.error or "skill validation failed")

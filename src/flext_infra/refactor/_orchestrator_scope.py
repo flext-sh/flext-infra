@@ -151,7 +151,7 @@ class FlextInfraRefactorOrchestratorScopeMixin:
 
     def refactor_workspace(
         self,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -159,13 +159,13 @@ class FlextInfraRefactorOrchestratorScopeMixin:
         gates: t.StrSequence | None = None,
     ) -> t.SequenceOf[m.Infra.Result]:
         """Refactor all discoverable workspace projects."""
-        root = workspace_root.resolve()
+        root = repository_root.resolve()
         if not root.exists() or not root.is_dir():
-            u.Cli.error(f"Invalid workspace root: {workspace_root}")
+            u.Cli.error(f"Invalid repository root: {repository_root}")
             return []
         projects = u.Infra.discover_refactor_projects(self.loader.settings, root)
         if not projects:
-            u.Cli.error(f"No projects discovered under: {workspace_root}")
+            u.Cli.error(f"No projects discovered under: {repository_root}")
             return []
         u.Cli.info(f"Discovered {len(projects)} projects in workspace")
         checkpoint_ref, error_results = self._try_safety_checkpoint(

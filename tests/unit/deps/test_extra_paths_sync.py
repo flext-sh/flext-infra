@@ -25,12 +25,12 @@ def _create_pyproject(directory: Path, content: str) -> Path:
     return pyproject_path
 
 
-_TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
+_TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
 
-def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
+def _manager(repository_root: Path | None = None) -> FlextInfraExtraPathsManager:
     return FlextInfraExtraPathsManager(
-        workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
+        repository_root=repository_root or _TEST_REPOSITORY_ROOT
     )
 
 

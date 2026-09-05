@@ -26,7 +26,7 @@ class FlextInfraUtilitiesBase:
     """
 
     @staticmethod
-    def resolve_workspace_root_or_cwd(workspace_root: Path | None = None) -> Path:
+    def resolve_repository_root_or_cwd(repository_root: Path | None = None) -> Path:
         """Resolve the root a verb operates on from its invocation point.
 
         Scope follows where the verb is invoked: run it at the workspace and it
@@ -41,7 +41,7 @@ class FlextInfraUtilitiesBase:
         written to the shared root, where each project's run overwrote the
         previous one's result.
         """
-        target = workspace_root or Path.cwd()
+        target = repository_root or Path.cwd()
         if target.is_file():
             target = target.parent
         return target.resolve()

@@ -75,7 +75,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         selected_projects: t.StrSequence = (
             self.project_names if self.project_names is not None else ()
         )
-        resolved = u.Infra.resolve_projects(self.workspace_root, selected_projects)
+        resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
             return r[
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
@@ -109,7 +109,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         ok, report = u.Infra.protected_source_writes(
             dict(updates),
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=self.workspace_root, skip_pytest=True
+                workspace=self.repository_root, skip_pytest=True
             ),
         )
         if ok:
@@ -143,7 +143,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             "per_project_changes": per_project_changes_payload,
             "per_project_replacements": per_project_replacements_payload,
             "changed_files_preview": changed_files_preview,
-            "workspace": str(self.workspace_root),
+            "workspace": str(self.repository_root),
             "mode": mode_value,
         }
         return report_payload

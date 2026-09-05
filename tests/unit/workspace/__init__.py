@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     )
     from .test_repository_local_topology import TestsRepositoryLocalTopology
     from .test_vscode import TestsFlextInfraCodegenVscode
-    from .test_workspace_root_make_contract import TestsWorkspaceRootMakeContract
+    from .test_repository_root_make_contract import TestsRepositoryRootMakeContract
     from .worktree_fixture import WorktreeFixture
 __all__: tuple[str, ...] = (
     "TestsBeadsEnvironmentSync",
@@ -44,7 +44,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraWorkspaceMain",
     "TestsProviderResolutionAcceptsSshRemotes",
     "TestsRepositoryLocalTopology",
-    "TestsWorkspaceRootMakeContract",
+    "TestsRepositoryRootMakeContract",
     "WorktreeFixture",
     "c",
     "d",
@@ -96,7 +96,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_repository_local_topology": ("TestsRepositoryLocalTopology",),
             ".test_vscode": ("TestsFlextInfraCodegenVscode",),
-            ".test_workspace_root_make_contract": ("TestsWorkspaceRootMakeContract",),
+            ".test_repository_root_make_contract": ("TestsRepositoryRootMakeContract",),
             ".worktree_fixture": ("WorktreeFixture",),
             "flext_tests": (
                 "c",

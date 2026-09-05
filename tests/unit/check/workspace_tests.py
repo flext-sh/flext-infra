@@ -28,12 +28,12 @@ class TestFlextInfraWorkspaceChecker:
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
 
     def test_init_creates_instance(self) -> None:
-        """Test that checker initializes with default workspace root."""
+        """Test that checker initializes with default repository root."""
         checker = FlextInfraWorkspaceChecker()
         tm.that(checker, none=False)
 
-    def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
-        """Test that checker accepts custom workspace root."""
+    def test_init_with_custom_repository_root(self, tmp_path: Path) -> None:
+        """Test that checker accepts custom repository root."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         tm.that(checker, none=False)
 

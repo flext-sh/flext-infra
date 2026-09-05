@@ -6,17 +6,17 @@ from pathlib import Path
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 
-_TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
+_TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
 
 class ExtraPathsTestSupport:
     """Factory helpers for validated extra-path manager instances."""
 
     @staticmethod
-    def manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
+    def manager(repository_root: Path | None = None) -> FlextInfraExtraPathsManager:
         """Return a manager built through the Pydantic validation path."""
         return FlextInfraExtraPathsManager(
-            workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
+            repository_root=repository_root or _TEST_REPOSITORY_ROOT
         )
 
 

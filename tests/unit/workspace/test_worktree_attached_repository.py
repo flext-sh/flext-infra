@@ -90,7 +90,7 @@ class TestsAttachedRepositoryWorktree(WorktreeFixture):
 
         lane = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=attached,
+                repository_root=attached,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",
@@ -106,7 +106,7 @@ class TestsAttachedRepositoryWorktree(WorktreeFixture):
         tm.that(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=attached,
+                    repository_root=attached,
                     operation=c.Infra.WorktreeOperation.REMOVE,
                     branch=branch,
                     apply_changes=True,

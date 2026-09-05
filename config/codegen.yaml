@@ -13,10 +13,15 @@ Infra:
       python_version: "3.13"
       uv_link_mode: copy
       # Supported resolution environments for the generated lock. Windows is
-      # not a supported deployment target: the win32 split resolves meltano's
-      # structlog<26 cap against flext-core's structlog>=26.1 floor and is
-      # unsatisfiable, so uv must skip that split instead of failing the lock.
+      # not a deployment target, so uv skips that split instead of resolving it.
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
+      # Fleet co-installability ceiling, projected to [tool.uv]
+      # constraint-dependencies of every generated pyproject. Every member lock
+      # resolves inside this range, so the floor rewrite (floors follow the
+      # lock) can never raise one member's floor above a cap another member
+      # carries transitively. meltano>=4.2.1 (flext-meltano and every Singer
+      # connector) caps structlog<26.
+      dependency_constraints: ["structlog<26"]
       # Supply-chain cooldown SSOT (CWE-829): projected to uv exclude-newer and
       # every Dependabot ecosystem so updates never raise floors that uv blocks.
       dependency_cooldown_days: 7
@@ -139,7 +144,7 @@ Infra:
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
     # with "Repository not found" before any code runs. Only projects that
-    # really exercise their subprojects in CI opt in through the override map.
+    # really exercise their declared_repositories in CI opt in through the override map.
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
@@ -151,7 +156,7 @@ Infra:
       flext-cli:
         # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
         - libreoffice-calc
-    # Per-distribution private workspace member auth for CI. The default
+    # Per-distribution private declared repository auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
@@ -248,7 +253,15 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
+    # Both keys are consumed today: infra_repository by the repository
+    # utilities and the conform infra-repository resolution, and
+    # infrastructure_provider by the provider-identity validation
+    # (flext-1wjg1.16.34 merge resolution; unify at the owner in a follow-up).
+    infra_repository:
+      distribution: flext-infra
+      provider: flext-sh
     infrastructure_provider: flext-sh
+
     providers:
       - name: flext-sh
         organization: flext-sh
@@ -275,11 +288,6 @@ Infra:
         base_url: https://github.com/marlonsc
         branch: develop
     branch_policy:
-      ci_trigger_branches:
-        - dev
-        - develop
-        - 0.12.0-dev
-        - main
       technical_branch_patterns:
         - __dolt_remote_info__
         - dolt/*
@@ -304,10 +312,6 @@ Infra:
         - develop
         - dev
         - main
-    infra_repository:
-      distribution: flext-infra
-      provider: flext-sh
-
     profiles:
       - name: workspace
         environment_scope: root
@@ -757,7 +761,7 @@ Infra:
         ruff.importStrategy: fromEnvironment
         ruff.lint.preview: true
         ruff.nativeServer: on
-        shellcheck.useWorkspaceRootAsCwd: true
+        shellcheck.useRepositoryRootAsCwd: true
       list_settings:
         python-envs.workspaceSearchPaths:
           - ./.venv
@@ -1472,7 +1476,7 @@ Infra:
           patterns:
             - "!.agents/"
             - "!.agents/**"
-        - name: "WHITELIST: Agent skills owned by the workspace root"
+        - name: "WHITELIST: Agent skills owned by the repository root"
           profiles: [workspace]
           patterns:
             - "!.agents/skills/"
@@ -1869,9 +1873,9 @@ Infra:
           delegate: render
           overwrite: false
         # Ledger routing config: rendered only for repositories that own a
-        # ledger. The workspace root owns a shared ledger when a gitlink's
-        # `.beads` path is a symlink; real member `.beads` directories keep an
-        # independent ledger.
+        # ledger. The repository root owns a shared ledger when a gitlink's
+        # `.beads` path is a symlink; real declared-repository `.beads`
+        # directories keep an independent ledger.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace, standalone]

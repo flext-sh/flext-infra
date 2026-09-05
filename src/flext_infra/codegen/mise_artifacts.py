@@ -395,6 +395,37 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].from_failure(release)
         return r[bool].ok(True)
 
+    def _member_project_root(self) -> p.Result[Path]:
+        """Resolve the one declared workspace member selected for propagation."""
+        if self.project_filter is None:
+            return r[Path].fail(
+                "--from-root propagation requires exactly one --project"
+            )
+        selectors = [
+            selector for selector in self.project_filter.split(",") if selector.strip()
+        ]
+        if len(selectors) != 1:
+            return r[Path].fail(
+                "--from-root propagation requires exactly one --project"
+            )
+        selector = selectors[0].strip()
+        if (
+            not selector
+            or selector.startswith(".")
+            or "/" in selector
+            or "\\" in selector
+        ):
+            return r[Path].fail(f"invalid Mise propagation project: {selector}")
+        project_root = (self.repository_root / selector).resolve()
+        resolved_workspace = self.repository_root.resolve()
+        if (
+            not project_root.is_dir()
+            or project_root == resolved_workspace
+            or not project_root.is_relative_to(resolved_workspace)
+        ):
+            return r[Path].fail(f"Mise propagation target is not a member: {selector}")
+        return r[Path].ok(project_root)
+
     def validate_artifacts(
         self, project_root: Path, *, config_sources: tuple[m.Cli.AtomicFileState, ...]
     ) -> p.Result[bool]:
@@ -437,6 +468,48 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             configured_tools=tools_result.value,
             project_exclusions=exclusions.value,
         )
+
+    def _propagate_root_lock(self) -> p.Result[bool]:
+        """Propagate one byte-identical member lock without invoking Mise."""
+        member_result = self._member_project_root()
+        if member_result.failure:
+            return r[bool].fail(member_result.error or "invalid Mise member")
+        member_root = member_result.value
+        root_config = u.Cli.files_read_text(self.repository_root / ".mise.toml")
+        member_config = u.Cli.files_read_text(member_root / ".mise.toml")
+        if root_config.failure:
+            return r[bool].fail(root_config.error or "cannot read root .mise.toml")
+        if member_config.failure:
+            return r[bool].fail(member_config.error or "cannot read member .mise.toml")
+        root_identity = u.Cli.sha256_file(self.repository_root / ".mise.toml")
+        member_identity = u.Cli.sha256_file(member_root / ".mise.toml")
+        if root_identity != member_identity:
+            return r[bool].fail(
+                "member .mise.toml is not identical to root: "
+                f"root_sha256={root_identity} member_sha256={member_identity}"
+            )
+        root_lock = u.Cli.files_read_text(self.repository_root / "mise.lock")
+        if root_lock.failure:
+            return r[bool].fail(root_lock.error or "cannot read root mise.lock")
+        write = u.Cli.atomic_write_text_file(member_root / "mise.lock", root_lock.value)
+        if write.failure:
+            return r[bool].fail(write.error or "cannot propagate root mise.lock")
+        propagated_lock = u.Cli.files_read_text(member_root / "mise.lock")
+        propagated_config = u.Cli.files_read_text(member_root / ".mise.toml")
+        if propagated_lock.failure:
+            return r[bool].fail(
+                propagated_lock.error or "cannot verify propagated mise.lock"
+            )
+        if propagated_config.failure:
+            return r[bool].fail(
+                propagated_config.error
+                or "cannot verify propagated .mise.toml identity"
+            )
+        if propagated_lock.value != root_lock.value:
+            return r[bool].fail("member mise.lock diverged after atomic propagation")
+        if propagated_config.value != root_config.value:
+            return r[bool].fail("member .mise.toml diverged after atomic propagation")
+        return self._validate_artifacts(member_root)
 
     @staticmethod
     def _validate_lock(

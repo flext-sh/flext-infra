@@ -128,7 +128,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
         service = cls(
-            workspace_root=request.root.expanduser().resolve(),
+            repository_root=request.root.expanduser().resolve(),
             request=request,
             initial_workspace=initial_workspace,
         )
@@ -327,7 +327,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def execute(self) -> p.Result[m.Infra.CodegenResult]:
         """Run check or apply and require a verified fixed point."""
         request = self.request or m.Infra.CodegenConformRequest(
-            root=self.workspace_root
+            root=self.repository_root
         )
         if (
             c.Infra.CodegenConformSurface(request.what)
@@ -389,7 +389,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Run complete conformance inside the sole generation lock."""
         mode = c.Infra.CodegenConformMode(request.mode)
         mise_owner = FlextInfraCodegenMiseArtifacts(
-            workspace_root=request.root,
+            repository_root=request.root,
             apply_changes=mode is c.Infra.CodegenConformMode.APPLY,
             check_only=mode is c.Infra.CodegenConformMode.CHECK,
         )
@@ -609,11 +609,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if surface is c.Infra.CodegenConformSurface.MAKEFILE:
             return self._plan_declared_makefile(request, config_spec, contract)
         root = request.root.expanduser().resolve()
-        workspace_root = root
+        repository_root = root
         workspace = self.initial_workspace
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                workspace_root
+                repository_root
             )
             if workspace_result.failure:
                 return r[m.Infra.CodegenPlan].fail(
@@ -700,7 +700,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
             else:
                 repository_root_result = self._repository_root(
-                    workspace_root, workspace, repository
+                    repository_root, workspace, repository
                 )
                 if repository_root_result.failure:
                     return r[m.Infra.CodegenPlan].fail(
@@ -753,7 +753,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else:
                 repository_plan = self._plan_existing_repository(
                     root=repository_root,
-                    workspace_root=workspace_root,
+                    repository_root=repository_root,
                     repository=target.repository,
                     target=target,
                     workspace=local_workspace,
@@ -807,7 +807,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
-                    workspace_root=workspace_root,
+                    repository_root=repository_root,
                     target=target,
                     workspace=local_workspace,
                     config=config_spec,
@@ -858,19 +858,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "makefile conformance requires scope=self"
             )
         root = request.root.expanduser().resolve()
+        # Why (flext-1wjg1.16.34): the merged tip referenced projection loaders
+        # written against a vocabulary this tree never had (RepositoryRole,
+        # WorkspaceSpec.members); the local identity loader and conform target
+        # are the live owners of the same contract.
         workspace_result = (
             r[m.Infra.WorkspaceSpec].ok(self.initial_workspace)
             if self.initial_workspace is not None
-            else FlextInfraWorkspaceDetector.load_projection_workspace_spec(root)
+            else FlextInfraWorkspaceDetector.load_workspace_spec(root)
         )
         if workspace_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 workspace_result.error or "declared workspace manifest load failed"
             )
         workspace = workspace_result.value
-        target_result = FlextInfraWorkspaceDetector.declared_conform_target(
-            root, workspace
-        )
+        target_result = FlextInfraWorkspaceDetector.conform_target(root, workspace)
         if target_result.failure:
             return r[m.Infra.CodegenPlan].fail(
                 target_result.error or "declared conformance target is invalid"
@@ -1122,17 +1124,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if not section.profiles or profile in section.profiles
         ]
         # The deny-all root policy (`/*` + `/*/`) would swallow every governed
-        # subproject directory, so their whitelist is DERIVED from the live workspace
-        # topology instead of a hardcoded name glob: declaring a subproject in
+        # declared_repository directory, so their whitelist is DERIVED from the live workspace
+        # topology instead of a hardcoded name glob: declaring a declared_repository in
         # local .gitmodules is the single source that makes it trackable.
         # Nested paths need every ancestor unignored, otherwise git never
-        # descends far enough to reach the subproject itself.
+        # descends far enough to reach the declared_repository itself.
         member_patterns: list[str] = []
         if workspace is not None:
-            for subproject in workspace.subprojects:
-                parts = subproject.path.as_posix().strip("/").split("/")
+            for declared_repository in workspace.declared_repositories:
+                parts = declared_repository.path.as_posix().strip("/").split("/")
                 # Every ancestor is unignored so git can descend into the
-                # subproject, then its contents are unignored with the `/**` form.
+                # declared_repository, then its contents are unignored with the `/**` form.
                 prefixes = [
                     "/".join(parts[:depth]) for depth in range(1, len(parts) + 1)
                 ]
@@ -1144,7 +1146,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if member_patterns:
             sections.append(
                 m.Infra.ScaffoldGitignoreSectionSpec(
-                    name="WHITELIST: governed workspace subprojects (derived)",
+                    name="WHITELIST: governed workspace declared_repositories (derived)",
                     patterns=tuple(member_patterns),
                 )
             )
@@ -1185,18 +1187,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         workspace: m.Infra.WorkspaceSpec,
         current_repository: m.Infra.RepositoryRef,
     ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
-        """Resolve self/subprojects/all from the local read-only topology."""
+        """Resolve self/declared_repositories/all from the local read-only topology."""
         scope = c.Infra.CodegenConformScope(request.scope)
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
-        elif scope is c.Infra.CodegenConformScope.SUBPROJECTS:
-            if not workspace.subprojects:
+        elif scope is c.Infra.CodegenConformScope.DECLARED:
+            if not workspace.declared_repositories:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
-                    "subprojects scope requires local .gitmodules entries"
+                    "declared_repositories scope requires local .gitmodules entries"
                 )
-            selected = tuple(workspace.subprojects)
+            selected = tuple(workspace.declared_repositories)
         else:
-            selected = (workspace.repository, *workspace.subprojects)
+            selected = (workspace.repository, *workspace.declared_repositories)
         mutable = tuple(
             repository
             for repository in selected
@@ -1220,7 +1222,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         resolved: Path = (resolved_root / repository.path).resolve()
         if not resolved.is_relative_to(resolved_root):
             return r[Path].fail(
-                "declared repository path escapes workspace root: "
+                "declared repository path escapes repository root: "
                 f"{repository.path.as_posix()}"
             )
         return r[Path].ok(resolved)
@@ -1265,11 +1267,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         # New and existing repositories share the exact same
         # root-scoped modernizer pipeline, so first generation is a fixed point.
-        # A declared subproject consumes the workspace root
+        # A declared declared_repository consumes the repository root
         # tooling profile even before the atomic scaffold creates files on disk.
         tooling_root = target.root
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tooling_root, skip_check=True
+            repository_root=tooling_root, skip_check=True
         )
         analysis_exclusions = tuple(
             path.as_posix()
@@ -1282,8 +1284,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             codegen.templates.entries, profile
         )
         # Why (flext-6itas.4): a scaffold's declared roots are the complete
-        # future topology only for a subproject/standalone target; a workspace
-        # root aggregates subproject trees it has not declared here.
+        # future topology only for a declared_repository/standalone target; a workspace
+        # root aggregates declared_repository trees it has not declared here.
         declared_python_dirs_are_complete = profile is not c.Infra.MakeProfile.WORKSPACE
         tooling_result = modernizer.resolve_tooling_context(
             project_name=repository.distribution,
@@ -1310,8 +1312,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 context_result.error or "project render context is invalid"
             )
         context = context_result.value
-        # Workspace root owns resolution for attached subprojects (uv reads
-        # exclude-dependencies only from the workspace root). Subprojects still
+        # Repository root owns resolution for attached declared_repositories (uv reads
+        # exclude-dependencies only from the repository root). Subprojects still
         # receive their own routed excludes for standalone CI clones.
         if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
             uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
@@ -1527,7 +1529,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         *,
         root: Path,
-        workspace_root: Path,
+        repository_root: Path,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -1565,8 +1567,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
-        # Workspace root owns resolution for attached subprojects (uv reads
-        # exclude-dependencies only from the workspace root). Subprojects still
+        # Repository root owns resolution for attached declared repositories (uv
+        # reads exclude-dependencies only from the repository root). Declared
+        # repositories still
         # receive their own routed excludes for standalone CI clones.
         if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
             uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
@@ -1598,7 +1601,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=workspace_root,
+            repository_root=repository_root,
             skip_check=True,
             managed_artifacts=managed_artifacts.value.resolution,
         )
@@ -1938,10 +1941,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
+    def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
         if workspace.project is not None:
-            project_root_rel: str = workspace.project.workspace_root_rel
+            project_root_rel: str = workspace.project.repository_root_rel
             return project_root_rel
         return "."
 
@@ -2000,14 +2003,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _managed_gitlinks(
         cls, workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[tuple[m.Infra.ManagedGitlinkSpec, ...]]:
-        """Resolve provider baselines only for mutable governed subprojects."""
+        """Resolve provider baselines only for mutable governed declared_repositories."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
-        for repository in workspace.subprojects:
+        for repository in workspace.declared_repositories:
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
                 return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].fail(
                     provider.error
-                    or f"subproject provider is invalid: {repository.name}"
+                    or f"declared_repository provider is invalid: {repository.name}"
                 )
             resolved.append(
                 m.Infra.ManagedGitlinkSpec(
@@ -2129,7 +2132,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     provider.error or "workflow provider resolution failed"
                 )
             workspace_repositories = (
-                tuple(workspace.subprojects)
+                tuple(workspace.declared_repositories)
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -2198,8 +2201,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
-            subprojects = (
-                tuple(workspace.subprojects)
+            declared_repositories = (
+                tuple(workspace.declared_repositories)
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -2218,13 +2221,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                    repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                         workspace
                     ),
-                    workspace_subprojects=tuple(
-                        item.path.as_posix() for item in workspace.subprojects
+                    declared_repositories=tuple(
+                        item.path.as_posix() for item in workspace.declared_repositories
                     ),
-                    workspace_repositories=subprojects,
+                    workspace_repositories=declared_repositories,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=FlextInfraCodegenConform._link_mode(
                         repository, codegen.toolchain
@@ -2299,8 +2302,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        subprojects = (
-            tuple(workspace.subprojects)
+        declared_repositories = (
+            tuple(workspace.declared_repositories)
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
@@ -2346,14 +2349,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 project_selection_conflict_error=(
                     c.Infra.PROJECT_SELECTION_CONFLICT_ERROR
                 ),
-                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_subprojects=tuple(
-                    item.path.as_posix() for item in workspace.subprojects
+                declared_repositories=tuple(
+                    item.path.as_posix() for item in workspace.declared_repositories
                 ),
-                workspace_repositories=subprojects,
+                workspace_repositories=declared_repositories,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,
@@ -2427,8 +2430,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         # Emit only the .gitignore sections that apply to this profile: a
         # section with no declared profiles is universal; a workspace-only
-        # section (subproject-directory allowlist and submodule/Beads
-        # Beads coordination) never reaches a subproject or standalone .gitignore.
+        # section (declared-repository directory allowlist and submodule/Beads
+        # coordination) never reaches a declared repository or standalone
+        # .gitignore.
         profile_gitignore_sections = [
             section
             for section in codegen.gitignore_sections
@@ -2986,13 +2990,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _uv_environment_plan(
         *,
         root: Path,
-        workspace_root: Path,
+        repository_root: Path,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         config: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
-        del workspace_root
+        del repository_root
         workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         environment_root = target.root
         groups: tuple[str, ...] = ("dev", "codegen")
@@ -3001,7 +3005,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups = (*groups, "workspace")
             editable_repositories = tuple(
                 item
-                for item in (workspace.repository, *workspace.subprojects)
+                for item in (workspace.repository, *workspace.declared_repositories)
                 if item.package and item.editable and not item.read_only
             )
         return m.Infra.UvEnvironmentPlan(

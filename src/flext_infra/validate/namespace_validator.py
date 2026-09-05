@@ -36,8 +36,8 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Execute namespace validation for the configured workspace root."""
-        report_result = self.validate_project(self.workspace_root)
+        """Execute namespace validation for the configured repository root."""
+        report_result = self.validate_project(self.repository_root)
         if report_result.failure:
             return r[bool].fail(report_result.error or "namespace validation failed")
         report = report_result.unwrap()

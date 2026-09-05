@@ -104,7 +104,7 @@ class FlextInfraRefactorService:
 
     def refactor_workspace(
         self,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         dry_run: bool = False,
         pattern: str = c.Infra.EXT_PYTHON_GLOB,
@@ -113,7 +113,7 @@ class FlextInfraRefactorService:
     ) -> t.SequenceOf[m.Infra.Result]:
         """Delegate workspace refactoring to the dedicated orchestrator."""
         return self.orchestrator.refactor_workspace(
-            workspace_root,
+            repository_root,
             dry_run=dry_run,
             pattern=pattern,
             apply_safety=apply_safety,

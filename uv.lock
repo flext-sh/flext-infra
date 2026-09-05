@@ -668,7 +668,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#feb82f9bdfb207f2891ee4a452223eaf82a6dbe1" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#53141b6982a4d9a4e199d56fc299371987811b05" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -695,7 +695,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#f6c1f4b3f2cc6d6e189b13af276a64b44848da8d" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#ccfe3255ad71fb8c41d8bb8edaaf72e58d0b162b" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -827,36 +827,36 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "defusedxml", specifier = ">=0.7.1" },
-    { name = "filelock", specifier = ">=3.32.0" },
+    { name = "filelock", specifier = ">=3.32.4" },
     { name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev" },
     { name = "flext-core", git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev" },
-    { name = "gitpython", specifier = ">=3.1.57" },
-    { name = "libcst", specifier = ">=1.8.6" },
+    { name = "gitpython", specifier = ">=3.1.61" },
+    { name = "libcst", specifier = ">=1.9.0" },
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-exclude", specifier = ">=1.0.2" },
     { name = "mkdocs-material", specifier = ">=9.7.7" },
     { name = "mkdocs-section-index", specifier = ">=0.3.12" },
     { name = "mkdocstrings", specifier = ">=1.0.6" },
-    { name = "mkdocstrings-python", specifier = ">=2.0.5" },
+    { name = "mkdocstrings-python", specifier = ">=2.0.7" },
     { name = "pyrefly", specifier = ">=1.2.0" },
     { name = "rope", specifier = ">=1.14.0" },
-    { name = "ruff", specifier = ">=0.16.0" },
+    { name = "ruff", specifier = ">=0.16.5" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "actionlint-py", specifier = ">=1.7.12.24" },
-    { name = "autoflake", specifier = ">=2.3.3" },
+    { name = "autoflake", specifier = ">=2.4.0" },
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "black", specifier = ">=26.5.1" },
     { name = "blacken-docs", specifier = ">=1.20.0" },
     { name = "codespell", specifier = ">=2.4.3" },
     { name = "deptry", specifier = ">=0.25.1" },
-    { name = "django-stubs", specifier = ">=6.0.7" },
+    { name = "django-stubs", specifier = ">=6.1.0" },
     { name = "factory-boy", specifier = ">=3.3.3" },
-    { name = "faker", specifier = ">=40.36.0" },
+    { name = "faker", specifier = ">=40.37.0" },
     { name = "flext-tests", git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev" },
-    { name = "hypothesis", specifier = ">=6.161.8" },
+    { name = "hypothesis", specifier = ">=6.165.10" },
     { name = "isort", specifier = ">=8.0.1" },
     { name = "matplotlib-stubs", specifier = ">=0.3.11" },
     { name = "mkdocs", specifier = ">=1.6.1" },
@@ -865,7 +865,7 @@ dev = [
     { name = "mkdocs-encryptcontent-plugin", specifier = ">=3.1.0" },
     { name = "mkdocs-exclude", specifier = ">=1.0.2" },
     { name = "mkdocs-get-deps", specifier = ">=0.2.2" },
-    { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.5.3" },
+    { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.5.4" },
     { name = "mkdocs-literate-nav", specifier = ">=0.6.3" },
     { name = "mkdocs-macros-plugin", specifier = ">=1.5.0" },
     { name = "mkdocs-material", specifier = ">=9.7.7" },
@@ -877,15 +877,15 @@ dev = [
     { name = "mkdocs-section-index", specifier = ">=0.3.12" },
     { name = "mkdocs-versioning", specifier = ">=0.4.0" },
     { name = "mkdocstrings", specifier = ">=1.0.6" },
-    { name = "mkdocstrings-python", specifier = ">=2.0.5" },
+    { name = "mkdocstrings-python", specifier = ">=2.0.7" },
     { name = "mypy", specifier = ">=2.3.1" },
     { name = "pip-audit", specifier = ">=2.10.1" },
-    { name = "pre-commit", specifier = ">=4.6.1" },
-    { name = "pylint", specifier = ">=4.0.6" },
+    { name = "pre-commit", specifier = ">=4.6.2" },
+    { name = "pylint", specifier = ">=4.0.7" },
     { name = "pyrefly", specifier = ">=1.2.0" },
     { name = "pyright", specifier = ">=1.1.411" },
     { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-benchmark", specifier = ">=5.2.3" },
+    { name = "pytest-benchmark", specifier = ">=5.3.0" },
     { name = "pytest-clarity", specifier = ">=1.0.1" },
     { name = "pytest-codeblocks", specifier = ">=0.18.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
@@ -903,24 +903,24 @@ dev = [
     { name = "ruff", specifier = ">=0.16.0" },
     { name = "rumdl", specifier = ">=0.2.45" },
     { name = "types-cachetools", specifier = ">=7.0.0.20260713" },
-    { name = "types-cffi", specifier = ">=2.0.0.20260518" },
+    { name = "types-cffi", specifier = ">=2.1.0.20260827" },
     { name = "types-click", specifier = ">=7.1.8" },
     { name = "types-defusedxml", specifier = ">=0.7.0.20260504" },
-    { name = "types-docker", specifier = ">=7.2.0.20260724" },
+    { name = "types-docker", specifier = ">=7.2.0.20260827" },
     { name = "types-flask", specifier = ">=1.1.6" },
     { name = "types-jsonschema", specifier = ">=4.26.0.20260518" },
-    { name = "types-ldap3", specifier = ">=2.9.13.20260518" },
+    { name = "types-ldap3", specifier = ">=2.9.13.20260827" },
     { name = "types-paramiko", specifier = ">=5.0.0.20260724" },
-    { name = "types-protobuf", specifier = ">=7.34.1.20260518" },
-    { name = "types-psutil", specifier = ">=7.2.2.20260518" },
+    { name = "types-protobuf", specifier = ">=7.35.1.20260827" },
+    { name = "types-psutil", specifier = ">=7.2.2.20260827" },
     { name = "types-psycopg2", specifier = ">=2.9.21.20260724" },
     { name = "types-pyasn1", specifier = ">=0.6.0.20260724" },
     { name = "types-pyopenssl", specifier = ">=24.1.0.20240722" },
-    { name = "types-python-dateutil", specifier = ">=2.9.0.20260716" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260724" },
+    { name = "types-python-dateutil", specifier = ">=2.9.0.20260807" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20260815" },
     { name = "types-redis", specifier = ">=4.6.0.20241004" },
     { name = "types-requests", specifier = ">=2.33.0.20260712" },
-    { name = "types-setuptools", specifier = ">=83.0.0.20260724" },
+    { name = "types-setuptools", specifier = ">=84.0.0.20260812" },
     { name = "types-tabulate", specifier = ">=0.10.0.20260508" },
     { name = "types-toml", specifier = ">=0.10.8.20260518" },
     { name = "vulture", specifier = ">=2.16" },
@@ -930,7 +930,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#753c58cbb85654eff53a2d507d25be4d01d10377" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#0fd137b933bf1eed9b8ba6767cfe046ae45e3aba" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },
