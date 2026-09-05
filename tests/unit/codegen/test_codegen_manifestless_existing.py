@@ -87,8 +87,12 @@ class TestCodegenManifestlessExisting:
         for relative, content in preserved.items():
             tm.that(plans[relative].changed, eq=False)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".python-version", ".gitignore"):
             tm.that(plans[required].changed, eq=True)
+        # The toolchain seed travels as one set: a tree carrying the tracked
+        # launchers and lock also carries the configuration they answer, so
+        # that configuration is already conformed and plans no rewrite.
+        tm.that(plans[".mise.toml"].changed, eq=False)
 
         tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
         tm.that((root / ".env.example").exists(), eq=False)
