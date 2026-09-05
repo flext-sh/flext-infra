@@ -10,6 +10,8 @@ import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
+from flext_infra._constants.check import FlextInfraConstantsCheck
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -70,23 +72,10 @@ class FlextInfraConstantsMake:
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
-    # The BUILT-IN check vocabulary: read-only gates this package implements.
-    # It is the BASE of the vocabulary, never the whole of it -- a project
-    # declares its own gates in config and they are unioned in by
-    # MakeSpec.check_gates_allowed. `format` is NOT here: it rewrites files, so
-    # it is owned by `make fmt APPLY=Y` / `make fix APPLY=Y`
-    # (PROJECT_CHECK_GATES_FIXABLE_VALUES) and a read-only verb must never
-    # invoke it.
-    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
-        "lint",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "security",
-        "markdown",
-        "smells",
-        "direnv",
-        "duplication",
+    # Built-in check vocabulary is a projection of the check metadata owner.
+    # Projects may extend this base through MakeSpec.project_check_gates.
+    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(
+        FlextInfraConstantsCheck.SARIF_TOOL_INFO
     )
     # The gates CI=N owns: the type checkers only. They are the slow, whole-
     # program analyses, so CI=Y runs the strict complement of this set -- ruff

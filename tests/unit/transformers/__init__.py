@@ -15,9 +15,6 @@ if TYPE_CHECKING:
     from .test_infra_transformer_cast_remover import (
         TestsFlextInfraTransformersCastRemover,
     )
-    from .test_infra_transformer_class_nesting import (
-        TestsFlextInfraTransformersInfraTransformerClassNesting,
-    )
     from .test_infra_transformer_cli_modernizer import (
         TestsFlextInfraTransformersCliModernizer,
     )
@@ -33,14 +30,8 @@ if TYPE_CHECKING:
         TestsFlextInfraTransformersTypingDictImport,
         TestsFlextInfraTransformersTypingUnifier,
     )
-    from .test_infra_transformer_helper_consolidation import (
-        TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
-    )
     from .test_infra_transformer_logging_modernizer import (
         TestsFlextInfraTransformersLoggingModernizer,
-    )
-    from .test_infra_transformer_nested_class_propagation import (
-        TestsFlextInfraTransformersInfraTransformerNestedClassPropagation,
     )
     from .test_infra_transformer_pattern_modernizer import (
         TestsFlextInfraTransformersPatternModernizer,
@@ -59,9 +50,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraTransformersCompatibilityAlias",
     "TestsFlextInfraTransformersFutureImport",
     "TestsFlextInfraTransformersHardcodedVersion",
-    "TestsFlextInfraTransformersInfraTransformerClassNesting",
-    "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
-    "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
     "TestsFlextInfraTransformersLoggingModernizer",
     "TestsFlextInfraTransformersOpenEncoding",
     "TestsFlextInfraTransformersPattern",
@@ -97,9 +85,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_transformer_cast_remover": (
                 "TestsFlextInfraTransformersCastRemover",
             ),
-            ".test_infra_transformer_class_nesting": (
-                "TestsFlextInfraTransformersInfraTransformerClassNesting",
-            ),
             ".test_infra_transformer_cli_modernizer": (
                 "TestsFlextInfraTransformersCliModernizer",
             ),
@@ -115,14 +100,8 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraTransformersTypingDictImport",
                 "TestsFlextInfraTransformersTypingUnifier",
             ),
-            ".test_infra_transformer_helper_consolidation": (
-                "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
-            ),
             ".test_infra_transformer_logging_modernizer": (
                 "TestsFlextInfraTransformersLoggingModernizer",
-            ),
-            ".test_infra_transformer_nested_class_propagation": (
-                "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
             ),
             ".test_infra_transformer_pattern_modernizer": (
                 "TestsFlextInfraTransformersPatternModernizer",

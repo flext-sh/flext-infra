@@ -174,7 +174,7 @@ _ALLOWED_WHATS_help := usage
 _ALLOWED_WHATS_setup := environment
 _ALLOWED_WHATS_deps := check lock upgrade
 _ALLOWED_WHATS_build := artifacts
-_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells direnv duplication
+_ALLOWED_WHATS_check := all lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
 _ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint
 _ALLOWED_WHATS_fmt := check all apply
 _ALLOWED_WHATS_fix := check all apply
@@ -190,7 +190,7 @@ _ALLOWED_WHATS_help := usage $(patsubst _custom_help_%,%,$(filter _custom_help_%
 _ALLOWED_WHATS_setup := environment $(patsubst _custom_setup_%,%,$(filter _custom_setup_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_deps := check lock upgrade $(patsubst _custom_deps_%,%,$(filter _custom_deps_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_build := artifacts $(patsubst _custom_build_%,%,$(filter _custom_build_%,$(CUSTOM_DECLARED_TARGETS)))
-_ALLOWED_WHATS_check := all lint pyrefly mypy pyright security markdown smells direnv duplication $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(CUSTOM_DECLARED_TARGETS)))
+_ALLOWED_WHATS_check := all lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication $(patsubst _custom_check_%,%,$(filter _custom_check_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_test := all full cache-status cache-clear cache-checkpoint $(patsubst _custom_test_%,%,$(filter _custom_test_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fmt := check all apply $(patsubst _custom_fmt_%,%,$(filter _custom_fmt_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_fix := check all apply $(patsubst _custom_fix_%,%,$(filter _custom_fix_%,$(CUSTOM_DECLARED_TARGETS)))
@@ -202,8 +202,8 @@ _ALLOWED_WHATS_release := plan version tag build publish $(patsubst _custom_rele
 _ALLOWED_WHATS_gen := check all apply init $(patsubst _custom_gen_%,%,$(filter _custom_gen_%,$(CUSTOM_DECLARED_TARGETS)))
 _ALLOWED_WHATS_mod := check all apply $(patsubst _custom_mod_%,%,$(filter _custom_mod_%,$(CUSTOM_DECLARED_TARGETS)))
 endif
-CHECK_GATES_ALLOWED := lint pyrefly mypy pyright security markdown smells direnv duplication
-CHECK_GATES_DEFAULT := lint pyrefly mypy pyright security markdown smells direnv duplication
+CHECK_GATES_ALLOWED := lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
+CHECK_GATES_DEFAULT := lint format pyrefly mypy pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication
  DOCS_ACTIONS := generate fix audit build validate
  # End SECTION: verb dispatch
 
@@ -237,6 +237,7 @@ _DEFAULT_gen := check
 _DEFAULT_mod := check
 
 _APPLY_WHAT_deps := upgrade
+_APPLY_WHAT_check := all
 _APPLY_WHAT_test := all
 _APPLY_WHAT_fmt := apply
 _APPLY_WHAT_fix := apply
@@ -551,7 +552,7 @@ define _run_for_selected_projects
 	done
 endef
 
-.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_check_lint _builtin_check_pyrefly _builtin_check_mypy _builtin_check_pyright _builtin_check_security _builtin_check_markdown _builtin_check_smells _builtin_check_direnv _builtin_check_duplication _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_plan _builtin_release_version _builtin_release_tag _builtin_release_build _builtin_release_publish _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
+.PHONY: $(PUBLIC_VERBS) _builtin_help_usage _builtin_setup_environment _builtin_deps_check _builtin_deps_lock _builtin_deps_upgrade _builtin_build_artifacts _builtin_check_all _builtin_check_lint _builtin_check_format _builtin_check_pyrefly _builtin_check_mypy _builtin_check_pyright _builtin_check_silent-failure _builtin_check_deferred-self-reference _builtin_check_security _builtin_check_markdown _builtin_check_loc-cap _builtin_check_boundary _builtin_check_runtime-census _builtin_check_namespace _builtin_check_tier-whitelist _builtin_check_smells _builtin_check_layout _builtin_check_canonical-alias _builtin_check_codemod _builtin_check_direnv _builtin_check_duplication _builtin_test_all _builtin_test_full _builtin_test_cache-status _builtin_test_cache-clear _builtin_test_cache-checkpoint _builtin_fmt_check _builtin_fmt_all _builtin_fmt_apply _builtin_fix_check _builtin_fix_all _builtin_fix_apply _builtin_run_default _builtin_status_diagnostics _builtin_docs_all _builtin_docs_generate _builtin_docs_fix _builtin_docs_audit _builtin_docs_build _builtin_docs_validate _builtin_clean_status _builtin_clean_generated _builtin_release_plan _builtin_release_version _builtin_release_tag _builtin_release_build _builtin_release_publish _builtin_gen_check _builtin_gen_all _builtin_gen_apply _builtin_gen_init _builtin_mod_check _builtin_mod_all _builtin_mod_apply
 
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
@@ -620,7 +621,7 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' "$$(printf '%s' '$(_ALLOWED_WHATS_check)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s WHAT=%s APPLY=Y\n' 'check' "$$(printf '%s' '$(_ALLOWED_WHATS_check)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
 
 
 
@@ -903,10 +904,21 @@ _builtin_check_all: _builtin_require_environment
 		for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 			keep=0; \
 			if [ "$$gate" = "lint" ]; then keep=1; fi; \
+			if [ "$$gate" = "format" ]; then keep=1; fi; \
 			if [ "$$gate" = "pyright" ]; then keep=1; fi; \
+			if [ "$$gate" = "silent-failure" ]; then keep=1; fi; \
+			if [ "$$gate" = "deferred-self-reference" ]; then keep=1; fi; \
 			if [ "$$gate" = "security" ]; then keep=1; fi; \
 			if [ "$$gate" = "markdown" ]; then keep=1; fi; \
+			if [ "$$gate" = "loc-cap" ]; then keep=1; fi; \
+			if [ "$$gate" = "boundary" ]; then keep=1; fi; \
+			if [ "$$gate" = "runtime-census" ]; then keep=1; fi; \
+			if [ "$$gate" = "namespace" ]; then keep=1; fi; \
+			if [ "$$gate" = "tier-whitelist" ]; then keep=1; fi; \
 			if [ "$$gate" = "smells" ]; then keep=1; fi; \
+			if [ "$$gate" = "layout" ]; then keep=1; fi; \
+			if [ "$$gate" = "canonical-alias" ]; then keep=1; fi; \
+			if [ "$$gate" = "codemod" ]; then keep=1; fi; \
 			if [ "$$gate" = "direnv" ]; then keep=1; fi; \
 			if [ "$$gate" = "duplication" ]; then keep=1; fi; \
 			if [ "$$keep" -eq 1 ]; then \
@@ -914,7 +926,7 @@ _builtin_check_all: _builtin_require_environment
 			fi; \
 		done; \
 		gates="$$filtered"; \
-		printf 'INFO: CI=Y runs check gates: lint pyright security markdown smells direnv duplication\n'; \
+		printf 'INFO: CI=Y runs check gates: lint format pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication\n'; \
 	fi; \
 	for gate in $$(printf '%s' "$$gates" | tr ',' ' '); do \
 		case " $(CHECK_GATES_ALLOWED) " in *" $$gate "*) ;; \
@@ -932,6 +944,9 @@ _builtin_check_all: _builtin_require_environment
 _builtin_check_lint: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=lint
 
+_builtin_check_format: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=format
+
 _builtin_check_pyrefly: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyrefly
 
@@ -941,14 +956,44 @@ _builtin_check_mypy: _builtin_require_environment
 _builtin_check_pyright: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyright
 
+_builtin_check_silent-failure: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=silent-failure
+
+_builtin_check_deferred-self-reference: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=deferred-self-reference
+
 _builtin_check_security: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=security
 
 _builtin_check_markdown: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=markdown
 
+_builtin_check_loc-cap: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=loc-cap
+
+_builtin_check_boundary: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=boundary
+
+_builtin_check_runtime-census: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=runtime-census
+
+_builtin_check_namespace: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=namespace
+
+_builtin_check_tier-whitelist: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=tier-whitelist
+
 _builtin_check_smells: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=smells
+
+_builtin_check_layout: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=layout
+
+_builtin_check_canonical-alias: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=canonical-alias
+
+_builtin_check_codemod: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=codemod
 
 _builtin_check_direnv: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=direnv
@@ -1154,3 +1199,15 @@ _builtin_gen_all:
 	$(call _generated_docs,--apply)
 
 _builtin_gen_apply: _builtin_gen_all
+
+# Structural refactoring has one public ast-grep route. Apply mode preserves
+# every resulting edit for fix-forward repair; it never commits or rolls back a
+# caller's worktree behind the operator's back.
+_builtin_mod_check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
+
+_builtin_mod_all:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
+
+_builtin_mod_apply: _builtin_mod_all

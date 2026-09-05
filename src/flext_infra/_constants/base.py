@@ -365,7 +365,6 @@ class FlextInfraConstantsBase(
     RK_SEVERITY: Final[str] = "severity"
     RK_VIOLATION_TYPE: Final[str] = "violation_type"
     RK_SUGGESTED_FIX: Final[str] = "suggested_fix"
-    RK_HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
     RK_POST_CHECKS: Final[str] = "post_checks"
 
     CLI_APPLY_OPTION_DECLS: Final[t.StrSequence] = ("--apply/--dry-run",)
@@ -383,13 +382,6 @@ class FlextInfraConstantsBase(
 
     SAFE_EXECUTION_DEFAULT_GATES: Final[str] = "lint,mypy,pyright,pyrefly"
     "Default quality gates for post-transform validation."
-    ENFORCEMENT_ADVISORY_GATES: Final[frozenset[str]] = frozenset({
-        "runtime-census",
-        "namespace",
-        "tier-whitelist",
-        "silent-failure",
-    })
-    "Gates that report violations as warnings rather than failing the pipeline."
     SAFE_EXECUTION_BAK_SUFFIX: Final[str] = ".bak"
     "File backup suffix for copy-on-write safety."
     ENV_VAR_LINT_SNAPSHOT_GATES: Final[str] = "FLEXT_INFRA_LINT_SNAPSHOT_GATES"

@@ -5,18 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, main as infra_main, u
+from flext_infra import c, m, main as infra_main, u
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
-from flext_infra.codemod.batch_gates import (
-    FlextInfraModGateEngine,
-    FlextInfraModGateSnapshot,
-)
+from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_tests import tm
 
 if TYPE_CHECKING:
     import pytest
 
-_CHECKPOINT_SUBJECT = "chore(git): checkpoint before ast-grep batch apply"
 _MAKE_SERIALIZATION_RULE = (
     Path(__file__).resolve().parents[3]
     / "src"
@@ -28,8 +24,8 @@ _MAKE_SERIALIZATION_RULE = (
 )
 
 
-def _snapshot(ruff: int, pyrefly: int) -> FlextInfraModGateSnapshot:
-    return FlextInfraModGateSnapshot(ruff_errors=ruff, pyrefly_errors=pyrefly)
+def _snapshot(ruff: int, pyrefly: int) -> m.Infra.ModGateSnapshot:
+    return m.Infra.ModGateSnapshot(ruff_errors=ruff, pyrefly_errors=pyrefly)
 
 
 def _git(root: Path, *args: str) -> str:
@@ -80,33 +76,24 @@ def _rule(root: Path, *, pattern: str, fix: str | None) -> Path:
 
 
 class TestsFlextInfraModCircuitDecision:
-    def test_equal_counts_keep_changes(self) -> None:
-        tm.that(
-            FlextInfraModGateEngine.circuit_broken(_snapshot(3, 2), _snapshot(3, 2)),
-            eq=False,
-        )
+    def test_equal_nonzero_counts_break_fixed_point(self) -> None:
+        tm.that(FlextInfraModGateEngine.fixed_point_broken(_snapshot(3, 2)), eq=True)
 
-    def test_decreased_counts_keep_changes(self) -> None:
-        tm.that(
-            FlextInfraModGateEngine.circuit_broken(_snapshot(3, 2), _snapshot(1, 0)),
-            eq=False,
-        )
+    def test_decreased_nonzero_counts_break_fixed_point(self) -> None:
+        tm.that(FlextInfraModGateEngine.fixed_point_broken(_snapshot(1, 0)), eq=True)
 
     def test_ruff_increase_breaks_circuit(self) -> None:
-        tm.that(
-            FlextInfraModGateEngine.circuit_broken(_snapshot(3, 2), _snapshot(4, 2)),
-            eq=True,
-        )
+        tm.that(FlextInfraModGateEngine.fixed_point_broken(_snapshot(4, 2)), eq=True)
 
     def test_pyrefly_increase_breaks_circuit(self) -> None:
-        tm.that(
-            FlextInfraModGateEngine.circuit_broken(_snapshot(3, 2), _snapshot(3, 3)),
-            eq=True,
-        )
+        tm.that(FlextInfraModGateEngine.fixed_point_broken(_snapshot(3, 3)), eq=True)
+
+    def test_zero_counts_reach_fixed_point(self) -> None:
+        tm.that(FlextInfraModGateEngine.fixed_point_broken(_snapshot(0, 0)), eq=False)
 
 
 class TestsFlextInfraModCircuitApply:
-    def test_make_serialization_guard_is_detection_only(self, tmp_path: Path) -> None:
+    def test_make_serialization_guard_is_blocking(self, tmp_path: Path) -> None:
         root = _repo(tmp_path, "u.Infra.serialization_lock_execute(paths, timeout)\n")
 
         detection = tm.ok(
@@ -132,8 +119,8 @@ class TestsFlextInfraModCircuitApply:
             (detection.stdout or "") + (detection.stderr or ""),
             has='"ruleId":"ban-make-serialization"',
         )
-        tm.that(report.nodes, eq=0)
-        tm.that(report.files, eq=frozenset())
+        tm.that(report.nodes, eq=1)
+        tm.that(report.files, eq=frozenset({Path("sample.py")}))
 
     def test_apply_reports_verified_node_and_file_counts(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -162,7 +149,7 @@ class TestsFlextInfraModCircuitApply:
         tm.that((root / "sample.py").read_text(encoding="utf-8"), eq="value = {}\n")
         tm.that(_git(root, "rev-parse", "HEAD"), eq=head_before)
 
-    def test_detection_only_rule_is_not_pending_or_applied(
+    def test_detection_only_rule_remains_blocking_without_mutation(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         root = _repo(tmp_path, "value = dict()\n")
@@ -173,9 +160,11 @@ class TestsFlextInfraModCircuitApply:
             repository_root=root, apply_changes=True
         ).execute()
 
-        tm.that(check_result.success, eq=True)
-        tm.that(apply_result.success, eq=True)
-        tm.that(capsys.readouterr().out, has="applied 0 node(s) across 0 file(s)")
+        tm.that(check_result.failure, eq=True)
+        tm.that(apply_result.failure, eq=True)
+        tm.that(check_result.error or "", has="1 pending ast-grep finding")
+        tm.that(apply_result.error or "", has="1 ast-grep finding(s) remained")
+        tm.that(capsys.readouterr().out, has="phase=scan-after")
         tm.that((root / "sample.py").read_text(encoding="utf-8"), eq="value = dict()\n")
 
     def test_byte_identical_fix_is_not_pending(self, tmp_path: Path) -> None:
@@ -193,7 +182,7 @@ class TestsFlextInfraModCircuitApply:
         result = FlextInfraCodemodBatchApply(repository_root=root).execute()
 
         tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="1 pending actionable ast-grep fix")
+        tm.that(result.error or "", has="1 pending ast-grep finding")
 
     def test_discovered_rule_without_id_fails_explicitly(self, tmp_path: Path) -> None:
         root = _repo(tmp_path, "value = dict()\n")
@@ -208,20 +197,24 @@ class TestsFlextInfraModCircuitApply:
         tm.that(result.failure, eq=True)
         tm.that(result.error or "", has="missing required id")
 
-    def test_apply_rolls_back_when_ruff_regresses(self, tmp_path: Path) -> None:
+    def test_apply_keeps_changes_for_fix_forward_when_ruff_regresses(
+        self, tmp_path: Path
+    ) -> None:
         root = _repo(tmp_path, "value = dict()\n")
-        dirty_source = "value = dict()\n# pending edit\n"
-        (root / "sample.py").write_text(dirty_source, encoding="utf-8")
         _rule(root, pattern="value = dict()", fix="import os\nimport sys\nvalue = {}")
+        head_before = _git(root, "rev-parse", "HEAD")
 
         result = FlextInfraCodemodBatchApply(
             repository_root=root, apply_changes=True
         ).execute()
 
         tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="rolled back")
-        tm.that((root / "sample.py").read_text(encoding="utf-8"), eq=dirty_source)
-        tm.that(_git(root, "log", "-1", "--format=%s"), eq=_CHECKPOINT_SUBJECT)
+        tm.that(result.error or "", has="changes retained for fix-forward repair")
+        tm.that(
+            (root / "sample.py").read_text(encoding="utf-8"),
+            eq="import os\nimport sys\nvalue = {}\n",
+        )
+        tm.that(_git(root, "rev-parse", "HEAD"), eq=head_before)
 
     def test_check_mode_reports_pending_without_mutation(self, tmp_path: Path) -> None:
         root = _repo(tmp_path, "value = dict()\n")
@@ -230,7 +223,7 @@ class TestsFlextInfraModCircuitApply:
         result = FlextInfraCodemodBatchApply(repository_root=root).execute()
 
         tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has="pending actionable ast-grep fix")
+        tm.that(result.error or "", has="pending ast-grep finding")
         tm.that((root / "sample.py").read_text(encoding="utf-8"), eq="value = dict()\n")
 
 

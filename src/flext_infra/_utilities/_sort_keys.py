@@ -1,19 +1,22 @@
-"""Typed sort keys shared by filesystem owners."""
+"""Typed filesystem ordering through the infrastructure utility facade."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 
-def path_depth(path: Path) -> int:
-    """Return the number of components in a path."""
-    return len(path.parts)
+class FlextInfraUtilitiesSortKeys:
+    """Own deterministic path ordering for infrastructure services."""
+
+    @staticmethod
+    def path_depth(path: Path) -> int:
+        """Return the number of components in a path."""
+        return len(path.parts)
+
+    @classmethod
+    def path_depth_then_text(cls, path: Path) -> tuple[int, str]:
+        """Order paths by depth and then stable POSIX text."""
+        return cls.path_depth(path), path.as_posix()
 
 
-def path_depth_then_text(path: Path) -> tuple[int, str]:
-    """Order paths by depth and then their stable POSIX representation."""
-    return path_depth(path), path.as_posix()
-
-
-# Internal owner: direct module imports are intentional; no facade ABI is published.
-__all__: tuple[str, ...] = ()
+__all__: tuple[str, ...] = ("FlextInfraUtilitiesSortKeys",)

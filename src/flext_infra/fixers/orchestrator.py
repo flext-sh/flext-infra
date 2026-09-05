@@ -21,7 +21,7 @@ from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapt
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_core import m as core_m
     from flext_infra.fixers.base import FlextInfraFixerAdapter
 
 
@@ -91,8 +91,8 @@ class FlextInfraEnforcementFixerOrchestrator(
         return r[str].ok(report)
 
     def _selected_rules(
-        self, catalog: me.EnforcementCatalog | None = None
-    ) -> tuple[me.EnforcementRuleSpec, ...]:
+        self, catalog: core_m.EnforcementCatalog | None = None
+    ) -> tuple[core_m.EnforcementRuleSpec, ...]:
         """Return enabled rules with fix actions matching the CLI filter.
 
         In the default mode (no explicit ``--rules``), adapterless fix actions
@@ -115,7 +115,7 @@ class FlextInfraEnforcementFixerOrchestrator(
             adapterless=adapterless,
         )
 
-    def _has_adapter(self, rule: me.EnforcementRuleSpec) -> bool:
+    def _has_adapter(self, rule: core_m.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` has a registered fixer adapter."""
         fix_action = rule.fix_action
         if fix_action is None:
@@ -153,7 +153,9 @@ class FlextInfraEnforcementFixerOrchestrator(
         return r[t.SequenceOf[p.Infra.ProjectInfo]].ok(selected)
 
     def _fix_project(
-        self, project: p.Infra.ProjectInfo, rules: t.SequenceOf[me.EnforcementRuleSpec]
+        self,
+        project: p.Infra.ProjectInfo,
+        rules: t.SequenceOf[core_m.EnforcementRuleSpec],
     ) -> t.SequenceOf[m.Infra.ProjectFixResult]:
         """Collect violations and apply fixes for one project."""
         project_dir = project.path
@@ -222,16 +224,16 @@ class FlextInfraEnforcementFixerOrchestrator(
         return tuple(results)
 
     def _group_by_adapter(
-        self, rules: t.SequenceOf[me.EnforcementRuleSpec]
+        self, rules: t.SequenceOf[core_m.EnforcementRuleSpec]
     ) -> tuple[
-        dict[type[FlextInfraFixerAdapter], list[me.EnforcementRuleSpec]],
-        tuple[me.EnforcementRuleSpec, ...],
+        dict[type[FlextInfraFixerAdapter], list[core_m.EnforcementRuleSpec]],
+        tuple[core_m.EnforcementRuleSpec, ...],
     ]:
         """Group rules by the adapter that can handle their fix_action."""
-        grouped: dict[type[FlextInfraFixerAdapter], list[me.EnforcementRuleSpec]] = (
-            defaultdict(list)
-        )
-        unhandled: list[me.EnforcementRuleSpec] = []
+        grouped: dict[
+            type[FlextInfraFixerAdapter], list[core_m.EnforcementRuleSpec]
+        ] = defaultdict(list)
+        unhandled: list[core_m.EnforcementRuleSpec] = []
         for rule in rules:
             fix_action = rule.fix_action
             if fix_action is None:
@@ -245,7 +247,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         return grouped, tuple(unhandled)
 
     def _adapter_for(
-        self, fix_action: me.EnforcementFixAction
+        self, fix_action: core_m.EnforcementFixAction
     ) -> type[FlextInfraFixerAdapter] | None:
         """Return the first adapter class that accepts ``fix_action``."""
         for adapter_cls in self._ADAPTER_CLASSES:
@@ -265,26 +267,29 @@ class FlextInfraEnforcementFixerOrchestrator(
         return FlextInfraEnforcementEngine(self.repository_root)
 
     def _collect_violations(
-        self, project_dir: Path, rules: t.SequenceOf[me.EnforcementRuleSpec]
+        self, project_dir: Path, rules: t.SequenceOf[core_m.EnforcementRuleSpec]
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]],
+        list[m.Infra.FailedFix],
     ]:
         """Collect violations for ``rules`` inside ``project_dir``."""
         evaluation = self._engine().collect_project(project_dir, rules)
         return evaluation.violations, evaluation.failures
 
     def _collect_tests_validator_violations(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec
+        self, project_dir: Path, rule: core_m.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]],
+        list[m.Infra.FailedFix],
     ]:
         """Run the flext-tests validator method for ``rule``."""
         return self._engine().collect_tests_validator(project_dir, rule)
 
     def _collect_python_file_violations(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec
+        self, project_dir: Path, rule: core_m.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]],
+        list[m.Infra.FailedFix],
     ]:
         """Return one probe per Python file for transformer-backed detector rules.
 
@@ -296,9 +301,10 @@ class FlextInfraEnforcementFixerOrchestrator(
         return self._engine().collect_python_file_probes(project_dir, rule)
 
     def _collect_declarative_violations(
-        self, project_dir: Path, rules: t.SequenceOf[me.EnforcementRuleSpec]
+        self, project_dir: Path, rules: t.SequenceOf[core_m.EnforcementRuleSpec]
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]],
+        list[m.Infra.FailedFix],
     ]:
         """Return concrete probes by running the declarative engine per file.
 
@@ -315,8 +321,8 @@ class FlextInfraEnforcementFixerOrchestrator(
         return FlextInfraEnforcementEngine.stub_file_paths(project_dir)
 
     def _collect_project_violations(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec
-    ) -> list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]]:
+        self, project_dir: Path, rule: core_m.EnforcementRuleSpec
+    ) -> list[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]]:
         """Return one project-level probe for gate-backed fixes."""
         return FlextInfraEnforcementEngine.collect_project_probe(project_dir, rule)
 
@@ -327,7 +333,7 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     @staticmethod
     def _collection_failure(
-        project_dir: Path, rule: me.EnforcementRuleSpec, message: str
+        project_dir: Path, rule: core_m.EnforcementRuleSpec, message: str
     ) -> m.Infra.FailedFix:
         """Build a failed-fix record for collection/routing errors."""
         return FlextInfraEnforcementEngine.collection_failure(

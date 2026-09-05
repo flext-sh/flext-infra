@@ -12,6 +12,7 @@ from git import GitCommandError
 
 from flext_cli import u
 from flext_core import r
+from flext_infra import c
 from flext_infra._utilities._git.semantic_identity import (
     FlextInfraUtilitiesGitSemanticIdentityMixin,
 )
@@ -56,7 +57,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
             )
         toolchain = cls._toolchain_digest(repo_root)
         predicate = m.Infra.GateAttestationPredicate(
-            schema_version="https://flext.sh/attestations/gates/v1",
+            schema_version=c.Infra.GateAttestationSchema.V1,
             repository=canonical_origin_remote(identity.value.origin_remote or ""),
             commit_sha=identity.value.head_oid,
             tree_sha=repo.head.commit.tree.hexsha,

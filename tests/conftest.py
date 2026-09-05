@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 from collections.abc import Iterator
 from pathlib import Path
@@ -20,15 +21,20 @@ from tests import c, t, u
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
-@pytest.fixture(autouse=True)
-def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep the checkout trigger from leaking into synthetic Git repositories.
-
-    Tests that exercise trigger anchoring opt in after constructing a commit in
-    their own repository. Every other fixture owns unrelated history, so the
-    outer GitHub Actions SHA is invalid input for it.
-    """
-    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
+@pytest.fixture
+def infra_subprocess_environment() -> t.StrMapping:
+    """Return an explicit child environment without the outer CI trigger SHA."""
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if key != c.Infra.ENV_VAR_GITHUB_SHA
+    }
+    repository_root = str(Path(__file__).resolve().parent.parent)
+    pythonpath = environment.get("PYTHONPATH", "")
+    environment["PYTHONPATH"] = os.pathsep.join(
+        part for part in (repository_root, pythonpath) if part
+    )
+    return environment
 
 
 @pytest.fixture

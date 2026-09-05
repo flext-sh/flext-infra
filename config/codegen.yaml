@@ -511,6 +511,11 @@ Infra:
           default_what: all
           whats: [all]
           apply_guarded: false
+          # APPLY=Y is the operator's one canonical execution token. Check
+          # remains read-only; accepting the token only selects its existing
+          # all gate and never introduces a second mutation path.
+          accepts_apply: true
+          apply_what: all
         - name: test
           default_what: all
           # all = incremental testmon run; cache-* maintain .testmondata locally.
@@ -1207,6 +1212,11 @@ Infra:
       - path: .python-version
         owner: codegen
         policy: full
+      # Qlty refuses to scan without a repository configuration. Keep the
+      # blocking smells posture fleet-wide and generated from this SSOT.
+      - path: .qlty/qlty.toml
+        owner: codegen
+        policy: full
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
@@ -1646,7 +1656,7 @@ Infra:
             - "**/.tmp/"
         - name: "Build and quality tool artifacts inside allowed directories"
           patterns:
-            - "**/.qlty/"
+            - "**/.qlty/*"
             - "**/.meltano/"
             - "**/.serena/"
         - name: "Backup files inside allowed directories"
@@ -1876,6 +1886,11 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
+        - source: base/qlty.toml.j2
+          destination: .qlty/qlty.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
         - source: base/env.example.j2
           destination: .env.example
           profiles: [workspace, standalone]

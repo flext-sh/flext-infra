@@ -17,20 +17,11 @@ if TYPE_CHECKING:
         TestsFlextInfraRefactorDeclarativeEnforcement,
         TestsFlextInfraRefactorDeclarativeEnforcementInCensus,
     )
-    from .test_infra_refactor_class_and_propagation import (
-        TestsFlextInfraRefactorInfraRefactorClassAndPropagation,
-    )
     from .test_infra_refactor_class_placement import (
         TestsFlextInfraRefactorInfraRefactorClassPlacement,
     )
     from .test_infra_refactor_cli_models_workflow import (
         TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow,
-    )
-    from .test_infra_refactor_import_modernizer import (
-        TestsFlextInfraRefactorInfraRefactorImportModernizer,
-    )
-    from .test_infra_refactor_legacy_and_annotations import (
-        TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations,
     )
     from .test_infra_refactor_namespace_aliases import (
         TestsFlextInfraRefactorInfraRefactorNamespaceAliases,
@@ -41,20 +32,9 @@ if TYPE_CHECKING:
     from .test_infra_refactor_namespace_moves import (
         TestsFlextInfraRefactorInfraRefactorNamespaceMoves,
     )
-    from .test_infra_refactor_pattern_corrections import (
-        TestsFlextInfraRefactorInfraRefactorPatternCorrections,
-    )
-    from .test_infra_refactor_policy_family_rules import (
-        TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules,
-    )
     from .test_infra_refactor_project_classifier import (
         TestsFlextInfraRefactorInfraRefactorProjectClassifier,
     )
-    from .test_infra_refactor_safety import (
-        RefactorSafetyStub,
-        TestsFlextInfraRefactorInfraRefactorSafety,
-    )
-    from .test_infra_refactor_service import TestsFlextInfraRefactorInfraRefactorService
     from .test_infra_refactor_typing_unifier import (
         FlextInfraRefactorTypingUnificationRule,
         TestsFlextInfraRefactorInfraRefactorTypingUnifier,
@@ -62,23 +42,15 @@ if TYPE_CHECKING:
     from .test_main_cli import TestsFlextInfraRefactorMainCli
 __all__: tuple[str, ...] = (
     "FlextInfraRefactorTypingUnificationRule",
-    "RefactorSafetyStub",
     "TestsFlextInfraApplyRenamesCli",
     "TestsFlextInfraRefactorDeclarativeEnforcement",
     "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
-    "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
     "TestsFlextInfraRefactorInfraRefactorClassPlacement",
     "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
-    "TestsFlextInfraRefactorInfraRefactorImportModernizer",
-    "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
     "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
     "TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer",
     "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
-    "TestsFlextInfraRefactorInfraRefactorPatternCorrections",
-    "TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules",
     "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
-    "TestsFlextInfraRefactorInfraRefactorSafety",
-    "TestsFlextInfraRefactorInfraRefactorService",
     "TestsFlextInfraRefactorInfraRefactorTypingUnifier",
     "TestsFlextInfraRefactorMainCli",
     "c",
@@ -107,20 +79,11 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraRefactorDeclarativeEnforcement",
                 "TestsFlextInfraRefactorDeclarativeEnforcementInCensus",
             ),
-            ".test_infra_refactor_class_and_propagation": (
-                "TestsFlextInfraRefactorInfraRefactorClassAndPropagation",
-            ),
             ".test_infra_refactor_class_placement": (
                 "TestsFlextInfraRefactorInfraRefactorClassPlacement",
             ),
             ".test_infra_refactor_cli_models_workflow": (
                 "TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow",
-            ),
-            ".test_infra_refactor_import_modernizer": (
-                "TestsFlextInfraRefactorInfraRefactorImportModernizer",
-            ),
-            ".test_infra_refactor_legacy_and_annotations": (
-                "TestsFlextInfraRefactorInfraRefactorLegacyAndAnnotations",
             ),
             ".test_infra_refactor_namespace_aliases": (
                 "TestsFlextInfraRefactorInfraRefactorNamespaceAliases",
@@ -131,21 +94,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_refactor_namespace_moves": (
                 "TestsFlextInfraRefactorInfraRefactorNamespaceMoves",
             ),
-            ".test_infra_refactor_pattern_corrections": (
-                "TestsFlextInfraRefactorInfraRefactorPatternCorrections",
-            ),
-            ".test_infra_refactor_policy_family_rules": (
-                "TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules",
-            ),
             ".test_infra_refactor_project_classifier": (
                 "TestsFlextInfraRefactorInfraRefactorProjectClassifier",
-            ),
-            ".test_infra_refactor_safety": (
-                "RefactorSafetyStub",
-                "TestsFlextInfraRefactorInfraRefactorSafety",
-            ),
-            ".test_infra_refactor_service": (
-                "TestsFlextInfraRefactorInfraRefactorService",
             ),
             ".test_infra_refactor_typing_unifier": (
                 "FlextInfraRefactorTypingUnificationRule",

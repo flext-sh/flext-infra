@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from filelock import FileLock, Timeout
 from flext_core import r
-from flext_infra import m, settings
+from flext_infra import m, settings, u
 from flext_infra.codegen import _mise_artifacts_journal as journal_io
 from flext_infra.codegen import _mise_artifacts_publication as publication
 from flext_infra.codegen import _mise_artifacts_state as state
@@ -140,6 +140,14 @@ class FlextInfraCodegenMiseArtifactTransaction:
         plan = self._planner.snapshot(layout, config_plans)
         if plan.failure:
             return result_type.from_failure(plan)
+        if not any(
+            u.Infra.mise_toolchain_publication_required(project)
+            for project in plan.value.projects
+        ):
+            validated = verify.live(self._owner, plan.value)
+            if validated.failure:
+                return result_type.from_failure(validated)
+            return result_type.ok(())
         credential_command = settings.Infra.mise_github_credential_command
         if credential_command is None or not credential_command.strip():
             return result_type.fail(

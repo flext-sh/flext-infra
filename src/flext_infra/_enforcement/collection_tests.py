@@ -10,7 +10,7 @@ from flext_infra import c, m
 from flext_infra._enforcement.collection_base import FlextInfraEnforcementCollectionBase
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_core import m as core_m
     from flext_infra import p
 
 
@@ -18,9 +18,10 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
     """Collect violations from flext-tests validator methods."""
 
     def collect_tests_validator(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec
+        self, project_dir: Path, rule: core_m.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]],
+        list[m.Infra.FailedFix],
     ]:
         """Run the flext-tests validator method declared by ``rule``."""
         source = rule.source
@@ -66,7 +67,7 @@ class FlextInfraEnforcementTestsCollector(FlextInfraEnforcementCollectionBase):
                 project_dir, rule, "validator returned empty scan payload"
             )
         wanted_ids = frozenset(source.rule_ids)
-        out: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
+        out: list[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]] = []
         for violation in getattr(scan, "violations", ()):
             if wanted_ids and getattr(violation, "rule_id", "") not in wanted_ids:
                 continue

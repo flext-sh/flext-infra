@@ -90,8 +90,8 @@ class FlextInfraWorkspaceCheckReportsMixin:
         return m.Infra.SarifReport(
             runs=(
                 m.Infra.SarifRun(
-                    tool_name="flext-infra-check",
-                    information_uri="https://github.com/flext-sh/flext-infra",
+                    tool_name=c.Infra.CHECK_TOOL_NAME,
+                    information_uri=c.Infra.CHECK_TOOL_INFORMATION_URI,
                     rules=tuple(rules_by_id.values()),
                     results=tuple(sarif_results),
                 ),

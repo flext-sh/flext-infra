@@ -26,8 +26,11 @@ rule:
           kind: module
 constraints:
   OLD:
-    kind: identifier
-    regex: '^[A-Za-z]\w*$'
+    all:
+      - kind: identifier
+      - regex: '^[A-Za-z]\w*$'
+      - not:
+          regex: '^[ctpmurexhds]$'
   NEW:
     kind: identifier
     regex: '^[A-Za-z]\w*$'

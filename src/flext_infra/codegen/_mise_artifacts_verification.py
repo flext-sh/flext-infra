@@ -6,9 +6,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import u
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
@@ -77,11 +75,7 @@ def sources(
     """Prove source topology, bytes, and modes still equal one snapshot."""
     expected_states: list[m.Cli.AtomicFileState] = []
     for project in plan.projects:
-        config_sources = (
-            FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
-                project.layout.root
-            )
-        )
+        config_sources = u.Infra.snapshot_config_sources(project.layout.root)
         if config_sources.failure:
             return r[bool].from_failure(config_sources)
         expected = project.config.sources

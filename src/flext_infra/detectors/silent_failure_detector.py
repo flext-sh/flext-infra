@@ -6,7 +6,6 @@ import ast
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra._utilities.silent_failure_ast import collect_silent_failure_findings
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -39,7 +38,7 @@ class FlextInfraSilentFailureDetector:
                 code=finding.kind,
                 message=finding.detail,
             )
-            for finding in collect_silent_failure_findings(tree, source)
+            for finding in u.Infra.collect_silent_failure_findings(tree, source)
         )
 
     @classmethod
@@ -64,7 +63,7 @@ class FlextInfraSilentFailureDetector:
                 detail=finding.detail,
                 fix_action=finding.fix_action,
             )
-            for finding in collect_silent_failure_findings(tree, source)
+            for finding in u.Infra.collect_silent_failure_findings(tree, source)
         )
 
     @classmethod

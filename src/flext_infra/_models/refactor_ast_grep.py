@@ -5,94 +5,12 @@ from __future__ import annotations
 from typing import Annotated, ClassVar
 
 from flext_core import m
-from flext_infra import c, t
+from flext_infra import t
 from flext_infra._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsRefactorGrep:
     """Mixin containing migration/reporting contracts for refactor orchestration."""
-
-    class RefactorConfig(m.ContractModel):
-        """Refactor file-selection config."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        project_scan_dirs: t.StrSequence = m.Field(
-            default_factory=lambda: [
-                c.Infra.DEFAULT_SRC_DIR,
-                c.Infra.DIR_TESTS,
-                c.Infra.DIR_SCRIPTS,
-                c.Infra.DIR_EXAMPLES,
-            ],
-            description="Relative directories scanned for candidate files",
-        )
-        ignore_patterns: t.StrSequence = m.Field(
-            default_factory=tuple, description="Glob/file patterns ignored during scan"
-        )
-        file_extensions: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Allowed file extensions (empty = all by pattern)",
-        )
-
-    class MethodOrderRule(m.ContractModel):
-        """A declarative method ordering rule for class reconstruction.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
-
-        category: Annotated[str | None, m.Field(description="Method category")] = None
-        visibility: Annotated[str | None, m.Field(description="Visibility filter")] = (
-            None
-        )
-        exclude_decorators: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Decorators excluded from the ordering rule",
-        )
-        decorators: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Decorators required by the ordering rule",
-        )
-        patterns: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Method name patterns included by the ordering rule",
-        )
-        order: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Expected method-category order for matching methods",
-        )
-
-    class SignatureMigration(m.ContractModel):
-        """Declarative signature migration rule for callsite propagation.
-
-        Enforcement exemption: internal tooling model with intentional
-        mutable state.
-        """
-
-        id: Annotated[str, m.Field(description="Migration ID")] = "signature-migration"
-        enabled: Annotated[bool, m.Field(description="Whether migration is active")] = (
-            True
-        )
-        target_qualified_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Qualified symbol names targeted by the migration",
-        )
-        target_simple_names: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Simple symbol names targeted by the migration",
-        )
-        keyword_renames: t.StrMapping = m.Field(
-            default_factory=ImmutableEmptyMapping, description="Keyword rename mapping"
-        )
-        remove_keywords: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Keywords removed from matching callsites",
-        )
-        add_keywords: t.StrMapping = m.Field(
-            default_factory=ImmutableEmptyMapping, description="Keywords to add"
-        )
 
     class ImportModernizerRuleConfig(m.ContractModel):
         """Configuration for a single import modernizer rule.

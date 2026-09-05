@@ -15,17 +15,16 @@
 # The declaration sites are NOT violations and are excluded by construction:
 #   * `_constants/**` and `constants.py` DECLARE the canonical value;
 #   * `config/**` and `**/templates/**` are the data/rendering owners;
-#   * test fixtures build a repository contract from the catalog, so they read
-#     the value rather than repeat it, and any remaining literal there is caught
-#     by the same rule (tests are first-class code).
+#   * test inputs are not runtime configuration; tests validate arbitrary branch
+#     and remote shapes while project-owned expectations still read c/config.
 # Detection-only: the correct replacement depends on which SSOT owns the value
 # in that context, so an automatic rewrite would guess. The message names the
 # owner to read from.
 id: hardcoded-ssot-literal
 language: python
-severity: warning
+severity: error
 files:
-  - "**/*.py"
+  - "src/**/*.py"
 ignores:
   - "**/.git/**"
   - "**/.venv/**"

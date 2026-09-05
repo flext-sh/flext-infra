@@ -15,7 +15,7 @@ from flext_infra.fixers.base import FlextInfraFixerAdapter
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_core import m as core_m
     from flext_infra import p, t
 
 
@@ -38,7 +38,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         return FlextInfraGateRegistry.default()
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: core_m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         if fix_action.kind != self.kind:
             return False
@@ -49,7 +49,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply gate fixes for the first violation group (all share target)."""
@@ -165,7 +165,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         self,
         *,
         project_dir: Path,
-        rule: me.EnforcementRuleSpec,
+        rule: core_m.EnforcementRuleSpec,
         target: str,
         execution: m.Infra.GateExecution,
     ) -> m.Infra.ProjectFixResult:
@@ -203,7 +203,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _matching_issues(
-        rule: me.EnforcementRuleSpec, issues: t.SequenceOf[m.Infra.Issue]
+        rule: core_m.EnforcementRuleSpec, issues: t.SequenceOf[m.Infra.Issue]
     ) -> tuple[m.Infra.Issue, ...]:
         """Return gate issues that correspond to the selected rule fix action."""
         fix_action = rule.fix_action

@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from flext_infra import c, t
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra import u
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -52,16 +52,16 @@ class FlextInfraNamespaceRules:
     @staticmethod
     def _kind(node: object) -> str:
         """Shortcut for ``FlextInfraUtilitiesRopeAnalysis.node_kind``."""
-        return FlextInfraUtilitiesRopeAnalysis.node_kind(node)
+        return u.Infra.node_kind(node)
 
     @staticmethod
     def _is_type_checking_guard(node: object) -> bool:
         """Return True if ``node`` is an ``if TYPE_CHECKING:`` block."""
-        if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "If":
+        if u.Infra.node_kind(node) != "If":
             return False
         test = getattr(node, "test", None)
         return (
-            FlextInfraUtilitiesRopeAnalysis.node_kind(test) == "Name"
+            u.Infra.node_kind(test) == "Name"
             and getattr(test, "id", "") == "TYPE_CHECKING"
         )
 
@@ -70,8 +70,8 @@ class FlextInfraNamespaceRules:
         """Return True when ``name`` appears in any sub-node identifier."""
         if annotation is None:
             return False
-        for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(annotation):
-            if FlextInfraUtilitiesRopeAnalysis.name_of(sub) == name:
+        for sub in u.Infra.walk_ast_nodes(annotation):
+            if u.Infra.name_of(sub) == name:
                 return True
         return False
 
@@ -109,11 +109,7 @@ class FlextInfraNamespaceRules:
     def _outer_classes(tree: object) -> list[object]:
         """Return top-level ``ClassDef`` nodes in module ``tree``."""
         body = getattr(tree, "body", []) or []
-        return [
-            node
-            for node in body
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) == "ClassDef"
-        ]
+        return [node for node in body if u.Infra.node_kind(node) == "ClassDef"]
 
     def check_rule_0(
         self,
@@ -196,7 +192,7 @@ class FlextInfraNamespaceRules:
             messages.extend(
                 f"{filepath}:{getattr(inner, 'lineno', 0)} — Method "
                 f"{getattr(inner, 'name', '')!r} found in Constants class"
-                for inner in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(cls)
+                for inner in u.Infra.walk_ast_nodes(cls)
                 if self._kind(inner) in {"FunctionDef", "AsyncFunctionDef"}
             )
         return self._accumulate_violations("NS-001", messages)
@@ -444,14 +440,14 @@ class FlextInfraNamespaceRules:
         """Return imports paired with whether they are TYPE_CHECKING-only."""
         guarded_import_ids = {
             id(subnode)
-            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            for node in u.Infra.walk_ast_nodes(tree)
             if self._is_type_checking_guard(node)
-            for subnode in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(node)
+            for subnode in u.Infra.walk_ast_nodes(node)
             if self._kind(subnode) in {"Import", "ImportFrom"}
         }
         return [
             (node, id(node) in guarded_import_ids)
-            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree)
+            for node in u.Infra.walk_ast_nodes(tree)
             if self._kind(node) in {"Import", "ImportFrom"}
         ]
 
@@ -552,10 +548,10 @@ class FlextInfraNamespaceRules:
     @staticmethod
     def _is_module_docstring(node: object) -> bool:
         """Return whether ``node`` is the module-level docstring expression."""
-        if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Expr":
+        if u.Infra.node_kind(node) != "Expr":
             return False
         value = getattr(node, "value", None)
-        if FlextInfraUtilitiesRopeAnalysis.node_kind(value) != "Constant":
+        if u.Infra.node_kind(value) != "Constant":
             return False
         return isinstance(getattr(value, "value", None), str)
 

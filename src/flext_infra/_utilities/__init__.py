@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from ._git.remote import canonical_origin_remote, redact_origin_remote
     from ._git.repo import FlextInfraUtilitiesGitRepo
     from ._git.scope import FlextInfraUtilitiesGitScopeMixin
-    from ._git.semantic import FlextInfraUtilitiesGitSemanticMixin
     from ._git.semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
     from ._git.semantic_index import FlextInfraUtilitiesGitSemanticIndexMixin
     from ._git.semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
@@ -48,14 +47,11 @@ if TYPE_CHECKING:
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
-    from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
+    from ._sort_keys import FlextInfraUtilitiesSortKeys
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .codegen import FlextInfraUtilitiesCodegen
-    from .deferred_self_reference_ast import (
-        DeferredSelfReferenceFinding,
-        collect_deferred_self_reference_findings,
-    )
+    from .deferred_self_reference_ast import FlextInfraUtilitiesDeferredSelfReferenceAst
     from .dependencies import FlextInfraUtilitiesDependencies
     from .discovery import FlextInfraUtilitiesDiscovery
     from .docs import FlextInfraUtilitiesDocs
@@ -70,6 +66,11 @@ if TYPE_CHECKING:
     from .docs_validate import FlextInfraUtilitiesDocsValidate
     from .git import FlextInfraUtilitiesGit
     from .github import FlextInfraUtilitiesGithub
+    from .iteration import FlextInfraUtilitiesIteration
+    from .iteration_directory import FlextInfraUtilitiesIterationDirectory
+    from .iteration_matching import FlextInfraUtilitiesIterationMatching
+    from .iteration_project import FlextInfraUtilitiesIterationProject
+    from .iteration_workspace import FlextInfraUtilitiesIterationWorkspace
     from .log_parser import FlextInfraUtilitiesLogParser
     from .namespace import FlextInfraUtilitiesCodegenNamespace
     from .namespace_analysis import FlextInfraUtilitiesRefactorNamespaceFlext
@@ -77,7 +78,6 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
-    from .policy import FlextInfraUtilitiesRefactorPolicy
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
@@ -88,8 +88,8 @@ if TYPE_CHECKING:
     from .protected_edit_writes import FlextInfraUtilitiesProtectedEditWrites
     from .pyproject import FlextInfraUtilitiesPyproject
     from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
+    from .pyrefly import FlextInfraUtilitiesPyrefly
     from .refactor import FlextInfraUtilitiesRefactor
-    from .refactor_discovery import FlextInfraUtilitiesRefactorDiscovery
     from .release import FlextInfraUtilitiesRelease
     from .repository import FlextInfraUtilitiesRepository
     from .resource_limits import FlextInfraUtilitiesResourceLimits
@@ -98,6 +98,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesRopeAnalysisIntrospection,
     )
     from .rope_analysis_workspace import FlextInfraUtilitiesRopeAnalysisWorkspace
+    from .rope_class_move import FlextInfraUtilitiesRopeClassMove
     from .rope_core import FlextInfraUtilitiesRopeCore
     from .rope_helpers import FlextInfraUtilitiesRopeHelpers
     from .rope_imports import FlextInfraUtilitiesRopeImports
@@ -111,20 +112,19 @@ if TYPE_CHECKING:
     from .rope_source import FlextInfraUtilitiesRopeSource
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
-    from .silent_failure_ast import (
-        collect_silent_failure_findings,
-        collect_silent_failure_fixes,
-    )
+    from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
+    from .silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
+    from .silent_failure_ast_rules import FlextInfraUtilitiesSilentFailureAstRules
     from .snapshot import FlextInfraUtilitiesSnapshot
     from .versioning import FlextInfraUtilitiesVersioning
     from .workspace_fingerprint import FlextInfraUtilitiesWorkspaceFingerprint
     from .worktree_lifecycle import FlextInfraWorktreeLifecycle
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
-    "DeferredSelfReferenceFinding",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesDeferredSelfReferenceAst",
     "FlextInfraUtilitiesDependencies",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -147,7 +147,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitScopeMixin",
     "FlextInfraUtilitiesGitSemanticIdentityMixin",
     "FlextInfraUtilitiesGitSemanticIndexMixin",
-    "FlextInfraUtilitiesGitSemanticMixin",
     "FlextInfraUtilitiesGitSemanticPathsMixin",
     "FlextInfraUtilitiesGitSemanticPublishMixin",
     "FlextInfraUtilitiesGitSemanticRefsMixin",
@@ -163,6 +162,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubSyncMixin",
+    "FlextInfraUtilitiesIteration",
+    "FlextInfraUtilitiesIterationDirectory",
+    "FlextInfraUtilitiesIterationMatching",
+    "FlextInfraUtilitiesIterationProject",
+    "FlextInfraUtilitiesIterationWorkspace",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesProcess",
@@ -177,14 +181,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditWrites",
     "FlextInfraUtilitiesPyproject",
     "FlextInfraUtilitiesPyprojectConform",
+    "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
-    "FlextInfraUtilitiesRefactorDiscovery",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceFlext",
     "FlextInfraUtilitiesRefactorNamespaceMoves",
-    "FlextInfraUtilitiesRefactorPolicy",
     "FlextInfraUtilitiesRelease",
     "FlextInfraUtilitiesRepository",
     "FlextInfraUtilitiesResourceLimits",
@@ -192,13 +195,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeBracketBalanceMixin",
+    "FlextInfraUtilitiesRopeClassMove",
     "FlextInfraUtilitiesRopeCore",
     "FlextInfraUtilitiesRopeCorePyModuleMixin",
     "FlextInfraUtilitiesRopeCoreResourcesMixin",
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
-    "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
@@ -209,7 +212,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
+    "FlextInfraUtilitiesSilentFailureAst",
+    "FlextInfraUtilitiesSilentFailureAstBase",
+    "FlextInfraUtilitiesSilentFailureAstRules",
     "FlextInfraUtilitiesSnapshot",
+    "FlextInfraUtilitiesSortKeys",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesWorkspaceFingerprint",
     "FlextInfraWorktreeLifecycle",
@@ -217,9 +224,6 @@ __all__: tuple[str, ...] = (
     "_git",
     "_rope",
     "canonical_origin_remote",
-    "collect_deferred_self_reference_findings",
-    "collect_silent_failure_findings",
-    "collect_silent_failure_fixes",
     "git_stdin",
     "redact_origin_remote",
 )
@@ -236,7 +240,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._git.remote": ("canonical_origin_remote", "redact_origin_remote"),
             "._git.repo": ("FlextInfraUtilitiesGitRepo",),
             "._git.scope": ("FlextInfraUtilitiesGitScopeMixin",),
-            "._git.semantic": ("FlextInfraUtilitiesGitSemanticMixin",),
             "._git.semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),
             "._git.semantic_index": ("FlextInfraUtilitiesGitSemanticIndexMixin",),
             "._git.semantic_paths": ("FlextInfraUtilitiesGitSemanticPathsMixin",),
@@ -273,13 +276,12 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
-            "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
+            "._sort_keys": ("FlextInfraUtilitiesSortKeys",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".deferred_self_reference_ast": (
-                "DeferredSelfReferenceFinding",
-                "collect_deferred_self_reference_findings",
+                "FlextInfraUtilitiesDeferredSelfReferenceAst",
             ),
             ".dependencies": ("FlextInfraUtilitiesDependencies",),
             ".discovery": ("FlextInfraUtilitiesDiscovery",),
@@ -295,6 +297,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             ".git": ("FlextInfraUtilitiesGit",),
             ".github": ("FlextInfraUtilitiesGithub",),
+            ".iteration": ("FlextInfraUtilitiesIteration",),
+            ".iteration_directory": ("FlextInfraUtilitiesIterationDirectory",),
+            ".iteration_matching": ("FlextInfraUtilitiesIterationMatching",),
+            ".iteration_project": ("FlextInfraUtilitiesIterationProject",),
+            ".iteration_workspace": ("FlextInfraUtilitiesIterationWorkspace",),
             ".log_parser": ("FlextInfraUtilitiesLogParser",),
             ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
             ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceFlext",),
@@ -302,7 +309,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
-            ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
             ".process": ("FlextInfraUtilitiesProcess",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
@@ -315,8 +321,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".protected_edit_writes": ("FlextInfraUtilitiesProtectedEditWrites",),
             ".pyproject": ("FlextInfraUtilitiesPyproject",),
             ".pyproject_conform": ("FlextInfraUtilitiesPyprojectConform",),
+            ".pyrefly": ("FlextInfraUtilitiesPyrefly",),
             ".refactor": ("FlextInfraUtilitiesRefactor",),
-            ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
             ".release": ("FlextInfraUtilitiesRelease",),
             ".repository": ("FlextInfraUtilitiesRepository",),
             ".resource_limits": ("FlextInfraUtilitiesResourceLimits",),
@@ -325,6 +331,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraUtilitiesRopeAnalysisIntrospection",
             ),
             ".rope_analysis_workspace": ("FlextInfraUtilitiesRopeAnalysisWorkspace",),
+            ".rope_class_move": ("FlextInfraUtilitiesRopeClassMove",),
             ".rope_core": ("FlextInfraUtilitiesRopeCore",),
             ".rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
             ".rope_imports": ("FlextInfraUtilitiesRopeImports",),
@@ -338,10 +345,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_source": ("FlextInfraUtilitiesRopeSource",),
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
-            ".silent_failure_ast": (
-                "collect_silent_failure_findings",
-                "collect_silent_failure_fixes",
-            ),
+            ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailureAst",),
+            ".silent_failure_ast_base": ("FlextInfraUtilitiesSilentFailureAstBase",),
+            ".silent_failure_ast_rules": ("FlextInfraUtilitiesSilentFailureAstRules",),
             ".snapshot": ("FlextInfraUtilitiesSnapshot",),
             ".versioning": ("FlextInfraUtilitiesVersioning",),
             ".workspace_fingerprint": ("FlextInfraUtilitiesWorkspaceFingerprint",),

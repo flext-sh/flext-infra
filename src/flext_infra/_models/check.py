@@ -364,14 +364,16 @@ class FlextInfraModelsCheck:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        schema_uri: str = m.Field(
-            "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+        schema_uri: c.Infra.SarifSchema = m.Field(
+            c.Infra.SarifSchema.V2_1_0,
             alias="$schema",
             description="SARIF schema URI",
             validate_default=True,
         )
-        version: str = m.Field(
-            "2.1.0", description="SARIF version", validate_default=True
+        version: c.Infra.SarifVersion = m.Field(
+            c.Infra.SarifVersion.V2_1_0,
+            description="SARIF version",
+            validate_default=True,
         )
         runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
             default_factory=tuple, description="SARIF runs"

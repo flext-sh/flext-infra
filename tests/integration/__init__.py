@@ -14,28 +14,12 @@ if TYPE_CHECKING:
 
     from .docs_serve_e2e_tests import TestsFlextInfraIntegrationDocsServeE2e
     from .test_infra_integration import TestsFlextInfraIntegrationInfraIntegration
-    from .test_refactor_nesting_file import (
-        TestsFlextInfraIntegrationRefactorNestingFile,
-    )
-    from .test_refactor_nesting_idempotency import (
-        TestsFlextInfraIntegrationRefactorNestingIdempotency,
-    )
-    from .test_refactor_nesting_performance import (
-        TestsFlextInfraIntegrationRefactorNestingPerformance,
-    )
-    from .test_refactor_nesting_project import (
-        TestsFlextInfraIntegrationRefactorNestingProject,
-    )
     from .test_refactor_nesting_workspace import (
         TestsFlextInfraIntegrationRefactorNestingWorkspace,
     )
 __all__: tuple[str, ...] = (
     "TestsFlextInfraIntegrationDocsServeE2e",
     "TestsFlextInfraIntegrationInfraIntegration",
-    "TestsFlextInfraIntegrationRefactorNestingFile",
-    "TestsFlextInfraIntegrationRefactorNestingIdempotency",
-    "TestsFlextInfraIntegrationRefactorNestingPerformance",
-    "TestsFlextInfraIntegrationRefactorNestingProject",
     "TestsFlextInfraIntegrationRefactorNestingWorkspace",
     "c",
     "d",
@@ -60,18 +44,6 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".docs_serve_e2e_tests": ("TestsFlextInfraIntegrationDocsServeE2e",),
             ".test_infra_integration": ("TestsFlextInfraIntegrationInfraIntegration",),
-            ".test_refactor_nesting_file": (
-                "TestsFlextInfraIntegrationRefactorNestingFile",
-            ),
-            ".test_refactor_nesting_idempotency": (
-                "TestsFlextInfraIntegrationRefactorNestingIdempotency",
-            ),
-            ".test_refactor_nesting_performance": (
-                "TestsFlextInfraIntegrationRefactorNestingPerformance",
-            ),
-            ".test_refactor_nesting_project": (
-                "TestsFlextInfraIntegrationRefactorNestingProject",
-            ),
             ".test_refactor_nesting_workspace": (
                 "TestsFlextInfraIntegrationRefactorNestingWorkspace",
             ),

@@ -12,7 +12,7 @@ from flext_infra.refactor._census_rules_shared import (
 )
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_core import m as core_m
     from flext_infra import p, t
 
 
@@ -258,7 +258,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin(
         return (tuple(violations), tuple(fixes))
 
     @staticmethod
-    def _declarative_catalog_rules() -> tuple[me.EnforcementRuleSpec, ...]:
+    def _declarative_catalog_rules() -> tuple[core_m.EnforcementRuleSpec, ...]:
         """Return enabled catalog rules handled by the declarative engine."""
         return FlextInfraEnforcementEngine.declarative_rules()
 

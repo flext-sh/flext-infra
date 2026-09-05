@@ -9,7 +9,7 @@
 # Detection is SHAPE-BASED, never a project name list:
 #   * an http(s) URL literal bound to a field/argument
 #   * an absolute POSIX path literal (/home/..., /opt/..., /usr/..., /etc/...)
-#   * a toolchain/pin literal (N.N or N.N.N version bound to a config field)
+#   * a toolchain/pin literal (N.N or N.N.N version bound in production code)
 #
 # The declaration sites are NOT violations and are excluded by construction:
 # `_constants/**`, `constants.py`, `_config*`, `_settings*`, `config/**` and
@@ -48,11 +48,8 @@ note: >-
   value has no SSOT owner yet, add it to the owning config overlay first —
   do not keep the literal.
 files:
-  - "**/*.py"
+  - "src/**/*.py"
 ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/__pycache__/**"
   - "**/_constants/**"
   - "**/constants.py"
   - "**/_config*/**"
@@ -61,6 +58,5 @@ ignores:
   - "**/_settings.py"
   - "**/config/**"
   - "**/templates/**"
-  - "**/node_modules/**"
   - "**/*_pb2.py"
   - "**/*_pb2_grpc.py"

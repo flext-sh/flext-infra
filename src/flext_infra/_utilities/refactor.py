@@ -29,21 +29,6 @@ class FlextInfraUtilitiesRefactor:
     """
 
     @staticmethod
-    def entry_list(value: t.Infra.InfraValue | None) -> t.SequenceOf[t.StrMapping]:
-        """Normalize class-nesting settings entries to a strict list."""
-        if value is None:
-            return []
-        try:
-            entries: t.SequenceOf[t.StrMapping] = (
-                t.Infra.STR_MAPPING_SEQ_ADAPTER.validate_python(value)
-            )
-        except c.ValidationError:
-            msg = "class nesting entries must be a list"
-            raise ValueError(msg) from None
-        else:
-            return entries
-
-    @staticmethod
     def string_list(value: t.Infra.InfraValue | None) -> t.StrSequence:
         """Normalize policy fields that should contain string collections."""
         if value is None:

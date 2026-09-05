@@ -9,14 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities._git.semantic import FlextInfraUtilitiesGitSemanticMixin
+from flext_infra._utilities._git.semantic_index import (
+    FlextInfraUtilitiesGitSemanticIndexMixin,
+)
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
+class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @classmethod

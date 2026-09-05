@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_core import m
-from flext_core._models.enforcement import FlextModelsEnforcement as me
+from flext_core import m as core_m
 from flext_infra import t
 
 if TYPE_CHECKING:
@@ -77,7 +77,7 @@ class FlextInfraModelsEnforcement:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
         violations: Annotated[
-            tuple[tuple[me.EnforcementRuleSpec, p.AttributeProbe], ...],
+            tuple[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe], ...],
             m.Field(description="Rule/probe pairs collected for the project"),
         ]
         failures: Annotated[

@@ -11,8 +11,6 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
 )
@@ -24,7 +22,7 @@ from flext_infra.detectors.loose_test_function_detector import (
 )
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_core import m as core_m
     from flext_infra import m, p, t
 
 
@@ -52,7 +50,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
     _BEARTYPE_PREDICATES: ClassVar[frozenset[str]] = frozenset({"classvar_constant"})
 
     @classmethod
-    def supports(cls, rule: me.EnforcementRuleSpec) -> bool:
+    def supports(cls, rule: core_m.EnforcementRuleSpec) -> bool:
         """Return whether this engine can evaluate ``rule`` from source metadata."""
         source = rule.source
         if source.kind == "flext_infra_detector":
@@ -67,7 +65,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
 
     @classmethod
     def detect(
-        cls, rule: me.EnforcementRuleSpec, ctx: m.Infra.DetectorContext
+        cls, rule: core_m.EnforcementRuleSpec, ctx: m.Infra.DetectorContext
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for violations of ``rule`` inside ``ctx.file_path``."""
         rule_id = cls._rule_id_short(rule.id)
@@ -111,9 +109,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
         cls, ctx: m.Infra.DetectorContext, *, rule_id: str
     ) -> t.SequenceOf[p.AttributeProbe]:
         """Return probes for magic numbers/strings in executable code."""
-        res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            ctx.rope_project, ctx.file_path
-        )
+        res = u.Infra.get_resource_from_path(ctx.rope_project, ctx.file_path)
         if res is None:
             msg = (
                 f"declarative enforcement {ctx.file_path} failed: "
@@ -121,7 +117,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
             )
             raise RuntimeError(msg)
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
+            pymodule = u.Infra.get_pymodule(ctx.rope_project, res)
             tree = pymodule.get_ast()
         except u.Infra.rope_runtime_errors() as exc:
             msg = (
@@ -131,8 +127,8 @@ class FlextInfraRefactorDeclarativeEnforcement:
             raise RuntimeError(msg) from exc
         probes: list[p.AttributeProbe] = []
         parent_map = cls._rope_parent_map(tree)
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(tree):
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Constant":
+        for node in u.Infra.walk_ast_nodes(tree):
+            if u.Infra.node_kind(node) != "Constant":
                 continue
             value = getattr(node, "value", None)
             if not cls._is_magic_literal(value):
@@ -246,7 +242,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
         parent = parent_map.get(id(node))
         if parent is None:
             return False
-        parent_kind = FlextInfraUtilitiesRopeAnalysis.node_kind(parent)
+        parent_kind = u.Infra.node_kind(parent)
         return parent_kind in {"arguments", "arg", "keyword", "AnnAssign"} or (
             parent_kind in {"Assign", "AnnAssign"}
             and cls._is_module_level(parent, parent_map)
@@ -262,7 +258,7 @@ class FlextInfraRefactorDeclarativeEnforcement:
             parent = parent_map.get(id(current))
             if parent is None:
                 return False
-            parent_kind = FlextInfraUtilitiesRopeAnalysis.node_kind(parent)
+            parent_kind = u.Infra.node_kind(parent)
             if parent_kind in {"ClassDef", "FunctionDef", "AsyncFunctionDef"}:
                 return False
             if parent_kind == "Module":

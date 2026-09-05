@@ -1,11 +1,11 @@
 # Ban private-module imports in behavior code (epic i2h4 flext-core refactor).
 #
-# FLEXT law: behavior code (u/ facades, services, api.py, cli.py and every
-# module outside the private implementation directories) must consume the
-# public facades (c/t/p/m/u + r/e/x/h/d/s), never reach into the private
-# `_constants` / `_exceptions` / `_models` / `_typings` / `_utilities`
-# implementation modules of another layer. A private import bypasses the
-# facade FLEXT and freezes an internal layout that the owner must stay free
+# FLEXT law: behavior code outside private facet implementation directories
+# and their explicit composition modules must consume the public facades
+# (c/t/p/m/u + r/e/x/h/d/s), never reach into private `_constants` /
+# `_exceptions` / `_models` / `_typings` / `_utilities` modules. Facet roots
+# are the sole explicit composers of those implementations. A consumer-side
+# private import bypasses the facade and freezes layout the owner must be free
 # to refactor.
 #
 # Detection-only: the correct replacement is the public facade symbol the
@@ -42,3 +42,17 @@ ignores:
   - "**/.git/**"
   - "**/.venv/**"
   - "**/__pycache__/**"
+  - "**/_config.py"
+  - "**/_settings.py"
+  - "**/_constants/**"
+  - "**/_exceptions/**"
+  - "**/_models/**"
+  - "**/_protocols/**"
+  - "**/_typings/**"
+  - "**/_utilities/**"
+  - "**/constants.py"
+  - "**/exceptions.py"
+  - "**/models.py"
+  - "**/protocols.py"
+  - "**/typings.py"
+  - "**/utilities.py"

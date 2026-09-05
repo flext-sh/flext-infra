@@ -113,11 +113,15 @@ class FlextInfraUtilitiesDocsRender:
         """
         if prefix.startswith(("http://", "https://")):
             kind = "tree" if is_dir else "blob"
-            branch = "0.12.0-dev"
-            for repo in config.Infra.codegen.make.docs.github_repos:
-                if repo.organization == "flext-sh" and repo.repository == "flext":
-                    branch = repo.branch
-                    break
+            branches = tuple(
+                repo.branch
+                for repo in config.Infra.codegen.make.docs.github_repos
+                if repo.organization == "flext-sh" and repo.repository == "flext"
+            )
+            if len(branches) != 1:
+                msg = "docs governance repository must resolve exactly once"
+                raise ValueError(msg)
+            (branch,) = branches
             return f"{prefix}/{kind}/{branch}/{path}"
         return f"{prefix}/{path}"
 

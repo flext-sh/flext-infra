@@ -73,11 +73,7 @@ if TYPE_CHECKING:
     from .codegen.scaffolder import FlextInfraCodegenScaffolder
     from .codegen.version_file import FlextInfraCodegenVersionFile
     from .codemod.batch_apply import FlextInfraCodemodBatchApply
-    from .codemod.batch_gates import (
-        FlextInfraModGateEngine,
-        FlextInfraModGateSnapshot,
-        FlextInfraModScanReport,
-    )
+    from .codemod.batch_gates import FlextInfraModGateEngine
     from .codemod.discovery import discover_rule_ids, discover_rules
     from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
@@ -164,7 +160,6 @@ if TYPE_CHECKING:
     from .gates.smells import FlextInfraSmellsGate
     from .gates.tier_whitelist import FlextInfraTierWhitelistGate
     from .git import FlextInfraGitService
-    from .iteration import FlextInfraUtilitiesIteration
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
     from .models import FlextInfraModels, FlextInfraModels as m
@@ -179,23 +174,13 @@ if TYPE_CHECKING:
     from .refactor.classvar_constant_autofix import (
         FlextInfraRefactorClassvarConstantAutofix,
     )
-    from .refactor.file_executor import (
-        FlextInfraClassNestingPostCheckGate,
-        FlextInfraRefactorFileExecutor,
-    )
-    from .refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
-    from .refactor.loader import FlextInfraRefactorRuleLoader
     from .refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
     from .refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from .refactor.namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
     )
-    from .refactor.orchestrator import FlextInfraRefactorOrchestrator
     from .refactor.project_classifier import FlextInfraProjectClassifier
-    from .refactor.safety import FlextInfraRefactorSafetyManager
     from .refactor.scanner import FlextInfraRefactorLooseClassScanner
-    from .refactor.service import FlextInfraRefactorService
-    from .refactor.text_executor import FlextInfraRefactorTextExecutor
     from .refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
     from .release.orchestrator import FlextInfraReleaseOrchestrator
@@ -218,25 +203,17 @@ if TYPE_CHECKING:
         FlextInfraCensusImportDiscoveryVisitor,
         FlextInfraCensusUsageCollector,
     )
-    from .transformers.class_nesting import FlextInfraRefactorClassNestingTransformer
-    from .transformers.class_reconstructor import FlextInfraRefactorClassReconstructor
     from .transformers.cli_modernizer import FlextInfraRefactorCliModernizer
     from .transformers.compatibility_alias import FlextInfraRefactorCompatibilityAlias
     from .transformers.deprecated_remover import FlextInfraRefactorDeprecatedRemover
     from .transformers.future_import import FlextInfraRefactorFutureImport
     from .transformers.hardcoded_version import FlextInfraRefactorHardcodedVersion
-    from .transformers.helper_consolidation import (
-        FlextInfraHelperConsolidationTransformer,
-    )
     from .transformers.import_bypass_remover import (
         FlextInfraRefactorImportBypassRemover,
     )
     from .transformers.import_modernizer import FlextInfraRefactorImportModernizer
     from .transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
     from .transformers.logging_modernizer import FlextInfraRefactorLoggingModernizer
-    from .transformers.nested_class_propagation import (
-        FlextInfraNestedClassPropagationTransformer,
-    )
     from .transformers.open_encoding import FlextInfraRefactorOpenEncoding
     from .transformers.pattern import FlextInfraRefactorPatternTransformer
     from .transformers.pattern_modernizer import FlextInfraRefactorPatternModernizer
@@ -245,7 +222,6 @@ if TYPE_CHECKING:
     )
     from .transformers.pydantic_modernizer import FlextInfraRefactorPydanticModernizer
     from .transformers.result_di_modernizer import FlextInfraRefactorResultDiModernizer
-    from .transformers.signature_propagator import FlextInfraRefactorSignaturePropagator
     from .transformers.smells.base import (
         FlextInfraSmellFixer,
         auto_fixable_smell_tags,
@@ -253,7 +229,6 @@ if TYPE_CHECKING:
         smell_fixer_for,
     )
     from .transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
-    from .transformers.symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .transformers.tier0_import_fixer import FlextInfraTransformerTier0ImportFixer
     from .transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
     from .transformers.typing_dict_import import FlextInfraRefactorTypingDictImport
@@ -318,7 +293,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraClassNestingPostCheckGate",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
@@ -386,7 +360,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraGateFixerAdapter",
     "FlextInfraGateRegistry",
     "FlextInfraGitService",
-    "FlextInfraHelperConsolidationTransformer",
     "FlextInfraImportAliasDetector",
     "FlextInfraInjectCommentsPhase",
     "FlextInfraInlineImportDetector",
@@ -402,8 +375,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraMarkdownGate",
     "FlextInfraModGateEngine",
-    "FlextInfraModGateSnapshot",
-    "FlextInfraModScanReport",
     "FlextInfraModels",
     "FlextInfraModernizeOrchestrator",
     "FlextInfraMypyGate",
@@ -413,7 +384,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraNamespaceRules",
     "FlextInfraNamespaceSourceDetector",
     "FlextInfraNamespaceValidator",
-    "FlextInfraNestedClassPropagationTransformer",
     "FlextInfraOrchestratorService",
     "FlextInfraPrivateImportBypassDetector",
     "FlextInfraProjectClassifier",
@@ -430,34 +400,23 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorCastRemover",
     "FlextInfraRefactorCensus",
     "FlextInfraRefactorClassNestingAnalyzer",
-    "FlextInfraRefactorClassNestingTransformer",
-    "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorClassvarConstantAutofix",
     "FlextInfraRefactorCliModernizer",
     "FlextInfraRefactorCompatibilityAlias",
     "FlextInfraRefactorDeprecatedRemover",
-    "FlextInfraRefactorFileExecutor",
     "FlextInfraRefactorFutureImport",
     "FlextInfraRefactorHardcodedVersion",
     "FlextInfraRefactorImportBypassRemover",
     "FlextInfraRefactorImportModernizer",
     "FlextInfraRefactorLazyImportFixer",
-    "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLoggingModernizer",
     "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorOpenEncoding",
-    "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
     "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorResultDiModernizer",
-    "FlextInfraRefactorRuleLoader",
-    "FlextInfraRefactorSafetyManager",
-    "FlextInfraRefactorService",
-    "FlextInfraRefactorSignaturePropagator",
-    "FlextInfraRefactorSymbolPropagator",
-    "FlextInfraRefactorTextExecutor",
     "FlextInfraRefactorTypingDictAttr",
     "FlextInfraRefactorTypingDictImport",
     "FlextInfraRefactorTypingUnifier",
@@ -491,7 +450,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraUtilities",
-    "FlextInfraUtilitiesIteration",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
     "FlextInfraValidateLazyMapFreshness",
@@ -604,11 +562,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.version_file": ("FlextInfraCodegenVersionFile",),
             ".codemod": ("codemod",),
             ".codemod.batch_apply": ("FlextInfraCodemodBatchApply",),
-            ".codemod.batch_gates": (
-                "FlextInfraModGateEngine",
-                "FlextInfraModGateSnapshot",
-                "FlextInfraModScanReport",
-            ),
+            ".codemod.batch_gates": ("FlextInfraModGateEngine",),
             ".codemod.discovery": ("discover_rule_ids", "discover_rules"),
             ".constants": ("FlextInfraConstants", "c"),
             ".deps": ("deps",),
@@ -710,7 +664,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.smells": ("FlextInfraSmellsGate",),
             ".gates.tier_whitelist": ("FlextInfraTierWhitelistGate",),
             ".git": ("FlextInfraGitService",),
-            ".iteration": ("FlextInfraUtilitiesIteration",),
             ".maintenance": ("maintenance",),
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
@@ -727,23 +680,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor.classvar_constant_autofix": (
                 "FlextInfraRefactorClassvarConstantAutofix",
             ),
-            ".refactor.file_executor": (
-                "FlextInfraClassNestingPostCheckGate",
-                "FlextInfraRefactorFileExecutor",
-            ),
-            ".refactor.legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
-            ".refactor.loader": ("FlextInfraRefactorRuleLoader",),
             ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".refactor.namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".refactor.namespace_enforcer_phases": (
                 "FlextInfraNamespaceEnforcerPhasesMixin",
             ),
-            ".refactor.orchestrator": ("FlextInfraRefactorOrchestrator",),
             ".refactor.project_classifier": ("FlextInfraProjectClassifier",),
-            ".refactor.safety": ("FlextInfraRefactorSafetyManager",),
             ".refactor.scanner": ("FlextInfraRefactorLooseClassScanner",),
-            ".refactor.service": ("FlextInfraRefactorService",),
-            ".refactor.text_executor": ("FlextInfraRefactorTextExecutor",),
             ".refactor.violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
             ".refactor.wrapper_root_namespace": (
                 "FlextInfraWrapperRootNamespaceRefactor",
@@ -771,12 +714,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraCensusImportDiscoveryVisitor",
                 "FlextInfraCensusUsageCollector",
             ),
-            ".transformers.class_nesting": (
-                "FlextInfraRefactorClassNestingTransformer",
-            ),
-            ".transformers.class_reconstructor": (
-                "FlextInfraRefactorClassReconstructor",
-            ),
             ".transformers.cli_modernizer": ("FlextInfraRefactorCliModernizer",),
             ".transformers.compatibility_alias": (
                 "FlextInfraRefactorCompatibilityAlias",
@@ -786,9 +723,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".transformers.future_import": ("FlextInfraRefactorFutureImport",),
             ".transformers.hardcoded_version": ("FlextInfraRefactorHardcodedVersion",),
-            ".transformers.helper_consolidation": (
-                "FlextInfraHelperConsolidationTransformer",
-            ),
             ".transformers.import_bypass_remover": (
                 "FlextInfraRefactorImportBypassRemover",
             ),
@@ -796,9 +730,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
             ".transformers.logging_modernizer": (
                 "FlextInfraRefactorLoggingModernizer",
-            ),
-            ".transformers.nested_class_propagation": (
-                "FlextInfraNestedClassPropagationTransformer",
             ),
             ".transformers.open_encoding": ("FlextInfraRefactorOpenEncoding",),
             ".transformers.pattern": ("FlextInfraRefactorPatternTransformer",),
@@ -814,9 +745,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.result_di_modernizer": (
                 "FlextInfraRefactorResultDiModernizer",
             ),
-            ".transformers.signature_propagator": (
-                "FlextInfraRefactorSignaturePropagator",
-            ),
             ".transformers.smells.base": (
                 "FlextInfraSmellFixer",
                 "auto_fixable_smell_tags",
@@ -824,7 +752,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "smell_fixer_for",
             ),
             ".transformers.smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
-            ".transformers.symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
             ".transformers.tier0_import_fixer": (
                 "FlextInfraTransformerTier0ImportFixer",
             ),

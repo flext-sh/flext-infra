@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, m
+from flext_infra import config, m, u
 from flext_infra.codegen import _mise_artifacts_candidates as candidates
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_process as process
@@ -67,24 +67,6 @@ class FlextInfraMiseStaging:
             stages.append(stage_root)
         return candidates.publication_plan(plan.projects, tuple(stages))
 
-    @staticmethod
-    def _lock_resolution_is_required(
-        project: m.Infra.MiseToolchainProjectState,
-    ) -> bool:
-        """Return whether this project's lock must be resolved from the network.
-
-        ``mise lock --bump`` re-resolves every declared selector against its
-        remote registry. That is required exactly when the declaration changed
-        or no lock exists yet. When the rendered configuration is byte-identical
-        to the published one and a lock is already present, the lock already
-        answers that declaration: re-resolving would make generation depend on
-        the network and on upstream release timing, so the same sources would
-        stop producing the same bytes.
-        """
-        if project.artifacts.lock.content is None:
-            return True
-        return project.config.before.content != project.config.replacement_content
-
     def _stage_project(
         self,
         project: m.Infra.MiseToolchainProjectState,
@@ -123,7 +105,10 @@ class FlextInfraMiseStaging:
             )
             if copied_lock.failure:
                 return copied_lock
-        if self._lock_resolution_is_required(project):
+        if (
+            project.artifacts.lock.content is None
+            or u.Infra.mise_toolchain_publication_required(project)
+        ):
             project_environment = dict(environment)
             project_environment.update({
                 "MISE_CEILING_PATHS": str(stage_root.parent),

@@ -23,10 +23,6 @@ def _parse_source_ast(source: str) -> object | None:
         return None
 
 
-def _mapping(value: t.JsonValue | t.JsonMapping) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-
-
 def _strings(value: t.JsonValue) -> t.StrSequence:
     result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
     return result
@@ -921,7 +917,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].object_name, eq=expected_object_name)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         tm.that(len(files), eq=0)
 
@@ -979,9 +975,9 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [t.Cli.JSON_MAPPING_ADAPTER.validate_python(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
@@ -1021,9 +1017,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.ok(report_result)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [t.Cli.JSON_MAPPING_ADAPTER.validate_python(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
@@ -1057,9 +1053,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(result, eq=0)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [t.Cli.JSON_MAPPING_ADAPTER.validate_python(item) for item in files]
 
         tm.that(len(entries), eq=1)
 
@@ -1085,8 +1081,8 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = t.Cli.JSON_MAPPING_ADAPTER.validate_python(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [t.Cli.JSON_MAPPING_ADAPTER.validate_python(item) for item in files]
 
         tm.that(len(entries), eq=1)

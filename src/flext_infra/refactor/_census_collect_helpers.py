@@ -10,7 +10,7 @@ from flext_infra import c, config, m
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
+    from flext_core import m as core_m
     from flext_infra import p, t
 
 
@@ -93,12 +93,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     @staticmethod
     def _declarative_rules_for_selection(
         rule_names: t.StrSequence | None,
-    ) -> tuple[me.EnforcementRuleSpec, ...]:
+    ) -> tuple[core_m.EnforcementRuleSpec, ...]:
         """Return catalog declarative rules selected by the census request."""
         return FlextInfraEnforcementEngine.declarative_rules(rule_names)
 
     @staticmethod
-    def _rule_requires_stub_file(rule: me.EnforcementRuleSpec) -> bool:
+    def _rule_requires_stub_file(rule: core_m.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` must scan ``.pyi`` files outside Rope modules."""
         return FlextInfraEnforcementEngine.rule_requires_stub_file(rule)
 

@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
-from flext_core import u
 from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
@@ -98,35 +97,6 @@ class FlextInfraModelsRefactor(
         imported_symbols: Annotated[
             MutableSet[str], m.Field(description="Imported symbol names")
         ] = m.Field(default_factory=set)
-
-    class MethodInfo(m.ArbitraryTypesModel):
-        """Metadata about a method used for ordering inside classes."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Method name")]
-        category: Annotated[str, m.Field(description="Method category classification")]
-        node: Annotated[
-            t.Infra.RopePyObject | None,
-            m.Field(
-                description="Node representation from Rope or PyObject", exclude=True
-            ),
-        ]
-        decorators: Annotated[
-            t.StrSequence, m.Field(description="Decorator names applied to this method")
-        ] = m.Field(default_factory=tuple)
-
-    class Checkpoint(mm.CheckpointRefMixin, m.ArbitraryTypesModel):
-        """Serialisable checkpoint state for refactor safety recovery."""
-
-        repository_root: Annotated[
-            t.NonEmptyStr, m.Field(description="Repository root path")
-        ]
-        status: Annotated[str, m.Field(description="Checkpoint status")] = "running"
-        processed_targets: Annotated[
-            t.StrSequence, m.Field(description="Already-processed file targets")
-        ] = m.Field(default_factory=tuple)
-        updated_at: Annotated[
-            str, m.Field(description="ISO 8601 timestamp of last update")
-        ] = m.Field(default_factory=lambda: u.now().isoformat())
 
     class ClassOccurrence(m.ArbitraryTypesModel):
         """A single class definition occurrence within a source file."""

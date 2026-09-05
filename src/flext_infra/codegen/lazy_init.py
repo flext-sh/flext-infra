@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, u
-from flext_infra._utilities._sort_keys import path_depth
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -91,7 +90,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                         for package_dir in workspace_index.package_dirs
                         if package_dir.is_relative_to(resolved_repository_root)
                     ),
-                    key=path_depth,
+                    key=u.Infra.path_depth,
                     reverse=True,
                 )
             )

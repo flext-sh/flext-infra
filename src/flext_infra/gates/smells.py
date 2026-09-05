@@ -2,20 +2,18 @@
 
 Every qlty smell type (identical/similar-code, function/file-complexity,
 function-parameters, return-statements, nested-control-flow, boolean-logic)
-is reported per project and ALSO emitted as a ``FlextSmellViolation`` warning on
-every run — warnings fire for all findings, always, regardless of gate mode.
-``c.Infra.SMELLS_GATE_MODE`` only decides pass/fail: WARN is report-only.
+is reported per project as a blocking error. Scanner absence, stderr, and a
+nonzero exit are failures; no cache, fallback binary, or empty-output rewrite
+can turn an invalid scan green.
 """
 
 from __future__ import annotations
 
 import shutil
 import time
-import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core import e as core_e
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -29,12 +27,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraSmellsGate(FlextInfraGate):
-    """Report qlty smells per project from one process-cached workspace scan.
+    """Report qlty smells per project from one fresh workspace scan.
 
     A single ``qlty smells --all`` scan covers the whole workspace so
     cross-project duplication clusters stay visible; per-project results are
-    filtered by SARIF URI prefix. The scan output is cached per workspace
-    root for the lifetime of the process (one scan per ``check run``).
+    filtered by SARIF URI prefix.
     """
 
     gate_id: ClassVar[str] = "smells"
@@ -42,9 +39,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
     can_fix: ClassVar[bool] = True
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][1]
-
-    # flext-pulj: process results stay structural outside the Pydantic boundary.
-    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
@@ -58,9 +52,15 @@ class FlextInfraSmellsGate(FlextInfraGate):
             return self._check_only_fix_result(project_dir)
         started = time.monotonic()
         scan = self._workspace_scan()
-        issues = self._issues_from_sarif(scan.stdout or "{}", project_dir.name)
-        if not issues and scan.exit_code != 0:
-            issues = (self._tool_failure_issue(scan),)
+        issues = self._issues_from_scan(scan, project_dir.name)
+        if scan.exit_code != 0 or scan.stderr.strip():
+            return self._build_check_gate_execution(
+                project_dir,
+                passed=False,
+                issues=issues,
+                raw_output=self._scan_output(scan),
+                started=started,
+            )
         auto_issues = [issue for issue in issues if self._is_auto_fixable(issue)]
         changes: list[str] = []
         for issue in auto_issues:
@@ -75,13 +75,15 @@ class FlextInfraSmellsGate(FlextInfraGate):
             fixed, fix_changes = fixer.fix(project_dir, issue)
             if fixed:
                 changes.extend(fix_changes)
-        for issue in issues:
-            warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
+        verification = self._workspace_scan()
+        remaining = self._issues_from_scan(verification, project_dir.name)
         return self._build_check_gate_execution(
             project_dir,
-            passed=True,
-            issues=issues,
-            raw_output="\n".join(changes) if changes else scan.stderr,
+            passed=not remaining,
+            issues=remaining,
+            raw_output="\n".join(changes)
+            if changes
+            else self._scan_output(verification),
             started=started,
             errors=changes,
         )
@@ -101,17 +103,13 @@ class FlextInfraSmellsGate(FlextInfraGate):
         _ = ctx
         started = time.monotonic()
         scan = self._workspace_scan()
-        issues = self._issues_from_sarif(scan.stdout or "{}", project_dir.name)
-        if not issues and scan.exit_code != 0:
-            issues = (self._tool_failure_issue(scan),)
-        for issue in issues:
-            warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
-        passed = c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.WARN or not issues
+        issues = self._issues_from_scan(scan, project_dir.name)
+        passed = not issues
         return self._build_check_gate_execution(
             project_dir,
             passed=passed,
             issues=issues,
-            raw_output=scan.stderr,
+            raw_output=self._scan_output(scan),
             started=started,
         )
 
@@ -122,7 +120,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
         """Full-workspace scan command (check() bypasses per-project dirs)."""
         _ = project_dir, ctx, check_dirs
         binary = self._resolve_binary()
-        return [binary or c.Infra.QLTY_BINARY, *c.Infra.SMELLS_QLTY_ARGS]
+        if binary is None:
+            raise FileNotFoundError(c.Infra.QLTY_BINARY)
+        return [binary, *c.Infra.SMELLS_QLTY_ARGS]
 
     @override
     def _parse_check_output(
@@ -130,45 +130,38 @@ class FlextInfraSmellsGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
-        issues = self._issues_from_sarif(result.stdout or "{}", project_dir.name)
-        passed = c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.WARN or not issues
-        return passed, issues
+        issues = self._issues_from_scan(result, project_dir.name)
+        return not issues, issues
+
+    def _issues_from_scan(
+        self, scan: p.Cli.CommandOutput, project_name: str
+    ) -> tuple[m.Infra.Issue, ...]:
+        """Parse valid SARIF output or expose the exact subprocess failure."""
+        if scan.exit_code != 0 or scan.stderr.strip():
+            return (self._tool_failure_issue(scan),)
+        return self._issues_from_sarif(scan.stdout, project_name)
+
+    @staticmethod
+    def _scan_output(scan: p.Cli.CommandOutput) -> str:
+        """Preserve non-empty subprocess streams in their causal order."""
+        return "\n".join(stream for stream in (scan.stdout, scan.stderr) if stream)
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Run the workspace scan once per process; a missing binary is VISIBLE."""
-        key = str(self._repository_root)
-        cached = self._scan_cache.get(key)
-        if cached is not None:
-            return cached
+        """Run one fresh workspace scan and preserve its exact process result."""
         binary = self._resolve_binary()
         if binary is None:
-            fallback = Path.home() / c.Infra.QLTY_BINARY_FALLBACK_SUFFIX
-            output = m.Cli.CommandOutput(
-                stdout="",
-                stderr=(
-                    f"{c.Infra.QLTY_BINARY} binary not found on PATH nor at {fallback}"
-                ),
-                exit_code=1,
-            )
-        else:
-            output = self._run(
-                [binary, *c.Infra.SMELLS_QLTY_ARGS],
-                self._repository_root,
-                timeout=c.Infra.TIMEOUT_LONG,
-            )
-            if "No qlty config file found" in output.stderr:
-                output = m.Cli.CommandOutput(stdout="{}", stderr="", exit_code=0)
-        self._scan_cache[key] = output
-        return output
+            raise FileNotFoundError(c.Infra.QLTY_BINARY)
+        return self._run(
+            [binary, *c.Infra.SMELLS_QLTY_ARGS],
+            self._repository_root,
+            timeout=c.Infra.TIMEOUT_LONG,
+        )
 
     @staticmethod
     def _resolve_binary() -> str | None:
-        """Locate qlty on PATH, else the user-local install; None when absent."""
+        """Locate qlty on PATH; the managed environment is the sole owner."""
         found = shutil.which(c.Infra.QLTY_BINARY)
-        if isinstance(found, str):
-            return found
-        fallback = Path.home() / c.Infra.QLTY_BINARY_FALLBACK_SUFFIX
-        return str(fallback) if fallback.is_file() else None
+        return found if isinstance(found, str) else None
 
     def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
         """Scanner absence/crash must never read as a clean pass."""
@@ -183,10 +176,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
 
     @staticmethod
     def _severity() -> str:
-        """WARNING while report-only; ERROR once SMELLS_GATE_MODE is STRICT."""
-        if c.Infra.SMELLS_GATE_MODE is c.Infra.GateMode.STRICT:
-            return str(c.Infra.GateSeverity.ERROR.value)
-        return str(c.Infra.GateSeverity.WARNING.value)
+        """Return the sole blocking severity."""
+        return str(c.Infra.GateSeverity.ERROR.value)
 
     @classmethod
     def _issues_from_sarif(
@@ -197,9 +188,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         Pure function over a literal qlty SARIF payload (unit-testable, no
         subprocess) — same strategy as ``loc_cap._files_over_cap``.
         """
-        parsed = u.Cli.json_parse(sarif_json or "{}")
-        empty_json: t.JsonValue = {}
-        data = u.Cli.json_as_mapping(parsed.unwrap() if parsed.success else empty_json)
+        data = u.Cli.json_as_mapping(u.Cli.json_parse(sarif_json).unwrap())
         prefix = f"{project_name}/"
         return tuple(
             cls._issue_from_result(result, prefix)

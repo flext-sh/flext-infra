@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 import libcst as cst
 
 from flext_infra import c, m
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from flext_infra import u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
@@ -285,9 +284,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         self.changes.clear()
         if self._file_path is not None and (
             self._is_private_facade_implementation(self._file_path)
-            or FlextInfraUtilitiesRopeSource.looks_like_facade_file(
-                file_path=self._file_path, source=source
-            )
+            or u.Infra.looks_like_facade_file(file_path=self._file_path, source=source)
         ):
             return source, []
         context = self._resolve_context(
@@ -338,8 +335,8 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             )
         if file_path is None:
             return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
-        context: m.Infra.AliasMigrationContext = (
-            FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
+        context: m.Infra.AliasMigrationContext = u.Infra.alias_migration_context(
+            file_path
         )
         return context
 

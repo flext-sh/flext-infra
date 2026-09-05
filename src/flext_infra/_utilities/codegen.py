@@ -58,6 +58,25 @@ class FlextInfraUtilitiesCodegen:
         )
 
     @staticmethod
+    def mise_toolchain_publication_required(
+        project: m.Infra.MiseToolchainProjectState,
+    ) -> bool:
+        """Return whether a changed declaration requires a new Mise publication.
+
+        A byte- and mode-identical generated configuration already owns its
+        committed launchers and lock. Re-resolving the remote ``latest`` release
+        for that unchanged declaration would make ``make gen`` nondeterministic
+        and needlessly network-bound; the caller still validates the complete
+        live bundle before accepting the fixed point.
+        """
+        config_state = project.config
+        before_content: bytes | None = config_state.before.content
+        before_mode: int | None = config_state.before.mode
+        replacement_content: bytes = config_state.replacement_content
+        replacement_mode: int = config_state.replacement_mode
+        return before_content != replacement_content or before_mode != replacement_mode
+
+    @staticmethod
     def parse_final_constant_definitions(
         source_lines: t.SequenceOf[str],
     ) -> t.SequenceOf[tuple[str, str, str, str, int]]:

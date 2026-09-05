@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.base import s
 from flext_infra.validate.namespace_rules import FlextInfraNamespaceRules
 
@@ -139,7 +138,7 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         if resource is None:
             return r[ast.AST].fail(f"no rope resource for {path}")
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
+            pymodule = u.Infra.get_pymodule(rope_project, resource)
         except c.EXC_OS_SYNTAX as exc:
             return r[ast.AST].fail(f"get_pymodule raised: {exc!s}")
         ast_module = pymodule.get_ast()

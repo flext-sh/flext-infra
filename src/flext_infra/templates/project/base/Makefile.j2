@@ -864,3 +864,15 @@ _builtin_gen_all:
 	$(call _generated_docs,--apply)
 
 _builtin_gen_apply: _builtin_gen_all
+
+# Structural refactoring has one public ast-grep route. Apply mode preserves
+# every resulting edit for fix-forward repair; it never commits or rolls back a
+# caller's worktree behind the operator's back.
+_builtin_mod_check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
+
+_builtin_mod_all:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
+
+_builtin_mod_apply: _builtin_mod_all

@@ -26,13 +26,10 @@ from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_ruff import FlextInfraEnsureRuffConfigPhase
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import u
 from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
-from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
@@ -890,9 +887,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         repository = target.repository
         u.Cli.info("stage=plan repositories=1")
         u.Cli.progress(1, 1, repository.name, "conform")
-        managed_artifacts = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_project_managed_artifacts(
-            root
-        )
+        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(root)
         if managed_artifacts.failure:
             return r[m.Infra.CodegenPlan].from_failure(managed_artifacts)
         planned = self._plan_existing_templates(
@@ -1177,9 +1172,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # The repository owns the ignore patterns the fleet scaffold cannot
             # know (local caches, generated runtime state); they are declared in
             # its own config/*.yaml and appended as one derived section.
-            resolved = FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
-                project_dir
-            )
+            resolved = u.Infra.load_project_managed_artifacts(project_dir)
             if resolved.failure:
                 return r[str].fail(
                     resolved.error or f"project artifact load failed: {project_dir}"
@@ -1583,9 +1576,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}"
             )
-        managed_artifacts = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_project_managed_artifacts(
-            root
-        )
+        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(root)
         if managed_artifacts.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                 managed_artifacts
@@ -1939,9 +1930,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.CodegenArtifactComposition(rendered=rendered)
             )
         if resolved_artifacts is None:
-            snapshot = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_project_managed_artifacts(
-                repository_root
-            )
+            snapshot = u.Infra.snapshot_project_managed_artifacts(repository_root)
             if snapshot.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(snapshot)
             resolved_artifacts = snapshot.value
@@ -1949,10 +1938,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenArtifactComposition].fail(
                 f"project managed-artifact snapshot is absent: {repository_root}"
             )
-        composed = (
-            FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml_from_snapshot(
-                resolved_artifacts.sources, rendered
-            )
+        composed = u.Infra.compose_mise_toml_from_snapshot(
+            resolved_artifacts.sources, rendered
         )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)
@@ -2073,8 +2060,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
-        if destination in {".envrc", ".mise.toml", ".python-version"}:
+        if destination in {
+            ".envrc",
+            ".mise.toml",
+            ".python-version",
+            c.Infra.QLTY_CONFIG_PATH,
+        }:
             return r[p.Model].ok(codegen.toolchain)
+
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
             if target.beads is None:
                 return r[p.Model].fail(

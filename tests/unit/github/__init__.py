@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from flext_tests import c, d, e, h, m, p, r, s, t, td, tf, tk, tm, tv, u, x
 
     from .gate_attestation_tests import (
-        close_git_repositories,
         test_gate_attestation_normalizes_network_remote_git_suffix,
         test_gate_attestation_rejects_duplicate_gate_coverage,
         test_gate_attestation_rejects_incomplete_coverage,
@@ -35,7 +34,6 @@ if TYPE_CHECKING:
 __all__: tuple[str, ...] = (
     "TestsInfraGithub",
     "c",
-    "close_git_repositories",
     "d",
     "e",
     "h",
@@ -69,7 +67,6 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".gate_attestation_tests": (
-                "close_git_repositories",
                 "test_gate_attestation_normalizes_network_remote_git_suffix",
                 "test_gate_attestation_rejects_duplicate_gate_coverage",
                 "test_gate_attestation_rejects_incomplete_coverage",

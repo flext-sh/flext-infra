@@ -81,9 +81,6 @@ if TYPE_CHECKING:
     from .test_infra_patterns_extra import TestsFlextInfraInfraPatternsExtra
     from .test_infra_protocols import TestsFlextInfraInfraProtocols
     from .test_infra_public_api import TestsFlextInfraPublicApi
-    from .test_infra_refactor_rope_migrations import (
-        TestsFlextInfraInfraRefactorRopeMigrations,
-    )
     from .test_infra_reporting_core import TestsFlextInfraInfraReportingCore
     from .test_infra_reporting_extra import TestsFlextInfraInfraReportingExtra
     from .test_infra_root_export_contract import TestsFlextInfraRootExportContract
@@ -140,7 +137,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraInfraPatternsCore",
     "TestsFlextInfraInfraPatternsExtra",
     "TestsFlextInfraInfraProtocols",
-    "TestsFlextInfraInfraRefactorRopeMigrations",
     "TestsFlextInfraInfraReportingCore",
     "TestsFlextInfraInfraReportingExtra",
     "TestsFlextInfraInfraRopeService",
@@ -284,9 +280,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_infra_patterns_extra": ("TestsFlextInfraInfraPatternsExtra",),
             ".test_infra_protocols": ("TestsFlextInfraInfraProtocols",),
             ".test_infra_public_api": ("TestsFlextInfraPublicApi",),
-            ".test_infra_refactor_rope_migrations": (
-                "TestsFlextInfraInfraRefactorRopeMigrations",
-            ),
             ".test_infra_reporting_core": ("TestsFlextInfraInfraReportingCore",),
             ".test_infra_reporting_extra": ("TestsFlextInfraInfraReportingExtra",),
             ".test_infra_root_export_contract": ("TestsFlextInfraRootExportContract",),

@@ -30,7 +30,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Codemod Enforcement"
     can_fix: ClassVar[bool] = False
     tool_name: ClassVar[str] = "ast-grep"
-    tool_url: ClassVar[str] = "https://ast-grep.github.io/"
+    tool_url: ClassVar[str] = c.Infra.AST_GREP_DOCS_URL
 
     @override
     def check(

@@ -18,10 +18,6 @@ def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
     )
 
 
-def _mapping(value: t.JsonValue) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-
-
 def _strings(value: t.JsonValue) -> t.StrSequence:
     result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
     return result
@@ -45,9 +41,9 @@ class TestsFlextInfraDepsModernizerCoverage:
 
         _ = FlextInfraEnsureCoverageConfigPhase(configured).apply(doc)
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        coverage = _mapping(tool["coverage"])
-        run = _mapping(coverage["run"])
+        tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(_doc_mapping(doc)["tool"])
+        coverage = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tool["coverage"])
+        run = t.Cli.JSON_MAPPING_ADAPTER.validate_python(coverage["run"])
         tm.that(list(_strings(run["source"])), eq=list(arbitrary_source))
 
     def test_apply_sets_report_and_run_state(self) -> None:
@@ -59,10 +55,10 @@ class TestsFlextInfraDepsModernizerCoverage:
             doc, project_kind="integration"
         )
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        coverage = _mapping(tool["coverage"])
-        report = _mapping(coverage["report"])
-        run = _mapping(coverage["run"])
+        tool = t.Cli.JSON_MAPPING_ADAPTER.validate_python(_doc_mapping(doc)["tool"])
+        coverage = t.Cli.JSON_MAPPING_ADAPTER.validate_python(tool["coverage"])
+        report = t.Cli.JSON_MAPPING_ADAPTER.validate_python(coverage["report"])
+        run = t.Cli.JSON_MAPPING_ADAPTER.validate_python(coverage["run"])
         tm.that(
             report["fail_under"], eq=tool_config.tools.coverage.fail_under.integration
         )

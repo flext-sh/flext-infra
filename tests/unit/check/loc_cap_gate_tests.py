@@ -20,9 +20,8 @@ if TYPE_CHECKING:
 
     from tests import t
 
-# Why (operator 2026-08-07, cap 200 -> 1000): these fixtures MUST be derived
-# from c.Infra.LOC_CAP_MAX, never hardcoded. A literal 250 silently became
-# "under cap" when the cap was raised, turning the over-cap test into a lie.
+# Fixtures are derived from the current cap so a future owner change cannot
+# silently invert these assertions.
 _OVER_CAP_LOC = c.Infra.LOC_CAP_MAX + 50
 _UNDER_CAP_LOC = 1
 _OVER_CAP = (

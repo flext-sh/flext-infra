@@ -10,11 +10,18 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from enum import StrEnum, unique
 from typing import Final
 
 
 class FlextInfraConstantsGit:
     """Git-specific constants for the GitPython-backed facet."""
+
+    @unique
+    class GateAttestationSchema(StrEnum):
+        """Supported signed gate-attestation schema identities."""
+
+        V1 = "https://flext.sh/attestations/gates/v1"
 
     # --- Index entry modes (git mode field, not POSIX st_mode) ---
 
