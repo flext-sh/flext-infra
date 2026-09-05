@@ -160,8 +160,13 @@ class FlextInfraPytestRunner(s[int]):
         return raw == config.Infra.codegen.make.ci.value
 
     def _cov_enabled(self) -> bool:
-        """True when COV=Y or WHAT=full selects the full coverage suite."""
-        return self.what == "full" or self._environment_flag(c.Infra.PYTEST_ENV_COV)
+        """True when COV=Y selects the coverage measurement run.
+
+        Coverage is its own explicit request. A full test run is not one: it
+        asks for every test to execute, which testmon expresses by keeping its
+        database and skipping only the selection step.
+        """
+        return self._environment_flag(c.Infra.PYTEST_ENV_COV)
 
     def _testmon_db_path(self) -> Path:
         """Return the repository-local pytest-testmon SQLite path."""
@@ -197,9 +202,14 @@ class FlextInfraPytestRunner(s[int]):
         pytest-testmon nests its Coverage object under an outer pytest-cov
         stack when both are active. Flushing that stack calls get_data() on an
         empty outer collector and emits CoverageWarning: No data was collected.
-        With filterwarnings=["error"] that kills xdist workers. The two modes
-        therefore never share an argv: default is incremental testmon without
-        coverage; COV=Y is a full suite coverage run without testmon.
+        With filterwarnings=["error"] that kills xdist workers, so the two
+        never share an argv.
+
+        Every run that is not an explicit coverage measurement keeps the
+        testmon database. ``WHAT=full`` asks for every test to execute, which
+        testmon expresses by skipping selection while still recording what it
+        observed: dropping the plugin instead would discard that record and
+        leave the next incremental run with nothing to select from.
         """
         if self._cov_enabled():
             if focused:
@@ -213,6 +223,8 @@ class FlextInfraPytestRunner(s[int]):
                 f"--cov-report=xml:{report_dir / 'coverage.xml'}",
                 "--no-cov-on-fail",
             )
+        if self.what == "full":
+            return ("--testmon", "--testmon-noselect", "--no-cov")
         return ("--testmon", "--no-cov")
 
     def build_command(self, report_dir: Path) -> tuple[str, ...]:
