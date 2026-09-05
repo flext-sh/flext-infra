@@ -51,8 +51,8 @@ if TYPE_CHECKING:
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
-    from .code_review_graph import FlextInfraUtilitiesCodeReviewGraph
     from .codegen import FlextInfraUtilitiesCodegen
+    from .codegen_facades import FlextInfraUtilitiesCodegenFacades
     from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
     from .compatibility_alias_validation import (
         FlextInfraUtilitiesCompatibilityAliasValidation,
@@ -140,8 +140,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
-    "FlextInfraUtilitiesCodeReviewGraph",
     "FlextInfraUtilitiesCodegen",
+    "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCompatibilityAliasCst",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -304,8 +304,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
-            ".code_review_graph": ("FlextInfraUtilitiesCodeReviewGraph",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
+            ".codegen_facades": ("FlextInfraUtilitiesCodegenFacades",),
             ".compatibility_alias_cst": ("FlextInfraUtilitiesCompatibilityAliasCst",),
             ".compatibility_alias_validation": (
                 "FlextInfraUtilitiesCompatibilityAliasValidation",
