@@ -25,7 +25,12 @@ def publish(
         return r[bool].from_failure(source_check)
     changed = 0
     for publication in publications:
-        if publication.unchanged:
+        before = publication.before
+        replacement = publication.replacement
+        if (
+            before.content == replacement.content
+            and before.mode == replacement.mode
+        ):
             continue
         u.Cli.info(f"mise-toolchain: publish {before.path}")
         written = u.Cli.atomic_apply_file_publication_guarded(publication)

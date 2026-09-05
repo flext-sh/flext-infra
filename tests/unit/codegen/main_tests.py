@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config, main as infra_main
+from flext_infra import CliRouteService, c, config, main as infra_main
 from flext_tests import tm
 from tests import u
 
@@ -192,20 +192,25 @@ class TestMainEntryPoint:
         tm.that(type(result).__name__, eq="int")
 
     def test_entry_point_via_sys_exit(self) -> None:
-        """The root process entrypoint works via subprocess."""
+        """The root process entrypoint serves the route owner's declared help."""
+        route = next(
+            item
+            for item in CliRouteService.route_table_for(c.Infra.CLI_GROUP_CODEGEN)
+            if item.name == "init"
+        )
         result = u.Cli.run_raw([
             sys.executable,
             "-m",
             "flext_infra",
-            "codegen",
-            "init",
+            c.Infra.CLI_GROUP_CODEGEN,
+            route.name,
             "--help",
         ])
         tm.ok(result)
         tm.that(
             result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
         )
-        tm.that(result.value.stdout, contains="Generate/refresh PEP 562 lazy-import")
+        tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
 
     def test_managed_conflict_is_planned_and_published_atomically(
         self, infra_git_repo: Path

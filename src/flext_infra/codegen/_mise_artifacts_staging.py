@@ -185,7 +185,24 @@ class FlextInfraMiseStaging:
             )
             if copied.failure:
                 return copied
+        lock_before = project.artifacts.lock
+        if lock_before.content is not None:
+            copied_lock = u.Cli.atomic_create_binary_file_guarded(
+                stage_root / "mise.lock", lock_before.content, permission_mode=0o644
+            )
+            if copied_lock.failure:
+                return copied_lock
         return r[bool].ok(True)
+
+    @staticmethod
+    def _lock_resolution_is_required(
+        project: m.Infra.MiseToolchainProjectState,
+    ) -> bool:
+        """Return whether this project's lock must be resolved from the network."""
+        return (
+            project.artifacts.lock.content is None
+            or project.config.before.content != project.config.replacement_content
+        )
 
     def _generate_lock(
         self,
@@ -196,29 +213,30 @@ class FlextInfraMiseStaging:
         environment: dict[str, str],
     ) -> p.Result[bool]:
         """Resolve one unique staged config into a complete validated lock."""
-        project_environment = dict(environment)
-        project_environment.update({
-            "MISE_CEILING_PATHS": str(stage_root.parent),
-            "MISE_TRUSTED_CONFIG_PATHS": str(stage_root),
-        })
-        locked = process.run_live(
-            (
-                str(launcher),
-                "-C",
-                str(stage_root),
-                "lock",
-                "--bump",
-                "--platform",
-                ",".join(config.Infra.codegen.toolchain.mise_lock_platforms),
-            ),
-            cwd=stage_root,
-            env=project_environment,
-            operation=f"Mise lock generation for {project.layout.selector}",
-            output_path=stage_root.parent / "mise-lock.log",
-            timeout_seconds=config.Infra.codegen.toolchain.mise_lock_timeout_seconds,
-        )
-        if locked.failure:
-            return r[bool].from_failure(locked)
+        if self._lock_resolution_is_required(project):
+            project_environment = dict(environment)
+            project_environment.update({
+                "MISE_CEILING_PATHS": str(stage_root.parent),
+                "MISE_TRUSTED_CONFIG_PATHS": str(stage_root),
+            })
+            locked = process.run_live(
+                (
+                    str(launcher),
+                    "-C",
+                    str(stage_root),
+                    "lock",
+                    "--bump",
+                    "--platform",
+                    ",".join(config.Infra.codegen.toolchain.mise_lock_platforms),
+                ),
+                cwd=stage_root,
+                env=project_environment,
+                operation=f"Mise lock generation for {project.layout.selector}",
+                output_path=stage_root.parent / "mise-lock.log",
+                timeout_seconds=config.Infra.codegen.toolchain.mise_lock_timeout_seconds,
+            )
+            if locked.failure:
+                return r[bool].from_failure(locked)
         hydrated = self._owner.hydrate_lock_checksums_at(stage_root)
         if hydrated.failure:
             return r[bool].from_failure(hydrated)
