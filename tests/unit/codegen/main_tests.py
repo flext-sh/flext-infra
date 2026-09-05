@@ -25,12 +25,35 @@ if TYPE_CHECKING:
     from tests import t
 
 
+def _with_pep621_identity(repo: Path) -> Path:
+    """Give the bare fixture repository the PEP 621 identity ``init`` derives from.
+
+    The bootstrap projection reads declarations only: ``config/workspace.yaml``
+    when present, otherwise the project name and its provider-matched
+    Repository URL. A checkout with neither has no identity to render.
+    """
+    repository = u.Tests.repository_ref(repo.name)
+    (repo / "pyproject.toml").write_text(
+        f'[project]\nname = "{repository.distribution}"\nversion = "0.1.0"\n'
+        'requires-python = ">=3.13,<3.14"\n\n'
+        f'[project.urls]\nRepository = "{repository.url}"\n',
+        encoding="utf-8",
+    )
+    return repo
+
+
 class TestHandleLazyInit:
     """Tests for direct init command dispatch."""
 
     def test_success(self, real_git_repo: Path) -> None:
         """Init returns 0 on empty workspace."""
-        result = infra_main(["codegen", "init", "--workspace", str(real_git_repo)])
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(real_git_repo)),
+        ])
         tm.that(result, eq=0)
 
     def test_check_mode(self, real_git_repo: Path) -> None:
@@ -40,13 +63,19 @@ class TestHandleLazyInit:
             "init",
             "--check",
             "--workspace",
-            str(real_git_repo),
+            str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
 
     def test_enforce_mode(self, real_git_repo: Path) -> None:
         """Init in enforce mode (not check)."""
-        result = infra_main(["codegen", "init", "--workspace", str(real_git_repo)])
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(real_git_repo)),
+        ])
         tm.that(result, eq=0)
 
 
@@ -55,7 +84,13 @@ class TestMainCommandDispatch:
 
     def test_init_command(self, real_git_repo: Path) -> None:
         """main() with init command returns 0."""
-        result = infra_main(["codegen", "init", "--workspace", str(real_git_repo)])
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(real_git_repo)),
+        ])
         tm.that(result, eq=0)
 
     def test_init_with_check_flag(self, real_git_repo: Path) -> None:
@@ -65,7 +100,7 @@ class TestMainCommandDispatch:
             "init",
             "--check",
             "--workspace",
-            str(real_git_repo),
+            str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
 
@@ -83,7 +118,13 @@ class TestMainCommandDispatch:
         """main() init with custom root directory."""
         custom_root = real_git_repo / "custom"
         custom_root.mkdir()
-        result = infra_main(["codegen", "init", "--workspace", str(custom_root)])
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(custom_root)),
+        ])
         tm.that(result, eq=0)
 
 
@@ -96,7 +137,13 @@ class TestMainEntryPoint:
 
     def test_entry_point_returns_int(self, real_git_repo: Path) -> None:
         """main() returns an integer exit code."""
-        result = infra_main(["codegen", "init", "--workspace", str(real_git_repo)])
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(real_git_repo)),
+        ])
         tm.that(type(result).__name__, eq="int")
 
     def test_entry_point_via_sys_exit(self) -> None:
@@ -133,6 +180,9 @@ class TestMainEntryPoint:
                 project_root / "config", root / "config", dirs_exist_ok=True
             )
         )
+        # The full surface validates the committed Mise seeds instead of minting
+        # them, so the governed fixture carries them exactly as a repository does.
+        u.Tests.copy_tracked_mise_seeds(root)
         (root / "pyproject.toml").write_text(
             '[project]\nname = "flext-infra"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n'

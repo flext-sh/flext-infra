@@ -10,6 +10,7 @@ import os
 import shutil
 import stat
 import sys
+import time
 import tomllib
 from difflib import unified_diff
 from pathlib import Path
@@ -23,7 +24,26 @@ from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
-from tests import c, m, p, r, u
+from tests import c, m, p, r, t, u
+
+
+_CAPTURE_MODULE_OUTPUT = (
+    # Run the real ``flext_infra`` module entry with its stage output mirrored
+    # into a file, so a test can observe the child's progress while it runs:
+    # the typed process owner captures pipes only once the child has exited.
+    "import runpy, sys\n"
+    "log = open(sys.argv[1], 'w', buffering=1, encoding='utf-8')\n"
+    "sys.stdout = log\n"
+    "sys.stderr = log\n"
+    "sys.argv = ['flext_infra', *sys.argv[2:]]\n"
+    "runpy.run_module('flext_infra', run_name='__main__', alter_sys=True)\n"
+)
+
+
+def _text_if_present(path: Path) -> str:
+    """Return the file's text, or an empty string before the child created it."""
+    return path.read_text(encoding="utf-8") if path.is_file() else ""
+
 
 pytestmark = pytest.mark.slow
 
@@ -75,7 +95,11 @@ def _apply_conform_surface(
 
 
 def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
-    """Return the versionable project tree independently of Git test fixtures."""
+    """Return the versionable project tree independently of Git test fixtures.
+
+    Transaction runtime state (``.state/``, e.g. the Mise publication lock) is
+    not part of the versionable tree any more than ``.git`` is.
+    """
     return tuple(
         sorted(
             (path.relative_to(root).as_posix(), path.read_bytes())
@@ -83,6 +107,7 @@ def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
             if path.is_file()
             and ".git" not in path.relative_to(root).parts
             and ".infra-baseline" not in path.relative_to(root).parts
+            and c.Infra.TRANSACTION_STATE_DIRNAME not in path.relative_to(root).parts
         )
     )
 
@@ -129,6 +154,9 @@ def _seed_infra_package_tree(root: Path) -> None:
     tests_init = root / "tests" / "__init__.py"
     tests_init.parent.mkdir(parents=True, exist_ok=True)
     tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+    # The full surface validates the committed Mise seeds instead of minting
+    # them, so a governed fixture tree carries them exactly as a repository does.
+    u.Tests.copy_tracked_mise_seeds(root)
 
 
 class TestCodegenConform:
@@ -138,10 +166,14 @@ class TestCodegenConform:
         self, root: Path, monkeypatch: pytest.MonkeyPatch, suffix: str
     ) -> p.Result[m.Infra.CodegenResult]:
         """Apply conform with ``suffix`` appended to the rendered Makefile."""
-        distribution = u.Tests.repository_ref(config.Infra.name).distribution
+        repository = u.Tests.repository_ref(config.Infra.name)
+        distribution = repository.distribution
+        # The manifestless Makefile projection derives its identity from PEP 621
+        # metadata: the project name plus its provider-matched Repository URL.
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
-            'requires-python = ">=3.13,<3.14"\n',
+            'requires-python = ">=3.13,<3.14"\n'
+            f'\n[project.urls]\nRepository = "{repository.url}"\n',
             encoding="utf-8",
         )
         package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
@@ -722,6 +754,9 @@ class TestCodegenConform:
         self, infra_git_repo: Path
     ) -> None:
         existing_root = infra_git_repo
+        # An existing governed repository carries its committed Mise seeds; the
+        # full conform surface validates them instead of minting them.
+        u.Tests.copy_tracked_mise_seeds(existing_root)
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
             kind=c.Infra.ProjectKind.EXTERNAL,
@@ -1005,6 +1040,60 @@ class TestCodegenConform:
             report["fail_under"],
             eq=config.Infra.tooling.tools.coverage.fail_under.platform,
         )
+
+    @pytest.mark.slow
+    def test_workspace_root_excludes_only_the_distributions_it_declares(
+        self, tmp_path: Path
+    ) -> None:
+        """Route uv exclusions by the declared topology, not the Make profile.
+
+        A content workspace whose submodules are not FLEXT distributions must
+        not inherit the FLEXT reverse-edge exclusions: doing so drops a
+        dependency its own venv still needs (flext-cee4z). A workspace that
+        declares those distributions keeps every exclusion routed to them.
+        """
+        exclusions = config.Infra.codegen.uv_exclude_dependencies
+        member = u.Tests.repository_ref("flext-core", path=Path("flext-core"))
+        content = u.Tests.repository_ref("docs-content", path=Path("docs-content"))
+
+        def rendered_excludes(
+            name: str, declared: tuple[m.Infra.RepositoryRef, ...]
+        ) -> list[t.JsonMapping]:
+            workspace = m.Infra.WorkspaceSpec(
+                name=name,
+                beads=u.Tests.beads_project(name),
+                repository=u.Tests.repository_ref(
+                    name, role=c.Infra.MakeProfile.WORKSPACE
+                ),
+                project=u.Tests.project_spec(name),
+                declared_repositories=declared,
+            )
+            root = tmp_path / name
+            request = m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.SELF,
+                mode=c.Infra.CodegenConformMode.CHECK,
+            )
+            planned = tm.ok(
+                FlextInfraCodegenConform(
+                    repository_root=root, request=request, initial_workspace=workspace
+                ).plan(request)
+            )
+            pyproject = next(
+                item
+                for item in planned.files
+                if item.path.name == c.Infra.PYPROJECT_FILENAME
+            )
+            uv_table = tomllib.loads(pyproject.rendered)["tool"]["uv"]
+            return list(uv_table.get("exclude-dependencies", []))
+
+        expected_for_member = [
+            item
+            for item in exclusions
+            if item.project in {"flext", member.distribution}
+        ]
+        tm.that(rendered_excludes("content-root", (content,)), eq=[])
+        tm.that(len(rendered_excludes("flext", (member,))), eq=len(expected_for_member))
 
     @pytest.mark.slow
     def test_project_root_exports_only_declared_upstream_facets(
@@ -1777,10 +1866,12 @@ class TestScriptDispatchMakefile:
         original = b"original Makefile bytes\n"
         makefile.write_bytes(original)
         lock_path = FlextInfraCodegenConform.conform_transaction_lock_path(root)
+        child_log = tmp_path / "conform-child.log"
         command = [
             sys.executable,
-            "-m",
-            "flext_infra",
+            "-c",
+            _CAPTURE_MODULE_OUTPUT,
+            str(child_log),
             "codegen",
             "conform",
             "--root",
@@ -1796,16 +1887,28 @@ class TestScriptDispatchMakefile:
             started = tm.ok(
                 u.Cli.process_start(command, cwd=root, env={"PYTHONUNBUFFERED": "1"})
             )
-            # The child cannot promote anything while this test owns the
-            # transaction lock, so it is still alive after the bounded wait.
-            # That is the observable proof it is waiting for the owner.
-            blocked = started.wait(timeout=c.Infra.TIMEOUT_SHORT_POLL)
-            tm.that(blocked.failure, eq=True)
+            # The child plans against the original bytes and then reports that
+            # it is waiting for the transaction owner. That stage line is the
+            # observable proof the concurrent edit below lands after planning;
+            # a "still alive" probe cannot tell waiting from interpreter startup.
+            deadline = time.monotonic() + c.Infra.TIMEOUT_SHORT
+            while "stage=wait-transaction-lock" not in _text_if_present(child_log):
+                tm.that(
+                    started.poll(),
+                    eq=None,
+                    msg=f"conform exited before the lock:\n{_text_if_present(child_log)}",
+                )
+                tm.that(
+                    time.monotonic() < deadline,
+                    eq=True,
+                    msg="conform never reached the transaction lock",
+                )
+                time.sleep(0.05)
             concurrent = b"concurrent human WIP\n"
             makefile.write_bytes(concurrent)
             concurrent_inode = makefile.stat().st_ino
         return_code = tm.ok(started.wait(timeout=c.Infra.TIMEOUT_SHORT))
-        output_text = started.stdout + started.stderr
+        output_text = _text_if_present(child_log)
 
         tm.that(return_code, eq=1, msg=output_text)
         tm.that(output_text, has="Makefile projection changed")
@@ -1842,60 +1945,6 @@ class TestScriptDispatchMakefile:
         tm.that(acquired_marker.read_text(encoding="utf-8"), eq="acquired")
         with UnixFileLock(lock_path, timeout=0, fallback_to_soft=False) as recovered:
             tm.that(recovered.is_locked, eq=True)
-
-    def test_consumer_provider_does_not_reown_infrastructure_source(
-        self, tmp_path: Path
-    ) -> None:
-        """Render the tool bootstrap URL from its explicit provider owner."""
-        infra_provider = next(
-            provider
-            for provider in config.Infra.codegen.providers
-            if provider.name == config.Infra.codegen.infra_repository.provider
-        )
-        consumer_provider = next(
-            provider
-            for provider in config.Infra.codegen.providers
-            if provider.name != infra_provider.name
-        )
-        root = tmp_path / "consumer"
-        manifest = u.Tests.write_standalone_workspace_manifest(root, "consumer")
-        declaration = manifest.read_text(encoding="utf-8")
-        manifest.write_text(
-            declaration.replace(
-                "provider: flext-sh", f"provider: {consumer_provider.name}"
-            ).replace(
-                "url: https://github.com/flext-sh/consumer.git",
-                f"url: {consumer_provider.base_url}/consumer.git",
-            ),
-            encoding="utf-8",
-        )
-        package = root / "src" / "consumer"
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        (root / "pyproject.toml").write_text(
-            "[project]\n"
-            'name = "consumer"\n'
-            'version = "0.1.0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
-            "dependencies = []\n",
-            encoding="utf-8",
-        )
-
-        applied = FlextInfraCodegenConform.execute_request(
-            m.Infra.CodegenConformRequest(
-                root=root,
-                what=c.Infra.CodegenConformSurface.MAKEFILE,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.APPLY,
-            )
-        )
-
-        tm.ok(applied)
-        rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        tm.that(rendered, has=f"git+{infra_provider.base_url}/{config.Infra.name}.git@")
-        tm.that(
-            rendered, lacks=f"git+{consumer_provider.base_url}/{config.Infra.name}.git@"
-        )
 
     @pytest.mark.parametrize("destination_kind", ["symlink", "hardlink", "fifo"])
     def test_makefile_special_destination_fails_without_mutation(

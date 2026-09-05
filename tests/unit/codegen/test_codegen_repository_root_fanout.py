@@ -53,6 +53,9 @@ def _render_root_makefile(tmp_path: Path) -> str:
         project=test_u.Tests.project_spec(repository.name),
     )
     repository_root = tmp_path / "workspace"
+    # The bootstrap projection refreshes the dispatcher of an existing checkout:
+    # the root is present, even when it carries no metadata or topology yet.
+    repository_root.mkdir()
     request = m.Infra.CodegenConformRequest(
         root=repository_root,
         what=c.Infra.CodegenConformSurface.MAKEFILE,

@@ -109,17 +109,16 @@ class TestsFlextInfraFacadeEnvironmentSync:
         )
         tm.ok(setup)
         (workspace / "pyproject.toml").unlink()
-        _ = (workspace / ".mise.toml").write_text(
-            f"{c.Infra.WORKSPACE_ENV_GENERATED_MARKERS[0]}\n[tools]\n", encoding="utf-8"
-        )
 
         result = infra.sync_environment_files(
             m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
 
+        # `.mise.toml` is owned by `codegen conform` (see the composition
+        # contract below); environment sync removes only the files it writes.
         tm.ok(result)
+        tm.that(result.value.changed_files, eq=(workspace / ".envrc",))
         tm.that((workspace / ".envrc").exists(), eq=False)
-        tm.that((workspace / ".mise.toml").exists(), eq=False)
 
 
 class TestsFlextInfraProjectMiseComposition:

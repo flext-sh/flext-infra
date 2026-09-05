@@ -356,6 +356,15 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         ancestry = self._validate_ancestry(plan)
         if ancestry.failure:
             return r[m.Infra.CodegenResult].from_failure(ancestry)
+        makefile_only = (
+            c.Infra.CodegenConformSurface(request.what)
+            is c.Infra.CodegenConformSurface.MAKEFILE
+        )
+        if mode is c.Infra.CodegenConformMode.APPLY and makefile_only:
+            # The dispatcher is promoted only under its transaction lock with a
+            # verify-before-publish replan, on every route -- the bootstrap
+            # `make setup` refresh included, not just the managed ALL surface.
+            return self._apply_makefile_plan(request, plan)
         changed = tuple(file for file in plan.files if file.changed)
         if mode is c.Infra.CodegenConformMode.CHECK:
             if changed:
@@ -1309,17 +1318,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 context_result.error or "project render context is invalid"
             )
         context = context_result.value
-        # Repository root owns resolution for attached declared_repositories (uv reads
-        # exclude-dependencies only from the repository root). Subprojects still
-        # receive their own routed excludes for standalone CI clones.
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
-            uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
-        else:
-            uv_exclude_dependencies = tuple(
-                item
-                for item in codegen.uv_exclude_dependencies
-                if item.project == repository.distribution
-            )
+        uv_exclude_dependencies = self._routed_uv_exclude_dependencies(
+            repository, target, workspace, codegen
+        )
         planned: list[m.Infra.CodegenFilePlan] = []
         templates_root = (
             self._package_root() / "templates" / codegen.templates.root
@@ -1522,6 +1523,32 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         planned.append(pyproject_plan.value)
         return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(planned))
 
+    @staticmethod
+    def _routed_uv_exclude_dependencies(
+        repository: m.Infra.RepositoryRef,
+        target: m.Infra.RepositoryConformTarget,
+        workspace: m.Infra.WorkspaceSpec,
+        codegen: m.Infra.CodegenConfigSpec,
+    ) -> tuple[m.Infra.UvScopedDependencyExclusionSpec, ...]:
+        """Route the official uv exclusions to the distributions this root governs.
+
+        uv reads ``exclude-dependencies`` only from the repository root, so a
+        workspace root aggregates the exclusions of every distribution it
+        declares while a standalone clone keeps only its own. The list itself
+        describes the FLEXT reverse edges: a workspace whose declared
+        repositories are not those distributions (a content workspace with
+        non-FLEXT submodules, flext-cee4z) receives none of them instead of
+        dropping a dependency its own venv still needs.
+        """
+        governed = {repository.distribution}
+        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
+            governed.update(
+                declared.distribution for declared in workspace.declared_repositories
+            )
+        return tuple(
+            item for item in codegen.uv_exclude_dependencies if item.project in governed
+        )
+
     def _plan_existing_repository(
         self,
         *,
@@ -1564,18 +1591,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
-        # Repository root owns resolution for attached declared repositories (uv
-        # reads exclude-dependencies only from the repository root). Declared
-        # repositories still
-        # receive their own routed excludes for standalone CI clones.
-        if target.make_profile is c.Infra.MakeProfile.WORKSPACE:
-            uv_exclude_dependencies = tuple(codegen.uv_exclude_dependencies)
-        else:
-            uv_exclude_dependencies = tuple(
-                item
-                for item in codegen.uv_exclude_dependencies
-                if item.project == repository.distribution
-            )
+        uv_exclude_dependencies = self._routed_uv_exclude_dependencies(
+            repository, target, workspace, codegen
+        )
         if contract.dependencies_only:
             dependency_result = u.Infra.pyproject_dependencies_conform(
                 pyproject_read.value,
@@ -1948,47 +1966,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_root_rel: str = workspace.project.repository_root_rel
             return project_root_rel
         return "."
-
-    @staticmethod
-    def _infra_repository(
-        workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
-    ) -> p.Result[m.Infra.RepositoryRef]:
-        """Resolve the repository that owns the infrastructure CLI.
-
-        The owner is read from the live workspace topology when that topology
-        declares it. A standalone consumer legitimately declares no
-        infrastructure subproject, so the reference is then derived from the
-        typed source and provider contracts. Either way nothing is read from a
-        generated pyproject or looked up in a project catalog.
-        """
-        source = codegen.infra_repository
-        matches = tuple(
-            item
-            for item in (workspace.repository, *workspace.declared_repositories)
-            if item.distribution == source.distribution
-        )
-        if len(matches) > 1:
-            return r[m.Infra.RepositoryRef].fail(
-                "workspace topology declares more than one "
-                f"{source.distribution} checkout"
-            )
-        if matches:
-            return r[m.Infra.RepositoryRef].ok(matches[0])
-        provider_matches = tuple(
-            provider
-            for provider in config.Infra.codegen.providers
-            if provider.name == source.provider
-        )
-        if len(provider_matches) != 1:
-            return r[m.Infra.RepositoryRef].fail(
-                "infrastructure repository provider must resolve exactly once: "
-                f"{source.provider}"
-            )
-        return r[m.Infra.RepositoryRef].ok(
-            u.Infra.derived_repository_ref(
-                config.Infra.name, provider=provider_matches[0]
-            )
-        )
 
     @staticmethod
     def _repository_provider(
@@ -2534,6 +2511,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 direnv_version=codegen.toolchain.direnv_version,
                 uv_version=codegen.toolchain.uv_version,
                 qlty_version=codegen.toolchain.qlty_version,
+                node_version=codegen.toolchain.node_version,
+                jscpd_version=codegen.toolchain.jscpd_version,
                 taplo_version=codegen.toolchain.taplo_version,
                 ast_grep_version=codegen.toolchain.ast_grep_version,
                 gitleaks_version=codegen.toolchain.gitleaks_version,

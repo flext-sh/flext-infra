@@ -131,17 +131,6 @@ endif
 override SETUP_MISE := $(TRACKED_MISE)
 override export FLEXT_PYTEST_TARGET_RAW := tests
 WORKSPACE ?= $(PROJECT_ROOT)
-# make work targets a member checkout when PROJECT names a declared repository and
-# WORKSPACE was not overridden on the command line. PROJECT alone used to keep
-# WORKSPACE at the repository root, so finish looked up lanes in the wrong git
-# primary and failed with "worktree branch is not registered".
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(DECLARED_REPOSITORIES)),)
-override WORKSPACE := $(PROJECT_ROOT)/$(PROJECT)
-endif
-endif
-endif
 # === SECTION: REPOSITORY_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
 # Rule: REPOSITORY_ROOT is always derived from the current checkout unless the
@@ -160,15 +149,13 @@ REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show
 endif
 endif
 # End SECTION: REPOSITORY_ROOT isolation
-# A workspace lane is always registered at the repository root. Other verbs may
-# select a member through PROJECT while workspace orchestration keeps the root
-# so one Git worktree owns the complete project matrix.
-ifneq ($(filter work,$(MAKECMDGOALS)),work)
+# A verb may select a declared member through PROJECT; the member checkout is
+# resolved from the repository root so one Git worktree owns the complete
+# project matrix (lane lifecycle itself belongs to the city, never to make).
 ifeq ($(filter command line override,$(origin WORKSPACE)),)
 ifneq ($(strip $(PROJECT)),)
 ifneq ($(filter $(PROJECT),$(DECLARED_REPOSITORIES)),)
 override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)
-endif
 endif
 endif
 endif

@@ -59,7 +59,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # default comes from the tomlsort SSOT. A property here would make the
         # field an incompatible override of a read-only descriptor.
         tomlsort_sort_first: t.StrSequence
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         def _reorder_document_inplace(
             self,

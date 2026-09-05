@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, override
-from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, config, m, u
@@ -16,7 +15,7 @@ from flext_infra.base import s
 from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraWorkspaceDetector(
@@ -718,7 +717,10 @@ class FlextInfraWorkspaceDetector(
                 f"declared repository is not governed by provider {provider.name}"
             )
         resolved_metadata = project_metadata
-        if resolved_metadata is None:
+        if (
+            resolved_metadata is None
+            and (resolved_root / c.Infra.PYPROJECT_FILENAME).is_file()
+        ):
             metadata = u.read_project_metadata(resolved_root)
             if metadata.failure:
                 return r[m.Infra.RepositoryConformTarget].fail(
@@ -726,7 +728,15 @@ class FlextInfraWorkspaceDetector(
                     or f"unable to read project metadata: {resolved_root}"
                 )
             resolved_metadata = metadata.value
-        canonical_project_name = resolved_metadata.project.name
+        # The declared manifest is the complete identity input of a
+        # declaration-only target (docs/guides/topology-conform.md): a bootstrap
+        # checkout refreshing its dispatcher may carry no PEP 621 metadata yet.
+        # When the root does ship metadata it must agree with the declaration.
+        canonical_project_name = (
+            repository.distribution
+            if resolved_metadata is None
+            else resolved_metadata.project.name
+        )
         if canonical_project_name != repository.distribution:
             return r[m.Infra.RepositoryConformTarget].fail(
                 "project metadata and repository identity differ: "
@@ -852,7 +862,16 @@ class FlextInfraWorkspaceDetector(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
         """Load exclusions for governed repositories; ignore ungoverned trees."""
-        if not cls._beads_path(repository_root.expanduser().resolve()).is_file():
+        resolved_root = repository_root.expanduser().resolve()
+        if not cls._beads_path(resolved_root).is_file():
+            return r[tuple[Path, ...]].ok(())
+        # A governed repository is its own Git checkout root. A directory that
+        # merely sits inside another repository must not inherit that
+        # repository's origin and topology (the Git handle resolves parents).
+        toplevel = u.Infra.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=resolved_root)
+        )
+        if toplevel.failure or toplevel.value.repository_root != resolved_root:
             return r[tuple[Path, ...]].ok(())
         origin = cls._git_origin_url(repository_root)
         if origin.failure or cls._declared_provider_for_url(origin.value) is None:
