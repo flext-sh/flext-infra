@@ -41,7 +41,7 @@ class FlextInfraConstantsDeps:
     )
     BANNER: Final[str] = (
         "# @flext-managed: continuous\n"
-        "# @flext-regenerate: make deps WHAT=upgrade APPLY=Y\n"
+        "# @flext-regenerate: make deps APPLY=Y\n"
         "# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py\n"
         "# @flext-ssot-dependencies: flext-infra/config/codegen.yaml"
         " (project_defaults.dev, dependency_profiles)\n"

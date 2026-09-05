@@ -272,7 +272,7 @@ class FlextInfraConstantsMake:
         'RUFF_ARGS="--select E501"   Extra args for ruff check',
         'PYRIGHT_ARGS="--level basic" Extra args for pyright',
         "PYTEST_ARGS=<value>         Rejected; use FILE, MATCH, or WHAT",
-        "DEPENDENCY=<distribution>   Select one package for deps WHAT=upgrade",
+        "DEPENDENCY=<distribution>   Select one package for deps APPLY=Y",
         "MATCH=test_name             Alias for pytest -k",
         "FAIL_FAST=1                 Add -x to pytest",
         "DIAG=1                      Emit extended pytest diagnostics",

@@ -112,7 +112,12 @@ def test_required_directories_match_final_file_plan_targets(tmp_path: Path) -> N
     planned = generator.plan_files(prepared.value)
     tm.ok(planned)
     tm.that(
-        {plan.path.parent for plan in planned.value}.issubset(set(required.value)),
+        {
+            plan.path.parent
+            for plan in planned.value
+            if plan.desired_content is not None
+            and plan.path.parent not in directories_before
+        }.issubset(set(required.value)),
         eq=True,
     )
 
@@ -185,7 +190,7 @@ def test_stale_generated_markdown_becomes_delete_plan(tmp_path: Path) -> None:
     stale_plan = next(plan for plan in result.value if plan.path == stale)
     tm.that(stale_plan.desired_content, eq=None)
     tm.that(u.Infra.codegen_file_requires_effect(stale_plan), eq=True)
-    tm.that(stale_plan.before.content, eq=b"stale\n")
+    tm.that(tm.ok(u.Infra.codegen_file_before_state(stale_plan)).content, eq=b"stale\n")
     tm.that(stale.exists(), eq=True)
 
 

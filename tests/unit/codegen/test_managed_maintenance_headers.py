@@ -29,18 +29,13 @@ class TestsFlextInfraManagedMaintenanceHeaders:
             (templates / "project" / "base" / "Makefile.j2").read_text(encoding="utf-8")
         )
         tm.that(makefile_fields.get("@flext-managed"), eq="continuous")
-        tm.that(
-            makefile_fields.get("@flext-regenerate"), eq="make gen WHAT=apply APPLY=Y"
-        )
+        tm.that(makefile_fields.get("@flext-regenerate"), eq="make gen APPLY=Y")
         tm.that(makefile_fields.get("@flext-ssot", ""), has="flext-infra/")
         tm.that(makefile_fields.get("@flext-maintenance", ""), has="do not edit")
 
         pyproject_fields = self._fields(c.Infra.BANNER)
         tm.that(pyproject_fields.get("@flext-managed"), eq="continuous")
-        tm.that(
-            pyproject_fields.get("@flext-regenerate"),
-            eq="make deps WHAT=upgrade APPLY=Y",
-        )
+        tm.that(pyproject_fields.get("@flext-regenerate"), eq="make deps APPLY=Y")
         tm.that(pyproject_fields.get("@flext-ssot", ""), has="_constants/deps.py")
         tm.that(pyproject_fields.get("@flext-maintenance", ""), has="do not edit")
 

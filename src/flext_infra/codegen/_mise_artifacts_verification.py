@@ -264,6 +264,9 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
     if source_state.failure:
         return source_state
     for plan in analysis.files:
+        before = u.Infra.codegen_file_before_state(plan)
+        if before.failure:
+            return r[bool].from_failure(before)
         observed = files.read_state(
             plan.path, required=plan.desired_content is not None
         )
@@ -278,8 +281,8 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
         ) != (
             plan.desired_content,
             plan.desired_mode,
-            plan.before.parent_device,
-            plan.before.parent_inode,
+            before.value.parent_device,
+            before.value.parent_inode,
         ):
             return r[bool].fail(
                 f"published {analysis.phase} destination differs from receipt: "

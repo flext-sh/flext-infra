@@ -93,11 +93,7 @@ class FlextInfraConstantsWorkspace:
     )
     "Sibling directory patterns for FLEXT-managed external workspaces."
 
-    PERSISTENT_STATE_ARTIFACT_NAMES: Final[frozenset[str]] = frozenset({
-        ".code-review-graph",
-        ".codegraph",
-        ".serena",
-    })
+    PERSISTENT_STATE_ARTIFACT_NAMES: Final[frozenset[str]] = frozenset({".serena"})
     "Persistent-state artifact basenames owned by the local repository."
 
     # NOTE (flext-jnm1.2): the .gitignore body is derived from the artifact SSOT

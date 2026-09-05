@@ -36,6 +36,13 @@ def stage_file_plans(
     publications: list[m.Infra.CodegenStagedFile] = []
     phase_roots: set[Path] = set()
     for index, file_plan in enumerate(changed):
+        before_result = u.Infra.codegen_file_before_state(file_plan)
+        if before_result.failure:
+            return result_type.fail(
+                f"{phase} destination parent was not materialized before staging: "
+                f"{file_plan.path.parent}"
+            )
+        before = before_result.value
         project = next(
             (item for item in layout.projects if item.root == file_plan.project), None
         )
@@ -46,7 +53,7 @@ def stage_file_plans(
         current = files.read_state(file_plan.path, required=False)
         if current.failure:
             return result_type.from_failure(current)
-        if current.value != file_plan.before:
+        if current.value != before:
             return result_type.fail(
                 f"{phase} destination changed after planning: {file_plan.path}"
             )
@@ -108,7 +115,7 @@ def stage_file_plans(
             m.Infra.CodegenStagedFile(
                 phase=phase,
                 project=file_plan.project,
-                before=file_plan.before,
+                before=before,
                 replacement=replacement,
             )
         )

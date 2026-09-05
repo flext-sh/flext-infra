@@ -262,7 +262,6 @@ __pyrefly_virtual__/
 .benchmarks/
 .bkp/
 .cache/
-.codegraph/
 .dolt_dropped_databases/
 .doltcfg/
 .hypothesis/

@@ -6,9 +6,9 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
+from flext_core import m, u
 
-from flext_infra import c, t, u
+from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -127,20 +127,6 @@ class FlextInfraModelsCheck:
                 description="Re-run the corresponding check after fixing",
             ),
         ] = True
-
-        @m.field_validator("rules", mode="before")
-        @classmethod
-        def _parse_rules(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
-            """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            return u.Infra.normalize_sequence_values(value) or ()
-
-        @m.field_validator("projects", mode="before")
-        @classmethod
-        def _parse_projects(
-            cls, value: str | t.SequenceOf[str] | None
-        ) -> t.StrSequence | None:
-            """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            return u.Infra.normalize_sequence_values(value)
 
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""

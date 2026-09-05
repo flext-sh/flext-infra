@@ -70,6 +70,7 @@ def _conform_target(
         beads=u.Tests.beads_project(repository.name),
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
+        baseline_reference=f"refs/remotes/origin/{provider.branch}",
         ci_enabled=True,
         technical_branch_patterns=(
             config.Infra.codegen.branch_policy.technical_branch_patterns
@@ -926,7 +927,7 @@ class TestCodegenConform:
         tm.that(env_plan.owner, eq="codegen")
         tm.that(env_plan.policy, eq="create-only")
         tm.that(u.Infra.codegen_file_requires_effect(env_plan), eq=False)
-        tm.that(env_plan.before.content, eq=None)
+        tm.that(tm.ok(u.Infra.codegen_file_before_state(env_plan)).content, eq=None)
         tm.that((root / ".env.example").exists(), eq=False)
         for required in ("Makefile", ".python-version", ".gitignore"):
             tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
@@ -1673,7 +1674,7 @@ class TestScriptDispatchMakefile:
         tm.that(gen_init_body.count("codegen init"), eq=2)
         tm.that(gen_init_body, lacks=["codegen conform", "REPOSITORY_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
+        tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
         handler_policies: dict[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies

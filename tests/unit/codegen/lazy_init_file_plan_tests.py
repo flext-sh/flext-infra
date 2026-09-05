@@ -36,7 +36,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         plans = {plan.path: plan for plan in analysis.files}
         init_plan = plans[init_path.resolve()]
         tm.that(init_plan.project, eq=workspace_root.resolve())
-        tm.that(init_plan.before.content, eq=before[init_path])
+        tm.that(
+            tm.ok(u.Infra.codegen_file_before_state(init_plan)).content,
+            eq=before[init_path],
+        )
         tm.that(init_plan.desired_mode, eq=0o644)
         tm.that(u.Tests.codegen_file_text(init_plan), contains="FlextTestsModels")
         tm.that(u.Infra.codegen_file_requires_effect(init_plan), eq=True)
@@ -49,7 +52,10 @@ class TestsFlextInfraCodegenLazyInitFilePlans:
         tm.that(source_paths.issubset(input_paths), eq=True)
         tm.that(init_path.resolve() in input_paths, eq=True)
         unit_plan = plans[unit_path.resolve()]
-        tm.that(unit_plan.before.content, eq=before[unit_path])
+        tm.that(
+            tm.ok(u.Infra.codegen_file_before_state(unit_plan)).content,
+            eq=before[unit_path],
+        )
         tm.that(unit_plan.desired_content, eq=None)
         tm.that(unit_plan.desired_mode, eq=None)
         tm.that(u.Infra.codegen_file_requires_effect(unit_plan), eq=True)

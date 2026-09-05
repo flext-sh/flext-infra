@@ -157,6 +157,9 @@ class TestEdgeCases:
     def test_no_tests_dir_at_all(self, tmp_path: Path) -> None:
         """Process source packages when no tests directory exists."""
         _create_init_file(tmp_path / "src" / "pkg", _VALID_INIT)
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\nname = 'lazy-init-fixture'\n", encoding="utf-8"
+        )
         generator = FlextInfraCodegenLazyInit(repository_root=tmp_path)
         result = generator.plan_files()
         tm.that(result.success, eq=True)

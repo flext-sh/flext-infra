@@ -20,7 +20,7 @@ def _makefile_template() -> Path:
 
 
 class TestsMakeTestSelector:
-    """The generated `test` recipe honours the documented argument knob."""
+    """Generated Make exposes only the canonical selector-free verb surface."""
 
     def test_test_verb_is_canonical(self) -> None:
         """`test` is part of the canonical verb surface every project exposes."""
@@ -50,7 +50,7 @@ class TestsMakeTestSelector:
 
         canonical = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "fmt", "WHAT=check", f"UV={uv}"], cwd=tmp_path
+                ["--no-print-directory", "fmt", f"UV={uv}"], cwd=tmp_path
             )
         )
         tm.that(canonical.exit_code, eq=0, msg=canonical.stdout + canonical.stderr)

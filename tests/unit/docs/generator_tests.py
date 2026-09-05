@@ -212,7 +212,7 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
     api_readme = (workspace / "docs/api-reference/README.md").read_text(
         encoding="utf-8"
     )
-    tm.that(api_readme, has="Back to [project docs](../index.md).")
+    tm.that(api_readme, eq="# Docs\n")
     public_api = workspace / "docs/api-reference/generated/public-api.md"
     tm.that(public_api.exists(), eq=True)
     stale = workspace / "docs/api-reference/generated/stale.md"

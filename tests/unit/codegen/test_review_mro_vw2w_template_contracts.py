@@ -48,7 +48,7 @@ class TestsReviewTemplateContracts:
         tm.that(text, has="override SETUP_MISE := $(TRACKED_MISE)")
         tm.that(text, lacks="SETUP_MISE_VERSION")
         tm.that(text, has="setup: _bootstrap_setup_tools")
-        tm.that(text, has="env -u MISE_INSTALL_PATH -u MISE_VERSION")
+        tm.that(text, has="env -i")
 
     def test_makefile_setup_installs_the_lock_without_writing_it(self) -> None:
         """Setup provisions exactly the committed lock and never mutates it.

@@ -83,13 +83,13 @@ class TestsFlextInfraDiscoveryInfraDiscovery:
         tm.ok(result)
         tm.that(result.value, eq=[])
 
-    def test_discover_projects_nonexistent_path(self, service: u.Infra) -> None:
-        nonexistent = Path("/nonexistent/path/to/workspace")
+    def test_discover_projects_nonexistent_path(
+        self, service: u.Infra, tmp_path: Path
+    ) -> None:
+        nonexistent = tmp_path / "missing"
         result = service.discover_projects(nonexistent)
         tm.fail(result)
-        tm.that(result.error, is_=str)
-        tm.that(result.error, is_=str)
-        tm.that(result.error, has="discovery failed")
+        tm.that(result.error or "", has=str(nonexistent))
 
     def test_find_all_pyproject_files_happy_path(
         self, service: u.Infra, tmp_path: Path

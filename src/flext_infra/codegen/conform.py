@@ -133,6 +133,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             description="Validated scaffold specification included in the atomic plan",
         ),
     ] = None
+    scaffolded_repository: Annotated[
+        bool,
+        m.Field(
+            default=False,
+            exclude=True,
+            description="Whether this invocation initialized an unpublished Git root",
+        ),
+    ] = False
 
     @classmethod
     def execute_request(
@@ -193,7 +201,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(committed)
             initialized_git = True
         service = cls(
-            repository_root=root, request=request, initial_workspace=initial_workspace
+            repository_root=root,
+            request=request,
+            initial_workspace=initial_workspace,
+            scaffolded_repository=initialized_git,
         )
         result = service.execute()
         if result.success:
@@ -259,8 +270,49 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 paths = ", ".join(str(file.path) for file in changed)
                 return r[m.Infra.CodegenResult].fail(f"codegen drift detected: {paths}")
             return r[m.Infra.CodegenResult].ok(m.Infra.CodegenResult(plan=plan))
-        return r[m.Infra.CodegenResult].fail(
-            "partial codegen apply is prohibited; use the complete all surface"
+        surface = c.Infra.CodegenConformSurface(request.what)
+        if surface is not c.Infra.CodegenConformSurface.MAKEFILE:
+            return r[m.Infra.CodegenResult].fail(
+                "partial codegen apply is prohibited; use the complete all surface"
+            )
+        expected_path = request.root.expanduser().resolve() / c.Infra.MAKEFILE_FILENAME
+        if (
+            any(file.path != expected_path for file in plan.files)
+            or len(plan.files) != 1
+        ):
+            return r[m.Infra.CodegenResult].fail(
+                "Makefile bootstrap plan must own exactly the root dispatcher"
+            )
+        written: tuple[Path, ...] = ()
+        if changed:
+            (file,) = changed
+            before = u.Infra.codegen_file_before_state(file)
+            if before.failure:
+                return r[m.Infra.CodegenResult].from_failure(before)
+            if file.desired_content is None or file.desired_mode is None:
+                return r[m.Infra.CodegenResult].fail(
+                    "Makefile bootstrap cannot delete its dispatcher"
+                )
+            published = u.Cli.atomic_write_binary_file_guarded(
+                before.value, file.desired_content, permission_mode=file.desired_mode
+            )
+            if published.failure:
+                return r[m.Infra.CodegenResult].from_failure(published)
+            written = (file.path,)
+        verified = self.plan(request)
+        if verified.failure:
+            return r[m.Infra.CodegenResult].from_failure(verified)
+        residual = tuple(
+            file
+            for file in verified.value.files
+            if u.Infra.codegen_file_requires_effect(file)
+        )
+        if residual:
+            return r[m.Infra.CodegenResult].fail(
+                f"Makefile bootstrap did not reach a fixed point: {residual[0].path}"
+            )
+        return r[m.Infra.CodegenResult].ok(
+            m.Infra.CodegenResult(plan=verified.value, written_files=written)
         )
 
     def _execute_managed(
@@ -750,6 +802,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 beads=workspace.beads,
                 canonical_project_name=current_repository.distribution,
                 baseline_branch=baseline_result.value,
+                baseline_reference=(
+                    f"refs/heads/{baseline_result.value}"
+                    if self.scaffolded_repository
+                    else f"refs/remotes/origin/{baseline_result.value}"
+                ),
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
@@ -1099,20 +1156,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if profile not in allowed:
                     continue
             if not path.exists():
-                before = u.Cli.atomic_read_binary_file_state(path, required=False)
-                if before.failure:
-                    return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(before)
-                completed.append(
-                    m.Infra.CodegenFilePlan(
-                        project=root,
-                        path=path,
-                        before=before.value,
-                        desired_content=None,
-                        desired_mode=None,
-                        owner=governed.owner,
-                        policy=governed.policy,
-                    )
-                )
                 continue
             current = ""
             if path.is_file():
@@ -2427,6 +2470,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make_context.error or "custom Make render context failed"
                 )
             return r[p.Model].ok(make_context.value)
+        if destination in {
+            c.Infra.MARKDOWNLINT_CONFIG_FILENAME,
+            c.Infra.MARKDOWNLINT_IGNORE_FILENAME,
+        }:
+            return r[p.Model].ok(
+                m.Infra.ToolingRenderSpec(tooling=config.Infra.tooling)
+            )
         if project_context is not None:
             return r[p.Model].ok(project_context)
         if tooling_runtime is None:
@@ -2849,14 +2899,23 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"({conflict_marker}) in the declared content of {relative_path}: "
                 f"{path}"
             )
-        before = u.Cli.atomic_read_binary_file_state(path, required=False)
-        if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
+        parent = u.Cli.atomic_plan_directory_chain(path.parent)
+        if parent.failure:
+            return r[m.Infra.CodegenFilePlan].from_failure(parent)
+        if parent.value.directories:
+            before: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = (
+                parent.value
+            )
+        else:
+            observed = u.Cli.atomic_read_binary_file_state(path, required=False)
+            if observed.failure:
+                return r[m.Infra.CodegenFilePlan].from_failure(observed)
+            before = observed.value
         return r[m.Infra.CodegenFilePlan].ok(
             m.Infra.CodegenFilePlan(
                 project=project,
                 path=path,
-                before=before.value,
+                before=before,
                 desired_content=rendered.encode(c.Cli.ENCODING_DEFAULT),
                 desired_mode=mode,
                 source_states=source_states,
@@ -2882,7 +2941,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.BranchAncestryPlan]:
         """Inventory local governed refs and prove descent from the baseline."""
         root = target.root
-        baseline_reference = f"refs/remotes/origin/{target.baseline_branch}"
+        baseline_reference = target.baseline_reference
         baseline_command = (c.Infra.GIT, "rev-parse", "--verify", baseline_reference)
         baseline_result = u.Cli.run_raw(baseline_command, cwd=root)
         if baseline_result.failure:

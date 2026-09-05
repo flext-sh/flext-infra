@@ -782,6 +782,14 @@ class FlextInfraConfigModels:
             m.Field(description="Canonical workflow command contract"),
         ]
 
+    class ToolingRenderSpec(_ConfigContract):
+        """Typed input for project-independent generated tooling surfaces."""
+
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical validated tooling policy"),
+        ]
+
     class DistroDockerRenderSpec(_ConfigContract):
         """Typed input consumed by generated distro Dockerfiles."""
 
@@ -1947,6 +1955,12 @@ class FlextInfraConfigModels:
         baseline_branch: Annotated[
             t.NonEmptyStr,
             m.Field(description="Provider-owned integration ancestry baseline"),
+        ]
+        baseline_reference: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Exact local or remote Git ref used as ancestry baseline"
+            ),
         ]
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
@@ -3591,8 +3605,13 @@ class FlextInfraConfigModels:
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
         before: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Descriptor-authenticated state captured by planning"),
+            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
+            m.Field(
+                description=(
+                    "Descriptor-authenticated file state, or the exact absent "
+                    "parent chain captured by read-only planning"
+                )
+            ),
         ]
         desired_content: Annotated[
             bytes | None,
@@ -3632,8 +3651,16 @@ class FlextInfraConfigModels:
             if not self.project.is_absolute() or not self.path.is_absolute():
                 msg = "codegen project and path must be absolute"
                 raise ValueError(msg)
-            if self.before.path != self.path:
-                msg = "codegen before state belongs to another path"
+            if isinstance(self.before, m.Cli.AtomicFileState):
+                if self.before.path != self.path:
+                    msg = "codegen before state belongs to another path"
+                    raise ValueError(msg)
+            elif (
+                self.before.target != self.path.parent
+                or not self.before.directories
+                or self.desired_content is None
+            ):
+                msg = "codegen absent parent plan is inconsistent with its destination"
                 raise ValueError(msg)
             try:
                 self.path.relative_to(self.project)

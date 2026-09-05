@@ -1618,12 +1618,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def run_lazy_init(repository_root: Path, *, check_only: bool = False) -> int:
             """Materialize immutable lazy-init plans only inside test workspaces."""
             service = FlextInfraCodegenLazyInit(repository_root=repository_root)
-            planned = service.plan_files()
-            if planned.failure:
-                return 1
+            planned = service.plan_files().unwrap()
             changed = tuple(
                 plan
-                for plan in planned.value.files
+                for plan in planned.files
                 if u.Infra.codegen_file_requires_effect(plan)
             )
             if check_only:
@@ -1654,15 +1652,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if u.Infra.codegen_file_requires_effect(plan)
             )
             for plan in changed:
+                before = u.Infra.codegen_file_before_state(plan)
+                if before.failure:
+                    return r[bool].from_failure(before)
                 if plan.desired_content is None:
-                    result = u.Cli.atomic_delete_binary_file_guarded(plan.before)
+                    result = u.Cli.atomic_delete_binary_file_guarded(before.value)
                 else:
                     if plan.desired_mode is None:
                         return r[bool].fail(
                             f"lazy-init plan has no desired mode: {plan.path}"
                         )
                     result = u.Cli.atomic_write_binary_file_guarded(
-                        plan.before,
+                        before.value,
                         plan.desired_content,
                         permission_mode=plan.desired_mode,
                     )
