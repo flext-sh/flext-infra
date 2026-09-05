@@ -1,0 +1,11 @@
+id: remove-cli-local-timeout-synthetic-status
+language: Python
+severity: error
+files:
+  - "src/flext_cli/_utilities/_runtime_process_outcome.py"
+rule:
+  pattern: |
+    elif timed_out:
+        primary_exit = timeout_exit_code
+fix: ""
+message: Preserve the raw operating-system return code when a deadline expires.

@@ -1,0 +1,5 @@
+id: rewire-cli-local-run-to-file-return-outcome
+valid:
+  - "cls._execute_streamed_process(command).map(lambda output: output.outcome)"
+invalid:
+  - "cls._execute_streamed_process(command).map(lambda output: output.outcome.raw_return_code)"

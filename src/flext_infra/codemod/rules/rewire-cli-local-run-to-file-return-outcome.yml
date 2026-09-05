@@ -1,0 +1,9 @@
+id: rewire-cli-local-run-to-file-return-outcome
+language: Python
+severity: error
+files:
+  - "src/flext_cli/_utilities/_runtime_run_to_file.py"
+rule:
+  pattern: "cls._execute_streamed_process($$$ARGS).map(lambda output: output.outcome.raw_return_code)"
+fix: "cls._execute_streamed_process($$$ARGS).map(lambda output: output.outcome)"
+message: Return the complete causal receipt without flattening it.

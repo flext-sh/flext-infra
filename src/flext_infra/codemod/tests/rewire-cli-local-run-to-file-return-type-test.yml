@@ -1,0 +1,9 @@
+id: rewire-cli-local-run-to-file-return-type
+valid:
+  - |
+    def run_to_file(command: str) -> p.Result[p.Cli.ProcessOutcome]:
+        return execute(command)
+invalid:
+  - |
+    def run_to_file(command: str) -> p.Result[int]:
+        return execute(command)
