@@ -113,10 +113,8 @@ def write(
             "Mise journal expected state belongs to another path"
         )
     written = u.Cli.atomic_write_binary_file_guarded(
-        journal_path,
+        expected,
         content,
-        expected_bytes=expected.content,
-        expected_mode=expected.mode,
         permission_mode=files.JOURNAL_MODE,
     )
     if written.failure:

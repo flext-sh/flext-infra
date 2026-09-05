@@ -174,8 +174,13 @@ def run(
 
 def write_new(path: Path, content: bytes, mode: int) -> p.Result[bool]:
     """Create exact isolated state through the canonical atomic owner."""
+    before = u.Cli.atomic_read_binary_file_state(path, required=False)
+    if before.failure:
+        return r[bool].from_failure(before)
+    if before.value.content is not None:
+        return r[bool].fail(f"isolated Mise file already exists: {path}")
     return u.Cli.atomic_write_binary_file_guarded(
-        path, content, expected_bytes=None, expected_mode=None, permission_mode=mode
+        before.value, content, permission_mode=mode
     )
 
 

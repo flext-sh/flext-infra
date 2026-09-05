@@ -21,10 +21,8 @@ def normalize_lock_mode(path: Path) -> p.Result[bool]:
     if state.value.content is None or state.value.mode is None:
         return r[bool].fail(f"generated Mise lock is absent: {path}")
     return u.Cli.atomic_write_binary_file_guarded(
-        path,
+        state.value,
         state.value.content,
-        expected_bytes=state.value.content,
-        expected_mode=state.value.mode,
         permission_mode=files.ARTIFACT_SPECS[2][1],
     )
 

@@ -125,10 +125,8 @@ class FlextInfraMiseRuntime:
             if state.value.content is None or state.value.mode is None:
                 return r[bool].fail(f"generated Mise receipt is absent: {name}")
             normalized = u.Cli.atomic_write_binary_file_guarded(
-                state.value.path,
+                state.value,
                 state.value.content,
-                expected_bytes=state.value.content,
-                expected_mode=state.value.mode,
                 permission_mode=mode,
             )
             if normalized.failure:

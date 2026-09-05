@@ -156,9 +156,6 @@ Infra:
             - typing-only-standard-library-import
             - typing-only-third-party-import
           ignored-rule-rationales:
-            unsorted-imports:
-              Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
-              semantic c-t-p-m-u dependency order in FLEXT facades.
             import-outside-top-level:
               Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.

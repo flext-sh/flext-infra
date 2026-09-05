@@ -63,9 +63,7 @@ def delete_state(state: m.Cli.AtomicFileState) -> p.Result[bool]:
     """Delete one exact existing state through the CLI owner."""
     if state.content is None or state.mode is None:
         return r[bool].fail(f"cannot delete absent Mise file state: {state.path}")
-    return u.Cli.atomic_delete_binary_file_guarded(
-        state.path, expected_bytes=state.content, expected_mode=state.mode
-    )
+    return u.Cli.atomic_delete_binary_file_guarded(state)
 
 
 def workspace_relative(root: Path, path: Path) -> p.Result[str]:
