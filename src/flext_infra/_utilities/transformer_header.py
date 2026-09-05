@@ -8,9 +8,7 @@ from flext_infra._utilities.transformer_header_parser import (
 from flext_infra.constants import c
 
 
-class FlextInfraUtilitiesTransformerHeader(
-    FlextInfraUtilitiesTransformerHeaderParser
-):
+class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderParser):
     """Inject canonical aliases only when the source actually uses them."""
 
     @classmethod

@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
+    from .code_review_graph import FlextInfraUtilitiesCodeReviewGraph
     from .codegen import FlextInfraUtilitiesCodegen
     from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
     from .compatibility_alias_validation import (
@@ -139,6 +140,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
+    "FlextInfraUtilitiesCodeReviewGraph",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenNamespace",
     "FlextInfraUtilitiesCompatibilityAliasCst",
@@ -302,6 +304,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
+            ".code_review_graph": ("FlextInfraUtilitiesCodeReviewGraph",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".compatibility_alias_cst": ("FlextInfraUtilitiesCompatibilityAliasCst",),
             ".compatibility_alias_validation": (

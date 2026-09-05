@@ -1111,7 +1111,8 @@ class FlextInfraConfigModels:
             m.Field(min_length=1, description="Ordered canonical validation workflow"),
         ]
         ci: Annotated[
-            FlextInfraConfigModels.MakeCiSpec, m.Field(description="Config-owned CI-only environment delta")
+            FlextInfraConfigModels.MakeCiSpec,
+            m.Field(description="Config-owned CI-only environment delta"),
         ]
         testmon_cache: Annotated[
             FlextInfraConfigModels.TestmonCacheSpec,
@@ -1122,10 +1123,12 @@ class FlextInfraConfigModels:
             m.Field(description="Ordered canonical public verbs"),
         ]
         docs: Annotated[
-            FlextInfraConfigModels.MakeDocsSpec, m.Field(description="Public documentation lifecycle policy")
+            FlextInfraConfigModels.MakeDocsSpec,
+            m.Field(description="Public documentation lifecycle policy"),
         ]
         custom_handler_policy: Annotated[
-            FlextInfraConfigModels.CustomHandlerPolicy, m.Field(description="Private custom target policy")
+            FlextInfraConfigModels.CustomHandlerPolicy,
+            m.Field(description="Private custom target policy"),
         ]
         custom_handler_profile_overrides: Annotated[
             Mapping[t.NonEmptyStr, FlextInfraConfigModels.CustomHandlerPolicyOverride],
@@ -1225,7 +1228,9 @@ class FlextInfraConfigModels:
 
         @m.computed_field
         @property
-        def custom_handler_policies(self) -> Mapping[str, FlextInfraConfigModels.CustomHandlerPolicy]:
+        def custom_handler_policies(
+            self,
+        ) -> Mapping[str, FlextInfraConfigModels.CustomHandlerPolicy]:
             """Effective custom-handler policy for every Make profile.
 
             The base policy states the strictest contract (private handlers
@@ -1257,7 +1262,8 @@ class FlextInfraConfigModels:
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="Distribution name")]
         make: Annotated[
-            FlextInfraConfigModels.MakeSpec, m.Field(description="Canonical workflow command contract")
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
         ]
 
     class DistroDockerRenderSpec(_ConfigContract):
@@ -1431,13 +1437,17 @@ class FlextInfraConfigModels:
     class ScaffoldSpec(_ConfigContract):
         """Complete typed policy consumed only by new-project templates."""
 
-        build: Annotated[FlextInfraConfigModels.ScaffoldBuildSpec, m.Field(description="Build-system policy")]
+        build: Annotated[
+            FlextInfraConfigModels.ScaffoldBuildSpec,
+            m.Field(description="Build-system policy"),
+        ]
         project: Annotated[
             FlextInfraConfigModels.ScaffoldProjectSpec,
             m.Field(description="Project metadata and dependency policy"),
         ]
         ping_example: Annotated[
-            FlextInfraConfigModels.ScaffoldPingExampleSpec, m.Field(description="Functional scaffold example")
+            FlextInfraConfigModels.ScaffoldPingExampleSpec,
+            m.Field(description="Functional scaffold example"),
         ]
         gitignore_sections: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
@@ -1605,7 +1615,8 @@ class FlextInfraConfigModels:
             m.Field(description="Immutable GitHub Action catalog"),
         ]
         make: Annotated[
-            FlextInfraConfigModels.MakeSpec, m.Field(description="Canonical workflow command contract")
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical workflow command contract"),
         ]
         workspace_repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
@@ -1713,7 +1724,8 @@ class FlextInfraConfigModels:
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef, m.Field(description="Declared immutable repository identity")
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(description="Declared immutable repository identity"),
         ]
         root: Annotated[
             Path, m.Field(description="Resolved repository root receiving conformance")
@@ -1766,7 +1778,8 @@ class FlextInfraConfigModels:
         """One governed submodule with its provider-owned baseline branch."""
 
         repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef, m.Field(description="Governed repository identity")
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(description="Governed repository identity"),
         ]
         branch: Annotated[
             t.NonEmptyStr,
@@ -1842,7 +1855,8 @@ class FlextInfraConfigModels:
             ),
         ]
         make: Annotated[
-            FlextInfraConfigModels.MakeSpec, m.Field(description="Generated Make command contract")
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Generated Make command contract"),
         ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
@@ -2070,7 +2084,8 @@ class FlextInfraConfigModels:
         """Typed input consumed by the generated Make surface."""
 
         make: Annotated[
-            FlextInfraConfigModels.MakeSpec, m.Field(description="Generated Make command contract")
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Generated Make command contract"),
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
@@ -2188,7 +2203,8 @@ class FlextInfraConfigModels:
             return f"{self.dist.upper().replace('-', '_')}_"
 
         scaffold: Annotated[
-            FlextInfraConfigModels.ScaffoldSpec, m.Field(description="New-project scaffold policy")
+            FlextInfraConfigModels.ScaffoldSpec,
+            m.Field(description="New-project scaffold policy"),
         ]
         gitignore_sections: Annotated[
             tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...],
@@ -2458,7 +2474,8 @@ class FlextInfraConfigModels:
             m.Field(description="Optional workspace-local Dolt connection"),
         ] = None
         repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef, m.Field(description="Root repository declaration")
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(description="Root repository declaration"),
         ]
         project: Annotated[
             FlextInfraConfigModels.ProjectSpec | None,
@@ -2539,7 +2556,8 @@ class FlextInfraConfigModels:
             ),
         ] = None
         repository: Annotated[
-            FlextInfraConfigModels.RepositoryRef, m.Field(description="Local repository Git contract")
+            FlextInfraConfigModels.RepositoryRef,
+            m.Field(description="Local repository Git contract"),
         ]
         project: Annotated[
             FlextInfraConfigModels.ProjectSpec | None,
@@ -2639,7 +2657,8 @@ class FlextInfraConfigModels:
 
         version: Annotated[int, m.Field(ge=1, description="Config schema version")]
         toolchain: Annotated[
-            FlextInfraConfigModels.ToolchainSpec, m.Field(description="Exact generated toolchain")
+            FlextInfraConfigModels.ToolchainSpec,
+            m.Field(description="Exact generated toolchain"),
         ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
@@ -2725,9 +2744,13 @@ class FlextInfraConfigModels:
             m.Field(description="Global governed branch ancestry policy"),
         ]
         profiles: Annotated[
-            tuple[FlextInfraConfigModels.ProfileSpec, ...], m.Field(description="Ordered Make profiles")
+            tuple[FlextInfraConfigModels.ProfileSpec, ...],
+            m.Field(description="Ordered Make profiles"),
         ]
-        make: Annotated[FlextInfraConfigModels.MakeSpec, m.Field(description="Canonical Make contract")]
+        make: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical Make contract"),
+        ]
         vscode: Annotated[
             FlextInfraConfigModels.CodegenVscodeSpec,
             m.Field(description="Canonical VS Code settings merge contract"),
@@ -2826,7 +2849,9 @@ class FlextInfraConfigModels:
         # this projection is the seam they will extend.
         @m.computed_field
         @property
-        def gitignore_sections(self) -> tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...]:
+        def gitignore_sections(
+            self,
+        ) -> tuple[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec, ...]:
             """Derived canonical ``.gitignore`` sections (SSOT order, deduplicated).
 
             Ignore files are order-sensitive: a pattern placed before a
@@ -2871,7 +2896,9 @@ class FlextInfraConfigModels:
             for pattern in self.gitignore_artifact_patterns:
                 if pattern not in governed and pattern not in derived:
                     derived.append(pattern)
-            sections: t.MutableSequenceOf[FlextInfraConfigModels.ScaffoldGitignoreSectionSpec] = []
+            sections: t.MutableSequenceOf[
+                FlextInfraConfigModels.ScaffoldGitignoreSectionSpec
+            ] = []
             # Declared sections are emitted verbatim. Cross-section dedup is
             # unsound for ignore files: repeating `.beads/*` after an
             # intervening `!.beads/` is what keeps the directory scanned, so
@@ -2908,10 +2935,12 @@ class FlextInfraConfigModels:
             )
 
         managed_files: Annotated[
-            tuple[FlextInfraConfigModels.ManagedFileSpec, ...], m.Field(description="Files owned by conform")
+            tuple[FlextInfraConfigModels.ManagedFileSpec, ...],
+            m.Field(description="Files owned by conform"),
         ]
         scaffold: Annotated[
-            FlextInfraConfigModels.ScaffoldSpec, m.Field(description="Typed new-project scaffold policy")
+            FlextInfraConfigModels.ScaffoldSpec,
+            m.Field(description="Typed new-project scaffold policy"),
         ]
         templates: Annotated[
             FlextInfraConfigModels.TemplatesSpec,
@@ -3182,7 +3211,10 @@ class FlextInfraConfigModels:
     class Root(_ConfigContract):
         """Root payload deep-merged from flext-infra config files."""
 
-        Infra: Annotated[FlextInfraConfigModels.Infra, m.Field(description="Validated flext-infra namespace")]
+        Infra: Annotated[
+            FlextInfraConfigModels.Infra,
+            m.Field(description="Validated flext-infra namespace"),
+        ]
 
     class UvEnvironmentPlan(_ConfigContract):
         """One deterministic uv environment operation plan."""
@@ -3441,16 +3473,21 @@ class FlextInfraConfigModels:
         """Fully validated plan produced before any managed-file write."""
 
         request: Annotated[
-            FlextInfraConfigModels.CodegenConformRequest, m.Field(description="Validated public request")
+            FlextInfraConfigModels.CodegenConformRequest,
+            m.Field(description="Validated public request"),
         ]
         repositories: Annotated[
             tuple[FlextInfraConfigModels.RepositoryRef, ...],
             m.Field(description="Selected repositories in deterministic order"),
         ]
         workspace: Annotated[
-            FlextInfraConfigModels.WorkspaceSpec, m.Field(description="Workspace governing the selection")
+            FlextInfraConfigModels.WorkspaceSpec,
+            m.Field(description="Workspace governing the selection"),
         ]
-        make_spec: Annotated[FlextInfraConfigModels.MakeSpec, m.Field(description="Canonical Make contract")]
+        make_spec: Annotated[
+            FlextInfraConfigModels.MakeSpec,
+            m.Field(description="Canonical Make contract"),
+        ]
         uv_environments: Annotated[
             tuple[FlextInfraConfigModels.UvEnvironmentPlan, ...],
             m.Field(description="uv plans paired with selected repositories"),
@@ -3468,7 +3505,8 @@ class FlextInfraConfigModels:
         """Public conformance outcome for check and apply modes."""
 
         plan: Annotated[
-            FlextInfraConfigModels.CodegenPlan, m.Field(description="Plan that governed the operation")
+            FlextInfraConfigModels.CodegenPlan,
+            m.Field(description="Plan that governed the operation"),
         ]
         written_files: Annotated[
             tuple[Path, ...], m.Field(description="Files atomically replaced by apply")

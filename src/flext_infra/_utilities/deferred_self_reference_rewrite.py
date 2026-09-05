@@ -79,16 +79,11 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         """Plan owner-qualified sibling references inside deferred annotations."""
         siblings = tuple(node for node in outer.body if isinstance(node, ast.ClassDef))
         owned_names = frozenset({
-            *(
-                node.name
-                for node in outer.body
-                if isinstance(node, ast.ClassDef)
-            ),
+            *(node.name for node in outer.body if isinstance(node, ast.ClassDef)),
             *(
                 node.name.id
                 for node in outer.body
-                if isinstance(node, ast.TypeAlias)
-                and isinstance(node.name, ast.Name)
+                if isinstance(node, ast.TypeAlias) and isinstance(node.name, ast.Name)
             ),
         })
         offsets = cls._line_offsets(source)
@@ -146,12 +141,10 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         node: ast.FunctionDef | ast.AsyncFunctionDef,
     ) -> t.SequenceOf[ast.expr]:
         """Return annotations evaluated when one function is defined."""
-        arguments = (
-            *node.args.posonlyargs,
-            *node.args.args,
-            *node.args.kwonlyargs,
-        )
-        annotations = [arg.annotation for arg in arguments if arg.annotation is not None]
+        arguments = (*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs)
+        annotations = [
+            arg.annotation for arg in arguments if arg.annotation is not None
+        ]
         annotations.extend(
             arg.annotation
             for arg in (node.args.vararg, node.args.kwarg)
@@ -180,9 +173,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         )
 
     @staticmethod
-    def _apply_edits(
-        source: str, edits: t.SequenceOf[tuple[int, int, str]]
-    ) -> str:
+    def _apply_edits(source: str, edits: t.SequenceOf[tuple[int, int, str]]) -> str:
         """Apply non-overlapping source edits from the end of the file."""
         updated = source
         previous_start = len(source)

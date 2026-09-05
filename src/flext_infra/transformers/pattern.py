@@ -66,9 +66,7 @@ class FlextInfraRefactorPatternTransformer(
         self._required_alias = required_alias
         self._alias_module = (
             alias_module
-            or FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(
-                file_path
-            )
+            or FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(file_path)
             or c.Infra.PKG_CORE_UNDERSCORE
         )
 

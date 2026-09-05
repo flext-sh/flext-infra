@@ -6,11 +6,11 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_infra import c, m
 from flext_infra._utilities._docs_command_contract import (
     FlextInfraUtilitiesDocsCommandContractMixin,
 )
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra import c, m
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -103,9 +103,9 @@ class FlextInfraUtilitiesDocsGuidesMixin:
             if destination_path in expected_paths:
                 continue
             existing = destination_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            if not existing.startswith("<!-- AUTO-GENERATED FILE") and not existing.startswith(
-                "<!-- Generated from docs/guides/"
-            ):
+            if not existing.startswith(
+                "<!-- AUTO-GENERATED FILE"
+            ) and not existing.startswith("<!-- Generated from docs/guides/"):
                 continue
             if apply:
                 destination_path.unlink()

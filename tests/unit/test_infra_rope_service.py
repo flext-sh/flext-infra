@@ -25,11 +25,7 @@ class TestsFlextInfraInfraRopeService:
         family = "u"
         suffix = c.Infra.FAMILY_SUFFIXES[family]
         projects = (
-            (
-                c.Infra.PKG_CORE,
-                c.Infra.PKG_CORE_UNDERSCORE,
-                f"Flext{suffix}",
-            ),
+            (c.Infra.PKG_CORE, c.Infra.PKG_CORE_UNDERSCORE, f"Flext{suffix}"),
             (
                 c.Infra.PKG_INFRA_UNDERSCORE.replace("_", "-"),
                 c.Infra.PKG_INFRA_UNDERSCORE,
@@ -38,18 +34,14 @@ class TestsFlextInfraInfraRopeService:
         )
         for project_name, package_name, namespace in projects:
             repository_root, package_root = u.Tests.create_lazy_init_workspace(
-                tmp_path,
-                project_name=project_name,
-                package_name=package_name,
+                tmp_path, project_name=project_name, package_name=package_name
             )
             family_root = package_root / c.Infra.FAMILY_DIRECTORIES[family]
             tm.ok(u.Cli.ensure_dir(family_root))
             valid_path = family_root / "valid.py"
             valid_owner = f"{namespace}{u.derive_class_stem(valid_path.stem)}"
             tm.ok(
-                u.Cli.files_write_text(
-                    valid_path, f"class {valid_owner}:\n    pass\n"
-                )
+                u.Cli.files_write_text(valid_path, f"class {valid_owner}:\n    pass\n")
             )
             module_path = family_root / "sample.py"
             module_owner = f"{namespace}{u.derive_class_stem(module_path.stem)}"
@@ -95,9 +87,7 @@ class TestsFlextInfraInfraRopeService:
     ) -> None:
         """Multiple classes without one path, public, or MRO owner fail loud."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        module_path = (
-            package_root / c.Infra.FAMILY_DIRECTORIES["u"] / "ambiguous.py"
-        )
+        module_path = package_root / c.Infra.FAMILY_DIRECTORIES["u"] / "ambiguous.py"
         tm.ok(u.Cli.ensure_dir(module_path.parent))
         tm.ok(
             u.Cli.files_write_text(
@@ -123,8 +113,7 @@ class TestsFlextInfraInfraRopeService:
         tm.ok(u.Cli.ensure_dir(module_path.parent))
         tm.ok(
             u.Cli.files_write_text(
-                module_path,
-                "class Owner:\n    pass\n\nclass Child(Owner):\n    pass\n",
+                module_path, "class Owner:\n    pass\n\nclass Child(Owner):\n    pass\n"
             )
         )
         with u.Infra.open_project(repository_root) as rope_project:

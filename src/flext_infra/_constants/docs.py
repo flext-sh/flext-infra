@@ -84,6 +84,16 @@ class FlextInfraConstantsDocs:
         r"^\s*(?:\$\s*)?make\s+(?P<verb>[a-z][a-z0-9_-]*)(?P<args>.*)$", re.IGNORECASE
     )
     """Match an executable Make command and capture its verb and arguments."""
+    DOCS_SHELL_FENCE_LANGUAGES: Final[frozenset[str]] = frozenset({
+        "",
+        "bash",
+        "console",
+        "fish",
+        "sh",
+        "shell",
+        "zsh",
+    })
+    """Markdown fence languages whose lines are executable shell commands."""
     DOCS_FORBIDDEN_MAKE_SELECTOR_RE: Final[t.RegexPattern] = re.compile(
         r"\b(?:PROJECTS?|MATCH|WHAT|FILES?|FIX|CHANGED_ONLY|CHECK_GATES|"
         r"DOCS_PHASE|VALIDATE_SCOPE)\s*=",

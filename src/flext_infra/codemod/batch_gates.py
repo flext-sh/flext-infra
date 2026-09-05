@@ -69,21 +69,14 @@ class FlextInfraModGateEngine:
 
     @classmethod
     def _materialize_split_rule_files(
-        cls,
-        *,
-        config_root: Path,
-        temp_root: Path,
-        owner_rules: t.SequenceOf[Path],
+        cls, *, config_root: Path, temp_root: Path, owner_rules: t.SequenceOf[Path]
     ) -> dict[Path, tuple[Path, ...]]:
         """Replace multi-document rule files with single-document temp copies."""
         split_rules: dict[Path, tuple[Path, ...]] = {}
         source_rules = set(owner_rules)
         config_path = config_root / c.Infra.CODEMOD_CONFIG_FILENAME
         config = u.Cli.yaml_safe_load(config_path).unwrap()
-        for key in (
-            c.Infra.CODEMOD_RULE_DIRS_KEY,
-            c.Infra.CODEMOD_UTIL_DIRS_KEY,
-        ):
+        for key in (c.Infra.CODEMOD_RULE_DIRS_KEY, c.Infra.CODEMOD_UTIL_DIRS_KEY):
             raw_directories = config.get(key)
             if not isinstance(raw_directories, Sequence) or isinstance(
                 raw_directories, str
@@ -99,9 +92,7 @@ class FlextInfraModGateEngine:
                     msg = f"ast-grep {key} escapes its owner: {raw_directory}"
                     raise ValueError(msg)
                 source_rules.update(
-                    (config_root / directory).rglob(
-                        f"*{c.Infra.CODEMOD_RULE_SUFFIX}"
-                    )
+                    (config_root / directory).rglob(f"*{c.Infra.CODEMOD_RULE_SUFFIX}")
                 )
         for rule in sorted(source_rules):
             documents = cls._rule_documents(rule)
@@ -126,14 +117,13 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _sync_rule_fixture_root(
-        *,
-        config_root: Path,
-        temp_root: Path,
-        split_rules: dict[Path, tuple[Path, ...]],
+        *, config_root: Path, temp_root: Path, split_rules: dict[Path, tuple[Path, ...]]
     ) -> None:
         """Mirror validated fixture updates from the temp copy back to source."""
         split_temp_paths = {
-            path.relative_to(temp_root) for paths in split_rules.values() for path in paths
+            path.relative_to(temp_root)
+            for paths in split_rules.values()
+            for path in paths
         }
         for temp_path in temp_root.rglob("*"):
             if not temp_path.is_file():
@@ -183,12 +173,15 @@ class FlextInfraModGateEngine:
             return r[p.Cli.CommandOutput].from_failure(run)
         output = run.value
         sys.stderr.write(
-            f"mod: finish {command[0]} exit={output.exit_code} "
+            f"mod: finish {command[0]} exit={output.outcome.raw_return_code} "
             f"duration={output.duration:.2f}s\n"
         )
         sys.stderr.flush()
-        if output.exit_code != 0:
-            if output.exit_code == finding_exit_code and output.stdout.strip():
+        if output.outcome.raw_return_code != 0:
+            if (
+                output.outcome.raw_return_code == finding_exit_code
+                and output.stdout.strip()
+            ):
                 return r[p.Cli.CommandOutput].ok(output)
             detail = "\n".join(
                 stream.strip()
@@ -196,7 +189,8 @@ class FlextInfraModGateEngine:
                 if stream.strip()
             )
             return r[p.Cli.CommandOutput].fail(
-                f"{command[0]} exited with code {output.exit_code}: {detail}"
+                f"{command[0]} exited with code "
+                f"{output.outcome.raw_return_code}: {detail}"
             )
         stderr = output.stderr.strip()
         if stderr:
@@ -388,10 +382,7 @@ class FlextInfraModGateEngine:
         resolved_root = root.resolve()
         project_roots = u.Infra.governed_project_roots(resolved_root)
         repository_changes = tuple(
-            (
-                project_root,
-                changed_path,
-            )
+            (project_root, changed_path)
             for project_root in project_roots
             for changed_path in u.Infra.git_changed_paths(
                 m.Infra.GitRepoRequest(repo_root=project_root)
@@ -418,9 +409,7 @@ class FlextInfraModGateEngine:
                         for project_root, changed_path in repository_changes
                     ),
                 )
-                if (
-                    resolved := path.resolve()
-                ).is_file()
+                if (resolved := path.resolve()).is_file()
                 and resolved.suffix == c.Infra.EXT_PYTHON
             })
         )
@@ -498,7 +487,7 @@ class FlextInfraModGateEngine:
             report = cls._parse_findings(
                 run.value.stdout, root, rule, rule_ids, fixable_ids
             ).unwrap()
-            if run.value.exit_code != 0:
+            if run.value.outcome.raw_return_code != 0:
                 cls._validate_finding_receipt(
                     run.value.stderr, report.findings
                 ).unwrap()

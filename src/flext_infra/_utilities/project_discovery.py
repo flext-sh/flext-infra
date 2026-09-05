@@ -138,9 +138,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         )
         relative_project = resolved_project.relative_to(resolved_workspace)
         return (
-            state_root
-            if relative_project == Path()
-            else state_root / relative_project
+            state_root if relative_project == Path() else state_root / relative_project
         )
 
 

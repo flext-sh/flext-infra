@@ -1188,9 +1188,6 @@ Infra:
           - bandit>=1.9.4
           # Mandatory make-mod graph analysis for every affected project.
           - code-review-graph[all]>=2.3.8
-          # The mandatory make-mod graph gate indexes each affected governed
-          # project and runs impact/refactor analysis through this console API.
-          - code-review-graph[all]>=2.3.8
           # Every generated Make verb routes through `python -m flext_infra` in
           # the project venv, so `make setup` must provision the pinned generator
           # itself (operator ruling 2026-09-05, flext-cee4z) instead of relying

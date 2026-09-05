@@ -91,9 +91,7 @@ class FlextInfraUtilitiesClassNesting:
             for base in info.bases
             if (terminal := base.rsplit(".", maxsplit=1)[-1]) in class_names
         }
-        mro_owned = tuple(
-            info for info in classes if info.name in local_base_names
-        )
+        mro_owned = tuple(info for info in classes if info.name in local_base_names)
         if len(mro_owned) == 1:
             return mro_owned[0]
         public = tuple(info for info in classes if not info.name.startswith("_"))

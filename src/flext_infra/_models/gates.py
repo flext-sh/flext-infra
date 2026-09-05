@@ -89,8 +89,7 @@ class FlextInfraModelsGates:
         )
 
         schema_version: Annotated[
-            str,
-            m.Field(description="Predicate schema identity"),
+            str, m.Field(description="Predicate schema identity")
         ] = c.Infra.GATE_ATTESTATION_SCHEMA
         repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
         commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Full commit SHA")]

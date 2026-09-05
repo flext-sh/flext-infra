@@ -68,7 +68,7 @@ if TYPE_CHECKING:
     from .codegen.version_file import FlextInfraCodegenVersionFile
     from .codemod.batch_apply import FlextInfraCodemodBatchApply
     from .codemod.batch_gates import FlextInfraModGateEngine
-    from .codemod.semantic_apply import FlextInfraCodemodSemanticApply
+    from .codemod.crg_gate import FlextInfraCodeReviewGraphGate
     from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
@@ -289,6 +289,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
+    "FlextInfraCodeReviewGraphGate",
     "FlextInfraCodegen",
     "FlextInfraCodegenCensus",
     "FlextInfraCodegenConform",
@@ -548,6 +549,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codemod": ("codemod",),
             ".codemod.batch_apply": ("FlextInfraCodemodBatchApply",),
             ".codemod.batch_gates": ("FlextInfraModGateEngine",),
+            ".codemod.crg_gate": ("FlextInfraCodeReviewGraphGate",),
             ".codemod.semantic_apply": ("FlextInfraCodemodSemanticApply",),
             ".codemod.snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
             ".constants": ("FlextInfraConstants", "c"),

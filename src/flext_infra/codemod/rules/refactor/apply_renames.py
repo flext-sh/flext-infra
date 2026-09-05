@@ -147,7 +147,7 @@ class FlextInfraApplyRenames:
             if run_result.failure:
                 return r[bool].fail(run_result.error or "ast-grep execution failed")
             output = run_result.value
-            if output.exit_code != 0:
+            if output.outcome.raw_return_code != 0:
                 detail = output.stderr.strip() or output.stdout.strip()
                 return r[bool].fail(
                     detail or f"ast-grep failed while renaming {old} to {new}"
