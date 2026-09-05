@@ -223,10 +223,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 input_data: str | bytes | None = None,
                 *,
                 live: bool = False,
+                heartbeat_seconds: float | None = None,
                 deadline: p.Cli.ProcessDeadline | None = None,
-            ) -> p.Result[int]:
+            ) -> p.Result[p.Cli.ProcessOutcome]:
                 """Provide the typed test helper `run_to_file`."""
-                del input_data, live, deadline
+                del input_data, live, heartbeat_seconds, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -235,14 +236,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     remove_env_keys=remove_env_keys,
                 )
                 if result.failure:
-                    return r[int].from_failure(result)
+                    return r[p.Cli.ProcessOutcome].from_failure(result)
                 output_path = (
                     output_file if isinstance(output_file, Path) else Path(output_file)
                 )
                 output_path.write_text(
                     f"{result.value.stdout}{result.value.stderr}", encoding="utf-8"
                 )
-                return r[int].ok(result.value.outcome.raw_return_code)
+                return r[p.Cli.ProcessOutcome].ok(result.value.outcome)
 
         class TomlReaderSequence(p.Infra.TomlReader):
             """Protocol-compatible TOML reader that replays typed results."""
@@ -369,6 +370,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Typed runner fixture that materializes a requested output artifact."""
 
             def __init__(self, payload: bytes) -> None:
+                """Store the artifact bytes returned by the synthetic runner."""
                 super().__init__(
                     r.ok(TestsFlextInfraUtilities.Tests.create_command_output(stdout="", stderr="", exit_code=0))
                 )
@@ -1806,7 +1808,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         ["git", "check-ignore", "-q", relative_path], cwd=probe_root
                     )
                 )
-            return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+            return probe.outcome.raw_return_code != int(c.Infra.ScriptExitCode.PASS)
 
         @staticmethod
         def create_checker_project(
