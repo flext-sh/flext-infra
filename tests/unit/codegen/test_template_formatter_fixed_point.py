@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import config, m, u
+from flext_infra import m, u
 from flext_tests import tm
 
 _TEMPLATES = (
@@ -33,9 +33,6 @@ class TestsTemplateFormatterFixedPoint:
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
                     dist="demo",
                     workspace_repositories=(),
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
                 ),
             )
         )
@@ -48,9 +45,6 @@ class TestsTemplateFormatterFixedPoint:
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
                     dist="demo",
                     workspace_repositories=(repository,),
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
                 ),
             )
         )
@@ -66,9 +60,6 @@ class TestsTemplateFormatterFixedPoint:
                     dist="demo",
                     workspace_repositories=(),
                     has_devcontainer=False,
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
                 ),
             )
         )
@@ -79,9 +70,6 @@ class TestsTemplateFormatterFixedPoint:
                     dist="demo",
                     workspace_repositories=(),
                     has_devcontainer=True,
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
                 ),
             )
         )

@@ -45,7 +45,7 @@ def begin(
     try:
         return r[m.Infra.CodegenTransactionJournal].ok(
             m.Infra.CodegenTransactionJournal(
-                version=7,
+                version=8,
                 transaction_id=transaction_id,
                 scope_device=physical_scope.value[0],
                 scope_inode=physical_scope.value[1],
@@ -103,7 +103,7 @@ def append_prepared(
     try:
         return r[m.Infra.CodegenTransactionJournal].ok(
             m.Infra.CodegenTransactionJournal(
-                version=7,
+                version=8,
                 transaction_id=journal.transaction_id,
                 scope_device=journal.scope_device,
                 scope_inode=journal.scope_inode,
@@ -141,7 +141,7 @@ def append_directories(
     try:
         return r[m.Infra.CodegenTransactionJournal].ok(
             m.Infra.CodegenTransactionJournal(
-                version=7,
+                version=8,
                 transaction_id=journal.transaction_id,
                 scope_device=journal.scope_device,
                 scope_inode=journal.scope_inode,
@@ -158,6 +158,61 @@ def append_directories(
         )
 
 
+def record_directories(
+    journal: m.Infra.CodegenTransactionJournal,
+    directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+) -> p.Result[m.Infra.CodegenTransactionJournal]:
+    """Advance physical directory evidence without changing its durable intent."""
+    result_type = r[m.Infra.CodegenTransactionJournal]
+    if tuple(directory.path for directory in directories) != tuple(
+        directory.path for directory in journal.directories
+    ):
+        return result_type.fail("recorded directory topology differs from journal")
+    for previous, current in zip(journal.directories, directories, strict=True):
+        stable_previous = previous.model_dump(
+            exclude={"before", "created", "manifest"}
+        )
+        stable_current = current.model_dump(
+            exclude={"before", "created", "manifest"}
+        )
+        if stable_current != stable_previous:
+            return result_type.fail(
+                f"recorded directory intent changed: {previous.path}"
+            )
+        if previous.before is not None and current.before != previous.before:
+            return result_type.fail(
+                f"recorded directory parent binding changed: {previous.path}"
+            )
+        if previous.before is None and current.before is None and current.created:
+            return result_type.fail(
+                f"created directory lacks parent binding: {previous.path}"
+            )
+        if previous.created is not None and current.created != previous.created:
+            return result_type.fail(
+                f"recorded directory physical identity changed: {previous.path}"
+            )
+        if previous.manifest is not None and current.manifest is None:
+            return result_type.fail(
+                f"recorded directory manifest disappeared: {previous.path}"
+            )
+    try:
+        return result_type.ok(
+            m.Infra.CodegenTransactionJournal(
+                version=8,
+                transaction_id=journal.transaction_id,
+                scope_device=journal.scope_device,
+                scope_inode=journal.scope_inode,
+                state=journal.state,
+                projects=journal.projects,
+                sources=journal.sources,
+                directories=directories,
+                entries=journal.entries,
+            )
+        )
+    except c.ValidationError as exc:
+        return result_type.fail_op("validate recorded directory evidence", exc)
+
+
 def commit(
     journal: m.Infra.CodegenTransactionJournal,
 ) -> p.Result[m.Infra.CodegenTransactionJournal]:
@@ -169,7 +224,7 @@ def commit(
     try:
         return r[m.Infra.CodegenTransactionJournal].ok(
             m.Infra.CodegenTransactionJournal(
-                version=7,
+                version=8,
                 transaction_id=journal.transaction_id,
                 scope_device=journal.scope_device,
                 scope_inode=journal.scope_inode,
@@ -226,6 +281,11 @@ def begin_recovery(
             "rollback_reparse_tag": (
                 None if replacement is None else replacement.reparse_tag
             ),
+            "rollback_staging": (
+                None
+                if replacement is None or entry.original_backup is None
+                else Path(entry.original_backup).with_suffix(".restore").as_posix()
+            ),
         })
         try:
             entries.append(m.Infra.CodegenJournalEntry.model_validate(entry_data))
@@ -236,7 +296,7 @@ def begin_recovery(
     try:
         return r[m.Infra.CodegenTransactionJournal].ok(
             m.Infra.CodegenTransactionJournal(
-                version=7,
+                version=8,
                 transaction_id=journal.transaction_id,
                 scope_device=journal.scope_device,
                 scope_inode=journal.scope_inode,
@@ -293,7 +353,7 @@ def write(
 def read(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
 ) -> p.Result[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
-    """Parse the typed v7 journal without deriving a second filesystem path."""
+    """Parse the typed v8 journal without deriving a second filesystem path."""
     snapshot = state.journal_state(layout)
     result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
     if snapshot.failure:
@@ -455,11 +515,20 @@ def _journal_entry(
         return r[m.Infra.CodegenJournalEntry].fail(
             f"generation staged identity is incomplete: {before.path}"
         )
+    desired_staging: str | None = None
+    if replacement is not None:
+        relative_staging = files.workspace_relative(
+            plan.layout.scope_root, replacement.path
+        )
+        if relative_staging.failure:
+            return r[m.Infra.CodegenJournalEntry].from_failure(relative_staging)
+        desired_staging = relative_staging.value
     return r[m.Infra.CodegenJournalEntry].ok(
         m.Infra.CodegenJournalEntry(
             phase=publication.phase,
             project=project.layout.selector,
             path=selector.value,
+            desired_staging=desired_staging,
             original_exists=before.content is not None,
             original_parent_device=before.parent_device,
             original_parent_inode=before.parent_inode,
@@ -541,5 +610,6 @@ __all__: list[str] = [
     "cleanup",
     "commit",
     "read",
+    "record_directories",
     "write",
 ]

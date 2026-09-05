@@ -1,4 +1,4 @@
-"""Isolated newest-Mise runtime and credential-source owner."""
+"""Isolated newest-Mise runtime and exact-receipt owner."""
 
 from __future__ import annotations
 
@@ -40,30 +40,11 @@ class FlextInfraMiseRuntime:
                 seed_validation.error or "captured Mise seed is invalid"
             )
         environment = process.environment(scratch)
+        seed_environment = process.no_config_environment(environment)
+        seed_environment["MISE_INSTALL_PATH"] = str(
+            scratch / "runtime" / ("seed-mise.exe" if os.name == "nt" else "seed-mise")
+        )
         runtime_environment = process.no_config_environment(environment)
-        updated = process.run(
-            (str(seed), "self-update", "--yes", "--no-plugins"),
-            cwd=scratch,
-            env=runtime_environment,
-            operation="Mise latest release resolution",
-        )
-        if updated.failure:
-            return r[Path].from_failure(updated)
-        resolved_runtime = process.run(
-            (str(seed), "--version"),
-            cwd=scratch,
-            env=runtime_environment,
-            operation="Mise resolved release identity",
-        )
-        if resolved_runtime.failure:
-            return r[Path].from_failure(resolved_runtime)
-        resolved_release = (
-            resolved_runtime.value.split(maxsplit=1)[0]
-            if resolved_runtime.value
-            else ""
-        )
-        if not self._owner.is_mise_release(resolved_release):
-            return r[Path].fail("Mise latest resolution returned an invalid release")
         receipt = scratch / "receipt"
         generated = process.run(
             (
@@ -75,12 +56,10 @@ class FlextInfraMiseRuntime:
                 "--write",
                 str(receipt / "bin" / "mise"),
                 "--windows",
-                "--version",
-                resolved_release,
             ),
             cwd=scratch,
-            env=runtime_environment,
-            operation="Mise exact latest launcher generation",
+            env=seed_environment,
+            operation="Mise latest launcher generation",
         )
         if generated.failure:
             return r[Path].from_failure(generated)
@@ -99,15 +78,21 @@ class FlextInfraMiseRuntime:
         )
         if runtime.failure:
             return r[Path].from_failure(runtime)
-        release = runtime.value.split(maxsplit=1)[0] if runtime.value else ""
+        runtime_parts = runtime.value.split()
+        match runtime_parts:
+            case ["mise", release, *_]:
+                pass
+            case [release, *_]:
+                pass
+            case []:
+                release = ""
         embedded = self._owner.launcher_release(receipt)
         if (
             not self._owner.is_mise_release(release)
             or embedded.failure
             or release != embedded.value
-            or release != resolved_release
         ):
-            return r[Path].fail("Mise newest runtime differs from its receipt")
+            return r[Path].fail("Mise latest runtime differs from its exact receipt")
         u.Cli.info(f"mise-toolchain: resolved latest runtime={release}")
         return r[Path].ok(receipt)
 

@@ -6,7 +6,6 @@ import tomllib
 from pathlib import Path
 
 from flext_infra import c, config, m, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
 from tests import u as test_u
 
@@ -57,39 +56,6 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
-    def test_repository_cooldown_policy_composes_with_fleet_policy(self) -> None:
-        """A local exemption/override narrows the fleet map without replacing it."""
-        repository = _repository(
-            "external-consumer", role=c.Infra.MakeProfile.STANDALONE, path="."
-        ).model_copy(
-            update={
-                "dependency_cooldown_exclusions": (
-                    "repository-exempt",
-                    "fleet-overridden",
-                ),
-                "dependency_cooldown_overrides": {
-                    "repository-dated": "2026-09-01T00:00:00Z"
-                },
-            }
-        )
-        toolchain = config.Infra.codegen.toolchain.model_copy(
-            update={
-                "dependency_cooldown_exclusions": ("fleet-exempt", "repository-dated"),
-                "dependency_cooldown_overrides": {
-                    "fleet-overridden": "2026-08-01T00:00:00Z"
-                },
-            }
-        )
-
-        exclusions, overrides = FlextInfraCodegenConform._dependency_cooldown_policy(  # ruff:ignore[private-member-access]
-            repository, toolchain
-        )
-
-        tm.that(
-            exclusions, eq=("fleet-exempt", "repository-exempt", "fleet-overridden")
-        )
-        tm.that(overrides, eq={"repository-dated": "2026-09-01T00:00:00Z"})
-
     def test_workspace_root_uses_workspace_provenance(self) -> None:
         workspace = _workspace()
         result = u.Infra.pyproject_dependencies_conform(
@@ -226,6 +192,8 @@ dev = ["custom-tool>=1"]
 
 [tool.uv]
 required-version = ">=0"
+exclude-newer = "7 days"
+exclude-newer-package = { cryptography = false }
 
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
@@ -253,21 +221,8 @@ python-interpreter-path = "../.venv/bin/python"
         document = tomllib.loads(first)
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
-        tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
-        # Why (flext-6itas.4): exclude-newer-package merges boolean exclusions
-        # with per-package RFC 3339 cutoffs (b3f3fb75c added
-        # dependency_cooldown_overrides so a floor published after the shared
-        # cooldown can get its own cutoff instead of only a name-only bypass).
-        expected_exclude_newer_package: dict[str, bool | str] = {
-            package: False
-            for package in toolchain.dependency_cooldown_exclusions
-            if package not in toolchain.dependency_cooldown_overrides
-        }
-        expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
-        tm.that(
-            document["tool"]["uv"]["exclude-newer-package"],
-            eq=expected_exclude_newer_package,
-        )
+        tm.that(document["tool"]["uv"], lacks="exclude-newer")
+        tm.that(document["tool"]["uv"], lacks="exclude-newer-package")
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)

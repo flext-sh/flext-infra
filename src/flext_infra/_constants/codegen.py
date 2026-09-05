@@ -62,8 +62,6 @@ class FlextInfraConstantsCodegen(
     "Number of numeric components in a generated Mise release version."
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
     "Required caller-owned persistent root for generated Mise setup."
-    MISE_BOOTSTRAP_RUNTIME_DIRECTORY: Final[str] = "bootstrap"
-    "Persistent directory containing explicitly addressed Mise runtimes."
     MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (
         ("GIT_CONFIG_NOSYSTEM", "1"),
         ("GIT_TERMINAL_PROMPT", "0"),
@@ -100,7 +98,6 @@ class FlextInfraConstantsCodegen(
         ("XDG_DATA_HOME", "xdg-data"),
         ("XDG_CACHE_HOME", "xdg-cache"),
         ("XDG_STATE_HOME", "xdg-state"),
-        ("GH_CONFIG_DIR", "gh-config"),
         ("NETRC", "netrc"),
         ("GIT_CONFIG_GLOBAL", "gitconfig"),
         ("MISE_NETRC_FILE", "netrc"),

@@ -35,10 +35,6 @@ class TestsRepositoryLocalTopology:
             update={
                 "checkout": c.Infra.CheckoutKind.INDEPENDENT,
                 "uv_link_mode": "clone",
-                "dependency_cooldown_exclusions": ("fresh-package",),
-                "dependency_cooldown_overrides": {
-                    "dated-package": "2026-09-01T00:00:00Z"
-                },
             }
         )
         tm.ok(
@@ -56,13 +52,33 @@ class TestsRepositoryLocalTopology:
 
         tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
         tm.that(workspace.repository.uv_link_mode, eq="clone")
-        tm.that(
-            workspace.repository.dependency_cooldown_exclusions, eq=("fresh-package",)
+
+    def test_selected_workspace_manifest_rejects_removed_cooldown_input(
+        self, tmp_path: Path
+    ) -> None:
+        """The final schema rejects the retired dependency-delay contract."""
+        root = tmp_path / "manifest-retired-cooldown"
+        name = "fixture-retired-cooldown"
+        WorktreeFixture.initialize_governed_project(
+            root,
+            name,
+            workspace=name,
+            database=name.replace("-", "_"),
+            issue_prefix=name,
         )
-        tm.that(
-            workspace.repository.dependency_cooldown_overrides,
-            eq={"dated-package": "2026-09-01T00:00:00Z"},
+        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        declared = observed.repository.model_dump(mode="json")
+        declared["dependency_cooldown_exclusions"] = ["retired-package"]
+        tm.ok(
+            u.Cli.yaml_dump(
+                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
+                {"version": 3, "name": name, "repository": declared},
+            )
         )
+
+        result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
+
+        tm.fail(result, has="dependency_cooldown_exclusions")
 
     def test_selected_workspace_manifest_rejects_git_contradiction(
         self, tmp_path: Path

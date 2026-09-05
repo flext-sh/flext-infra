@@ -69,7 +69,13 @@ class TestsCodegenCatalogExtensions:
             Path(__file__).parents[3]
             / "src/flext_infra/templates/project/base/tool_bootstrap_recipe.j2"
         ).read_text(encoding="utf-8")
-        tm.that(template, has="https://github.com/jdx/mise/releases/latest")
+        tm.that(template, lacks="latest_release_url")
+        tm.that(template, lacks="curl ")
+        tm.that(template, lacks="--windows --version")
+        tm.that(template, has="generate install-script --write")
+        tm.that(template, has='mise_install_path="$$scratch/runtime/seed-mise')
+        tm.that(template, has='mise_install_path="$$scratch/runtime/mise')
+        tm.that(template, has="receipt_runtime")
         tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
@@ -93,13 +99,16 @@ class TestsCodegenCatalogExtensions:
         )
         mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
         tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
+        tm.that(mise_template, lacks="credential_command")
+        tm.that(mise_template, lacks="minimum_release_age")
         tm.that("_builtin_gen_check:" in content, eq=True)
         tm.that("_builtin_gen_apply:" in content, eq=True)
         bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
             encoding="utf-8"
         )
-        tm.that(bootstrap, has="https://github.com/jdx/mise/releases/latest")
-        tm.that(bootstrap, has="curl -fsSIL")
+        tm.that(bootstrap, lacks="latest_release_url")
+        tm.that(bootstrap, lacks="curl ")
+        tm.that(bootstrap, lacks="GH_CONFIG_DIR")
         tm.that(bootstrap, lacks="self-update")
         tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}

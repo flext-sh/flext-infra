@@ -8,8 +8,9 @@ Infra:
       # compatible 3.13 patch; no patch is pinned in generated repositories.
       # Derived as computed fields on ToolchainSpec:
       #   python_required_version -> >=3.13,<3.14
-      # uv is supplied by the caller environment and is deliberately not pinned.
-      # Dependency floors live in pyproject; uv.lock owns resolved versions.
+      # Every fleet binary is selected as latest. mise.lock alone owns the
+      # resolved immutable versions and checksums; dependency floors remain in
+      # pyproject and uv.lock alone owns their resolved Python distributions.
       python_version: "3.13"
       uv_link_mode: copy
       # Supported resolution environments for the generated lock. Windows is
@@ -17,28 +18,20 @@ Infra:
       # structlog<26 cap against flext-core's structlog>=26.1 floor and is
       # unsatisfiable, so uv must skip that split instead of failing the lock.
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-      # Supply-chain cooldown SSOT (CWE-829): projected to uv exclude-newer and
-      # every Dependabot ecosystem so updates never raise floors that uv blocks.
-      dependency_cooldown_days: 7
-      # Security updates are not delayed by Dependabot; match that behavior in
-      # uv only for explicitly reviewed security floors.
-      dependency_cooldown_exclusions: [cryptography]
-      # Non-Python toolchain floors consumed by generated .mise.toml and CI.
-      # Patch releases float; minor and major do not. mise resolves the newest
-      # patch inside the declared minor.
-      uv_version: "0.12"
-      kubectl_version: "1.32"
-      helm_version: "3.19"
-      kind_version: "0.31"
-      direnv_version: "2.37"
-      taplo_version: "0.10"
-      ast_grep_version: "0.45"
-      gitleaks_version: "8.30"
-      scc_version: "4.0"
-      kubeconform_version: "0.8"
-      qlty_version: "0.642"
-      # Moving selector is deliberate: setup must always provision the newest
-      # Mise release instead of rejecting a newer binary than code generation.
+      # Moving selectors consumed by generated .mise.toml and CI. Freezing a
+      # major, minor, or patch here would create a second lock owner and prevent
+      # setup from converging the fleet on the newest published release.
+      uv_version: latest
+      kubectl_version: latest
+      helm_version: latest
+      kind_version: latest
+      direnv_version: latest
+      taplo_version: latest
+      ast_grep_version: latest
+      gitleaks_version: latest
+      scc_version: latest
+      kubeconform_version: latest
+      qlty_version: latest
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -65,12 +58,10 @@ Infra:
       protected_mise_tools:
         - beads
         - gascity
-      go_version: "1.26"
+      go_version: latest
       gascity:
-        # The fleet gc is the operator's build of upstream tag v1.4.1: the
-        # source tree is byte-identical, but it links beads v1.2.2 without a
-        # module replace, so the native store's version_compat gate stops
-        # degrading every rig to the fork-per-op BdStore fallback.
+        # The fleet gc is the operator's fork carrying the native-store
+        # compatibility correction required by every governed rig.
         selector: github:marlon-costa-dc/gascity
         # Operator order 2026-09-04: always the newest release of OUR fork.
         # Freezing this stranded the fleet on a build predating its own source
@@ -91,14 +82,12 @@ Infra:
         # The selector, not a pinned version, is what keeps the fleet off
         # upstream; freezing the version only rejects our own later releases.
         version: latest
-        # The fleet bd is the operator's fork: it carries 4c1c40337
-        # "fix(list): stop bd list from looping forever on hierarchy cycles",
-        # absent from upstream v1.2.2, which has already produced a 17.7 GB
-        # runaway and an OOM on this host. The tag is a prerelease, so mise
-        # must be allowed to resolve it.
+        # The fleet bd is the operator's fork carrying the hierarchy-cycle
+        # guard required to prevent unbounded list traversal. Its releases use
+        # prerelease tags, so mise must be allowed to resolve them.
         prerelease: true
         # Selector shapes that identify this tool in a mise manifest, so a
-        # regenerated .mise.toml cannot silently replace the pinned release.
+        # regenerated .mise.toml cannot silently replace the selected fork.
         selector_patterns:
           - bd
           - beads
@@ -1377,7 +1366,6 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!.mise.toml"
-            - "!.default-python-packages"
             - "!.python-version"
         - name: "Docker configuration"
           profiles: [workspace]

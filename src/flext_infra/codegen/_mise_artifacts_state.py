@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
+from flext_infra.codegen import _mise_artifacts_verification as verify
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -95,54 +96,132 @@ def plan_directories(
             relative = files.workspace_relative(layout.scope_root, directory)
             if relative.failure:
                 return result_type.from_failure(relative)
+            before: m.Cli.AtomicDirectoryState | None = None
+            if directory.parent == chain.value.anchor_path:
+                observed = u.Cli.atomic_read_empty_directory_state(
+                    directory, required=False
+                )
+                if observed.failure:
+                    return result_type.from_failure(observed)
+                if observed.value.exists or (
+                    observed.value.parent_device,
+                    observed.value.parent_inode,
+                ) != (chain.value.anchor_device, chain.value.anchor_inode):
+                    return result_type.fail(
+                        f"{phase} directory anchor changed during planning: {directory}"
+                    )
+                before = observed.value
             entry = m.Infra.CodegenJournalDirectory(
                 phase=phase,
                 project=owner.selector,
                 path=relative.value,
                 disposition=disposition,
+                before=before,
             )
             previous = planned.get(directory)
-            if previous is not None and previous != entry:
+            if previous is not None and (
+                previous.phase,
+                previous.project,
+                previous.disposition,
+            ) != (entry.phase, entry.project, entry.disposition):
                 return result_type.fail(
                     f"generation directory has conflicting owners: {directory}"
                 )
-            planned[directory] = entry
+            if previous is None or (previous.before is None and before is not None):
+                planned[directory] = entry
     ordered = tuple(planned[path] for path in sorted(planned, key=_path_order))
     return result_type.ok(ordered)
 
 
-def create_journaled_directories(
+def create_journaled_directory(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+    entry: m.Infra.CodegenJournalDirectory,
+) -> p.Result[m.Infra.CodegenJournalDirectory]:
+    """Create one durable intent and return its exact physical identity."""
+    result_type = r[m.Infra.CodegenJournalDirectory]
+    if entry.created is not None or entry not in directories:
+        return result_type.fail(f"invalid directory creation cursor: {entry.path}")
+    target = files.resolve_relative(
+        layout.scope_root, entry.path, purpose="journaled generation directory"
+    )
+    if target.failure:
+        return result_type.from_failure(target)
+    project = next(
+        (item for item in layout.projects if item.selector == entry.project), None
+    )
+    if project is None or not target.value.is_relative_to(project.root):
+        return result_type.fail(
+            f"journaled directory differs from its project: {entry.path}"
+        )
+    before = entry.before
+    if before is None:
+        parent_entry = next(
+            (
+                candidate
+                for candidate in directories
+                if (layout.scope_root / candidate.path).absolute()
+                == target.value.parent
+            ),
+            None,
+        )
+        if (
+            parent_entry is None
+            or parent_entry.created is None
+            or parent_entry.created.device is None
+            or parent_entry.created.inode is None
+        ):
+            return result_type.fail(
+                f"journaled directory parent has no durable identity: {entry.path}"
+            )
+        observed = u.Cli.atomic_read_empty_directory_state(
+            target.value, required=False
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        before = observed.value
+        if before.exists or (
+            before.parent_device,
+            before.parent_inode,
+        ) != (parent_entry.created.device, parent_entry.created.inode):
+            return result_type.fail(
+                f"journaled directory parent changed before creation: {entry.path}"
+            )
+    elif before.path != target.value:
+        return result_type.fail(
+            f"journaled absent state belongs to another path: {entry.path}"
+        )
+    created = u.Cli.atomic_create_empty_directory_guarded(
+        before,
+        permission_mode=0o700 if entry.disposition == "temporary" else 0o755,
+    )
+    if created.failure:
+        return result_type.from_failure(created)
+    try:
+        return result_type.ok(
+            m.Infra.CodegenJournalDirectory.model_validate({
+                **entry.model_dump(),
+                "before": before,
+                "created": created.value,
+            })
+        )
+    except c.ValidationError as exc:
+        rolled_back = u.Cli.atomic_delete_empty_directory_guarded(created.value)
+        if rolled_back.failure:
+            return result_type.fail(
+                f"validate created directory identity failed: {exc}; "
+                f"compensation failed: {rolled_back.error}"
+            )
+        return result_type.fail_op("validate created directory identity", exc)
+
+
+def compensate_created_directory(
+    entry: m.Infra.CodegenJournalDirectory,
 ) -> p.Result[bool]:
-    """Materialize only paths whose prior absence is already durable."""
-    for entry in directories:
-        target = files.resolve_relative(
-            layout.scope_root, entry.path, purpose="journaled generation directory"
-        )
-        if target.failure:
-            return r[bool].from_failure(target)
-        project = next(
-            (item for item in layout.projects if item.selector == entry.project), None
-        )
-        if project is None or not target.value.is_relative_to(project.root):
-            return r[bool].fail(
-                f"journaled directory differs from its project: {entry.path}"
-            )
-        before = u.Cli.atomic_read_empty_directory_state(target.value, required=False)
-        if before.failure:
-            return r[bool].from_failure(before)
-        if before.value.exists:
-            return r[bool].fail(
-                f"journaled absent directory appeared before creation: {entry.path}"
-            )
-        created = u.Cli.atomic_create_empty_directory_guarded(
-            before.value,
-            permission_mode=0o700 if entry.disposition == "temporary" else 0o755,
-        )
-        if created.failure:
-            return r[bool].from_failure(created)
-    return r[bool].ok(True)
+    """Remove only the exact empty directory returned by this invocation."""
+    if entry.created is None:
+        return r[bool].fail(f"directory has no created identity: {entry.path}")
+    return u.Cli.atomic_delete_empty_directory_guarded(entry.created)
 
 
 def journal_state(
@@ -199,25 +278,55 @@ def cleanup_journaled_directories(
     include_generated: bool,
 ) -> p.Result[bool]:
     """Remove authenticated temporary trees and authorized empty directories."""
-    validated = validate_transaction_roots(layout)
+    validated = validate_transaction_roots(layout, journal)
     if validated.failure:
         return validated
+    removed_temporary_roots: set[str] = set()
     for project in layout.projects:
         transaction_root = project.transaction_root
         if transaction_root is None:
             return r[bool].fail("Mise recovery layout has no transaction root")
         if not transaction_root.exists() and not transaction_root.is_symlink():
             continue
-        inventory = u.Cli.atomic_inventory_physical_tree(transaction_root)
-        if inventory.failure:
-            return r[bool].from_failure(inventory)
-        removed = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
+        relative = files.workspace_relative(layout.scope_root, transaction_root)
+        if relative.failure:
+            return r[bool].from_failure(relative)
+        entry = next(
+            (item for item in journal.directories if item.path == relative.value), None
+        )
+        if entry is None or entry.created is None:
+            return r[bool].fail(
+                f"transaction root has no durable physical identity: {relative.value}"
+            )
+        if entry.manifest is None:
+            observed = u.Cli.atomic_inventory_physical_tree(transaction_root)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            try:
+                m.Infra.CodegenJournalDirectory.model_validate({
+                    **entry.model_dump(),
+                    "manifest": observed.value,
+                })
+            except c.ValidationError as exc:
+                return r[bool].fail_op(
+                    "validate recovery temporary-tree manifest", exc
+                )
+            removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
+        else:
+            observed = verify.authorized_cleanup_manifest(layout, journal, entry)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
         if removed.failure:
             return removed
+        removed_temporary_roots.add(entry.path)
     removable = tuple(
         directory
         for directory in journal.directories
-        if directory.disposition == "temporary" or include_generated
+        if (
+            directory.path not in removed_temporary_roots
+            and (directory.disposition == "temporary" or include_generated)
+        )
     )
     for entry in sorted(removable, key=_directory_cleanup_order, reverse=True):
         target = files.resolve_relative(
@@ -227,20 +336,22 @@ def cleanup_journaled_directories(
             return r[bool].from_failure(target)
         if not target.value.exists() and not target.value.is_symlink():
             continue
-        current = u.Cli.atomic_read_empty_directory_state(target.value, required=True)
-        if current.failure:
+        if entry.created is None:
             return r[bool].fail(
-                current.error
+                f"journaled directory exists without durable identity: {entry.path}"
+            )
+        removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
+        if removed.failure:
+            return r[bool].fail(
+                removed.error
                 or f"journaled directory is not safely empty: {entry.path}"
             )
-        removed = u.Cli.atomic_delete_empty_directory_guarded(current.value)
-        if removed.failure:
-            return removed
     return r[bool].ok(True)
 
 
 def validate_transaction_roots(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
 ) -> p.Result[bool]:
     """Authenticate the sole journal-derived staging root in every project."""
     expected = {
@@ -262,9 +373,20 @@ def validate_transaction_roots(
             return r[bool].from_failure(transaction)
         if transaction.value is None:
             continue
-        inventory = u.Cli.atomic_inventory_physical_tree(transaction_root)
-        if inventory.failure:
-            return r[bool].from_failure(inventory)
+        relative = files.workspace_relative(layout.scope_root, transaction_root)
+        if relative.failure:
+            return r[bool].from_failure(relative)
+        recorded = next(
+            (item for item in journal.directories if item.path == relative.value), None
+        )
+        if (
+            recorded is None
+            or recorded.created is None
+            or (recorded.created.device, recorded.created.inode) != transaction.value
+        ):
+            return r[bool].fail(
+                f"Mise transaction root identity is not journaled: {relative.value}"
+            )
     return r[bool].ok(True)
 
 
@@ -309,7 +431,8 @@ def _is_reparse(state: os.stat_result) -> bool:
 
 __all__: list[str] = [
     "cleanup_journaled_directories",
-    "create_journaled_directories",
+    "compensate_created_directory",
+    "create_journaled_directory",
     "journal_state",
     "plan_directories",
     "plan_transaction_directories",

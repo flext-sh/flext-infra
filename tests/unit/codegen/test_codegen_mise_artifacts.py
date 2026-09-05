@@ -85,7 +85,7 @@ class TestsCodegenMiseArtifacts:
                 "[tool_config]",
                 "locked = true",
                 f'[tools."{selector}"]',
-                'version = "1.2.3"',
+                'version = "latest"',
                 "",
             )),
             encoding="utf-8",
@@ -96,7 +96,7 @@ class TestsCodegenMiseArtifacts:
             f'[[tools."{selector}"]]',
             'version = "1.2.3"',
             f'backend = "{selector}"',
-            'specifiers = ["1.2.3"]',
+            'specifiers = ["latest"]',
         ]
         checksum = "b" * 64
         for platform in selected_platforms:

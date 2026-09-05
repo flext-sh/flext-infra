@@ -80,7 +80,7 @@ class FlextInfraProtocolsBase(Protocol):
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
     class MiseToolSpec(Protocol):
-        """One exact mise backend selector and immutable version."""
+        """One mise backend whose exact release is owned by ``mise.lock``."""
 
         @property
         def selector(self) -> str:
@@ -89,7 +89,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def version(self) -> str:
-            """Exact tool version installed by mise."""
+            """Moving release selector installed and locked by mise."""
             ...
 
     @runtime_checkable
@@ -182,16 +182,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def read_only(self) -> bool:
             """Whether generated mutations are forbidden."""
-            ...
-
-        @property
-        def dependency_cooldown_exclusions(self) -> t.StrSequence:
-            """Packages exempted from cooldown for this repository."""
-            ...
-
-        @property
-        def dependency_cooldown_overrides(self) -> t.StrMapping:
-            """Per-package cooldown cutoffs for this repository."""
             ...
 
     @runtime_checkable
@@ -325,43 +315,23 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def dependency_cooldown_days(self) -> int:
-            """Supply-chain cooldown shared by dependency update tools."""
-            ...
-
-        @property
-        def dependency_cooldown_exclusions(self) -> t.StrSequence:
-            """Packages exempted from cooldown for urgent security floors."""
-            ...
-
-        @property
-        def dependency_cooldown_overrides(self) -> t.StrMapping:
-            """Per-package cooldown cutoffs as RFC 3339 timestamps."""
-            ...
-
-        @property
-        def uv_exclude_newer(self) -> str:
-            """Uv exclude-newer cooldown window for dependency resolution."""
-            ...
-
-        # `uv_exclude_newer_package` used to sit here, undocumented and with no
-        # implementation on ToolchainSpec, so the model never satisfied its own
-        # protocol. `dependency_cooldown_overrides` above is that concept, named
-        # for the policy rather than the uv key it renders into.
-
-        @property
         def kubectl_version(self) -> str:
-            """Exact kubectl version."""
+            """Moving kubectl release selector."""
             ...
 
         @property
         def helm_version(self) -> str:
-            """Exact Helm version."""
+            """Moving Helm release selector."""
             ...
 
         @property
         def kind_version(self) -> str:
-            """Exact kind version."""
+            """Moving kind release selector."""
+            ...
+
+        @property
+        def direnv_version(self) -> str:
+            """Moving direnv release selector."""
             ...
 
         @property
@@ -371,42 +341,42 @@ class FlextInfraProtocolsBase(Protocol):
 
         @property
         def taplo_version(self) -> str:
-            """Exact Taplo formatter version."""
+            """Moving Taplo release selector."""
             ...
 
         @property
         def ast_grep_version(self) -> str:
-            """Exact ast-grep analyzer version."""
+            """Moving ast-grep release selector."""
             ...
 
         @property
         def gitleaks_version(self) -> str:
-            """Exact Gitleaks scanner version."""
+            """Moving Gitleaks release selector."""
             ...
 
         @property
         def scc_version(self) -> str:
-            """Exact scc code-counter version."""
+            """Moving scc release selector."""
             ...
 
         @property
         def kubeconform_version(self) -> str:
-            """Compatible kubeconform minor line."""
+            """Moving kubeconform release selector."""
             ...
 
         @property
         def qlty_version(self) -> str:
-            """Exact qlty code-smell scanner version."""
+            """Moving qlty release selector."""
             ...
 
         @property
         def uv_version(self) -> str:
-            """Compatible uv major.minor line."""
+            """Moving uv release selector."""
             ...
 
         @property
         def go_version(self) -> str:
-            """Exact Go runtime version backing go: mise selectors."""
+            """Moving Go release selector backing go: mise selectors."""
             ...
 
         @property

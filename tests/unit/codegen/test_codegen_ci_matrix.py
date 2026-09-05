@@ -299,10 +299,9 @@ class TestCodegenCiMatrix:
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
-    def test_dependabot_uses_uv_dependency_cooldown(self, tmp_path: Path) -> None:
-        """Dependabot never raises floors newer than uv will resolve."""
+    def test_dependabot_does_not_delay_available_updates(self, tmp_path: Path) -> None:
+        """Every declared ecosystem can select its newest available release."""
         root = self._render_project(tmp_path / "external")
-        cooldown = config.Infra.codegen.toolchain.dependency_cooldown_days
 
         document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
         updates = t.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
@@ -313,11 +312,7 @@ class TestCodegenCiMatrix:
         tm.that(ecosystems, eq={"github-actions", "pip"})
         for item in updates:
             update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            cooldown_config = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                update["cooldown"]
-            )
-            tm.that(cooldown_config["default-days"], eq=cooldown)
-        tm.that(config.Infra.codegen.toolchain.uv_exclude_newer, eq=f"{cooldown} days")
+            tm.that(update, lacks="cooldown")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -553,7 +548,6 @@ class TestCodegenCiMatrix:
             "!bin/mise",
             "!bin/mise.cmd",
             "!.python-version",
-            "!.default-python-packages",
             "!config/",
             "!scripts/dispatch.py",
             "!tests/fixtures/ci/docker/",

@@ -275,7 +275,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             return value
 
     class CodegenJournalDirectory(m.ArbitraryTypesModel):
-        """One directory proven absent before a journal-authorized creation."""
+        """One journal-authorized directory creation and its physical identity."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
@@ -295,6 +295,18 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             Literal["temporary", "generated"],
             m.Field(description="Commit-time retention policy for the directory"),
         ]
+        before: Annotated[
+            m.Cli.AtomicDirectoryState | None,
+            m.Field(description="Exact absent leaf and existing-parent binding"),
+        ] = None
+        created: Annotated[
+            m.Cli.AtomicDirectoryState | None,
+            m.Field(description="Exact physical identity returned by guarded creation"),
+        ] = None
+        manifest: Annotated[
+            m.Cli.AtomicPhysicalTreeManifest | None,
+            m.Field(description="Last durable authorized temporary-tree manifest"),
+        ] = None
 
         @u.field_validator("path")
         @classmethod
@@ -313,10 +325,52 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
 
         @u.model_validator(mode="after")
         def _validate_disposition(self) -> Self:
-            """Bind transaction paths to temporary cleanup semantics."""
+            """Bind lifecycle metadata to one physical leaf path."""
             if (self.phase == "transaction") != (self.disposition == "temporary"):
                 msg = "transaction phase and temporary disposition must coincide"
                 raise ValueError(msg)
+            if self.before is not None and self.before.exists:
+                msg = "codegen directory preflight state must be absent"
+                raise ValueError(msg)
+            if self.created is not None and not self.created.exists:
+                msg = "codegen directory created state must be present"
+                raise ValueError(msg)
+            if (
+                self.before is not None
+                and self.created is not None
+                and self.before.path != self.created.path
+            ):
+                msg = "codegen directory states belong to different paths"
+                raise ValueError(msg)
+            if self.manifest is not None:
+                created = self.created
+                root = self.manifest.root
+                if created is None or self.disposition != "temporary":
+                    msg = "only a created temporary directory may own a tree manifest"
+                    raise ValueError(msg)
+                manifest_identity = (
+                    root.path,
+                    root.parent_device,
+                    root.parent_inode,
+                    root.mode,
+                    root.device,
+                    root.inode,
+                    root.file_attributes,
+                    root.reparse_tag,
+                )
+                created_identity = (
+                    created.path,
+                    created.parent_device,
+                    created.parent_inode,
+                    created.mode,
+                    created.device,
+                    created.inode,
+                    created.file_attributes,
+                    created.reparse_tag,
+                )
+                if manifest_identity != created_identity:
+                    msg = "temporary-tree manifest differs from created directory"
+                    raise ValueError(msg)
             return self
 
     class CodegenJournalSource(m.ArbitraryTypesModel):
@@ -399,6 +453,10 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             t.NonEmptyStr,
             m.Field(description="Workspace-relative live file destination"),
         ]
+        desired_staging: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Workspace-relative staged replacement path"),
+        ] = None
         original_exists: Annotated[
             bool,
             m.Field(
@@ -529,6 +587,28 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         rollback_reparse_tag: Annotated[
             int | None, m.Field(ge=0, strict=True, description="Rollback reparse tag")
         ] = None
+        rollback_staging: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(description="Workspace-relative durable rollback candidate path"),
+        ] = None
+
+        @u.field_validator(
+            "path", "original_backup", "desired_staging", "rollback_staging"
+        )
+        @classmethod
+        def _validate_relative_file_path(cls, value: str | None) -> str | None:
+            if value is None:
+                return None
+            relative = Path(value)
+            if (
+                relative.is_absolute()
+                or relative.as_posix() != value
+                or value in {"", "."}
+                or ".." in relative.parts
+            ):
+                msg = f"unsafe codegen journal file path: {value}"
+                raise ValueError(msg)
+            return value
 
         @u.model_validator(mode="after")
         def _validate_original_tuple(self) -> Self:
@@ -566,6 +646,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             ):
                 msg = "codegen journal desired identity is inconsistent"
                 raise ValueError(msg)
+            if self.desired_exists != (self.desired_staging is not None):
+                msg = "codegen journal desired staging path is inconsistent"
+                raise ValueError(msg)
             if not self.desired_exists and (
                 self.desired_file_attributes is not None
                 or self.desired_reparse_tag is not None
@@ -592,6 +675,9 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 raise ValueError(msg)
             if self.rollback_exists is True and not all(rollback_populated):
                 msg = "codegen journal rollback identity is incomplete"
+                raise ValueError(msg)
+            if (self.rollback_exists is True) != (self.rollback_staging is not None):
+                msg = "codegen journal rollback staging path is inconsistent"
                 raise ValueError(msg)
             if self.rollback_exists is False and any(rollback_populated):
                 msg = "absent codegen rollback cannot contain file identity"
@@ -641,7 +727,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
-            Literal[7], m.Field(description="Exact journal schema version")
+            Literal[8], m.Field(description="Exact journal schema version")
         ]
         transaction_id: Annotated[
             str,

@@ -642,12 +642,29 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def write_mise_stub(path: Path) -> Path:
             """Write the one hermetic Mise contract used by Make setup fixtures."""
             TestsFlextInfraUtilities.Tests.write_executable(
+                path.with_name("direnv"), "#!/bin/sh\nexit 0\n"
+            )
+            TestsFlextInfraUtilities.Tests.write_executable(
                 path,
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
                 "printf '%s\\n' '2026.9.1'; exit; fi\n"
-                f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
-                f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
+                'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
+                "'0.12.5'; exit ;; esac\n"
+                'case " $* " in *" generate install-script "*)\n'
+                '  while [ "$#" -gt 0 ]; do\n'
+                '    if [ "$1" = "--write" ]; then\n'
+                '      test "$#" -ge 2\n'
+                '      cp -- "$0" "$2"\n'
+                '      cp -- "$0" "$2.cmd"\n'
+                "      exit\n"
+                "    fi\n"
+                "    shift\n"
+                "  done\n"
+                "  exit 2\n"
+                ";; esac\n"
+                'case "$*" in *" which direnv"*) '
+                'printf \'%s\\n\' "${0%/*}/direnv"; exit ;; esac\n'
                 'if [ "$1" = "trust" ]; then exit; fi\n'
                 'case "$*" in *" install "*) exit ;; esac\n'
                 'while [ "$1" != "--" ]; do shift; done\n'

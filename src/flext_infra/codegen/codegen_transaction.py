@@ -176,15 +176,12 @@ class FlextInfraCodegenTransaction:
         )
         if staging_state.failure:
             return result_type.from_failure(staging_state)
-        created = state.create_journaled_directories(
-            layout, transaction_directories.value
+        materialized = self._materialize_directories(
+            layout, staging_journal.value, staging_state.value
         )
-        if created.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    layout, created.error or "cannot create generation roots"
-                )
-            )
+        if materialized.failure:
+            return result_type.from_failure(materialized)
+        active_journal, active_state = materialized.value
         ordinary_staged = generic_staging.stage_file_plans(layout, "conform", ordinary)
         if ordinary_staged.failure:
             return result_type.from_failure(
@@ -212,7 +209,7 @@ class FlextInfraCodegenTransaction:
                 )
             )
         prepared_journal = journal_io.append_prepared(
-            plan.value, staging_journal.value, publications, sources=all_sources
+            plan.value, active_journal, publications, sources=all_sources
         )
         if prepared_journal.failure:
             return result_type.from_failure(
@@ -221,8 +218,18 @@ class FlextInfraCodegenTransaction:
                     prepared_journal.error or "cannot prepare generation journal",
                 )
             )
+        manifested = self._register_transaction_manifests(
+            layout, prepared_journal.value
+        )
+        if manifested.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout,
+                    manifested.error or "cannot register generation staging tree",
+                )
+            )
         prepared_state = journal_io.write(
-            layout, prepared_journal.value, expected=staging_state.value
+            layout, manifested.value, expected=active_state
         )
         if prepared_state.failure:
             return result_type.from_failure(
@@ -269,7 +276,7 @@ class FlextInfraCodegenTransaction:
         return result_type.ok(
             m.Infra.CodegenTransactionSession(
                 plan=plan.value,
-                journal=prepared_journal.value,
+                journal=manifested.value,
                 journal_state=prepared_state.value,
                 written_files=published.value,
             )
@@ -343,8 +350,16 @@ class FlextInfraCodegenTransaction:
                     layout, extended.error or f"cannot append {phase} journal phase"
                 )
             )
+        manifested = self._register_transaction_manifests(layout, extended.value)
+        if manifested.failure:
+            return result_type.from_failure(
+                self._recover_failure(
+                    layout,
+                    manifested.error or f"cannot register {phase} staging tree",
+                )
+            )
         persisted = journal_io.write(
-            layout, extended.value, expected=session.journal_state
+            layout, manifested.value, expected=session.journal_state
         )
         if persisted.failure:
             return result_type.from_failure(
@@ -382,7 +397,7 @@ class FlextInfraCodegenTransaction:
         return result_type.ok(
             m.Infra.CodegenTransactionSession(
                 plan=session.plan,
-                journal=extended.value,
+                journal=manifested.value,
                 journal_state=persisted.value,
                 written_files=(*session.written_files, *published.value),
             )
@@ -403,7 +418,12 @@ class FlextInfraCodegenTransaction:
             disposition="generated",
         )
         if planned.failure:
-            return result_type.from_failure(planned)
+            return result_type.from_failure(
+                self._recover_failure(
+                    session.plan.layout,
+                    planned.error or f"cannot plan {phase} directories",
+                )
+            )
         if not planned.value:
             return result_type.ok(session)
         observed = state.journal_state(session.plan.layout)
@@ -439,19 +459,17 @@ class FlextInfraCodegenTransaction:
                     persisted.error or f"cannot persist {phase} directories",
                 )
             )
-        created = state.create_journaled_directories(session.plan.layout, planned.value)
-        if created.failure:
-            return result_type.from_failure(
-                self._recover_failure(
-                    session.plan.layout,
-                    created.error or f"cannot create {phase} directories",
-                )
-            )
+        materialized = self._materialize_directories(
+            session.plan.layout, extended.value, persisted.value
+        )
+        if materialized.failure:
+            return result_type.from_failure(materialized)
+        recorded, recorded_state = materialized.value
         return result_type.ok(
             m.Infra.CodegenTransactionSession(
                 plan=session.plan,
-                journal=extended.value,
-                journal_state=persisted.value,
+                journal=recorded,
+                journal_state=recorded_state,
                 written_files=session.written_files,
             )
         )
@@ -509,6 +527,90 @@ class FlextInfraCodegenTransaction:
         if cleaned.failure:
             return r[tuple[Path, ...]].from_failure(cleaned)
         return r[tuple[Path, ...]].ok(session.written_files)
+
+    def _materialize_directories(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+        journal_state: m.Cli.AtomicFileState,
+    ) -> p.Result[
+        tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+    ]:
+        """Create and durably bind one directory identity at a time."""
+        result_type = r[
+            tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
+        ]
+        current_journal = journal
+        current_state = journal_state
+        for intent in current_journal.directories:
+            if intent.created is not None:
+                continue
+            created = state.create_journaled_directory(
+                layout, current_journal.directories, intent
+            )
+            if created.failure:
+                return result_type.from_failure(
+                    self._recover_failure(
+                        layout,
+                        created.error or f"cannot create directory {intent.path}",
+                    )
+                )
+            directories = tuple(
+                created.value if entry.path == intent.path else entry
+                for entry in current_journal.directories
+            )
+            recorded = journal_io.record_directories(current_journal, directories)
+            if recorded.failure:
+                failed = self._compensate_directory_persistence(
+                    layout,
+                    created.value,
+                    recorded.error or f"cannot record directory {intent.path}",
+                    journal_write=False,
+                )
+                return result_type.from_failure(failed)
+            persisted = journal_io.write(
+                layout, recorded.value, expected=current_state
+            )
+            if persisted.failure:
+                failed = self._compensate_directory_persistence(
+                    layout,
+                    created.value,
+                    persisted.error or f"cannot persist directory {intent.path}",
+                    journal_write=True,
+                )
+                return result_type.from_failure(failed)
+            current_journal = recorded.value
+            current_state = persisted.value
+        return result_type.ok((current_journal, current_state))
+
+    def _compensate_directory_persistence(
+        self,
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        created: m.Infra.CodegenJournalDirectory,
+        failure: str,
+        *,
+        journal_write: bool,
+    ) -> p.Result[bool]:
+        """Compensate only this invocation's exact empty-directory effect."""
+        compensated = state.compensate_created_directory(created)
+        if compensated.failure:
+            return r[bool].fail(
+                f"{failure}; created-directory compensation failed: "
+                f"{compensated.error}"
+            )
+        if journal_write:
+            return self._handle_journal_write_failure(layout, failure)
+        return self._recover_failure(layout, failure)
+
+    @staticmethod
+    def _register_transaction_manifests(
+        layout: m.Infra.MiseToolchainWorkspaceLayout,
+        journal: m.Infra.CodegenTransactionJournal,
+    ) -> p.Result[m.Infra.CodegenTransactionJournal]:
+        registered = verify.register_transaction_manifests(layout, journal)
+        if registered.failure:
+            return r[m.Infra.CodegenTransactionJournal].from_failure(registered)
+        return journal_io.record_directories(journal, registered.value)
 
     def abort_locked(
         self, session: m.Infra.CodegenTransactionSession, failure: str

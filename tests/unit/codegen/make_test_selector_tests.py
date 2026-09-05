@@ -119,7 +119,6 @@ class TestsMakeTestSelector:
             caller_root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 91\n"
         )
         uv = caller_root / "bin" / "uv"
-        toolchain = config.Infra.codegen.toolchain
         test_u.Tests.write_executable(
             uv,
             (
@@ -127,7 +126,7 @@ class TestsMakeTestSelector:
                 "set -eu\n"
                 f'printf \'%s\\n\' "$*" >> "{uv_log}"\n'
                 'if [ "$1" = "--version" ]; then '
-                f"printf 'uv {toolchain.uv_version}.0\\n'; exit 0; fi\n"
+                "printf 'uv 0.12.5\\n'; exit 0; fi\n"
                 'if [ "$1" = "venv" ]; then\n'
                 '  mkdir -p "$2/bin"\n'
                 "  cat > \"$2/bin/python\" <<'PYTHON'\n"
@@ -147,7 +146,7 @@ class TestsMakeTestSelector:
                 'if [ "$1" = "--version" ]; then '
                 "printf '2026.9.1\\n'; exit 0; fi\n"
                 'case "$*" in *"exec -- uv --version"*) '
-                f"printf 'uv {toolchain.uv_version}.0\\n'; exit 0 ;; esac\n"
+                "printf 'uv 0.12.5\\n'; exit 0 ;; esac\n"
                 'case " $* " in *" generate install-script "*)\n'
                 '  while [ "$#" -gt 0 ]; do\n'
                 '    if [ "$1" = "--write" ]; then\n'

@@ -51,7 +51,7 @@
 	case "$$project_root/" in \
 		"$$mise_storage_root/"*) printf 'ERROR: persistent Mise storage must not contain the checkout: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
 	esac; \
-	for persistent_path in{% for _name, relative in bootstrap.persistent_environment %} "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}"{% endfor %} "$$mise_storage_root/{{ bootstrap.runtime_directory }}"; do \
+	for persistent_path in{% for _name, relative in bootstrap.persistent_environment %} "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}"{% endfor %}; do \
 		if [ -L "$$persistent_path" ]; then \
 			printf 'ERROR: persistent Mise path must not be a symlink: %s\n' "$$persistent_path" >&2; exit 2; \
 		fi; \
@@ -116,29 +116,24 @@
 		Windows_NT) mise_runtime_suffix='.exe'; latest_mise="$$scratch/receipt/bin/mise.cmd" ;; \
 		*) mise_runtime_suffix=; latest_mise="$$scratch/receipt/bin/mise" ;; \
 	esac; \
-	latest_url=$$(curl -fsSIL --proto '=https' --proto-redir '=https' \
-		-o /dev/null -w '%{url_effective}' \
-		https://github.com/jdx/mise/releases/latest); \
-	case "$$latest_url" in \
-		https://github.com/jdx/mise/releases/tag/v*) mise_release=$${latest_url##*/v} ;; \
-		*) printf 'ERROR: Mise latest redirect is invalid: %s\n' "$$latest_url" >&2; exit 2 ;; \
+	mise_install_path="$$scratch/runtime/seed-mise$$mise_runtime_suffix"; \
+	mise_checked "$$scratch/generate.log" mise_exec no-config "$$mise" -C "$$scratch" generate install-script --write "$$scratch/receipt/bin/mise" --windows; \
+	chmod +x "$$scratch/receipt/bin/mise"; \
+	mise_install_path="$$scratch/runtime/mise$$mise_runtime_suffix"; \
+	mise_checked "$$scratch/receipt-version.log" mise_exec no-config "$$latest_mise" --version; \
+	receipt_runtime=$$(cat "$$scratch/receipt-version.log"); \
+	case "$$receipt_runtime" in \
+		'mise '*) mise_release=$${receipt_runtime#mise }; mise_release=$${mise_release%% *} ;; \
+		*) mise_release=$${receipt_runtime%% *} ;; \
 	esac; \
 	case "$$mise_release" in \
-		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: resolved Mise returned invalid version: %s\n' "$$mise_release" >&2; exit 2 ;; \
+		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2 ;; \
 	esac; \
 	old_ifs=$$IFS; IFS=.; set -- $$mise_release; IFS=$$old_ifs; \
 	if [ "$$#" -ne 3 ]; then \
-		printf 'ERROR: resolved Mise returned invalid version: %s\n' "$$mise_release" >&2; exit 2; \
+		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
 	fi; \
-	mise_install_path="$$mise_storage_root/{{ bootstrap.runtime_directory }}/mise-$$mise_release$$mise_runtime_suffix"; \
-	mise_checked "$$scratch/generate.log" mise_exec no-config "$$mise" -C "$$scratch" generate install-script --write "$$scratch/receipt/bin/mise" --windows --version "$$mise_release"; \
-	chmod +x "$$scratch/receipt/bin/mise"; \
-	mise_checked "$$scratch/receipt-version.log" mise_exec no-config "$$latest_mise" --version; \
-	receipt_runtime=$$(cat "$$scratch/receipt-version.log"); \
-	case "$$receipt_runtime" in "$$mise_release"|"$$mise_release "*|'mise '"$$mise_release"*) ;; \
-		*) printf 'ERROR: newest Mise receipt differs: resolved=%s receipt=%s\n' "$$mise_release" "$$receipt_runtime" >&2; exit 2 ;; \
-	esac; \
-	printf 'mise setup runtime=%s storage=%s\n' "$$receipt_runtime" "$$mise_storage_root"
+	printf 'mise setup receipt=%s storage=%s\n' "$$mise_release" "$$mise_storage_root"
 {%- endmacro %}
 
 {% macro tool_bootstrap_recipe(target, project_root, mise, uv_version, lifecycle, bootstrap) -%}
@@ -146,7 +141,7 @@
 
 {{ target }}:
 	@set -eu; \
-	uv_required="{{ uv_version }}"; \
+	uv_selector="{{ uv_version }}"; \
 	if [ ! -f "{{ mise }}" ]; then \
 		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "{{ mise }}" >&2; \
 		exit 2; \
@@ -164,9 +159,13 @@
 		*) printf 'ERROR: uv --version returned an invalid value\n' >&2; exit 2 ;; \
 	esac; \
 	case "$$uv_actual" in \
-		"$$uv_required"|"$$uv_required".*) ;; \
-		*) printf 'ERROR: mise must install uv %s.x, found %s\n' "$$uv_required" "$$uv_actual" >&2; exit 2 ;; \
+		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: uv --version returned an invalid release: %s\n' "$$uv_actual" >&2; exit 2 ;; \
 	esac; \
+	old_ifs=$$IFS; IFS=.; set -- $$uv_actual; IFS=$$old_ifs; \
+	if [ "$$#" -ne 3 ]; then \
+		printf 'ERROR: uv --version returned an invalid release: %s\n' "$$uv_actual" >&2; exit 2; \
+	fi; \
+	printf 'uv setup selector=%s receipt=%s\n' "$$uv_selector" "$$uv_actual"; \
 	mise_checked "$$scratch/direnv-path.log" mise_exec project "$$latest_mise" -C "$$project_root" which direnv; \
 	direnv_executable=$$(cat "$$scratch/direnv-path.log"); \
 	if [ ! -x "$$direnv_executable" ]; then \
