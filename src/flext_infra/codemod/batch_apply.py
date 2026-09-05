@@ -9,6 +9,7 @@ from flext_cli import cli
 from flext_infra import c, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
+from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
@@ -52,11 +53,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         FlextInfraModGateEngine.validate_rule_fixtures(rules).unwrap()
         cli.display_text("mod: preflight complete AST inventory")
         preflight = FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
-        if preflight.detection_only:
-            return r.fail(
-                f"{preflight.detection_only} detection-only finding(s) require "
-                "an owner-backed ast-grep rewrite before any mutation"
-            )
+        FlextInfraCodemodSemanticApply.apply(root, preflight)
         cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
         applied = FlextInfraModGateEngine.scan(root, rules, fix=True).unwrap()
         cli.display_text("mod: verify AST fixed point")
