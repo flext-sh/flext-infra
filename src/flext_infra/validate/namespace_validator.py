@@ -117,7 +117,9 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
         try:
             resource = u.Infra.fetch_python_resource(rope_project, path)
         except c.EXC_OS_SYNTAX as exc:
-            return r[ast.AST].fail(f"fetch_python_resource raised: {exc!s}", exception=exc)
+            return r[ast.AST].fail(
+                f"fetch_python_resource raised: {exc!s}", exception=exc
+            )
         if resource is None:
             return r[ast.AST].fail(f"no rope resource for {path}")
         try:

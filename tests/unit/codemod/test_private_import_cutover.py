@@ -33,8 +33,7 @@ class TestsFlextInfraPrivateImportCutover:
         facade_path = tmp_path / "flext-sample/src/flext_sample/utilities.py"
         consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
         private_import = (
-            "from flext_sample._utilities.managers import "
-            "FlextSampleUtilitiesManagers"
+            "from flext_sample._utilities.managers import FlextSampleUtilitiesManagers"
         )
         sources = {
             facade_path: (
@@ -70,15 +69,12 @@ class TestsFlextInfraPrivateImportCutover:
         tm.that(updated, lacks=private_import)
         tm.that(updated, lacks="FlextSampleUtilitiesManagers.ServiceManagers")
 
-    def test_prefers_nested_facade_over_its_root_ancestor(
-        self, tmp_path: Path
-    ) -> None:
+    def test_prefers_nested_facade_over_its_root_ancestor(self, tmp_path: Path) -> None:
         """Select the deepest public namespace when the root shares its base."""
         facade_path = tmp_path / "flext-sample/src/flext_sample/utilities.py"
         consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
         private_import = (
-            "from flext_sample._utilities.managers import "
-            "FlextSampleUtilitiesManagers"
+            "from flext_sample._utilities.managers import FlextSampleUtilitiesManagers"
         )
         sources = {
             facade_path: (
@@ -111,8 +107,7 @@ class TestsFlextInfraPrivateImportCutover:
         facade_path = tmp_path / "flext-sample/src/flext_sample/utilities.py"
         consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
         private_import = (
-            "from flext_sample._utilities.managers import "
-            "FlextSampleUtilitiesManagers"
+            "from flext_sample._utilities.managers import FlextSampleUtilitiesManagers"
         )
         sources = {
             facade_path: (
@@ -134,9 +129,7 @@ class TestsFlextInfraPrivateImportCutover:
                 root=tmp_path,
                 sources=sources,
                 findings=(
-                    self._finding(
-                        consumer_path.relative_to(tmp_path), private_import
-                    ),
+                    self._finding(consumer_path.relative_to(tmp_path), private_import),
                 ),
             )
 

@@ -21,16 +21,13 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
         """Return executable shell snippets, excluding surrounding prose."""
         if fence_marker:
             return (
-                (line,)
-                if fence_language in c.Infra.DOCS_SHELL_FENCE_LANGUAGES
-                else ()
+                (line,) if fence_language in c.Infra.DOCS_SHELL_FENCE_LANGUAGES else ()
             )
         stripped = line.lstrip()
         if stripped.startswith("$ "):
             return (stripped[2:],)
         return tuple(
-            match.group(0)[1:-1]
-            for match in c.Infra.INLINE_CODE_RE.finditer(line)
+            match.group(0)[1:-1] for match in c.Infra.INLINE_CODE_RE.finditer(line)
         )
 
     @staticmethod
@@ -55,10 +52,10 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                 continue
 
             issue = ""
-            for candidate in FlextInfraUtilitiesDocsCommandContractMixin._docs_command_candidates(
-                line,
-                fence_marker=fence_marker,
-                fence_language=fence_language,
+            for (
+                candidate
+            ) in FlextInfraUtilitiesDocsCommandContractMixin._docs_command_candidates(
+                line, fence_marker=fence_marker, fence_language=fence_language
             ):
                 make_match = c.Infra.DOCS_MAKE_COMMAND_RE.match(candidate)
                 if c.Infra.DOCS_RAW_PYTEST_COMMAND_RE.match(candidate):
@@ -85,9 +82,9 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     if verb_spec is None:
                         issue = f"Make verb `{verb}` is not declared by the config SSOT"
                     elif selector is not None:
-                        selector_name = selector.group(0).split("=", maxsplit=1)[
-                            0
-                        ].strip()
+                        selector_name = (
+                            selector.group(0).split("=", maxsplit=1)[0].strip()
+                        )
                         issue = f"invented Make selector `{selector_name}`"
                     elif verb_spec.requires_apply and not has_apply:
                         issue = f"`make {verb}` requires `APPLY=Y`"
@@ -97,8 +94,10 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     break
             if not issue and c.Infra.DOCS_TEST_DOUBLE_HEADING_RE.match(line):
                 issue = "test-double guidance is prohibited"
-            elif not issue and fence_language in {"py", "python", "python3"} and (
-                c.Infra.DOCS_TEST_DOUBLE_CODE_RE.search(line) is not None
+            elif (
+                not issue
+                and fence_language in {"py", "python", "python3"}
+                and (c.Infra.DOCS_TEST_DOUBLE_CODE_RE.search(line) is not None)
             ):
                 issue = "test-double code bypasses public-facade test ownership"
 

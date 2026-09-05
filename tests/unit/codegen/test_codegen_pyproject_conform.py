@@ -394,7 +394,9 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
     def test_host_runtime_packages_are_removed_from_dependency_surfaces(self) -> None:
         """Host automation stays outside every generated Python environment."""
         workspace = _workspace()
-        external_packages = config.Infra.codegen.scaffold.project.external_runtime_packages
+        external_packages = (
+            config.Infra.codegen.scaffold.project.external_runtime_packages
+        )
         external = external_packages[0]
         source = f"""[project]
 name = "external-consumer"
@@ -425,9 +427,8 @@ dev = ["{external}>=1", "custom-tool>=1"]
         )
         for requirements in dependency_surfaces:
             tm.that(
-                external not in {
-                    u.Infra.dep_name(requirement) for requirement in requirements
-                },
+                external
+                not in {u.Infra.dep_name(requirement) for requirement in requirements},
                 eq=True,
             )
 

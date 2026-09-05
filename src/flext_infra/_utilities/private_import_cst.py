@@ -54,9 +54,7 @@ class FlextInfraUtilitiesPrivateImportCst:
                 for qualified_name in self.get_metadata(
                     QualifiedNameProvider, original_node, ()
                 )
-                if (
-                    replacement := self.replacements.get(qualified_name.name)
-                )
+                if (replacement := self.replacements.get(qualified_name.name))
                 is not None
             }
             if not targets:
@@ -104,7 +102,26 @@ class FlextInfraUtilitiesPrivateImportCst:
                 )
             ]
             if retained:
-                return updated_node.with_changes(names=retained)
+                last_index = len(retained) - 1
+                normalized: list[cst.ImportAlias] = []
+                for index, imported in enumerate(retained):
+                    if index == last_index and not updated_node.lpar:
+                        normalized.append(
+                            imported.with_changes(comma=cst.MaybeSentinel.DEFAULT)
+                        )
+                    elif index < last_index and not isinstance(
+                        imported.comma, cst.Comma
+                    ):
+                        normalized.append(
+                            imported.with_changes(
+                                comma=cst.Comma(
+                                    whitespace_after=cst.SimpleWhitespace(" ")
+                                )
+                            )
+                        )
+                    else:
+                        normalized.append(imported)
+                return updated_node.with_changes(names=tuple(normalized))
             return cst.RemoveFromParent()
 
     class _TypeCheckingImports(cst.CSTTransformer):
@@ -130,9 +147,7 @@ class FlextInfraUtilitiesPrivateImportCst:
             for alias, package in sorted(self.public_imports.items()):
                 grouped.setdefault(package, []).append(alias)
             imports = tuple(
-                cst.parse_statement(
-                    f"from {package} import {', '.join(aliases)}\n"
-                )
+                cst.parse_statement(f"from {package} import {', '.join(aliases)}\n")
                 for package, aliases in sorted(grouped.items())
             )
             self.inserted = True

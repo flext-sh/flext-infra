@@ -33,7 +33,10 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
             repo = cls._repo(request.repo_root)
             repo.git.submodule("update", "--init", "--", request.reference)
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"could not initialize the governed gitlink {request.reference}: {exc}", exception=exc)
+            return r[m.Infra.GitBoolReport].fail(
+                f"could not initialize the governed gitlink {request.reference}: {exc}",
+                exception=exc,
+            )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -50,7 +53,9 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
                     else ""
                 )
         except (ConfigParserError, OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(f"failed to read {request.section}.{request.key}: {exc}", exception=exc)
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to read {request.section}.{request.key}: {exc}", exception=exc
+            )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=value.strip()))
 
     @classmethod
@@ -74,7 +79,9 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
                     and parser.has_option(section, "path")
                 )
         except (ConfigParserError, OSError, TypeError, ValueError) as exc:
-            return r[t.StrMapping].fail(f"failed to read submodule declarations: {exc}", exception=exc)
+            return r[t.StrMapping].fail(
+                f"failed to read submodule declarations: {exc}", exception=exc
+            )
         sections: dict[str, str] = {}
         for declared, section in declarations:
             if not declared:

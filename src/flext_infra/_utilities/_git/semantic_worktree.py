@@ -32,7 +32,9 @@ class FlextInfraUtilitiesGitSemanticWorktreeMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(f"failed to add worktree for {request.branch}: {exc}", exception=exc)
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to add worktree for {request.branch}: {exc}", exception=exc
+            )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @staticmethod
@@ -75,7 +77,9 @@ class FlextInfraUtilitiesGitSemanticWorktreeMixin(
             repo.git.branch("--quiet", "-f", request.branch, "HEAD")
             repo.git.symbolic_ref("HEAD", f"refs/heads/{request.branch}")
         except (GitCommandError, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"failed to attach {request.branch} at HEAD: {exc}", exception=exc)
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to attach {request.branch} at HEAD: {exc}", exception=exc
+            )
         try:
             repo.git.branch(
                 "--quiet",

@@ -25,9 +25,7 @@ class FlextInfraUtilitiesQualifiedNames:
         def on_visit(self, node: cst.CSTNode) -> bool:
             self.residue.update(
                 qualified_name.name
-                for qualified_name in self.get_metadata(
-                    QualifiedNameProvider, node, ()
-                )
+                for qualified_name in self.get_metadata(QualifiedNameProvider, node, ())
                 if qualified_name.name in self.candidates
             )
             return True

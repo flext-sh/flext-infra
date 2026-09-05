@@ -64,15 +64,13 @@ class TestsFlextInfraLazyInitCleanup:
         )
         obsolete_module = package_root / "_root_typing.py"
         obsolete_module.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\nROOT = ()\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            f"{c.Infra.AUTOGEN_HEADER}\nROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT
         )
         obsolete_package = package_root / "_root_typing_parts"
         obsolete_package.mkdir()
         obsolete_part = obsolete_package / "facades.py"
         obsolete_part.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\nFACADES = ()\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            f"{c.Infra.AUTOGEN_HEADER}\nFACADES = ()\n", encoding=c.Cli.ENCODING_DEFAULT
         )
 
         result = u.Tests.run_lazy_init(repository_root)
@@ -91,8 +89,7 @@ class TestsFlextInfraLazyInitCleanup:
         )
         obsolete_module = package_root / "_root_exports.py"
         obsolete_module.write_text(
-            f"{c.Infra.AUTOGEN_HEADER}\nROOT = ()\n",
-            encoding=c.Cli.ENCODING_DEFAULT,
+            f"{c.Infra.AUTOGEN_HEADER}\nROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT
         )
         service = u.Tests.create_lazy_init_service(repository_root)
 

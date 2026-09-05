@@ -35,7 +35,10 @@ class TestBanditAndMarkdownGates:
                 True,
                 (
                     r.ok(
-                        u.Tests.create_command_output(stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}', exit_code=1)
+                        u.Tests.create_command_output(
+                            stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
+                            exit_code=1,
+                        )
                     ),
                 ),
                 False,
@@ -43,7 +46,13 @@ class TestBanditAndMarkdownGates:
             ),
             (
                 True,
-                (r.ok(u.Tests.create_command_output(stdout="invalid json", exit_code=1)),),
+                (
+                    r.ok(
+                        u.Tests.create_command_output(
+                            stdout="invalid json", exit_code=1
+                        )
+                    ),
+                ),
                 False,
                 1,
             ),
@@ -87,7 +96,9 @@ class TestBanditAndMarkdownGates:
                 "# Test\n",
                 None,
                 r.ok(
-                    u.Tests.create_command_output(stdout="README.md:1:1: [MD001] Heading level", exit_code=1)
+                    u.Tests.create_command_output(
+                        stdout="README.md:1:1: [MD001] Heading level", exit_code=1
+                    )
                 ),
                 False,
                 1,

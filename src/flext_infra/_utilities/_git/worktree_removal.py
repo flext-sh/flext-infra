@@ -61,7 +61,9 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         except GitCommandError as exc:
             return r[Repo].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[Repo].fail(f"failed to inspect clean worktree: {exc}", exception=exc)
+            return r[Repo].fail(
+                f"failed to inspect clean worktree: {exc}", exception=exc
+            )
         if "\nlocked" in f"\n{entry}":
             return r[Repo].fail(f"locked worktree: {worktree_root}")
         if dirty:
@@ -101,7 +103,9 @@ class FlextInfraUtilitiesGitWorktreeRemovalMixin(
         except GitCommandError as exc:
             return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"failed to remove clean worktree: {exc}", exception=exc)
+            return r[bool].fail(
+                f"failed to remove clean worktree: {exc}", exception=exc
+            )
         return r[bool].ok(True)
 
 

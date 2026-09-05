@@ -170,7 +170,9 @@ class FlextInfraWorkspaceChecker(
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(resolved_gates_result)
+            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(
+                resolved_gates_result
+            )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)

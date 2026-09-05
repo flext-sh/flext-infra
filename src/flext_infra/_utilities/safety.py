@@ -42,7 +42,10 @@ class FlextInfraUtilitiesSafety:
             status_result = u.Cli.run_raw(
                 [c.Infra.GIT, "status", "--porcelain"], cwd=repo
             )
-            if status_result.failure or status_result.value.outcome.raw_return_code != 0:
+            if (
+                status_result.failure
+                or status_result.value.outcome.raw_return_code != 0
+            ):
                 result = r[str].fail(status_result.error or "git status failed")
             elif not status_result.value.stdout.strip():
                 result = r[str].ok("")

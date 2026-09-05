@@ -22,10 +22,7 @@ class TestsFlextInfraApiAliasCutover:
                 "sample = FlextSample\n"
                 '__all__ = ["FlextSample", "sample"]\n'
             ),
-            consumer: (
-                "from flext_sample.api import sample\n\n"
-                "facade = sample\n"
-            ),
+            consumer: ("from flext_sample.api import sample\n\nfacade = sample\n"),
         }
         finding = m.Infra.ModScanFinding(
             rule_file="ban-compat-alias.yml",

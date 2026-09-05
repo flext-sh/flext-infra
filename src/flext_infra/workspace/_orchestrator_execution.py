@@ -172,9 +172,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
                 stdout=str(log_path),
                 stderr=stderr,
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=return_code,
-                    timed_out=False,
-                    forwarded_signal=None,
+                    raw_return_code=return_code, timed_out=False, forwarded_signal=None
                 ),
                 duration=round(elapsed, 2),
             )

@@ -38,7 +38,9 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
                 return beads_result
             allow_result = cls._allow_direnv_if_requested(request, runner=runner)
             if allow_result.failure:
-                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(allow_result)
+                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(
+                    allow_result
+                )
             return beads_result
         result = super().sync_environment_files(request)
         if result.failure:

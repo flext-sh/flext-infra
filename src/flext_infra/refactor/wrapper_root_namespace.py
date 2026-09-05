@@ -77,14 +77,18 @@ class FlextInfraWrapperRootNamespaceRefactor(
         )
         resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
-            return r[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]].from_failure(resolved)
+            return r[
+                tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
+            ].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
                 project_roots=tuple(project.path for project in resolved.value)
             )
         )
         if iter_result.failure:
-            return r[tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]].from_failure(iter_result)
+            return r[
+                tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
+            ].from_failure(iter_result)
         project_runtime_aliases = {
             project.path.name: frozenset(layout.runtime_aliases)
             for project in resolved.value

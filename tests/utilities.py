@@ -372,7 +372,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def __init__(self, payload: bytes) -> None:
                 """Store the artifact bytes returned by the synthetic runner."""
                 super().__init__(
-                    r.ok(TestsFlextInfraUtilities.Tests.create_command_output(stdout="", stderr="", exit_code=0))
+                    r.ok(
+                        TestsFlextInfraUtilities.Tests.create_command_output(
+                            stdout="", stderr="", exit_code=0
+                        )
+                    )
                 )
                 self._payload = payload
 
@@ -401,7 +405,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     )
                 artifact.write_bytes(self._payload)
                 return r[p.Cli.CommandOutput].ok(
-                    TestsFlextInfraUtilities.Tests.create_command_output(stdout="", stderr="", exit_code=0)
+                    TestsFlextInfraUtilities.Tests.create_command_output(
+                        stdout="", stderr="", exit_code=0
+                    )
                 )
 
         @staticmethod
@@ -663,7 +669,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Provide the typed test helper `command_runner`."""
             return TestsFlextInfraUtilities.Tests.DeptryRunner(
                 r.ok(
-                    TestsFlextInfraUtilities.Tests.create_command_output(stdout=stdout, stderr=stderr, exit_code=returncode)
+                    TestsFlextInfraUtilities.Tests.create_command_output(
+                        stdout=stdout, stderr=stderr, exit_code=returncode
+                    )
                 )
             )
 

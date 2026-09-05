@@ -37,7 +37,9 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
             try:
                 worktree_root.rmdir()
             except OSError as exc:
-                return r[str].fail(f"worktree target is not empty: {exc}", exception=exc)
+                return r[str].fail(
+                    f"worktree target is not empty: {exc}", exception=exc
+                )
         head_result = cls._git_head_oid(source_root)
         if head_result.failure:
             return head_result

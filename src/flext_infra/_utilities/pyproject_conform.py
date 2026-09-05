@@ -227,10 +227,7 @@ class FlextInfraUtilitiesPyprojectConform:
 
     @classmethod
     def _remove_external_runtime_packages(
-        cls,
-        document: t.Cli.TomlDocument,
-        *,
-        package_names: t.StrSequence,
+        cls, document: t.Cli.TomlDocument, *, package_names: t.StrSequence
     ) -> None:
         """Remove host-owned automation from every Python dependency surface."""
         prohibited = frozenset(

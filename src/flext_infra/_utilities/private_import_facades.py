@@ -194,7 +194,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     break
             elif isinstance(node, ast.arg) and node.arg == alias:
                 break
-            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            elif isinstance(
+                node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef
+            ):
                 if node.name == alias:
                     break
         else:

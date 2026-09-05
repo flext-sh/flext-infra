@@ -146,7 +146,10 @@ class FlextInfraUtilitiesRopeImports:
         if dependent_import_targets:
             dependent_candidates: set[Path] = {resolved_definition}
             for import_target in dependent_import_targets:
-                dependent_candidates.update(path.resolve() for path in rope_workspace.import_dependents(import_target))
+                dependent_candidates.update(
+                    path.resolve()
+                    for path in rope_workspace.import_dependents(import_target)
+                )
             dependent_paths = frozenset(str(path) for path in dependent_candidates)
         seen_paths = {str(resolved_definition)}
         resources: list[t.Infra.RopeResource] = [resource]
@@ -344,7 +347,9 @@ class FlextInfraUtilitiesRopeImports:
         try:
             tree = ast.parse(source)
         except SyntaxError as exc:
-            return r[frozenset[str]].fail(f"source is not parseable after import cleanup: {exc!s}", exception=exc)
+            return r[frozenset[str]].fail(
+                f"source is not parseable after import cleanup: {exc!s}", exception=exc
+            )
         for node in ast.walk(tree):
             if isinstance(node, ast.Name) and node.id in alias_set:
                 referenced.add(node.id)

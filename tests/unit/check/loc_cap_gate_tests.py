@@ -60,7 +60,9 @@ class TestLocCapGate:
 
     def test_over_cap_module_is_flagged(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_OVER_CAP)
-        runner = u.Tests.SequenceRunner([r.ok(u.Tests.create_command_output(stdout=_SCC_OVER_CAP))])
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.create_command_output(stdout=_SCC_OVER_CAP))
+        ])
 
         result = u.Tests.run_gate_check(
             FlextInfraLocCapGate, tmp_path, project, runner=runner
@@ -71,7 +73,9 @@ class TestLocCapGate:
 
     def test_under_cap_module_passes(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
-        runner = u.Tests.SequenceRunner([r.ok(u.Tests.create_command_output(stdout=_SCC_UNDER_CAP))])
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.create_command_output(stdout=_SCC_UNDER_CAP))
+        ])
 
         result = u.Tests.run_gate_check(
             FlextInfraLocCapGate, tmp_path, project, runner=runner

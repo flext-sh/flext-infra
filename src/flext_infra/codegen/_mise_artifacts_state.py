@@ -40,9 +40,7 @@ def prepare_state_roots(layout: m.Infra.MiseToolchainWorkspaceLayout) -> p.Resul
             (parent for parent in destination_parents if not parent.is_dir()), None
         )
         if absent_parent is not None:
-            return r[bool].fail(
-                f"Mise destination parent is absent: {absent_parent}"
-            )
+            return r[bool].fail(f"Mise destination parent is absent: {absent_parent}")
         try:
             staging_device = project.transaction_root.parent.stat().st_dev
             destination_devices = {
@@ -190,9 +188,7 @@ def _lock_process_details(pid: str) -> p.Result[tuple[str, Path, float]]:
         return r[tuple[str, Path, float]].fail_op(
             f"inspect Mise lock-holder process {pid}", exc
         )
-    return r[tuple[str, Path, float]].ok(
-        (command, cwd, uptime_seconds - start_seconds)
-    )
+    return r[tuple[str, Path, float]].ok((command, cwd, uptime_seconds - start_seconds))
 
 
 def journal_state(
@@ -235,8 +231,11 @@ def create_transaction_roots(
     except OSError as exc:
         cleanup = _remove_exact(tuple(created))
         if cleanup.failure:
-            return r[bool].fail(f"create Mise transaction roots failed ({exc}); "
-            f"cleanup failed ({cleanup.error})", exception=exc)
+            return r[bool].fail(
+                f"create Mise transaction roots failed ({exc}); "
+                f"cleanup failed ({cleanup.error})",
+                exception=exc,
+            )
         return r[bool].fail_op("create Mise transaction roots", exc)
     return r[bool].ok(True)
 

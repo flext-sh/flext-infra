@@ -146,7 +146,9 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                 timeout=c.Infra.TIMEOUT_MEDIUM,
                 env=env,
             )
-            poetry_failed = run_outcome.failure or run_outcome.value.outcome.raw_return_code != 0
+            poetry_failed = (
+                run_outcome.failure or run_outcome.value.outcome.raw_return_code != 0
+            )
             if poetry_failed:
                 detector.log.warning(
                     "deps_typings_add_failed", project=project_name, package=package

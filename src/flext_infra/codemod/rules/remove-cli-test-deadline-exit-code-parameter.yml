@@ -2,12 +2,14 @@ id: remove-cli-test-deadline-exit-code-parameter
 language: Python
 severity: error
 rule:
-  pattern:
-    context: |
-      def _deadline(*, seconds: float, grace: float, exit_code: int = 124) -> $RETURN:
-          $$$BODY
-    selector: function_definition
-fix: |
-  def _deadline(*, seconds: float, grace: float) -> $RETURN:
-      $$$BODY
+  all:
+    - kind: typed_default_parameter
+    - pattern: "exit_code: int = 124"
+    - inside:
+        kind: function_definition
+        has:
+          field: name
+          regex: "^_deadline$"
+        stopBy: end
+fix: ""
 message: Remove the obsolete exit-code selector from public deadline fixtures.

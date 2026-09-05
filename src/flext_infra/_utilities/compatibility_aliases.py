@@ -82,7 +82,9 @@ class FlextInfraUtilitiesCompatibilityAliases:
                         target = module_rewrites.get(imported.name)
                         if target is None:
                             continue
-                        import_aliases.setdefault(node.module, {})[imported.name] = target
+                        import_aliases.setdefault(node.module, {})[imported.name] = (
+                            target
+                        )
                         if imported.asname not in {None, imported.name}:
                             msg = (
                                 "ambiguous compatibility import alias "
@@ -143,7 +145,9 @@ class FlextInfraUtilitiesCompatibilityAliases:
             elif isinstance(node, ast.ImportFrom):
                 names.update(item.asname or item.name for item in node.names)
             elif isinstance(node, ast.Import):
-                names.update(item.asname or item.name.split(".")[0] for item in node.names)
+                names.update(
+                    item.asname or item.name.split(".")[0] for item in node.names
+                )
         return frozenset(names)
 
 

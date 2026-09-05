@@ -115,9 +115,7 @@ class FlextInfraUtilitiesPrivateImports:
                 if public_reference is None:
                     continue
                 file_path = (
-                    finding.file
-                    if finding.file.is_absolute()
-                    else root / finding.file
+                    finding.file if finding.file.is_absolute() else root / finding.file
                 ).resolve()
                 specs.setdefault(file_path, []).append((
                     private_module,
@@ -173,7 +171,10 @@ class FlextInfraUtilitiesPrivateImports:
                 )
                 if public_root_name is not None:
                     for node in ast.walk(tree):
-                        if not isinstance(node, ast.ImportFrom) or node.module != package:
+                        if (
+                            not isinstance(node, ast.ImportFrom)
+                            or node.module != package
+                        ):
                             continue
                         for imported in node.names:
                             if (
@@ -203,15 +204,17 @@ class FlextInfraUtilitiesPrivateImports:
                 replacements=replacements,
                 public_imports=public_imports,
             )
-            rewritten = FlextInfraUtilitiesPrivateImportCst.rewrite_private_import_source(
-                source,
-                removals={key: frozenset(value) for key, value in removals.items()},
-                obsolete_imports={
-                    key: frozenset(value) for key, value in obsolete_imports.items()
-                },
-                replacements=replacements,
-                public_imports=public_imports,
-                runtime_public_imports=runtime_public_imports,
+            rewritten = (
+                FlextInfraUtilitiesPrivateImportCst.rewrite_private_import_source(
+                    source,
+                    removals={key: frozenset(value) for key, value in removals.items()},
+                    obsolete_imports={
+                        key: frozenset(value) for key, value in obsolete_imports.items()
+                    },
+                    replacements=replacements,
+                    public_imports=public_imports,
+                    runtime_public_imports=runtime_public_imports,
+                )
             )
             FlextInfraUtilitiesPrivateImportValidation.require_zero_private_import_residue(
                 rewritten,

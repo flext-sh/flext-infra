@@ -330,11 +330,7 @@ def _journal_source_topology(
         resolved = files.resolve_source(layout.scope_root, source.path)
         if resolved.failure:
             return r[bool].from_failure(resolved)
-        if resolved.value.is_relative_to(layout.scope_root.absolute()):
-            owner = files.project_for_path(layout, resolved.value)
-            if owner.failure:
-                return r[bool].from_failure(owner)
-        elif resolved.value.is_relative_to(layout.state_root.absolute()):
+        if resolved.value.is_relative_to(layout.state_root.absolute()):
             return r[bool].fail(
                 f"Mise journal source enters transaction state: {source.path}"
             )

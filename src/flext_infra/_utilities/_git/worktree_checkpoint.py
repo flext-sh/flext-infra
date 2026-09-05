@@ -170,7 +170,9 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         except GitCommandError as exc:
             return r[m.Infra.RepositoryDelta].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.RepositoryDelta].fail(f"failed to capture operation patch: {exc}", exception=exc)
+            return r[m.Infra.RepositoryDelta].fail(
+                f"failed to capture operation patch: {exc}", exception=exc
+            )
         # git apply rejects a patch whose final line has no terminating newline
         # ("corrupt patch"). `git diff --binary` can emit exactly that when the
         # last hunk ends on a context line, so restore the single trailing

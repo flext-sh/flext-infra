@@ -59,7 +59,9 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
         except GitCommandError as exc:
             return r[m.Infra.GitStatusReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitStatusReport].fail(f"git status failed: {exc}", exception=exc)
+            return r[m.Infra.GitStatusReport].fail(
+                f"git status failed: {exc}", exception=exc
+            )
         return r[m.Infra.GitStatusReport].ok(
             m.Infra.GitStatusReport(
                 repo_root=repo_path, porcelain=porcelain, dirty=bool(lifecycle.strip())
@@ -93,7 +95,9 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
         except GitCommandError as exc:
             return r[t.SequenceOf[Path]].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[t.SequenceOf[Path]].fail(f"git changed paths failed: {exc}", exception=exc)
+            return r[t.SequenceOf[Path]].fail(
+                f"git changed paths failed: {exc}", exception=exc
+            )
         return r[t.SequenceOf[Path]].ok(
             tuple(
                 path

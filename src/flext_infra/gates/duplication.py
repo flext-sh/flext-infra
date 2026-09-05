@@ -92,9 +92,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 stdout="",
                 stderr=scope.error or "workspace scope resolution failed",
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=1,
-                    timed_out=False,
-                    forwarded_signal=None,
+                    raw_return_code=1, timed_out=False, forwarded_signal=None
                 ),
             )
         if not scope.value:
@@ -102,9 +100,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 stdout="",
                 stderr="jscpd scope resolved no source or test directories",
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=1,
-                    timed_out=False,
-                    forwarded_signal=None,
+                    raw_return_code=1, timed_out=False, forwarded_signal=None
                 ),
             )
         config_path = self._render_config()

@@ -3,7 +3,6 @@ valid:
   - |
     def _captured_process_result(
         cls,
-        cmd: t.StrSequence,
         return_code: int | None,
         received_signals: list[int],
         diagnostics: tuple[str, ...],
@@ -15,7 +14,6 @@ valid:
     ) -> p.Result[p.Cli.CommandBytesOutput]:
         """Attach captured bytes only after the owned process boundary is empty."""
         return cls._process_exit_result(
-            cmd,
             return_code,
             received_signals,
             diagnostics,

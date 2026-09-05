@@ -174,9 +174,7 @@ class FlextInfraMypyGate(FlextInfraGate):
         if (not issues) and result.outcome.raw_return_code != 0:
             message = (result.stderr or result.stdout).strip()
             if not message:
-                message = (
-                    f"mypy exited with code {result.outcome.raw_return_code} without JSON diagnostics"
-                )
+                message = f"mypy exited with code {result.outcome.raw_return_code} without JSON diagnostics"
             issues.append(
                 m.Infra.Issue(
                     file=c.Infra.PYPROJECT_FILENAME,

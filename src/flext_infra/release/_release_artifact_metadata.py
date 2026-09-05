@@ -309,20 +309,28 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         """Validate one artifact and return its kind and SHA-256 digest."""
         archive_result = cls._validate_archive(path, project, license_sha256)
         if archive_result.failure:
-            return r[t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]].from_failure(archive_result)
+            return r[
+                t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
+            ].from_failure(archive_result)
         metadata_result = cls._artifact_metadata(path)
         if metadata_result.failure:
-            return r[t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]].from_failure(metadata_result)
+            return r[
+                t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
+            ].from_failure(metadata_result)
         identity_result = cls._validate_artifact_identity(
             metadata_result.value, project, version
         )
         if identity_result.failure:
-            return r[t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]].from_failure(identity_result)
+            return r[
+                t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
+            ].from_failure(identity_result)
         requirements_result = cls._validate_artifact_requirements(
             metadata_result.value, versions
         )
         if requirements_result.failure:
-            return r[t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]].from_failure(requirements_result)
+            return r[
+                t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
+            ].from_failure(requirements_result)
         try:
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
         except OSError as exc:

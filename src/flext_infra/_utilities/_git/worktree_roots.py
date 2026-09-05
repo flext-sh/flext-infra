@@ -66,7 +66,9 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 return r[Path].ok(repository_path.expanduser().resolve())
             return r[Path].fail("failed to resolve Git superproject")
         except (OSError, ValueError) as exc:
-            return r[Path].fail(f"failed to resolve repository root: {exc}", exception=exc)
+            return r[Path].fail(
+                f"failed to resolve repository root: {exc}", exception=exc
+            )
         if superproject:
             return r[Path].ok(Path(superproject).resolve())
         try:
@@ -90,7 +92,9 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         except GitCommandError as exc:
             return r[Path].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[Path].fail(f"failed to resolve primary worktree: {exc}", exception=exc)
+            return r[Path].fail(
+                f"failed to resolve primary worktree: {exc}", exception=exc
+            )
 
         if configured_output:
             configured = Path(configured_output)

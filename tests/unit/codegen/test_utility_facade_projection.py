@@ -53,10 +53,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         u.Infra.project_semantic_utility_owners(pkg_dir=package, ctx=ctx)
 
         updated = facade.read_text()
-        tm.that(
-            updated,
-            has="from flext_sample._utilities.semantic_cutover import (",
-        )
+        tm.that(updated, has="from flext_sample._utilities.semantic_cutover import (")
         tm.that(updated.count("FlextSampleUtilitiesSemanticCutover"), eq=2)
         tm.that(str(facade) in ctx.files_modified, eq=True)
 

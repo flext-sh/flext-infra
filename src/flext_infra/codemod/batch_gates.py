@@ -29,7 +29,7 @@ class FlextInfraModGateEngine:
         for config_root, owner_rules in sorted(rules_by_owner.items()):
             active_rule_ids: set[str] = set()
             for rule in owner_rules:
-                rule_ids, _fixable_ids = cls._rule_ids(rule).unwrap()
+                rule_ids, _fixable_ids = u.Infra.ast_grep_rule_contract(rule)
                 active_rule_ids.update(rule_ids)
             FlextInfraCodemodSnapshotReconciler.reconcile(
                 config_root, frozenset(active_rule_ids)
@@ -247,31 +247,6 @@ class FlextInfraModGateEngine:
         if stderr.strip() != expected:
             return r[bool].fail(stderr)
         return r[bool].ok(True)
-
-    @staticmethod
-    def _rule_ids(rule: Path) -> p.Result[tuple[frozenset[str], frozenset[str]]]:
-        """Parse every document and return all IDs plus the fixable subset."""
-        documents = rule.read_text(encoding="utf-8").split("\n---")
-        rule_ids: set[str] = set()
-        fixable_ids: set[str] = set()
-        for raw_document in documents:
-            if not any(
-                line.strip() and not line.lstrip().startswith("#")
-                for line in raw_document.splitlines()
-            ):
-                continue
-            parsed = u.Cli.yaml_parse(raw_document)
-            if parsed.failure:
-                return r[tuple[frozenset[str], frozenset[str]]].from_failure(parsed)
-            rule_id = parsed.value.get("id")
-            if not isinstance(rule_id, str) or not rule_id:
-                return r.fail(f"ast-grep rule document missing required id: {rule}")
-            if rule_id in rule_ids:
-                return r.fail(f"duplicate ast-grep rule id {rule_id!r}: {rule}")
-            rule_ids.add(rule_id)
-            if "fix" in parsed.value:
-                fixable_ids.add(rule_id)
-        return r.ok((frozenset(rule_ids), frozenset(fixable_ids)))
 
     @staticmethod
     def _parse_findings(
@@ -500,8 +475,7 @@ class FlextInfraModGateEngine:
         targets = u.Infra.ast_grep_scan_targets(root)
         total = len(rules)
         for index, rule in enumerate(rules, start=1):
-            rule_contract = cls._rule_ids(rule).unwrap()
-            rule_ids, fixable_ids = rule_contract
+            rule_ids, fixable_ids = u.Infra.ast_grep_rule_contract(rule)
             duplicate_ids = known_rule_ids.intersection(rule_ids)
             if duplicate_ids:
                 duplicates = ", ".join(sorted(duplicate_ids))

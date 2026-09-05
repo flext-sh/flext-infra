@@ -15,10 +15,7 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
     """Preserve formatting while alias ownership is cut over."""
 
     class _Transformer(cst.CSTTransformer):
-        METADATA_DEPENDENCIES = (
-            ParentNodeProvider,
-            QualifiedNameProvider,
-        )
+        METADATA_DEPENDENCIES = (ParentNodeProvider, QualifiedNameProvider)
 
         def __init__(
             self,
@@ -40,8 +37,10 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
             if isinstance(node, cst.Name):
                 return node.value
             if isinstance(node, cst.Attribute):
-                parent = FlextInfraUtilitiesCompatibilityAliasCst._Transformer.dotted_name(
-                    node.value
+                parent = (
+                    FlextInfraUtilitiesCompatibilityAliasCst._Transformer.dotted_name(
+                        node.value
+                    )
                 )
                 return f"{parent}.{node.attr.value}" if parent else None
             return None
@@ -177,15 +176,19 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
         target_bindings: frozenset[str],
     ) -> str:
         """Return the structurally rewritten source without changing its layout."""
-        return MetadataWrapper(cst.parse_module(source)).visit(
-            cls._Transformer(
-                local_aliases=local_aliases,
-                import_aliases=import_aliases,
-                attribute_aliases=attribute_aliases,
-                qualified_aliases=qualified_aliases,
-                target_bindings=target_bindings,
+        return (
+            MetadataWrapper(cst.parse_module(source))
+            .visit(
+                cls._Transformer(
+                    local_aliases=local_aliases,
+                    import_aliases=import_aliases,
+                    attribute_aliases=attribute_aliases,
+                    qualified_aliases=qualified_aliases,
+                    target_bindings=target_bindings,
+                )
             )
-        ).code
+            .code
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCompatibilityAliasCst"]

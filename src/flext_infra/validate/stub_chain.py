@@ -139,7 +139,10 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         try:
             return self._analyze_project(project_dir, repository_root)
         except c.EXC_OS_TYPE_VALUE as exc:
-            return r[m.Infra.StubAnalysisReport].fail(f"typed dependency analysis failed for {project_dir.name}: {exc}", exception=exc)
+            return r[m.Infra.StubAnalysisReport].fail(
+                f"typed dependency analysis failed for {project_dir.name}: {exc}",
+                exception=exc,
+            )
 
     def build_report(
         self, repository_root: Path, project_dirs: t.SequenceOf[Path] | None = None

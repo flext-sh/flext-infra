@@ -87,7 +87,9 @@ class FlextInfraSkillRuleRunnerMixin:
         result: p.Cli.CommandOutput = result_wrapper.value
         if result.outcome.raw_return_code not in {0, 1}:
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
-            msg = f"ast-grep exited with code {result.outcome.raw_return_code}: {detail}"
+            msg = (
+                f"ast-grep exited with code {result.outcome.raw_return_code}: {detail}"
+            )
             raise RuntimeError(msg)
         count = 0
         for raw_line in (result.stdout or "").splitlines():

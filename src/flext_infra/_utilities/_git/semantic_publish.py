@@ -33,7 +33,9 @@ class FlextInfraUtilitiesGitSemanticPublishMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(f"merge failed for {request.commitish}: {exc}", exception=exc)
+            return r[m.Infra.GitTextReport].fail(
+                f"merge failed for {request.commitish}: {exc}", exception=exc
+            )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
@@ -47,7 +49,9 @@ class FlextInfraUtilitiesGitSemanticPublishMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"failed to delete ref {request.reference}: {exc}", exception=exc)
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to delete ref {request.reference}: {exc}", exception=exc
+            )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -61,7 +65,9 @@ class FlextInfraUtilitiesGitSemanticPublishMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitBoolReport].fail(str(exc), exception=exc)
         except (OSError, ValueError, AssertionError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"failed to fetch origin: {exc}", exception=exc)
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to fetch origin: {exc}", exception=exc
+            )
         return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=True))
 
     @classmethod
@@ -77,7 +83,9 @@ class FlextInfraUtilitiesGitSemanticPublishMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitTextReport].fail(f"failed to push {request.branch}: {exc}", exception=exc)
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to push {request.branch}: {exc}", exception=exc
+            )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=text))
 
     @classmethod
@@ -91,7 +99,9 @@ class FlextInfraUtilitiesGitSemanticPublishMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitTextReport].fail(str(exc), exception=exc)
         except (OSError, ValueError, IndexError, AssertionError) as exc:
-            return r[m.Infra.GitTextReport].fail(f"failed to resolve remote URL: {exc}", exception=exc)
+            return r[m.Infra.GitTextReport].fail(
+                f"failed to resolve remote URL: {exc}", exception=exc
+            )
         return r[m.Infra.GitTextReport].ok(m.Infra.GitTextReport(text=url))
 
 

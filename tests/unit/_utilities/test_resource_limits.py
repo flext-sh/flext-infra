@@ -137,9 +137,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
                 stdout="Traceback: checker frame",
                 stderr="INTERNAL ERROR",
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=-11,
-                    timed_out=False,
-                    forwarded_signal=None,
+                    raw_return_code=-11, timed_out=False, forwarded_signal=None
                 ),
             ),
             limit,

@@ -39,8 +39,7 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
             if value is not None and not (
                 isinstance(value, ast.List | ast.Tuple)
                 and all(
-                    isinstance(element, ast.Constant)
-                    and isinstance(element.value, str)
+                    isinstance(element, ast.Constant) and isinstance(element.value, str)
                     for element in value.elts
                 )
             ):
@@ -72,8 +71,7 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
             ):
                 value = node.value
             if isinstance(value, ast.List | ast.Tuple) and any(
-                isinstance(element, ast.Constant)
-                and element.value in exported_aliases
+                isinstance(element, ast.Constant) and element.value in exported_aliases
                 for element in value.elts
             ):
                 msg = f"alias export residue in {file_path}"

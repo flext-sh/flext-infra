@@ -37,7 +37,10 @@ class TestTypeGates:
                 FlextInfraMypyGate,
                 True,
                 r.ok(
-                    u.Tests.create_command_output(stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}', exit_code=1)
+                    u.Tests.create_command_output(
+                        stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}',
+                        exit_code=1,
+                    )
                 ),
                 False,
                 1,
@@ -47,7 +50,10 @@ class TestTypeGates:
                 FlextInfraPyrightGate,
                 True,
                 r.ok(
-                    u.Tests.create_command_output(stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}', exit_code=1)
+                    u.Tests.create_command_output(
+                        stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
+                        exit_code=1,
+                    )
                 ),
                 False,
                 1,

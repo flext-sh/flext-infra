@@ -51,7 +51,9 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         except GitCommandError as exc:
             return r[m.Infra.GitIdentityReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[m.Infra.GitIdentityReport].fail(f"failed to resolve Git identity: {exc}", exception=exc)
+            return r[m.Infra.GitIdentityReport].fail(
+                f"failed to resolve Git identity: {exc}", exception=exc
+            )
         return r[m.Infra.GitIdentityReport].ok(report)
 
     @classmethod
@@ -74,7 +76,9 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         except (InvalidGitRepositoryError, NoSuchPathError):
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
-            return r[m.Infra.GitBoolReport].fail(f"failed to probe Git work tree: {exc}", exception=exc)
+            return r[m.Infra.GitBoolReport].fail(
+                f"failed to probe Git work tree: {exc}", exception=exc
+            )
         return r[m.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(
                 value=not repo.bare and repo.working_tree_dir is not None

@@ -126,7 +126,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
         try:
             u.Infra.export_pydantic_json(sarif_report, sarif_path)
         except OSError as exc:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(f"failed to write sarif report: {exc}", exception=exc)
+            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
+                f"failed to write sarif report: {exc}", exception=exc
+            )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed
         u.Cli.summary(

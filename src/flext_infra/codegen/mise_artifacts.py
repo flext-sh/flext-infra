@@ -291,7 +291,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                     runner=runner if runner is not None else u.Cli,
                 )
         except OSError as exc:
-            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}", exception=exc)
+            return r[bool].fail(
+                f"cannot hydrate mise.lock checksums: {exc}", exception=exc
+            )
         if hydrated.failure:
             return r[bool].from_failure(hydrated)
         write = u.Cli.atomic_write_text_file(lock_path, hydrated.value)
@@ -365,7 +367,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         try:
             mode = path.stat().st_mode
         except OSError as exc:
-            return r[str].fail(f"cannot inspect generated Mise seed: {exc}", exception=exc)
+            return r[str].fail(
+                f"cannot inspect generated Mise seed: {exc}", exception=exc
+            )
         if not windows and not mode & 0o100:
             return r[str].fail("generated Unix Mise seed is not executable")
         checksums = (

@@ -82,7 +82,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
                     and config.has_option(section, "path")
                 )
         except (ConfigParserError, OSError, TypeError, ValueError) as exc:
-            return r[t.SequenceOf[Path]].fail(f"failed to read Git submodule declarations: {exc}", exception=exc)
+            return r[t.SequenceOf[Path]].fail(
+                f"failed to read Git submodule declarations: {exc}", exception=exc
+            )
         paths: t.MutableSequenceOf[Path] = []
         for raw_path in raw_paths:
             relative = Path(raw_path)
@@ -110,7 +112,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
         try:
             url, branch = cls._read_gitmodule_contract(gitmodules, request.member_path)
         except (ConfigParserError, OSError, TypeError, ValueError) as exc:
-            return r[m.Infra.GitSubmoduleContractReport].fail(f"failed to read Git submodule paths: {exc}", exception=exc)
+            return r[m.Infra.GitSubmoduleContractReport].fail(
+                f"failed to read Git submodule paths: {exc}", exception=exc
+            )
         if not url:
             return r[m.Infra.GitSubmoduleContractReport].fail(
                 f"Git submodule URL is missing: {request.member_path}"
@@ -159,7 +163,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
         except GitCommandError as exc:
             return r[t.SequenceOf[Path]].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[t.SequenceOf[Path]].fail(f"failed to discover Git submodules: {exc}", exception=exc)
+            return r[t.SequenceOf[Path]].fail(
+                f"failed to discover Git submodules: {exc}", exception=exc
+            )
         paths: t.MutableSequenceOf[Path] = []
         for raw_line in status.splitlines():
             normalized = raw_line.strip()

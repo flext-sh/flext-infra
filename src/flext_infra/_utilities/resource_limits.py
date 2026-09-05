@@ -155,7 +155,10 @@ class FlextInfraUtilitiesResourceLimits:
             or "resource limit reached"
         )
         return cls._bounded_mypy_diagnostic(
-            validated_limit, detail=detail, exit_code=output.outcome.raw_return_code, signal=signal
+            validated_limit,
+            detail=detail,
+            exit_code=output.outcome.raw_return_code,
+            signal=signal,
         )
 
 

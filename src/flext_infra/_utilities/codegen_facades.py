@@ -102,8 +102,7 @@ class FlextInfraUtilitiesCodegenFacades:
     def _utility_owners(
         owners_dir: Path,
     ) -> tuple[
-        tuple[tuple[str, str, frozenset[str]], ...],
-        t.MappingKV[str, frozenset[str]],
+        tuple[tuple[str, str, frozenset[str]], ...], t.MappingKV[str, frozenset[str]]
     ]:
         owners: list[tuple[str, str, frozenset[str]]] = []
         ancestors: dict[str, frozenset[str]] = {}
@@ -170,15 +169,11 @@ class FlextInfraUtilitiesCodegenFacades:
 
     @staticmethod
     def _insert_imports(
-        source: str,
-        facade: ast.ClassDef,
-        additions: t.SequenceOf[tuple[str, str]],
+        source: str, facade: ast.ClassDef, additions: t.SequenceOf[tuple[str, str]]
     ) -> str:
         lines = source.splitlines(keepends=True)
         rendered = [
-            f"from flext_infra._utilities.{module} import (\n"
-            f"    {class_name},\n"
-            ")\n"
+            f"from flext_infra._utilities.{module} import (\n    {class_name},\n)\n"
             for module, class_name in additions
         ]
         lines[facade.lineno - 1 : facade.lineno - 1] = [*rendered, "\n"]
@@ -186,9 +181,7 @@ class FlextInfraUtilitiesCodegenFacades:
 
     @staticmethod
     def _insert_bases(
-        source: str,
-        namespace: ast.ClassDef,
-        additions: t.SequenceOf[tuple[str, str]],
+        source: str, namespace: ast.ClassDef, additions: t.SequenceOf[tuple[str, str]]
     ) -> str:
         if not namespace.bases:
             message = "utility namespace has no canonical base chain"

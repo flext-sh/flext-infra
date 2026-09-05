@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from flext_cli import u as cli_u
 from flext_infra.constants import c
 from flext_infra.typings import t
 
@@ -123,25 +124,61 @@ class FlextInfraUtilitiesBase:
         if config_path is None:
             msg = f"ast-grep rule has no owning config: {rule_path}"
             raise ValueError(msg)
-        command = [c.Infra.SG, c.Infra.SCAN]
-        if rule_ids:
-            if any(not rule_id or "|" in rule_id for rule_id in rule_ids):
-                msg = "ast-grep rule IDs must be nonempty literal IDs"
-                raise ValueError(msg)
-            command.extend((
-                c.Infra.SG_CONFIG_FLAG,
-                str(config_path),
-                c.Infra.SG_FILTER_FLAG,
-                "|".join(sorted(rule_ids)),
-            ))
-        else:
-            command.extend(("--rule", str(rule_path)))
+        selected_rule_ids = (
+            tuple(rule_ids)
+            if rule_ids
+            else tuple(
+                sorted(FlextInfraUtilitiesBase.ast_grep_rule_contract(rule_path)[0])
+            )
+        )
+        if any(not rule_id or "|" in rule_id for rule_id in selected_rule_ids):
+            msg = "ast-grep rule IDs must be nonempty literal IDs"
+            raise ValueError(msg)
+        command = [
+            c.Infra.SG,
+            c.Infra.SCAN,
+            c.Infra.SG_CONFIG_FLAG,
+            str(config_path),
+            c.Infra.SG_FILTER_FLAG,
+            "|".join(sorted(selected_rule_ids)),
+        ]
         if json_stream:
             command.append("--json=stream")
         if update_all:
             command.append(c.Infra.SG_UPDATE_ALL)
         command.extend(targets)
         return tuple(command)
+
+    @staticmethod
+    def ast_grep_rule_contract(
+        rule_path: Path,
+    ) -> tuple[frozenset[str], frozenset[str]]:
+        """Return every document ID and the subset carrying an automatic fix."""
+        rule_ids: set[str] = set()
+        fixable_ids: set[str] = set()
+        for raw_document in rule_path.read_text(encoding=c.Cli.ENCODING_DEFAULT).split(
+            "\n---"
+        ):
+            if not any(
+                line.strip() and not line.lstrip().startswith("#")
+                for line in raw_document.splitlines()
+            ):
+                continue
+            parsed = cli_u.Cli.yaml_parse(raw_document).unwrap()
+            rule_id = parsed.get("id")
+            if not isinstance(rule_id, str) or not rule_id:
+                msg = f"ast-grep rule document missing required id: {rule_path}"
+                raise ValueError(msg)
+            if rule_id in rule_ids:
+                msg = f"duplicate ast-grep rule id {rule_id!r}: {rule_path}"
+                raise ValueError(msg)
+            rule_ids.add(rule_id)
+            if "fix" in parsed:
+                fixable_ids.add(rule_id)
+        if not rule_ids:
+            msg = f"ast-grep rule file contains no rule documents: {rule_path}"
+            raise ValueError(msg)
+        return frozenset(rule_ids), frozenset(fixable_ids)
 
     @staticmethod
     def strongly_connected_components(

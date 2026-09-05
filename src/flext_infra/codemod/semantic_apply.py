@@ -164,7 +164,10 @@ class FlextInfraCodemodSemanticApply:
         for path in consumer_first:
             state = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
             content = state.content
-            if content is None or content.decode(c.Cli.ENCODING_DEFAULT) != original[path]:
+            if (
+                content is None
+                or content.decode(c.Cli.ENCODING_DEFAULT) != original[path]
+            ):
                 msg = f"source changed after semantic preflight: {path}"
                 raise ValueError(msg)
             publications.append((path, state))
