@@ -11,7 +11,9 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from . import _git as _git, _rope as _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
+    from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
+    from ._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
@@ -48,8 +50,17 @@ if TYPE_CHECKING:
     from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
+    from .class_nesting import FlextInfraUtilitiesClassNesting
     from .codegen import FlextInfraUtilitiesCodegen
+    from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
+    from .compatibility_alias_validation import (
+        FlextInfraUtilitiesCompatibilityAliasValidation,
+    )
+    from .compatibility_aliases import FlextInfraUtilitiesCompatibilityAliases
     from .deferred_self_reference_ast import FlextInfraUtilitiesDeferredSelfReference
+    from .deferred_self_reference_rewrite import (
+        FlextInfraUtilitiesDeferredSelfReferenceRewrite,
+    )
     from .dependencies import FlextInfraUtilitiesDependencies
     from .discovery import FlextInfraUtilitiesDiscovery
     from .docs import FlextInfraUtilitiesDocs
@@ -71,7 +82,12 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
+    from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
+    from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
+    from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
+    from .private_imports import FlextInfraUtilitiesPrivateImports
     from .process import FlextInfraUtilitiesProcess
+    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -106,16 +122,30 @@ if TYPE_CHECKING:
     from .safety import FlextInfraUtilitiesSafety
     from .silent_failure_ast import FlextInfraUtilitiesSilentFailure
     from .snapshot import FlextInfraUtilitiesSnapshot
+    from .transformer_base import (
+        FlextInfraChangeTrackingTransformer,
+        FlextInfraRopeTransformer,
+    )
+    from .transformer_header import FlextInfraUtilitiesTransformerHeader
+    from .transformer_header_parser import FlextInfraUtilitiesTransformerHeaderParser
     from .versioning import FlextInfraUtilitiesVersioning
     from .workspace_fingerprint import FlextInfraUtilitiesWorkspaceFingerprint
     from .worktree_lifecycle import FlextInfraWorktreeLifecycle
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
+    "FlextInfraChangeTrackingTransformer",
+    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRopeProject",
+    "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
+    "FlextInfraUtilitiesClassNesting",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesCompatibilityAliasCst",
+    "FlextInfraUtilitiesCompatibilityAliasValidation",
+    "FlextInfraUtilitiesCompatibilityAliases",
     "FlextInfraUtilitiesDeferredSelfReference",
+    "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
     "FlextInfraUtilitiesDependencies",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -123,10 +153,12 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsAudit",
     "FlextInfraUtilitiesDocsAuditDetectorsMixin",
     "FlextInfraUtilitiesDocsBuild",
+    "FlextInfraUtilitiesDocsCommandContractMixin",
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
     "FlextInfraUtilitiesDocsGenerate",
     "FlextInfraUtilitiesDocsGithubLinks",
+    "FlextInfraUtilitiesDocsGuidesMixin",
     "FlextInfraUtilitiesDocsRender",
     "FlextInfraUtilitiesDocsScope",
     "FlextInfraUtilitiesDocsScopeBuildMixin",
@@ -154,6 +186,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesNamespaceConfig",
+    "FlextInfraUtilitiesPrivateImportCst",
+    "FlextInfraUtilitiesPrivateImportFacades",
+    "FlextInfraUtilitiesPrivateImportValidation",
+    "FlextInfraUtilitiesPrivateImports",
     "FlextInfraUtilitiesProcess",
     "FlextInfraUtilitiesProjectDiscovery",
     "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
@@ -199,6 +235,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSilentFailure",
     "FlextInfraUtilitiesSnapshot",
+    "FlextInfraUtilitiesTransformerHeader",
+    "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesWorkspaceFingerprint",
     "FlextInfraWorktreeLifecycle",
@@ -214,7 +252,9 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             "._docs_audit_detectors": ("FlextInfraUtilitiesDocsAuditDetectorsMixin",),
+            "._docs_command_contract": ("FlextInfraUtilitiesDocsCommandContractMixin",),
             "._docs_github_links": ("FlextInfraUtilitiesDocsGithubLinks",),
+            "._docs_guides": ("FlextInfraUtilitiesDocsGuidesMixin",),
             "._docs_scope_build": ("FlextInfraUtilitiesDocsScopeBuildMixin",),
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
             "._git": ("_git",),
@@ -261,9 +301,18 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
+            ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
+            ".compatibility_alias_cst": ("FlextInfraUtilitiesCompatibilityAliasCst",),
+            ".compatibility_alias_validation": (
+                "FlextInfraUtilitiesCompatibilityAliasValidation",
+            ),
+            ".compatibility_aliases": ("FlextInfraUtilitiesCompatibilityAliases",),
             ".deferred_self_reference_ast": (
                 "FlextInfraUtilitiesDeferredSelfReference",
+            ),
+            ".deferred_self_reference_rewrite": (
+                "FlextInfraUtilitiesDeferredSelfReferenceRewrite",
             ),
             ".dependencies": ("FlextInfraUtilitiesDependencies",),
             ".discovery": ("FlextInfraUtilitiesDiscovery",),
@@ -286,7 +335,14 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
+            ".private_import_cst": ("FlextInfraUtilitiesPrivateImportCst",),
+            ".private_import_facades": ("FlextInfraUtilitiesPrivateImportFacades",),
+            ".private_import_validation": (
+                "FlextInfraUtilitiesPrivateImportValidation",
+            ),
+            ".private_imports": ("FlextInfraUtilitiesPrivateImports",),
             ".process": ("FlextInfraUtilitiesProcess",),
+            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",
@@ -323,6 +379,14 @@ _LAZY_IMPORTS = MappingProxyType(
             ".safety": ("FlextInfraUtilitiesSafety",),
             ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailure",),
             ".snapshot": ("FlextInfraUtilitiesSnapshot",),
+            ".transformer_base": (
+                "FlextInfraChangeTrackingTransformer",
+                "FlextInfraRopeTransformer",
+            ),
+            ".transformer_header": ("FlextInfraUtilitiesTransformerHeader",),
+            ".transformer_header_parser": (
+                "FlextInfraUtilitiesTransformerHeaderParser",
+            ),
             ".versioning": ("FlextInfraUtilitiesVersioning",),
             ".workspace_fingerprint": ("FlextInfraUtilitiesWorkspaceFingerprint",),
             ".worktree_lifecycle": ("FlextInfraWorktreeLifecycle",),

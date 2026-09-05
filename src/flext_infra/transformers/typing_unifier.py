@@ -22,13 +22,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 from flext_infra.transformers._canonical_t_import import (
     FlextInfraEnsureCanonicalTImportMixin,
 )
 from flext_infra.transformers._typing_rewrite import (
     FlextInfraRefactorTypingUnifierRewriteMixin,
 )
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -84,12 +84,15 @@ class FlextInfraRefactorTypingUnifier(
         source = self._canonicalize_annotation_builtins(source)
         source = self._modernize_typealias(source)
         added, did_add = self._ensure_t_import(
-            source, self._canonical_import_module(self._file_path)
+            source,
+            FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(
+                self._file_path
+            ),
         )
         if did_add:
             self._record_change(
                 "Added canonical t import from "
-                f"{self._canonical_import_module(self._file_path)}"
+                f"{FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(self._file_path)}"
             )
         source = added
         return source, list(self.changes)

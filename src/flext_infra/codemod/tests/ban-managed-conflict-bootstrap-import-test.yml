@@ -1,5 +1,0 @@
-id: ban-managed-conflict-bootstrap-import
-valid:
-  - from flext_infra import u
-invalid:
-  - from flext_infra.codegen.managed_conflicts_bootstrap import prepare_managed_conflicts

@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from .orchestrator import FlextInfraRefactorOrchestrator
     from .project_classifier import FlextInfraProjectClassifier
     from .safety import FlextInfraRefactorSafetyManager
-    from .scanner import FlextInfraRefactorLooseClassScanner
     from .service import FlextInfraRefactorService
     from .text_executor import FlextInfraRefactorTextExecutor
     from .violation_analyzer import FlextInfraRefactorViolationAnalyzer
@@ -36,7 +35,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorClassNestingAnalyzer",
     "FlextInfraRefactorClassvarConstantAutofix",
     "FlextInfraRefactorLegacyTextOps",
-    "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorRuleLoader",
     "FlextInfraRefactorSafetyManager",
@@ -63,7 +61,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".orchestrator": ("FlextInfraRefactorOrchestrator",),
             ".project_classifier": ("FlextInfraProjectClassifier",),
             ".safety": ("FlextInfraRefactorSafetyManager",),
-            ".scanner": ("FlextInfraRefactorLooseClassScanner",),
             ".service": ("FlextInfraRefactorService",),
             ".text_executor": ("FlextInfraRefactorTextExecutor",),
             ".violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),

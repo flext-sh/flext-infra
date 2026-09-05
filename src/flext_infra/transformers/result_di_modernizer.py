@@ -22,8 +22,8 @@ import ast
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c
-from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
 from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+from flext_infra.transformers._rewrite import FlextInfraSourceRewriter
 
 if TYPE_CHECKING:
     from flext_infra import t

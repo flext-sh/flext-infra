@@ -12,14 +12,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, r, t, u
+from flext_infra._utilities.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.detectors import (
     FlextInfraCompatibilityAliasDetector,
     FlextInfraCyclicImportDetector,
 )
 from flext_infra.gates import FlextInfraGate
-from flext_infra._utilities.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -254,30 +254,30 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     @staticmethod
     def _plan_edits(
         file_paths: t.SequenceOf[Path],
-    ) -> p.Result[tuple[m.Infra.AliasMigrationEdit, ...]]:
+    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
         """Build immutable in-memory edits for detector-selected files."""
-        edits: list[m.Infra.AliasMigrationEdit] = []
+        edits: list[m.Infra.SemanticMigrationEdit] = []
         for file_path in file_paths:
             read = u.Cli.files_read_text(file_path)
             if read.failure:
-                return r[tuple[m.Infra.AliasMigrationEdit, ...]].fail(
+                return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(
                     read.error or f"canonical-alias source read failed: {file_path}"
                 )
             transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
             try:
                 updated, changes = transformer.apply_to_source(read.value)
             except ValueError as exc:
-                return r[tuple[m.Infra.AliasMigrationEdit, ...]].fail(str(exc))
+                return r[tuple[m.Infra.SemanticMigrationEdit, ...]].fail(str(exc))
             if changes and updated != read.value:
                 edits.append(
-                    m.Infra.AliasMigrationEdit(
+                    m.Infra.SemanticMigrationEdit(
                         file_path=file_path,
                         original_source=read.value,
                         updated_source=updated,
                         changes=tuple(changes),
                     )
                 )
-        return r[tuple[m.Infra.AliasMigrationEdit, ...]].ok(tuple(edits))
+        return r[tuple[m.Infra.SemanticMigrationEdit, ...]].ok(tuple(edits))
 
     @staticmethod
     def _format_files(file_paths: t.SequenceOf[Path]) -> None:

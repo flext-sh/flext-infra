@@ -24,6 +24,10 @@ from __future__ import annotations
 import ast
 from typing import NamedTuple
 
+from flext_infra._utilities.deferred_self_reference_rewrite import (
+    FlextInfraUtilitiesDeferredSelfReferenceRewrite,
+)
+
 
 class _DeferredSelfReferenceFinding(NamedTuple):
     """One deferred-self-reference or recursive-model occurrence."""
@@ -165,7 +169,9 @@ def _collect_deferred_self_reference_findings(
     return tuple(findings)
 
 
-class FlextInfraUtilitiesDeferredSelfReference:
+class FlextInfraUtilitiesDeferredSelfReference(
+    FlextInfraUtilitiesDeferredSelfReferenceRewrite
+):
     """Public utility owner for deferred self-reference AST analysis."""
 
     @staticmethod
@@ -173,8 +179,7 @@ class FlextInfraUtilitiesDeferredSelfReference:
         tree: ast.Module,
     ) -> tuple[_DeferredSelfReferenceFinding, ...]:
         """Collect deferred-self-reference and recursive-model findings."""
-        findings = _collect_deferred_self_reference_findings(tree)
-        return findings
+        return _collect_deferred_self_reference_findings(tree)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDeferredSelfReference"]

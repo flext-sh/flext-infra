@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
-from collections.abc import Mapping
+import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra.codemod.crg_gate import FlextInfraCodeReviewGraphGate
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 
@@ -31,11 +34,131 @@ class FlextInfraModGateEngine:
             FlextInfraCodemodSnapshotReconciler.reconcile(
                 config_root, frozenset(active_rule_ids)
             )
-            cls._run_tool(
-                config_root, (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL)
-            ).unwrap()
-            cls._run_tool(config_root, (c.Infra.SG, c.Infra.TEST)).unwrap()
+            with tempfile.TemporaryDirectory(
+                prefix="mod-rule-fixtures-", dir=config_root.parent
+            ) as temp_dir:
+                temp_root = Path(temp_dir) / config_root.name
+                shutil.copytree(config_root, temp_root)
+                split_rules = cls._materialize_split_rule_files(
+                    config_root=config_root,
+                    temp_root=temp_root,
+                    owner_rules=owner_rules,
+                )
+                cls._run_tool(
+                    temp_root, (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL)
+                ).unwrap()
+                cls._run_tool(temp_root, (c.Infra.SG, c.Infra.TEST)).unwrap()
+                cls._sync_rule_fixture_root(
+                    config_root=config_root,
+                    temp_root=temp_root,
+                    split_rules=split_rules,
+                )
         return r.ok(True)
+
+    @staticmethod
+    def _rule_documents(rule: Path) -> tuple[str, ...]:
+        """Return every non-empty YAML document in one rule file."""
+        documents = tuple(rule.read_text(encoding="utf-8").split("\n---"))
+        return tuple(
+            document
+            for document in documents
+            if any(
+                line.strip() and not line.lstrip().startswith("#")
+                for line in document.splitlines()
+            )
+        )
+
+    @classmethod
+    def _materialize_split_rule_files(
+        cls,
+        *,
+        config_root: Path,
+        temp_root: Path,
+        owner_rules: t.SequenceOf[Path],
+    ) -> dict[Path, tuple[Path, ...]]:
+        """Replace multi-document rule files with single-document temp copies."""
+        split_rules: dict[Path, tuple[Path, ...]] = {}
+        source_rules = set(owner_rules)
+        config_path = config_root / c.Infra.CODEMOD_CONFIG_FILENAME
+        config = u.Cli.yaml_safe_load(config_path).unwrap()
+        for key in (
+            c.Infra.CODEMOD_RULE_DIRS_KEY,
+            c.Infra.CODEMOD_UTIL_DIRS_KEY,
+        ):
+            raw_directories = config.get(key)
+            if not isinstance(raw_directories, Sequence) or isinstance(
+                raw_directories, str
+            ):
+                msg = f"invalid ast-grep {key} contract: {config_path}"
+                raise TypeError(msg)
+            for raw_directory in raw_directories:
+                if not isinstance(raw_directory, str) or not raw_directory.strip():
+                    msg = f"invalid ast-grep {key} entry: {config_path}"
+                    raise ValueError(msg)
+                directory = Path(raw_directory)
+                if directory.is_absolute() or ".." in directory.parts:
+                    msg = f"ast-grep {key} escapes its owner: {raw_directory}"
+                    raise ValueError(msg)
+                source_rules.update(
+                    (config_root / directory).rglob(
+                        f"*{c.Infra.CODEMOD_RULE_SUFFIX}"
+                    )
+                )
+        for rule in sorted(source_rules):
+            documents = cls._rule_documents(rule)
+            if len(documents) <= 1:
+                continue
+            temp_rule = temp_root / rule.relative_to(config_root)
+            temp_rule.unlink()
+            split_paths: list[Path] = []
+            for document in documents:
+                parsed = u.Cli.yaml_parse(document)
+                if parsed.failure:
+                    raise RuntimeError(parsed.error or str(rule))
+                rule_id = parsed.value.get("id")
+                if not isinstance(rule_id, str) or not rule_id:
+                    msg = f"ast-grep rule document missing required id: {rule}"
+                    raise RuntimeError(msg)
+                split_path = temp_rule.with_name(f"{rule_id}.yml")
+                split_path.write_text(document, encoding="utf-8")
+                split_paths.append(split_path)
+            split_rules[rule] = tuple(split_paths)
+        return split_rules
+
+    @staticmethod
+    def _sync_rule_fixture_root(
+        *,
+        config_root: Path,
+        temp_root: Path,
+        split_rules: dict[Path, tuple[Path, ...]],
+    ) -> None:
+        """Mirror validated fixture updates from the temp copy back to source."""
+        split_temp_paths = {
+            path.relative_to(temp_root) for paths in split_rules.values() for path in paths
+        }
+        for temp_path in temp_root.rglob("*"):
+            if not temp_path.is_file():
+                continue
+            relative = temp_path.relative_to(temp_root)
+            if relative in split_temp_paths:
+                continue
+            source_path = config_root / relative
+            if source_path.is_file():
+                if source_path.read_text(encoding="utf-8") == temp_path.read_text(
+                    encoding="utf-8"
+                ):
+                    continue
+            else:
+                source_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(temp_path, source_path)
+        for source_rule, split_paths in split_rules.items():
+            reconstructed = "\n---\n".join(
+                split_path.read_text(encoding="utf-8").rstrip("\n")
+                for split_path in split_paths
+            )
+            if reconstructed and not reconstructed.endswith("\n"):
+                reconstructed += "\n"
+            source_rule.write_text(reconstructed, encoding="utf-8")
 
     @staticmethod
     def _run_tool(
@@ -82,13 +205,7 @@ class FlextInfraModGateEngine:
                 stderr
             ):
                 return r[p.Cli.CommandOutput].ok(output)
-            diagnostics = tuple(
-                line for line in stderr.splitlines() if not line.startswith("INFO:")
-            )
-            if diagnostics:
-                return r[p.Cli.CommandOutput].fail(stderr)
-            sys.stderr.write(f"{stderr}\n")
-            sys.stderr.flush()
+            return r[p.Cli.CommandOutput].fail(stderr)
         return r[p.Cli.CommandOutput].ok(output)
 
     @staticmethod
@@ -342,6 +459,7 @@ class FlextInfraModGateEngine:
             return r.fail("\n".join(diagnostics))
         for owner, files in selected_groups:
             FlextInfraLspDiagnosticsDetector.validate(owner, files).unwrap()
+        FlextInfraCodeReviewGraphGate.validate(resolved_root, selected_groups).unwrap()
         return r[bool].ok(True)
 
     @classmethod
@@ -371,7 +489,10 @@ class FlextInfraModGateEngine:
             )
             sys.stderr.flush()
             scan_command = u.Infra.ast_grep_scan_command(
-                rule, targets=targets, json_stream=True
+                rule,
+                rule_ids=tuple(sorted(rule_ids)),
+                targets=targets,
+                json_stream=True,
             )
             run = cls._run_tool(root, scan_command, finding_exit_code=1)
             if run.failure:
@@ -391,7 +512,10 @@ class FlextInfraModGateEngine:
             entries.extend(report.entries)
             if fix and report.actionable:
                 apply_command = u.Infra.ast_grep_scan_command(
-                    rule, targets=targets, update_all=True
+                    rule,
+                    rule_ids=tuple(sorted(rule_ids)),
+                    targets=targets,
+                    update_all=True,
                 )
                 apply_run = cls._run_tool(
                     root, apply_command, accept_apply_receipt=True

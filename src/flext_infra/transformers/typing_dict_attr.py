@@ -9,10 +9,10 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, override
 
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 from flext_infra.transformers._canonical_t_import import (
     FlextInfraEnsureCanonicalTImportMixin,
 )
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,12 +46,15 @@ class FlextInfraRefactorTypingDictAttr(
         updated = self._rewrite_dict_annotations(source)
         if updated != source:
             added, did_add = self._ensure_t_import(
-                updated, self._canonical_import_module(self._file_path)
+                updated,
+                FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(
+                    self._file_path
+                ),
             )
             if did_add:
                 self._record_change(
                     "Added canonical t import from "
-                    f"{self._canonical_import_module(self._file_path)}"
+                    f"{FlextInfraEnsureCanonicalTImportMixin.canonical_import_module(self._file_path)}"
                 )
             updated = added
         return updated, list(self.changes)

@@ -1,4 +1,9 @@
-# Project tools
+<!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
+<!-- Source of truth: `docs/guides/project-tools.md`; adjust that source, never this projection. -->
+
+# flext-infra - Project tools
+
+> Project profile: `flext-infra`
 
 <!-- TOC START -->
 - [Where each binary comes from](#where-each-binary-comes-from)

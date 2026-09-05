@@ -1,8 +1,0 @@
-id: ban-managed-conflict-bootstrap-import
-snapshots:
-  from flext_infra.codegen.managed_conflicts_bootstrap import prepare_managed_conflicts:
-    labels:
-    - source: from flext_infra.codegen.managed_conflicts_bootstrap import prepare_managed_conflicts
-      style: primary
-      start: 0
-      end: 85

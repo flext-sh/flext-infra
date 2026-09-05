@@ -100,7 +100,7 @@ class FlextInfraUtilitiesDependencies:
             if distribution_name in active:
                 cycle_start = active.index(distribution_name)
                 cycle = " -> ".join((*active[cycle_start:], distribution_name))
-                msg = f"cyclic distribution dependency graph: {cycle}"
+                msg = f"cyclic dependency graph: {cycle}"
                 raise ValueError(msg)
             active.append(distribution_name)
             for dependency in graph[distribution_name]:
@@ -165,11 +165,13 @@ class FlextInfraUtilitiesDependencies:
         for distribution_name in ordered:
             resource = files(package_names[distribution_name])
             for part in resource_parts:
-                resource = resource / part
+                resource /= part
             resource_root = Path(str(resource))
             if not resource_root.is_dir():
                 continue
             for candidate in sorted(resource_root.rglob(f"*{suffix}")):
+                if "_pending" in candidate.parts:
+                    continue
                 resolved = candidate.resolve()
                 if resolved not in seen:
                     seen.add(resolved)

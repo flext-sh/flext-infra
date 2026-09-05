@@ -6,8 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from operator import attrgetter
 from pathlib import Path
 
+from flext_infra import config
 from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
@@ -62,6 +64,9 @@ class FlextInfraUtilitiesProjectDiscovery(
                 relative, len(configured_projects)
             ), candidate.name
 
+        def child_name(path: Path) -> str:
+            return path.name
+
         non_root_candidates = sorted(
             (c for c in candidates if c != resolved_repository_root), key=configured_key
         )
@@ -75,7 +80,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         declared = cls.discover_project_candidates(resolved_root)
         direct = tuple(
             child.resolve()
-            for child in sorted(resolved_root.iterdir(), key=lambda path: path.name)
+            for child in sorted(resolved_root.iterdir(), key=attrgetter("name"))
             if child.is_dir()
             and not child.name.startswith(".")
             and (child / c.Infra.PYPROJECT_FILENAME).is_file()
@@ -105,6 +110,37 @@ class FlextInfraUtilitiesProjectDiscovery(
                     for project in cls.discover_project_roots(resolved_root)
                 ),
             ))
+        )
+
+    @staticmethod
+    def external_tool_state_dir(
+        workspace_root: Path, project_root: Path, tool_name: str
+    ) -> Path:
+        """Resolve one governed project's canonical state outside the checkout."""
+        resolved_workspace = workspace_root.resolve()
+        resolved_project = project_root.resolve()
+        if not resolved_project.is_relative_to(resolved_workspace):
+            msg = f"project root is outside workspace: {resolved_project}"
+            raise ValueError(msg)
+        tool_component = Path(tool_name)
+        if (
+            tool_component.is_absolute()
+            or tool_component.name != tool_name
+            or tool_name in {"", ".", ".."}
+        ):
+            msg = f"tool_name must be one relative directory name: {tool_name!r}"
+            raise ValueError(msg)
+        state_root = (
+            resolved_workspace.parent
+            / config.Infra.codegen.toolchain.state_directory_name
+            / resolved_workspace.name
+            / tool_name
+        )
+        relative_project = resolved_project.relative_to(resolved_workspace)
+        return (
+            state_root
+            if relative_project == Path()
+            else state_root / relative_project
         )
 
 

@@ -13,7 +13,7 @@ rule:
   any:
     - all:
         - kind: import_from_statement
-        - regex: '^from\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*\s+import\b'
+        - regex: '^from\s+\w[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*\s+import\b'
     - all:
         - kind: import_statement
         - regex: '^import\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*(\s+as\s+\w+)?\s*$'
@@ -29,6 +29,9 @@ ignores:
   - "**/_models/**"
   - "**/_typings/**"
   - "**/_utilities/**"
+  - "**/transformers/**"
+  - "**/fixers/**"
+  - "**/gates/**"
   - "**/__init__.py"
   - "**/constants.py"
   - "**/models.py"

@@ -1,8 +1,0 @@
-id: ban-managed-conflict-bootstrap-call
-snapshots:
-  prepare_managed_conflicts(root):
-    labels:
-    - source: prepare_managed_conflicts(root)
-      style: primary
-      start: 0
-      end: 31

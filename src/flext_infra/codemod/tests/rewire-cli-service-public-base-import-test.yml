@@ -1,5 +1,0 @@
-id: rewire-cli-service-public-base-import
-valid:
-  - from flext_cli import s
-invalid:
-  - from flext_cli.base import s

@@ -11,9 +11,11 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 if TYPE_CHECKING:
     from .batch_apply import FlextInfraCodemodBatchApply
     from .batch_gates import FlextInfraModGateEngine
+    from .semantic_apply import FlextInfraCodemodSemanticApply
     from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 __all__: tuple[str, ...] = (
     "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraModGateEngine",
 )
@@ -23,6 +25,7 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             ".batch_apply": ("FlextInfraCodemodBatchApply",),
             ".batch_gates": ("FlextInfraModGateEngine",),
+            ".semantic_apply": ("FlextInfraCodemodSemanticApply",),
             ".snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
         }),
         alias_groups=MappingProxyType({}),

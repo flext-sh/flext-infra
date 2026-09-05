@@ -1,8 +1,0 @@
-id: ban-deleted-managed-conflict-owner-import
-snapshots:
-  from flext_infra.codegen.managed_conflicts_core import recover_managed_toml:
-    labels:
-    - source: from flext_infra.codegen.managed_conflicts_core import recover_managed_toml
-      style: primary
-      start: 0
-      end: 75

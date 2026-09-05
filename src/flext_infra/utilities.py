@@ -15,6 +15,9 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra._utilities.compatibility_aliases import (
+    FlextInfraUtilitiesCompatibilityAliases,
+)
 from flext_infra._utilities.deferred_self_reference_ast import (
     FlextInfraUtilitiesDeferredSelfReference,
 )
@@ -46,6 +49,7 @@ from flext_infra._utilities.namespace_facades import (
 from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
+from flext_infra._utilities.private_imports import FlextInfraUtilitiesPrivateImports
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
@@ -75,6 +79,9 @@ from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
 from flext_infra._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailure
+from flext_infra._utilities.transformer_header import (
+    FlextInfraUtilitiesTransformerHeader,
+)
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
@@ -102,10 +109,12 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
+        FlextInfraUtilitiesCompatibilityAliases,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesProjectManagedArtifacts,
+        FlextInfraUtilitiesPrivateImports,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
         FlextInfraUtilitiesRopeAnalysisWorkspace,
@@ -118,6 +127,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRopeSource,
         FlextInfraUtilitiesRopeStructure,
         FlextInfraUtilitiesRopePep695Patch,
+        FlextInfraUtilitiesTransformerHeader,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
         FlextInfraUtilitiesDocsAudit,

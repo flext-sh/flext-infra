@@ -103,14 +103,39 @@ class FlextInfraUtilitiesBase:
     def ast_grep_scan_command(
         rule_path: Path,
         *,
+        rule_ids: t.StrSequence = (),
         targets: t.StrSequence = (".",),
         json_stream: bool = False,
         update_all: bool = False,
     ) -> t.StrSequence:
         """Build one ast-grep scan command with explicit cwd-relative targets."""
         if not targets or any(Path(target).is_absolute() for target in targets):
-            raise ValueError("ast-grep scan targets must be nonempty and cwd-relative")
-        command = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_path)]
+            msg = "ast-grep scan targets must be nonempty and cwd-relative"
+            raise ValueError(msg)
+        config_path = next(
+            (
+                ancestor / c.Infra.CODEMOD_CONFIG_FILENAME
+                for ancestor in rule_path.resolve().parents
+                if (ancestor / c.Infra.CODEMOD_CONFIG_FILENAME).is_file()
+            ),
+            None,
+        )
+        if config_path is None:
+            msg = f"ast-grep rule has no owning config: {rule_path}"
+            raise ValueError(msg)
+        command = [c.Infra.SG, c.Infra.SCAN]
+        if rule_ids:
+            if any(not rule_id or "|" in rule_id for rule_id in rule_ids):
+                msg = "ast-grep rule IDs must be nonempty literal IDs"
+                raise ValueError(msg)
+            command.extend((
+                c.Infra.SG_CONFIG_FLAG,
+                str(config_path),
+                c.Infra.SG_FILTER_FLAG,
+                "|".join(sorted(rule_ids)),
+            ))
+        else:
+            command.extend(("--rule", str(rule_path)))
         if json_stream:
             command.append("--json=stream")
         if update_all:

@@ -68,6 +68,7 @@ if TYPE_CHECKING:
     from .codegen.version_file import FlextInfraCodegenVersionFile
     from .codemod.batch_apply import FlextInfraCodemodBatchApply
     from .codemod.batch_gates import FlextInfraModGateEngine
+    from .codemod.semantic_apply import FlextInfraCodemodSemanticApply
     from .codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
     from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
@@ -180,7 +181,6 @@ if TYPE_CHECKING:
     from .refactor.orchestrator import FlextInfraRefactorOrchestrator
     from .refactor.project_classifier import FlextInfraProjectClassifier
     from .refactor.safety import FlextInfraRefactorSafetyManager
-    from .refactor.scanner import FlextInfraRefactorLooseClassScanner
     from .refactor.service import FlextInfraRefactorService
     from .refactor.text_executor import FlextInfraRefactorTextExecutor
     from .refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
@@ -196,10 +196,6 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
     from .services.codegen import FlextInfraCodegen
-    from .transformers.base import (
-        FlextInfraChangeTrackingTransformer,
-        FlextInfraRopeTransformer,
-    )
     from .transformers.cast_remover import FlextInfraRefactorCastRemover
     from .transformers.census_visitors import (
         FlextInfraCensusImportDiscoveryVisitor,
@@ -220,9 +216,6 @@ if TYPE_CHECKING:
     from .transformers.open_encoding import FlextInfraRefactorOpenEncoding
     from .transformers.pattern import FlextInfraRefactorPatternTransformer
     from .transformers.pattern_modernizer import FlextInfraRefactorPatternModernizer
-    from .transformers.project_alias_migrator import (
-        FlextInfraRefactorProjectAliasMigrator,
-    )
     from .transformers.pydantic_modernizer import FlextInfraRefactorPydanticModernizer
     from .transformers.result_di_modernizer import FlextInfraRefactorResultDiModernizer
     from .transformers.signature_propagator import FlextInfraRefactorSignaturePropagator
@@ -293,7 +286,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCanonicalAliasGate",
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
-    "FlextInfraChangeTrackingTransformer",
     "FlextInfraClassPlacementDetector",
     "FlextInfraCleanService",
     "FlextInfraCli",
@@ -315,6 +307,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenScaffolder",
     "FlextInfraCodegenVersionFile",
     "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodSemanticApply",
     "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraCompatibilityAliasDetector",
     "FlextInfraConfigFixer",
@@ -413,12 +406,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorLazyImportFixer",
     "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLoggingModernizer",
-    "FlextInfraRefactorLooseClassScanner",
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
-    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorResultDiModernizer",
     "FlextInfraRefactorRuleLoader",
@@ -433,7 +424,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorViolationAnalyzer",
     "FlextInfraReleaseOrchestrator",
     "FlextInfraReleaseOrchestratorPhases",
-    "FlextInfraRopeTransformer",
     "FlextInfraRopeWorkspace",
     "FlextInfraRuffFormatGate",
     "FlextInfraRuffLintGate",
@@ -558,6 +548,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codemod": ("codemod",),
             ".codemod.batch_apply": ("FlextInfraCodemodBatchApply",),
             ".codemod.batch_gates": ("FlextInfraModGateEngine",),
+            ".codemod.semantic_apply": ("FlextInfraCodemodSemanticApply",),
             ".codemod.snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
             ".constants": ("FlextInfraConstants", "c"),
             ".deps": ("deps",),
@@ -687,7 +678,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor.orchestrator": ("FlextInfraRefactorOrchestrator",),
             ".refactor.project_classifier": ("FlextInfraProjectClassifier",),
             ".refactor.safety": ("FlextInfraRefactorSafetyManager",),
-            ".refactor.scanner": ("FlextInfraRefactorLooseClassScanner",),
             ".refactor.service": ("FlextInfraRefactorService",),
             ".refactor.text_executor": ("FlextInfraRefactorTextExecutor",),
             ".refactor.violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
@@ -708,10 +698,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
             ".services.codegen": ("FlextInfraCodegen",),
             ".transformers": ("transformers",),
-            ".transformers.base": (
-                "FlextInfraChangeTrackingTransformer",
-                "FlextInfraRopeTransformer",
-            ),
             ".transformers.cast_remover": ("FlextInfraRefactorCastRemover",),
             ".transformers.census_visitors": (
                 "FlextInfraCensusImportDiscoveryVisitor",
@@ -741,9 +727,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.pattern": ("FlextInfraRefactorPatternTransformer",),
             ".transformers.pattern_modernizer": (
                 "FlextInfraRefactorPatternModernizer",
-            ),
-            ".transformers.project_alias_migrator": (
-                "FlextInfraRefactorProjectAliasMigrator",
             ),
             ".transformers.pydantic_modernizer": (
                 "FlextInfraRefactorPydanticModernizer",

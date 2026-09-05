@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from flext_cli import u
 from flext_infra import config
+from flext_infra._utilities._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
 from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
@@ -16,7 +16,7 @@ from flext_infra.models import m
 from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesDocsGenerate:
+class FlextInfraUtilitiesDocsGenerate(FlextInfraUtilitiesDocsGuidesMixin):
     """Reusable generation helpers exposed through ``u.Infra``."""
 
     @staticmethod
@@ -130,19 +130,6 @@ class FlextInfraUtilitiesDocsGenerate:
             )
         )
         return files
-
-    @staticmethod
-    def docs_project_guides_files(
-        scope: m.Infra.DocScope, *, repository_root: Path, apply: bool
-    ) -> t.SequenceOf[m.Infra.GeneratedFile]:
-        """Return project guide files managed by generation.
-
-        Guide propagation is intentionally disabled; curated guides stay local.
-        """
-        _ = scope
-        _ = repository_root
-        _ = apply
-        return []
 
     @staticmethod
     def docs_project_mkdocs_files(
@@ -375,6 +362,12 @@ class FlextInfraUtilitiesDocsGenerate:
                 scope, apply=apply
             )
         )
+        if scope.name != c.Infra.RK_ROOT:
+            files.extend(
+                FlextInfraUtilitiesDocsGenerate.docs_project_guides_files(
+                    scope, repository_root=repository_root, apply=apply
+                )
+            )
         files.extend(
             FlextInfraUtilitiesDocsGenerate.docs_sanitize_scope_fences(
                 scope, apply=apply
@@ -428,40 +421,6 @@ class FlextInfraUtilitiesDocsGenerate:
             reason=f"changes:{changed}",
             passed=apply or changed == 0,
         )
-
-    @staticmethod
-    def docs_project_guide_content(
-        content: str, project_name: str, guide_name: str
-    ) -> str:
-        """Return guide content normalized for project-local publication."""
-        lines = content.splitlines()
-        title = Path(guide_name).stem.replace("_", " ").replace("-", " ").strip()
-        body_lines = lines
-        for index, line in enumerate(lines):
-            match = c.Infra.HEADING_RE.match(line)
-            if match is None:
-                continue
-            title = match.group(1).strip() or title
-            body_lines = lines[index + 1 :]
-            break
-        body = "\n".join(body_lines).lstrip()
-        heading = f"# {project_name} - {title}"
-        return f"{heading}\n\n{body}".rstrip() + "\n"
-
-    @staticmethod
-    def docs_sanitize_internal_anchor_links(content: str) -> str:
-        """Replace local markdown links with plain text while preserving externals."""
-
-        def sanitize_link(match: re.Match[str]) -> str:
-            target = match.group(2)
-            return (
-                match.group(0)
-                if target.startswith(("http://", "https://", "#", "mailto:"))
-                else match.group(1)
-            )
-
-        pattern: re.Pattern[str] = c.Infra.MARKDOWN_LINK_RE
-        return re.sub(pattern, sanitize_link, content)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesDocsGenerate"]

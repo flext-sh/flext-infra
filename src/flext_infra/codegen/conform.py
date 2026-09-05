@@ -1885,7 +1885,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         document = m.PyprojectDocument.model_validate(payload)
         return r[p.ProjectMetadata].ok(
-            u.Infra.build_project_metadata(root.resolve(), document)
+            u.build_project_metadata(root.resolve(), document)
         )
 
     def _plan_existing_templates(
@@ -2158,12 +2158,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         provider_matches = tuple(
             provider
             for provider in config.Infra.codegen.providers
-            if provider.name == config.Infra.codegen.infrastructure_provider
+            if provider.name == config.Infra.codegen.infra_repository.provider
         )
         if len(provider_matches) != 1:
             return r[m.Infra.RepositoryRef].fail(
                 "infrastructure repository provider must resolve exactly once: "
-                f"{config.Infra.codegen.infrastructure_provider}"
+                f"{config.Infra.codegen.infra_repository.provider}"
             )
         return r[m.Infra.RepositoryRef].ok(
             u.Infra.derived_repository_ref(

@@ -15,20 +15,3 @@ constraints:
     regex: '^(?:snapshot_project_managed_artifacts|load_project_managed_artifacts|compose_mise_toml_from_snapshot|lock_platform_exclusions_from_snapshot|snapshot_config_sources)$'
 fix: u.Infra.$METHOD($$$ARGS)
 message: Consume project managed-artifact behavior through the canonical u.Infra facade.
----
-id: remove-project-managed-artifacts-private-import
-language: Python
-severity: error
-files:
-  - "flext-infra/src/**/*.py"
-ignores:
-  - "**/utilities.py"
-rule:
-  any:
-    - pattern: from flext_infra._utilities.project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
-    - pattern: |
-        from flext_infra._utilities.project_managed_artifacts import (
-            FlextInfraUtilitiesProjectManagedArtifacts,
-        )
-fix: ""
-message: Remove the private project managed-artifact owner import after facade rewiring.

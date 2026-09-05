@@ -13,6 +13,29 @@ rule:
 fix: u.Infra.recover_managed_toml($$$ARGS)
 message: Consume managed conflict recovery through the canonical u.Infra facade.
 ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 id: rewire-managed-conflict-recovery-import
 language: Python
 severity: error

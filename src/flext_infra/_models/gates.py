@@ -46,6 +46,114 @@ class FlextInfraModelsGates:
             t.StrSequence, m.Field(description="Extra arguments for Pyright")
         ] = ()
 
+    class CodeReviewGraphStatusReport(m.ContractModel):
+        """Machine-readable status emitted by code-review-graph."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True
+        )
+        nodes: Annotated[int, m.Field(ge=0, description="Graph node count")]
+        edges: Annotated[int, m.Field(ge=0, description="Graph edge count")]
+        files: Annotated[int, m.Field(ge=0, description="Indexed file count")]
+        languages: Annotated[
+            tuple[t.NonEmptyStr, ...], m.Field(description="Indexed languages")
+        ]
+        last_updated: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Last graph build timestamp")
+        ]
+        vcs: Annotated[
+            t.Infra.CodeReviewGraphVcs, m.Field(description="VCS backend")
+        ]
+        built_on_branch: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Indexed Git branch")
+        ]
+        built_at_commit: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Indexed Git commit")
+        ]
+        current_branch: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Current Git branch")
+        ]
+        current_sha: Annotated[
+            t.NonEmptyStr | None, m.Field(description="Current Git SHA")
+        ]
+        svn_branch: Annotated[
+            t.NonEmptyStr | None, m.Field(description="SVN branch when mirrored")
+        ]
+        svn_revision: Annotated[
+            t.NonEmptyStr | None, m.Field(description="SVN revision when mirrored")
+        ]
+
+    class CodeReviewGraphSuggestion(m.ContractModel):
+        """One graph-backed, read-only refactoring suggestion."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True
+        )
+        type: Annotated[
+            t.Infra.CodeReviewGraphSuggestionKind,
+            m.Field(description="Suggestion kind"),
+        ]
+        description: Annotated[
+            t.NonEmptyStr, m.Field(description="Suggested change")
+        ]
+        symbols: Annotated[
+            tuple[t.NonEmptyStr, ...], m.Field(description="Affected symbols")
+        ]
+        rationale: Annotated[
+            t.NonEmptyStr, m.Field(description="Suggestion rationale")
+        ]
+
+    class CodeReviewGraphHint(m.ContractModel):
+        """One suggested follow-up tool from the CRG response."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True
+        )
+        tool: Annotated[t.NonEmptyStr, m.Field(description="Follow-up tool")]
+        suggestion: Annotated[
+            t.NonEmptyStr, m.Field(description="Suggested follow-up")
+        ]
+
+    class CodeReviewGraphHints(m.ContractModel):
+        """Bounded CRG follow-up metadata; warnings must remain empty."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True
+        )
+        next_steps: Annotated[
+            tuple[CodeReviewGraphHint, ...],
+            m.Field(description="Ordered follow-up hints"),
+        ]
+        related: Annotated[
+            tuple[t.NonEmptyStr, ...], m.Field(description="Related identifiers")
+        ]
+        warnings: Annotated[
+            tuple[t.NonEmptyStr, ...], m.Field(description="Blocking warnings")
+        ]
+
+    class CodeReviewGraphRefactorReport(m.ContractModel):
+        """Successful JSON response from ``refactor suggest``."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, populate_by_name=True
+        )
+        status: Annotated[
+            t.Infra.CodeReviewGraphStatus, m.Field(description="Response status")
+        ]
+        summary: Annotated[t.NonEmptyStr, m.Field(description="Response summary")]
+        suggestions: Annotated[
+            tuple[CodeReviewGraphSuggestion, ...],
+            m.Field(description="Refactoring suggestions"),
+        ]
+        total: Annotated[int, m.Field(ge=0, description="Total suggestions")]
+        truncated: Annotated[
+            bool, m.Field(description="Whether suggestions were truncated")
+        ]
+        hints: Annotated[
+            CodeReviewGraphHints,
+            m.Field(alias="_hints", description="Aggregate response hints"),
+        ]
+
     class GateCommandEvidence(m.ContractModel):
         """One canonical Make invocation covered by an attestation."""
 
@@ -89,7 +197,7 @@ class FlextInfraModelsGates:
         )
 
         schema_version: Annotated[
-            Literal["https://flext.sh/attestations/gates/v1"],
+            str,
             m.Field(description="Predicate schema identity"),
         ] = c.Infra.GATE_ATTESTATION_SCHEMA
         repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
@@ -111,6 +219,9 @@ class FlextInfraModelsGates:
 
         @u.model_validator(mode="after")
         def _validate_predicate(self) -> Self:
+            if self.schema_version != c.Infra.GATE_ATTESTATION_SCHEMA:
+                msg = "schema_version must match the canonical gate attestation schema"
+                raise ValueError(msg)
             for name, value in (
                 ("commit_sha", self.commit_sha),
                 ("tree_sha", self.tree_sha),

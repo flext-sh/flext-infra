@@ -1,0 +1,119 @@
+"""Canonical command and test-boundary checks for documentation."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra import c, config, m
+
+if TYPE_CHECKING:
+    from flext_infra import t
+
+
+class FlextInfraUtilitiesDocsCommandContractMixin:
+    """Detect documentation that bypasses canonical Make and test ownership."""
+
+    @staticmethod
+    def docs_command_contract_content_issues(
+        content: str, *, relative_path: str
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+        """Return command-contract issues from one Markdown document."""
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        fence_marker = ""
+        fence_language = ""
+        for number, line in enumerate(content.splitlines(), start=1):
+            stripped = line.lstrip()
+            if stripped.startswith(("```", "~~~")):
+                marker = stripped[:3]
+                if fence_marker:
+                    if marker == fence_marker:
+                        fence_marker = ""
+                        fence_language = ""
+                else:
+                    fence_marker = marker
+                    fence_language = stripped[3:].strip().partition(" ")[0].lower()
+                continue
+
+            issue = ""
+            make_match = c.Infra.DOCS_MAKE_COMMAND_RE.match(line)
+            if c.Infra.DOCS_RAW_PYTEST_COMMAND_RE.match(line):
+                issue = "direct pytest command bypasses `make test APPLY=Y`"
+            elif c.Infra.DOCS_RAW_TOOL_COMMAND_RE.match(line):
+                issue = "direct tool command bypasses the root Make dispatcher"
+            elif make_match is not None:
+                selector = c.Infra.DOCS_FORBIDDEN_MAKE_SELECTOR_RE.search(
+                    make_match.group("args")
+                )
+                verb = make_match.group("verb").lower()
+                verb_spec = next(
+                    (
+                        spec
+                        for spec in config.Infra.codegen.make.verbs
+                        if spec.name == verb
+                    ),
+                    None,
+                )
+                has_apply = (
+                    c.Infra.DOCS_APPLY_RE.search(make_match.group("args")) is not None
+                )
+                if verb_spec is None:
+                    issue = f"Make verb `{verb}` is not declared by the config SSOT"
+                elif selector is not None:
+                    selector_name = selector.group(0).split("=", maxsplit=1)[0].strip()
+                    issue = f"invented Make selector `{selector_name}`"
+                elif (
+                    verb_spec.requires_apply
+                    and not has_apply
+                ):
+                    issue = f"`make {verb}` requires `APPLY=Y`"
+                elif not verb_spec.requires_apply and has_apply:
+                    issue = f"read-only `make {verb}` rejects `APPLY=Y`"
+            elif c.Infra.DOCS_TEST_DOUBLE_HEADING_RE.match(line):
+                issue = "test-double guidance is prohibited"
+            elif fence_language in {"py", "python", "python3"} and (
+                c.Infra.DOCS_TEST_DOUBLE_CODE_RE.search(line) is not None
+            ):
+                issue = "test-double code bypasses public-facade test ownership"
+
+            if issue:
+                issues.append(
+                    m.Infra.AuditIssue(
+                        file=relative_path,
+                        issue_type="command_contract",
+                        severity="high",
+                        message=f"line {number}: {issue}",
+                    )
+                )
+        return issues
+
+    @staticmethod
+    def docs_command_contract_issues(
+        scope: m.Infra.DocScope,
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+        """Collect command-contract issues for every Markdown file in a scope."""
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        docs_root = scope.path / c.Infra.DIR_DOCS
+        for path in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+            if not path.is_relative_to(docs_root):
+                continue
+            relative_docs_path = path.relative_to(docs_root)
+            relative_path = path.relative_to(scope.path).as_posix()
+            if (
+                not relative_docs_path.parts
+                or relative_docs_path.parts[0]
+                not in c.Infra.DOCS_COMMAND_CONTRACT_DIRNAMES
+            ):
+                continue
+            content = path.read_text(
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+            )
+            issues.extend(
+                FlextInfraUtilitiesDocsCommandContractMixin.docs_command_contract_content_issues(
+                    content, relative_path=relative_path
+                )
+            )
+        return issues
+
+
+__all__: list[str] = ["FlextInfraUtilitiesDocsCommandContractMixin"]

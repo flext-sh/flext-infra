@@ -10,7 +10,6 @@ from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from . import smells as smells
-    from .base import FlextInfraChangeTrackingTransformer, FlextInfraRopeTransformer
     from .cast_remover import FlextInfraRefactorCastRemover
     from .census_visitors import (
         FlextInfraCensusImportDiscoveryVisitor,
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from .open_encoding import FlextInfraRefactorOpenEncoding
     from .pattern import FlextInfraRefactorPatternTransformer
     from .pattern_modernizer import FlextInfraRefactorPatternModernizer
-    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .pydantic_modernizer import FlextInfraRefactorPydanticModernizer
     from .result_di_modernizer import FlextInfraRefactorResultDiModernizer
     from .signature_propagator import FlextInfraRefactorSignaturePropagator
@@ -50,7 +48,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraBooleanLogicFixer",
     "FlextInfraCensusImportDiscoveryVisitor",
     "FlextInfraCensusUsageCollector",
-    "FlextInfraChangeTrackingTransformer",
     "FlextInfraRefactorCastRemover",
     "FlextInfraRefactorClassReconstructor",
     "FlextInfraRefactorCliModernizer",
@@ -65,7 +62,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
-    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorResultDiModernizer",
     "FlextInfraRefactorSignaturePropagator",
@@ -73,7 +69,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorTypingDictAttr",
     "FlextInfraRefactorTypingDictImport",
     "FlextInfraRefactorTypingUnifier",
-    "FlextInfraRopeTransformer",
     "FlextInfraSmellFixer",
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraViolationCensusVisitor",
@@ -86,10 +81,6 @@ __all__: tuple[str, ...] = (
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
-            ".base": (
-                "FlextInfraChangeTrackingTransformer",
-                "FlextInfraRopeTransformer",
-            ),
             ".cast_remover": ("FlextInfraRefactorCastRemover",),
             ".census_visitors": (
                 "FlextInfraCensusImportDiscoveryVisitor",
@@ -108,7 +99,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".open_encoding": ("FlextInfraRefactorOpenEncoding",),
             ".pattern": ("FlextInfraRefactorPatternTransformer",),
             ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
-            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
             ".result_di_modernizer": ("FlextInfraRefactorResultDiModernizer",),
             ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),

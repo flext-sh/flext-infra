@@ -1,4 +1,4 @@
-"""Thin mixin that delegates canonical-alias import injection to ``_header``.
+"""Thin mixin that delegates canonical-alias import injection to the header utilities.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT
@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, u
-from flext_infra._utilities.transformer_header import _header
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,7 +23,7 @@ class FlextInfraEnsureCanonicalTImportMixin:
     def _ensure_t_import(self, source: str, module_name: str) -> tuple[str, bool]:
         """Inject ``from <module_name> import t`` if needed."""
         target_module = module_name or self._DEFAULT_ALIAS_MODULE
-        updated = _header.ensure_alias_import(source, target_module, "t")
+        updated = u.Infra.ensure_alias_import(source, target_module, "t")
         return updated, updated != source
 
     def _ensure_alias_import(
@@ -32,31 +31,31 @@ class FlextInfraEnsureCanonicalTImportMixin:
     ) -> tuple[str, bool]:
         """Inject ``from <module_name> import <alias>`` when the alias is used."""
         target_module = module_name or self._DEFAULT_ALIAS_MODULE
-        updated = _header.ensure_alias_import(source, target_module, alias)
+        updated = u.Infra.ensure_alias_import(source, target_module, alias)
         return updated, updated != source
 
     @classmethod
     def _t_alias_used(cls, source: str) -> bool:
         """Return whether the source contains a real use of the ``t`` alias."""
-        return _header.alias_used(source, "t")
+        return u.Infra.alias_used(source, "t")
 
     @staticmethod
     def _has_t_import(source: str) -> bool:
         """Return whether the source already imports ``t``."""
-        return _header.has_alias_import(source, "t")
+        return u.Infra.has_alias_import(source, "t")
 
     @classmethod
     def _alias_used(cls, source: str, alias: str) -> bool:
         """Return whether ``alias`` is used as a standalone dotted facade name."""
-        return _header.alias_used(source, alias)
+        return u.Infra.alias_used(source, alias)
 
     @staticmethod
     def _has_alias_import(source: str, alias: str) -> bool:
         """Return whether source already binds ``alias`` through a ``from`` import."""
-        return _header.has_alias_import(source, alias)
+        return u.Infra.has_alias_import(source, alias)
 
     @staticmethod
-    def _canonical_import_module(file_path: Path | None) -> str:
+    def canonical_import_module(file_path: Path | None) -> str:
         """Return the root package name for a transformed file."""
         default_module: str = c.Infra.PKG_CORE_UNDERSCORE
         if file_path is None or not file_path.exists():

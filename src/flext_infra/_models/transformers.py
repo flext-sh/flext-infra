@@ -28,8 +28,8 @@ class FlextInfraModelsTransformers:
             str, m.Field(description="Public facade root from which consumers import")
         ]
 
-    class AliasMigrationEdit(m.ContractModel):
-        """One validated in-memory canonical alias source rewrite."""
+    class SemanticMigrationEdit(m.ContractModel):
+        """One validated in-memory semantic source rewrite."""
 
         # Why (flext-ygc2k): source bytes must survive validation byte-exact;
         # the strict base strips whitespace, which corrupts CAS comparisons.
@@ -99,7 +99,8 @@ class FlextInfraModelsTransformers:
         """Byte offsets for the logical sections of a Python module header.
 
         Mutable accumulator populated incrementally by the header tokenizer
-        (``transformers/_header.py``); never frozen while a parse is open.
+        (``_utilities/transformer_header_parser.py``); never frozen while a
+        parse is open.
         """
 
         shebang_end: Annotated[

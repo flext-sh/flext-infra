@@ -1,11 +1,15 @@
-# Repository-local topology and conformance
+<!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` from the workspace root. -->
+<!-- Source of truth: `docs/guides/topology-conform.md`; adjust that source, never this projection. -->
+
+# flext-infra - Repository-local topology and conformance
+
+> Project profile: `flext-infra`
 
 <!-- TOC START -->
 - [Authorities](#authorities)
 - [Validation boundary](#validation-boundary)
-- [Scoped projection isolation](#scoped-projection-isolation)
-- [Full refactor workflow](#full-refactor-workflow)
 - [Makefile bootstrap projection](#makefile-bootstrap-projection)
+- [Full refactor workflow](#full-refactor-workflow)
 - [Selection and projections](#selection-and-projections)
 - [uv project boundaries](#uv-project-boundaries)
 <!-- TOC END -->
