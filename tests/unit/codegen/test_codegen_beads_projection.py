@@ -63,10 +63,8 @@ class TestsCodegenBeadsProjection:
         if rendered_config is None:
             pytest.fail("local identity must produce the declarative Beads config")
         tm.that(rendered_config, has='issue-prefix: "project-prefix"')
-        # The config projection carries the ISSUE prefix, not the database name;
-        # asserting a bare `prefix: <database>` kept this red against a template
-        # that is correct (see any governed .beads/config.yaml on disk).
-        tm.that(rendered_config, has='issue_prefix: "project-prefix"')
+        tm.that(rendered_config.count("issue-prefix:"), eq=1)
+        tm.that(rendered_config.count("issue_prefix:"), eq=0)
         tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
         tm.that(rendered_config, has="gc.endpoint_status: verified")
         tm.that(rendered_config, has="types.custom:")
@@ -101,6 +99,7 @@ class TestsCodegenBeadsProjection:
         if rendered is None:
             pytest.fail("local identity must produce the Beads marker")
         metadata = json.loads(rendered)
+        tm.that(metadata["dolt_database"], eq="project_database")
         tm.that(metadata["project_id"], eq=minted)
         tm.that(
             set(metadata),

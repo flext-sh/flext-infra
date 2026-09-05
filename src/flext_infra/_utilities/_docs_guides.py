@@ -66,6 +66,13 @@ class FlextInfraUtilitiesDocsGuidesMixin:
         """Project every canonical root guide into one member docs tree."""
         source_root = repository_root / c.Infra.DIR_DOCS / "guides"
         destination_root = scope.path / c.Infra.DIR_DOCS / "guides"
+        if source_root.resolve() == destination_root.resolve():
+            # A standalone package has no distinct workspace guide source. Its
+            # own ``docs/guides`` tree is already the generated projection, so
+            # reading it as input would prepend another heading/profile on each
+            # generation. The workspace root remains the only source for member
+            # guide projections; a direct package run must be a fixed point.
+            return []
         if not source_root.is_dir():
             msg = f"canonical guide source not found: {source_root}"
             raise FileNotFoundError(msg)

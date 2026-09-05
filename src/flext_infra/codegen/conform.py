@@ -2061,6 +2061,34 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         value = project.get("id")
         return value.strip() if isinstance(value, str) and value.strip() else None
 
+    @staticmethod
+    def _artifact_beads_spec(
+        repository_root: Path,
+        *,
+        project_context: m.Infra.ProjectRenderContext | None,
+    ) -> p.Result[m.Infra.BeadsProjectSpec]:
+        """Resolve the local Beads identity used by generated projections.
+
+        Existing repositories own this identity in ``config/beads.yaml``.
+        Workspace fan-out targets may carry the parent workspace identity for
+        topology validation, but that value must never rewrite a member's
+        local projection. Scaffold planning has no local file yet, so its
+        already-validated project context is the sole declared input.
+        """
+        local_path = (
+            repository_root
+            / c.CONFIG_DIR_NAME
+            / c.Infra.BEADS_CONFIG_FILENAME
+        )
+        if local_path.is_file():
+            return FlextInfraWorkspaceDetector.load_beads_spec(repository_root)
+        if project_context is not None and project_context.beads is not None:
+            return r[m.Infra.BeadsProjectSpec].ok(project_context.beads)
+        return r[m.Infra.BeadsProjectSpec].fail(
+            "ledger projection requires repository-local config/beads.yaml: "
+            f"{local_path}"
+        )
+
     def _artifact_render_context(
         self,
         *,
@@ -2112,16 +2140,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if destination in {".envrc", ".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
-            if target.beads is None:
-                return r[p.Model].fail(
-                    "ledger projection requires the observed conformance target, "
-                    f"never a declaration-only one: {destination}"
-                )
-            project_types = target.beads.custom_issue_types
+            beads_result = self._artifact_beads_spec(
+                repository_root, project_context=project_context
+            )
+            if beads_result.failure:
+                return r[p.Model].from_failure(beads_result)
+            project_types = beads_result.value.custom_issue_types
             required_types = codegen.toolchain.beads.required_custom_types
             return r[p.Model].ok(
                 m.Infra.BeadsConfigRenderSpec(
-                    issue_prefix=target.beads.issue_prefix,
+                    issue_prefix=beads_result.value.issue_prefix,
                     endpoint_origin=codegen.toolchain.beads.endpoint_origin,
                     endpoint_status=codegen.toolchain.beads.endpoint_status,
                     custom_issue_types=tuple(
@@ -2136,14 +2164,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # minted a NEW identity on next access — rig gmn lost
             # 2b1a0582-… that way (commit 3e7ba1e). Read it back so a
             # regeneration is identity-preserving.
-            if target.beads is None:
-                return r[p.Model].fail(
-                    "ledger projection requires the observed conformance target, "
-                    f"never a declaration-only one: {destination}"
-                )
+            beads_result = self._artifact_beads_spec(
+                repository_root, project_context=project_context
+            )
+            if beads_result.failure:
+                return r[p.Model].from_failure(beads_result)
             return r[p.Model].ok(
                 m.Infra.BeadsMetadataRenderSpec(
-                    database=target.beads.database,
+                    database=beads_result.value.database,
                     project_id=self._beads_project_id(repository_root),
                 )
             )
