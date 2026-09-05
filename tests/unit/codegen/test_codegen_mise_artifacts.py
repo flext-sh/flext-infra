@@ -257,7 +257,10 @@ class TestsCodegenMiseArtifacts:
 
     def test_launcher_version_drift_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project")
-        self._write_launchers(root, windows_version="2000.1.1")
+        self._write_launchers(
+            root,
+            windows_version=f"{config.Infra.codegen.toolchain.python_version}.invalid",
+        )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "repository_root": root,

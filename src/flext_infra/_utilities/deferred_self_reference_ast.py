@@ -25,7 +25,7 @@ import ast
 from typing import NamedTuple
 
 
-class DeferredSelfReferenceFinding(NamedTuple):
+class _DeferredSelfReferenceFinding(NamedTuple):
     """One deferred-self-reference or recursive-model occurrence."""
 
     line: int
@@ -90,11 +90,11 @@ def _factory_keyword(call: ast.Call) -> ast.keyword | None:
     return None
 
 
-def collect_deferred_self_reference_findings(
+def _collect_deferred_self_reference_findings(
     tree: ast.Module,
-) -> tuple[DeferredSelfReferenceFinding, ...]:
+) -> tuple[_DeferredSelfReferenceFinding, ...]:
     """Collect deferred-self-reference and recursive-model findings in a module."""
-    findings: list[DeferredSelfReferenceFinding] = []
+    findings: list[_DeferredSelfReferenceFinding] = []
     stack: list[ast.ClassDef] = []
 
     def visit(node: ast.AST) -> None:
@@ -119,7 +119,7 @@ def collect_deferred_self_reference_findings(
                 if hit:
                     name = min(hit)
                     findings.append(
-                        DeferredSelfReferenceFinding(
+                        _DeferredSelfReferenceFinding(
                             line=keyword.value.lineno,
                             column=keyword.value.col_offset,
                             kind=_DEFERRED_KIND,
@@ -144,7 +144,7 @@ def collect_deferred_self_reference_findings(
             is_field_annotation = not wrappers & _NON_FIELD_WRAPPERS
             if owner in annotation_roots and is_field_annotation:
                 findings.append(
-                    DeferredSelfReferenceFinding(
+                    _DeferredSelfReferenceFinding(
                         line=annotation.lineno,
                         column=annotation.col_offset,
                         kind=_RECURSIVE_KIND,
@@ -165,7 +165,16 @@ def collect_deferred_self_reference_findings(
     return tuple(findings)
 
 
-__all__: list[str] = [
-    "DeferredSelfReferenceFinding",
-    "collect_deferred_self_reference_findings",
-]
+class FlextInfraUtilitiesDeferredSelfReference:
+    """Public utility owner for deferred self-reference AST analysis."""
+
+    @staticmethod
+    def collect_deferred_self_reference_findings(
+        tree: ast.Module,
+    ) -> tuple[_DeferredSelfReferenceFinding, ...]:
+        """Collect deferred-self-reference and recursive-model findings."""
+        findings = _collect_deferred_self_reference_findings(tree)
+        return findings
+
+
+__all__: list[str] = ["FlextInfraUtilitiesDeferredSelfReference"]

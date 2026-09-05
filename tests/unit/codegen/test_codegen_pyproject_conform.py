@@ -430,11 +430,13 @@ dependencies = []
         external organization can adopt the toolchain without re-owning it.
         """
         fleet_providers = config.Infra.codegen.providers
+        fleet_provider = fleet_providers[0]
+        consumer_name = f"consumer-{fleet_provider.name}"
         consumer_provider = m.Infra.ProviderSpec(
-            name="consumer-org",
-            organization="consumer-org",
-            base_url="https://github.com/consumer-org",
-            branch="main",
+            name=consumer_name,
+            organization=consumer_name,
+            base_url=f"{fleet_provider.base_url.rstrip('/')}/{consumer_name}",
+            branch=fleet_provider.branch,
         )
         consumer = _repository(
             "consumer", role=c.Infra.MakeProfile.STANDALONE, path="."

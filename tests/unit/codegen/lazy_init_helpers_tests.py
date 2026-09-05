@@ -28,10 +28,6 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT
         )
 
-    @staticmethod
-    def _generated_exports(package_root: Path) -> str:
-        return TestsFlextInfraLazyInitHelpers._generated_init(package_root)
-
     def test_discover_package_from_standard_roots(self) -> None:
         """Resolve package names consistently for every supported source shape."""
         tm.that(
@@ -61,7 +57,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(init_content, has="build_lazy_import_map, install_lazy_exports")
         # _LAZY_IMPORTS is the canonical metadata binding flext_core reads.
@@ -187,7 +183,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
         public_exports = exports_content.split(
             "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
@@ -288,7 +284,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has='"FlextDemo"')
         tm.that(exports_content, has='"demo"')
@@ -323,7 +319,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has="FlextDemoService")
         tm.that(exports_content, has='"BLUE"')
@@ -340,10 +336,10 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        first = self._generated_exports(package_root)
+        first = self._generated_init(package_root)
         tm.that(u.Tests.run_lazy_init(repository_root, check_only=True), eq=0)
 
-        tm.that(self._generated_exports(package_root), eq=first)
+        tm.that(self._generated_init(package_root), eq=first)
         tm.that(first, lacks='"._constants"')
 
     def test_tests_root_facade_is_generated_lazily(self, tmp_path: Path) -> None:
@@ -444,7 +440,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(init_content, lacks="_LAZY_MODULES")
         tm.that(exports_content, has='"flext_cli": (')
@@ -486,7 +482,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
+        exports = self._generated_init(package_root)
         tm.that(exports, has='"flext_cli": (')
         tm.that(generated, has='    "r",')
         tm.that(generated, has='    "c",')
@@ -522,7 +518,7 @@ class TestsFlextInfraLazyInitHelpers:
             update={"target_module": "flext_child"}
         )
         tm.that(service.generate_inits(), eq=0)
-        generated = self._generated_exports(package_root)
+        generated = self._generated_init(package_root)
 
         tm.that(generated, lacks='"x"')
         tm.that(generated, lacks='"flext_parent": ("x",)')
@@ -558,7 +554,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        generated = self._generated_exports(package_root)
+        generated = self._generated_init(package_root)
 
         tm.that(generated, has='"owner_parent": ("r",)')
         tm.that(generated, lacks='"nearest_parent": ("r",)')
@@ -617,7 +613,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
+        exports = self._generated_init(package_root)
 
         tm.that(generated, has='"FlextDemoGitService"')
         tm.that(generated, has='"FlextDemoWorkService"')
@@ -684,7 +680,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')

@@ -15,6 +15,9 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.deferred_self_reference_ast import (
+    FlextInfraUtilitiesDeferredSelfReference,
+)
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
@@ -71,6 +74,7 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+from flext_infra._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailure
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
@@ -125,6 +129,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsValidate,
         FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesDependencies,
+        FlextInfraUtilitiesDeferredSelfReference,
         FlextInfraUtilitiesGit,
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
@@ -140,6 +145,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesSafety,
+        FlextInfraUtilitiesSilentFailure,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
         FlextInfraWorktreeLifecycle,

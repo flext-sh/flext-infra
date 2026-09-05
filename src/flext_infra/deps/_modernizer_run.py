@@ -202,6 +202,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
         total = 0
+        first_drift_reported = False
         file_count = len(files)
         for index, file_path in enumerate(files, start=1):
             u.Cli.progress(index, file_count, str(file_path), c.Infra.VERB_DEPS)
@@ -225,6 +226,18 @@ class FlextInfraPyprojectModernizerRunMixin:
                     locked_versions=locked_versions,
                     internal_names=internal_names,
                 )
+                if changes and not first_drift_reported:
+                    diff_lines = u.Infra.unified_diff_lines(
+                        document_state.original_rendered,
+                        document_state.rendered,
+                        fromfile=f"{file_path}:before",
+                        tofile=f"{file_path}:after",
+                        max_lines=30,
+                    )
+                    u.Cli.info(
+                        "deps: first rendered drift\n" + "".join(diff_lines).rstrip()
+                    )
+                    first_drift_reported = True
             if not changes:
                 continue
             resolved_file_path = file_path.resolve()

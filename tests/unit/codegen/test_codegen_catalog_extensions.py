@@ -87,6 +87,7 @@ class TestsCodegenCatalogExtensions:
         self, tmp_path: Path
     ) -> None:
         """The codegen artifact boundary consumes the project YAML overlay."""
+        python_version = config.Infra.codegen.toolchain.python_version
         config_dir = tmp_path / "config"
         config_dir.mkdir()
         (config_dir / "tooling.yaml").write_text(
@@ -95,11 +96,13 @@ class TestsCodegenCatalogExtensions:
         )
 
         result = FlextInfraCodegenConform._compose_project_artifact(  # ruff: ignore[private-member-access]
-            tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
+            tmp_path,
+            c.Infra.MISE_TOML_FILENAME,
+            f'[tools]\npython = "{python_version}"\n',
         )
 
         rendered = tomllib.loads(tm.ok(result).rendered)
-        tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
+        tm.that(rendered["tools"], eq={"python": python_version, "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(
         self, tmp_path: Path

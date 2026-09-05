@@ -49,10 +49,7 @@ if TYPE_CHECKING:
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .codegen import FlextInfraUtilitiesCodegen
-    from .deferred_self_reference_ast import (
-        DeferredSelfReferenceFinding,
-        collect_deferred_self_reference_findings,
-    )
+    from .deferred_self_reference_ast import FlextInfraUtilitiesDeferredSelfReference
     from .dependencies import FlextInfraUtilitiesDependencies
     from .discovery import FlextInfraUtilitiesDiscovery
     from .docs import FlextInfraUtilitiesDocs
@@ -108,20 +105,17 @@ if TYPE_CHECKING:
     from .rope_source import FlextInfraUtilitiesRopeSource
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
-    from .silent_failure_ast import (
-        collect_silent_failure_findings,
-        collect_silent_failure_fixes,
-    )
+    from .silent_failure_ast import FlextInfraUtilitiesSilentFailure
     from .snapshot import FlextInfraUtilitiesSnapshot
     from .versioning import FlextInfraUtilitiesVersioning
     from .workspace_fingerprint import FlextInfraUtilitiesWorkspaceFingerprint
     from .worktree_lifecycle import FlextInfraWorktreeLifecycle
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
-    "DeferredSelfReferenceFinding",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesDeferredSelfReference",
     "FlextInfraUtilitiesDependencies",
     "FlextInfraUtilitiesDiscovery",
     "FlextInfraUtilitiesDocs",
@@ -205,6 +199,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
+    "FlextInfraUtilitiesSilentFailure",
     "FlextInfraUtilitiesSnapshot",
     "FlextInfraUtilitiesVersioning",
     "FlextInfraUtilitiesWorkspaceFingerprint",
@@ -213,9 +208,6 @@ __all__: tuple[str, ...] = (
     "_git",
     "_rope",
     "canonical_origin_remote",
-    "collect_deferred_self_reference_findings",
-    "collect_silent_failure_findings",
-    "collect_silent_failure_fixes",
     "git_stdin",
     "redact_origin_remote",
 )
@@ -273,8 +265,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".deferred_self_reference_ast": (
-                "DeferredSelfReferenceFinding",
-                "collect_deferred_self_reference_findings",
+                "FlextInfraUtilitiesDeferredSelfReference",
             ),
             ".dependencies": ("FlextInfraUtilitiesDependencies",),
             ".discovery": ("FlextInfraUtilitiesDiscovery",),
@@ -333,10 +324,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_source": ("FlextInfraUtilitiesRopeSource",),
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
-            ".silent_failure_ast": (
-                "collect_silent_failure_findings",
-                "collect_silent_failure_fixes",
-            ),
+            ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailure",),
             ".snapshot": ("FlextInfraUtilitiesSnapshot",),
             ".versioning": ("FlextInfraUtilitiesVersioning",),
             ".workspace_fingerprint": ("FlextInfraUtilitiesWorkspaceFingerprint",),

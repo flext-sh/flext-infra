@@ -355,7 +355,10 @@ def test_generated_prose_wraps_without_reformatting_directive_blocks(
         project_class="library",
         package_name="flext_a",
     )
-    contract = {"version": "1.0", "description": " ".join(["resilient"] * 20)}
+    contract = {
+        "version": config.Infra.codegen.toolchain.python_version,
+        "description": " ".join(["resilient"] * 20),
+    }
 
     rendered = u.Infra.docs_project_index(scope, contract)
 

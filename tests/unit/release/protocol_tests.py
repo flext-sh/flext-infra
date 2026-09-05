@@ -299,7 +299,11 @@ class TestsFlextInfraReleaseProtocol:
         def test_manual_version_edit_is_rejected(tmp_path: Path) -> None:
             """A hand-edited pyproject version fails the plan, naming the commit."""
             workspace = _released_workspace(tmp_path)
-            tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
+            tm.ok(
+                u.Infra.replace_project_version(
+                    workspace, c.Tests.RELEASE_VERSION_PATCH
+                )
+            )
             tm.ok(
                 cli.run_checked(
                     [c.Infra.GIT, "commit", "-am", "chore: bump"], cwd=workspace
@@ -312,15 +316,21 @@ class TestsFlextInfraReleaseProtocol:
         def test_protocol_release_commit_is_accepted(tmp_path: Path) -> None:
             """Only the release commit may carry the version it names."""
             workspace = _released_workspace(tmp_path)
-            tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
-            subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.1")
+            tm.ok(
+                u.Infra.replace_project_version(
+                    workspace, c.Tests.RELEASE_VERSION_PATCH
+                )
+            )
+            subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(
+                version=c.Tests.RELEASE_VERSION_PATCH
+            )
             tm.ok(
                 cli.run_checked([c.Infra.GIT, "commit", "-am", subject], cwd=workspace)
             )
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
             plan = _plan(workspace)
-            tm.that(plan.next, eq="0.1.1")
+            tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_PATCH)
             tm.that(plan.releasable, eq=False)
 
         @staticmethod
@@ -346,10 +356,12 @@ class TestsFlextInfraReleaseProtocol:
                     cwd=workspace,
                 )
             )
-            tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
-            merged_subject = (
-                f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.1')} (#8)"
+            tm.ok(
+                u.Infra.replace_project_version(
+                    workspace, c.Tests.RELEASE_VERSION_PATCH
+                )
             )
+            merged_subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version=c.Tests.RELEASE_VERSION_PATCH)} (#8)"
             tm.ok(
                 cli.run_checked(
                     [c.Infra.GIT, "commit", "-am", merged_subject], cwd=workspace
@@ -370,7 +382,7 @@ class TestsFlextInfraReleaseProtocol:
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
             plan = _plan(workspace)
-            tm.that(plan.next, eq="0.1.1")
+            tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_PATCH)
             tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
             tm.that(plan.releasable, eq=False)
 
@@ -405,7 +417,12 @@ class TestsFlextInfraReleaseProtocol:
             head = tm.ok(
                 cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
             ).strip()
-            tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
+            tm.that(
+                head,
+                eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(
+                    version=c.Tests.RELEASE_VERSION_BASE
+                ),
+            )
             # The docs projections render the version; the release commit
             # carries them regenerated, so the lane is a `gen check` fixed point.
             committed = tm.ok(
@@ -489,7 +506,12 @@ class TestsFlextInfraReleaseProtocol:
             head = tm.ok(
                 cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
             ).strip()
-            tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
+            tm.that(
+                head,
+                eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(
+                    version=c.Tests.RELEASE_VERSION_BASE
+                ),
+            )
 
         @staticmethod
         def test_dry_run_changes_nothing(tmp_path: Path) -> None:
@@ -566,7 +588,7 @@ class TestsFlextInfraReleaseProtocol:
             )
             # GitHub merges the release pull request under its title plus the
             # pull-request number.
-            subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.0')} (#1)"
+            subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version=c.Tests.RELEASE_VERSION_BASE)} (#1)"
             tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
             tm.ok(
                 cli.run_checked(
