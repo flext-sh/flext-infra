@@ -2643,6 +2643,15 @@ class FlextInfraConfigModels:
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
         ] = ()
+        repository_policy_overlays: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
+            m.Field(
+                description=(
+                    "Repository-local policy overlays carried from the declared "
+                    "manifest so scoped projection keeps per-repository policy"
+                )
+            ),
+        ] = ()
 
         @u.model_validator(mode="after")
         def _validate_topology_paths(self) -> Self:
