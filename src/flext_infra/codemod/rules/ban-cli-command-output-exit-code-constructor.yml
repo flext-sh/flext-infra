@@ -13,8 +13,4 @@ rule:
           - pattern: m.Cli.CommandOutput($$$ARGS)
           - pattern: m.Cli.CommandBytesOutput($$$ARGS)
         stopBy: end
-    - not:
-        has:
-          field: value
-          pattern: $SOURCE.exit_code
 message: Build command payloads from one causal ProcessOutcome; synthetic exit codes are forbidden.

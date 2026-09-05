@@ -98,6 +98,7 @@ if TYPE_CHECKING:
     from .protected_edit_writes import FlextInfraUtilitiesProtectedEditWrites
     from .pyproject import FlextInfraUtilitiesPyproject
     from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
+    from .qualified_names import FlextInfraUtilitiesQualifiedNames
     from .refactor import FlextInfraUtilitiesRefactor
     from .refactor_discovery import FlextInfraUtilitiesRefactorDiscovery
     from .release import FlextInfraUtilitiesRelease
@@ -204,6 +205,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditWrites",
     "FlextInfraUtilitiesPyproject",
     "FlextInfraUtilitiesPyprojectConform",
+    "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
     "FlextInfraUtilitiesRefactorDiscovery",
@@ -357,6 +359,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".protected_edit_writes": ("FlextInfraUtilitiesProtectedEditWrites",),
             ".pyproject": ("FlextInfraUtilitiesPyproject",),
             ".pyproject_conform": ("FlextInfraUtilitiesPyprojectConform",),
+            ".qualified_names": ("FlextInfraUtilitiesQualifiedNames",),
             ".refactor": ("FlextInfraUtilitiesRefactor",),
             ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
             ".release": ("FlextInfraUtilitiesRelease",),

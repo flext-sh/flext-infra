@@ -2,6 +2,7 @@ id: rewire-test-command-output-helper
 language: Python
 severity: error
 files:
+  - "**/tests/*.py"
   - "**/tests/**/*.py"
 rule:
   pattern: $OWNER.stub_run($$$ARGS)
@@ -11,17 +12,116 @@ constraints:
 message: Use the single typed command-output fixture factory.
 fix: $OWNER.create_command_output($$$ARGS)
 ---
-id: rewire-test-command-output-return-code
+id: rewire-test-command-output-return-code-only
 language: Python
 severity: error
 files:
+  - "**/tests/*.py"
   - "**/tests/**/*.py"
 rule:
-  any:
-    - pattern: $OWNER.create_command_output(returncode=$CODE)
-    - pattern: $OWNER.create_command_output($$$BEFORE, returncode=$CODE, $$$AFTER)
+  pattern: $OWNER.create_command_output(returncode=$CODE)
 constraints:
   OWNER:
     regex: '^(?:u\.Tests|TestsFlextInfraUtilities\.Tests)$'
 message: Use the causal command-output fixture exit-code parameter.
-fix: $OWNER.create_command_output($$$BEFORE, exit_code=$CODE, $$$AFTER)
+fix: $OWNER.create_command_output(exit_code=$CODE)
+---
+id: rewire-test-command-output-return-code-streams
+language: Python
+severity: error
+files:
+  - "**/tests/*.py"
+  - "**/tests/**/*.py"
+rule:
+  pattern: $OWNER.create_command_output(stdout=$STDOUT, stderr=$STDERR, returncode=$CODE)
+constraints:
+  OWNER:
+    regex: '^(?:u\.Tests|TestsFlextInfraUtilities\.Tests)$'
+message: Use the causal command-output fixture exit-code parameter.
+fix: $OWNER.create_command_output(stdout=$STDOUT, stderr=$STDERR, exit_code=$CODE)
+---
+id: rewire-test-command-output-return-code-stdout
+language: Python
+severity: error
+files:
+  - "**/tests/*.py"
+  - "**/tests/**/*.py"
+rule:
+  pattern: $OWNER.create_command_output(stdout=$STDOUT, returncode=$CODE)
+constraints:
+  OWNER:
+    regex: '^(?:u\.Tests|TestsFlextInfraUtilities\.Tests)$'
+message: Use the causal command-output fixture exit-code parameter.
+fix: $OWNER.create_command_output(stdout=$STDOUT, exit_code=$CODE)
+---
+id: rewire-test-command-output-return-code-stderr
+language: Python
+severity: error
+files:
+  - "**/tests/*.py"
+  - "**/tests/**/*.py"
+rule:
+  pattern: $OWNER.create_command_output(stderr=$STDERR, returncode=$CODE)
+constraints:
+  OWNER:
+    regex: '^(?:u\.Tests|TestsFlextInfraUtilities\.Tests)$'
+message: Use the causal command-output fixture exit-code parameter.
+fix: $OWNER.create_command_output(stderr=$STDERR, exit_code=$CODE)
+---
+id: rewire-test-command-output-constructor-to-factory
+language: Python
+severity: error
+files:
+  - "**/tests/utilities.py"
+rule:
+  pattern: m.Cli.CommandOutput(stdout=$STDOUT, stderr=$STDERR, exit_code=$CODE)
+message: Route synthetic command outcomes through the typed test factory.
+fix: TestsFlextInfraUtilities.Tests.create_command_output(stdout=$STDOUT, stderr=$STDERR, exit_code=$CODE)
+---
+id: rewire-detector-test-command-output-to-factory
+language: Python
+severity: error
+files:
+  - "**/tests/unit/deps/test_detector_main.py"
+rule:
+  pattern: m.Cli.CommandOutput(stdout=$STDOUT, stderr=$STDERR, exit_code=$CODE)
+message: Route synthetic command outcomes through the typed test factory.
+fix: u.Tests.create_command_output(stdout=$STDOUT, stderr=$STDERR, exit_code=$CODE)
+---
+id: rewire-timeout-test-command-outcome
+language: Python
+severity: error
+files:
+  - "**/tests/unit/_utilities/test_resource_limits.py"
+rule:
+  pattern: m.Cli.CommandOutput(stdout=$STDOUT, stderr=$STDERR, exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE)
+message: Preserve the causal timeout state in the public command model.
+fix: |-
+  m.Cli.CommandOutput(
+      stdout=$STDOUT,
+      stderr=$STDERR,
+      outcome=m.Cli.ProcessOutcome(
+          raw_return_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+          timed_out=True,
+          forwarded_signal=None,
+      ),
+  )
+---
+id: rewire-signal-test-command-outcome
+language: Python
+severity: error
+files:
+  - "**/tests/unit/_utilities/test_resource_limits.py"
+rule:
+  pattern: m.Cli.CommandOutput(stdout=$STDOUT, stderr=$STDERR, exit_code=-11)
+message: Preserve the causal signal state in the public command model.
+fix: |-
+  m.Cli.CommandOutput(
+      stdout=$STDOUT,
+      stderr=$STDERR,
+      outcome=m.Cli.ProcessOutcome(
+          raw_return_code=-11,
+          timed_out=False,
+          forwarded_signal=None,
+      ),
+  )

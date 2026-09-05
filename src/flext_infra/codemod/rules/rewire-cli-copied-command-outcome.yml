@@ -10,7 +10,9 @@ rule:
         regex: "^exit_code$"
     - has:
         field: value
-        pattern: $SOURCE.exit_code
+        any:
+          - pattern: $SOURCE.exit_code
+          - pattern: $SOURCE.outcome.raw_return_code
     - inside:
         any:
           - pattern: m.Cli.CommandOutput($$$ARGS)

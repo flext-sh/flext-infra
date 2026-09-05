@@ -13,3 +13,4 @@ valid:
 invalid:
   - m.Cli.CommandOutput(stdout="", stderr="failed", exit_code=1)
   - m.Cli.CommandBytesOutput(stdout=b"", stderr=b"failed", exit_code=return_code)
+  - m.Cli.CommandOutput(stdout=source.stdout, stderr=source.stderr, exit_code=source.exit_code)

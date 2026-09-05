@@ -55,7 +55,7 @@ class TestTypeGates:
             (
                 FlextInfraPyrightGate,
                 True,
-                r.ok(u.Tests.create_command_output(stdout="invalid json", returncode=1)),
+                r.ok(u.Tests.create_command_output(stdout="invalid json", exit_code=1)),
                 False,
                 1,
             ),

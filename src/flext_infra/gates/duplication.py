@@ -177,7 +177,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return m.Cli.CommandOutput(
             stdout=report_path.read_text(encoding="utf-8"),
             stderr=result.stderr,
-            exit_code=result.outcome.raw_return_code,
+            outcome=result.outcome,
         )
 
     @staticmethod

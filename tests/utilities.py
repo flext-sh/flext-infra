@@ -107,7 +107,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if result.failure:
                     return r[p.Cli.CommandOutput].from_failure(result)
                 output = result.value
-                if output.exit_code != 0:
+                if output.outcome.raw_return_code != 0:
                     return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )
@@ -242,7 +242,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 output_path.write_text(
                     f"{result.value.stdout}{result.value.stderr}", encoding="utf-8"
                 )
-                return r[int].ok(result.value.exit_code)
+                return r[int].ok(result.value.outcome.raw_return_code)
 
         class TomlReaderSequence(p.Infra.TomlReader):
             """Protocol-compatible TOML reader that replays typed results."""
@@ -328,7 +328,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if result.failure:
                     return r[p.Cli.CommandOutput].from_failure(result)
                 output = result.value
-                if output.exit_code != 0:
+                if output.outcome.raw_return_code != 0:
                     return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )
@@ -370,7 +370,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
             def __init__(self, payload: bytes) -> None:
                 super().__init__(
-                    r.ok(m.Cli.CommandOutput(stdout="", stderr="", exit_code=0))
+                    r.ok(TestsFlextInfraUtilities.Tests.create_command_output(stdout="", stderr="", exit_code=0))
                 )
                 self._payload = payload
 
@@ -399,7 +399,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     )
                 artifact.write_bytes(self._payload)
                 return r[p.Cli.CommandOutput].ok(
-                    m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+                    TestsFlextInfraUtilities.Tests.create_command_output(stdout="", stderr="", exit_code=0)
                 )
 
         @staticmethod
@@ -661,7 +661,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Provide the typed test helper `command_runner`."""
             return TestsFlextInfraUtilities.Tests.DeptryRunner(
                 r.ok(
-                    TestsFlextInfraUtilities.Tests.create_command_output(stdout=stdout, stderr=stderr, returncode=returncode)
+                    TestsFlextInfraUtilities.Tests.create_command_output(stdout=stdout, stderr=stderr, exit_code=returncode)
                 )
             )
 
@@ -683,9 +683,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             *, stdout: str = "", stderr: str = "", returncode: int = 0
         ) -> m.Cli.CommandOutput:
             """Provide the typed test helper `stub_run`."""
-            return m.Cli.CommandOutput(
-                stdout=stdout, stderr=stderr, exit_code=returncode
-            )
+            return TestsFlextInfraUtilities.Tests.create_command_output(stdout=stdout, stderr=stderr, exit_code=returncode)
 
         @staticmethod
         def mk_project(
@@ -1497,10 +1495,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             stderr: str = "",
             exit_code: int = 0,
             duration: float = 0.0,
+            timed_out: bool = False,
+            forwarded_signal: int | None = None,
         ) -> m.Cli.CommandOutput:
-            """Provide the typed test helper `create_command_output`."""
+            """Build one causal command result through the public CLI model."""
             return m.Cli.CommandOutput(
-                stdout=stdout, stderr=stderr, exit_code=exit_code, duration=duration
+                stdout=stdout,
+                stderr=stderr,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=exit_code,
+                    timed_out=timed_out,
+                    forwarded_signal=forwarded_signal,
+                ),
+                duration=duration,
             )
 
         @staticmethod

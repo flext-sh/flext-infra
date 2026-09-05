@@ -106,7 +106,13 @@ class TestsFlextInfraUtilitiesResourceLimits:
         )
         diagnostic = u.Infra.mypy_failure_diagnostic(
             m.Cli.CommandOutput(
-                stdout="", stderr="", exit_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE
+                stdout="",
+                stderr="",
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=c.Infra.PROCESS_TIMEOUT_EXIT_CODE,
+                    timed_out=True,
+                    forwarded_signal=None,
+                ),
             ),
             limit,
         )
@@ -130,7 +136,11 @@ class TestsFlextInfraUtilitiesResourceLimits:
             m.Cli.CommandOutput(
                 stdout="Traceback: checker frame",
                 stderr="INTERNAL ERROR",
-                exit_code=-11,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=-11,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
             ),
             limit,
         )
