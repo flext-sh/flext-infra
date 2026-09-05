@@ -60,9 +60,7 @@ class FlextInfraLooseTestFunctionDetector:
         rules = cls._rules()
         if not cls._is_test_file(ctx, rules):
             return []
-        res = u.Infra.get_resource_from_path(
-            ctx.rope_project, ctx.file_path
-        )
+        res = u.Infra.get_resource_from_path(ctx.rope_project, ctx.file_path)
         if res is None:
             return []
         try:

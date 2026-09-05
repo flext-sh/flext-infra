@@ -75,6 +75,8 @@ from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
 )
+from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
+from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
@@ -140,6 +142,8 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesSafety,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
+        FlextInfraWorktreeLifecycle,
+        FlextInfraWorktreeProvisioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

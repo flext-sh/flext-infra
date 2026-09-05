@@ -57,7 +57,9 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
         (scratch / "gitconfig", b""),
         (scratch / "netrc", b""),
     ):
-        written = u.Cli.atomic_create_binary_file_guarded(path, content, permission_mode=0o600)
+        written = u.Cli.atomic_create_binary_file_guarded(
+            path, content, permission_mode=0o600
+        )
         if written.failure:
             return written
     return r[bool].ok(True)

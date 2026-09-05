@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, t
+
 if TYPE_CHECKING:
     from flext_infra import p
 
@@ -69,7 +70,9 @@ class FlextInfraUtilitiesIterationWorkspace:
             file_path
             for file_path in tracked_files
             if file_path.suffixes == [c.Infra.EXT_PYTHON]
-            and any(file_path.is_relative_to(source_root) for source_root in source_roots)
+            and any(
+                file_path.is_relative_to(source_root) for source_root in source_roots
+            )
             and not ignored.intersection(file_path.relative_to(project_root).parts)
         )
 

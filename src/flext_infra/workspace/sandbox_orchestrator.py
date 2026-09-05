@@ -46,9 +46,7 @@ class FlextInfraSandboxOrchestrator(FlextInfraOrchestratorService):
 
     def _snapshot(self) -> p.Result[Path]:
         """Snapshot."""
-        return u.Infra.rsync(
-            src=self.root.resolve(), dst=self._sandbox_path
-        )
+        return u.Infra.rsync(src=self.root.resolve(), dst=self._sandbox_path)
 
     def _orchestrate_in(self, repository_root: Path) -> p.Result[bool]:
         """Orchestrate in."""

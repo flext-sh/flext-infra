@@ -174,8 +174,7 @@ class FlextInfraRefactorLegacyTextOps:
         else:
             vararg_ok = (
                 len(remaining_args) == 1
-                and u.Infra.node_kind(remaining_args[0])
-                == "Starred"
+                and u.Infra.node_kind(remaining_args[0]) == "Starred"
                 and FlextInfraRefactorLegacyTextOps._is_name(
                     getattr(remaining_args[0], "value", None), vararg.arg
                 )
@@ -197,10 +196,7 @@ class FlextInfraRefactorLegacyTextOps:
     @staticmethod
     def _is_name(node: object | None, name: str) -> bool:
         """Whether ``node`` is an ``ast.Name`` whose ``id`` is ``name``."""
-        return (
-            u.Infra.node_kind(node) == "Name"
-            and getattr(node, "id", None) == name
-        )
+        return u.Infra.node_kind(node) == "Name" and getattr(node, "id", None) == name
 
     @staticmethod
     def _remove_import_bypasses(source: str) -> t.Infra.TransformResult:

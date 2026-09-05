@@ -213,9 +213,7 @@ class FlextInfraClassPlacementDetector:
     ) -> t.SequenceOf[m.Infra.ClassInfo]:
         """Return public top-level classes from the current Rope AST."""
         try:
-            tree = u.Infra.get_pymodule(
-                rope_project, resource
-            ).get_ast()
+            tree = u.Infra.get_pymodule(rope_project, resource).get_ast()
         except u.Infra.rope_runtime_errors():
             return ()
         classes: list[m.Infra.ClassInfo] = []
@@ -285,9 +283,7 @@ class FlextInfraClassPlacementDetector:
     @staticmethod
     def _annassign_constant(node: object) -> m.Infra.ConstantInfo | None:
         """Return ConstantInfo for an AnnAssign node, or None if not a violation."""
-        target_name = u.Infra.name_of(
-            getattr(node, "target", None)
-        )
+        target_name = u.Infra.name_of(getattr(node, "target", None))
         if not target_name or target_name.startswith("_"):
             return None
         if target_name in c.Infra.CLASSVAR_EXEMPT_NAMES:
@@ -356,9 +352,7 @@ class FlextInfraClassPlacementDetector:
                     annotation, "TypeAlias"
                 ):
                     continue
-                target_name = u.Infra.name_of(
-                    getattr(node, "target", None)
-                )
+                target_name = u.Infra.name_of(getattr(node, "target", None))
                 line = getattr(node, "lineno", 1)
                 if target_name:
                     aliases.append((target_name, line))

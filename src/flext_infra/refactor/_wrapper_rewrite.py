@@ -117,10 +117,7 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             ):
                 continue
             base_name = getattr(parent_attr, "value", None)
-            if (
-                base_name is None
-                or u.Infra.node_kind(base_name) != "Name"
-            ):
+            if base_name is None or u.Infra.node_kind(base_name) != "Name":
                 continue
             base_id = getattr(base_name, "id", "")
             if base_id not in runtime_aliases:

@@ -136,9 +136,7 @@ def sources(
 ) -> p.Result[bool]:
     """Prove source topology, bytes, and modes still equal one snapshot."""
     for project in plan.projects:
-        config_sources = (
-            u.Infra.snapshot_config_sources(project.layout.root)
-        )
+        config_sources = u.Infra.snapshot_config_sources(project.layout.root)
         if config_sources.failure:
             return r[bool].from_failure(config_sources)
         expected = project.config.sources

@@ -2043,10 +2043,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenArtifactComposition].fail(
                 f"project managed-artifact snapshot is absent: {repository_root}"
             )
-        composed = (
-            u.Infra.compose_mise_toml_from_snapshot(
-                resolved_artifacts.sources, rendered
-            )
+        composed = u.Infra.compose_mise_toml_from_snapshot(
+            resolved_artifacts.sources, rendered
         )
         if composed.failure:
             return r[m.Infra.CodegenArtifactComposition].from_failure(composed)

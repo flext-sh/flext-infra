@@ -218,9 +218,7 @@ class FlextInfraMiseWorkspacePlanner:
         layout: m.Infra.MiseToolchainProjectLayout,
         config_plan: m.Infra.CodegenFilePlan | None,
     ) -> p.Result[m.Infra.MiseToolchainProjectState]:
-        current_sources = (
-            u.Infra.snapshot_config_sources(layout.root)
-        )
+        current_sources = u.Infra.snapshot_config_sources(layout.root)
         if current_sources.failure:
             return r[m.Infra.MiseToolchainProjectState].from_failure(current_sources)
         config_state = u.Cli.atomic_read_binary_file_state(

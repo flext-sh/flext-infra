@@ -285,9 +285,7 @@ class FlextInfraModGateEngine:
                 if apply_run.failure:
                     return r[m.Infra.ModScanReport].from_failure(apply_run)
             if fix and report.findings > report.nodes:
-                affected = ", ".join(
-                    path.as_posix() for path in sorted(report.files)
-                )
+                affected = ", ".join(path.as_posix() for path in sorted(report.files))
                 detection_only.append(
                     f"{report.findings - report.nodes} detection-only finding(s) "
                     f"from {rule.name} across {len(report.files)} file(s): {affected}"

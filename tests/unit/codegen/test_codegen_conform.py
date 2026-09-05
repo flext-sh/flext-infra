@@ -1245,10 +1245,10 @@ class TestCodegenConform:
                 custom,
                 (
                     ".PHONY: \\\n"
-                    "\t_custom_check_demo \\\n"
-                    "\t_custom_run_demo\n"
-                    "_custom_check_demo:\n\t@true\n"
-                    "_custom_run_demo:\n\t@true\n"
+                    "\t_custom-propagate \\\n"
+                    "\t_custom-activate\n"
+                    "_custom-propagate:\n\t@true\n"
+                    "_custom-activate:\n\t@true\n"
                 ),
             )
         )
@@ -1274,7 +1274,7 @@ class TestCodegenConform:
         )
 
         result = FlextInfraCodegenConform.validate_custom_make(
-            ".PHONY: \\\n\t_custom_check_demo \\", policy
+            ".PHONY: \\\n\t_custom-propagate \\", policy
         )
 
         tm.fail(result, has="unterminated .PHONY continuation")
@@ -1441,16 +1441,29 @@ class TestScriptDispatchMakefile:
         tm.that("_builtin-incidente:" in rendered, eq=True)
         tm.that('"incidente"' in rendered, eq=True)
 
-    def test_repo_without_script_dispatch_omits_script_routing(
+    def test_repo_without_script_dispatch_routes_declared_custom_verb(
         self, tmp_path: Path
     ) -> None:
-        """A repo with no script dispatch omits every script-routing projection."""
+        """A declared verb routes to its same-named private custom owner."""
         rendered = self._render_root_makefile(
-            tmp_path, extra_verbs=(), script_dispatch=None
+            tmp_path,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(
+                    name="propagate",
+                    description="Propagate the installed runtime.",
+                    requires_apply=True,
+                ),
+            ),
+            script_dispatch=None,
         )
-        # No script routing leaks into non-opted-in repositories.
         tm.that("tr '-' '_'" in rendered, eq=False)
         tm.that("scripts/dispatch.py" in rendered, eq=False)
+        tm.that("propagate: _require-environment" in rendered, eq=True)
+        tm.that("_builtin-propagate:" in rendered, eq=True)
+        tm.that("_custom-propagate" in rendered, eq=True)
+        tm.that(
+            "declared operation propagate has no implementation" in rendered, eq=True
+        )
 
     def test_gen_replaces_codegen_as_the_single_conform_verb(
         self, tmp_path: Path

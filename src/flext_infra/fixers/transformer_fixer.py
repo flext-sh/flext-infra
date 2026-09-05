@@ -34,7 +34,6 @@ from flext_infra.transformers.typing_dict_import import (
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
     from flext_infra.transformers.base import FlextInfraRopeTransformer
 
@@ -69,7 +68,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     }
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
 
@@ -77,7 +76,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply transformer fixes file-by-file for the given violations."""
@@ -147,7 +146,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _is_owned_library_exempt(
-        project_dir: Path, fix_action: me.EnforcementFixAction | None, file_path: Path
+        project_dir: Path, fix_action: m.EnforcementFixAction | None, file_path: Path
     ) -> bool:
         """Skip import modernization inside the library's owning project.
 
@@ -186,7 +185,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         self,
         file_path: Path,
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction | None,
+        fix_action: m.EnforcementFixAction | None,
         ctx: m.Infra.FixEnforcementCommand,
         *,
         rule_id: str = "",
@@ -269,7 +268,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     @staticmethod
     def _build_transformer(
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction,
+        fix_action: m.EnforcementFixAction,
         file_path: Path,
     ) -> FlextInfraRopeTransformer:
         """Instantiate a transformer with params declared in the catalog."""
