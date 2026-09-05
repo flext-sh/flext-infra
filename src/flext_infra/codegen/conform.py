@@ -66,8 +66,21 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return tuple(exclusions), overrides
 
     @staticmethod
-    def _member_beads_is_linked(repository_root: Path) -> bool:
-        """Return whether this gitlink routes an inherited workspace ledger."""
+    def _beads_projection_is_inherited(destination: str, repository_root: Path) -> bool:
+        """Return whether a tracked ledger route disowns this Beads projection.
+
+        Governed members track ``.beads`` as a symlink into the superproject
+        ledger. The route is the declaration: it holds in the workspace, where
+        it resolves, and in a standalone clone of the same member, where it
+        dangles outside the checkout. Either way the member owns no Beads
+        projection of its own, so every conform route asks this one question
+        here rather than repeating the pair of conditions.
+        """
+        if destination not in {
+            c.Infra.BEADS_CONFIG_RELPATH,
+            c.Infra.BEADS_METADATA_RELPATH,
+        }:
+            return False
         route: Path = repository_root / c.Infra.BEADS_DIRNAME
         return route.is_symlink()
 
@@ -1382,14 +1395,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
                 continue
-            if (
-                destination
-                in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
-                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
-                and self._member_beads_is_linked(root)
-            ):
-                # A linked gitlink inherits the workspace ledger; planning a
-                # member-local projection would create a second identity.
+            if self._beads_projection_is_inherited(destination, root):
+                # A tracked ledger route inherits the workspace ledger; planning
+                # a member-local projection would create a second identity, and
+                # in a standalone clone the route dangles outside the checkout.
                 continue
             if (
                 destination == c.Infra.BEADS_METADATA_RELPATH
@@ -1775,12 +1784,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
-            if (
-                entry.destination
-                in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
-                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
-                and self._member_beads_is_linked(root)
-            ):
+            if self._beads_projection_is_inherited(entry.destination, root):
                 # Mirror the delegated-template path so both conform routes
                 # preserve the same inherited-ledger ownership rule.
                 continue
@@ -2042,12 +2046,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
-        if (
-            destination
-            in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
-            and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
-            and self._member_beads_is_linked(repository_root)
-        ):
+        if self._beads_projection_is_inherited(destination, repository_root):
             return r[p.Model].fail(
                 "linked workspace member cannot own a Beads projection: "
                 f"{repository.name}; ledger is inherited from the workspace root"
