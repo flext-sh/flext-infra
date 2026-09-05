@@ -902,7 +902,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 rendered = u.Cli.template_render(policy_source, policy_context)
                 if rendered.failure:
-                    msg = rendered.error or f"release policy render failed: {policy_path}"
+                    msg = (
+                        rendered.error or f"release policy render failed: {policy_path}"
+                    )
                     raise RuntimeError(msg)
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)

@@ -545,9 +545,6 @@ class FlextInfraConfigModels:
                     f"set: {', '.join(self.REQUIRED_TECHNICAL_PATTERNS)}"
                 )
                 raise ValueError(msg)
-            if len(set(self.ci_trigger_branches)) != len(self.ci_trigger_branches):
-                msg = "CI trigger branches must be unique"
-                raise ValueError(msg)
             return self
 
     class GithubActionPinSpec(_ConfigContract):
@@ -2805,10 +2802,6 @@ class FlextInfraConfigModels:
         providers: Annotated[
             tuple[FlextInfraConfigModels.ProviderSpec, ...],
             m.Field(min_length=1, description="Ordered FLEXT-owned Git providers"),
-        ]
-        infrastructure_provider: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Provider key owning the flext-infra distribution"),
         ]
         branch_policy: Annotated[
             FlextInfraConfigModels.BranchPolicySpec,

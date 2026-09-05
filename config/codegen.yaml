@@ -288,11 +288,6 @@ Infra:
         base_url: https://github.com/marlonsc
         branch: develop
     branch_policy:
-      ci_trigger_branches:
-        - dev
-        - develop
-        - 0.12.0-dev
-        - main
       technical_branch_patterns:
         - __dolt_remote_info__
         - dolt/*
