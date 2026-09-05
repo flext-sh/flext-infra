@@ -1,4 +1,13 @@
-"""Export-collision resolution for the lazy-init planner."""
+"""Export-collision resolution for the lazy-init planner.
+
+A name reachable from two modules of one package has exactly one owner or
+none. Intentional re-exports (a facade over its private parts, a root stub
+over its implementation) resolve to the facade. Otherwise the module that
+declares the name in its ``__all__`` owns it; two such declarations are a
+defect in the package and stop generation; no declaration on either side
+means the name is not part of the package surface at all, so the initializer
+publishes neither candidate instead of picking one by heuristic.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +26,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
     if TYPE_CHECKING:
         rope_workspace: p.Infra.RopeWorkspaceDsl
         lazy_init: m.Infra.LazyInitConfig
-        _collision_count: int
+        _ambiguous_exports: set[str]
 
         def _module_file(self, module_path: str) -> Path | None: ...
 
@@ -47,13 +56,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             score += 20
         if policy.enforce_contract:
             score += 10
-        declared_exports = self.rope_workspace.exports(
-            module_file,
-            export_options=m.Infra.ExportOptions(
-                allow_assignments=True, allow_functions=True, require_explicit_all=True
-            ),
-        )
-        if name in declared_exports:
+        if self._declares_export(name, target):
             score += 15
         if attr == name:
             score += 3
@@ -80,23 +83,43 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return existing
         return min(existing, target)
 
+    def _declares_export(self, name: str, target: t.StrPair) -> bool:
+        """Return whether the target module lists ``name`` in its ``__all__``."""
+        module_file = self._module_file(target[0])
+        if module_file is None:
+            return False
+        declared = self.rope_workspace.exports(
+            module_file,
+            export_options=m.Infra.ExportOptions(
+                allow_assignments=True, allow_functions=True, require_explicit_all=True
+            ),
+        )
+        return name in declared
+
     def _add(self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair) -> None:
-        """Insert a name/target pair, resolving collisions via policy scoring."""
+        """Insert a name/target pair; a name with no single owner is not published."""
+        if name in self._ambiguous_exports:
+            return
         existing = index.get(name)
         if existing is None or existing == target:
             index[name] = target
             return
-        # flext-j47u (codex): MutableLazyAliasMap values are always StrPair.
-        winner = self._pick_preferred_target(name, existing, target)
         if self._is_intentional_reexport(existing, target):
-            index[name] = winner
+            index[name] = self._pick_preferred_target(name, existing, target)
             return
-        self._collision_count += 1
-        u.Cli.warning(
-            f"export collision for {name!r}: {existing} vs {target}; "
-            f"resolved by canonical policy scorer to {winner}"
-        )
-        index[name] = winner
+        existing_declared = self._declares_export(name, existing)
+        target_declared = self._declares_export(name, target)
+        if existing_declared and target_declared:
+            msg = (
+                f"export {name!r} is declared public by both {existing[0]} and "
+                f"{target[0]}; one package surface cannot carry two owners"
+            )
+            raise ValueError(msg)
+        if existing_declared or target_declared:
+            index[name] = existing if existing_declared else target
+            return
+        del index[name]
+        self._ambiguous_exports.add(name)
 
     def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""

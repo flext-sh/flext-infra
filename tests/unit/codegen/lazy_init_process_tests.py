@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from flext_tests import tm
 from tests import c, u
 
@@ -159,6 +161,39 @@ class TestsFlextInfraLazyInitProcessing:
 
         tm.that(result, eq=0)
         tm.that(unit_path.exists(), eq=False)
+
+    def test_name_defined_by_two_siblings_without_an_owner_is_not_published(
+        self, tmp_path: Path
+    ) -> None:
+        """Two scripts each defining ``run`` give the package no ``run`` to export."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        for stem in ("first", "second"):
+            (package_root / f"{stem}.py").write_text(
+                f'"""{stem}."""\n\ndef run() -> str:\n    return "{stem}"\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+
+        result = u.Tests.run_lazy_init(repository_root)
+        content = self._read(package_root)
+
+        tm.that(result, eq=0)
+        tm.that(content, lacks='"run"')
+        compile(content, "__init__.py", "exec")
+
+    def test_name_declared_public_by_two_siblings_stops_generation(
+        self, tmp_path: Path
+    ) -> None:
+        """Two ``__all__`` declarations of one name is a package defect, not a tie."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        for stem in ("first", "second"):
+            (package_root / f"{stem}.py").write_text(
+                f'"""{stem}."""\n\n__all__ = ["run"]\n\n\n'
+                f'def run() -> str:\n    return "{stem}"\n',
+                encoding=c.Cli.ENCODING_DEFAULT,
+            )
+
+        with pytest.raises(ValueError, match="declared public by both"):
+            u.Tests.run_lazy_init(repository_root)
 
 
 __all__: list[str] = ["TestsFlextInfraLazyInitProcessing"]

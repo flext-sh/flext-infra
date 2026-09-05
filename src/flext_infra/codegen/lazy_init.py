@@ -194,9 +194,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         # content and linting them would report drift as false lint errors.
         if not check_only:
             errors += self.batch_lint_generated(self.modified_files)
-        warnings = planner.collision_count
         u.Cli.info(
-            f"Lazy-init summary: {ok} generated, {errors} errors, {warnings} warnings"
+            f"Lazy-init summary: {ok} generated, {errors} errors"
             f" ({total} dirs scanned, {perf_counter() - started_at:.2f}s)"
         )
         return errors

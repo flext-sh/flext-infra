@@ -60,12 +60,9 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
-    _collision_count: int = u.PrivateAttr(default_factory=int)
-
-    @property
-    def collision_count(self) -> int:
-        """Number of export collisions resolved so far."""
-        return self._collision_count
+    # Names two sibling modules both define without either declaring them
+    # public: no canonical owner exists, so the package publishes neither.
+    _ambiguous_exports: set[str] = u.PrivateAttr(default_factory=set)
 
 
 class FlextInfraCodegenLazyInitPlanner(

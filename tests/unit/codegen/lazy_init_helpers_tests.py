@@ -688,25 +688,3 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
-
-    def test_duplicate_public_export_resolved_by_canonical_scorer(
-        self, tmp_path: Path
-    ) -> None:
-        """Duplicate public exports are resolved deterministically (warn + generate)."""
-        repository_root, package_root = self._workspace(tmp_path)
-        (package_root / "api.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
-            '__all__: list[str] = ["Shared"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-        (package_root / "service.py").write_text(
-            "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
-            '__all__: list[str] = ["Shared"]\n',
-            encoding=c.Cli.ENCODING_DEFAULT,
-        )
-
-        tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
-        tm.that(init_content.startswith(c.Infra.AUTOGEN_HEADER), eq=True)
-        tm.that(exports_content, has="Shared")
