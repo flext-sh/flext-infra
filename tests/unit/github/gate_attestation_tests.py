@@ -106,7 +106,7 @@ def test_signed_gate_attestation_round_trip_is_local(tmp_path: Path) -> None:
     tm.ok(created)
     head = _head(tmp_path)
     tm.that(created.unwrap().tag, eq=f"attest/gates/v1/{head}")
-    tm.that(_rev_parse(tmp_path, created.unwrap().tag), eq=head)
+    tm.that(_rev_parse(tmp_path, f"{created.unwrap().tag}^{{}}"), eq=head)
     verified = _verify(tmp_path, allowed_signers, head, "gen", "check", "test")
     tm.ok(verified)
     tm.that(verified.unwrap().signer, eq="attester@example.test")

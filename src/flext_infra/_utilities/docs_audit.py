@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from flext_cli import u
 from flext_infra import c, config, m
 from flext_infra._utilities._docs_audit_detectors import (
     FlextInfraUtilitiesDocsAuditDetectorsMixin,
@@ -23,12 +22,6 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     """Reusable audit helpers exposed through ``u.Infra``."""
 
     @staticmethod
-    def docs_is_external(target: str) -> bool:
-        """Return whether a docs link target points outside the repository."""
-        lower: str = u.norm_str(target, case="lower").lstrip("<")
-        return lower.startswith(("http://", "https://", "mailto:", "tel:", "data:"))
-
-    @staticmethod
     def docs_normalize_link(target: str) -> str:
         """Strip fragments and query strings from a markdown link target."""
         value = target.strip()
@@ -39,7 +32,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
     @staticmethod
     def docs_should_skip_target(raw: str, target: str) -> bool:
         """Return whether the target should be ignored as prose, not a path."""
-        if target.startswith("http"):
+        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(target):
             return False
         looks_like_prose = ".md" not in raw and "/" not in raw
         return looks_like_prose and ("," in raw or " " in raw)
@@ -155,7 +148,7 @@ class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
                         continue
                     if not target or target.startswith("#"):
                         continue
-                    if FlextInfraUtilitiesDocsAudit.docs_is_external(target):
+                    if FlextInfraUtilitiesDocs.docs_is_external(target):
                         issues.extend(
                             FlextInfraUtilitiesDocsGithubLinks.docs_github_link_issues(
                                 file=rel, line_number=number, raw=raw, target=target

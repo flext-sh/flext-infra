@@ -456,7 +456,10 @@ class FlextInfraUtilitiesDocsGenerate:
             target = match.group(2)
             return (
                 match.group(0)
-                if target.startswith(("http://", "https://", "#", "mailto:"))
+                if (
+                    FlextInfraUtilitiesDocs.docs_is_external(target)
+                    or target.startswith(c.Infra.DOCS_FRAGMENT_PREFIX)
+                )
                 else match.group(1)
             )
 

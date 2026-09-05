@@ -103,6 +103,17 @@ def real_python_package(tmp_path: Path) -> Path:
     src_dir = project_root / "src" / "test_pkg"
     src_dir.mkdir(parents=True)
     (src_dir / "__init__.py").write_text('"""Test package."""\n__version__ = "0.1.0"\n')
+    (src_dir / "identity.py").write_text(
+        '"""Substantive unique source consumed by real scanner fixtures."""\n\n'
+        "from __future__ import annotations\n\n"
+        "def normalize_identity(parts: tuple[str, ...]) -> str:\n"
+        '    """Normalize one ordered identity without duplicated code."""\n'
+        "    normalized = tuple(part.strip() for part in parts if part.strip())\n"
+        "    if not normalized:\n"
+        '        raise ValueError("identity requires at least one non-empty part")\n'
+        '    return "::".join(normalized).casefold()\n',
+        encoding="utf-8",
+    )
     (project_root / "pyproject.toml").write_text(
         '[project]\nname = "test-pkg"\nversion = "0.1.0"\n'
     )

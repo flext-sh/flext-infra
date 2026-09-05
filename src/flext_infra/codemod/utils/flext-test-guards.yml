@@ -18,7 +18,7 @@
 # tm imported from a flext facade in the module. Gate for every tm-emitting fix:
 # rewriting to `tm.*` is only F821-safe when tm is actually in scope.
 id: tm-imported-from-flext
-language: python
+language: Python
 rule:
   kind: import_from_statement
   all:

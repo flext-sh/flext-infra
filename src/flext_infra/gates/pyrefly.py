@@ -31,14 +31,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Check only local Python roots to avoid scanning dependency trees."""
         _ = ctx
-        discovered_dirs = u.Infra.discover_python_dirs(project_dir)
-        if discovered_dirs:
-            return discovered_dirs
-        if any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
-            project_dir.glob("*.pyi")
-        ):
-            return ["."]
-        return []
+        return u.Infra.discover_python_targets(project_dir)
 
     @override
     def _build_check_command(

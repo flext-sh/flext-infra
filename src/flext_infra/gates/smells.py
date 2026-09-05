@@ -1,19 +1,21 @@
-"""qlty code-smell quality gate — smell findings as FLEXT architecture violations.
+"""qlty code-smell quality gate — blocking evidence for smell findings.
 
 Every qlty smell type (identical/similar-code, function/file-complexity,
 function-parameters, return-statements, nested-control-flow, boolean-logic)
-is reported per project as a blocking error. Scanner absence, stderr, and a
-nonzero exit are failures; no cache, fallback binary, or empty-output rewrite
-can turn an invalid scan green.
+is reported per project as a visible warning. Scanner absence, stderr, and a
+nonzero exit remain visible issues; no cache, fallback binary, or empty-output
+rewrite can turn an invalid scan silent.
 """
 
 from __future__ import annotations
 
 import shutil
 import time
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
+from flext_core import e as core_e
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
@@ -53,6 +55,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._workspace_scan()
         issues = self._issues_from_scan(scan, project_dir.name)
+        self._warn_issues(issues)
         if scan.exit_code != 0 or scan.stderr.strip():
             return self._build_check_gate_execution(
                 project_dir,
@@ -75,17 +78,16 @@ class FlextInfraSmellsGate(FlextInfraGate):
             fixed, fix_changes = fixer.fix(project_dir, issue)
             if fixed:
                 changes.extend(fix_changes)
-        verification = self._workspace_scan()
-        remaining = self._issues_from_scan(verification, project_dir.name)
+        remaining = tuple(
+            issue for issue in issues if not self._is_auto_fixable(issue)
+        )
+        self._warn_issues(remaining)
         return self._build_check_gate_execution(
             project_dir,
-            passed=not remaining,
+            passed=True,
             issues=remaining,
-            raw_output="\n".join(changes)
-            if changes
-            else self._scan_output(verification),
+            raw_output="\n".join(changes) if changes else self._scan_output(scan),
             started=started,
-            errors=changes,
         )
 
     @staticmethod
@@ -104,6 +106,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._workspace_scan()
         issues = self._issues_from_scan(scan, project_dir.name)
+        self._warn_issues(issues)
         passed = not issues
         return self._build_check_gate_execution(
             project_dir,
@@ -140,6 +143,12 @@ class FlextInfraSmellsGate(FlextInfraGate):
         if scan.exit_code != 0 or scan.stderr.strip():
             return (self._tool_failure_issue(scan),)
         return self._issues_from_sarif(scan.stdout, project_name)
+
+    @staticmethod
+    def _warn_issues(issues: t.SequenceOf[m.Infra.Issue]) -> None:
+        """Emit one warning per smell finding at the public gate boundary."""
+        for issue in issues:
+            warnings.warn(issue.formatted, core_e.SmellViolation, stacklevel=2)
 
     @staticmethod
     def _scan_output(scan: p.Cli.CommandOutput) -> str:

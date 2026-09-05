@@ -108,7 +108,9 @@ class FlextInfraUtilitiesRopeClassMove:
         return resolved
 
     @staticmethod
-    def _resource(rope_project: t.Infra.RopeProject, root: Path, file_path: Path) -> t.Infra.RopeResource:
+    def _resource(
+        rope_project: t.Infra.RopeProject, root: Path, file_path: Path
+    ) -> t.Infra.RopeResource:
         relative_path = file_path.relative_to(root).as_posix()
         return rope_project.get_resource(relative_path)
 

@@ -9,6 +9,7 @@ from typing import ClassVar
 
 from flext_cli import u
 from flext_infra import c, config, m, t
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 
 class FlextInfraUtilitiesDocsRender:
@@ -111,7 +112,7 @@ class FlextInfraUtilitiesDocsRender:
         ``docs/index.md`` pages are built by MkDocs with ``docs_dir`` isolation,
         so governance pointers must be absolute GitHub URLs.
         """
-        if prefix.startswith(("http://", "https://")):
+        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(prefix):
             kind = "tree" if is_dir else "blob"
             branches = tuple(
                 repo.branch

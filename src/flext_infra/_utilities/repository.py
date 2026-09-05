@@ -124,7 +124,7 @@ class FlextInfraUtilitiesRepository:
         have published anything yet (project creation). Without it, a checkout
         with no integration branch fails closed instead of guessing.
         """
-        from flext_infra.utilities import u
+        from flext_infra import u
 
         candidates = preference or c.Infra.INTEGRATION_BRANCH_PREFERENCE
         for candidate in candidates:

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import override
 
 from flext_cli import cli
-from flext_infra import config, p, r, t
+from flext_infra import config, m, p, r, t
 from flext_infra.base import FlextInfraServiceBase
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_infra.codemod.discovery import discover_rules
@@ -52,9 +52,17 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 rules_result.error or "ast-grep rule discovery failed"
             )
         rules = rules_result.value
+        prepared_rules = FlextInfraModGateEngine.prepare_rules(rules)
+        if prepared_rules.failure:
+            return r[t.Cli.ResultValue].fail(
+                prepared_rules.error or "ast-grep rule preparation failed"
+            )
+        compiled_rules = prepared_rules.value
         effective_dry_run: bool = self.effective_dry_run
         if effective_dry_run:
-            pending = FlextInfraModGateEngine.scan(root, rules, fix=False)
+            pending = FlextInfraModGateEngine.scan_prepared(
+                root, compiled_rules, fix=False
+            )
             if pending.failure:
                 return r[t.Cli.ResultValue].fail(
                     pending.error or "ast-grep scan failed"
@@ -62,14 +70,14 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             if pending.value.nodes:
                 return r[t.Cli.ResultValue].fail(
                     f"{pending.value.nodes} pending ast-grep finding(s) "
-                    f"across {len(rules)} discovered rule file(s)"
+                    f"across {compiled_rules.rule_count} discovered rule file(s)"
                 )
             cli.display_text("mod: no pending ast-grep fixes")
             return r[t.Cli.ResultValue].ok(True)
-        return self._execute_apply(root, rules)
+        return self._execute_apply(root, compiled_rules)
 
     def _execute_apply(
-        self, root: Path, rules: t.SequenceOf[Path]
+        self, root: Path, compiled_rules: m.Infra.ModRuleBatch
     ) -> p.Result[t.Cli.ResultValue]:
         """Measure, batch-apply, and retain every result for fix-forward repair."""
         cli.display_text("mod: phase=measure-baseline")
@@ -78,18 +86,22 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             return r[t.Cli.ResultValue].fail(
                 baseline.error or "baseline measure failed"
             )
-        cli.display_text(f"mod: phase=scan-before rules={len(rules)}")
-        pending = FlextInfraModGateEngine.scan(root, rules, fix=False)
+        cli.display_text(
+            f"mod: phase=scan-before rules={compiled_rules.rule_count}"
+        )
+        pending = FlextInfraModGateEngine.scan_prepared(root, compiled_rules, fix=False)
         if pending.failure:
             return r[t.Cli.ResultValue].fail(pending.error or "ast-grep scan failed")
-        cli.display_text(f"mod: phase=apply rules={len(rules)}")
-        applied = FlextInfraModGateEngine.scan(root, rules, fix=True)
+        cli.display_text(f"mod: phase=apply rules={compiled_rules.rule_count}")
+        applied = FlextInfraModGateEngine.scan_prepared(root, compiled_rules, fix=True)
         if applied.failure:
             return r[t.Cli.ResultValue].fail(
                 applied.error or "ast-grep fix pass failed"
             )
-        cli.display_text(f"mod: phase=scan-after rules={len(rules)}")
-        remaining = FlextInfraModGateEngine.scan(root, rules, fix=False)
+        cli.display_text(f"mod: phase=scan-after rules={compiled_rules.rule_count}")
+        remaining = FlextInfraModGateEngine.scan_prepared(
+            root, compiled_rules, fix=False
+        )
         if remaining.failure:
             return r[t.Cli.ResultValue].fail(
                 remaining.error or "ast-grep verification scan failed"

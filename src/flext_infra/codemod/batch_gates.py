@@ -85,6 +85,45 @@ class FlextInfraModGateEngine:
             frozenset(fixable_ids),
         ))
 
+    @classmethod
+    def prepare_rules(
+        cls, rules: t.SequenceOf[Path]
+    ) -> p.Result[m.Infra.ModRuleBatch]:
+        """Precompile ast-grep rule documents once per batch execution."""
+        all_ids: set[str] = set()
+        fixable_ids: set[str] = set()
+        rule_documents: list[str] = []
+        for rule in rules:
+            rule_ids = cls._rule_ids(rule)
+            if rule_ids.failure:
+                return r[m.Infra.ModRuleBatch].from_failure(rule_ids)
+            rule_all_ids, rule_fixable_ids = rule_ids.value
+            all_ids.update(rule_all_ids)
+            fixable_ids.update(rule_fixable_ids)
+            rule_documents.append(cls._inline_rule_text(rule))
+        if not rule_documents:
+            return r[m.Infra.ModRuleBatch].fail("no ast-grep rules provided")
+        return r[m.Infra.ModRuleBatch].ok(
+            m.Infra.ModRuleBatch(
+                inline_rules="\n---\n".join(rule_documents),
+                rule_count=len(rule_documents),
+                all_ids=frozenset(all_ids),
+                fixable_ids=frozenset(fixable_ids),
+            )
+        )
+
+    @staticmethod
+    def _inline_rule_text(rule: Path) -> str:
+        """Return a parseable inline-rule document stream for ast-grep."""
+        text = rule.read_text(encoding="utf-8").strip()
+        if "\n---\n" not in text:
+            return text
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
+            if line.strip() == "---":
+                return "\n".join(lines[index + 1 :]).strip()
+        return text
+
     @staticmethod
     def _findings(stdout: str, accepted_ids: frozenset[str]) -> m.Infra.ModScanReport:
         """Return every semantic finding whose rule ID is in ``accepted_ids``."""
@@ -150,17 +189,17 @@ class FlextInfraModGateEngine:
     @classmethod
     def measure(cls, root: Path) -> p.Result[m.Infra.ModGateSnapshot]:
         """Capture the ruff + pyrefly error counts for one project root."""
-        check_dirs = tuple(u.Infra.discover_python_dirs(root))
-        if not check_dirs:
+        check_targets = tuple(u.Infra.discover_python_targets(root))
+        if not check_targets:
             return r[m.Infra.ModGateSnapshot].fail(
-                f"mod gate measurement found no Python roots: {root}"
+                f"mod gate measurement found no Python targets: {root}"
             )
         ruff_run = cls._run_tool(
             root,
             (
                 c.Infra.RUFF,
                 c.Infra.VERB_CHECK,
-                *check_dirs,
+                *check_targets,
                 "--no-fix",
                 "--output-format",
                 c.Infra.OUTPUT_JSON,
@@ -174,7 +213,7 @@ class FlextInfraModGateEngine:
             (
                 c.Infra.PYREFLY,
                 c.Infra.CHECK,
-                *u.Infra.pyrefly_target_args(root, check_dirs),
+                *u.Infra.pyrefly_target_args(root, check_targets),
                 "--config",
                 c.Infra.PYPROJECT_FILENAME,
                 "--python-interpreter-path",
@@ -206,53 +245,55 @@ class FlextInfraModGateEngine:
         cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply actionable rewrite documents."""
-        nodes = 0
-        files: set[Path] = set()
-        findings: list[str] = []
-        total_rules = len(rules)
+        prepared = cls.prepare_rules(rules)
+        if prepared.failure:
+            return r[m.Infra.ModScanReport].from_failure(prepared)
+        return cls.scan_prepared(root, prepared.value, fix=fix)
+
+    @classmethod
+    def scan_prepared(
+        cls, root: Path, prepared: m.Infra.ModRuleBatch, *, fix: bool
+    ) -> p.Result[m.Infra.ModScanReport]:
+        """Scan or apply a precompiled ast-grep rule batch."""
         mode = "apply" if fix else "check"
-        for index, rule in enumerate(rules, start=1):
-            u.Cli.info(
-                f"mod: phase=ast-grep mode={mode} rule={index}/{total_rules} "
-                f"path={rule}"
-            )
-            rule_ids = cls._rule_ids(rule)
-            if rule_ids.failure:
-                return r[m.Infra.ModScanReport].from_failure(rule_ids)
-            all_ids, fixable_ids = rule_ids.value
-            command: list[str] = [c.Infra.SG, c.Infra.SCAN, "--rule", str(rule)]
-            command.extend(("--json=stream", "."))
-            run = cls._run_tool(root, tuple(command))
-            if run.failure:
-                return r[m.Infra.ModScanReport].from_failure(run)
-            accepted_ids = fixable_ids if fix else all_ids
-            report = cls._findings(run.value.stdout or "", accepted_ids)
-            u.Cli.info(
-                f"mod: phase=ast-grep-result mode={mode} rule={index}/{total_rules} "
-                f"findings={report.nodes} files={len(report.files)} path={rule}"
-            )
-            nodes += report.nodes
-            files.update(report.files)
-            findings.extend(report.findings)
-            if fix and report.nodes:
-                apply_run = cls._run_tool(
-                    root,
-                    (
-                        c.Infra.SG,
-                        c.Infra.SCAN,
-                        "--rule",
-                        str(rule),
-                        "--update-all",
-                        ".",
-                    ),
-                )
-                if apply_run.failure:
-                    return r[m.Infra.ModScanReport].from_failure(apply_run)
-        return r[m.Infra.ModScanReport].ok(
-            m.Infra.ModScanReport(
-                nodes=nodes, files=frozenset(files), findings=tuple(findings)
-            )
+        accepted_ids = prepared.fixable_ids if fix else prepared.all_ids
+        u.Cli.info(
+            f"mod: phase=ast-grep mode={mode} rules={prepared.rule_count} "
+            f"accepted_ids={len(accepted_ids)}"
         )
+        run = cls._run_tool(
+            root,
+            (
+                c.Infra.SG,
+                c.Infra.SCAN,
+                "--inline-rules",
+                prepared.inline_rules,
+                "--json=stream",
+                ".",
+            ),
+        )
+        if run.failure:
+            return r[m.Infra.ModScanReport].from_failure(run)
+        report = cls._findings(run.value.stdout, accepted_ids)
+        u.Cli.info(
+            f"mod: phase=ast-grep-result mode={mode} rules={prepared.rule_count} "
+            f"findings={report.nodes} files={len(report.files)}"
+        )
+        if fix and report.nodes:
+            apply_run = cls._run_tool(
+                root,
+                (
+                    c.Infra.SG,
+                    c.Infra.SCAN,
+                    "--inline-rules",
+                    prepared.inline_rules,
+                    "--update-all",
+                    ".",
+                ),
+            )
+            if apply_run.failure:
+                return r[m.Infra.ModScanReport].from_failure(apply_run)
+        return r[m.Infra.ModScanReport].ok(report)
 
 
 __all__: list[str] = ["FlextInfraModGateEngine"]

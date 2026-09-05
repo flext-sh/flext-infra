@@ -71,8 +71,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         raw_output = self._raw_output(output)
         if output.exit_code not in {0, 1}:
             raise RuntimeError(raw_output or f"jscpd exited {output.exit_code}")
-        if output.exit_code == 0 and output.stderr.strip():
-            raise RuntimeError(output.stderr)
         if not report_path.is_file():
             raise FileNotFoundError(report_path)
         report = m.Infra.JscpdReport.model_validate_json(

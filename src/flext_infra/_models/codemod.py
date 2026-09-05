@@ -12,6 +12,24 @@ from flext_infra import t
 class FlextInfraModelsCodemod:
     """Typed reports emitted by ``make mod``."""
 
+    class ModRuleBatch(m.ArbitraryTypesModel):
+        """Validated executable ast-grep documents prepared for one circuit."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        inline_rules: Annotated[
+            t.NonEmptyStr, m.Field(description="Executable YAML document stream")
+        ]
+        rule_count: Annotated[
+            t.PositiveInt, m.Field(description="Discovered rule file count")
+        ]
+        all_ids: Annotated[
+            frozenset[str], m.Field(description="Every validated rule ID")
+        ]
+        fixable_ids: Annotated[
+            frozenset[str], m.Field(description="Rule IDs owning an automatic rewrite")
+        ]
+
     class ModGateSnapshot(m.ArbitraryTypesModel):
         """Exact Ruff and Pyrefly measurement with raw diagnostics."""
 

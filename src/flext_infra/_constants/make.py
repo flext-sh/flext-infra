@@ -75,7 +75,9 @@ class FlextInfraConstantsMake:
     # Built-in check vocabulary is a projection of the check metadata owner.
     # Projects may extend this base through MakeSpec.project_check_gates.
     PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(
-        FlextInfraConstantsCheck.SARIF_TOOL_INFO
+        gate_id
+        for gate_id in FlextInfraConstantsCheck.SARIF_TOOL_INFO
+        if gate_id != "format"
     )
     # The gates CI=N owns: the type checkers only. They are the slow, whole-
     # program analyses, so CI=Y runs the strict complement of this set -- ruff
@@ -98,7 +100,15 @@ class FlextInfraConstantsMake:
     # fmt/fix's ruff stage, and this set must stay DISJOINT from the CI=N gates
     # (lint, pyrefly) so `make fix` under the local token resolves to a
     # documented no-op instead of colliding with the pre-push gate set.
-    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = ("markdown", "smells")
+    #
+    # `canonical-alias` remains fixable because its gate owns a reversible
+    # rewrite and declares `can_fix=True`; omitting it made the vocabulary
+    # drift from the registry contract.
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = (
+        "canonical-alias",
+        "markdown",
+        "smells",
+    )
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )

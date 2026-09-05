@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from flext_cli import u
 from flext_core import r
@@ -24,6 +25,32 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     """Documentation-related utility methods exposed via u.Infra."""
+
+    @staticmethod
+    def docs_url_scheme(target: str) -> str:
+        """Return the normalized scheme and reject insecure documentation URLs."""
+        normalized = u.norm_str(target, case="lower").lstrip("<")
+        scheme = urlsplit(normalized).scheme
+        if scheme == c.Infra.DOCS_INSECURE_WEB_SCHEME:
+            msg = f"insecure documentation URL is prohibited; use HTTPS: {target}"
+            raise ValueError(msg)
+        return scheme
+
+    @staticmethod
+    def docs_is_secure_web_url(target: str) -> bool:
+        """Return whether a documentation target is an HTTPS URL."""
+        return (
+            FlextInfraUtilitiesDocs.docs_url_scheme(target)
+            == c.Infra.DOCS_SECURE_WEB_SCHEME
+        )
+
+    @staticmethod
+    def docs_is_external(target: str) -> bool:
+        """Return whether a target has a permitted external scheme."""
+        return (
+            FlextInfraUtilitiesDocs.docs_url_scheme(target)
+            in c.Infra.DOCS_EXTERNAL_SCHEMES
+        )
 
     @staticmethod
     def iter_markdown_files(repository_root: Path) -> t.SequenceOf[Path]:

@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 import libcst as cst
 
 from flext_infra import c, m
-from flext_infra import u
 from flext_infra.transformers.base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
@@ -281,6 +280,8 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     @override
     def apply_to_source(self, source: str) -> t.Infra.TransformResult:
         """Apply alias migration to source text."""
+        from flext_infra import u
+
         self.changes.clear()
         if self._file_path is not None and (
             self._is_private_facade_implementation(self._file_path)
@@ -329,6 +330,8 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         *, file_path: Path | None, current_project: str
     ) -> m.Infra.AliasMigrationContext:
         """Resolve explicit or path-backed alias migration context."""
+        from flext_infra import u
+
         if current_project:
             return m.Infra.AliasMigrationContext(
                 policy_owner=current_project, import_root=current_project

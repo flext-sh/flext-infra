@@ -28,7 +28,7 @@
 #      is idempotent: it removes its own trigger receiver, so a re-scan finds
 #      zero.
 id: git-public-argv-facade-call
-language: python
+language: Python
 severity: error
 files:
   - "**/*.py"
@@ -56,7 +56,7 @@ constraints:
 ---
 # R2: tests covering the private execute layer drop the demoted receiver.
 id: git-public-argv-receiver-strip
-language: python
+language: Python
 severity: warning
 files:
   - "**/tests/**/*.py"

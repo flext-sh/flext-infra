@@ -114,7 +114,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceAst:
                 detail=(
                     f"default_factory defers resolution of {name!r} through a lambda "
                     "because the enclosing class is unbound; hoist the model into a "
-                    "namespace facet, inherit it, and pass the model as the factory"
+                    "FLEXT namespace facet, inherit it, and pass the model as the factory"
                 ),
             )
         )

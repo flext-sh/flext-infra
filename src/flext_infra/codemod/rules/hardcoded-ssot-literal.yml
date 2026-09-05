@@ -21,7 +21,7 @@
 # in that context, so an automatic rewrite would guess. The message names the
 # owner to read from.
 id: hardcoded-ssot-literal
-language: python
+language: Python
 severity: error
 files:
   - "src/**/*.py"

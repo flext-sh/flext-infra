@@ -1,11 +1,10 @@
-"""Tests for the qlty code-smells gate (report-only posture, warnings always).
+"""Tests for the blocking qlty code-smells gate.
 
 The gate parses a qlty SARIF payload into per-project issues, emits one
-``FlextSmellViolation`` warning per finding on every run, and passes while
-``SMELLS_GATE_MODE`` is WARN. A failed/absent scanner surfaces as a visible
-issue instead of a silent pass. All assertions run against a literal SARIF
-fixture returned by an owned temporary ``qlty`` executable, exercising only
-the public gate boundary.
+``FlextSmellViolation`` warning per finding on every run, and remains red while
+any finding exists. A failed or absent scanner fails causally instead of becoming
+a silent pass. Assertions exercise the public gate boundary through a real owned
+temporary executable.
 """
 
 from __future__ import annotations
@@ -120,7 +119,7 @@ class TestSmellsGate:
         with pytest.warns(core_e.SmellViolation):
             execution = gate.fix(project_dir, _ctx(tmp_path, apply_fixes=True))
 
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.result.errors), eq=1)
         tm.that(
             source_file.read_text(encoding="utf-8"),
@@ -152,7 +151,7 @@ class TestSmellsGate:
             all("foreign finding" not in issue.message for issue in issues), eq=True
         )
 
-    def test_warn_mode_passes_with_issues_and_warns(
+    def test_findings_are_blocking_and_visible(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         gate = _scanner_gate(
@@ -164,7 +163,7 @@ class TestSmellsGate:
         with pytest.warns(core_e.SmellViolation):
             execution = gate.check(project_dir, _ctx(tmp_path))
 
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.issues), eq=len(_SMELL_CODES))
         tm.that(len(execution.result.errors), eq=len(_SMELL_CODES))
         tm.that(
@@ -190,11 +189,11 @@ class TestSmellsGate:
         with pytest.warns(core_e.SmellViolation):
             execution = gate.check(project_dir, _ctx(tmp_path))
 
-        tm.that(execution.result.passed, eq=True)
+        tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.issues), eq=1)
         tm.that("qlty exploded" in execution.issues[0].message, eq=True)
 
-    def test_unconfigured_scanner_is_cleanly_skipped(
+    def test_unconfigured_scanner_failure_is_blocking(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         gate = _scanner_gate(
@@ -207,13 +206,14 @@ class TestSmellsGate:
         project_dir = tmp_path / "demo-project"
         project_dir.mkdir()
 
-        execution = gate.check(project_dir, _ctx(tmp_path))
+        with pytest.warns(core_e.SmellViolation):
+            execution = gate.check(project_dir, _ctx(tmp_path))
 
-        tm.that(execution.result.passed, eq=True)
-        tm.that(execution.issues, eq=())
-        tm.that(execution.result.errors, eq=[])
+        tm.that(execution.result.passed, eq=False)
+        tm.that(len(execution.issues), eq=1)
+        tm.that("No qlty config file found" in execution.issues[0].message, eq=True)
 
-    def test_resolve_binary_fallback_path(
+    def test_binary_outside_path_is_not_a_fallback(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """When qlty is absent from PATH but present at ~/.qlty/bin/qlty, it is found."""
@@ -231,9 +231,8 @@ class TestSmellsGate:
         (tmp_path / "empty-bin").mkdir()
 
         gate = FlextInfraSmellsGate(tmp_path)
-        execution = gate.check(tmp_path, _ctx(tmp_path))
-
-        tm.that(execution.result.passed, eq=True)
+        with pytest.raises(FileNotFoundError, match=c.Infra.QLTY_BINARY):
+            gate.check(tmp_path, _ctx(tmp_path))
 
     def test_smell_tags_have_core_rule_text(self) -> None:
         """Every qlty smell tag mapped by the gate has a FLEXT problem/fix text."""

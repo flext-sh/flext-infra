@@ -207,9 +207,12 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
                 archive_result.error or "git archive failed"
             )
         try:
-            stage_path.mkdir(parents=True, exist_ok=False)
             with tarfile.open(archive_path, "r") as archive:
-                archive.extractall(stage_path, filter="data")
+                extracted = u.Infra.materialize_tar_tree(archive, stage_path)
+                if extracted.failure:
+                    return r[m.Infra.SourceSnapshot].fail(
+                        extracted.error or "extract committed release source failed"
+                    )
         except (OSError, tarfile.TarError) as exc:
             return r[m.Infra.SourceSnapshot].fail_op(
                 "extract committed release source", exc

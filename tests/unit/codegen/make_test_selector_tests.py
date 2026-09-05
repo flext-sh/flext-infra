@@ -69,8 +69,8 @@ class TestsMakeTestSelector:
             eq=calls_before_retired,
         )
 
-    def test_retired_work_verb_does_not_dispatch(self, tmp_path: Path) -> None:
-        """The extinct project lane verb cannot invoke the runtime engine."""
+    def test_help_does_not_dispatch_runtime_engine(self, tmp_path: Path) -> None:
+        """The read-only help verb cannot inherit mutation or invoke runtime."""
         caller_root = tmp_path / "consumer"
         caller_root.mkdir()
         engine_root = tmp_path / "engine"

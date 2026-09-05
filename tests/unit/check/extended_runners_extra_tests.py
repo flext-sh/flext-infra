@@ -118,11 +118,41 @@ class TestExtendedRunnerExtras:
         """Prove the gate cannot bind a host or mise-provided executable."""
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         monkeypatch.setenv("PATH", "/usr/bin:/bin")
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.stub_run(stdout='{"results": []}'))
+        ])
 
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+        result = u.Tests.run_gate_check(
+            FlextInfraBanditGate, tmp_path, project_dir, runner=runner
+        )
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())
+        tm.that(
+            runner.commands[0],
+            eq=(
+                sys.executable,
+                "-m",
+                c.Infra.BANDIT,
+                "-r",
+                c.Infra.DEFAULT_SRC_DIR,
+                "-f",
+                c.Infra.OUTPUT_JSON,
+            ),
+        )
+
+    def test_bandit_rejects_empty_json_output(self, tmp_path: Path) -> None:
+        _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        runner = u.Tests.command_runner(stdout="", returncode=0)
+
+        result = u.Tests.run_gate_check(
+            FlextInfraBanditGate, tmp_path, project_dir, runner=runner
+        )
+
+        tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="PARSE_ERROR")
+        tm.that(result.issues[0].message, contains="no JSON output")
 
     def test_bandit_handles_invalid_json(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)

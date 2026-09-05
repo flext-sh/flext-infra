@@ -41,7 +41,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         """Build check command."""
         _ = project_dir, ctx
         return self._python_module_command(
-            c.Infra.BANDIT, "-r", *check_dirs, "-f", c.Infra.OUTPUT_JSON, "-q", "-ll"
+            c.Infra.BANDIT, "-r", *check_dirs, "-f", c.Infra.OUTPUT_JSON
         )
 
     @override
@@ -51,8 +51,24 @@ class FlextInfraBanditGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
+        if result.exit_code != 0 and not result.stdout.strip():
+            detail = result.stderr.strip() or "no diagnostics"
+            issues.append(
+                m.Infra.Issue(
+                    file="<bandit>",
+                    line=0,
+                    column=0,
+                    code="TOOL_ERROR",
+                    message=f"bandit exited with code {result.exit_code}: {detail}",
+                    severity="ERROR",
+                )
+            )
+            return False, issues
+        if not result.stdout.strip():
+            issues.append(self._parse_error_issue("bandit produced no JSON output"))
+            return False, issues
         try:
-            parsed_payload = self._parse_bandit_payload(result.stdout or "{}")
+            parsed_payload = self._parse_bandit_payload(result.stdout)
         except c.EXC_VALIDATION_TYPE as err:
             issues.append(
                 self._parse_error_issue(
@@ -87,15 +103,16 @@ class FlextInfraBanditGate(FlextInfraGate):
         stdout: str,
     ) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
         """Parse Bandit JSON stdout into a typed payload mapping."""
-        parsed_result = u.Cli.json_parse(stdout or "{}")
+        parsed_result = u.Cli.json_parse(stdout)
         if parsed_result.failure:
             return r[t.MappingKV[str, t.Infra.InfraValue]].fail(
                 parsed_result.error or "Tool output parsing failed"
             )
         raw_payload = parsed_result.unwrap()
         if not isinstance(raw_payload, Mapping):
-            empty_mapping: t.MappingKV[str, t.Infra.InfraValue] = {}
-            return r[t.MappingKV[str, t.Infra.InfraValue]].ok(empty_mapping)
+            return r[t.MappingKV[str, t.Infra.InfraValue]].fail(
+                "Bandit output is not a JSON object"
+            )
         return r[t.MappingKV[str, t.Infra.InfraValue]].ok(
             u.Cli.json_as_mapping(raw_payload)
         )
