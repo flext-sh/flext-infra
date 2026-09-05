@@ -9,10 +9,7 @@ from __future__ import annotations
 import time
 import os
 import re
-import hashlib
 import stat
-import time
-import tomllib
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
@@ -427,6 +424,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 planned.error or "codegen conform planning failed"
             )
         plan = planned.value
+        mode = c.Infra.CodegenConformMode(request.mode)
         ancestry = self._validate_ancestry(plan)
         if ancestry.failure:
             return r[m.Infra.CodegenResult].from_failure(ancestry)
@@ -453,7 +451,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if mode is c.Infra.CodegenConformMode.APPLY and makefile_only:
             return self._apply_makefile_plan(request, plan)
         changed = tuple(file for file in plan.files if file.changed)
-        mode = c.Infra.CodegenConformMode(request.mode)
         if mode is c.Infra.CodegenConformMode.CHECK:
             reality = transaction.validate_locked(scope_root, config_plans.value)
             if reality.failure:
@@ -552,13 +549,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         u.Cli.info(f"stage=apply changed={total_changed}")
         for write_index, file in enumerate(changed, start=1):
             u.Cli.emit_raw(f"  write [{write_index}/{total_changed}] {file.path}\n")
-            if file.absent:
-                target = file.path.expanduser().resolve()
-                try:
-                    target.relative_to(plan.request.root.expanduser().resolve())
-                except ValueError:
-                    return r[tuple[Path, ...]].fail(
-                        f"absent path escapes repository root: {file.path}"
             target = file.path.expanduser().resolve()
             try:
                 target.relative_to(plan.request.root.expanduser().resolve())
@@ -2004,6 +1994,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             u.Infra.derived_repository_ref(
                 config.Infra.name, provider=provider_matches[0]
             )
+        )
 
     @staticmethod
     def _repository_provider(
@@ -2686,7 +2677,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @classmethod
     def _file_plan(
-        self,
+        cls,
         root: Path,
         relative_path: str,
         rendered: str,
@@ -2707,7 +2698,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if conflict_marker is not None:
             return r[m.Infra.CodegenFilePlan].fail(
                 "rendered managed file contains a merge-conflict marker "
-                f"({conflict_marker}) from {source or 'declared content'}: {path}"
+                f"({conflict_marker}) in declared content: {path}"
             )
         authenticated = cls._authenticated_managed_file(
             root, path, allow_missing_parent=True
@@ -2716,7 +2707,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenFilePlan].fail(
                 authenticated.error or f"managed file read failed: {path}"
             )
-        current, identity = authenticated.value
+        current, _identity = authenticated.value
         expected_sha = u.Cli.sha256_content(rendered)
         current_sha = u.Cli.sha256_content(current) if path.is_file() else ""
         mode_changed = (

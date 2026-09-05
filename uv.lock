@@ -643,8 +643,8 @@ wheels = [
 
 [[package]]
 name = "flext-cli"
-version = "0.12.0rc0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#a2d313ccff85fcda7652e035b0db1420dabe78a9" }
+version = "0.12.0"
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#feb82f9bdfb207f2891ee4a452223eaf82a6dbe1" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },

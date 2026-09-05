@@ -1974,8 +1974,6 @@ class TestScriptDispatchMakefile:
         else:
             tm.that(stat.S_ISFIFO(os.lstat(makefile).st_mode), eq=True)
 
-    def test_work_is_not_a_generated_make_verb(self, tmp_path: Path) -> None:
-        """Gas Town owns lifecycle; generated Make exposes no work command."""
     def test_work_lifecycle_is_not_projected(self, tmp_path: Path) -> None:
         """Gas City owns lanes; generated repositories expose no second lifecycle."""
         make_config = config.Infra.codegen.make

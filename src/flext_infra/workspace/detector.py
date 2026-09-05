@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, override
+from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, config, m, u
@@ -15,7 +16,7 @@ from flext_infra.base import s
 from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraWorkspaceDetector(
@@ -493,10 +494,6 @@ class FlextInfraWorkspaceDetector(
     def load_workspace_spec(
         cls, repository_root: Path, *, project_metadata: p.ProjectMetadata | None = None
     ) -> p.Result[m.Infra.WorkspaceSpec]:
-<<<<<<< HEAD
-        """Load local identity and validate local, read-only Git topology."""
-        del project_metadata
-=======
         """Load the repository-local manifest, or derive it from the SSOT catalog."""
         manifest_path = cls._manifest_path(repository_root)
         if not manifest_path.is_file():
@@ -903,99 +900,6 @@ class FlextInfraWorkspaceDetector(
             path for path in declared.value if path not in governed_paths
         )
         return r[tuple[Path, ...]].ok(observed_external)
-
-    @staticmethod
-    def resolve_topology_roots(
-        repository_root: Path,
-    ) -> p.Result[tuple[Path, Path, Path]]:
-        """Resolve render, primary identity, and governing workspace roots."""
->>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
-        resolved_root = repository_root.expanduser().resolve()
-        if not resolved_root.is_dir():
-            return r[m.Infra.WorkspaceSpec].fail(
-                f"repository root is not a directory: {resolved_root}"
-            )
-        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
-        if identity.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                identity.error or "failed to resolve local Git identity"
-            )
-        beads_result = cls.load_beads_spec(resolved_root)
-        member_beads = resolved_root / c.Infra.BEADS_DIRNAME
-        if identity.value.is_submodule and member_beads.is_symlink():
-            superproject_root = identity.value.superproject_root
-            if superproject_root is None:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    f"Git submodule has no superproject: {resolved_root}"
-                )
-            inherited = cls.load_workspace_spec(superproject_root)
-            if inherited.failure:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    inherited.error or "workspace member ledger inheritance failed"
-                )
-            member = next(
-                (
-                    item
-                    for item in inherited.value.subprojects
-                    if (superproject_root / item.path).resolve() == resolved_root
-                ),
-                None,
-            )
-            if member is None:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    "Git submodule is not declared as a governed workspace member: "
-                    f"{resolved_root}"
-                )
-            route_error = cls._submodule_beads_route_error(
-                resolved_root, superproject_root, inherited.value.beads
-            )
-            if route_error is not None:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    "workspace member must inherit the workspace Beads ledger: "
-                    f"{route_error}"
-                )
-            beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited.value.beads)
-        if beads_result.failure:
-            return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
-        beads = beads_result
-        repository = cls._local_repository_ref(
-            resolved_root,
-            checkout=(
-                c.Infra.CheckoutKind.SUBMODULE
-                if identity.value.is_submodule
-                else c.Infra.CheckoutKind.ROOT
-            ),
-        )
-        if repository.failure:
-            return r[m.Infra.WorkspaceSpec].fail(repository.error)
-        topology = cls._load_subprojects(resolved_root, workspace_beads=beads.value)
-        if topology.failure:
-            return r[m.Infra.WorkspaceSpec].fail(topology.error)
-        subprojects, external = topology.value
-        observed_repository = repository.value.model_copy(
-            update={
-                "role": (
-                    c.Infra.MakeProfile.WORKSPACE
-                    if subprojects
-                    else c.Infra.MakeProfile.STANDALONE
-                )
-            }
-        )
-        declared_repository = cls._manifest_repository_ref(
-            resolved_root, observed=observed_repository, beads=beads.value
-        )
-        if declared_repository.failure:
-            return r[m.Infra.WorkspaceSpec].fail(declared_repository.error)
-        repository_ref = declared_repository.value
-        return r[m.Infra.WorkspaceSpec].ok(
-            m.Infra.WorkspaceSpec(
-                name=beads.value.workspace,
-                beads=beads.value,
-                repository=repository_ref,
-                subprojects=subprojects,
-                external_dependency_paths=external,
-            )
-        )
 
     @classmethod
     def conform_target(
