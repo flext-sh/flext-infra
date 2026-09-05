@@ -54,6 +54,7 @@ from flext_infra._utilities.private_imports import FlextInfraUtilitiesPrivateImp
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
+from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
@@ -114,6 +115,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesProjectManagedArtifacts,
+        FlextInfraUtilitiesQualifiedNames,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
         FlextInfraUtilitiesRopeAnalysisWorkspace,

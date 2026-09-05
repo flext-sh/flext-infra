@@ -6,8 +6,7 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import libcst as cst
-from libcst.metadata import MetadataWrapper, QualifiedNameProvider
+from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -48,19 +47,12 @@ class FlextInfraUtilitiesPrivateImportValidation:
             ):
                 msg = f"public facade import {package}.{alias} missing in {file_path}"
                 raise ValueError(msg)
-        qualified_names = MetadataWrapper(cst.parse_module(source)).resolve(
-            QualifiedNameProvider
+        residue = FlextInfraUtilitiesQualifiedNames.qualified_name_residue(
+            source, replacements
         )
-        residue = {
-            name.name
-            for names in qualified_names.values()
-            for name in names
-            if name.name in replacements
-        }
         if residue:
             msg = f"private binding residue {sorted(residue)} in {file_path}"
             raise ValueError(msg)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPrivateImportValidation"]
-

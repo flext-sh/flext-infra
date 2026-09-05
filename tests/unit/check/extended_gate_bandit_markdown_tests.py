@@ -35,8 +35,7 @@ class TestBanditAndMarkdownGates:
                 True,
                 (
                     r.ok(
-                        u.Tests.create_command_output(stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}',
-                        returncode=1,)
+                        u.Tests.create_command_output(stdout='{"results": [{"filename": "a.py", "line_number": 1, "test_id": "B101", "issue_text": "Assert used", "issue_severity": "MEDIUM"}]}', exit_code=1, )
                     ),
                 ),
                 False,

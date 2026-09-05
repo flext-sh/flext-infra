@@ -6,8 +6,7 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import libcst as cst
-from libcst.metadata import MetadataWrapper, QualifiedNameProvider
+from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -79,19 +78,14 @@ class FlextInfraUtilitiesCompatibilityAliasValidation:
             ):
                 msg = f"alias export residue in {file_path}"
                 raise ValueError(msg)
-        wrapper = MetadataWrapper(cst.parse_module(source))
-        qualified_names = wrapper.resolve(QualifiedNameProvider)
-        for node, resolved in qualified_names.items():
-            residue = sorted(
-                name.name for name in resolved if name.name in qualified_aliases
+        residue = sorted(
+            FlextInfraUtilitiesQualifiedNames.qualified_name_residue(
+                source, qualified_aliases
             )
-            if residue:
-                msg = (
-                    f"qualified alias residue {residue[0]} in "
-                    f"{file_path}:{getattr(node, 'value', type(node).__name__)}"
-                )
-                raise ValueError(msg)
+        )
+        if residue:
+            msg = f"qualified alias residue {residue[0]} in {file_path}"
+            raise ValueError(msg)
 
 
 __all__: list[str] = ["FlextInfraUtilitiesCompatibilityAliasValidation"]
-

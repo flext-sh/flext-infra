@@ -99,13 +99,19 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     collect(child, f"{public_path}.{child.name}")
 
         collect(root_class, facade_alias)
-        if len(references) > 1:
+        if not references:
+            return None
+        deepest = max(reference.count(".") for reference in references)
+        canonical = {
+            reference for reference in references if reference.count(".") == deepest
+        }
+        if len(canonical) > 1:
             msg = (
                 f"ambiguous public facade references for {qualified}: "
-                f"{sorted(references)}"
+                f"{sorted(canonical)}"
             )
             raise ValueError(msg)
-        return next(iter(references), None)
+        return canonical.pop()
 
     @staticmethod
     def require_unshadowed_alias(
@@ -146,4 +152,3 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
 
 __all__: list[str] = ["FlextInfraUtilitiesPrivateImportFacades"]
-

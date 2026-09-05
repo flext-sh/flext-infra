@@ -70,6 +70,42 @@ class TestsFlextInfraPrivateImportCutover:
         tm.that(updated, lacks=private_import)
         tm.that(updated, lacks="FlextSampleUtilitiesManagers.ServiceManagers")
 
+    def test_prefers_nested_facade_over_its_root_ancestor(
+        self, tmp_path: Path
+    ) -> None:
+        """Select the deepest public namespace when the root shares its base."""
+        facade_path = tmp_path / "flext-sample/src/flext_sample/utilities.py"
+        consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
+        private_import = (
+            "from flext_sample._utilities.managers import "
+            "FlextSampleUtilitiesManagers"
+        )
+        sources = {
+            facade_path: (
+                f"{private_import}\n\n"
+                "class FlextSampleUtilities(FlextSampleUtilitiesManagers):\n"
+                "    class Sample(FlextSampleUtilitiesManagers):\n"
+                "        pass\n\n"
+                "u = FlextSampleUtilities\n"
+            ),
+            consumer_path: (
+                f"{private_import}\n\n"
+                "manager = FlextSampleUtilitiesManagers.ServiceManagers\n"
+            ),
+        }
+
+        edits = u.Infra.plan_private_import_cutover(
+            root=tmp_path,
+            sources=sources,
+            findings=(
+                self._finding(consumer_path.relative_to(tmp_path), private_import),
+            ),
+        )
+        updated = edits[0].updated_source
+
+        tm.that(updated, has="manager = u.Sample.ServiceManagers")
+        tm.that(updated, lacks=private_import)
+
     def test_rejects_shadowed_public_facade_alias(self, tmp_path: Path) -> None:
         """Fail before effects when a local binding would capture the facade alias."""
         facade_path = tmp_path / "flext-sample/src/flext_sample/utilities.py"
@@ -106,4 +142,3 @@ class TestsFlextInfraPrivateImportCutover:
 
 
 __all__: list[str] = ["TestsFlextInfraPrivateImportCutover"]
-
