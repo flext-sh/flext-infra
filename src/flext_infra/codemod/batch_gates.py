@@ -152,7 +152,9 @@ class FlextInfraModGateEngine:
     ) -> p.Result[m.Infra.ModScanReport]:
         """Validate every JSONL finding without dropping malformed output."""
         findings = 0
-        nodes = 0
+        actionable_findings = 0
+        detection_only_findings = 0
+        non_actionable_with_fix_findings = 0
         files: set[Path] = set()
         entries: list[m.Infra.ModScanFinding] = []
         repository_roots = tuple(
@@ -197,7 +199,18 @@ class FlextInfraModGateEngine:
                     return r.fail(f"fixable ast-grep finding lacks replacement: {line}")
                 actionable = text != replacement
                 if actionable:
-                    nodes += 1
+                    actionable_findings += 1
+                    classification = c.Infra.ModScanFindingClass.ACTIONABLE
+                else:
+                    non_actionable_with_fix_findings += 1
+                    classification = c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX
+            else:
+                if replacement is not None:
+                    return r.fail(
+                        f"detection-only ast-grep finding has replacement: {line}"
+                    )
+                detection_only_findings += 1
+                classification = c.Infra.ModScanFindingClass.DETECTION_ONLY
             resolved_file = (root / file_path).resolve()
             repository = next(
                 (
@@ -217,6 +230,7 @@ class FlextInfraModGateEngine:
                     text=text,
                     replacement=replacement,
                     actionable=actionable,
+                    classification=classification,
                     payload=t.Cli.JSON_MAPPING_ADAPTER.validate_python(finding),
                 )
             )
@@ -224,7 +238,9 @@ class FlextInfraModGateEngine:
         return r.ok(
             m.Infra.ModScanReport(
                 findings=findings,
-                nodes=nodes,
+                actionable=actionable_findings,
+                detection_only=detection_only_findings,
+                non_actionable_with_fix=non_actionable_with_fix_findings,
                 files=frozenset(files),
                 entries=tuple(entries),
             )
@@ -237,8 +253,13 @@ class FlextInfraModGateEngine:
         sys.stderr.write(
             "mod: findings "
             f"total={evidence.findings} actionable={evidence.actionable} "
-            f"detection_only={evidence.detection_only}\n"
+            f"detection_only={evidence.detection_only} "
+            f"non_actionable_with_fix={evidence.non_actionable_with_fix}\n"
         )
+        for finding_class, count in evidence.totals_by_class.items():
+            sys.stderr.write(
+                f"mod: findings class={finding_class.value} count={count}\n"
+            )
         for repository, count in evidence.totals_by_repository.items():
             sys.stderr.write(f"mod: findings repository={repository} count={count}\n")
         for rule_id, count in evidence.totals_by_rule.items():
@@ -316,7 +337,9 @@ class FlextInfraModGateEngine:
     ) -> p.Result[m.Infra.ModScanReport]:
         """Scan or apply actionable rewrite documents."""
         findings = 0
-        nodes = 0
+        actionable_findings = 0
+        detection_only_findings = 0
+        non_actionable_with_fix_findings = 0
         files: set[Path] = set()
         entries: list[m.Infra.ModScanFinding] = []
         known_rule_ids: set[str] = set()
@@ -348,10 +371,12 @@ class FlextInfraModGateEngine:
                     run.value.stderr, report.findings
                 ).unwrap()
             findings += report.findings
-            nodes += report.nodes
+            actionable_findings += report.actionable
+            detection_only_findings += report.detection_only
+            non_actionable_with_fix_findings += report.non_actionable_with_fix
             files.update(report.files)
             entries.extend(report.entries)
-            if fix and report.nodes:
+            if fix and report.actionable:
                 apply_command = u.Infra.ast_grep_scan_command(
                     rule, targets=targets, update_all=True
                 )
@@ -362,7 +387,9 @@ class FlextInfraModGateEngine:
                     return r[m.Infra.ModScanReport].from_failure(apply_run)
         complete_report = m.Infra.ModScanReport(
             findings=findings,
-            nodes=nodes,
+            actionable=actionable_findings,
+            detection_only=detection_only_findings,
+            non_actionable_with_fix=non_actionable_with_fix_findings,
             files=frozenset(files),
             entries=tuple(entries),
         )
@@ -377,11 +404,6 @@ class FlextInfraModGateEngine:
         if receipt.failure:
             return r[m.Infra.ModScanReport].from_failure(receipt)
         cls._report_evidence(receipt.value)
-        if fix and findings > nodes:
-            return r.fail(
-                "detection-only findings require fix-forward after all automated "
-                f"rewrites: report={receipt.value.path} sha256={receipt.value.sha256}"
-            )
         return r[m.Infra.ModScanReport].ok(complete_report)
 
 

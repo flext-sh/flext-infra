@@ -33,7 +33,9 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             if pending.findings:
                 return r.fail(
                     f"{pending.findings} pending ast-grep finding(s), "
-                    f"{pending.nodes} actionable, across {len(rules)} rule file(s)"
+                    f"{pending.actionable} actionable and "
+                    f"{pending.detection_only} detection-only, across "
+                    f"{len(rules)} rule file(s)"
                 )
             FlextInfraModGateEngine.validate(self.repository_root, ()).unwrap()
             cli.display_text("mod: no pending ast-grep fixes")
@@ -47,19 +49,29 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         """Apply rules in place and retain failures for mandatory fix-forward."""
         cli.display_text("mod: validate ast-grep rule fixtures")
         FlextInfraModGateEngine.validate_rule_fixtures(rules).unwrap()
+        cli.display_text("mod: preflight detection-only rules")
+        preflight = FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
+        if preflight.detection_only:
+            return r.fail(
+                f"{preflight.detection_only} detection-only finding(s) require "
+                "semantic fix-forward before automated rewrites"
+            )
         cli.display_text(f"mod: apply {len(rules)} ast-grep rule file(s)")
         applied = FlextInfraModGateEngine.scan(root, rules, fix=True).unwrap()
         cli.display_text("mod: verify AST fixed point")
         remaining = FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
-        if remaining.findings:
+        if remaining.actionable or remaining.detection_only:
             return r.fail(
-                f"{remaining.findings} finding(s) remained after apply; "
+                f"{remaining.actionable} actionable and "
+                f"{remaining.detection_only} detection-only finding(s) remained "
+                "after apply; "
                 "changes retained for mandatory fix-forward repair"
             )
         cli.display_text("mod: require zero Ruff, Pyrefly, LSP, and CRG diagnostics")
         FlextInfraModGateEngine.validate(root, tuple(applied.files)).unwrap()
         cli.display_text(
-            f"mod: applied {applied.nodes} node(s) across {len(applied.files)} file(s)"
+            f"mod: applied {applied.actionable} node(s) across "
+            f"{len(applied.files)} file(s)"
         )
         return r.ok(True)
 

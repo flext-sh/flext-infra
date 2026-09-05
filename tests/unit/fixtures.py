@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from tests import m, t
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _read_fixture(*parts: str) -> str:
@@ -130,6 +131,33 @@ def cached_runner_project(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return project_root
+
+
+@pytest.fixture
+def mod_workspace(tmp_path: Path) -> Path:
+    """Create the shared real workspace for the public refactor-mod CLI."""
+    project_document = u.Infra.read_project_document_cached(_PROJECT_ROOT)
+    project = u.Infra.build_project_metadata(_PROJECT_ROOT, project_document)
+    workspace = tmp_path / "mod_workspace"
+    tm.ok(u.Cli.ensure_dir(workspace))
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            workspace / c.Infra.PYPROJECT_FILENAME,
+            (
+                "[project]\n"
+                f'name = "{project.project.name}"\n'
+                f'version = "{project.project.version}"\n'
+            ),
+        )
+    )
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            workspace / "sample.py",
+            "u.Infra.serialization_lock_execute(paths, timeout)\n",
+        )
+    )
+    u.Tests.initialize_git_repo(workspace)
+    return workspace
 
 
 @pytest.fixture

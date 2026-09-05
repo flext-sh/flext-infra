@@ -128,21 +128,48 @@ class FlextInfraUtilitiesRefactor:
         scope: t.StrSequence,
     ) -> p.Result[m.Infra.ModScanEvidenceReceipt]:
         """Atomically replace the complete structured evidence for one mod scan."""
+        classified = (
+            report.actionable + report.detection_only + report.non_actionable_with_fix
+        )
+        if classified != report.findings or report.findings != len(report.entries):
+            return r[m.Infra.ModScanEvidenceReceipt].fail(
+                "mod scan classification invariant failed: "
+                f"findings={report.findings} entries={len(report.entries)} "
+                f"classified={classified}"
+            )
         repository_totals: dict[str, int] = {}
         rule_totals: dict[str, int] = {}
+        class_totals: dict[c.Infra.ModScanFindingClass, int] = {
+            finding_class: 0 for finding_class in c.Infra.ModScanFindingClass
+        }
         for finding in report.entries:
             repository_totals[finding.repository] = (
                 repository_totals.get(finding.repository, 0) + 1
             )
             rule_totals[finding.rule_id] = rule_totals.get(finding.rule_id, 0) + 1
+            class_totals[finding.classification] += 1
+        expected_class_totals = {
+            c.Infra.ModScanFindingClass.ACTIONABLE: report.actionable,
+            c.Infra.ModScanFindingClass.DETECTION_ONLY: report.detection_only,
+            c.Infra.ModScanFindingClass.NON_ACTIONABLE_WITH_FIX: (
+                report.non_actionable_with_fix
+            ),
+        }
+        if class_totals != expected_class_totals:
+            return r[m.Infra.ModScanEvidenceReceipt].fail(
+                "mod scan entry classification differs from report totals: "
+                f"entries={class_totals} report={expected_class_totals}"
+            )
         evidence = m.Infra.ModScanEvidence(
             schema_version=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION,
             command=command,
             root=root.resolve(),
             scope=tuple(scope),
             findings=report.findings,
-            actionable=report.nodes,
-            detection_only=report.findings - report.nodes,
+            actionable=report.actionable,
+            detection_only=report.detection_only,
+            non_actionable_with_fix=report.non_actionable_with_fix,
+            totals_by_class=class_totals,
             totals_by_repository=dict(sorted(repository_totals.items())),
             totals_by_rule=dict(sorted(rule_totals.items())),
             entries=report.entries,

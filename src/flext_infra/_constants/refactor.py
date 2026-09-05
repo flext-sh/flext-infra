@@ -65,6 +65,14 @@ class FlextInfraConstantsRefactor:
         SCAN = "scan"
         APPLY = "apply"
 
+    @unique
+    class ModScanFindingClass(StrEnum):
+        """Mutability class derived from one ast-grep rule contract."""
+
+        ACTIONABLE = "actionable"
+        DETECTION_ONLY = "detection_only"
+        NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
+
     RK_REFACTOR: Final[str] = "refactor"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
     RK_FILE_EXTENSIONS: Final[str] = "file_extensions"

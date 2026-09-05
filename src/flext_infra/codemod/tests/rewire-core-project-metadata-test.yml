@@ -1,5 +1,5 @@
 id: rewire-core-project-metadata
 valid:
-  - u.build_project_metadata(root, document)
-invalid:
   - u.Infra.build_project_metadata(root, document)
+invalid:
+  - u.build_project_metadata(root, document)

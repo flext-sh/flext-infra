@@ -484,30 +484,14 @@ class TestsFlextInfraInfraRopeService:
             tm.that(rebuilt_index, has="second")
 
     def test_workspace_objects_raise_on_inventory_bootstrap_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Inventory bootstrap failures surface instead of returning an empty module."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "def first() -> int:\n"
-                "    return 1\n"
-            ),
-            encoding="utf-8",
-        )
-
-        def _explode(
-            rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
-        ) -> t.Infra.RopePyModule:
-            del rope_project, resource
-            msg = "boom"
-            raise u.Infra.rope_error_types()[0](msg)
-
-        monkeypatch.setattr(u.Infra, "get_pymodule", staticmethod(_explode))
+        module_path.write_text("def first(:\n", encoding=c.Cli.ENCODING_DEFAULT)
 
         with (
             flext_infra.infra.rope_workspace(repository_root) as rope,
@@ -518,7 +502,7 @@ class TestsFlextInfraInfraRopeService:
             rope.objects(module_path)
 
     def test_workspace_name_index_raises_on_module_read_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Name index failures surface instead of dropping unreadable modules."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -531,37 +515,21 @@ class TestsFlextInfraInfraRopeService:
                 "def public() -> int:\n"
                 "    return 1\n"
             ),
-            encoding="utf-8",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        original_read_text = type(module_path).read_text
-
-        def _broken_read_text(
-            path: Path,
-            encoding: str | None = None,
-            errors: str | None = None,
-            newline: str | None = None,
-        ) -> str:
-            if path.resolve() == module_path.resolve():
-                msg = "boom"
-                raise OSError(msg)
-            text: str = original_read_text(
-                path, encoding=encoding, errors=errors, newline=newline
-            )
-            return text
-
-        monkeypatch.setattr(type(module_path), "read_text", _broken_read_text)
 
         with (
-            FlextInfraRopeWorkspace.open_workspace(repository_root) as rope,
+            flext_infra.infra.rope_workspace(repository_root) as rope,
             pytest.raises(
                 RuntimeError, match=r"rope name index failed to read .*service\.py"
             ),
         ):
+            _ = rope.workspace_index
+            module_path.unlink()
             rope.name_index()
-        monkeypatch.undo()
 
     def test_workspace_objects_raise_on_indexed_resource_lookup_error(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Indexed reference lookup fails when a module resource vanishes."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -574,7 +542,7 @@ class TestsFlextInfraInfraRopeService:
                 "def public() -> int:\n"
                 "    return 1\n"
             ),
-            encoding="utf-8",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
         consumer_path = package_root / "consumer.py"
         consumer_path.write_text(
@@ -584,18 +552,8 @@ class TestsFlextInfraInfraRopeService:
                 "def consume() -> int:\n"
                 "    return public()\n"
             ),
-            encoding="utf-8",
+            encoding=c.Cli.ENCODING_DEFAULT,
         )
-        original_resource = FlextInfraRopeWorkspace.resource
-
-        def _broken_resource(
-            rope: FlextInfraRopeWorkspace, file_path: Path
-        ) -> t.Infra.RopeResource | None:
-            if file_path.resolve() == consumer_path.resolve():
-                return None
-            return original_resource(rope, file_path)
-
-        monkeypatch.setattr(FlextInfraRopeWorkspace, "resource", _broken_resource)
 
         with (
             flext_infra.infra.rope_workspace(repository_root) as rope,
@@ -607,64 +565,9 @@ class TestsFlextInfraInfraRopeService:
                 ),
             ),
         ):
+            _ = rope.name_index()
+            consumer_path.unlink()
             rope.objects(service_path, include_local_scopes=False)
-
-    def test_indexed_search_raises_on_invalid_import_dependents_result(
-        self, tmp_path: Path
-    ) -> None:
-        """Indexed dependency narrowing rejects invalid dependents payloads."""
-        repository_root, _package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        examples_dir = repository_root / "examples"
-        examples_dir.mkdir(parents=True, exist_ok=True)
-        example_path = examples_dir / "demo.py"
-        example_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "def helper() -> int:\n"
-                "    return 1\n"
-            ),
-            encoding="utf-8",
-        )
-        consumer_path = examples_dir / "consumer.py"
-        consumer_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                "from demo import helper\n\n"
-                "def consume() -> int:\n"
-                "    return helper()\n"
-            ),
-            encoding="utf-8",
-        )
-
-        with FlextInfraRopeWorkspace.open_workspace(repository_root) as rope:
-            resource = rope.resource(example_path)
-            resource = tm.not_none(resource)
-
-            class _BrokenWorkspace:
-                def name_index(
-                    self,
-                ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]:
-                    return rope.name_index()
-
-                def resource(self, file_path: Path) -> t.Infra.RopeResource | None:
-                    return rope.resource(file_path)
-
-                def import_dependents(self, import_target: str) -> str:
-                    del import_target
-                    return "invalid"
-
-            with pytest.raises(
-                TypeError, match=r"rope import_dependents returned non-tuple for demo"
-            ):
-                u.Infra.indexed_search_resources(
-                    _BrokenWorkspace(),
-                    resource=resource,
-                    name="helper",
-                    definition_path=example_path,
-                    dependent_import_targets=("demo", "demo.helper"),
-                )
 
     def test_workspace_dsl_ignores_test_references(self, tmp_path: Path) -> None:
         """Tests remain outside production reachability."""

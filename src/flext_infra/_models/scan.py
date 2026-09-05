@@ -109,6 +109,10 @@ class FlextInfraModelsScan:
         actionable: Annotated[
             bool, m.Field(description="Whether applying the rule changes source bytes")
         ]
+        classification: Annotated[
+            c.Infra.ModScanFindingClass,
+            m.Field(description="Rule mutability and byte-change classification"),
+        ]
         payload: Annotated[
             t.JsonMapping,
             m.Field(
@@ -124,8 +128,16 @@ class FlextInfraModelsScan:
         findings: Annotated[
             t.NonNegativeInt, m.Field(description="Complete finding count")
         ]
-        nodes: Annotated[
-            t.NonNegativeInt, m.Field(description="Actionable rewrite count")
+        actionable: Annotated[
+            t.NonNegativeInt, m.Field(description="Byte-changing rewrite count")
+        ]
+        detection_only: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Findings produced by rules without a fix"),
+        ]
+        non_actionable_with_fix: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Findings whose declared fix is byte-identical"),
         ]
         files: Annotated[
             frozenset[Path], m.Field(description="Files containing findings")
@@ -158,7 +170,16 @@ class FlextInfraModelsScan:
             t.NonNegativeInt, m.Field(description="Byte-changing rewrite count")
         ]
         detection_only: Annotated[
-            t.NonNegativeInt, m.Field(description="Findings requiring semantic repair")
+            t.NonNegativeInt,
+            m.Field(description="Findings produced by rules without a fix"),
+        ]
+        non_actionable_with_fix: Annotated[
+            t.NonNegativeInt,
+            m.Field(description="Findings whose declared fix is byte-identical"),
+        ]
+        totals_by_class: Annotated[
+            t.MappingKV[c.Infra.ModScanFindingClass, t.NonNegativeInt],
+            m.Field(description="Complete finding totals by mutability class"),
         ]
         totals_by_repository: Annotated[
             t.MappingKV[str, t.NonNegativeInt],

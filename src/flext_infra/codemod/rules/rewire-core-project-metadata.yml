@@ -6,6 +6,6 @@ severity: error
 files:
   - "flext-infra/src/**/*.py"
 rule:
-  pattern: u.Infra.build_project_metadata($$$ARGS)
-fix: u.build_project_metadata($$$ARGS)
+  pattern: u.build_project_metadata($$$ARGS)
+fix: u.Infra.build_project_metadata($$$ARGS)
 message: Consume generic project metadata construction through the canonical u facade.
