@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
@@ -45,7 +46,9 @@ class FlextInfraOrchestratorService(
     def _require_apply(self) -> Self:
         """Require the sole Make effect authorization from the parent process."""
         make = config.Infra.codegen.make
-        supplied = u.Cli.env_read(make.apply_variable).unwrap().strip()
+        supplied = (
+            u.Cli.env_read(make.apply_variable, dict(os.environ)).unwrap().strip()
+        )
         if supplied != make.apply_value:
             msg = f"workspace orchestration requires {make.apply_variable}={make.apply_value}"
             raise ValueError(msg)

@@ -57,8 +57,6 @@ class FlextInfraTypesBase:
     "Facade family identifier for FLEXT chain resolution."
     type ExpectedBase = type | str
     "Expected FLEXT base: a class or its qualified name."
-    type PolicyContext = t.MappingKV[str, t.JsonMapping]
-    "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type ChangeCallback = Callable[[str], None] | None
@@ -83,11 +81,6 @@ class FlextInfraTypesBase:
     "Read-only validated infra payload sequence."
     type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
-    type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
-        t.SequenceOf[tuple[RuleKindT, t.JsonMapping]],
-        t.SequenceOf[tuple[FileRuleKindT, t.JsonMapping]],
-    ]
-    "Loaded text-rule + file-rule selections from one declarative rules directory."
     type DomainResult = m.BaseModel | InfraValue
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = t.SequenceOf[DomainResult]

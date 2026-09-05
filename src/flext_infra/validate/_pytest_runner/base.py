@@ -26,7 +26,7 @@ class FlextInfraPytestRunnerBase(s[int]):
     @staticmethod
     def _environment_value(name: str) -> str:
         """Read one Make-owned runner input."""
-        return u.Cli.env_read(name).unwrap().strip()
+        return u.Cli.env_read(name, dict(os.environ)).unwrap().strip()
 
     @classmethod
     def from_environment(cls, *, started_at_monotonic: float) -> Self:

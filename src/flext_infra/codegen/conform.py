@@ -2145,7 +2145,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         source = codegen.infra_repository
         matches = tuple(
             item
-            for item in (workspace.repository, *workspace.subprojects)
+            for item in (workspace.repository, *workspace.declared_repositories)
             if item.distribution == source.distribution
         )
         if len(matches) > 1:

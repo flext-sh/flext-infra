@@ -14,8 +14,6 @@ from tests import c, m, u
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import t
-
 
 class TestsFlextInfraInfraRopeService:
     """Validate the public Rope workspace DSL through public methods only."""
@@ -518,15 +516,13 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        with (
-            flext_infra.infra.rope_workspace(repository_root) as rope,
-            pytest.raises(
-                RuntimeError, match=r"rope name index failed to read .*service\.py"
-            ),
-        ):
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
             _ = rope.workspace_index
             module_path.unlink()
-            rope.name_index()
+            with pytest.raises(
+                RuntimeError, match=r"rope name index failed to read .*service\.py"
+            ):
+                rope.name_index()
 
     def test_workspace_objects_raise_on_indexed_resource_lookup_error(
         self, tmp_path: Path
@@ -555,19 +551,17 @@ class TestsFlextInfraInfraRopeService:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        with (
-            flext_infra.infra.rope_workspace(repository_root) as rope,
-            pytest.raises(
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            _ = rope.name_index()
+            consumer_path.unlink()
+            with pytest.raises(
                 RuntimeError,
                 match=(
                     r"rope search resource unavailable for indexed path "
                     r".*consumer\.py"
                 ),
-            ),
-        ):
-            _ = rope.name_index()
-            consumer_path.unlink()
-            rope.objects(service_path, include_local_scopes=False)
+            ):
+                rope.objects(service_path, include_local_scopes=False)
 
     def test_workspace_dsl_ignores_test_references(self, tmp_path: Path) -> None:
         """Tests remain outside production reachability."""

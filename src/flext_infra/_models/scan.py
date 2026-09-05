@@ -83,7 +83,7 @@ class FlextInfraModelsScan:
         ]
 
     class ModScanFinding(m.ArbitraryTypesModel):
-        """One complete ast-grep JSONL finding with normalized evidence keys."""
+        """One complete ast-grep JSONL finding with canonical evidence keys."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 

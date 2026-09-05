@@ -31,11 +31,7 @@ class FlextInfraRefactorService:
 
     def load_rules(
         self,
-    ) -> p.Result[
-        t.Infra.LoadedRuleSelections[
-            c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
-        ]
-    ]:
+    ) -> p.Result[t.SequenceOf[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]]]:
         """Delegate rule loading to the dedicated refactor loader."""
         return self.rule_loader.load_rules()
 

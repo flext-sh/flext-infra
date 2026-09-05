@@ -30,9 +30,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
             pending = FlextInfraModGateEngine.scan(
                 self.repository_root, rules, fix=False
             ).unwrap()
-            if pending.findings:
+            pending_count = pending.actionable + pending.detection_only
+            if pending_count:
                 return r.fail(
-                    f"{pending.findings} pending ast-grep finding(s), "
+                    f"{pending_count} pending ast-grep finding(s), "
                     f"{pending.actionable} actionable and "
                     f"{pending.detection_only} detection-only, across "
                     f"{len(rules)} rule file(s)"

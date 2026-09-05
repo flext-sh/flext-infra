@@ -87,6 +87,8 @@ class FlextInfraConstantsCheck:
     PYRIGHT_PROJECT_CONFIG_TARGET: Final[str] = "."
     BANDIT_RESULTS_KEY: Final[str] = "results"
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
+    PYREFLY_ZERO_ERRORS_RECEIPT: Final[str] = "INFO 0 errors"
+    "Exact successful stderr receipt emitted by Pyrefly's per-file check."
     # --- Abstraction-boundary gate (§2.7) detection SSOT ---
     BOUNDARY_SKIP_PROJECTS: Final[frozenset[str]] = frozenset({
         "flext-cli",
@@ -189,6 +191,16 @@ class FlextInfraConstantsCheck:
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
     QLTY_BINARY: Final[str] = "qlty"
+    QLTY_CONFIG_DIRNAME: Final[str] = ".qlty"
+    QLTY_CONFIG_FILENAME: Final[str] = "qlty.toml"
+    QLTY_CONFIG_CONTENT: Final[str] = (
+        "# AUTO-GENERATED FILE — Materialized by the qlty smells gate at scan\n"
+        "# time from this typed constant; never hand-edit. Removal is safe: the\n"
+        "# next scan rewrites it.\n"
+        'config_version = "0"\n'
+    )
+    "Minimal repository-root config qlty requires before scanning; a generated\n"
+    "projection of the gate, never a hand-maintained file."
     SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
         "smells",
         "--all",

@@ -155,6 +155,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 exit_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
             )
         else:
+            self._materialize_scan_config()
             output = self._run(
                 [binary, *c.Infra.SMELLS_QLTY_ARGS],
                 self._repository_root,
@@ -162,6 +163,22 @@ class FlextInfraSmellsGate(FlextInfraGate):
             )
         self._scan_cache[key] = output
         return output
+
+    def _materialize_scan_config(self) -> None:
+        """Write the generated repository-root qlty config when absent or stale."""
+        config_path = (
+            self._repository_root
+            / c.Infra.QLTY_CONFIG_DIRNAME
+            / c.Infra.QLTY_CONFIG_FILENAME
+        )
+        if config_path.is_file():
+            current = config_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            if current == c.Infra.QLTY_CONFIG_CONTENT:
+                return
+        _ = u.Cli.ensure_dir(config_path.parent).unwrap()
+        _ = u.Cli.atomic_write_text_file(
+            config_path, c.Infra.QLTY_CONFIG_CONTENT
+        ).unwrap()
 
     @staticmethod
     def _resolve_binary() -> str | None:

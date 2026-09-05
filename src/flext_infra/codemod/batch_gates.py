@@ -58,9 +58,7 @@ class FlextInfraModGateEngine:
             remove_env_keys=remove_env_keys,
         )
         if run.failure:
-            return r[p.Cli.CommandOutput].fail(
-                run.error or f"tool execution failed: {command[0]}"
-            )
+            return r[p.Cli.CommandOutput].from_failure(run)
         output = run.value
         sys.stderr.write(
             f"mod: finish {command[0]} exit={output.exit_code} "
@@ -97,12 +95,16 @@ class FlextInfraModGateEngine:
     def _is_apply_receipt(stderr: str) -> bool:
         """Recognize only ast-grep's successful update receipt."""
         words = stderr.split()
-        return (
-            len(words) == 3
-            and words[0] == "Applied"
-            and words[1].isdigit()
-            and words[2] == "changes"
-        )
+        match words:
+            case ["Applied", count, "changes"]:
+                return count.isdigit()
+            case _:
+                return False
+
+    @staticmethod
+    def _path_depth(path: Path) -> int:
+        """Return path depth for deterministic deepest-owner selection."""
+        return len(path.parts)
 
     @staticmethod
     def _validate_finding_receipt(stderr: str, findings: int) -> p.Result[bool]:
@@ -129,9 +131,7 @@ class FlextInfraModGateEngine:
                 continue
             parsed = u.Cli.yaml_parse(raw_document)
             if parsed.failure:
-                return r[frozenset[str]].fail(
-                    parsed.error or f"invalid ast-grep rule document in {rule}"
-                )
+                return r[tuple[frozenset[str], frozenset[str]]].from_failure(parsed)
             rule_id = parsed.value.get("id")
             if not isinstance(rule_id, str) or not rule_id:
                 return r.fail(f"ast-grep rule document missing required id: {rule}")
@@ -160,7 +160,7 @@ class FlextInfraModGateEngine:
         repository_roots = tuple(
             sorted(
                 u.Infra.governed_project_roots(root),
-                key=lambda candidate: len(candidate.parts),
+                key=FlextInfraModGateEngine._path_depth,
                 reverse=True,
             )
         )
@@ -179,16 +179,13 @@ class FlextInfraModGateEngine:
             file = finding.get("file")
             source_range = finding.get("range")
             raw_replacement = finding.get("replacement")
-            if (
-                not isinstance(rule_id, str)
-                or rule_id not in rule_ids
-                or not isinstance(text, str)
-                or not isinstance(file, str)
-                or not isinstance(source_range, Mapping)
-                or (
-                    raw_replacement is not None and not isinstance(raw_replacement, str)
-                )
-            ):
+            if not isinstance(rule_id, str) or rule_id not in rule_ids:
+                return r.fail(f"invalid ast-grep finding contract: {line}")
+            if not isinstance(text, str) or not isinstance(file, str):
+                return r.fail(f"invalid ast-grep finding contract: {line}")
+            if not isinstance(source_range, Mapping):
+                return r.fail(f"invalid ast-grep finding contract: {line}")
+            if raw_replacement is not None and not isinstance(raw_replacement, str):
                 return r.fail(f"invalid ast-grep finding contract: {line}")
             file_path = Path(file)
             files.add(file_path)
@@ -293,9 +290,7 @@ class FlextInfraModGateEngine:
                 and resolved.suffix == c.Infra.EXT_PYTHON
             })
         )
-        deepest_first = tuple(
-            sorted(project_roots, key=lambda owner: len(owner.parts), reverse=True)
-        )
+        deepest_first = tuple(sorted(project_roots, key=cls._path_depth, reverse=True))
         files_by_root: dict[Path, list[Path]] = {owner: [] for owner in project_roots}
         for python_file in python_files:
             owner = next(

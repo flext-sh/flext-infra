@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
+from flext_cli import r, u
 from flext_infra import c, t
 
 if TYPE_CHECKING:
@@ -26,9 +26,6 @@ class FlextInfraRefactorRuleLoader:
         self.rules: t.MutableSequenceOf[
             t.Infra.RuleSelection[c.Infra.RefactorRuleKind]
         ] = []
-        self.file_rules: t.MutableSequenceOf[
-            t.Infra.RuleSelection[c.Infra.RefactorFileRuleKind]
-        ] = []
         self.rule_filters: t.MutableSequenceOf[str] = []
 
     def load_config(self) -> p.Result[t.MappingKV[str, t.Infra.InfraValue]]:
@@ -47,36 +44,29 @@ class FlextInfraRefactorRuleLoader:
 
     def load_rules(
         self,
-    ) -> p.Result[
-        t.Infra.LoadedRuleSelections[
-            c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
-        ]
-    ]:
-        """Load enabled text/file rule selections from declarative YAML assets."""
-        result: p.Result[
-            t.Infra.LoadedRuleSelections[
-                c.Infra.RefactorRuleKind, c.Infra.RefactorFileRuleKind
-            ]
-        ] = u.Cli.rules_load_local_definitions(
+    ) -> p.Result[t.SequenceOf[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]]]:
+        """Load enabled text-rule selections from declarative YAML assets."""
+        result = u.Cli.rules_load_local_definitions(
             self.config_path,
             package_rules_dir=Path(__file__).resolve().parent.parent / c.Infra.RK_RULES,
             rule_filters=self.rule_filters,
             rule_catalog=c.Infra.RULE_MATCHERS_BY_KIND,
-            file_rule_catalog=c.Infra.FILE_RULE_MATCHERS_BY_KIND,
             rules_key=c.Infra.RK_RULES,
             rule_id_key=c.Infra.RK_ID,
             enabled_key=c.Infra.RK_ENABLED,
         )
-        if result.success:
-            loaded_rules, loaded_file_rules = result.value
-            self.rules = list(loaded_rules)
-            self.file_rules = list(loaded_file_rules)
-            u.Cli.info(f"Loaded {len(self.rules)} rules")
-            if self.file_rules:
-                u.Cli.info(f"Loaded {len(self.file_rules)} file rules")
-            if self.rule_filters:
-                u.Cli.info(f"Active filters: {', '.join(self.rule_filters)}")
-        return result
+        if result.failure:
+            return r[
+                t.SequenceOf[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]]
+            ].fail(result.error)
+        loaded_rules, _ = result.value
+        self.rules = list(loaded_rules)
+        u.Cli.info(f"Loaded {len(self.rules)} rules")
+        if self.rule_filters:
+            u.Cli.info(f"Active filters: {', '.join(self.rule_filters)}")
+        return r[t.SequenceOf[t.Infra.RuleSelection[c.Infra.RefactorRuleKind]]].ok(
+            tuple(loaded_rules)
+        )
 
     def set_rule_filters(self, filters: t.StrSequence) -> None:
         """Normalize and store active rule filters."""

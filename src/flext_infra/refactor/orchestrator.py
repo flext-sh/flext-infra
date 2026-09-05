@@ -11,10 +11,6 @@ from flext_infra.refactor._orchestrator_dispatch import (
 from flext_infra.refactor._orchestrator_scope import (
     FlextInfraRefactorOrchestratorScopeMixin,
 )
-from flext_infra.refactor.file_executor import (
-    FlextInfraClassNestingPostCheckGate,
-    FlextInfraRefactorFileExecutor,
-)
 from flext_infra.refactor.safety import FlextInfraRefactorSafetyManager
 from flext_infra.refactor.text_executor import FlextInfraRefactorTextExecutor
 
@@ -29,7 +25,6 @@ _log = u.fetch_logger(__name__)
 
 class FlextInfraRefactorOrchestrator(
     FlextInfraRefactorTextExecutor,
-    FlextInfraRefactorFileExecutor,
     FlextInfraRefactorOrchestratorDispatchMixin,
     FlextInfraRefactorOrchestratorScopeMixin,
 ):
@@ -44,11 +39,6 @@ class FlextInfraRefactorOrchestrator(
         """Initialize the orchestrator with explicitly injected services."""
         self.loader = loader
         self.safety_manager = safety_manager
-        self._class_nesting_config: t.JsonMapping | None = None
-        self._class_nesting_policy_by_family: (
-            t.MappingKV[str, m.Infra.ClassNestingPolicy] | None
-        ) = None
-        self._class_nesting_gate: FlextInfraClassNestingPostCheckGate | None = None
 
     @override
     def refactor_file(
@@ -66,13 +56,9 @@ class FlextInfraRefactorOrchestrator(
         repository_root = u.Infra.project_root(file_path) or file_path.parent
         original = u.Cli.files_read_text(file_path).unwrap()
         current, all_changes = original, list[str]()
-        current, error_result = self._apply_file_rules(
-            file_path, repository_root, current, all_changes
-        )
-        if error_result is not None:
-            return error_result
         current = self._apply_text_rules(file_path, current, all_changes)
         modified = current != original
+        error_result = None
         if not dry_run and modified:
             error_result = self._write_refactored_source(
                 file_path=file_path,
@@ -87,47 +73,6 @@ class FlextInfraRefactorOrchestrator(
             changes=all_changes,
             refactored_code=current,
         )
-
-    def _apply_file_rules(
-        self,
-        file_path: Path,
-        repository_root: Path,
-        current: str,
-        all_changes: t.MutableSequenceOf[str],
-    ) -> tuple[str, m.Infra.Result | None]:
-        """Apply Rope-backed file rules and collect changes."""
-        if not self.loader.file_rules:
-            return current, None
-        updated_source = current
-        with u.Infra.open_project(repository_root) as rope_project:
-            resource = u.Infra.get_resource_from_path(rope_project, file_path)
-            if resource is None:
-                return (
-                    updated_source,
-                    self._error_result(
-                        file_path, f"Could not resolve rope resource for {file_path}"
-                    ),
-                )
-            for kind, settings in self.loader.file_rules:
-                file_rule_result = self._apply_file_rule_selection(
-                    kind, settings, rope_project, resource, dry_run=True
-                )
-                if not file_rule_result.success:
-                    return (
-                        updated_source,
-                        m.Infra.Result(
-                            file_path=file_path,
-                            success=False,
-                            modified=False,
-                            error=file_rule_result.error,
-                            changes=file_rule_result.changes,
-                            refactored_code=None,
-                        ),
-                    )
-                if file_rule_result.modified and file_rule_result.refactored_code:
-                    updated_source = file_rule_result.refactored_code
-                all_changes.extend(file_rule_result.changes)
-        return updated_source, None
 
     def _apply_text_rules(
         self, file_path: Path, current: str, all_changes: t.MutableSequenceOf[str]

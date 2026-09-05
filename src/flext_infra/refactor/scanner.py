@@ -24,26 +24,22 @@ class FlextInfraRefactorLooseClassScanner:
                 f"src not found: {src_root}"
             )
             return out
-        violations, targets_found, classes_scanned, files_scanned = (
-            self._scan_discovered_files(project_root=project_root)
+        violations, classes_scanned, files_scanned = self._scan_discovered_files(
+            project_root=project_root
         )
         return r[t.JsonMapping].ok(
             self._build_report(
                 files_scanned=files_scanned,
                 violations=violations,
-                targets_found=targets_found,
                 classes_scanned=classes_scanned,
             )
         )
 
     def _scan_discovered_files(
         self, *, project_root: Path
-    ) -> tuple[t.SequenceOf[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:
+    ) -> tuple[t.SequenceOf[m.Infra.LooseClassViolation], int, int]:
         """Scan discovered files."""
         violations: t.MutableSequenceOf[m.Infra.LooseClassViolation] = []
-        targets_found: dict[str, bool] = dict.fromkeys(
-            c.Infra.REQUIRED_CLASS_TARGETS, False
-        )
         classes_scanned = 0
         files_scanned = 0
         src_root = (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
@@ -71,16 +67,13 @@ class FlextInfraRefactorLooseClassScanner:
                     if viol is None:
                         continue
                     violations.append(viol)
-                    if viol.class_name in targets_found:
-                        targets_found[viol.class_name] = True
-        return (tuple(violations), targets_found, classes_scanned, files_scanned)
+        return (tuple(violations), classes_scanned, files_scanned)
 
     def _build_report(
         self,
         *,
         files_scanned: int,
         violations: t.SequenceOf[m.Infra.LooseClassViolation],
-        targets_found: t.BoolMapping,
         classes_scanned: int,
     ) -> t.JsonMapping:
         """Build report."""
@@ -89,16 +82,12 @@ class FlextInfraRefactorLooseClassScanner:
             v.model_dump() for v in violations
         ]
         confidence_counts: t.MappingKV[str, t.Infra.InfraValue] = dict(counters)
-        required_targets_infra: t.MappingKV[str, t.Infra.InfraValue] = dict(
-            targets_found
-        )
         result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
             "rule": c.Infra.RK_CLASS_NESTING,
             "files_scanned": files_scanned,
             "classes_scanned": classes_scanned,
             c.Infra.RK_VIOLATIONS_COUNT: len(violations),
             "confidence_counts": confidence_counts,
-            "required_targets": required_targets_infra,
             c.Infra.RK_VIOLATIONS: violations_infra,
         })
         return result

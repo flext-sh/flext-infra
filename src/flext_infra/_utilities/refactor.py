@@ -9,7 +9,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import ast
 from pathlib import Path
 
 from flext_cli import r, u
@@ -28,21 +27,6 @@ class FlextInfraUtilitiesRefactor:
 
         methods = u.Infra.extract_public_methods_from_dir(package_dir)
     """
-
-    @staticmethod
-    def entry_list(value: t.Infra.InfraValue | None) -> t.SequenceOf[t.StrMapping]:
-        """Normalize class-nesting settings entries to a strict list."""
-        if value is None:
-            return []
-        try:
-            entries: t.SequenceOf[t.StrMapping] = (
-                t.Infra.STR_MAPPING_SEQ_ADAPTER.validate_python(value)
-            )
-        except c.ValidationError:
-            msg = "class nesting entries must be a list"
-            raise ValueError(msg) from None
-        else:
-            return entries
 
     @staticmethod
     def string_list(value: t.Infra.InfraValue | None) -> t.StrSequence:
@@ -71,28 +55,6 @@ class FlextInfraUtilitiesRefactor:
             if suffix:
                 return Path(*suffix).as_posix()
         return path.as_posix().lstrip("./")
-
-    @staticmethod
-    def module_owns_nested_class(
-        source: str, *, namespace: str, nested_name: str
-    ) -> bool:
-        """Return whether a module defines ``namespace.nested_name`` itself.
-
-        Consumer propagation rewrites ``from module import Old`` to import the
-        surviving namespace.  The owner module is different: it already binds
-        that namespace locally, so rewriting an unrelated/shadowed import to
-        the same name would create a duplicate binding and a type error.
-        """
-        module = ast.parse(source)
-        return any(
-            statement.name == namespace
-            and any(
-                isinstance(child, ast.ClassDef) and child.name == nested_name
-                for child in statement.body
-            )
-            for statement in module.body
-            if isinstance(statement, ast.ClassDef)
-        )
 
     @staticmethod
     def write_impact_map(
@@ -139,9 +101,9 @@ class FlextInfraUtilitiesRefactor:
             )
         repository_totals: dict[str, int] = {}
         rule_totals: dict[str, int] = {}
-        class_totals: dict[c.Infra.ModScanFindingClass, int] = {
-            finding_class: 0 for finding_class in c.Infra.ModScanFindingClass
-        }
+        class_totals: dict[c.Infra.ModScanFindingClass, int] = dict.fromkeys(
+            c.Infra.ModScanFindingClass, 0
+        )
         for finding in report.entries:
             repository_totals[finding.repository] = (
                 repository_totals.get(finding.repository, 0) + 1

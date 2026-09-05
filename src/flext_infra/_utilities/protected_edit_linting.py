@@ -340,7 +340,13 @@ class FlextInfraUtilitiesProtectedEditLinting:
             gate_errors = tuple(line for line in output.splitlines() if line.strip())
         elif run_result.value.stderr.strip():
             gate_errors = tuple(
-                line for line in run_result.value.stderr.splitlines() if line.strip()
+                line
+                for line in run_result.value.stderr.splitlines()
+                if line.strip()
+                and not (
+                    tool_name == c.Infra.PYREFLY
+                    and line.strip() == c.Infra.PYREFLY_ZERO_ERRORS_RECEIPT
+                )
             )
         else:
             gate_errors = ()
