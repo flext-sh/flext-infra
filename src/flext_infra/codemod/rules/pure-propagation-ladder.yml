@@ -3,7 +3,7 @@ language: python
 severity: error
 message: >-
   Verbatim failure reconstruction loses identity through a duplicate helper
-  ladder. Rebind the original failure with from_failure. See SKILL.md.
+  ladder. Rebind the original failure with from_failure.
 rule:
   pattern: |
     if $R.failure:

@@ -2,8 +2,8 @@ id: fstring-fail-missing-exception
 language: python
 severity: error
 message: >-
-  r.fail(f"...{exc}") drops the typed exception. Preserve exception=exc; use a
-  contextual e.fail_* factory when the current layer adds meaning. See SKILL.md.
+  Interpolating a caught exception into r.fail drops its typed cause. Preserve
+  the bound exception explicitly or use a contextual e.fail_* factory.
 rule:
   pattern: $R.fail($MESSAGE)
   all:

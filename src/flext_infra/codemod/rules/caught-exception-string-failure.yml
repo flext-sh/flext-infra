@@ -4,7 +4,7 @@ severity: error
 message: >-
   Converting a caught exception to str discards the typed cause. Select the
   contextual e.fail_* factory; if none fits, preserve exception= explicitly.
-  Detection only; see SKILL.md.
+  Detection only.
 rule:
   pattern: $R.fail(str($EXC))
   inside:
