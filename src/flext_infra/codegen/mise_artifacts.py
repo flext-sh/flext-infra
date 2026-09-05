@@ -272,9 +272,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         if not missing.value:
             return r[bool].ok(True)
         try:
-            with TemporaryDirectory(
-                prefix=".mise-checksum.", dir=root
-            ) as raw_scratch:
+            with TemporaryDirectory(prefix=".mise-checksum.", dir=root) as raw_scratch:
                 hydrated = self._hydrate_source(
                     source.value, missing.value, Path(raw_scratch)
                 )
@@ -348,7 +346,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             if windows
             else cls._shell_launcher_version(source.value)
         )
-        if not cls.is_mise_release(release):
+        if release is None or not cls.is_mise_release(release):
             return r[str].fail(f"Mise seed has an invalid release: {path}")
         try:
             mode = path.stat().st_mode
@@ -360,27 +358,29 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             ("sum_x64", "sum_arm64")
             if windows
             else (
-            "checksum_linux_x86_64",
-            "checksum_linux_x86_64_musl",
-            "checksum_linux_arm64",
-            "checksum_linux_arm64_musl",
-            "checksum_linux_armv7",
-            "checksum_linux_armv7_musl",
-            "checksum_macos_x86_64",
-            "checksum_macos_arm64",
-            "checksum_linux_x86_64_zstd",
-            "checksum_linux_x86_64_musl_zstd",
-            "checksum_linux_arm64_zstd",
-            "checksum_linux_arm64_musl_zstd",
-            "checksum_linux_armv7_zstd",
-            "checksum_linux_armv7_musl_zstd",
-            "checksum_macos_x86_64_zstd",
-            "checksum_macos_arm64_zstd",
+                "checksum_linux_x86_64",
+                "checksum_linux_x86_64_musl",
+                "checksum_linux_arm64",
+                "checksum_linux_arm64_musl",
+                "checksum_linux_armv7",
+                "checksum_linux_armv7_musl",
+                "checksum_macos_x86_64",
+                "checksum_macos_arm64",
+                "checksum_linux_x86_64_zstd",
+                "checksum_linux_x86_64_musl_zstd",
+                "checksum_linux_arm64_zstd",
+                "checksum_linux_arm64_musl_zstd",
+                "checksum_linux_armv7_zstd",
+                "checksum_linux_armv7_musl_zstd",
+                "checksum_macos_x86_64_zstd",
+                "checksum_macos_arm64_zstd",
             )
         )
         for checksum_name in checksums:
             assignment = cls._assignment(source.value, checksum_name)
-            digest = assignment if windows or assignment is None else assignment.split()[0]
+            digest = (
+                assignment if windows or assignment is None else assignment.split()[0]
+            )
             if not cls._is_sha256(digest):
                 return r[str].fail(
                     f"Mise seed checksum missing in {path.name}: {checksum_name}"
@@ -395,42 +395,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].from_failure(release)
         return r[bool].ok(True)
 
-    def _member_project_root(self) -> p.Result[Path]:
-        """Resolve the one declared workspace member selected for propagation."""
-        if self.project_filter is None:
-            return r[Path].fail(
-                "--from-root propagation requires exactly one --project"
-            )
-        selectors = [
-            selector for selector in self.project_filter.split(",") if selector.strip()
-        ]
-        if len(selectors) != 1:
-            return r[Path].fail(
-                "--from-root propagation requires exactly one --project"
-            )
-        selector = selectors[0].strip()
-        if (
-            not selector
-            or selector.startswith(".")
-            or "/" in selector
-            or "\\" in selector
-        ):
-            return r[Path].fail(f"invalid Mise propagation project: {selector}")
-        project_root = (self.workspace_root / selector).resolve()
-        resolved_workspace = self.workspace_root.resolve()
-        if (
-            not project_root.is_dir()
-            or project_root == resolved_workspace
-            or not project_root.is_relative_to(resolved_workspace)
-        ):
-            return r[Path].fail(f"Mise propagation target is not a member: {selector}")
-        return r[Path].ok(project_root)
-
     def validate_artifacts(
-        self,
-        project_root: Path,
-        *,
-        config_sources: tuple[m.Cli.AtomicFileState, ...],
+        self, project_root: Path, *, config_sources: tuple[m.Cli.AtomicFileState, ...]
     ) -> p.Result[bool]:
         """Validate one project's committed Mise artifacts entirely offline."""
         config_result = self._read_toml(project_root / ".mise.toml")
@@ -461,10 +427,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         launcher_result = self.validate_launchers(project_root)
         if launcher_result.failure:
             return launcher_result
-        exclusions = (
-            FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions_from_snapshot(
-                config_sources
-            )
+        exclusions = FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions_from_snapshot(
+            config_sources
         )
         if exclusions.failure:
             return r[bool].fail(exclusions.error or "project Mise platforms invalid")
@@ -473,48 +437,6 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             configured_tools=tools_result.value,
             project_exclusions=exclusions.value,
         )
-
-    def _propagate_root_lock(self) -> p.Result[bool]:
-        """Propagate one byte-identical member lock without invoking Mise."""
-        member_result = self._member_project_root()
-        if member_result.failure:
-            return r[bool].fail(member_result.error or "invalid Mise member")
-        member_root = member_result.value
-        root_config = u.Cli.files_read_text(self.workspace_root / ".mise.toml")
-        member_config = u.Cli.files_read_text(member_root / ".mise.toml")
-        if root_config.failure:
-            return r[bool].fail(root_config.error or "cannot read root .mise.toml")
-        if member_config.failure:
-            return r[bool].fail(member_config.error or "cannot read member .mise.toml")
-        root_identity = u.Cli.sha256_file(self.workspace_root / ".mise.toml")
-        member_identity = u.Cli.sha256_file(member_root / ".mise.toml")
-        if root_identity != member_identity:
-            return r[bool].fail(
-                "member .mise.toml is not identical to root: "
-                f"root_sha256={root_identity} member_sha256={member_identity}"
-            )
-        root_lock = u.Cli.files_read_text(self.workspace_root / "mise.lock")
-        if root_lock.failure:
-            return r[bool].fail(root_lock.error or "cannot read root mise.lock")
-        write = u.Cli.atomic_write_text_file(member_root / "mise.lock", root_lock.value)
-        if write.failure:
-            return r[bool].fail(write.error or "cannot propagate root mise.lock")
-        propagated_lock = u.Cli.files_read_text(member_root / "mise.lock")
-        propagated_config = u.Cli.files_read_text(member_root / ".mise.toml")
-        if propagated_lock.failure:
-            return r[bool].fail(
-                propagated_lock.error or "cannot verify propagated mise.lock"
-            )
-        if propagated_config.failure:
-            return r[bool].fail(
-                propagated_config.error
-                or "cannot verify propagated .mise.toml identity"
-            )
-        if propagated_lock.value != root_lock.value:
-            return r[bool].fail("member mise.lock diverged after atomic propagation")
-        if propagated_config.value != root_config.value:
-            return r[bool].fail("member .mise.toml diverged after atomic propagation")
-        return self._validate_artifacts(member_root)
 
     @staticmethod
     def _validate_lock(
@@ -559,9 +481,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate only; conform is the sole writable toolchain owner."""
         transaction = FlextInfraCodegenMiseArtifactTransaction(self)
         if not self.effective_dry_run:
-            return r[bool].fail(
-                "Mise artifact publication is owned by codegen conform"
-            )
+            return r[bool].fail("Mise artifact publication is owned by codegen conform")
         return transaction.validate()
 
 

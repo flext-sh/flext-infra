@@ -248,17 +248,7 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    infra_repository:
-      distribution: flext-infra
-      provider: flext-sh
-
-=======
     infrastructure_provider: flext-sh
->>>>>>> 0233c6962 (fix(infra): stabilize codegen runtime independence and conformance)
-=======
->>>>>>> origin/0.12.0-dev
     providers:
       - name: flext-sh
         organization: flext-sh

@@ -3,18 +3,13 @@
 <!-- TOC START -->
 - [Authorities](#authorities)
 - [Validation boundary](#validation-boundary)
+- [Scoped projection isolation](#scoped-projection-isolation)
+- [Full refactor workflow](#full-refactor-workflow)
 - [Selection and projections](#selection-and-projections)
 - [uv project boundaries](#uv-project-boundaries)
 <!-- TOC END -->
 
 ## Authorities
-<!-- TOC START -->
-- [Effective topology](#effective-topology)
-- [Scoped projection isolation](#scoped-projection-isolation)
-- [Full refactor workflow](#full-refactor-workflow)
-- [Synchronization and setup](#synchronization-and-setup)
-- [MCP / CRG identity (out of scope for conform)](#mcp-crg-identity-out-of-scope-for-conform)
-<!-- TOC END -->
 
 Each governed repository has exactly two local inputs:
 
@@ -58,8 +53,6 @@ it validates live topology, Beads, environments, and ancestry in addition to
 planning every governed artifact.
 
 ## Full refactor workflow
-=======
-- the workspace root's `config/beads.yaml` exists and validates.
 
 Direct governed submodules have exactly one ledger mode. A checked-in `.beads`
 symlink inherits the workspace root's ledger and requires a routing-only
