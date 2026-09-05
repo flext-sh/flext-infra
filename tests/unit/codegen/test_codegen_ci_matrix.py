@@ -253,18 +253,16 @@ class TestCodegenCiMatrix:
         # step: no blank line may appear there, and exactly one separates the
         # last step before the setup commentary from that commentary.
         tm.that(
-            workflow,
-            has="fetch-depth: 0\n      - name: Declare the Mise GitHub credential source",
+            workflow, has="fetch-depth: 0\n      # Mise resolves GitHub credentials"
         )
         marker = (
-            '"$RUNNER_TEMP/mise-github-token"\n\n'
-            "      # make setup is the only toolchain installer."
+            '>> "$GITHUB_ENV"\n\n      # make setup is the only toolchain installer.'
         )
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                '"$RUNNER_TEMP/mise-github-token"\n\n\n'
+                '>> "$GITHUB_ENV"\n\n\n'
                 "      # make setup is the only toolchain installer."
             ),
         )
