@@ -6,10 +6,10 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import time
 import os
 import re
 import stat
+import time
 from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from pathlib import Path
