@@ -90,5 +90,43 @@ class TestsFlextInfraUtilityFacadeProjection:
             )
         tm.that(facade.read_text(), eq=original)
 
+    @pytest.mark.parametrize("present", ("semantic_apply.py", "utilities.py"))
+    def test_rejects_incomplete_semantic_artifact_pair(
+        self, tmp_path: Path, present: str
+    ) -> None:
+        """Reject either half of the semantic-consumer/facade contract."""
+        package = tmp_path / "src" / "flext_sample"
+        path = (
+            package / "codemod" / present
+            if present == "semantic_apply.py"
+            else package / present
+        )
+        self._write(path, "from flext_sample import u\n")
+
+        with pytest.raises(ValueError, match="incomplete semantic utility artifacts"):
+            u.Infra.project_semantic_utility_owners(
+                pkg_dir=package, ctx=m.Infra.FixContext()
+            )
+
+    def test_rejects_unsupported_facade_base_expression(self, tmp_path: Path) -> None:
+        """Reject dynamic bases instead of converting them to an empty owner."""
+        package = tmp_path / "src" / "flext_sample"
+        self._write(
+            package / "codemod" / "semantic_apply.py",
+            "from flext_sample import u\n\nu.Sample.plan_cutover()\n",
+        )
+        self._write(
+            package / "utilities.py",
+            "from upstream import u\n\n"
+            "class FlextSampleUtilities(u):\n"
+            "    class Sample(owner_factory()):\n"
+            "        pass\n",
+        )
+
+        with pytest.raises(ValueError, match="unsupported utility facade base"):
+            u.Infra.project_semantic_utility_owners(
+                pkg_dir=package, ctx=m.Infra.FixContext()
+            )
+
 
 __all__: list[str] = ["TestsFlextInfraUtilityFacadeProjection"]

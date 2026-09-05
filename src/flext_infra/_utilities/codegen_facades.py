@@ -30,7 +30,10 @@ class FlextInfraUtilitiesCodegenFacades:
         semantic_path = pkg_dir / "codemod" / "semantic_apply.py"
         facade_path = pkg_dir / c.Infra.UTILITIES_PY
         owners_dir = pkg_dir / c.Infra.FAMILY_DIRECTORIES["u"]
-        if not semantic_path.is_file() or not facade_path.is_file():
+        semantic_exists, facade_exists = semantic_path.is_file(), facade_path.is_file()
+        if semantic_exists != facade_exists:
+            raise ValueError(f"incomplete semantic utility artifacts in {pkg_dir}")
+        if not semantic_exists:
             return
         owners, ancestors = cls._utility_owners(owners_dir)
         source = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
@@ -144,7 +147,7 @@ class FlextInfraUtilitiesCodegenFacades:
             return base.id
         if isinstance(base, ast.Attribute):
             return base.attr
-        return ""
+        raise ValueError(f"unsupported utility facade base: {ast.dump(base)}")
 
     @staticmethod
     def _reachable_bases(
