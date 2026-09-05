@@ -1,0 +1,6 @@
+id: ban-cli-process-deadline-timeout-exit-code-reader
+language: Python
+severity: error
+rule:
+  pattern: $DEADLINE.timeout_exit_code
+message: ProcessDeadline contains timing facts only; timeout status belongs to c.Cli.

@@ -1,0 +1,19 @@
+id: remove-cli-process-timeout-exit-code-argument
+language: Python
+severity: error
+files:
+  - "flext-cli/src/flext_cli/_utilities/_runtime_process_execution.py"
+  - "flext-cli/src/flext_cli/_utilities/_runtime_process_outcome.py"
+rule:
+  all:
+    - kind: keyword_argument
+    - has:
+        field: name
+        regex: "^timeout_exit_code$"
+    - inside:
+        any:
+          - pattern: cls._captured_process_result($$$ARGS)
+          - pattern: cls._process_exit_result($$$ARGS)
+        stopBy: end
+fix: ""
+message: Remove the deleted timeout selector from lifecycle calls.

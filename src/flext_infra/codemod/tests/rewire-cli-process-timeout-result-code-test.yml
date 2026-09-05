@@ -1,0 +1,5 @@
+id: rewire-cli-process-timeout-result-code
+valid:
+  - primary_exit = c.Cli.PROCESS_TIMEOUT_EXIT_CODE
+invalid:
+  - primary_exit = timeout_exit_code
