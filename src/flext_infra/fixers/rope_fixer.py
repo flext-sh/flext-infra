@@ -32,7 +32,6 @@ from flext_infra.refactor.classvar_constant_autofix import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
 
 
@@ -47,9 +46,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     kind: ClassVar[str] = "rope"
     _PRIVATE_NAMESPACE_MIN_PARTS: ClassVar[int] = 2
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used to open rope projects."""
-        super().__init__(workspace_root)
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used to open rope projects."""
+        super().__init__(repository_root)
 
     @staticmethod
     def _build_project_fix_result(
@@ -95,7 +94,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             )
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return (
             fix_action.kind == self.kind
@@ -106,7 +105,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply rope fixes grouped by target."""
@@ -146,7 +145,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         Callable[
             [
                 Path,
-                t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+                t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
                 m.Infra.FixEnforcementCommand,
             ],
             m.Infra.ProjectFixResult,
@@ -269,7 +268,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         self,
         *,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
         detector: Callable[[m.Infra.DetectorContext], t.SequenceOf[V]],
         filter_violations: Callable[[t.SequenceOf[V]], t.SequenceOf[V]],
@@ -298,7 +297,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 detect_ctx = m.Infra.DetectorContext(
                     file_path=file_path,
@@ -351,7 +350,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_silent_failure_sentinels(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Rewrite deterministic silent-failure sentinels to failed Results."""
@@ -361,7 +360,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         skipped: list[m.Infra.SkippedViolation] = []
         failed: list[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in self._collect_file_paths(project_dir, violations):
                 resource = u.Infra.get_resource_from_path(rope_project, file_path)
                 if resource is None:
@@ -411,7 +410,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_compatibility_alias(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Rewrite compatibility aliases using the canonical detector + rewriter."""
@@ -443,7 +442,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_remove_stub_file(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Remove source ``.pyi`` stubs when apply mode is enabled."""
@@ -511,7 +510,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_private_import_bypass(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Rewrite private-module imports to their canonical facade equivalents."""
@@ -533,7 +532,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 detect_ctx = m.Infra.DetectorContext(
                     file_path=file_path,
@@ -596,7 +595,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_library_abstraction(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Hoist detector-approved FLEXT library imports to module scope."""
@@ -611,7 +610,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_hoist_inline_import(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Hoist detector-approved inline stdlib imports to module scope."""
@@ -626,7 +625,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_inline_import_action(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
         *,
         target_action: str,
@@ -639,7 +638,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         skipped: list[m.Infra.SkippedViolation] = []
         failed: list[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in self._collect_file_paths(project_dir, violations):
                 detect_ctx = m.Infra.DetectorContext(
                     file_path=file_path,
@@ -800,7 +799,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_classvar_relocation(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Move class-level constants to canonical _constants modules."""
@@ -811,7 +810,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         failed: list[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
 
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for _rule, probe in violations:
                 file_path_str = getattr(probe, "file_path", "")
                 file_path = Path(file_path_str)
@@ -926,7 +925,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
     def _fix_one_class_per_module(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Move extra governed classes to their own canonical modules."""
@@ -961,7 +960,7 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                 ),
             )
         package_dir = layout.package_dir
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 resource = u.Infra.fetch_python_resource(
                     rope_project, file_path, skip_protected=True, skip_settings=True
@@ -1140,10 +1139,10 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         try:
             mover = u.Infra.create_move(rope_project, source_resource, offset)
         except c.EXC_BROAD_RUNTIME as exc:
-            return r[str].fail(f"create_move failed: {exc}")
+            return r[str].fail(f"create_move failed: {exc}", exception=exc)
         try:
             changes = mover.get_changes(target_resource)
             rope_project.do(changes)
         except c.EXC_BROAD_RUNTIME as exc:
-            return r[str].fail(f"rope move failed: {exc}")
+            return r[str].fail(f"rope move failed: {exc}", exception=exc)
         return r[str].ok(str(target_file))

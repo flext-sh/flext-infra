@@ -31,10 +31,12 @@ class FlextInfraValidateTestImportDag(s[bool]):
             cls._rules_cache = cached
         return cached
 
-    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Scan every governed project as an independent import unit."""
         try:
-            roots = u.Infra.discover_project_roots(workspace_root) or (workspace_root,)
+            roots = u.Infra.discover_project_roots(repository_root) or (
+                repository_root,
+            )
             violations = tuple(
                 violation
                 for project_root in roots
@@ -149,11 +151,9 @@ class FlextInfraValidateTestImportDag(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        report_result = self.build_report(self.workspace_root)
+        report_result = self.build_report(self.repository_root)
         if report_result.failure:
-            return r[bool].fail(
-                report_result.error or "test-import-dag validation failed"
-            )
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

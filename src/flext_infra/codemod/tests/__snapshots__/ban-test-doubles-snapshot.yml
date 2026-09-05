@@ -1,0 +1,26 @@
+id: ban-test-doubles
+snapshots:
+  ? |
+    def test_internal(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(Service, "run", lambda: True)
+  : labels:
+    - source: monkeypatch
+      style: primary
+      start: 18
+      end: 29
+    - source: '(monkeypatch: pytest.MonkeyPatch)'
+      style: secondary
+      start: 17
+      end: 50
+  from unittest.mock import MagicMock:
+    labels:
+    - source: from unittest.mock import MagicMock
+      style: primary
+      start: 0
+      end: 35
+  service = MagicMock():
+    labels:
+    - source: MagicMock()
+      style: primary
+      start: 10
+      end: 21

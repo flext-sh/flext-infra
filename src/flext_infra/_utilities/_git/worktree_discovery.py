@@ -13,7 +13,7 @@ from flext_core import r
 from flext_infra._utilities._git.worktree_roots import (
     FlextInfraUtilitiesGitWorktreeRootsMixin,
 )
-from flext_infra._utilities._sort_keys import path_depth_then_text
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -83,7 +83,7 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
                 )
         except (ConfigParserError, OSError, TypeError, ValueError) as exc:
             return r[t.SequenceOf[Path]].fail(
-                f"failed to read Git submodule declarations: {exc}"
+                f"failed to read Git submodule declarations: {exc}", exception=exc
             )
         paths: t.MutableSequenceOf[Path] = []
         for raw_path in raw_paths:
@@ -113,7 +113,7 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
             url, branch = cls._read_gitmodule_contract(gitmodules, request.member_path)
         except (ConfigParserError, OSError, TypeError, ValueError) as exc:
             return r[m.Infra.GitSubmoduleContractReport].fail(
-                f"failed to read Git submodule paths: {exc}"
+                f"failed to read Git submodule paths: {exc}", exception=exc
             )
         if not url:
             return r[m.Infra.GitSubmoduleContractReport].fail(
@@ -155,16 +155,16 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
         return url, branch
 
     @classmethod
-    def git_submodule_paths(cls, workspace_root: Path) -> p.Result[t.SequenceOf[Path]]:
+    def git_submodule_paths(cls, repository_root: Path) -> p.Result[t.SequenceOf[Path]]:
         """Resolve every initialized recursive submodule path."""
         try:
-            repo = cls._repo(workspace_root)
+            repo = cls._repo(repository_root)
             status = repo.git.submodule("status", "--recursive")
         except GitCommandError as exc:
-            return r[t.SequenceOf[Path]].fail(str(exc))
+            return r[t.SequenceOf[Path]].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[t.SequenceOf[Path]].fail(
-                f"failed to discover Git submodules: {exc}"
+                f"failed to discover Git submodules: {exc}", exception=exc
             )
         paths: t.MutableSequenceOf[Path] = []
         for raw_line in status.splitlines():
@@ -178,9 +178,11 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
             except ValueError:
                 continue
             relative_path = Path(relative_path_text)
-            if (workspace_root / relative_path / ".git").exists():
+            if (repository_root / relative_path / ".git").exists():
                 paths.append(relative_path)
-        return r[t.SequenceOf[Path]].ok(tuple(sorted(paths, key=path_depth_then_text)))
+        return r[t.SequenceOf[Path]].ok(
+            tuple(sorted(paths, key=FlextInfraUtilitiesBase.path_depth_then_text))
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitWorktreeDiscoveryMixin"]

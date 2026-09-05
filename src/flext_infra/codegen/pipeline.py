@@ -30,7 +30,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
         pipeline_result = cli.pipeline(
             stages,
             context=cli.stage_context(
-                self.workspace_root,
+                self.repository_root,
                 settings={
                     c.Infra.PIPELINE_KEY_DRY_RUN: self.dry_run or not self.apply_changes
                 },
@@ -38,7 +38,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
             logger=_log,
         )
         if pipeline_result.failure:
-            return r[str].fail(pipeline_result.error or "pipeline execution failed")
+            return r[str].from_failure(pipeline_result)
         # cli.pipeline already maps failed_stages to r.fail; value is always success.
         return self._collect_pipeline_output()
 

@@ -12,16 +12,6 @@ from flext_tests import tm
 from tests import t, u
 
 
-def _doc_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-        u.normalize_to_json_value(doc.unwrap())
-    )
-
-
-def _mapping(value: t.JsonValue) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
-
-
 def _strings(value: t.JsonValue) -> t.StrSequence:
     result: t.StrSequence = t.Infra.STR_SEQ_ADAPTER.validate_python(value)
     return result
@@ -45,9 +35,9 @@ class TestsFlextInfraDepsModernizerCoverage:
 
         _ = FlextInfraEnsureCoverageConfigPhase(configured).apply(doc)
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        coverage = _mapping(tool["coverage"])
-        run = _mapping(coverage["run"])
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        coverage = u.Tests.toml_mapping(tool["coverage"])
+        run = u.Tests.toml_mapping(coverage["run"])
         tm.that(list(_strings(run["source"])), eq=list(arbitrary_source))
 
     def test_apply_sets_report_and_run_state(self) -> None:
@@ -59,10 +49,10 @@ class TestsFlextInfraDepsModernizerCoverage:
             doc, project_kind="integration"
         )
 
-        tool = _mapping(_doc_mapping(doc)["tool"])
-        coverage = _mapping(tool["coverage"])
-        report = _mapping(coverage["report"])
-        run = _mapping(coverage["run"])
+        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        coverage = u.Tests.toml_mapping(tool["coverage"])
+        report = u.Tests.toml_mapping(coverage["report"])
+        run = u.Tests.toml_mapping(coverage["run"])
         tm.that(
             report["fail_under"], eq=tool_config.tools.coverage.fail_under.integration
         )
@@ -99,7 +89,7 @@ class TestsFlextInfraDepsModernizerCoverage:
         root_path = tmp_path / "pyproject.toml"
         root_source = '[project]\nname = "arbitrary-root"\n'
         root_modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=tmp_path, skip_check=True
+            repository_root=tmp_path, skip_check=True
         )
         root_first: str = tm.ok(
             root_modernizer.conform_source(

@@ -80,7 +80,7 @@ class TestConstantsQualityGateVerdict:
 
     def test_real_workspace_run_returns_report(self, tmp_path: Path) -> None:
         """Quality gate runs on real empty workspace without errors."""
-        gate = FlextInfraCodegenQualityGate(workspace_root=tmp_path)
+        gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
         tm.that(report_result.value, has="verdict")
@@ -105,7 +105,7 @@ class TestConstantsQualityGateVerdict:
                 },
             )
 
-        gate = FlextInfraCodegenQualityGate(workspace_root=tmp_path)
+        gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
         report = report_result.value

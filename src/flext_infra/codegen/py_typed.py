@@ -31,7 +31,11 @@ class FlextInfraCodegenPyTyped(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute ``py.typed`` synchronization from the validated CLI model."""
-        self.run(check_only=self.check_only)
+        changes = self.run(check_only=self.check_only)
+        if self.check_only and changes:
+            return r[bool].fail(
+                f"py.typed drift detected in {changes} package directorie(s)"
+            )
         return r[bool].ok(True)
 
     def run(self, *, check_only: bool = False) -> int:
@@ -44,9 +48,9 @@ class FlextInfraCodegenPyTyped(s[bool]):
 
         """
         dirs_to_scan: t.SequenceOf[Path] = [
-            self.workspace_root / pattern.split("/*")[0]
+            self.repository_root / pattern.split("/*")[0]
             for pattern in c.Infra.ALL_SCAN_PATTERNS
-            if (self.workspace_root / pattern.split("/*")[0]).is_dir()
+            if (self.repository_root / pattern.split("/*")[0]).is_dir()
         ]
         created = 0
         removed = 0
@@ -56,7 +60,7 @@ class FlextInfraCodegenPyTyped(s[bool]):
                     continue
                 if any(
                     part.startswith(".") or part in {"vendor", "node_modules", ".venv"}
-                    for part in dirpath.relative_to(self.workspace_root).parts
+                    for part in dirpath.relative_to(self.repository_root).parts
                 ):
                     continue
                 marker = dirpath / self._PY_TYPED_FILENAME

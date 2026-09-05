@@ -103,7 +103,7 @@ class FlextInfraDirenvGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Pass only on a zero-exit activation."""
         _ = project_dir, ctx
-        if result.exit_code == 0:
+        if u.Cli.process_succeeded(result.outcome):
             return True, ()
         detail = result.stderr.strip() or result.stdout.strip() or "direnv exec failed"
         return (

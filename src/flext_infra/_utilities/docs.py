@@ -26,10 +26,10 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     """Documentation-related utility methods exposed via u.Infra."""
 
     @staticmethod
-    def iter_markdown_files(workspace_root: Path) -> t.SequenceOf[Path]:
+    def iter_markdown_files(repository_root: Path) -> t.SequenceOf[Path]:
         """Recursively collect markdown files under the docs scope."""
-        docs_root = workspace_root / c.Infra.DIR_DOCS
-        search_root = docs_root if docs_root.is_dir() else workspace_root
+        docs_root = repository_root / c.Infra.DIR_DOCS
+        search_root = docs_root if docs_root.is_dir() else repository_root
         return sorted(
             path
             for path in search_root.rglob("*.md")
@@ -78,7 +78,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             )
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f"markdown write error: {exc}")
+            return r[bool].fail(f"markdown write error: {exc}", exception=exc)
 
     @staticmethod
     def anchorize(text: str) -> str:
@@ -97,7 +97,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
 
     @staticmethod
     def run_scoped(
-        workspace_root: Path,
+        repository_root: Path,
         *,
         projects: t.StrSequence | None,
         output_dir: Path | str,
@@ -105,12 +105,10 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Build scopes and run handler on each, collecting reports."""
         scopes_result = FlextInfraUtilitiesDocs.build_scopes(
-            workspace_root=workspace_root, projects=projects, output_dir=output_dir
+            repository_root=repository_root, projects=projects, output_dir=output_dir
         )
         if scopes_result.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error"
-            )
+            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(scopes_result)
         return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok([
             handler(scope) for scope in scopes_result.value
         ])

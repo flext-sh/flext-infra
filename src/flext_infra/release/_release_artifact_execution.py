@@ -79,16 +79,10 @@ class FlextInfraReleaseArtifactExecutionMixin(
         """Validate the toolchain lock, execute uv, and persist its full log."""
         constraints_result = u.Cli.files_read_text(build_constraints_path)
         if constraints_result.failure:
-            return r[p.Cli.CommandOutput].fail(
-                constraints_result.error
-                or f"read release build constraints failed: {build_constraints_path}"
-            )
+            return r[p.Cli.CommandOutput].from_failure(constraints_result)
         validation_result = self._validate_build_constraints(constraints_result.value)
         if validation_result.failure:
-            return r[p.Cli.CommandOutput].fail(
-                validation_result.error
-                or f"release build constraints invalid: {build_constraints_path}"
-            )
+            return r[p.Cli.CommandOutput].from_failure(validation_result)
         build_result = u.Cli.run_raw(
             self._release_build_command(
                 stage_path, temporary_dist, build_constraints_path
@@ -105,16 +99,12 @@ class FlextInfraReleaseArtifactExecutionMixin(
             remove_env_keys=c.Infra.UV_RELEASE_POLICY_ENV_KEYS,
         )
         if build_result.failure:
-            return r[p.Cli.CommandOutput].fail(
-                build_result.error or "uv release build execution failed"
-            )
+            return r[p.Cli.CommandOutput].from_failure(build_result)
         command = build_result.value
         output = (command.stdout + "\n" + command.stderr).strip()
         write_result = self._write_release_text(log_path, output + "\n")
         if write_result.failure:
-            return r[p.Cli.CommandOutput].fail(
-                write_result.error or "write release build log failed"
-            )
+            return r[p.Cli.CommandOutput].from_failure(write_result)
         return r[p.Cli.CommandOutput].ok(command)
 
 

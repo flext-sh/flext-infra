@@ -64,7 +64,7 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
 
     @property
     def collision_count(self) -> int:
-        """Number of export collisions resolved so far."""
+        """Number of unresolved export collisions found so far."""
         return self._collision_count
 
 
@@ -144,7 +144,9 @@ class FlextInfraCodegenLazyInitPlanner(
             lazy_map.pop(name, None)
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
-            return m.Infra.LazyInitPlan(context=context, action=empty_action)
+            return self._publish_plan(
+                m.Infra.LazyInitPlan(context=context, action=empty_action)
+            )
         excluded_lazy_names: t.StrSequence = ()
         is_public_project_root = (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR

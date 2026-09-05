@@ -109,13 +109,14 @@ def run(
     )
     if executed.failure:
         return r[str].fail(executed.error or f"{operation} failed to execute")
-    output = executed.value.stdout + executed.value.stderr
-    if executed.value.exit_code != 0:
-        detail = output.strip() or f"exit {executed.value.exit_code}"
+    command_output = executed.value
+    output = command_output.stdout + command_output.stderr
+    if not u.Cli.process_succeeded(command_output.outcome):
+        detail = output.strip() or f"exit {command_output.outcome.raw_return_code}"
         return r[str].fail(f"{operation} failed: {detail}")
     if "mise WARN" in output:
         return r[str].fail(f"{operation} emitted a warning: {output.strip()}")
-    return r[str].ok(executed.value.stdout.strip())
+    return r[str].ok(command_output.stdout.strip())
 
 
 def write_new(path: Path, content: bytes, mode: int) -> p.Result[bool]:

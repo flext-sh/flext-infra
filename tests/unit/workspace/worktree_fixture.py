@@ -55,12 +55,20 @@ class WorktreeFixture:
 
     @staticmethod
     def write_python_project(root: Path, distribution: str) -> Path:
-        """Write the minimum typed project used by real Git fixtures."""
+        """Write the minimum typed project used by real Git fixtures.
+
+        ``[project.urls].Repository`` is part of that minimum: it is the
+        declared identity the declaration-only Makefile projection reads when a
+        repository ships no ``config/workspace.yaml``, and every governed
+        repository publishes it.
+        """
         root.mkdir(parents=True, exist_ok=True)
         pyproject = root / "pyproject.toml"
+        repository_url = WorktreeFixture.governed_repository_url(distribution)
         pyproject.write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
-            'requires-python = ">=3.13,<3.14"\n',
+            'requires-python = ">=3.13,<3.14"\n'
+            f'[project.urls]\nRepository = "{repository_url}"\n',
             encoding="utf-8",
         )
         package = root / "src" / distribution.replace("-", "_")
@@ -131,8 +139,14 @@ class WorktreeFixture:
         custom_issue_types: tuple[str, ...] = (),
         beads_owner: bool = True,
     ) -> Path:
-        """Create one self-identifying governed project with a real Git origin."""
+        """Create one self-identifying governed project with a real Git origin.
+
+        Every governed repository commits its own checksum-verified Mise seeds;
+        ``codegen conform`` validates them and never mints them, so the fixture
+        carries them exactly as a real checkout does.
+        """
         pyproject = cls.write_python_project(root, distribution)
+        u.Tests.copy_tracked_mise_seeds(root)
         if beads_owner:
             cls.write_beads_project(
                 root,
@@ -167,7 +181,7 @@ class WorktreeFixture:
 
     @classmethod
     def write_gitmodules(cls, root: Path, projects: tuple[str, ...]) -> Path:
-        """Declare governed subprojects from the configured provider contract."""
+        """Declare governed declared_repositories from the configured provider contract."""
         provider = u.Tests.provider()
         path = root / c.Infra.GITMODULES
         path.write_text(
@@ -186,13 +200,18 @@ class WorktreeFixture:
 
     @staticmethod
     def repository_snapshot(root: Path) -> tuple[tuple[tuple[str, bytes], ...], str]:
-        """Capture all non-Git bytes and exact porcelain status."""
+        """Capture all repository bytes and porcelain status.
+
+        Git metadata is excluded; every runtime-state owner lives outside the
+        repository checkout by construction.
+        """
+        excluded_roots = frozenset({c.Infra.GIT_DIR})
         tree = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
                 for path in root.rglob("*")
                 if path.is_file()
-                and c.Infra.GIT_DIR not in path.relative_to(root).parts
+                and not excluded_roots.intersection(path.relative_to(root).parts)
             )
         )
         status = tm.ok(

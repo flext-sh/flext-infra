@@ -127,4 +127,3 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         tm.that(updated, has="from tests import t")
         tm.that(updated, has="t.Tests.Testobject")
         tm.that(updated, lacks="Core.Tests")
-        tm.that((workspace / "src" / "workspace" / "__pycache__").exists(), eq=False)

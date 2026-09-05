@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Final
 
 from flext_core import c
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
-from flext_infra._constants.namespace import FlextInfraConstantsNamespace
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -39,12 +38,43 @@ def _build_namespace_family_expected_alias(
     return MappingProxyType(result)
 
 
-class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
+class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
+
+    MOD_SCAN_REPORT_RELATIVE_PATH: Final[Path] = (
+        Path(cb.REPORTS_DIR_NAME) / "refactor" / "mod-findings.json"
+    )
+    "Canonical single-file evidence snapshot for the latest mod scan."
+    MOD_SCAN_REPORT_SCHEMA_VERSION: Final = 1
+    "Exact structured mod evidence schema version."
+    MOD_SCAN_REPORT_MODE: Final[int] = 0o644
+    "Canonical permission bits for structured mod evidence."
+    AST_GREP_ERROR_FINDING_RECEIPT: Final[str] = (
+        "Error: {count} error(s) found in code."
+    )
+    "Exact first stderr line emitted for error-severity JSONL findings."
+    AST_GREP_ERROR_FINDING_HELP: Final[str] = (
+        "Help: Scan succeeded and found error level diagnostics in the codebase."
+    )
+    "Exact second stderr line emitted for error-severity JSONL findings."
+
+    @unique
+    class ModScanCommand(StrEnum):
+        """Public mod scan modes recorded in structured evidence."""
+
+        SCAN = "scan"
+        APPLY = "apply"
+
+    @unique
+    class ModScanFindingClass(StrEnum):
+        """Mutability class derived from one ast-grep rule contract."""
+
+        ACTIONABLE = "actionable"
+        DETECTION_ONLY = "detection_only"
+        NON_ACTIONABLE_WITH_FIX = "non_actionable_with_fix"
 
     RK_REFACTOR: Final[str] = "refactor"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"
-    RK_IGNORE_PATTERNS: Final[str] = "ignore_patterns"
     RK_FILE_EXTENSIONS: Final[str] = "file_extensions"
     RK_FORBIDDEN_IMPORTS: Final[str] = "forbidden_imports"
     RK_REDUNDANT_TYPE_TARGETS: Final[str] = "redundant_type_targets"
@@ -58,21 +88,19 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_CORE_ALIASES: Final[str] = "core_aliases"
     RK_CORE_PACKAGE: Final[str] = "core_package"
     RK_ALIAS_TO_SUBMODULE: Final[str] = "alias_to_submodule"
-    RK_QUALITY_GATES: Final[str] = "quality_gates"
-    RK_EXPECTED_BASE_CHAIN: Final[str] = "expected_base_chain"
-    RK_HELPER_NAME: Final[str] = "helper_name"
-    RK_CONFIDENCE_THRESHOLD: Final[str] = "confidence_threshold"
     RK_ALLOW_ALIASES: Final[str] = "allow_aliases"
     RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
-    RK_TARGET_NAME: Final[str] = "target_name"
-    RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
-    RK_FLEXT_VALID: Final[str] = "flext_valid"
-    RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
-    CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
-    CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
+    CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
+    CODEMOD_RULE_SUFFIX: Final[str] = ".yml"
+    CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
+    CODEMOD_RULE_DIRS_KEY: Final[str] = "ruleDirs"
+    CODEMOD_UTIL_DIRS_KEY: Final[str] = "utilDirs"
+    CODEMOD_TEST_CONFIGS_KEY: Final[str] = "testConfigs"
+    CODEMOD_TEST_DIR_KEY: Final[str] = "testDir"
+    CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
+    CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
-        RK_IGNORE_PATTERNS,
         RK_FILE_EXTENSIONS,
     )
     """Allowed keys under the ``refactor`` config scope."""
@@ -113,12 +141,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         TIER0_IMPORT_FIX = "tier0_import_fix"
         SYMBOL_PROPAGATION = "symbol_propagation"
         SIGNATURE_PROPAGATION = "signature_propagation"
-
-    @unique
-    class RefactorFileRuleKind(StrEnum):
-        """Canonical executable Rope-backed file-rule kinds."""
-
-        CLASS_NESTING = "class_nesting"
 
     RULE_MATCHERS_BY_KIND: Final[
         t.MappingKV[
@@ -214,19 +236,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
                 frozenset({RK_SIGNATURE_MIGRATIONS}),
             ),
         ),
-    })
-    FILE_RULE_MATCHERS_BY_KIND: Final[
-        t.MappingKV[
-            RefactorFileRuleKind,
-            tuple[
-                tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]],
-                ...,
-            ],
-        ]
-    ] = MappingProxyType({
-        RefactorFileRuleKind.CLASS_NESTING: (
-            (frozenset({"nest_classes"}), frozenset(), frozenset(), frozenset()),
-        )
     })
     RULE_TABLE_HEADERS: Final[t.StrSequence] = (
         cb.RK_ID,
@@ -387,15 +396,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
         "high": 2,
     })
     "Confidence level → priority rank mapping."
-    REQUIRED_CLASS_TARGETS: Final[t.StrSequence] = (
-        "TimeoutEnforcer",
-        "CircuitBreakerManager",
-    )
-    "Class names always required in scanner output."
-    CLASS_PATTERN: Final[t.RegexPattern] = re.compile(r"[^A-Za-z0-9]+")
-    "Pattern to split class name fragments."
-    MAPPINGS_RELATIVE_PATH: Final[Path] = Path("rules") / "class-nesting-mappings.yml"
-    "Relative path from the refactor package to the nesting mappings YAML."
     MODEL_TOKENS: Final[t.StrSequence] = (
         "model",
         "schema",
@@ -525,22 +525,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Matches files that contain only a module docstring."
     MIN_METHODS_FOR_REORDER: Final[int] = 2
     "Minimum method count before class method reordering is attempted."
-
-    # --- Class nesting refactor constants (was: class ClassNesting) ---
-    NESTING_COERCE_KEYS: Final[t.StrSequence] = (
-        cb.RK_LOOSE_NAME,
-        RK_HELPER_NAME,
-        cb.RK_TARGET_NAMESPACE,
-        RK_TARGET_NAME,
-        cb.RK_REWRITE_SCOPE,
-        cb.RK_CONFIDENCE,
-    )
-    "Keys to coerce from string to typed values in nesting mappings."
-    NESTING_SECTION_KEYS: Final[t.StrSequence] = (
-        cb.RK_CLASS_NESTING,
-        cb.RK_HELPER_CONSOLIDATION,
-    )
-    "Top-level section keys in class nesting YAML configs."
 
     # --- Method category StrEnum (was: plain class MethodCategory) ---
     @unique

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Owner-Skill: .agents/skills/scripts-validation/SKILL.md
-# install-git-hooks.sh — Install the Beads git hooks at the workspace root and
+# install-git-hooks.sh — Install the Beads git hooks at the composition root and
 # apply the FLEXT agent-trailer guard.
 #
 # Canonical owner of git-hook provisioning for this workspace. Reproducible and
@@ -12,7 +12,7 @@
 #   trailers, so it must be gated behind an explicit opt-in:
 #       BD_ALLOW_AGENT_COMMIT_TRAILERS=1
 #   `.github/scripts/check-beads-policy.sh` enforces the guard text is present
-#   in the installed hook; `make check WHAT=coordination` fails without it.
+#   in the installed hook; the complete `make check APPLY=Y` gate fails without it.
 #
 # Mechanism:
 #   `bd hooks install --chain` writes bd-managed sections between markers and

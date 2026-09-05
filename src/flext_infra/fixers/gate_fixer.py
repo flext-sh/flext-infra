@@ -15,7 +15,6 @@ from flext_infra.fixers.base import FlextInfraFixerAdapter
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
 
 
@@ -29,16 +28,16 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     kind: ClassVar[str] = "gate"
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used to instantiate gates."""
-        super().__init__(workspace_root)
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used to instantiate gates."""
+        super().__init__(repository_root)
 
     def _registry(self) -> FlextInfraGateRegistry:
         """Lazy import of the gate registry to avoid circular imports."""
         return FlextInfraGateRegistry.default()
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         if fix_action.kind != self.kind:
             return False
@@ -49,7 +48,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply gate fixes for the first violation group (all share target)."""
@@ -71,7 +70,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     ),
                 ),
             )
-        gate = gate_cls(self._workspace_root)
+        gate = gate_cls(self._repository_root)
         if not gate.can_fix:
             return m.Infra.ProjectFixResult(
                 project=project_dir.name,
@@ -102,7 +101,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             reports_dir = reports_dir_result.value
         gate_ctx = m.Infra.GateContext(
-            workspace=self._workspace_root,
+            workspace=self._repository_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=not ctx.apply,
@@ -165,7 +164,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
         self,
         *,
         project_dir: Path,
-        rule: me.EnforcementRuleSpec,
+        rule: m.EnforcementRuleSpec,
         target: str,
         execution: m.Infra.GateExecution,
     ) -> m.Infra.ProjectFixResult:
@@ -203,7 +202,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _matching_issues(
-        rule: me.EnforcementRuleSpec, issues: t.SequenceOf[m.Infra.Issue]
+        rule: m.EnforcementRuleSpec, issues: t.SequenceOf[m.Infra.Issue]
     ) -> tuple[m.Infra.Issue, ...]:
         """Return gate issues that correspond to the selected rule fix action."""
         fix_action = rule.fix_action

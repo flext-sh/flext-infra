@@ -9,7 +9,6 @@ from flext_infra.workspace.environment_provenance import (
     FlextInfraWorkspaceEnvironmentProvenance,
 )
 from flext_tests import tm
-
 from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 if TYPE_CHECKING:
@@ -160,4 +159,4 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "workspace": workspace
         })
 
-        tm.that(request.workspace_root, eq=workspace)
+        tm.that(request.repository_root, eq=workspace)

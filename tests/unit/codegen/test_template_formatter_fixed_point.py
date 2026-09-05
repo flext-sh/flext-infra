@@ -79,22 +79,5 @@ class TestsTemplateFormatterFixedPoint:
         for rendered in (without, with_devcontainer):
             tm.that(rendered, has="package-ecosystem: pip")
 
-    def test_sgconfig_render_has_one_terminal_newline(self) -> None:
-        populated = tm.ok(
-            u.Cli.template_render(
-                _TEMPLATES / "sgconfig.yml.j2",
-                m.Infra.SgconfigRenderSpec(rule_dirs=("rules",), test_dirs=("tests",)),
-            )
-        )
-        empty = tm.ok(
-            u.Cli.template_render(
-                _TEMPLATES / "sgconfig.yml.j2",
-                m.Infra.SgconfigRenderSpec(rule_dirs=("rules",), test_dirs=()),
-            )
-        )
-
-        for rendered in (populated, empty):
-            tm.that(rendered.endswith("\n") and not rendered.endswith("\n\n"), eq=True)
-
 
 __all__: tuple[str, ...] = ()

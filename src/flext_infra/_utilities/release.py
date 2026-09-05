@@ -99,14 +99,14 @@ class FlextInfraUtilitiesRelease:
             )
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f"failed to write release notes: {exc}")
+            return r[bool].fail(f"failed to write release notes: {exc}", exception=exc)
 
     @staticmethod
     def update_changelog(
-        workspace_root: Path, version: str, tag: str, notes_path: Path
+        repository_root: Path, version: str, tag: str, notes_path: Path
     ) -> p.Result[bool]:
         """Update docs/changelog and docs/releases entries."""
-        docs = workspace_root / c.Infra.DIR_DOCS
+        docs = repository_root / c.Infra.DIR_DOCS
         changelog_path = docs / "CHANGELOG.md"
         latest_path = docs / "releases" / "latest.md"
         tagged_path = docs / "releases" / f"{tag}.md"
@@ -194,9 +194,7 @@ class FlextInfraUtilitiesRelease:
         for name, path in targets:
             declared = cls._release_runtime_dependencies(path)
             if declared.failure:
-                return r[t.SequenceOf[t.StrSequence]].fail(
-                    declared.error or f"release dependency read failed: {name}"
-                )
+                return r[t.SequenceOf[t.StrSequence]].from_failure(declared)
             # A dependency outside the selection is not an edge: it is already
             # on the index or out of scope, and treating it as an edge would
             # deadlock the graph on a package this release never publishes.
@@ -225,9 +223,7 @@ class FlextInfraUtilitiesRelease:
             )
         document = u.Cli.toml_read_document(pyproject)
         if document.failure:
-            return r[t.StrSequence].fail(
-                document.error or f"read release pyproject failed: {pyproject}"
-            )
+            return r[t.StrSequence].from_failure(document)
         payload = u.Cli.toml_as_mapping(document.value)
         project = payload.get(c.Infra.PROJECT) if payload else None
         if not isinstance(project, Mapping):

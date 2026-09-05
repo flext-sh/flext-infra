@@ -42,8 +42,6 @@ Infra:
           - .tmp/**
           - .claude/**
           - .vscode/**
-          - .codegraph/**
-          - .code-review-graph/**
           - .serena/**
           - .snapshots/**
           - .benchmarks/**
@@ -140,6 +138,10 @@ Infra:
             - multi-line-summary-second-line
             - no-self-use
             - non-imperative-mood
+            # Autouse is the correct contract for suite-wide isolation guards:
+            # requiring every test to opt in would let live state leak whenever
+            # one consumer omitted the fixture.
+            - pytest-fixture-autouse
             - too-many-arguments
             - too-many-branches
             - too-many-locals
@@ -152,9 +154,6 @@ Infra:
             - typing-only-standard-library-import
             - typing-only-third-party-import
           ignored-rule-rationales:
-            unsorted-imports:
-              Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
-              semantic c-t-p-m-u dependency order in FLEXT facades.
             import-outside-top-level:
               Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
@@ -546,6 +545,9 @@ Infra:
         # process wall adds one minute for orderly worker/report shutdown.
         run-timeout-seconds: 600
         termination-grace-seconds: 2
+        # The first failing test is the only actionable red. Continuing after
+        # it wastes runtime and obscures the causal failure.
+        max-failures: 1
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
@@ -615,6 +617,7 @@ Infra:
       tomlsort:
         all: true
         in_place: true
+        process-timeout-seconds: 60
         sort_first: [project, build-system, tool, dependency-groups]
       vulture:
         # NOTE (multi-agent, flext-j47u): Vulture 2.16 reports keyword-bearing

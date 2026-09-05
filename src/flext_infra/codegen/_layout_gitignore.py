@@ -40,25 +40,19 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             project_dir=project_dir,
         )
         if rendered.failure:
-            return r[t.Infra.LayoutStatus].fail(
-                rendered.error or "gitignore render failed"
-            )
+            return r[t.Infra.LayoutStatus].from_failure(rendered)
         gitignore_path = project_dir / c.Infra.GITIGNORE
         current = ""
         if gitignore_path.is_file():
             read = u.Cli.files_read_text(gitignore_path)
             if read.failure:
-                return r[t.Infra.LayoutStatus].fail(
-                    read.error or "gitignore read failed"
-                )
+                return r[t.Infra.LayoutStatus].from_failure(read)
             current = read.value
         if rendered.value == current:
             return r[t.Infra.LayoutStatus].ok("noop")
         written = u.Cli.atomic_write_text_file(gitignore_path, rendered.value)
         if written.failure:
-            return r[t.Infra.LayoutStatus].fail(
-                written.error or "gitignore write failed"
-            )
+            return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
 
     def _apply_gitignore_append(
@@ -70,9 +64,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         if gitignore_path.is_file():
             read = u.Cli.files_read_text(gitignore_path)
             if read.failure:
-                return r[t.Infra.LayoutStatus].fail(
-                    read.error or "gitignore read failed"
-                )
+                return r[t.Infra.LayoutStatus].from_failure(read)
             current = read.value
         covered = {line.strip() for line in current.splitlines()}
         missing = tuple(
@@ -91,19 +83,19 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         text += "\n".join(missing) + "\n"
         written = u.Cli.atomic_write_text_file(gitignore_path, text)
         if written.failure:
-            return r[t.Infra.LayoutStatus].fail(
-                written.error or "gitignore write failed"
-            )
+            return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
 
     @staticmethod
     def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
         """Make profile when the project is governed by a workspace."""
-        workspace_root = FlextInfraWorkspaceDetector.resolve_workspace_root(project_dir)
-        if workspace_root.failure:
+        repository_root = FlextInfraWorkspaceDetector.resolve_repository_root(
+            project_dir
+        )
+        if repository_root.failure:
             return None
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            workspace_root.value
+            repository_root.value
         )
         if workspace.failure:
             return None

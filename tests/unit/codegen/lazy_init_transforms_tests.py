@@ -18,7 +18,7 @@ class TestsFlextInfraLazyInitTransforms:
 
     def test_private_subpackage_initializer_is_lazy(self, tmp_path: Path) -> None:
         """Private implementation packages retain a lazy FLEXT facade."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         utilities_dir = package_root / "_utilities"
@@ -33,7 +33,7 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(repository_root)
 
         init_content = (utilities_dir / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
@@ -47,7 +47,7 @@ class TestsFlextInfraLazyInitTransforms:
 
     def test_source_packages_exclude_test_named_modules(self, tmp_path: Path) -> None:
         """Never publish test artifacts from an installable source package."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         models_dir = package_root / "_models"
@@ -70,7 +70,7 @@ class TestsFlextInfraLazyInitTransforms:
                 encoding=c.Cli.ENCODING_DEFAULT,
             )
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(repository_root)
         init_content = (models_dir / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
@@ -88,7 +88,7 @@ class TestsFlextInfraLazyInitTransforms:
         self, tmp_path: Path
     ) -> None:
         """Publish version declarations explicitly from the package root."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         (package_root / "__version__.py").write_text(
@@ -98,13 +98,13 @@ class TestsFlextInfraLazyInitTransforms:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(repository_root)
 
         content = (package_root / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT
         )
         tm.that(result, eq=0)
-        source_root = workspace_root / c.Infra.DEFAULT_SRC_DIR
+        source_root = repository_root / c.Infra.DEFAULT_SRC_DIR
         imported: p.Cli.CommandOutput = tm.ok(
             u.Cli.run_raw(
                 [

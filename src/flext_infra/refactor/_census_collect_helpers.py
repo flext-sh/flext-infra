@@ -10,7 +10,6 @@ from flext_infra import c, config, m
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
 
 
@@ -93,12 +92,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     @staticmethod
     def _declarative_rules_for_selection(
         rule_names: t.StrSequence | None,
-    ) -> tuple[me.EnforcementRuleSpec, ...]:
+    ) -> tuple[m.EnforcementRuleSpec, ...]:
         """Return catalog declarative rules selected by the census request."""
         return FlextInfraEnforcementEngine.declarative_rules(rule_names)
 
     @staticmethod
-    def _rule_requires_stub_file(rule: me.EnforcementRuleSpec) -> bool:
+    def _rule_requires_stub_file(rule: m.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` must scan ``.pyi`` files outside Rope modules."""
         return FlextInfraEnforcementEngine.rule_requires_stub_file(rule)
 
@@ -194,7 +193,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             module_parts = module_parts[:-1]
         module_name = ".".join(module_parts)
         package_name = module_parts[0] if module_parts else project_root.name
-        resource_path = str(stub_path.relative_to(rope.rope_workspace_root))
+        resource_path = str(stub_path.relative_to(rope.rope_repository_root))
         return m.Infra.RopeModuleIndexEntry(
             file_path=stub_path,
             resource_path=resource_path,

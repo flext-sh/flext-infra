@@ -33,7 +33,7 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        SUBPROJECTS = "subprojects"
+        DECLARED = "declared_repositories"
         ALL = "all"
 
     @unique
@@ -110,6 +110,8 @@ class FlextInfraConstantsCodegenProject:
     WORKSPACE_MANIFEST_FILENAME: Final[str] = "workspace.yaml"
     WORKSPACE_MANIFEST_VERSION: Final[int] = 3
     UV_LOCK_FILENAME: Final[str] = "uv.lock"
+    GIT_URL_SUFFIX: Final[str] = ".git"
+    "Canonical clone-URL suffix every governed RepositoryRef URL carries."
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"

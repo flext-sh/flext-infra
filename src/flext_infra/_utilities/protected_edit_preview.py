@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import difflib
 import operator
 from collections.abc import Callable, MutableMapping
 from pathlib import Path
@@ -72,17 +71,15 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         """Reverted report lines."""
         rel = FlextInfraUtilitiesProtectedEditPreview._relative_path(path, workspace)
         modified = path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        diff = list(
-            difflib.unified_diff(
-                before_source.splitlines(keepends=True),
-                modified.splitlines(keepends=True),
-                fromfile=f"a/{rel}",
-                tofile=f"b/{rel}",
-                n=3,
-            )
+        diff = FlextInfraUtilitiesProtectedEditPreview.unified_diff_lines(
+            before_source,
+            modified,
+            fromfile=f"a/{rel}",
+            tofile=f"b/{rel}",
+            max_lines=30,
         )
         report_lines = [f"  REVERTED {rel}:"]
-        report_lines.extend(f"    {line.rstrip()}" for line in diff[:30])
+        report_lines.extend(f"    {line.rstrip()}" for line in diff)
         for tool, messages in new_errors.items():
             report_lines.extend((
                 f"    NEW {tool} errors:",

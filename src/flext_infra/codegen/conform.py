@@ -2080,6 +2080,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakeWorkflowRenderSpec(dist=dist, make=codegen.make)
             )
+        if destination in {".markdownlint.json", ".markdownlintignore"}:
+            return r[p.Model].ok(
+                m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
+            )
         if destination == ".envrc":
             return r[p.Model].ok(
                 m.Infra.EnvrcRenderSpec(

@@ -24,10 +24,10 @@ jobs:
           fetch-depth: 0
 
       - name: Setup
-        run: make setup
+        run: make setup {{ make.apply_variable }}={{ make.apply_value }}
 
       - name: Check
-        run: make check
+        run: make check {{ make.apply_variable }}={{ make.apply_value }}
 
       - name: Test
-        run: make test
+        run: make test {{ make.apply_variable }}={{ make.apply_value }}

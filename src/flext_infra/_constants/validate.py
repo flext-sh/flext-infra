@@ -31,6 +31,8 @@ class FlextInfraConstantsSharedInfra:
     EXEMPT_PREFIXES: Final[frozenset[str]] = frozenset({"test_", "_"})
     FACADE_MODULE_DEPTH: Final[int] = 3
     "Relative path part count for root facade modules (src/<pkg>/<file>.py)."
+    FACADE_MINIMUM_BASES: Final[int] = 2
+    "Minimum explicit bases required by a canonical nested project facade."
     ALIAS_NAMES: Final[frozenset[str]] = frozenset({
         "c",
         "t",
@@ -227,6 +229,8 @@ class FlextInfraConstantsSharedInfra:
     # --- Timeout values in seconds (was: class Timeouts) ---
     TIMEOUT_DEFAULT: Final[int] = 300
     TIMEOUT_SHORT: Final[int] = 60
+    TIMEOUT_SHORT_POLL: Final[int] = 2
+    "Bounded wait proving a child is still blocked on a held owner lock."
     TIMEOUT_MEDIUM: Final[int] = 120
     TIMEOUT_LONG: Final[int] = 600
     TIMEOUT_CI: Final[int] = 900

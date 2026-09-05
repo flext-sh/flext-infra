@@ -53,14 +53,13 @@ class FlextInfraMypyGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> t.StrSequence:
         """Check local Python roots directly instead of recursively scanning ``.``."""
-        # NOTE (multi-agent): Mypy also owns typed tests, including PEP 420 test
-        # roots without __init__.py. Empty or explicitly excluded roots are
-        # still omitted because Mypy aborts when they are passed positionally.
+        # Empty or explicitly excluded roots are omitted because Mypy aborts
+        # when they are passed positionally.
         exclude = self._config_exclude(self._resolve_config(project_dir, ctx))
         discovered_dirs = [
             directory
             for directory in self._dirs_with_py(
-                project_dir, (*c.Infra.CHECK_DIRS_SUBPROJECT, c.Infra.DIR_TESTS)
+                project_dir, c.Infra.CHECK_DIRS_REPOSITORY
             )
             if self._has_real_module(project_dir / directory)
             and (exclude is None or not exclude.match(f"{directory}/"))
@@ -86,8 +85,8 @@ class FlextInfraMypyGate(FlextInfraGate):
                 and u.Cli.toml_table_child(tool_table, c.Infra.MYPY) is not None
             ):
                 return proj_py
-        workspace_root: Path = ctx.workspace_root
-        return workspace_root / pyproject_name
+        repository_root: Path = ctx.repository_root
+        return repository_root / pyproject_name
 
     @override
     def _build_check_command(
@@ -118,7 +117,7 @@ class FlextInfraMypyGate(FlextInfraGate):
     ) -> t.StrMapping | None:
         """Check env."""
         _ = project_dir
-        typings_generated = ctx.workspace_root / c.Infra.DIR_TYPINGS / "generated"
+        typings_generated = ctx.repository_root / c.Infra.DIR_TYPINGS / "generated"
         if not typings_generated.is_dir():
             return None
         base_env = u.Cli.process_env()
@@ -172,12 +171,10 @@ class FlextInfraMypyGate(FlextInfraGate):
                     )
             except c.ValidationError:
                 continue
-        if (not issues) and result.exit_code != 0:
+        if (not issues) and not u.Cli.process_succeeded(result.outcome):
             message = (result.stderr or result.stdout).strip()
             if not message:
-                message = (
-                    f"mypy exited with code {result.exit_code} without JSON diagnostics"
-                )
+                message = f"mypy exited with code {result.outcome.raw_return_code} without JSON diagnostics"
             issues.append(
                 m.Infra.Issue(
                     file=c.Infra.PYPROJECT_FILENAME,
@@ -188,7 +185,7 @@ class FlextInfraMypyGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraMypyGate"]

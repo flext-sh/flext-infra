@@ -362,14 +362,14 @@ def _expression_name(node: ast.expr | None, import_aliases: Mapping[str, str]) -
     return ""
 
 
-def collect_silent_failure_findings(
+def _collect_silent_failure_findings(
     tree: ast.Module, source: str
 ) -> list[_SilentFailureFinding]:
     """Collect all silent-failure findings from a rope-backed module AST."""
     return _SilentFailureAstVisitor(source).analyze(tree)
 
 
-def collect_silent_failure_fixes(
+def _collect_silent_failure_fixes(
     tree: ast.Module, source: str, *, kinds: set[str] | frozenset[str] | None = None
 ) -> list[tuple[int, int, str]]:
     """Return deterministic auto-fix replacements for silent-failure sentinels."""
@@ -381,4 +381,22 @@ def collect_silent_failure_fixes(
     ]
 
 
-__all__: list[str] = ["collect_silent_failure_findings", "collect_silent_failure_fixes"]
+class FlextInfraUtilitiesSilentFailure:
+    """Public utility owner for silent-failure AST analysis and rewrites."""
+
+    @staticmethod
+    def collect_silent_failure_findings(
+        tree: ast.Module, source: str
+    ) -> list[_SilentFailureFinding]:
+        """Collect all silent-failure findings from a rope-backed module AST."""
+        return _collect_silent_failure_findings(tree, source)
+
+    @staticmethod
+    def collect_silent_failure_fixes(
+        tree: ast.Module, source: str, *, kinds: set[str] | frozenset[str] | None = None
+    ) -> list[tuple[int, int, str]]:
+        """Return deterministic auto-fix replacements for silent failures."""
+        return _collect_silent_failure_fixes(tree, source, kinds=kinds)
+
+
+__all__: list[str] = ["FlextInfraUtilitiesSilentFailure"]

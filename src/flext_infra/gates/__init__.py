@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
@@ -16,6 +15,7 @@ if TYPE_CHECKING:
     from .canonical_alias import FlextInfraCanonicalAliasGate
     from .deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .direnv import FlextInfraDirenvGate
+    from .duplication import FlextInfraDuplicationGate
     from .layout import FlextInfraLayoutGate
     from .loc_cap import FlextInfraLocCapGate
     from .markdown import FlextInfraMarkdownGate
@@ -35,6 +35,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCanonicalAliasGate",
     "FlextInfraDeferredSelfReferenceGate",
     "FlextInfraDirenvGate",
+    "FlextInfraDuplicationGate",
     "FlextInfraGate",
     "FlextInfraLayoutGate",
     "FlextInfraLocCapGate",
@@ -61,6 +62,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".direnv": ("FlextInfraDirenvGate",),
+            ".duplication": ("FlextInfraDuplicationGate",),
             ".layout": ("FlextInfraLayoutGate",),
             ".loc_cap": ("FlextInfraLocCapGate",),
             ".markdown": ("FlextInfraMarkdownGate",),

@@ -34,7 +34,7 @@ class FlextInfraCodegenLayout(
         """Run check (default) or apply across the selected projects."""
         selected = self._project_dirs()
         if selected.failure:
-            return r[str].fail(selected.error or "project selection failed")
+            return r[str].from_failure(selected)
         spec = self._layout_spec
         reports: list[m.Infra.LayoutProjectReport] = []
         for project_dir in selected.value:
@@ -44,9 +44,7 @@ class FlextInfraCodegenLayout(
                 continue
             applied = self.apply_project(project_dir, planned)
             if applied.failure:
-                return r[str].fail(
-                    applied.error or f"layout apply failed: {project_dir.name}"
-                )
+                return r[str].from_failure(applied)
             residual = self.plan_project(project_dir)
             actionable: tuple[m.Infra.LayoutFinding, ...] = residual.actionable
             unresolved = tuple(
@@ -76,24 +74,26 @@ class FlextInfraCodegenLayout(
     def _project_dirs(self) -> p.Result[t.SequenceOf[Path]]:
         """Resolve the selected project directories, degrading to plain dirs."""
         if self.project_name is not None:
-            candidate = self.workspace_root / self.project_name
+            candidate = self.repository_root / self.project_name
             if candidate.is_dir():
                 return r[t.SequenceOf[Path]].ok((candidate,))
             if (
-                self.workspace_root.name == self.project_name
-                and self.workspace_root.is_dir()
+                self.repository_root.name == self.project_name
+                and self.repository_root.is_dir()
             ):
-                return r[t.SequenceOf[Path]].ok((self.workspace_root,))
+                return r[t.SequenceOf[Path]].ok((self.repository_root,))
             return r[t.SequenceOf[Path]].fail(
                 f"project not found in workspace: {self.project_name}"
             )
-        discovered = u.Infra.projects(self.workspace_root)
+        discovered = u.Infra.projects(self.repository_root)
         if discovered.success and discovered.value:
-            return r[t.SequenceOf[Path]].ok(
-                tuple(project.path for project in discovered.value)
-            )
-        if self.workspace_root.is_dir():
-            return r[t.SequenceOf[Path]].ok((self.workspace_root,))
+            project_dirs = dict.fromkeys((
+                self.repository_root,
+                *(project.path for project in discovered.value),
+            ))
+            return r[t.SequenceOf[Path]].ok(tuple(project_dirs))
+        if self.repository_root.is_dir():
+            return r[t.SequenceOf[Path]].ok((self.repository_root,))
         return r[t.SequenceOf[Path]].fail("no projects discovered")
 
     def _render_output(self, reports: t.SequenceOf[m.Infra.LayoutProjectReport]) -> str:

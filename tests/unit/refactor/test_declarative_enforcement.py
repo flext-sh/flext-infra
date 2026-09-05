@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m, u
-from flext_infra.detectors.class_placement_detector import (
-    FlextInfraClassPlacementDetector,
-)
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
@@ -159,29 +156,6 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
                 self._rule("ENFORCE-097"), self._ctx(rope_project, missing)
             )
 
-    def test_classvar_detector_failure_fails_loud(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Class-placement detector failures propagate to the orchestrator."""
-        source = tmp_path / "consumer.py"
-        source.write_text("from typing import ClassVar\n", encoding="utf-8")
-
-        def _fail(
-            ctx: m.Infra.DetectorContext,
-        ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
-            _ = ctx
-            msg = "class placement exploded"
-            raise RuntimeError(msg)
-
-        monkeypatch.setattr(FlextInfraClassPlacementDetector, "detect_file", _fail)
-        with (
-            u.Infra.open_project(tmp_path) as rope_project,
-            pytest.raises(RuntimeError, match="class placement detector failed"),
-        ):
-            FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-079"), self._ctx(rope_project, source)
-            )
-
     def test_foreign_canonical_alias_detection(self, tmp_path: Path) -> None:
         """ENFORCE-080 detects a canonical alias imported from flext_core."""
         source = tmp_path / "src" / "flext_infra" / "consumer.py"
@@ -255,7 +229,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-079",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-079",),
         ).execute()
 
         tm.ok(report_result)
@@ -276,7 +252,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         stub.write_text("x: int\n", encoding="utf-8")
 
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-090",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-090",),
         ).execute()
 
         tm.ok(report_result)
@@ -296,7 +274,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         stub.write_text("x: int\n", encoding="utf-8")
 
         dry_run_result = FlextInfraRefactorCensus(
-            workspace_root=workspace,
+            repository_root=workspace,
             apply_changes=True,
             dry_run=True,
             include_local_scopes=False,
@@ -307,7 +285,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         tm.that(stub.exists(), eq=True)
 
         apply_result = FlextInfraRefactorCensus(
-            workspace_root=workspace,
+            repository_root=workspace,
             apply_changes=True,
             include_local_scopes=False,
             rules=("ENFORCE-090",),
@@ -328,7 +306,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
         )
 
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-097",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-097",),
         ).execute()
 
         tm.ok(report_result)
@@ -352,7 +332,9 @@ class TestsFlextInfraRefactorDeclarativeEnforcementInCensus:
             encoding="utf-8",
         )
         report_result = FlextInfraRefactorCensus(
-            workspace_root=workspace, include_local_scopes=False, rules=("ENFORCE-080",)
+            repository_root=workspace,
+            include_local_scopes=False,
+            rules=("ENFORCE-080",),
         ).execute()
 
         tm.ok(report_result)

@@ -5,8 +5,6 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-import pytest
-
 from flext_infra import c, r
 from flext_infra.gates.bandit import FlextInfraBanditGate
 from flext_infra.gates.markdown import FlextInfraMarkdownGate
@@ -57,7 +55,7 @@ class TestExtendedRunnerExtras:
         )
         _ = (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.stub_run(stdout='{"generalDiagnostics": []}'))
+            r.ok(u.Tests.create_command_output(stdout='{"generalDiagnostics": []}'))
         ])
 
         result = u.Tests.run_gate_check(
@@ -113,13 +111,14 @@ class TestExtendedRunnerExtras:
         tm.that(len(result.issues), eq=1)
 
     def test_bandit_uses_workspace_interpreter_with_sanitized_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Prove the gate cannot bind a host or mise-provided executable."""
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
-        monkeypatch.setenv("PATH", "/usr/bin:/bin")
-
-        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+        empty_path = tmp_path / "empty-path"
+        empty_path.mkdir()
+        with tm.scope(env={"PATH": str(empty_path)}):
+            result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())

@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,8 +19,8 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesIterationDirectory:
     """Static helpers for iterating Python files within a single directory tree."""
 
-    @staticmethod
-    def iter_directory_python_files(directory: Path) -> t.SequenceOf[Path]:
+    @classmethod
+    def iter_directory_python_files(cls, directory: Path) -> t.SequenceOf[Path]:
         """Iterate production Python files in one configured source tree.
 
         Scoped to one directory (project src, subdirectory, etc.) — unlike
@@ -38,9 +37,7 @@ class FlextInfraUtilitiesIterationDirectory:
         resolved_directory = directory.resolve()
         if not resolved_directory.is_dir():
             return []
-        tracked_files = FlextInfraUtilitiesGit.git_tracked_scope_paths(
-            resolved_directory
-        )
+        tracked_files = cls.git_tracked_scope_paths(resolved_directory)
         files = (
             sorted(resolved_directory.rglob(c.Infra.EXT_PYTHON_GLOB))
             if tracked_files is None
@@ -50,8 +47,6 @@ class FlextInfraUtilitiesIterationDirectory:
                 if file_path.suffixes == [c.Infra.EXT_PYTHON]
             ]
         )
-        # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): exclusion is read
-        # directly from validated config and applies below the explicit scan boundary.
         return [
             file_path
             for file_path in files

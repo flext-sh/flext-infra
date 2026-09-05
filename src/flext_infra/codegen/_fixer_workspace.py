@@ -19,7 +19,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
     """Private project iteration for codegen fixer composition."""
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
         dry_run: bool
         rules_only: bool
 
@@ -51,7 +51,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
             ctx.violations_skipped.extend(initial_violations)
             return self._build_result(project_path.name, ctx)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
-        self._run_refactor_service(ctx, project_path)
+        u.Infra.project_semantic_utility_owners(pkg_dir=pkg_dir, ctx=ctx)
         self._run_namespace_enforcement(ctx, project_path, enforce_namespace)
         self._run_lazy_init_preflight(ctx, project_path)
         # flext-j47u (codex): each fixer owns Ruff-native output; no post-hoc mutation.
@@ -65,7 +65,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.repository_root)
             discovered = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )
@@ -75,7 +75,7 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
                 if scope
                 else discovered
             )
-        enforcer = FlextInfraNamespaceEnforcer(workspace_root=self.workspace_root)
+        enforcer = FlextInfraNamespaceEnforcer(repository_root=self.repository_root)
 
         def enforce_namespace(project_name: str) -> m.Infra.WorkspaceEnforcementReport:
             return enforcer.enforce(

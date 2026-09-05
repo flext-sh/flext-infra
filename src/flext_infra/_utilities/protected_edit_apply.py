@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import difflib
 import operator
 import shutil
 from collections.abc import MutableMapping
@@ -176,8 +175,8 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 else r[bool].fail(error)
             )
         output = (run_result.value.stdout + run_result.value.stderr)[:300]
-        passed_or_no_tests = run_result.value.exit_code == 0 or (
-            run_result.value.exit_code == cls._NO_TESTS_EXIT_CODE
+        passed_or_no_tests = u.Cli.process_succeeded(run_result.value.outcome) or (
+            run_result.value.outcome.raw_return_code == cls._NO_TESTS_EXIT_CODE
             and cls._has_no_tests_marker(output)
         )
         return r[bool].ok(True) if passed_or_no_tests else r[bool].fail(output)
@@ -252,18 +251,16 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
             return (True, [f"  BACKUP {rel} -> {backup_path.name}"])
 
         modified = py_file.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        diff = list(
-            difflib.unified_diff(
-                request.before_source.splitlines(keepends=True),
-                modified.splitlines(keepends=True),
-                fromfile=f"a/{rel}",
-                tofile=f"b/{rel}",
-                n=3,
-            )
+        diff = FlextInfraUtilitiesProtectedEditApply.unified_diff_lines(
+            request.before_source,
+            modified,
+            fromfile=f"a/{rel}",
+            tofile=f"b/{rel}",
+            max_lines=30,
         )
         _restore()
         report: t.MutableSequenceOf[str] = [f"  REVERTED {rel}:"]
-        report.extend(f"    {line.rstrip()}" for line in diff[:30])
+        report.extend(f"    {line.rstrip()}" for line in diff)
         for tool, messages in new_errors.items():
             report.extend((
                 f"    NEW {tool} errors:",

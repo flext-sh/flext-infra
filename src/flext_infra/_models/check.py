@@ -6,8 +6,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
-from flext_core import u
+from flext_core import m, u
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -61,7 +60,7 @@ class FlextInfraModelsCheck:
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -70,15 +69,15 @@ class FlextInfraModelsCheck:
 
         @classmethod
         def from_workspace_name(
-            cls, workspace_root: Path, project_name: str
+            cls, repository_root: Path, project_name: str
         ) -> FlextInfraModelsCheck.CheckProjectTarget:
             """Build a target from the public run_projects name contract."""
-            return cls(name=project_name, path=workspace_root / project_name)
+            return cls(name=project_name, path=repository_root / project_name)
 
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         memory_limit_mb: Annotated[
             int,
@@ -362,7 +361,7 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
         schema_uri: str = m.Field(
             "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",

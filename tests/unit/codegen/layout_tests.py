@@ -33,11 +33,11 @@ def _build_loose_project(tmp_path: Path, name: str = "flext-demo") -> Path:
 
 
 def _engine(
-    workspace_root: Path, *, apply_changes: bool = False
+    repository_root: Path, *, apply_changes: bool = False
 ) -> FlextInfraCodegenLayout:
-    """Build the layout service over one fixture workspace root."""
+    """Build the layout service over one fixture repository root."""
     return FlextInfraCodegenLayout(
-        workspace_root=workspace_root, apply_changes=apply_changes
+        repository_root=repository_root, apply_changes=apply_changes
     )
 
 
@@ -247,6 +247,41 @@ def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:
     paths = {finding.path for finding in report.findings}
     tm.that("data" in paths, eq=False)
     tm.that("external-docs" in paths, eq=False)
+
+
+def test_declared_repositories_are_canonical_root_entries(tmp_path: Path) -> None:
+    """A workspace root accepts only repository directories declared by topology."""
+    declared_name = "flext-declared"
+    undeclared_name = "flext-undeclared"
+    (tmp_path / declared_name).mkdir()
+    (tmp_path / undeclared_name).mkdir()
+    u.Tests.declare_workspace_projects(tmp_path, (declared_name,))
+    engine = _engine(tmp_path)
+
+    report = engine.check_project(tmp_path)
+
+    findings = {finding.path: finding for finding in report.findings}
+    tm.that(declared_name in findings, eq=False)
+    tm.that(findings[undeclared_name].rule, eq="review")
+
+
+def test_retired_generated_paths_remain_layout_neutral_until_conform(
+    tmp_path: Path,
+) -> None:
+    """The layout pass leaves explicitly retired projections to their owner."""
+    project = _build_loose_project(tmp_path)
+    retired_roots = {
+        Path(relative_path).parts[0]
+        for relative_path in config.Infra.codegen.retired_generated_paths
+    }
+    for root_name in retired_roots:
+        (project / root_name).write_text("retired\n", encoding="utf-8")
+    engine = _engine(tmp_path)
+
+    report = engine.check_project(project)
+
+    finding_paths = {finding.path for finding in report.findings}
+    tm.that(finding_paths.isdisjoint(retired_roots), eq=True)
 
 
 def test_duplicate_root_md_archives_when_docs_copy_exists(tmp_path: Path) -> None:

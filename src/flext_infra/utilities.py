@@ -13,7 +13,14 @@ from flext_cli import u
 from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
+from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra._utilities.compatibility_aliases import (
+    FlextInfraUtilitiesCompatibilityAliases,
+)
+from flext_infra._utilities.deferred_self_reference_ast import (
+    FlextInfraUtilitiesDeferredSelfReference,
+)
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
@@ -27,8 +34,8 @@ from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.github import FlextInfraUtilitiesGithub
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
+from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
 from flext_infra._utilities.namespace_analysis import (
     FlextInfraUtilitiesRefactorNamespaceFlext,
@@ -42,13 +49,14 @@ from flext_infra._utilities.namespace_facades import (
 from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
-from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
+from flext_infra._utilities.private_imports import FlextInfraUtilitiesPrivateImports
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.refactor_discovery import (
     FlextInfraUtilitiesRefactorDiscovery,
@@ -71,10 +79,16 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
+from flext_infra._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailure
+from flext_infra._utilities.transformer_header import (
+    FlextInfraUtilitiesTransformerHeader,
+)
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
 )
+from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
+from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 from flext_infra.iteration import FlextInfraUtilitiesIteration
 
 
@@ -87,18 +101,21 @@ class FlextInfraUtilities(u):
 
         u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=Path(".")))
         u.Cli.toml_read_json(path)
-        u.Infra.discover_projects(workspace_root)
+        u.Infra.discover_projects(repository_root)
         u.Infra.parse_semver("1.2.3")
     """
 
     class Infra(
         FlextInfraUtilitiesBase,
+        FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCompatibilityAliases,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
         FlextInfraUtilitiesProjectManagedArtifacts,
+        FlextInfraUtilitiesQualifiedNames,
         FlextInfraUtilitiesDiscovery,
         FlextInfraUtilitiesRopeCore,
         FlextInfraUtilitiesRopeAnalysisWorkspace,
@@ -111,6 +128,7 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRopeSource,
         FlextInfraUtilitiesRopeStructure,
         FlextInfraUtilitiesRopePep695Patch,
+        FlextInfraUtilitiesTransformerHeader,
         FlextInfraUtilitiesDocs,
         FlextInfraUtilitiesDocsApi,
         FlextInfraUtilitiesDocsAudit,
@@ -121,11 +139,13 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesDocsRender,
         FlextInfraUtilitiesDocsScope,
         FlextInfraUtilitiesDocsValidate,
-        FlextInfraUtilitiesGithub,
         FlextInfraUtilitiesDependencies,
+        FlextInfraUtilitiesDeferredSelfReference,
         FlextInfraUtilitiesGit,
         FlextInfraUtilitiesIteration,
         FlextInfraUtilitiesLogParser,
+        FlextInfraUtilitiesManagedConflicts,
+        FlextInfraUtilitiesPrivateImports,
         FlextInfraUtilitiesProtectedEdit,
         FlextInfraUtilitiesRefactor,
         FlextInfraUtilitiesRefactorCensus,
@@ -134,12 +154,14 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRefactorNamespaceCommon,
         FlextInfraUtilitiesRefactorNamespaceFacades,
         FlextInfraUtilitiesRefactorNamespaceMoves,
-        FlextInfraUtilitiesRefactorPolicy,
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesSafety,
+        FlextInfraUtilitiesSilentFailure,
         FlextInfraUtilitiesVersioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
+        FlextInfraWorktreeLifecycle,
+        FlextInfraWorktreeProvisioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

@@ -715,14 +715,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class RefactorService(Protocol):
-        """Protocol for rope-based refactor services."""
-
-        def execute(self) -> p.Result[bool]:
-            """Execute refactoring pass."""
-            ...
-
-    @runtime_checkable
     class ReleaseOrchestrator(Protocol):
         """Protocol for release orchestration services."""
 

@@ -39,7 +39,7 @@ class FlextInfraCProfileReport(s[bool]):
     @u.model_validator(mode="after")
     def _validate_report_paths(self) -> Self:
         """Keep profile input and output inside the workspace report tree."""
-        report_root = (self.workspace_root / ".reports").resolve()
+        report_root = (self.repository_root / ".reports").resolve()
         for path in (self.profile, self.output):
             try:
                 path.resolve().relative_to(report_root)
@@ -62,9 +62,7 @@ class FlextInfraCProfileReport(s[bool]):
             return r[bool].fail_op("render cProfile report", exc)
         written = u.Cli.atomic_write_text_file(self.output, stream.getvalue())
         if written.failure:
-            return r[bool].fail(
-                written.error or f"failed to write cProfile report: {self.output}"
-            )
+            return r[bool].from_failure(written)
         return r[bool].ok(True)
 
 

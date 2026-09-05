@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config
 from flext_tests import tm
 from tests import c, u
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from tests import m, t
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _read_fixture(*parts: str) -> str:
@@ -110,18 +112,67 @@ def real_python_package(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def cached_runner_project(tmp_path: Path) -> Path:
+    """Create a real one-test consumer for the public cached pytest runner."""
+    project_root = tmp_path / "cached_runner_project"
+    policy = config.Infra.codegen.make.testmon_cache
+    package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+    tests_root = project_root / policy.target_directory
+    package_root.mkdir(parents=True)
+    tests_root.mkdir(parents=True)
+    (package_root / "__init__.py").write_text(
+        "def answer() -> int:\n    return 42\n", encoding="utf-8"
+    )
+    (tests_root / "test_runtime.py").write_text(
+        "from flext_tests import tm\n"
+        "from runner_sample import answer\n\n"
+        "def test_runtime() -> None:\n"
+        "    tm.that(answer(), eq=42)\n",
+        encoding="utf-8",
+    )
+    return project_root
+
+
+@pytest.fixture
+def mod_workspace(tmp_path: Path) -> Path:
+    """Create the shared real workspace for the public refactor-mod CLI."""
+    project_document = u.read_project_document_cached(_PROJECT_ROOT)
+    project = u.build_project_metadata(_PROJECT_ROOT, project_document)
+    workspace = tmp_path / "mod_workspace"
+    tm.ok(u.Cli.ensure_dir(workspace))
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            workspace / c.Infra.PYPROJECT_FILENAME,
+            (
+                "[project]\n"
+                f'name = "{project.project.name}"\n'
+                f'version = "{project.project.version}"\n'
+            ),
+        )
+    )
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            workspace / "sample.py",
+            "u.Infra.serialization_lock_execute(paths, timeout)\n",
+        )
+    )
+    u.Tests.initialize_git_repo(workspace)
+    return workspace
+
+
+@pytest.fixture
 def real_workspace(tmp_path: Path) -> Path:
     """Create a real multi-project workspace."""
-    workspace_root = tmp_path / "workspace"
-    workspace_root.mkdir()
-    (workspace_root / "Makefile").write_text(
+    repository_root = tmp_path / "workspace"
+    repository_root.mkdir()
+    (repository_root / "Makefile").write_text(
         ".PHONY: help\nhelp:\n\t@echo 'Workspace'\n"
     )
-    (workspace_root / "pyproject.toml").write_text(
+    (repository_root / "pyproject.toml").write_text(
         '[project]\nname = "workspace"\nversion = "0.1.0"\n'
     )
     for i in range(1, 4):
-        project_dir = workspace_root / f"project_{i}"
+        project_dir = repository_root / f"project_{i}"
         project_dir.mkdir()
         (project_dir / "pyproject.toml").write_text(
             f'[project]\nname = "project-{i}"\nversion = "0.1.0"\n'
@@ -129,7 +180,7 @@ def real_workspace(tmp_path: Path) -> Path:
         src_dir = project_dir / "src" / f"project_{i}"
         src_dir.mkdir(parents=True)
         (src_dir / "__init__.py").write_text(f'"""Project {i}."""\n')
-    return workspace_root
+    return repository_root
 
 
 @pytest.fixture
@@ -194,8 +245,8 @@ def real_docs_project(tmp_path: Path) -> Path:
 @pytest.fixture
 def rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]:
     """Create a real rope workspace with semantic-analysis fixtures."""
-    workspace_root = tmp_path / "rope_workspace"
-    package_root = workspace_root / "src" / "rope_demo"
+    repository_root = tmp_path / "rope_workspace"
+    package_root = repository_root / "src" / "rope_demo"
     package_root.mkdir(parents=True, exist_ok=True)
     (package_root / "__init__.py").write_text("", encoding="utf-8")
     (package_root / "models.py").write_text(
@@ -222,8 +273,8 @@ def rope_workspace(tmp_path: Path) -> t.Pair[t.Infra.RopeProject, Path]:
         encoding="utf-8",
     )
 
-    rope_project = u.Infra.init_rope_project(workspace_root)
-    return rope_project, workspace_root
+    rope_project = u.Infra.init_rope_project(repository_root)
+    return rope_project, repository_root
 
 
 @pytest.fixture
@@ -231,9 +282,9 @@ def models_resource(
     rope_workspace: t.Pair[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeResource:
     """Return the Rope resource for the semantic models fixture module."""
-    rope_project, workspace_root = rope_workspace
+    rope_project, repository_root = rope_workspace
     resource = u.Infra.get_resource_from_path(
-        rope_project, workspace_root / "src" / "rope_demo" / "models.py"
+        rope_project, repository_root / "src" / "rope_demo" / "models.py"
     )
     validated: t.Infra.RopeResource = tm.not_none(resource)
     return validated
@@ -244,15 +295,16 @@ def services_resource(
     rope_workspace: t.Pair[t.Infra.RopeProject, Path],
 ) -> t.Infra.RopeResource:
     """Return the Rope resource for the semantic services fixture module."""
-    rope_project, workspace_root = rope_workspace
+    rope_project, repository_root = rope_workspace
     resource = u.Infra.get_resource_from_path(
-        rope_project, workspace_root / "src" / "rope_demo" / "services.py"
+        rope_project, repository_root / "src" / "rope_demo" / "services.py"
     )
     validated: t.Infra.RopeResource = tm.not_none(resource)
     return validated
 
 
 __all__: list[str] = [
+    "cached_runner_project",
     "deptry_report_payload",
     "models_resource",
     "modernizer_workspace",

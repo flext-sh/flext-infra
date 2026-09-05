@@ -31,7 +31,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
         found = applied = failed = 0
         file_results: t.MutableSequenceOf[m.Infra.ConsolidatorFileResult] = []
 
-        with FlextInfraRopeWorkspace.open_workspace(self.workspace_root) as rope:
+        with FlextInfraRopeWorkspace.open_workspace(self.repository_root) as rope:
             projects_result = self._selected_projects(rope)
             if projects_result.failure:
                 return r[str].fail("Failed to discover projects")
@@ -47,25 +47,21 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                     constants_file
                 )
                 if value_map_result.failure:
-                    return r[str].fail(
-                        value_map_result.error or "constants file read failed"
-                    )
+                    return r[str].from_failure(value_map_result)
                 value_map = value_map_result.value
                 if not value_map:
                     continue
 
                 project_files = self._project_python_files(rope, project.path)
                 if project_files.failure:
-                    return r[str].fail(
-                        project_files.error or "project python file discovery failed"
-                    )
+                    return r[str].from_failure(project_files)
                 for python_file in project_files.value:
                     scanned = self._scan_file(rope.rope_project, python_file, value_map)
                     if scanned is None:
                         continue
                     resource, source, matches = scanned
                     found += len(matches)
-                    rel_path = python_file.relative_to(self.workspace_root)
+                    rel_path = python_file.relative_to(self.repository_root)
                     if self.dry_run:
                         output_lines.extend(
                             (
@@ -79,7 +75,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                         rope.rope_project,
                         resource,
                         python_file,
-                        self.workspace_root,
+                        self.repository_root,
                         project_layout.package_name,
                         source,
                         matches,
@@ -145,11 +141,9 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
     ) -> p.Result[t.SequenceOf[p.Infra.ProjectInfo]]:
         """Return the selected projects."""
         _ = rope_workspace
-        discovered = u.Infra.projects(self.workspace_root)
+        discovered = u.Infra.projects(self.repository_root)
         if discovered.failure:
-            return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
-                discovered.error or "project discovery failed"
-            )
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].from_failure(discovered)
         selected = tuple(
             project
             for project in discovered.unwrap()

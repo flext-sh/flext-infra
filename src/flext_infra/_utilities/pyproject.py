@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import shutil
 from functools import cache, lru_cache
 from hashlib import sha256
 from pathlib import Path
@@ -40,7 +41,13 @@ class FlextInfraUtilitiesPyproject:
 
     @classmethod
     def format_toml_source(
-        cls, source: str, *, path: Path, toolchain_root: Path, taplo_version: str
+        cls,
+        source: str,
+        *,
+        path: Path,
+        toolchain_root: Path,
+        taplo_version: str,
+        process_timeout_seconds: int,
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain."""
         config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
@@ -64,6 +71,7 @@ class FlextInfraUtilitiesPyproject:
             config_digest=sha256(config_content).hexdigest(),
             execution_root=execution_root,
             taplo_version=taplo_version,
+            process_timeout_seconds=process_timeout_seconds,
         )
 
     @staticmethod
@@ -76,33 +84,61 @@ class FlextInfraUtilitiesPyproject:
         config_digest: str,
         execution_root: Path,
         taplo_version: str,
+        process_timeout_seconds: int,
     ) -> p.Result[str]:
         del config_digest
-        command = [
-            "mise",
-            "exec",
-            f"taplo@{taplo_version}",
-            "--",
-            "taplo",
-            "format",
-            "-",
-            "--stdin-filepath",
-            relative_path,
-        ]
+        taplo = FlextInfraUtilitiesPyproject._taplo_binary(
+            taplo_version, process_timeout_seconds
+        )
+        if taplo.failure:
+            return r[str].from_failure(taplo)
+        command = [str(taplo.value), "format", "-", "--stdin-filepath", relative_path]
         if config_path is not None:
             command.extend(("--config", str(config_path)))
         result = u.Cli.run_raw(
             command,
             cwd=execution_root,
             input_data=source.encode(c.Cli.ENCODING_DEFAULT),
+            timeout=process_timeout_seconds,
         )
         if result.failure:
-            return r[str].fail(result.error or "taplo format failed")
+            return r[str].from_failure(result)
         output = result.value
-        if output.exit_code != 0:
+        if not u.Cli.process_succeeded(output.outcome):
             detail = (output.stderr or output.stdout).strip()
-            return r[str].fail(f"taplo format failed ({output.exit_code}): {detail}")
+            return r[str].fail(
+                f"taplo format failed ({output.outcome.raw_return_code}): {detail}"
+            )
         return r[str].ok(output.stdout)
+
+    @staticmethod
+    @cache
+    def _taplo_binary(
+        taplo_version: str, process_timeout_seconds: int
+    ) -> p.Result[Path]:
+        """Resolve and authenticate Make's config-versioned Taplo executable."""
+        u.Cli.info(f"pyproject-tooling: resolve taplo={taplo_version}")
+        resolved = shutil.which("taplo")
+        if resolved is None:
+            return r[Path].fail(
+                "Taplo executable is absent from the Make-provisioned PATH"
+            )
+        binary = Path(resolved).resolve()
+        identified = u.Cli.run_raw(
+            (str(binary), "--version"),
+            cwd=binary.parent,
+            timeout=process_timeout_seconds,
+        )
+        if identified.failure or not u.Cli.process_succeeded(identified.value.outcome):
+            return r[Path].fail(
+                identified.error or "resolved Taplo executable failed identity check"
+            )
+        if taplo_version not in identified.value.stdout:
+            return r[Path].fail(
+                "resolved Taplo executable version differs: "
+                f"expected={taplo_version} observed={identified.value.stdout.strip()}"
+            )
+        return r[Path].ok(binary)
 
     @staticmethod
     @cache
@@ -222,7 +258,7 @@ class FlextInfraUtilitiesPyproject:
 
     @staticmethod
     @cache
-    def workspace_project_paths(workspace_root: Path) -> t.StrSequence:
+    def workspace_project_paths(repository_root: Path) -> t.StrSequence:
         """Return project paths declared by this directory's own ``.gitmodules``.
 
         A missing file denotes a standalone project and therefore an empty
@@ -230,9 +266,9 @@ class FlextInfraUtilitiesPyproject:
         remains a loud error; no pyproject table or parent directory is used as
         an alternate topology source.
         """
-        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(workspace_root)
+        declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(repository_root)
         if declared.failure:
-            msg = declared.error or f"invalid workspace topology: {workspace_root}"
+            msg = declared.error or f"invalid workspace topology: {repository_root}"
             raise ValueError(msg)
         return tuple(path.as_posix() for path in declared.value)
 

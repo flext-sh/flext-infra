@@ -11,7 +11,7 @@ from typing import ClassVar
 from flext_cli import u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.silent_failure_ast import collect_silent_failure_fixes
+from flext_infra._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailure
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -386,7 +386,9 @@ class FlextInfraUtilitiesRopeSource:
                 f"silent failure sentinel AST collection returned {type(tree).__name__}"
             )
             raise TypeError(msg)
-        changes = collect_silent_failure_fixes(tree, source, kinds=kinds)
+        changes = FlextInfraUtilitiesSilentFailure.collect_silent_failure_fixes(
+            tree, source, kinds=kinds
+        )
         if not changes:
             return source, []
         updated = cls.rewrite_source_at_offsets(
@@ -399,17 +401,17 @@ class FlextInfraUtilitiesRopeSource:
         cls, source: str, file_path: Path, transformer_fn: t.Infra.RopeTransformFn
     ) -> t.StrSequencePair:
         """Run a rope transformer against source text via a temporary context."""
-        workspace_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
-        if workspace_root is None:
+        repository_root = FlextInfraUtilitiesDiscovery.project_root(file_path)
+        if repository_root is None:
             return (source, [])
         file_path = file_path.resolve()
-        if not file_path.is_relative_to(workspace_root.resolve()):
+        if not file_path.is_relative_to(repository_root.resolve()):
             msg = f"refusing Rope rewrite outside project: {file_path}"
             raise ValueError(msg)
         original_disk_source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         try:
             with FlextInfraUtilitiesRopeCore.open_project(
-                workspace_root
+                repository_root
             ) as rope_project:
                 resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                     rope_project, file_path

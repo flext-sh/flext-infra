@@ -3,7 +3,6 @@
 .claude/**
 .vscode/**
 .codegraph/**
-.code-review-graph/**
 .serena/**
 .snapshots/**
 .benchmarks/**

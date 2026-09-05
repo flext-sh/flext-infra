@@ -34,12 +34,12 @@ class FlextInfraSettingsModels:
                 description="Force standalone mode and skip workspace auto-detection.",
             ),
         ]
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path | None,
             m.Field(
                 default=None,
-                validation_alias="FLEXT_WORKSPACE_ROOT",
-                description="Explicit workspace root for dependency orchestration.",
+                validation_alias="FLEXT_REPOSITORY_ROOT",
+                description="Explicit repository root for dependency orchestration.",
             ),
         ]
         use_https: Annotated[

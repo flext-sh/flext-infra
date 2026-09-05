@@ -63,7 +63,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "FLEXT_INFRA_PYTHON",
             "FLEXT_ROOT",
             "FLEXT_STANDALONE",
-            "FLEXT_WORKSPACE_ROOT",
+            "FLEXT_REPOSITORY_ROOT",
             "MATCH",
             "PROJECT",
             "PROJECTS",
@@ -73,7 +73,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "UV",
             "VALIDATE_GATES",
             "WHAT",
-            "WORKSPACE_ROOT",
+            "REPOSITORY_ROOT",
             *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         """Environment inherited from an outer Make invocation to discard in tests."""
@@ -209,6 +209,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
 
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
+        RELEASE_VERSION_PATCH: Final[str] = "0.1.1"
         RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
         RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
         # Fixture members depend on these siblings, so a release build must see

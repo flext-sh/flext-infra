@@ -70,6 +70,8 @@ class FlextInfraPyprojectModernizer(
         *,
         path: Path,
         format_source: bool = True,
+        root_modules: t.StrSequence = (),
+        root_packages: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
@@ -107,6 +109,8 @@ class FlextInfraPyprojectModernizer(
             dry_run=True,
             skip_comments=False,
             format_source=format_source,
+            root_modules=root_modules,
+            root_packages=root_packages,
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             generated_python_roots=generated_python_roots,
@@ -125,40 +129,42 @@ class FlextInfraPyprojectModernizer(
         project_name: t.NonEmptyStr,
         package_name: t.NonEmptyStr,
         path: Path,
+        source: str | None = None,
+        root_modules: t.StrSequence = (),
+        root_packages: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         project_kind: str | None = None,
         analysis_exclusions: t.StrSequence | None = None,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
-        """Resolve typed project/workspace values for the complete Jinja template."""
-        # flext-j47u (codex): resolve values only; template retains the full structure.
-        seed = u.Cli.toml_document()
-        project = u.Cli.toml_table()
-        project.add(c.Infra.NAME, project_name)
-        seed.add(c.Infra.PROJECT, project)
-        tool = u.Cli.toml_table()
-        flext = u.Cli.toml_table()
-        docs = u.Cli.toml_table()
-        docs.add("package_name", package_name)
-        flext.add("docs", docs)
-        tool.add("flext", flext)
-        seed.add(c.Infra.TOOL, tool)
-        # NOTE(flext-p68a.5, agent codex): resolve from the declared future roots
-        # so first generation and post-write conformance are the same fixed point.
-        conformed = self.conform_source(
-            u.Cli.toml_dumps(seed),
-            path=path,
-            format_source=False,
-            declared_python_dirs=declared_python_dirs,
-            declared_python_dirs_are_complete=declared_python_dirs_are_complete,
-            project_kind=project_kind,
-            analysis_exclusions=analysis_exclusions,
-        )
-        if conformed.failure:
-            return r[m.Infra.ToolingRuntimeContext].fail(
-                conformed.error or f"tooling resolution failed: {path}"
+        """Resolve typed Jinja values from canonical or already-conformed TOML."""
+        if source is None:
+            seed = u.Cli.toml_document()
+            project = u.Cli.toml_table()
+            project.add(c.Infra.NAME, project_name)
+            seed.add(c.Infra.PROJECT, project)
+            tool = u.Cli.toml_table()
+            flext = u.Cli.toml_table()
+            docs = u.Cli.toml_table()
+            docs.add("package_name", package_name)
+            flext.add("docs", docs)
+            tool.add("flext", flext)
+            seed.add(c.Infra.TOOL, tool)
+            conformed = self.conform_source(
+                u.Cli.toml_dumps(seed),
+                path=path,
+                format_source=False,
+                root_modules=root_modules,
+                root_packages=root_packages,
+                declared_python_dirs=declared_python_dirs,
+                declared_python_dirs_are_complete=declared_python_dirs_are_complete,
+                project_kind=project_kind,
+                analysis_exclusions=analysis_exclusions,
             )
-        payload = u.Cli.toml_mapping_from_text(conformed.value)
+            if conformed.failure:
+                return r[m.Infra.ToolingRuntimeContext].from_failure(conformed)
+            source = conformed.value
+        payload = u.Cli.toml_mapping_from_text(source)
         if payload is None:
             return r[m.Infra.ToolingRuntimeContext].fail(
                 f"tooling resolution produced invalid TOML: {path}"
@@ -244,7 +250,7 @@ class FlextInfraPyprojectModernizer(
         # generated. Prefer the DECLARED roots, which is exactly how the
         # ensure-pyrefly phase keeps pre-write scope identical to the first
         # post-write discovery without fabricating directories on disk.
-        seed_manager = FlextInfraExtraPathsManager(workspace_root=self.root)
+        seed_manager = FlextInfraExtraPathsManager(repository_root=self.root)
         discovered_search = seed_manager.pyrefly_search_paths(
             project_dir=path.parent, is_root=True
         )
@@ -292,9 +298,7 @@ class FlextInfraPyprojectModernizer(
         if project_kind is None and path.parent.resolve() != self.root.resolve():
             classified = self._classify_project(path.parent, payload=payload)
             if classified.failure:
-                return r[m.Infra.ToolingRuntimeContext].fail(
-                    classified.error or f"project classification failed: {path}"
-                )
+                return r[m.Infra.ToolingRuntimeContext].from_failure(classified)
             resolved_project_kind = classified.value
         try:
             environments = self._tooling_pyright_environments(raw_environments)
