@@ -18,7 +18,7 @@ class TestsFlextInfraTestmonDbInspector:
     def test_missing_db_is_not_saveable(self, tmp_path: Path) -> None:
         state: FlextInfraTestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
-                workspace_root=tmp_path,
+                repository_root=tmp_path,
                 db_path=tmp_path / ".testmondata",
                 pre_run_digest=None,
                 run_succeeded=True,
@@ -37,7 +37,7 @@ class TestsFlextInfraTestmonDbInspector:
         connection.close()
         state: FlextInfraTestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
-                workspace_root=tmp_path,
+                repository_root=tmp_path,
                 db_path=db,
                 pre_run_digest=None,
                 run_succeeded=True,
@@ -57,7 +57,7 @@ class TestsFlextInfraTestmonDbInspector:
         digest = FlextInfraTestmonDbInspector.digest_file(db)
         state: FlextInfraTestmonCacheState = tm.ok(
             FlextInfraTestmonDbInspector(
-                workspace_root=tmp_path,
+                repository_root=tmp_path,
                 db_path=db,
                 pre_run_digest=digest,
                 run_succeeded=True,

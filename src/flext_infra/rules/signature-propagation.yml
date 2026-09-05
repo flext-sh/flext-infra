@@ -16,4 +16,4 @@ rules:
         target_qualified_names:
           - "flext_infra.workspace.migrator.FlextInfraProjectMigrator.migrate"
         keyword_renames:
-          project_root: "workspace_root"
+          project_root: "repository_root"

@@ -73,7 +73,7 @@ def _lane(repository: Path, branch: str) -> Path:
     return Path(
         tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=branch,
                 base="HEAD",

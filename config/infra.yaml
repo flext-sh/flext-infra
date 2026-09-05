@@ -15,15 +15,15 @@ Infra:
     # repository as config/build-constraints.txt (flext-to3n7).
     build_constraints:
       - name: hatchling
-        version: 1.31.0
+        version: 1.32.0
         hashes:
-          - 6b48ad4068a482ed7239b3a8215bc55b47aad3345d58dfc94e553c5d2d46211b
-          - aac80bec8b6fe35e8480f1c335be8910fa210a0e6f735a139be205dadcacb544
+          - 0bdbde4a52b06c37e3eca395f85a762bf0ef06fe374fd8ae429dc6be10230f5f
+          - 0e17c9c3b9aa7c625acc8d0f5b622f107d5049af9ecf5ada4de1aada5be7cdbc
       - name: packaging
-        version: "26.2"
+        version: "26.3"
         hashes:
-          - 5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
-          - ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661
+          - 94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79
+          - d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
       - name: pathspec
         version: 1.1.1
         hashes:
@@ -34,6 +34,14 @@ Infra:
         hashes:
           - 7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3
           - e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
+      # hatchling 1.32.0 added tomlkit to its own requirements; under
+      # `--require-hashes` every resolved build dependency must be pinned here
+      # or the isolated build fails to resolve.
+      - name: tomlkit
+        version: 0.15.1
+        hashes:
+          - 177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304
+          - e25bbf38843005246210a12982776f27f99cb9be67160e14434d0c0d21ee1e97
       - name: trove-classifiers
         version: 2026.6.1.19
         hashes:

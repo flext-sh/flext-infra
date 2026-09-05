@@ -49,8 +49,8 @@ class TestWorkspaceChecker:
         result = FlextInfraWorkspaceChecker.resolve_gates(["unknown"])
         tm.fail(result, has="unknown gate")
 
-    def test_resolve_workspace_root_or_cwd_returns_absolute_path(self) -> None:
-        tm.that(u.Infra.resolve_workspace_root_or_cwd(None).is_absolute(), eq=True)
+    def test_resolve_repository_root_or_cwd_returns_absolute_path(self) -> None:
+        tm.that(u.Infra.resolve_repository_root_or_cwd(None).is_absolute(), eq=True)
 
     def test_run_projects_fails_when_reports_dir_is_not_a_directory(
         self, tmp_path: Path

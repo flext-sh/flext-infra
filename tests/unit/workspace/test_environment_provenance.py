@@ -160,4 +160,4 @@ class TestsFlextInfraWorkspaceEnvironmentProvenance:
             "workspace": workspace
         })
 
-        tm.that(request.workspace_root, eq=workspace)
+        tm.that(request.repository_root, eq=workspace)

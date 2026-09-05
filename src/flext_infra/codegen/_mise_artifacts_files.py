@@ -33,7 +33,16 @@ def digest(content: bytes) -> str:
 
 
 def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]:
-    """Read exact state through the canonical descriptor-authenticated owner."""
+    """Read exact state through the canonical descriptor-authenticated owner.
+
+    The descriptor-bound reader authenticates a file through its parent
+    directory, so a repository that has never carried ``bin/`` fails there
+    before it can report the file itself as absent. An optional read treats a
+    missing parent as exactly what it is -- an absent artifact -- while a
+    required read still fails loud with the original cause.
+    """
+    if not required and not path.parent.is_dir():
+        return r[m.Cli.AtomicFileState].ok(m.Cli.AtomicFileState(path=path))
     return u.Cli.atomic_read_binary_file_state(path, required=required)
 
 

@@ -44,6 +44,7 @@ class TestCodegenManifestlessExisting:
         for relative, content in preserved.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         u.Tests.write_project_beads_config(root, config.Infra.name)
+        u.Tests.copy_tracked_mise_seeds(root)
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(
@@ -68,7 +69,7 @@ class TestCodegenManifestlessExisting:
             update={"what": c.Infra.CodegenConformSurface.ALL}
         )
         initial_plan = tm.ok(
-            FlextInfraCodegenConform(workspace_root=root).plan(artifact_request)
+            FlextInfraCodegenConform(repository_root=root).plan(artifact_request)
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -86,8 +87,12 @@ class TestCodegenManifestlessExisting:
         for relative, content in preserved.items():
             tm.that(plans[relative].changed, eq=False)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".python-version", ".gitignore"):
             tm.that(plans[required].changed, eq=True)
+        # The toolchain seed travels as one set: a tree carrying the tracked
+        # launchers and lock also carries the configuration they answer, so
+        # that configuration is already conformed and plans no rewrite.
+        tm.that(plans[".mise.toml"].changed, eq=False)
 
         tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
         tm.that((root / ".env.example").exists(), eq=False)
@@ -95,7 +100,7 @@ class TestCodegenManifestlessExisting:
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that((root / required).is_file(), eq=True)
-        fixed_point = FlextInfraCodegenConform(workspace_root=root).plan(
+        fixed_point = FlextInfraCodegenConform(repository_root=root).plan(
             artifact_request.model_copy(
                 update={"mode": c.Infra.CodegenConformMode.CHECK}
             )
@@ -115,7 +120,7 @@ class TestCodegenManifestlessExisting:
         u.Tests.write_project_beads_config(root, config.Infra.name)
         (root / ".env.example").mkdir()
 
-        planned = FlextInfraCodegenConform(workspace_root=root).plan(
+        planned = FlextInfraCodegenConform(repository_root=root).plan(
             m.Infra.CodegenConformRequest(root=root)
         )
 

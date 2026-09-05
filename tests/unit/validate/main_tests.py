@@ -32,14 +32,14 @@ class TestMainInventory:
 
     def test_success(self, tmp_path: Path) -> None:
         """Inventory succeeds with empty workspace."""
-        result = FlextInfraInventoryService(workspace_root=tmp_path).execute()
+        result = FlextInfraInventoryService(repository_root=tmp_path).execute()
         tm.that(result.success, eq=True)
 
     def test_with_output_dir(self, tmp_path: Path) -> None:
         """Inventory succeeds with output directory."""
         output = tmp_path / "output"
         output.mkdir()
-        result = FlextInfraInventoryService(workspace_root=tmp_path, output_dir=output)
+        result = FlextInfraInventoryService(repository_root=tmp_path, output_dir=output)
         result = result.execute()
         tm.that(result.success, eq=True)
 
@@ -51,7 +51,7 @@ class TestMainScan:
         """Scan returns success when no violations found."""
         (tmp_path / "test.txt").write_text("hello world")
         result = FlextInfraTextPatternScanner(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             pattern="NONEXISTENT_PATTERN",
             include=["*.txt"],
             exclude=[],
@@ -64,7 +64,7 @@ class TestMainScan:
         """Scan returns failure when violations found."""
         (tmp_path / "test.txt").write_text("TODO fix this")
         result = FlextInfraTextPatternScanner(
-            workspace_root=tmp_path,
+            repository_root=tmp_path,
             pattern="TODO",
             include=["*.txt"],
             exclude=[],

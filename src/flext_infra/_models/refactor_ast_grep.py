@@ -200,7 +200,7 @@ class FlextInfraModelsRefactorGrep:
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
 
-        workspace: Annotated[t.NonEmptyStr, m.Field(description="Workspace root path")]
+        workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
         dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]
         files_scanned: Annotated[
             t.NonNegativeInt, m.Field(description="Total Python files scanned")

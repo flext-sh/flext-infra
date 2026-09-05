@@ -88,13 +88,14 @@ class FlextInfraCodegenMiseArtifactTransaction:
         scope_root = self._planner.scope_root()
         if scope_root.failure:
             return r[T].from_failure(scope_root)
-        if prepare:
-            prepared = state.prepare_common_state_root(scope_root.value)
-            if prepared.failure:
-                return r[T].from_failure(prepared)
-        lock_path = state.validate_lock_path(
-            scope_root.value, require_existing=not prepare
-        )
+        # The coordination root is transaction state, never a managed write, and
+        # it is gitignored: a fresh clone has none. Creating it before the lock
+        # in every mode is what lets `gen check` serialize against a concurrent
+        # publisher on a checkout that has never published.
+        prepared = state.prepare_common_state_root(scope_root.value)
+        if prepared.failure:
+            return r[T].from_failure(prepared)
+        lock_path = state.validate_lock_path(scope_root.value, require_existing=False)
         if lock_path.failure:
             return r[T].from_failure(lock_path)
         try:

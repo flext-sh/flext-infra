@@ -210,11 +210,14 @@ class FlextInfraConstantsBase(
     "Reproducible-build timestamp environment variable."
     RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
     "Workspace-relative hashed build-backend constraint file."
+    TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
+    "Root of regenerable codegen transaction state; never repository content."
     RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
         "hatchling",
         "packaging",
         "pathspec",
         "pluggy",
+        "tomlkit",
         "trove-classifiers",
     })
     "Complete registry package set required by the isolated Hatch build backend."
@@ -347,7 +350,7 @@ class FlextInfraConstantsBase(
     RK_WORKSPACE: Final[str] = "workspace"
     RK_ROOT: Final[str] = "root"
     ROOT_PROJECT_SELECTOR: Final[str] = "."
-    "Project selector naming the workspace root itself."
+    "Project selector naming the repository root itself."
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"
@@ -395,7 +398,7 @@ class FlextInfraConstantsBase(
     "Color-forcing variable: its mere presence makes ruff emit ANSI sequences."
 
     ENV_VAR_STANDALONE: Final[str] = "FLEXT_STANDALONE"
-    ENV_VAR_WORKSPACE_ROOT: Final[str] = "FLEXT_WORKSPACE_ROOT"
+    ENV_VAR_REPOSITORY_ROOT: Final[str] = "FLEXT_REPOSITORY_ROOT"
     ENV_VAR_USE_HTTPS: Final[str] = "FLEXT_USE_HTTPS"
     ENV_VAR_GITHUB_ACTIONS: Final[str] = "GITHUB_ACTIONS"
     ENV_VAR_GITHUB_HEAD_REF: Final[str] = "GITHUB_HEAD_REF"
