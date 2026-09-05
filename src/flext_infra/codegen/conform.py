@@ -550,6 +550,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         u.Cli.info(f"stage=apply changed={total_changed}")
         for write_index, file in enumerate(changed, start=1):
             u.Cli.emit_raw(f"  write [{write_index}/{total_changed}] {file.path}\n")
+            if file.absent:
+                target = file.path.expanduser().resolve()
+                try:
+                    target.relative_to(plan.request.root.expanduser().resolve())
+                except ValueError:
+                    return r[tuple[Path, ...]].fail(
+                        f"absent path escapes repository root: {file.path}"
+                    )
             target = file.path.expanduser().resolve()
             if not target.is_relative_to(plan.request.root.expanduser().resolve()):
                 return r[tuple[Path, ...]].fail(
