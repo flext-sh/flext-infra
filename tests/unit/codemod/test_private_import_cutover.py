@@ -173,5 +173,44 @@ class TestsFlextInfraPrivateImportCutover:
         tm.that(updated, has="metadata = m.Metadata()")
         tm.that(updated, lacks=private_import)
 
+    def test_preserves_type_checking_boundary_for_public_facade(
+        self, tmp_path: Path
+    ) -> None:
+        """Keep a type-only facade import in the original type-only boundary."""
+        facade_path = tmp_path / "flext-sample/src/flext_sample/models.py"
+        consumer_path = tmp_path / "flext-sample/src/flext_sample/service.py"
+        private_import = (
+            "from flext_sample._models.base import FlextSampleModelsBase as m"
+        )
+        sources = {
+            facade_path: (
+                "from flext_sample._models.base import FlextSampleModelsBase\n\n"
+                "class FlextSampleModels:\n"
+                "    class Metadata(FlextSampleModelsBase):\n"
+                "        pass\n\n"
+                "m = FlextSampleModels\n"
+            ),
+            consumer_path: (
+                "from __future__ import annotations\n\n"
+                "from typing import TYPE_CHECKING\n\n"
+                "if TYPE_CHECKING:\n"
+                f"    {private_import}\n\n"
+                "metadata: m.Metadata\n"
+            ),
+        }
+
+        edits = u.Infra.plan_private_import_cutover(
+            root=tmp_path,
+            sources=sources,
+            findings=(
+                self._finding(consumer_path.relative_to(tmp_path), private_import),
+            ),
+        )
+        updated = edits[0].updated_source
+
+        tm.that(updated, has="if TYPE_CHECKING:\n    from flext_sample import m")
+        tm.that(updated, lacks="\nfrom flext_sample import m\n")
+        tm.that(updated, lacks=private_import)
+
 
 __all__: list[str] = ["TestsFlextInfraPrivateImportCutover"]

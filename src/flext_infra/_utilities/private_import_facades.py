@@ -124,7 +124,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         """Reject any binding that would shadow the inserted public facade."""
         allowed_imports = {
             id(node)
-            for node in tree.body
+            for node in ast.walk(tree)
             if isinstance(node, ast.ImportFrom)
             and any(
                 (

@@ -62,10 +62,13 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
             module = getattr(alias, "name", "")
             if not isinstance(module, str) or not module.startswith(package_name):
                 continue
-            if getattr(alias, "asname", None):
-                messages.append(
+            messages.extend(
+                [
                     f"{filepath}:{cls.line(node)} — local import aliases are forbidden"
-                )
+                ]
+                if getattr(alias, "asname", None)
+                else ()
+            )
             imported = cls.layer_of_module(module, package_name)
             violation = cls._reverse_import(owner, imported, type_only=type_only)
             if violation:
@@ -91,12 +94,11 @@ class FlextInfraNamespaceRulesImports(FlextInfraNamespaceRulesBase):
         module = getattr(node, "module", "")
         if not isinstance(module, str) or not module.startswith(package_name):
             return ()
-        messages: list[str] = []
-        for alias in getattr(node, "names", ()) or ():
-            if getattr(alias, "asname", None):
-                messages.append(
-                    f"{filepath}:{cls.line(node)} — local import aliases are forbidden"
-                )
+        messages: list[str] = [
+            f"{filepath}:{cls.line(node)} — local import aliases are forbidden"
+            for alias in (getattr(node, "names", ()) or ())
+            if getattr(alias, "asname", None)
+        ]
         imported = cls.layer_of_module(module, package_name)
         if module == package_name:
             imported_aliases = tuple(

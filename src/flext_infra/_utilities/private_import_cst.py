@@ -24,9 +24,13 @@ class FlextInfraUtilitiesPrivateImportCst:
             *,
             removals: t.MappingKV[str, frozenset[str]],
             replacements: t.StrMapping,
+            public_imports: t.StrMapping,
         ) -> None:
             self.removals = removals
             self.replacements = replacements
+            self.public_imports = {alias: package for package, alias in public_imports.items()}
+            self.inserted_public_imports: set[tuple[str, str]] = set()
+            self.global_public_imports: set[tuple[str, str]] = set()
 
         @staticmethod
         def dotted_name(node: cst.BaseExpression | None) -> str | None:
@@ -86,11 +90,29 @@ class FlextInfraUtilitiesPrivateImportCst:
                 for imported in updated_node.names
                 if self.dotted_name(imported.name) not in removed
             ]
-            return (
-                updated_node.with_changes(names=retained)
-                if retained
-                else cst.RemoveFromParent()
-            )
+            targets = {
+                (package, alias)
+                for imported in original_node.names
+                if (symbol := self.dotted_name(imported.name)) in removed
+                and (
+                    reference := self.replacements.get(f"{module}.{symbol}")
+                )
+                is not None
+                and (alias := reference.split(".", 1)[0]) in self.public_imports
+                and (package := self.public_imports[alias])
+            }
+            if retained:
+                self.global_public_imports.update(targets)
+                return updated_node.with_changes(names=retained)
+            if len(targets) == 1:
+                package, alias = targets.pop()
+                self.inserted_public_imports.add((package, alias))
+                return updated_node.with_changes(
+                    module=cst.parse_expression(package),
+                    names=(cst.ImportAlias(name=cst.Name(alias)),),
+                )
+            self.global_public_imports.update(targets)
+            return cst.RemoveFromParent()
 
     @classmethod
     def rewrite_private_import_source(
@@ -102,11 +124,20 @@ class FlextInfraUtilitiesPrivateImportCst:
         public_imports: t.StrMapping,
     ) -> str:
         """Return a binding-proven rewrite with required public imports."""
-        rewritten = MetadataWrapper(cst.parse_module(source)).visit(
-            cls._Transformer(removals=removals, replacements=replacements)
+        transformer = cls._Transformer(
+            removals=removals,
+            replacements=replacements,
+            public_imports=public_imports,
         )
+        rewritten = MetadataWrapper(cst.parse_module(source)).visit(transformer)
         context = CodemodContext()
         for package, facade_alias in sorted(public_imports.items()):
+            target = (package, facade_alias)
+            if (
+                target in transformer.inserted_public_imports
+                and target not in transformer.global_public_imports
+            ):
+                continue
             AddImportsVisitor.add_needed_import(context, package, facade_alias)
         return rewritten.visit(AddImportsVisitor(context)).code
 
