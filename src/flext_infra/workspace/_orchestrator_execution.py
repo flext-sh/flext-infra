@@ -90,7 +90,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             u.Cli.emit_raw(f"[{idx}/{total}] START {project} {verb}\n")
             cmd_output = self._run_project(project, verb, idx).unwrap()
             results.append(cmd_output)
-            succeeded = cmd_output.outcome.raw_return_code == 0
+            succeeded = u.Cli.process_succeeded(cmd_output.outcome)
             state = "PASS" if succeeded else "FAIL"
             u.Cli.emit_raw(
                 f"[{idx}/{total}] {state} {project} {verb} "

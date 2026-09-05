@@ -125,7 +125,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     message=match.group("msg"),
                 )
             )
-        if result.outcome.raw_return_code != 0 and not issues:
+        if not u.Cli.process_succeeded(result.outcome) and not issues:
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -137,7 +137,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     severity="ERROR",
                 )
             )
-        return result.outcome.raw_return_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraMarkdownGate"]

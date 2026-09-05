@@ -54,7 +54,7 @@ class FlextInfraCodegenGenerationRenderersMixin(
         if pipe_result.failure:
             raise ValueError(pipe_result.error or "ruff formatting pipeline failed")
         output = pipe_result.unwrap()
-        if output.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(output.outcome):
             detail = (output.stderr or output.stdout).strip()
             msg = (
                 f"ruff formatting pipeline failed "

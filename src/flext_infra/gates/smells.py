@@ -54,7 +54,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and scan.outcome.raw_return_code != 0:
+        if not issues and not u.Cli.process_succeeded(scan.outcome):
             issues = (self._tool_failure_issue(scan),)
         auto_issues = [issue for issue in issues if self._is_auto_fixable(issue)]
         changes: list[str] = []
@@ -78,7 +78,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             if verified.success
             else (self._failure_issue(verified.error),)
         )
-        if not remaining and verified_scan.outcome.raw_return_code != 0:
+        if not remaining and not u.Cli.process_succeeded(verified_scan.outcome):
             remaining = (self._tool_failure_issue(verified_scan),)
         return self._build_check_gate_execution(
             project_dir,
@@ -108,7 +108,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and scan.outcome.raw_return_code != 0:
+        if not issues and not u.Cli.process_succeeded(scan.outcome):
             issues = (self._tool_failure_issue(scan),)
         return self._build_check_gate_execution(
             project_dir,
@@ -137,7 +137,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
-        if not issues and result.outcome.raw_return_code != 0:
+        if not issues and not u.Cli.process_succeeded(result.outcome):
             issues = (self._tool_failure_issue(result),)
         return not issues, issues
 

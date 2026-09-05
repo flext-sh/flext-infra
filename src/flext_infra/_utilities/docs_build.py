@@ -154,7 +154,7 @@ class FlextInfraUtilitiesDocsBuild:
                     passed=False,
                 )
             output = completed.value
-            if output.outcome.raw_return_code == 0:
+            if u.Cli.process_succeeded(output.outcome):
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,

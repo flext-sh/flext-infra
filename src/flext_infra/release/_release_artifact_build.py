@@ -193,7 +193,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         if build_result.failure:
             return r[m.Infra.BuildRecord].from_failure(build_result)
         command = build_result.value
-        if command.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(command.outcome):
             return r[m.Infra.BuildRecord].ok(
                 self._build_record(
                     project=project,

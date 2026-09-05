@@ -175,7 +175,7 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
                 else r[bool].fail(error)
             )
         output = (run_result.value.stdout + run_result.value.stderr)[:300]
-        passed_or_no_tests = run_result.value.outcome.raw_return_code == 0 or (
+        passed_or_no_tests = u.Cli.process_succeeded(run_result.value.outcome) or (
             run_result.value.outcome.raw_return_code == cls._NO_TESTS_EXIT_CODE
             and cls._has_no_tests_marker(output)
         )

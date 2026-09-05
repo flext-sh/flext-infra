@@ -68,7 +68,7 @@ class FlextInfraBanditGate(FlextInfraGate):
             )
             return False, issues
         issues.extend(self._bandit_issues(parsed_payload.unwrap()))
-        if not issues and result.outcome.raw_return_code != 0:
+        if not issues and not u.Cli.process_succeeded(result.outcome):
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -80,7 +80,7 @@ class FlextInfraBanditGate(FlextInfraGate):
                     severity="ERROR",
                 )
             )
-        return result.outcome.raw_return_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
     @staticmethod
     def _parse_bandit_payload(

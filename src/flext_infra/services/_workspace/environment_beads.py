@@ -101,7 +101,7 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
         if result.failure:
             return r[bool].from_failure(result)
         output = result.value
-        if output.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(output.outcome):
             return r[bool].fail(
                 f"direnv allow failed for {request.repository_root}: "
                 f"{output.stderr.strip() or output.stdout.strip()}"

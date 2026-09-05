@@ -238,7 +238,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             u.Cli.error(f"batched Ruff check failed to run: {check.error}")
             return len(targets)
         result = check.value
-        if result.outcome.raw_return_code == 0:
+        if u.Cli.process_succeeded(result.outcome):
             return 0
         detail = (result.stdout or result.stderr).strip()
         u.Cli.error(

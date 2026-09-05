@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -47,7 +47,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        if result.outcome.raw_return_code != 0 and result.stdout.strip():
+        if not u.Cli.process_succeeded(result.outcome) and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
                 raw = line.strip()
@@ -70,7 +70,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                             message="Would be reformatted",
                         )
                     )
-        return result.outcome.raw_return_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
     @override
     def _build_fix_command(

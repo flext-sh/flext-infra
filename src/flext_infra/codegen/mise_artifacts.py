@@ -217,7 +217,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         )
         if download.failure:
             return r[str].from_failure(download)
-        if download.value.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(download.value.outcome):
             cause = download.value.stderr.strip() or "curl exited non-zero"
             return r[str].fail(
                 f"checksum download failed for {selector}/{platform}: {cause}"

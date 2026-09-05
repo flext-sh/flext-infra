@@ -13,7 +13,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from flext_cli import cli, e, r
+from flext_cli import cli, e, r, u
 from flext_infra.protocols import p
 
 
@@ -45,7 +45,7 @@ class FlextInfraUtilitiesSnapshot:
         ])
         if outcome.failure:
             return r[Path].fail_op("rsync snapshot", outcome.error or "")
-        if outcome.value.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(outcome.value.outcome):
             return r[Path].fail_op("rsync snapshot", outcome.value.stderr.strip())
         return r[Path].ok(dst.resolve())
 

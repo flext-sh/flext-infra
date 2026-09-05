@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, p, t
+from flext_infra import c, p, t, u
 
 if TYPE_CHECKING:
     from flext_infra import m
@@ -146,8 +146,8 @@ class FlextInfraDependencyDetectorRuntimeSteps:
                 timeout=c.Infra.TIMEOUT_MEDIUM,
                 env=env,
             )
-            poetry_failed = (
-                run_outcome.failure or run_outcome.value.outcome.raw_return_code != 0
+            poetry_failed = run_outcome.failure or not u.Cli.process_succeeded(
+                run_outcome.value.outcome
             )
             if poetry_failed:
                 detector.log.warning(

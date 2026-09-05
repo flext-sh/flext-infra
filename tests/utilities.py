@@ -107,7 +107,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if result.failure:
                     return r[p.Cli.CommandOutput].from_failure(result)
                 output = result.value
-                if output.outcome.raw_return_code != 0:
+                if not u.Cli.process_succeeded(output.outcome):
                     return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )
@@ -329,7 +329,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if result.failure:
                     return r[p.Cli.CommandOutput].from_failure(result)
                 output = result.value
-                if output.outcome.raw_return_code != 0:
+                if not u.Cli.process_succeeded(output.outcome):
                     return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )

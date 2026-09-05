@@ -2811,7 +2811,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "provider baseline command failed: "
                 f"command={' '.join(baseline_command)}; error={baseline_result.error}"
             )
-        if baseline_result.value.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(baseline_result.value.outcome):
             return r[m.Infra.BranchAncestryPlan].fail(
                 "provider baseline ref is missing: "
                 f"{baseline_reference}; command={' '.join(baseline_command)}; "
@@ -2844,9 +2844,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # live baseline tip remains the correct anchor.
             verify_command = (c.Infra.GIT, "cat-file", "-t", triggering_sha)
             verify_result = u.Cli.run_raw(verify_command, cwd=root)
-            if (
-                verify_result.success
-                and verify_result.value.outcome.raw_return_code == 0
+            if verify_result.success and u.Cli.process_succeeded(
+                verify_result.value.outcome
             ):
                 merge_base_command = (
                     c.Infra.GIT,
@@ -2861,7 +2860,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"command={' '.join(merge_base_command)}; "
                         f"error={merge_base_result.error}"
                     )
-                if merge_base_result.value.outcome.raw_return_code != 0:
+                if not u.Cli.process_succeeded(merge_base_result.value.outcome):
                     return r[m.Infra.BranchAncestryPlan].fail(
                         "triggering commit shares no history with the baseline: "
                         f"{c.Infra.ENV_VAR_GITHUB_SHA}={triggering_sha}; "
@@ -2882,15 +2881,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         pending_merge_includes_baseline = (
             pending_merge_result.success
-            and pending_merge_result.value.outcome.raw_return_code == 0
+            and u.Cli.process_succeeded(pending_merge_result.value.outcome)
         )
         current_branch_result = u.Cli.run_raw(
             (c.Infra.GIT, "rev-parse", "--abbrev-ref", "HEAD"), cwd=root
         )
         current_branch_ref = ""
-        if (
-            current_branch_result.success
-            and current_branch_result.value.outcome.raw_return_code == 0
+        if current_branch_result.success and u.Cli.process_succeeded(
+            current_branch_result.value.outcome
         ):
             current_branch = current_branch_result.value.stdout.strip()
             if current_branch != "HEAD":
@@ -2908,7 +2906,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "cannot enumerate governed refs: "
                 f"command={' '.join(refs_command)}; error={refs_result.error}"
             )
-        if refs_result.value.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(refs_result.value.outcome):
             return r[m.Infra.BranchAncestryPlan].fail(
                 "cannot enumerate governed refs: "
                 f"command={' '.join(refs_command)}; "
@@ -2933,7 +2931,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 f"command={' '.join(worktrees_command)}; "
                 f"error={worktrees_result.error}"
             )
-        if worktrees_result.value.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(worktrees_result.value.outcome):
             return r[m.Infra.BranchAncestryPlan].fail(
                 "cannot enumerate registered worktrees: "
                 f"command={' '.join(worktrees_command)}; "
@@ -3035,7 +3033,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"exit={ancestry_result.value.outcome.raw_return_code}; "
                         f"stderr={ancestry_result.value.stderr.strip() or '<empty>'}"
                     )
-                ancestor = ancestry_result.value.outcome.raw_return_code == 0
+                ancestor = u.Cli.process_succeeded(ancestry_result.value.outcome)
                 if not ancestor and policy_reference == current_branch_ref:
                     ancestor = pending_merge_includes_baseline
             references.append(

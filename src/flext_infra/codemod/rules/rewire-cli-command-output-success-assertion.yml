@@ -1,0 +1,10 @@
+id: rewire-cli-command-output-success-assertion
+language: Python
+severity: error
+files:
+  - "flext-cli/tests/unit/test_atomic_file_identity.py"
+  - "flext-cli/tests/unit/test_runtime_utilities_core.py"
+rule:
+  pattern: tm.that($OUTPUT.exit_code, eq=0)
+fix: tm.that(u.Cli.process_succeeded($OUTPUT.outcome), eq=True)
+message: Assert complete causal command success through the public utility facade.

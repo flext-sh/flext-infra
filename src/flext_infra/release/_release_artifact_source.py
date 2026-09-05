@@ -146,7 +146,7 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
         command = scan_result.value
         if command.outcome.raw_return_code == c.Infra.GITLEAKS_LEAK_EXIT_CODE:
             return r[bool].fail("gitleaks detected a secret in staged release source")
-        if command.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(command.outcome):
             return r[bool].fail(
                 f"gitleaks failed with exit code {command.outcome.raw_return_code}"
             )

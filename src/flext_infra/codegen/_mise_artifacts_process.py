@@ -177,7 +177,7 @@ def run(
     if executed.failure:
         return r[str].from_failure(executed)
     output = executed.value.stdout + executed.value.stderr
-    if executed.value.outcome.raw_return_code != 0:
+    if not u.Cli.process_succeeded(executed.value.outcome):
         return _process_failure(
             operation,
             exit_code=executed.value.outcome.raw_return_code,

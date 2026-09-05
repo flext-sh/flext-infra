@@ -141,13 +141,12 @@ class FlextInfraUtilitiesPrivateImports:
             for private_module, symbol, qualified, package, reference in file_specs:
                 facade_alias = reference.split(".", 1)[0]
                 previous_package = public_imports.get(facade_alias)
-                if previous_package is not None:
-                    if previous_package != package:
-                        msg = (
-                            f"ambiguous facade alias {facade_alias} in {file_path}: "
-                            f"{previous_package}, {package}"
-                        )
-                        raise ValueError(msg)
+                if previous_package is not None and previous_package != package:
+                    msg = (
+                        f"ambiguous facade alias {facade_alias} in {file_path}: "
+                        f"{previous_package}, {package}"
+                    )
+                    raise ValueError(msg)
                 previous_reference = replacements.get(qualified)
                 if previous_reference not in {None, reference}:
                     msg = f"ambiguous public reference for {qualified} in {file_path}"

@@ -291,7 +291,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         if result.failure:
             raise RuntimeError(result.error or "ruff format failed")
         output = result.value
-        if output.outcome.raw_return_code != 0:
+        if not u.Cli.process_succeeded(output.outcome):
             detail = (output.stderr or output.stdout).strip()
             msg = f"ruff format failed ({output.outcome.raw_return_code}): {detail or 'no output'}"
             raise RuntimeError(msg)

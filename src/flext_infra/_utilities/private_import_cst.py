@@ -89,9 +89,10 @@ class FlextInfraUtilitiesPrivateImportCst:
                 for alias, package in self.public_imports.items()
                 if package == module_name
             }
-            if not removed or isinstance(updated_node.names, cst.ImportStar):
-                if not canonical or isinstance(updated_node.names, cst.ImportStar):
-                    return updated_node
+            if isinstance(updated_node.names, cst.ImportStar) or (
+                not removed and not canonical
+            ):
+                return updated_node
             retained = [
                 imported
                 for imported in updated_node.names
@@ -142,7 +143,7 @@ class FlextInfraUtilitiesPrivateImportCst:
                 return updated_node
             if not isinstance(updated_node.body, cst.IndentedBlock):
                 msg = "TYPE_CHECKING boundary must use an indented block"
-                raise ValueError(msg)
+                raise TypeError(msg)
             grouped: dict[str, list[str]] = {}
             for alias, package in sorted(self.public_imports.items()):
                 grouped.setdefault(package, []).append(alias)

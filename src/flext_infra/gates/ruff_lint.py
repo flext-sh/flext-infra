@@ -103,7 +103,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 )
             )
             return False, issues
-        return result.outcome.raw_return_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraRuffLintGate"]
