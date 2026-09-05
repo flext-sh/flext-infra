@@ -22,10 +22,7 @@ class FlextInfraMiseRuntime:
         self._owner = owner
 
     def latest_receipt(
-        self,
-        root: m.Infra.MiseToolchainProjectState,
-        *,
-        credential_command: str,
+        self, root: m.Infra.MiseToolchainProjectState, *, credential_command: str
     ) -> p.Result[Path]:
         """Resolve latest with an isolated seed, then return an exact receipt."""
         scratch = root.layout.transaction_root / "runtime"
@@ -45,7 +42,9 @@ class FlextInfraMiseRuntime:
             return r[Path].from_failure(created)
         seed_validation = self._owner.validate_seed(seed)
         if seed_validation.failure:
-            return r[Path].fail(seed_validation.error or "captured Mise seed is invalid")
+            return r[Path].fail(
+                seed_validation.error or "captured Mise seed is invalid"
+            )
         environment = process.credential_environment(scratch, credential_command)
         updated = process.run(
             (str(seed), "self-update", "--yes", "--no-plugins"),

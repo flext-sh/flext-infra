@@ -1,7 +1,7 @@
 """Phase: Ensure bounded Hatch wheel and source-distribution targets.
 
 Every project's wheel gets an explicit ``[tool.hatch.build.targets.wheel]``
-with ``packages = ["src/<pkg>"]``. Root data directories declared in
+with every manifest-declared source package. Root modules and data directories declared in
 ``config.Infra.tooling.tools.hatch.packaged_data_dirs`` (e.g. ``config``,
 ``templates``) are force-included into the wheel when they exist at the
 project root, so they survive ``pip install`` (``<pkg>/<dir>``). The source
@@ -28,26 +28,57 @@ class FlextInfraEnsurePackagingPhase:
         self._tool_config = tool_config
 
     def _phase(
-        self, *, package_name: str, data_dirs: t.StrSequence
+        self,
+        *,
+        package_name: str,
+        root_modules: t.StrSequence,
+        root_packages: t.StrSequence,
+        data_dirs: t.StrSequence,
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build bounded distribution targets for one resolved package name."""
         package_path = f"{c.Infra.DEFAULT_SRC_DIR}/{package_name}"
+        package_paths = (
+            package_path,
+            *(f"{c.Infra.DEFAULT_SRC_DIR}/{name}" for name in root_packages),
+        )
+        module_paths = tuple(
+            f"{c.Infra.DEFAULT_SRC_DIR}/{name}.py" for name in root_modules
+        )
         builder = (
             m.Infra.Deps.Toml.PhaseConfig
             .Builder("packaging")
             .table("hatch", "build", "targets")
-            .nested("wheel", lists=(("packages", (package_path,)),))
-            .nested("sdist", lists=(("only-include", (package_path, *data_dirs)),))
-        )
-        if data_dirs:
-            builder = builder.nested(
-                "wheel",
-                "force-include",
-                values=tuple(
-                    (data_dir, f"{package_name}/{data_dir}") for data_dir in data_dirs
-                ),
+            .nested("wheel", lists=(("packages", package_paths),))
+            .nested(
+                "sdist",
+                lists=(("only-include", (*package_paths, *module_paths, *data_dirs)),),
             )
+        )
+        force_include = (
+            *(
+                (path, name + ".py")
+                for path, name in zip(module_paths, root_modules, strict=True)
+            ),
+            *((data_dir, f"{package_name}/{data_dir}") for data_dir in data_dirs),
+        )
+        if force_include:
+            builder = builder.nested("wheel", "force-include", values=force_include)
         return builder.build()
+
+    @staticmethod
+    def _additional_sources(project_dir: Path) -> tuple[t.StrSequence, t.StrSequence]:
+        """Load additional Python distribution roots from the typed manifest owner."""
+        manifest_path = project_dir / "config" / "workspace.yaml"
+        if not manifest_path.is_file():
+            return (), ()
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            message = loaded.error or f"workspace manifest load failed: {manifest_path}"
+            raise ValueError(message)
+        manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
+        if manifest.project is None:
+            return (), ()
+        return manifest.project.root_modules, manifest.project.root_packages
 
     def apply_payload(
         self, payload: t.MutableJsonMapping, *, path: Path, is_root: bool
@@ -72,6 +103,7 @@ class FlextInfraEnsurePackagingPhase:
         if not package_name:
             return ()
         package_root = project_dir / c.Infra.DEFAULT_SRC_DIR / package_name
+        root_modules, root_packages = self._additional_sources(project_dir)
         if is_root:
             project_name = u.Infra.project_name_from_payload(path, payload).replace(
                 "-", "_"
@@ -97,7 +129,13 @@ class FlextInfraEnsurePackagingPhase:
             )
         )
         return FlextInfraTomlPhaseService.apply_payload_phases(
-            payload, self._phase(package_name=package_name, data_dirs=present_dirs)
+            payload,
+            self._phase(
+                package_name=package_name,
+                root_modules=root_modules,
+                root_packages=root_packages,
+                data_dirs=present_dirs,
+            ),
         )
 
 

@@ -613,7 +613,9 @@ class FlextInfraConfigModels:
                     or fields[0] != "github.com"
                     or fields[1] != "ssh-ed25519"
                 ):
-                    msg = "private submodule known_hosts must pin github.com ssh-ed25519"
+                    msg = (
+                        "private submodule known_hosts must pin github.com ssh-ed25519"
+                    )
                     raise ValueError(msg)
             return self
 
@@ -2109,6 +2111,20 @@ class FlextInfraConfigModels:
         package_name: Annotated[
             t.NonEmptyStr, m.Field(description="Import package name")
         ]
+        root_modules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Additional top-level Python modules shipped by the project",
+            ),
+        ] = ()
+        root_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description="Additional top-level Python packages shipped by the project",
+            ),
+        ] = ()
         class_stem: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical public facade class stem")
         ]

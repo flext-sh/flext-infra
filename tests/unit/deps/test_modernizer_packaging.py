@@ -6,12 +6,10 @@ from typing import TYPE_CHECKING
 
 from flext_infra.deps.phases.ensure_packaging import FlextInfraEnsurePackagingPhase
 from flext_tests import tm
-from tests import c, t, u
+from tests import c, m, t, u
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from tests import m
 
 
 class TestsFlextInfraDepsModernizerPackaging:
@@ -60,6 +58,47 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
 
         tm.that(changes, eq=())
+
+    def test_manifest_additional_python_roots_are_bounded_distribution_inputs(
+        self, tool_config_document: m.Infra.ToolConfigDocument, tmp_path: Path
+    ) -> None:
+        """Project metadata includes declared root modules and packages in both artifacts."""
+        package_dir = tmp_path / c.Infra.DEFAULT_SRC_DIR / "app"
+        package_dir.mkdir(parents=True)
+        (package_dir / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+        project = u.Tests.project_spec("app").model_copy(
+            update={"root_modules": ("app_launch",), "root_packages": ("app_client",)}
+        )
+        manifest = m.Infra.WorkspaceManifestSpec(
+            version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+            name="app",
+            repository=u.Tests.repository_ref("app"),
+            project=project,
+        )
+        (tmp_path / "config").mkdir()
+        tm.ok(u.Cli.yaml_dump(tmp_path / "config" / "workspace.yaml", manifest))
+        docs: t.JsonDict = {"package_name": "app"}
+        payload: t.MutableJsonMapping = {
+            "project": {"name": "application"},
+            "tool": {"flext": {"docs": docs}},
+        }
+
+        changes = FlextInfraEnsurePackagingPhase(tool_config_document).apply_payload(
+            payload, path=tmp_path / c.Infra.PYPROJECT_FILENAME, is_root=True
+        )
+
+        wheel = u.Cli.toml_mapping_path(
+            payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+        )
+        sdist = u.Cli.toml_mapping_path(
+            payload, (c.Infra.TOOL, "hatch", "build", "targets", "sdist")
+        )
+        tm.that(len(changes) > 0, eq=True)
+        tm.that(wheel["packages"], eq=["src/app", "src/app_client"])
+        tm.that(wheel["force-include"], eq={"src/app_launch.py": "app_launch.py"})
+        tm.that(
+            sdist["only-include"], eq=["src/app", "src/app_client", "src/app_launch.py"]
+        )
 
 
 __all__: t.StrSequence = []
