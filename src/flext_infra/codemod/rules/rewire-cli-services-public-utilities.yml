@@ -8,7 +8,9 @@ severity: error
 files:
   - "flext-cli/src/flext_cli/base.py"
 rule:
-  pattern: from flext_cli import m, p, t
+  all:
+    - kind: import_from_statement
+    - regex: '^from flext_cli import m, p, t$'
 fix: from flext_cli import m, p, t, u
 message: The flext-cli service base composes the public u.Cli utility facade.
 

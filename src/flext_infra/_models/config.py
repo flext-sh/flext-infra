@@ -246,10 +246,6 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Mise publication namespace under runtime state"),
         ]
-        crg_namespace: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Code Review Graph namespace under runtime state"),
-        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
@@ -457,7 +453,6 @@ class FlextInfraConfigModels:
                 "scratch_namespace",
                 "pycache_namespace",
                 "mise_namespace",
-                "crg_namespace",
             ):
                 value = getattr(self, field)
                 path = Path(value)

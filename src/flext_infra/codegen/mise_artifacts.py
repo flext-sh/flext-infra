@@ -190,11 +190,17 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
 
     @classmethod
     def _download_checksum(
-        cls, selector: str, platform: str, url: str, artifact: Path
+        cls,
+        selector: str,
+        platform: str,
+        url: str,
+        artifact: Path,
+        *,
+        runner: p.Cli.CommandRunner,
     ) -> p.Result[str]:
         """Download and hash one validated HTTPS artifact."""
         u.Cli.info(f"mise-toolchain: checksum selector={selector} platform={platform}")
-        download = u.Cli.run_raw(
+        download = runner.run_raw(
             (
                 "curl",
                 "--fail",
@@ -227,7 +233,12 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return r[str].ok(digest)
 
     def _hydrate_source(
-        self, source: str, missing: tuple[tuple[str, str, str], ...], scratch: Path
+        self,
+        source: str,
+        missing: tuple[tuple[str, str, str], ...],
+        scratch: Path,
+        *,
+        runner: p.Cli.CommandRunner,
     ) -> p.Result[str]:
         """Download each unique URL and return lock text with complete checksums."""
         hydrated = source
@@ -236,7 +247,11 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             digest = digests.get(url)
             if digest is None:
                 downloaded = self._download_checksum(
-                    selector, platform, url, scratch / f"artifact-{index}"
+                    selector,
+                    platform,
+                    url,
+                    scratch / f"artifact-{index}",
+                    runner=runner,
                 )
                 if downloaded.failure:
                     return r[str].fail(downloaded.error)
@@ -256,8 +271,10 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             )
         return r[str].ok(hydrated)
 
-    def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
-        """Download exact resolved artifacts and atomically add missing SHA-256 values."""
+    def hydrate_lock_checksums_at(
+        self, root: Path, *, runner: p.Cli.CommandRunner | None = None
+    ) -> p.Result[bool]:
+        """Download and hash artifacts through the explicitly injectable runner."""
         lock_path = root / "mise.lock"
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
@@ -273,7 +290,10 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         try:
             with TemporaryDirectory(prefix=".mise-checksum.", dir=root) as raw_scratch:
                 hydrated = self._hydrate_source(
-                    source.value, missing.value, Path(raw_scratch)
+                    source.value,
+                    missing.value,
+                    Path(raw_scratch),
+                    runner=runner if runner is not None else u.Cli,
                 )
         except OSError as exc:
             return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}")

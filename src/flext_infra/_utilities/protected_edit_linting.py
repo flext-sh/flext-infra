@@ -154,6 +154,52 @@ class FlextInfraUtilitiesProtectedEditLinting:
         return {c.Infra.ORCHESTRATOR_ENV_NO_COLOR: "1"}
 
     @classmethod
+    def _lint_command(
+        cls,
+        py_file: Path,
+        workspace: Path,
+        *,
+        command_cwd: Path,
+        tool_name: str,
+        template: t.StrSequence,
+    ) -> t.StrSequence:
+        """Build one canonical protected-edit lint command."""
+        command: t.StrSequence = (
+            *cls._workspace_tool_command(workspace, template[0]),
+            *(item.replace("{file}", str(py_file)) for item in template[1:]),
+        )
+        if (
+            tool_name == c.Infra.PYREFLY
+            and (project_config := command_cwd / c.Infra.PYPROJECT_FILENAME).is_file()
+        ):
+            command = (*command, "--config", str(project_config))
+        return (
+            FlextInfraUtilitiesResourceLimits.mypy_limited_command(command)
+            if tool_name == c.Infra.MYPY
+            else command
+        )
+
+    @classmethod
+    def lint_commands(
+        cls, py_file: Path, workspace: Path, *, gates: t.StrSequence | None = None
+    ) -> t.StrSequencePairTuple:
+        """Return the exact public command plan used by protected linting."""
+        command_cwd = cls._command_cwd(py_file, workspace)
+        return tuple(
+            (
+                tool_name,
+                cls._lint_command(
+                    py_file,
+                    workspace,
+                    command_cwd=command_cwd,
+                    tool_name=tool_name,
+                    template=template,
+                ),
+            )
+            for tool_name, template in cls._selected_lint_tools(gates)
+        )
+
+    @classmethod
     def _new_file_lint_baseline(
         cls, py_file: Path, workspace: Path, *, gates: t.StrSequence | None = None
     ) -> t.Infra.LintSnapshot:
@@ -256,19 +302,12 @@ class FlextInfraUtilitiesProtectedEditLinting:
         template: t.StrSequence,
     ) -> m.Infra.LintGateResult:
         """Run one lint gate and return a validated result model."""
-        command: t.StrSequence = (
-            *cls._workspace_tool_command(workspace, template[0]),
-            *(item.replace("{file}", str(py_file)) for item in template[1:]),
-        )
-        if (
-            tool_name == c.Infra.PYREFLY
-            and (project_config := command_cwd / c.Infra.PYPROJECT_FILENAME).is_file()
-        ):
-            command = (*command, "--config", str(project_config))
-        cmd = (
-            FlextInfraUtilitiesResourceLimits.mypy_limited_command(command)
-            if tool_name == c.Infra.MYPY
-            else command
+        cmd = cls._lint_command(
+            py_file,
+            workspace,
+            command_cwd=command_cwd,
+            tool_name=tool_name,
+            template=template,
         )
         run_result = u.Cli.run_raw(
             cmd,

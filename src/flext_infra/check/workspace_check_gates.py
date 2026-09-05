@@ -37,11 +37,14 @@ from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
 class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, *, runners: t.MappingKV[str, p.Cli.CommandRunner] | None = None
+    ) -> None:
         """Build the gate-id to gate-class mapping used by check execution."""
         self._gates: dict[str, type[FlextInfraGate]] = {
             gate_cls.gate_id: gate_cls for gate_cls in self._gate_classes()
         }
+        self._runners = dict(runners or {})
 
     @staticmethod
     def _gate_classes() -> t.VariadicTuple[type[FlextInfraGate]]:
@@ -76,7 +79,11 @@ class FlextInfraGateRegistry:
     def create(self, gate_id: str, repository_root: Path) -> FlextInfraGate | None:
         """Instantiate one registered gate for ``repository_root`` when available."""
         gate_cls = self._gates.get(gate_id)
-        return gate_cls(repository_root) if gate_cls else None
+        return (
+            gate_cls(repository_root, runner=self._runners.get(gate_id))
+            if gate_cls
+            else None
+        )
 
     @classmethod
     def default(cls) -> FlextInfraGateRegistry:

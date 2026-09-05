@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from enum import StrEnum, unique
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, Literal
 
 from flext_core import c
 from flext_infra._constants.base import FlextInfraConstantsBase as cb
@@ -40,6 +40,22 @@ def _build_namespace_family_expected_alias(
 
 class FlextInfraConstantsRefactor:
     """Shared constants for refactor modules."""
+
+    MOD_SCAN_REPORT_RELATIVE_PATH: Final[Path] = (
+        Path(cb.REPORTS_DIR_NAME) / "refactor" / "mod-findings.json"
+    )
+    "Canonical single-file evidence snapshot for the latest mod scan."
+    MOD_SCAN_REPORT_SCHEMA_VERSION: Final[Literal[1]] = 1
+    "Exact structured mod evidence schema version."
+    MOD_SCAN_REPORT_MODE: Final[int] = 0o644
+    "Canonical permission bits for structured mod evidence."
+
+    @unique
+    class ModScanCommand(StrEnum):
+        """Public mod scan modes recorded in structured evidence."""
+
+        SCAN = "scan"
+        APPLY = "apply"
 
     RK_REFACTOR: Final[str] = "refactor"
     RK_PROJECT_SCAN_DIRS: Final[str] = "project_scan_dirs"

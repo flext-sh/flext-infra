@@ -7,7 +7,7 @@ from flext_infra import u
 from flext_tests import tm
 
 
-class TestsFlextInfraCodegenManagedConflicts:
+class TestsManagedConflictRecovery:
     """Prove conflict recovery remains bounded by the document SSOT."""
 
     def test_every_generated_pyproject_section_declares_recovery(self) -> None:
@@ -44,7 +44,9 @@ class TestsFlextInfraCodegenManagedConflicts:
         )
 
         recovered = tm.ok(
-            u.Infra.recover_managed_toml(content, conflict_sections=("tool.ruff.lint.per-file-ignores",))
+            u.Infra.recover_managed_toml(
+                content, conflict_sections=("tool.ruff.lint.per-file-ignores",)
+            )
         )
 
         tm.that(

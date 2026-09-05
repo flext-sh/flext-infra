@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m, r, u
+from flext_infra import c, config
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 
@@ -181,27 +181,15 @@ class TestsCodegenMiseArtifacts:
         tm.fail(result, has="owned by codegen conform")
 
     def test_hydrating_missing_checksums_makes_offline_validation_pass(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)
-        commands: list[tuple[str, ...]] = []
-
-        def run_raw(command: tuple[str, ...], *, cwd: Path) -> r[m.Cli.CommandOutput]:
-            commands.append(command)
-            output_index = command.index("--output") + 1
-            artifact = Path(command[output_index])
-            tm.that(artifact.parent, eq=cwd)
-            artifact.write_bytes(b"resolved immutable artifact")
-            return r[m.Cli.CommandOutput].ok(
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
-            )
-
-        monkeypatch.setattr(u.Cli, "run_raw", run_raw)
+        runner = test_u.Tests.ArtifactDownloadRunner(b"resolved immutable artifact")
 
         hydrated = FlextInfraCodegenMiseArtifacts.model_validate({
             "repository_root": root,
             "check_only": True,
-        }).hydrate_lock_checksums_at(root)
+        }).hydrate_lock_checksums_at(root, runner=runner)
         check_result = FlextInfraCodegenMiseArtifacts.model_validate({
             "repository_root": root,
             "check_only": True,
@@ -209,7 +197,9 @@ class TestsCodegenMiseArtifacts:
 
         tm.ok(hydrated, eq=True)
         tm.ok(check_result, eq=True)
-        tm.that(commands, len=len(config.Infra.codegen.toolchain.mise_lock_platforms))
+        tm.that(
+            runner.commands, len=len(config.Infra.codegen.toolchain.mise_lock_platforms)
+        )
         tm.that(
             (root / "mise.lock").read_text(encoding="utf-8"), has='checksum = "sha256:'
         )

@@ -17,10 +17,10 @@ class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
 
     MERGE_CONFLICT_CONTROLS: Final[tuple[tuple[str, str], ...]] = (
-        ("current", "<<<<<<<"),
-        ("ancestor", "|||||||"),
+        ("current", "<<<<<<< "),
+        ("ancestor", "||||||| "),
         ("separator", "======="),
-        ("incoming", ">>>>>>>"),
+        ("incoming", ">>>>>>> "),
     )
     "Git merge-control kinds and their immutable protocol tokens."
     TOML_SECTION_HEADER_RE: Final[t.RegexPattern] = re.compile(

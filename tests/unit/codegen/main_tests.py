@@ -282,8 +282,19 @@ class TestMainEntryPoint:
         root = infra_git_repo
         _seed_public_conform_checkout(root)
         lock = root / "mise.lock"
-        corrupted = lock.read_bytes() + b"\ninvalid = [\n"
-        lock.write_bytes(corrupted)
+        lock_state = tm.ok(u.Cli.atomic_read_binary_file_state(lock, required=True))
+        lock_mode = lock_state.mode
+        tm.that(lock_mode is None, eq=False)
+        if lock_mode is None:
+            raise AssertionError("required Mise lock has no permission mode")
+        if lock_state.content is None:
+            raise AssertionError("required Mise lock has no bytes")
+        corrupted = lock_state.content + b"\ninvalid = [\n"
+        tm.ok(
+            u.Cli.atomic_write_binary_file_guarded(
+                lock_state, corrupted, permission_mode=lock_mode
+            )
+        )
         journal, transaction = _mise_transaction_state(root)
 
         applied = u.Cli.run_raw(

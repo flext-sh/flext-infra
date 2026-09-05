@@ -311,6 +311,39 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
                 return r[p.Cli.CommandOutput].ok(result.value)
 
+        class ArtifactDownloadRunner(DeptryRunner):
+            """Typed runner fixture that materializes a requested output artifact."""
+
+            def __init__(self, payload: bytes) -> None:
+                super().__init__(r.ok(m.Cli.CommandOutput()))
+                self._payload = payload
+
+            @override
+            def run_raw(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
+            ) -> p.Result[p.Cli.CommandOutput]:
+                self._record(cmd)
+                del timeout, env, remove_env_keys, input_data, capture
+                if "--output" not in cmd or cwd is None:
+                    return r[p.Cli.CommandOutput].fail(
+                        "artifact command requires --output and cwd"
+                    )
+                artifact = Path(cmd[cmd.index("--output") + 1])
+                if artifact.parent.resolve() != Path(cwd).resolve():
+                    return r[p.Cli.CommandOutput].fail(
+                        "artifact output must be inside the command cwd"
+                    )
+                artifact.write_bytes(self._payload)
+                return r[p.Cli.CommandOutput].ok(m.Cli.CommandOutput())
+
             @override
             def run(
                 self,
@@ -924,45 +957,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     workspace, project_names
                 )
 
-            return workspace
-
-        @staticmethod
-        def create_github_workspace(
-            root: Path,
-            *,
-            project_names: t.StrSequence = (),
-            source_workflow: str = "name: CI\n",
-        ) -> Path:
-            """Create a GitHub workflow workspace fixture."""
-            workspace = root / "workspace"
-            workspace.mkdir(parents=True, exist_ok=True)
-            TestsFlextInfraUtilities.Tests.write_project_beads_config(
-                workspace, "workspace"
-            )
-            workflow_dir = workspace / ".github/workflows"
-            workflow_dir.mkdir(parents=True, exist_ok=True)
-            (workflow_dir / "ci.yml").write_text(source_workflow, encoding="utf-8")
-            for name in project_names:
-                project = workspace / name
-                project.mkdir(parents=True, exist_ok=True)
-                (project / "pyproject.toml").write_text(
-                    (
-                        "[project]\n"
-                        f'name = "{name}"\n'
-                        'version = "0.1.0"\n'
-                        'dependencies = ["flext-core>=0.1.0"]\n'
-                    ),
-                    encoding="utf-8",
-                )
-                src_dir = project / "src" / name.replace("-", "_")
-                src_dir.mkdir(parents=True, exist_ok=True)
-                (src_dir / "__init__.py").write_text("", encoding="utf-8")
-                TestsFlextInfraUtilities.Tests.write_project_beads_config(project, name)
-                TestsFlextInfraUtilities.Tests.initialize_git_repo(project)
-            if project_names:
-                TestsFlextInfraUtilities.Tests.declare_workspace_projects(
-                    workspace, project_names
-                )
             return workspace
 
         @staticmethod

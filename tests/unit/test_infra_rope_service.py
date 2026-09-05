@@ -416,6 +416,33 @@ class TestsFlextInfraInfraRopeService:
                 eq={"first", "second"},
             )
 
+    def test_workspace_refresh_invalidates_source_and_semantic_snapshots(
+        self, tmp_path: Path
+    ) -> None:
+        """Refresh exposes file changes after preserving stable session snapshots."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        module_path = package_root / "service.py"
+        original_source = "class Original:\n    pass\n"
+        changed_source = "class Changed:\n    pass\n"
+        module_path.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
+
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            original_semantic = rope.semantic(module_path)
+            tm.that(rope.source(module_path), eq=original_source)
+
+            module_path.write_text(changed_source, encoding=c.Cli.ENCODING_DEFAULT)
+            tm.that(rope.source(module_path), eq=original_source)
+            tm.that(rope.semantic(module_path) is original_semantic, eq=True)
+
+            rope.refresh()
+            tm.that(rope.source(module_path), eq=changed_source)
+            tm.that(
+                tuple(item.name for item in rope.semantic(module_path).class_infos),
+                eq=("Changed",),
+            )
+
     def test_workspace_refresh_can_preserve_reverted_name_indexes(
         self, tmp_path: Path
     ) -> None:

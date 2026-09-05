@@ -337,11 +337,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def crg_namespace(self) -> str:
-            """Code Review Graph namespace under runtime state."""
-            ...
-
-        @property
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the Python minor line."""
             ...
@@ -860,19 +855,3 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
-
-    @runtime_checkable
-    class GithubCliHandlers(Protocol):
-        """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
-            ...

@@ -51,6 +51,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     _resource_cache: dict[str, t.Infra.RopeResource | None] = u.PrivateAttr(
         default_factory=dict
     )
+    _source_cache: dict[str, str] = u.PrivateAttr(default_factory=dict)
+    _semantic_cache: dict[str, m.Infra.ModuleSemanticState] = u.PrivateAttr(
+        default_factory=dict
+    )
     _name_index: dict[str, tuple[tuple[Path, str, tuple[int, ...]], ...]] | None = (
         u.PrivateAttr(default_factory=lambda: None)
     )
@@ -153,6 +157,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
+        self._source_cache.clear()
+        self._semantic_cache.clear()
         if not preserve_indexes:
             self._name_index = None
             self._import_dependents_index = None
@@ -177,22 +183,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def module(self, file_path: Path) -> m.Infra.RopeModuleIndexEntry | None:
         """Return one indexed module entry for the requested file path."""
         raw = self.workspace_index.modules_by_path.get(str(file_path.resolve()))
-        if raw is None:
-            return None
-        validated: m.Infra.RopeModuleIndexEntry = (
-            m.Infra.RopeModuleIndexEntry.model_validate(raw)
-        )
-        return validated
+        return raw
 
     def package(self, package_dir: Path) -> m.Infra.RopePackageIndexEntry | None:
         """Return one indexed package entry for the requested directory."""
         raw = self.workspace_index.packages_by_dir.get(str(package_dir.resolve()))
-        if raw is None:
-            return None
-        validated: m.Infra.RopePackageIndexEntry = (
-            m.Infra.RopePackageIndexEntry.model_validate(raw)
-        )
-        return validated
+        return raw
 
     def modules(
         self, *, project_names: t.StrSequence | None = None
@@ -217,7 +213,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def source(self, file_path: Path) -> str:
         """Return one module source snapshot from the active Rope workspace."""
+        cache_key = str(file_path.resolve())
+        cached = self._source_cache.get(cache_key)
+        if cached is not None:
+            return cached
         text: str = self._resource_for(file_path).read()
+        self._source_cache[cache_key] = text
         return text
 
     def import_dependents(self, import_target: str) -> tuple[Path, ...]:
@@ -441,9 +442,14 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     def semantic(self, file_path: Path) -> m.Infra.ModuleSemanticState:
         """Return one cached semantic snapshot for a module path."""
+        cache_key = str(file_path.resolve())
+        cached = self._semantic_cache.get(cache_key)
+        if cached is not None:
+            return cached
         state: m.Infra.ModuleSemanticState = u.Infra.get_module_semantic_state(
             self.rope_project, self._resource_for(file_path)
         )
+        self._semantic_cache[cache_key] = state
         return state
 
     def exports(
@@ -468,6 +474,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         self._module_convention_cache.clear()
         self._module_object_cache.clear()
         self._resource_cache.clear()
+        self._source_cache.clear()
+        self._semantic_cache.clear()
         self._name_index = None
         self._import_dependents_index = None
 

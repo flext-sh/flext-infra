@@ -6,6 +6,8 @@ severity: error
 files:
   - "flext-infra/src/**/*.py"
   - "flext-infra/tests/**/*.py"
+ignores:
+  - "**/__init__.py"
 rule:
   pattern: FlextInfraCodegenManagedConflicts.recover_toml($$$ARGS)
 fix: u.Infra.recover_managed_toml($$$ARGS)
@@ -17,6 +19,8 @@ severity: error
 files:
   - "flext-infra/src/**/*.py"
   - "flext-infra/tests/**/*.py"
+ignores:
+  - "**/__init__.py"
 rule:
   pattern: from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
 fix: from flext_infra import u

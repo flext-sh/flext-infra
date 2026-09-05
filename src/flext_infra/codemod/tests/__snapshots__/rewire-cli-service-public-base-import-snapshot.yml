@@ -1,0 +1,9 @@
+id: rewire-cli-service-public-base-import
+snapshots:
+  from flext_cli.base import s:
+    fixed: from flext_cli import s
+    labels:
+    - source: from flext_cli.base import s
+      style: primary
+      start: 0
+      end: 28

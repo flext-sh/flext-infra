@@ -1,0 +1,16 @@
+id: rewire-cli-service-private-utility-mro
+snapshots:
+  ? |
+    class FlextCliPipeline(s, FlextCliUtilitiesPipeline):
+        pass
+  : fixed: |+
+      class FlextCliPipeline(s):
+          pass
+
+    labels:
+    - source: |-
+        class FlextCliPipeline(s, FlextCliUtilitiesPipeline):
+            pass
+      style: primary
+      start: 0
+      end: 62

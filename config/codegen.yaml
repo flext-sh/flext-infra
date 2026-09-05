@@ -15,7 +15,6 @@ Infra:
       scratch_namespace: scratch
       pycache_namespace: pycache
       mise_namespace: mise-artifacts
-      crg_namespace: code-review-graph
       uv_link_mode: copy
       # Supported resolution environments for the generated lock. Windows is
       # not a deployment target, so uv skips that split instead of resolving it.

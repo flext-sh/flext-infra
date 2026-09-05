@@ -151,9 +151,7 @@ class TestsFlextInfraGitFacet:
         created.write_text("VALUE = 1\n", encoding="utf-8")
 
         changed = tm.ok(
-            u.Infra.git_changed_paths(
-                m.Infra.GitRepoRequest(repo_root=real_git_repo)
-            )
+            u.Infra.git_changed_paths(m.Infra.GitRepoRequest(repo_root=real_git_repo))
         )
 
         tm.that(set(changed), eq={readme.resolve(), created.resolve()})

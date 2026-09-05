@@ -60,11 +60,6 @@ if TYPE_CHECKING:
     from .codegen.lazy_init import FlextInfraCodegenLazyInit
     from .codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
     from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
-    from .codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
-    from .codegen.managed_conflicts_core import (
-        ManagedConflictError,
-        recover_managed_toml,
-    )
     from .codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
     from .codegen.pipeline import FlextInfraCodegenPipeline
     from .codegen.project_new import FlextInfraCodegenProjectNew
@@ -324,7 +319,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenLazyInitPlanner",
     "FlextInfraCodegenMakeBootstrap",
-    "FlextInfraCodegenManagedConflicts",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
     "FlextInfraCodegenProjectNew",
@@ -496,7 +490,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraWrapperRootNamespaceRefactor",
     "GateContractInfraError",
     "GateContractUsageError",
-    "ManagedConflictError",
     "RefactorRoutes",
     "ValidationCommandRoutes",
     "ValidationRoutes",
@@ -531,7 +524,6 @@ __all__: tuple[str, ...] = (
     "maintenance",
     "p",
     "r",
-    "recover_managed_toml",
     "refactor",
     "register_smell_fixer",
     "release",
@@ -573,11 +565,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.lazy_init": ("FlextInfraCodegenLazyInit",),
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
             ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
-            ".codegen.managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
-            ".codegen.managed_conflicts_core": (
-                "ManagedConflictError",
-                "recover_managed_toml",
-            ),
             ".codegen.mise_artifacts": ("FlextInfraCodegenMiseArtifacts",),
             ".codegen.pipeline": ("FlextInfraCodegenPipeline",),
             ".codegen.project_new": ("FlextInfraCodegenProjectNew",),

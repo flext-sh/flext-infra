@@ -5,7 +5,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from flext_infra import c, config, m, p, r, t, u
+
+from flext_infra import c, m, p, r, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 
@@ -68,10 +69,8 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
         if output.exit_code != 0:
             if output.exit_code == finding_exit_code and output.stdout.strip():
-                sys.stderr.write(output.stdout)
-                if not output.stdout.endswith("\n"):
-                    sys.stderr.write("\n")
-                sys.stderr.flush()
+                if output.stderr.strip():
+                    return r[p.Cli.CommandOutput].fail(output.stderr)
                 return r[p.Cli.CommandOutput].ok(output)
             detail = "\n".join(
                 stream.strip()
@@ -136,12 +135,16 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _parse_findings(
-        stdout: str, rule_ids: frozenset[str], fixable_ids: frozenset[str]
+        stdout: str,
+        rule_file: Path,
+        rule_ids: frozenset[str],
+        fixable_ids: frozenset[str],
     ) -> p.Result[m.Infra.ModScanReport]:
         """Validate every JSONL finding without dropping malformed output."""
         findings = 0
         nodes = 0
         files: set[Path] = set()
+        entries: list[m.Infra.ModScanFinding] = []
         for raw_line in stdout.splitlines():
             line = raw_line.strip()
             if not line:
@@ -155,26 +158,66 @@ class FlextInfraModGateEngine:
             rule_id = finding.get("ruleId")
             text = finding.get("text")
             file = finding.get("file")
+            source_range = finding.get("range")
             if (
                 rule_id not in rule_ids
                 or not isinstance(text, str)
                 or not isinstance(file, str)
+                or not isinstance(source_range, Mapping)
             ):
                 return r.fail(f"invalid ast-grep finding contract: {line}")
-            files.add(Path(file))
+            file_path = Path(file)
+            files.add(file_path)
+            replacement: str | None = None
+            actionable = False
             if rule_id in fixable_ids:
                 replacement = finding.get("replacement")
                 if not isinstance(replacement, str):
                     return r.fail(f"fixable ast-grep finding lacks replacement: {line}")
-                if text == replacement:
-                    continue
-                nodes += 1
+                actionable = text != replacement
+                if actionable:
+                    nodes += 1
+            repository = file_path.parts[0] if len(file_path.parts) > 1 else "."
+            entries.append(
+                m.Infra.ModScanFinding(
+                    rule_file=rule_file.name,
+                    rule_id=rule_id,
+                    repository=repository,
+                    file=file_path,
+                    range=t.Cli.JSON_MAPPING_ADAPTER.validate_python(source_range),
+                    text=text,
+                    replacement=replacement,
+                    actionable=actionable,
+                    payload=t.Cli.JSON_MAPPING_ADAPTER.validate_python(finding),
+                )
+            )
             findings += 1
         return r.ok(
             m.Infra.ModScanReport(
-                findings=findings, nodes=nodes, files=frozenset(files)
+                findings=findings,
+                nodes=nodes,
+                files=frozenset(files),
+                entries=tuple(entries),
             )
         )
+
+    @staticmethod
+    def _report_evidence(receipt: m.Infra.ModScanEvidenceReceipt) -> None:
+        """Print bounded totals and the authenticated full-evidence identity."""
+        evidence = receipt.evidence
+        sys.stderr.write(
+            "mod: findings "
+            f"total={evidence.findings} actionable={evidence.actionable} "
+            f"detection_only={evidence.detection_only}\n"
+        )
+        for repository, count in evidence.totals_by_repository.items():
+            sys.stderr.write(f"mod: findings repository={repository} count={count}\n")
+        for rule_id, count in evidence.totals_by_rule.items():
+            sys.stderr.write(f"mod: findings rule={rule_id} count={count}\n")
+        sys.stderr.write(
+            f"mod: findings report={receipt.path} sha256={receipt.sha256}\n"
+        )
+        sys.stderr.flush()
 
     @classmethod
     def validate(cls, root: Path, changed_files: t.SequenceOf[Path]) -> p.Result[bool]:
@@ -236,61 +279,6 @@ class FlextInfraModGateEngine:
             return r.fail("\n".join(diagnostics))
         for owner, files in selected_groups:
             FlextInfraLspDiagnosticsDetector.validate(owner, files).unwrap()
-        return cls.validate_code_review_graph(root)
-
-    @classmethod
-    def validate_code_review_graph(cls, root: Path) -> p.Result[bool]:
-        """Refresh and query the external graph through its documented CLI."""
-        resolved_root = root.resolve()
-        toolchain = config.Infra.codegen.toolchain
-        graph_root = (
-            resolved_root.parent
-            / toolchain.state_directory_name
-            / resolved_root.name
-            / toolchain.crg_namespace
-        )
-        project_roots = u.Infra.governed_project_roots(resolved_root)
-        for index, project_root in enumerate(project_roots, start=1):
-            data_dir = (
-                graph_root
-                if project_root == resolved_root
-                else graph_root / project_root.name
-            )
-            u.Cli.ensure_dir(data_dir).unwrap()
-            environment = {c.Infra.CRG_DATA_DIR: str(data_dir)}
-            sys.stderr.write(
-                f"mod: CRG project {index}/{len(project_roots)} {project_root}\n"
-            )
-            sys.stderr.flush()
-            commands: tuple[t.StrSequence, ...] = (
-                (
-                    c.Infra.CODE_REVIEW_GRAPH,
-                    "update",
-                    "--brief",
-                    "--repo",
-                    str(project_root),
-                    "--data-dir",
-                    str(data_dir),
-                ),
-                (
-                    c.Infra.CODE_REVIEW_GRAPH,
-                    "detect-changes",
-                    "--base",
-                    "HEAD",
-                    "--brief",
-                    "--repo",
-                    str(project_root),
-                ),
-                (
-                    c.Infra.CODE_REVIEW_GRAPH,
-                    "refactor",
-                    "suggest",
-                    "--repo",
-                    str(project_root),
-                ),
-            )
-            for command in commands:
-                cls._run_tool(project_root, command, env=environment).unwrap()
         return r[bool].ok(True)
 
     @classmethod
@@ -301,7 +289,7 @@ class FlextInfraModGateEngine:
         findings = 0
         nodes = 0
         files: set[Path] = set()
-        detection_only: list[str] = []
+        entries: list[m.Infra.ModScanFinding] = []
         known_rule_ids: set[str] = set()
         targets = u.Infra.ast_grep_scan_targets(root)
         total = len(rules)
@@ -324,11 +312,12 @@ class FlextInfraModGateEngine:
             if run.failure:
                 return r[m.Infra.ModScanReport].from_failure(run)
             report = cls._parse_findings(
-                run.value.stdout or "", rule_ids, fixable_ids
+                run.value.stdout, rule, rule_ids, fixable_ids
             ).unwrap()
             findings += report.findings
             nodes += report.nodes
             files.update(report.files)
+            entries.extend(report.entries)
             if fix and report.nodes:
                 apply_command = u.Infra.ast_grep_scan_command(
                     rule, targets=targets, update_all=True
@@ -338,23 +327,29 @@ class FlextInfraModGateEngine:
                 )
                 if apply_run.failure:
                     return r[m.Infra.ModScanReport].from_failure(apply_run)
-            if fix and report.findings > report.nodes:
-                affected = ", ".join(path.as_posix() for path in sorted(report.files))
-                detection_only.append(
-                    f"{report.findings - report.nodes} detection-only finding(s) "
-                    f"from {rule.name} across {len(report.files)} file(s): {affected}"
-                )
-        if fix and detection_only:
-            details = "\n".join(detection_only)
+        complete_report = m.Infra.ModScanReport(
+            findings=findings,
+            nodes=nodes,
+            files=frozenset(files),
+            entries=tuple(entries),
+        )
+        receipt = u.Infra.publish_mod_scan_evidence(
+            root,
+            complete_report,
+            command=(
+                c.Infra.ModScanCommand.APPLY if fix else c.Infra.ModScanCommand.SCAN
+            ),
+            scope=targets,
+        )
+        if receipt.failure:
+            return r[m.Infra.ModScanReport].from_failure(receipt)
+        cls._report_evidence(receipt.value)
+        if fix and findings > nodes:
             return r.fail(
                 "detection-only findings require fix-forward after all automated "
-                f"rewrites:\n{details}"
+                f"rewrites: report={receipt.value.path} sha256={receipt.value.sha256}"
             )
-        return r[m.Infra.ModScanReport].ok(
-            m.Infra.ModScanReport(
-                findings=findings, nodes=nodes, files=frozenset(files)
-            )
-        )
+        return r[m.Infra.ModScanReport].ok(complete_report)
 
 
 __all__: list[str] = ["FlextInfraModGateEngine"]

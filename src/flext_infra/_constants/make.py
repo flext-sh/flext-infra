@@ -35,7 +35,6 @@ class FlextInfraConstantsMake:
     CLI_GROUP_CODEGEN: Final[str] = "codegen"
     CLI_GROUP_DEPS: Final[str] = "deps"
     CLI_GROUP_DOCS: Final[str] = "docs"
-    CLI_GROUP_GITHUB: Final[str] = "github"
     CLI_GROUP_MAINTENANCE: Final[str] = "maintenance"
     CLI_GROUP_REFACTOR: Final[str] = "refactor"
     CLI_GROUP_RELEASE: Final[str] = "release"

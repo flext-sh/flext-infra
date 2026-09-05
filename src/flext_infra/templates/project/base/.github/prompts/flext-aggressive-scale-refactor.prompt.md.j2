@@ -21,7 +21,9 @@ fallbacks before mutation. Rewire every consumer to one typed SSOT, regenerate,
 and remove the superseded path in the same change.
 
 Use only selector-free root Make verbs. Mutation uses `APPLY=Y`; structural
-rewires use `make mod APPLY=Y`, which owns ast-grep, CRG, and LSP validation.
+rewires use `make mod APPLY=Y`, which owns ast-grep and standalone LSP validation.
+Host-runtime CRG indexing belongs to ai-hub and may augment the workflow only
+through its installed commands, hooks, or MCP when that runtime is available.
 Tests run only through `make test APPLY=Y` with the persistent testmon cache.
 
 Finish only after public runtime proof, fixed-point generation, zero residue,

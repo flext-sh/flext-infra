@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, main as infra_main, u
+from flext_infra import c, m, main as infra_main, u
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
 from flext_tests import tm
@@ -191,7 +191,9 @@ class TestsFlextInfraModCircuitApply:
 
 
 class TestsFlextInfraModCliRoute:
-    def test_refactor_mod_check_route(self, tmp_path: Path) -> None:
+    def test_refactor_mod_check_route(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         project = tm.ok(u.read_project_metadata(_PROJECT_ROOT))
         root = _repo(
             tmp_path,
@@ -200,9 +202,25 @@ class TestsFlextInfraModCliRoute:
         )
 
         exit_code = infra_main(["refactor", "mod", "--workspace", str(root)])
+        captured = capsys.readouterr()
+        report_path = root / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
+        report_bytes = report_path.read_bytes()
+        evidence = m.Infra.ModScanEvidence.model_validate_json(report_bytes)
+        digest = u.Cli.sha256_bytes(report_bytes)
 
         tm.that(exit_code, ne=0)
         tm.that(
             (root / "sample.py").read_text(encoding="utf-8"),
             eq="u.Infra.serialization_lock_execute(paths, timeout)\n",
         )
+        tm.that(evidence.schema_version, eq=c.Infra.MOD_SCAN_REPORT_SCHEMA_VERSION)
+        tm.that(evidence.command, eq=c.Infra.ModScanCommand.SCAN)
+        tm.that(evidence.root, eq=root.resolve())
+        tm.that(evidence.findings, gte=1)
+        tm.that(
+            any(entry.file == Path("sample.py") for entry in evidence.entries), eq=True
+        )
+        console = captured.out + captured.err
+        tm.that(console, has=str(report_path))
+        tm.that(console, has=digest)
+        tm.that(console, lacks='"ruleId"')

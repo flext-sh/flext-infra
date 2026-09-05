@@ -1,0 +1,22 @@
+id: rewire-cli-service-base-utilities-mro
+snapshots:
+  ? |
+    class FlextCliServiceBase[TDomainResult: p.Base = m.Cli.RuntimeStatus](
+        s[TDomainResult]
+    ):
+        pass
+  : fixed: |+
+      class FlextCliServiceBase[TDomainResult: p.Base = m.Cli.RuntimeStatus](
+          s[TDomainResult], u.Cli
+      ):
+          pass
+
+    labels:
+    - source: |-
+        class FlextCliServiceBase[TDomainResult: p.Base = m.Cli.RuntimeStatus](
+            s[TDomainResult]
+        ):
+            pass
+      style: primary
+      start: 0
+      end: 104

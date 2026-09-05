@@ -51,7 +51,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._workspace_scan()
         parsed = self._issues_from_sarif(scan.stdout, project_dir.name)
-        issues = (
+        issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
         if not issues and scan.exit_code != 0:
@@ -105,7 +105,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._workspace_scan()
         parsed = self._issues_from_sarif(scan.stdout, project_dir.name)
-        issues = (
+        issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
         if not issues and scan.exit_code != 0:
@@ -190,6 +190,29 @@ class FlextInfraSmellsGate(FlextInfraGate):
             message=message or "qlty returned no parseable SARIF output",
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
+
+    def _drop_generated_projections(
+        self, issues: tuple[m.Infra.Issue, ...]
+    ) -> tuple[m.Infra.Issue, ...]:
+        """Drop findings in generated projections; their owner is the generator.
+
+        A file whose first line carries the canonical AUTO-GENERATED header is a
+        projection of one codegen source, so duplication between projections is
+        by construction and the smell gate reports only hand-written source.
+        Unreadable files keep their findings (fail-closed).
+        """
+        visible: list[m.Infra.Issue] = []
+        for issue in issues:
+            path = self._repository_root / issue.file
+            try:
+                with path.open("r", encoding=c.Cli.ENCODING_DEFAULT) as handle:
+                    first_line = handle.readline()
+            except OSError:
+                visible.append(issue)
+                continue
+            if c.Infra.AUTOGEN_HEADER not in first_line:
+                visible.append(issue)
+        return tuple(visible)
 
     @classmethod
     def _issues_from_sarif(

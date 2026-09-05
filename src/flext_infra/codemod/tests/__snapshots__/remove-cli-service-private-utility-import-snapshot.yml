@@ -1,0 +1,51 @@
+id: remove-cli-service-private-utility-import
+snapshots:
+  from flext_cli._utilities.docx import FlextCliUtilitiesDocx:
+    fixed: ''
+    labels:
+    - source: from flext_cli._utilities.docx import FlextCliUtilitiesDocx
+      style: primary
+      start: 0
+      end: 59
+  from flext_cli._utilities.pipeline import FlextCliUtilitiesPipeline:
+    fixed: ''
+    labels:
+    - source: from flext_cli._utilities.pipeline import FlextCliUtilitiesPipeline
+      style: primary
+      start: 0
+      end: 67
+  from flext_cli._utilities.pptx import FlextCliUtilitiesPptx:
+    fixed: ''
+    labels:
+    - source: from flext_cli._utilities.pptx import FlextCliUtilitiesPptx
+      style: primary
+      start: 0
+      end: 59
+  from flext_cli._utilities.rules import FlextCliUtilitiesRules:
+    fixed: ''
+    labels:
+    - source: from flext_cli._utilities.rules import FlextCliUtilitiesRules
+      style: primary
+      start: 0
+      end: 61
+  from flext_cli._utilities.runtime import FlextCliUtilitiesRuntime:
+    fixed: ''
+    labels:
+    - source: from flext_cli._utilities.runtime import FlextCliUtilitiesRuntime
+      style: primary
+      start: 0
+      end: 65
+  from flext_cli._utilities.xlsx import FlextCliUtilitiesXlsx:
+    fixed: ''
+    labels:
+    - source: from flext_cli._utilities.xlsx import FlextCliUtilitiesXlsx
+      style: primary
+      start: 0
+      end: 59
+  from flext_cli._utilities.yaml_model import FlextCliUtilitiesYamlModel:
+    fixed: ''
+    labels:
+    - source: from flext_cli._utilities.yaml_model import FlextCliUtilitiesYamlModel
+      style: primary
+      start: 0
+      end: 70

@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from .git import FlextInfraUtilitiesGit
     from .github import FlextInfraUtilitiesGithub
     from .log_parser import FlextInfraUtilitiesLogParser
+    from .managed_conflicts import FlextInfraUtilitiesManagedConflicts
     from .namespace import FlextInfraUtilitiesCodegenNamespace
     from .namespace_analysis import FlextInfraUtilitiesRefactorNamespaceFlext
     from .namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
@@ -156,6 +157,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGithub",
     "FlextInfraUtilitiesGithubSyncMixin",
     "FlextInfraUtilitiesLogParser",
+    "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesNamespaceConfig",
     "FlextInfraUtilitiesProcess",
     "FlextInfraUtilitiesProjectDiscovery",
@@ -285,6 +287,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".git": ("FlextInfraUtilitiesGit",),
             ".github": ("FlextInfraUtilitiesGithub",),
             ".log_parser": ("FlextInfraUtilitiesLogParser",),
+            ".managed_conflicts": ("FlextInfraUtilitiesManagedConflicts",),
             ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
             ".namespace_analysis": ("FlextInfraUtilitiesRefactorNamespaceFlext",),
             ".namespace_common": ("FlextInfraUtilitiesRefactorNamespaceCommon",),

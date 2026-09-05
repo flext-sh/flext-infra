@@ -4,6 +4,10 @@
 id: ban-managed-conflict-bootstrap-import
 language: Python
 severity: error
+files:
+  - "flext-infra/src/**/*.py"
+ignores:
+  - "**/__init__.py"
 rule:
   pattern: from flext_infra.codegen.managed_conflicts_bootstrap import $$$NAMES
 message: Plan managed conflict recovery through FlextInfraCodegenConform.
@@ -11,6 +15,10 @@ message: Plan managed conflict recovery through FlextInfraCodegenConform.
 id: ban-deleted-managed-conflict-owner-import
 language: Python
 severity: error
+files:
+  - "flext-infra/src/**/*.py"
+ignores:
+  - "**/__init__.py"
 rule:
   pattern: from flext_infra.codegen.managed_conflicts_core import $$$NAMES
 message: Consume managed conflict recovery through u.Infra.recover_managed_toml.
@@ -18,6 +26,10 @@ message: Consume managed conflict recovery through u.Infra.recover_managed_toml.
 id: ban-managed-conflict-bootstrap-call
 language: Python
 severity: error
+files:
+  - "flext-infra/src/**/*.py"
+ignores:
+  - "**/__init__.py"
 rule:
   pattern: prepare_managed_conflicts($$$ARGS)
 message: Plan managed conflict recovery through FlextInfraCodegenConform.

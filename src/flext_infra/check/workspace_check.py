@@ -26,7 +26,11 @@ class FlextInfraWorkspaceChecker(
     _default_reports_dir: Path
 
     def __init__(
-        self, repository_root: Path | None = None, *, workspace: Path | None = None
+        self,
+        repository_root: Path | None = None,
+        *,
+        workspace: Path | None = None,
+        gate_runners: t.MappingKV[str, p.Cli.CommandRunner] | None = None,
     ) -> None:
         """Initialize workspace checker services and paths."""
         resolved_workspace = u.Infra.resolve_repository_root_or_cwd(
@@ -34,7 +38,7 @@ class FlextInfraWorkspaceChecker(
         )
         super().__init__(repository_root=resolved_workspace)
         self._repository_root = self.repository_root
-        self._registry = FlextInfraGateRegistry.default()
+        self._registry = FlextInfraGateRegistry(runners=gate_runners)
         report_dir = u.Cli.resolve_report_dir(
             self._repository_root, c.Infra.PROJECT, c.Infra.VERB_CHECK
         )

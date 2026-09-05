@@ -1,9 +1,0 @@
-id: rewire-mod-crg-public
-snapshots:
-  FlextInfraModGateEngine._validate_code_review_graph(root):
-    fixed: FlextInfraModGateEngine.validate_code_review_graph(root)
-    labels:
-    - source: FlextInfraModGateEngine._validate_code_review_graph(root)
-      style: primary
-      start: 0
-      end: 57

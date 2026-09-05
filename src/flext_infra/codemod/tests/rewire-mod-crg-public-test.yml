@@ -1,5 +1,0 @@
-id: rewire-mod-crg-public
-valid:
-  - FlextInfraModGateEngine.validate_code_review_graph(root)
-invalid:
-  - FlextInfraModGateEngine._validate_code_review_graph(root)

@@ -21,7 +21,6 @@ from flext_infra._models.docs import FlextInfraModelsDocs
 from flext_infra._models.enforcement import FlextInfraModelsEnforcement
 from flext_infra._models.gates import FlextInfraModelsGates
 from flext_infra._models.git import FlextInfraModelsGit
-from flext_infra._models.github import FlextInfraModelsGithub
 from flext_infra._models.layout import FlextInfraModelsLayout
 from flext_infra._models.mixins import FlextInfraModelsMixins
 from flext_infra._models.refactor import FlextInfraModelsRefactor
@@ -56,7 +55,6 @@ class FlextInfraModels(m):
         # facades added for the deep-FLEXT dataclass -> m.Infra migration.
         FlextInfraModelsEnforcement,
         FlextInfraModelsGates,
-        FlextInfraModelsGithub,
         FlextInfraModelsLayout,
         FlextInfraModelsRefactor,
         FlextInfraModelsRelease,
