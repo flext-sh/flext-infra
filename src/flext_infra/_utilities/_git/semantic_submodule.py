@@ -44,9 +44,12 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
         """Read one ``.gitmodules`` value, returning empty text when unset."""
         try:
             repo = cls._repo(request.repo_root)
+            # The declaration file is addressed absolutely: the resolved Git
+            # handle may sit in an enclosing repository whose own working tree
+            # carries no (or another) ``.gitmodules``.
             value = repo.git.config(
                 "-f",
-                c.Infra.GITMODULES,
+                str(request.repo_root / c.Infra.GITMODULES),
                 "--get",
                 "--default",
                 "",
@@ -74,7 +77,7 @@ class FlextInfraUtilitiesGitSemanticSubmoduleMixin(
             repo = cls._repo(request.repo_root)
             listed = repo.git.config(
                 "-f",
-                c.Infra.GITMODULES,
+                str(gitmodules),
                 "--name-only",
                 "--get-regexp",
                 r"^submodule\..*\.path$",

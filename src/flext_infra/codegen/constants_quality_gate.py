@@ -157,7 +157,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             return {
                 "passed": False,
                 "detail": run.error or "execution error",
-                "exit_code": 127,
+                "exit_code": c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
             }
         output = (run.value.stderr or run.value.stdout or "").strip()
         lines = [line for line in output.splitlines() if line.strip()]

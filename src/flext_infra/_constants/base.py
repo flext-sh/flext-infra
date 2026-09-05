@@ -210,11 +210,14 @@ class FlextInfraConstantsBase(
     "Reproducible-build timestamp environment variable."
     RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
     "Workspace-relative hashed build-backend constraint file."
+    TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
+    "Root of regenerable codegen transaction state; never repository content."
     RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
         "hatchling",
         "packaging",
         "pathspec",
         "pluggy",
+        "tomlkit",
         "trove-classifiers",
     })
     "Complete registry package set required by the isolated Hatch build backend."

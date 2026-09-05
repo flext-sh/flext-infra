@@ -26,20 +26,24 @@ if TYPE_CHECKING:
     from .test_environment_provenance import (
         TestsFlextInfraWorkspaceEnvironmentProvenance,
     )
-    from .test_facade_environment_sync import TestsFlextInfraFacadeEnvironmentSync
+    from .test_facade_environment_sync import (
+        TestsFlextInfraFacadeEnvironmentSync,
+        TestsFlextInfraProjectMiseComposition,
+    )
     from .test_main import TestsFlextInfraWorkspaceMain, workspace_main
     from .test_provider_resolution_ssh_remotes import (
         TestsProviderResolutionAcceptsSshRemotes,
     )
     from .test_repository_local_topology import TestsRepositoryLocalTopology
-    from .test_vscode import TestsFlextInfraCodegenVscode
     from .test_repository_root_make_contract import TestsRepositoryRootMakeContract
+    from .test_vscode import TestsFlextInfraCodegenVscode
     from .worktree_fixture import WorktreeFixture
 __all__: tuple[str, ...] = (
     "TestsBeadsEnvironmentSync",
     "TestsDetectorOwnsNoProjectRegistry",
     "TestsFlextInfraCodegenVscode",
     "TestsFlextInfraFacadeEnvironmentSync",
+    "TestsFlextInfraProjectMiseComposition",
     "TestsFlextInfraWorkspaceEnvironmentProvenance",
     "TestsFlextInfraWorkspaceMain",
     "TestsProviderResolutionAcceptsSshRemotes",
@@ -89,14 +93,17 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_environment_provenance": (
                 "TestsFlextInfraWorkspaceEnvironmentProvenance",
             ),
-            ".test_facade_environment_sync": ("TestsFlextInfraFacadeEnvironmentSync",),
+            ".test_facade_environment_sync": (
+                "TestsFlextInfraFacadeEnvironmentSync",
+                "TestsFlextInfraProjectMiseComposition",
+            ),
             ".test_main": ("TestsFlextInfraWorkspaceMain", "workspace_main"),
             ".test_provider_resolution_ssh_remotes": (
                 "TestsProviderResolutionAcceptsSshRemotes",
             ),
             ".test_repository_local_topology": ("TestsRepositoryLocalTopology",),
-            ".test_vscode": ("TestsFlextInfraCodegenVscode",),
             ".test_repository_root_make_contract": ("TestsRepositoryRootMakeContract",),
+            ".test_vscode": ("TestsFlextInfraCodegenVscode",),
             ".worktree_fixture": ("WorktreeFixture",),
             "flext_tests": (
                 "c",

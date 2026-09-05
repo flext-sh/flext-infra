@@ -34,6 +34,14 @@ Infra:
         hashes:
           - 7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3
           - e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
+      # hatchling 1.32.0 added tomlkit to its own requirements; under
+      # `--require-hashes` every resolved build dependency must be pinned here
+      # or the isolated build fails to resolve.
+      - name: tomlkit
+        version: 0.15.1
+        hashes:
+          - 177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304
+          - e25bbf38843005246210a12982776f27f99cb9be67160e14434d0c0d21ee1e97
       - name: trove-classifiers
         version: 2026.6.1.19
         hashes:

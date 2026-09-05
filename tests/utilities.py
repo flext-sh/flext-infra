@@ -686,6 +686,43 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def write_standalone_workspace_manifest(
+            project_dir: Path,
+            name: str,
+            *,
+            upstream: str | None = None,
+            inherited_facets: t.StrSequence = (),
+        ) -> Path:
+            """Write the declared ``config/workspace.yaml`` of one standalone repository.
+
+            The Makefile projection reads declarations only, so this fixture is
+            the complete topology input for ``codegen conform --what makefile
+            --scope self``. Every value is derived from the same typed SSOT the
+            production loader validates against, never frozen by hand.
+            """
+            repository = TestsFlextInfraUtilities.Tests.repository_ref(
+                name, role=c.Infra.MakeProfile.STANDALONE
+            ).model_copy(update={"checkout": c.Infra.CheckoutKind.INDEPENDENT})
+            project = TestsFlextInfraUtilities.Tests.project_spec(name)
+            if upstream is not None:
+                project = project.model_copy(update={"upstream": upstream})
+            if inherited_facets:
+                project = project.model_copy(
+                    update={"inherited_facets": tuple(inherited_facets)}
+                )
+            manifest = m.Infra.WorkspaceManifestSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=name,
+                repository=repository,
+                project=project,
+            )
+            config_dir = project_dir / c.CONFIG_DIR_NAME
+            config_dir.mkdir(parents=True, exist_ok=True)
+            manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
+            tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
+            return manifest_path
+
+        @staticmethod
         def standalone_workspace(
             project_dir: Path, name: str = "flext-demo"
         ) -> m.Infra.WorkspaceSpec:
@@ -695,12 +732,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             package_root = project_dir / "src" / name.replace("-", "_")
             package_root.mkdir(parents=True, exist_ok=True)
             (package_root / "__init__.py").write_text("", encoding="utf-8")
+            provider = TestsFlextInfraUtilities.Tests.provider()
             (project_dir / "pyproject.toml").write_text(
                 "[project]\n"
                 f'name = "{name}"\n'
                 'version = "0.1.0"\n'
                 'requires-python = ">=3.13,<3.14"\n'
-                "dependencies = []\n",
+                "dependencies = []\n"
+                "[project.urls]\n"
+                f'Repository = "{provider.base_url.rstrip("/")}/{name}"\n',
                 encoding="utf-8",
             )
             TestsFlextInfraUtilities.Tests.write_project_beads_config(project_dir, name)
@@ -712,13 +752,90 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def required_beads(
+            workspace: m.Infra.WorkspaceSpec,
+        ) -> m.Infra.BeadsProjectSpec:
+            """Return the ledger identity the observed loader must always resolve.
+
+            ``WorkspaceSpec.beads`` is absent only on a spec built from
+            declarations alone, which the Makefile projection uses. Every
+            observed load owns an identity, so a test asserting one states that
+            contract here instead of repeating a narrowing at each call site.
+            """
+            beads = workspace.beads
+            tm.that(beads is None, eq=False, msg="observed workspace owns a ledger")
+            if beads is None:
+                msg = "observed workspace spec resolved no Beads identity"
+                raise AssertionError(msg)
+            return beads
+
+        @staticmethod
+        def mise_release() -> str:
+            """Return the release this checkout's tracked Mise launchers embed.
+
+            The toolchain SSOT stopped declaring a Mise version when the tracked
+            ``bin/mise`` launcher became its pinned owner, so a fixture reads the
+            release back through the production owner instead of freezing one.
+            """
+            from flext_infra.codegen.mise_artifacts import (
+                FlextInfraCodegenMiseArtifacts,
+            )
+
+            root = Path(__file__).resolve().parents[1]
+            return tm.ok(FlextInfraCodegenMiseArtifacts.launcher_release(root))
+
+        @staticmethod
+        def copy_tracked_mise_seeds(root: Path) -> None:
+            """Copy this checkout's committed Mise launchers and lock into ``root``.
+
+            ``codegen conform`` validates the tracked, checksum-verified
+            ``bin/mise`` seeds instead of minting them, so a fixture tree that
+            conforms the full surface must carry them exactly as a governed
+            repository does. ``.mise.toml`` is deliberately not copied: it is a
+            planned projection the fixture expects conform to write.
+            """
+            source_root = Path(__file__).resolve().parents[1]
+            for relative in ("bin/mise", "bin/mise.cmd", "mise.lock"):
+                source = source_root / relative
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                _ = shutil.copy2(source, destination)
+
+        @staticmethod
+        def mise_generate_install_script_branch() -> str:
+            """Return the stub branch that materializes a generated launcher.
+
+            ``make setup`` no longer downloads Mise: it asks the tracked
+            launcher to ``generate install-script --write <path>`` and then runs
+            the file that appears there. A stub that ignores the request leaves
+            nothing to run, so it delegates the generated launcher back to
+            itself.
+            """
+            return (
+                'case "$*" in *"generate install-script"*)\n'
+                '  target=""\n'
+                '  while [ "$#" -gt 0 ]; do\n'
+                '    if [ "$1" = "--write" ]; then target="$2"; fi\n'
+                "    shift\n"
+                "  done\n"
+                '  if [ -z "$target" ]; then exit 2; fi\n'
+                '  mkdir -p "${target%/*}"\n'
+                '  printf \'#!/bin/sh\\nexec "%s" "$@"\\n\' "$0" > "$target"\n'
+                '  chmod +x "$target"\n'
+                "  exit 0 ;;\n"
+                "esac\n"
+            )
+
+        @staticmethod
         def write_mise_stub(path: Path) -> Path:
             """Write the one hermetic Mise contract used by Make setup fixtures."""
             TestsFlextInfraUtilities.Tests.write_executable(
                 path,
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
-                f"printf '%s\\n' '{config.Infra.codegen.toolchain.mise_version}'; exit; fi\n"
+                f"printf '%s\\n' '{TestsFlextInfraUtilities.Tests.mise_release()}'; "
+                "exit; fi\n"
+                f"{TestsFlextInfraUtilities.Tests.mise_generate_install_script_branch()}"
                 f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
                 f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
                 'if [ "$1" = "trust" ]; then exit; fi\n'

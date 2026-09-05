@@ -421,3 +421,64 @@ dependencies = []
             eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}],
         )
         tm.that("project" not in excludes[0], eq=True)
+
+    def test_consumer_provider_does_not_reown_fleet_sources(self) -> None:
+        """A consumer under its own provider still sources flext-* from the fleet.
+
+        An undeclared flext distribution is derived from the ordered provider
+        contract, never from the consumer repository's own provider, so an
+        external organization can adopt the toolchain without re-owning it.
+        """
+        fleet_providers = config.Infra.codegen.providers
+        consumer_provider = m.Infra.ProviderSpec(
+            name="consumer-org",
+            organization="consumer-org",
+            base_url="https://github.com/consumer-org",
+            branch="main",
+        )
+        consumer = _repository(
+            "consumer", role=c.Infra.MakeProfile.STANDALONE, path="."
+        ).model_copy(
+            update={
+                "provider": consumer_provider.name,
+                "url": f"{consumer_provider.base_url}/consumer.git",
+                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+            }
+        )
+        workspace = m.Infra.WorkspaceSpec(
+            beads=m.Infra.BeadsProjectSpec(
+                version=c.Infra.BEADS_CONFIG_VERSION,
+                workspace="consumer",
+                database="consumer",
+                issue_prefix="consumer",
+            ),
+            name="consumer",
+            repository=consumer,
+        )
+        fleet_dev = next(
+            item
+            for item in config.Infra.codegen.scaffold.project.dev
+            if item.startswith("flext-")
+        )
+        source = """[project]
+name = "consumer"
+dependencies = []
+"""
+        conformed = tm.ok(
+            u.Infra.pyproject_conform(
+                source,
+                providers=(*fleet_providers, consumer_provider),
+                workspace=workspace,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
+                toolchain=config.Infra.codegen.toolchain,
+                required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
+            )
+        )
+        dev_group = tomllib.loads(conformed)["dependency-groups"]["dev"]
+        fleet_requirement = next(
+            item for item in dev_group if item.startswith(f"{fleet_dev} @ git+")
+        )
+        tm.that(
+            fleet_requirement, has=f"git+{fleet_providers[0].base_url}/{fleet_dev}.git@"
+        )
+        tm.that(any(consumer_provider.base_url in item for item in dev_group), eq=False)

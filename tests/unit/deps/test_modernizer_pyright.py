@@ -71,10 +71,10 @@ class TestsFlextInfraDepsModernizerPyright:
         root_source.mkdir(parents=True, exist_ok=True)
         (root_source / "__init__.py").write_text("VALUE = 1\n", encoding="utf-8")
         _ = (flext_core / "pyproject.toml").write_text(
-            "[project]\nname='flext-core'\n", encoding="utf-8"
+            "[project]\nname='flext-core'\nversion='0.1.0'\n", encoding="utf-8"
         )
         _ = (flext_api / "pyproject.toml").write_text(
-            "[project]\nname='flext-api'\n", encoding="utf-8"
+            "[project]\nname='flext-api'\nversion='0.1.0'\n", encoding="utf-8"
         )
         _ = (detached_project / "pyproject.toml").write_text(
             "[project]\nname='demo-migration-tool'\ndependencies=['flext-core>=0.1.0']\n",
@@ -97,6 +97,9 @@ class TestsFlextInfraDepsModernizerPyright:
         )
         u.Tests.declare_workspace_projects(tmp_path, ("flext-core", "flext-api"))
         u.Tests.write_project_beads_config(tmp_path, "workspace")
+        # Declared members are governed repositories: each carries its ledger.
+        u.Tests.write_project_beads_config(flext_core, "flext-core")
+        u.Tests.write_project_beads_config(flext_api, "flext-api")
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -358,13 +361,14 @@ class TestsFlextInfraDepsModernizerPyright:
         flext_core = tmp_path / "flext-core"
         (flext_core / "src" / "flext_core").mkdir(parents=True, exist_ok=True)
         _ = (flext_core / "pyproject.toml").write_text(
-            "[project]\nname='flext-core'\n", encoding="utf-8"
+            "[project]\nname='flext-core'\nversion='0.1.0'\n", encoding="utf-8"
         )
         _ = (flext_core / "src" / "flext_core" / "__init__.py").write_text(
             "VALUE = 1\n", encoding="utf-8"
         )
         u.Tests.declare_workspace_projects(tmp_path, ("flext-core",))
         u.Tests.write_project_beads_config(tmp_path, "workspace")
+        u.Tests.write_project_beads_config(flext_core, "flext-core")
         phase = FlextInfraEnsurePyrightConfigPhase(tool_config_document)
         fleet_doc = u.Cli.toml_document()
         declared_doc = u.Cli.toml_document()

@@ -285,7 +285,7 @@ class TestsRepositoryLocalTopology:
         tm.that(mode, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(workspace.repository.name, eq="child")
         tm.that(workspace.name, eq="child-workspace")
-        tm.that(workspace.beads.workspace, eq="child-workspace")
+        tm.that(u.Tests.required_beads(workspace).workspace, eq="child-workspace")
         tm.that(workspace.declared_repositories, empty=True)
         tm.that(resolved, eq=child.resolve())
 
@@ -459,7 +459,7 @@ class TestsRepositoryLocalTopology:
             ),
             eq=tuple(identities),
         )
-        tm.that(workspace.beads.workspace, eq="root-workspace")
+        tm.that(u.Tests.required_beads(workspace).workspace, eq="root-workspace")
         for project_name in identities:
             beads = tm.ok(
                 FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)

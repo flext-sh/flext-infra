@@ -18,6 +18,7 @@ exclude-newer-span = "P7D"
 cryptography = false
 
 [manifest]
+constraints = [{ name = "structlog", specifier = "<26" }]
 excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
 
 [[package]]
@@ -668,7 +669,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#53141b6982a4d9a4e199d56fc299371987811b05" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#feb82f9bdfb207f2891ee4a452223eaf82a6dbe1" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },
@@ -695,7 +696,7 @@ dependencies = [
 [[package]]
 name = "flext-core"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#ccfe3255ad71fb8c41d8bb8edaaf72e58d0b162b" }
+source = { git = "https://github.com/flext-sh/flext-core.git?rev=0.12.0-dev#f6c1f4b3f2cc6d6e189b13af276a64b44848da8d" }
 dependencies = [
     { name = "beartype" },
     { name = "cachetools" },
@@ -930,7 +931,7 @@ dev = [
 [[package]]
 name = "flext-tests"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#0fd137b933bf1eed9b8ba6767cfe046ae45e3aba" }
+source = { git = "https://github.com/flext-sh/flext-tests.git?rev=0.12.0-dev#753c58cbb85654eff53a2d507d25be4d01d10377" }
 dependencies = [
     { name = "docker" },
     { name = "factory-boy" },

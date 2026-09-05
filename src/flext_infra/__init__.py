@@ -149,6 +149,7 @@ if TYPE_CHECKING:
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
     from .gates.direnv import FlextInfraDirenvGate
+    from .gates.duplication import FlextInfraDuplicationGate
     from .gates.layout import FlextInfraLayoutGate
     from .gates.loc_cap import FlextInfraLocCapGate
     from .gates.markdown import FlextInfraMarkdownGate
@@ -359,6 +360,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDocServer",
     "FlextInfraDocServiceBase",
     "FlextInfraDocValidator",
+    "FlextInfraDuplicationGate",
     "FlextInfraEnforcementFixerOrchestrator",
     "FlextInfraEnsureCoverageConfigPhase",
     "FlextInfraEnsureFormattingToolingPhase",
@@ -693,6 +695,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
             ".gates.direnv": ("FlextInfraDirenvGate",),
+            ".gates.duplication": ("FlextInfraDuplicationGate",),
             ".gates.layout": ("FlextInfraLayoutGate",),
             ".gates.loc_cap": ("FlextInfraLocCapGate",),
             ".gates.markdown": ("FlextInfraMarkdownGate",),

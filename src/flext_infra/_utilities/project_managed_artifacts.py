@@ -29,7 +29,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         identity = cls._config_directory_identity(config_dir)
         if identity.failure:
             return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(identity)
-        if identity.value is None:
+        if not identity.value:
             return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
         paths = cls._config_yaml_paths(config_dir, identity.value)
         if paths.failure:
@@ -78,21 +78,26 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     def _config_directory_identity(
         cls, config_dir: Path
     ) -> p.Result[tuple[int, ...] | None]:
+        """Return the directory's state key, or ``()`` when it does not exist.
+
+        A repository legitimately ships no ``config/`` directory, which is an
+        empty declaration set rather than a failure. The empty tuple is
+        unambiguous: a real key always carries the eight ``stat`` fields, and a
+        successful Result can never carry ``None``.
+        """
         try:
             state = config_dir.lstat()
         except FileNotFoundError:
-            return r[tuple[int, ...] | None].ok(None)
+            return r[tuple[int, ...]].ok(())
         except OSError as exc:
-            return r[tuple[int, ...] | None].fail_op(
-                "inspect project config directory", exc
-            )
+            return r[tuple[int, ...]].fail_op("inspect project config directory", exc)
         attributes = getattr(state, "st_file_attributes", 0)
         reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
         if not stat.S_ISDIR(state.st_mode) or attributes & reparse:
-            return r[tuple[int, ...] | None].fail(
+            return r[tuple[int, ...]].fail(
                 f"project config path is not a physical directory: {config_dir}"
             )
-        return r[tuple[int, ...] | None].ok(cls._directory_state_key(state))
+        return r[tuple[int, ...]].ok(cls._directory_state_key(state))
 
     @classmethod
     def _config_yaml_paths(

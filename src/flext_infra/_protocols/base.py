@@ -241,8 +241,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec:
-            """Repository-local Beads identity."""
+        def beads(self) -> FlextInfraProtocolsBase.BeadsProjectSpec | None:
+            """Repository-local Beads identity; ``None`` for a declared projection."""
             ...
 
         @property
@@ -404,6 +404,16 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def qlty_version(self) -> str:
             """Exact qlty code-smell scanner version."""
+            ...
+
+        @property
+        def node_version(self) -> str:
+            """Compatible Node.js major.minor line (runtime for npm-backed tools)."""
+            ...
+
+        @property
+        def jscpd_version(self) -> str:
+            """Exact jscpd duplication detector version."""
             ...
 
         @property

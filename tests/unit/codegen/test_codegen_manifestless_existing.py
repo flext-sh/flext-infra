@@ -44,6 +44,7 @@ class TestCodegenManifestlessExisting:
         for relative, content in preserved.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
         u.Tests.write_project_beads_config(root, config.Infra.name)
+        u.Tests.copy_tracked_mise_seeds(root)
         tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
         tm.ok(
             u.Cli.run_checked(

@@ -321,6 +321,13 @@ class FlextInfraConfigModels:
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
         ]
+        node_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+        ]
+        jscpd_version: Annotated[
+            t.NonEmptyStr,
+            _tool_version_field("Exact jscpd duplication detector version"),
+        ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
@@ -1884,9 +1891,15 @@ class FlextInfraConfigModels:
             m.Field(description="Make profile inferred from live Git topology"),
         ]
         beads: Annotated[
-            FlextInfraConfigModels.BeadsProjectSpec,
-            m.Field(description="Repository-local Beads identity"),
-        ]
+            FlextInfraConfigModels.BeadsProjectSpec | None,
+            m.Field(
+                description=(
+                    "Repository-local Beads identity. Absent on a target derived "
+                    "from declarations only: that route owns no ledger projection "
+                    "and must never read the .beads tree to invent one."
+                )
+            ),
+        ] = None
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
@@ -2366,9 +2379,14 @@ class FlextInfraConfigModels:
             m.Field(description="Per-tool Beads release quarantine override"),
         ] = None
         beads: Annotated[
-            FlextInfraConfigModels.BeadsProjectSpec,
-            m.Field(description="Explicit repository-local Beads identity"),
-        ]
+            FlextInfraConfigModels.BeadsProjectSpec | None,
+            m.Field(
+                description=(
+                    "Explicit repository-local Beads identity; only the ledger "
+                    "templates read it, and only the observed route supplies it"
+                )
+            ),
+        ] = None
         canonical_project_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical PEP 621 project name")
         ]
@@ -2431,6 +2449,13 @@ class FlextInfraConfigModels:
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact qlty code-quality version")
+        ]
+        node_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+        ]
+        jscpd_version: Annotated[
+            t.NonEmptyStr,
+            _tool_version_field("Exact jscpd duplication detector version"),
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -2642,9 +2667,15 @@ class FlextInfraConfigModels:
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Workspace name")]
         beads: Annotated[
-            FlextInfraConfigModels.BeadsProjectSpec,
-            m.Field(description="Repository-local Beads identity"),
-        ]
+            FlextInfraConfigModels.BeadsProjectSpec | None,
+            m.Field(
+                description=(
+                    "Repository-local Beads identity. The observed loader always "
+                    "resolves it; the declaration-only projection loader leaves it "
+                    "absent because no declaration carries a ledger identity."
+                )
+            ),
+        ] = None
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
             m.Field(description="Local repository Git contract"),
@@ -2660,6 +2691,15 @@ class FlextInfraConfigModels:
         external_dependency_paths: Annotated[
             tuple[Path, ...],
             m.Field(description="Observed external or fork Git submodule paths"),
+        ] = ()
+        repository_policy_overlays: Annotated[
+            tuple[FlextInfraConfigModels.RepositoryPolicyOverlaySpec, ...],
+            m.Field(
+                description=(
+                    "Repository-local policy overlays carried from the declared "
+                    "manifest so scoped projection keeps per-repository policy"
+                )
+            ),
         ] = ()
 
         @u.model_validator(mode="after")
@@ -2843,16 +2883,21 @@ class FlextInfraConfigModels:
 
         @u.model_validator(mode="after")
         def _validate_infrastructure_provider(self) -> Self:
-            """Require the tool distribution owner to resolve exactly once."""
+            """Require the tool distribution owner to resolve exactly once.
+
+            ``infra_repository`` is the single owner of that identity. The
+            separate ``infrastructure_provider`` key that duplicated it is
+            retired (flext-infra#576), so the check reads the surviving owner.
+            """
             matches = tuple(
                 provider
                 for provider in self.providers
-                if provider.name == self.infrastructure_provider
+                if provider.name == self.infra_repository.provider
             )
             if len(matches) != 1:
                 msg = (
-                    "infrastructure_provider must resolve exactly once in providers: "
-                    f"{self.infrastructure_provider}"
+                    "infra_repository.provider must resolve exactly once in "
+                    f"providers: {self.infra_repository.provider}"
                 )
                 raise ValueError(msg)
             return self

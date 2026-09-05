@@ -178,7 +178,7 @@ class TestCodegenCiMatrix:
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
         tm.that(ci_job, has="permissions:\n      contents: read")
         tm.that(jobs, has="merge-guard:")
-        tm.that(jobs, has="Block WIP/DRAFT merges")
+        tm.that(jobs, has="Block WIP heads from protected integration branches")
 
     def test_blocking_ci_does_not_configure_github_cli_auth(
         self, tmp_path: Path
