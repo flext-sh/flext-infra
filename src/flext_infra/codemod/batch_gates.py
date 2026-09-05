@@ -68,6 +68,10 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
         if output.exit_code != 0:
             if output.exit_code == finding_exit_code and output.stdout.strip():
+                sys.stderr.write(output.stdout)
+                if not output.stdout.endswith("\n"):
+                    sys.stderr.write("\n")
+                sys.stderr.flush()
                 return r[p.Cli.CommandOutput].ok(output)
             detail = "\n".join(
                 stream.strip()
@@ -176,10 +180,18 @@ class FlextInfraModGateEngine:
     def validate(cls, root: Path, changed_files: t.SequenceOf[Path]) -> p.Result[bool]:
         """Require zero Ruff, Pyrefly, LSP, and graph-analysis diagnostics."""
         resolved_root = root.resolve()
+        project_roots = u.Infra.governed_project_roots(resolved_root)
+        repository_changes = tuple(
+            changed_path
+            for project_root in project_roots
+            for changed_path in u.Infra.git_changed_paths(
+                m.Infra.GitRepoRequest(repo_root=project_root)
+            ).unwrap()
+        )
         python_files = tuple(
             sorted({
                 resolved
-                for path in changed_files
+                for path in (*changed_files, *repository_changes)
                 if (
                     resolved := (
                         path if path.is_absolute() else resolved_root / path
@@ -188,9 +200,32 @@ class FlextInfraModGateEngine:
                 and resolved.suffix == c.Infra.EXT_PYTHON
             })
         )
-        snapshots = u.Infra.lint_snapshots(
-            python_files, resolved_root, gates=(c.Infra.RUFF, c.Infra.PYREFLY)
+        deepest_first = tuple(
+            sorted(project_roots, key=lambda owner: len(owner.parts), reverse=True)
         )
+        files_by_root: dict[Path, list[Path]] = {owner: [] for owner in project_roots}
+        for python_file in python_files:
+            owner = next(
+                candidate
+                for candidate in deepest_first
+                if python_file.is_relative_to(candidate)
+            )
+            files_by_root[owner].append(python_file)
+        selected_groups = tuple(
+            (owner, tuple(files)) for owner, files in files_by_root.items() if files
+        )
+        snapshots: dict[Path, t.Infra.LintSnapshot] = {}
+        for index, (owner, files) in enumerate(selected_groups, start=1):
+            sys.stderr.write(
+                f"mod: validate project {index}/{len(selected_groups)} "
+                f"{owner} files={len(files)}\n"
+            )
+            sys.stderr.flush()
+            snapshots.update(
+                u.Infra.lint_snapshots(
+                    files, owner, gates=(c.Infra.RUFF, c.Infra.PYREFLY)
+                )
+            )
         diagnostics = tuple(
             f"{path.relative_to(resolved_root)}:{tool}: {message}"
             for path, snapshot in snapshots.items()
@@ -199,44 +234,63 @@ class FlextInfraModGateEngine:
         )
         if diagnostics:
             return r.fail("\n".join(diagnostics))
-        FlextInfraLspDiagnosticsDetector.validate(resolved_root, python_files).unwrap()
-        return cls._validate_code_review_graph(root)
+        for owner, files in selected_groups:
+            FlextInfraLspDiagnosticsDetector.validate(owner, files).unwrap()
+        return cls.validate_code_review_graph(root)
 
     @classmethod
-    def _validate_code_review_graph(cls, root: Path) -> p.Result[bool]:
+    def validate_code_review_graph(cls, root: Path) -> p.Result[bool]:
         """Refresh and query the external graph through its documented CLI."""
+        resolved_root = root.resolve()
         toolchain = config.Infra.codegen.toolchain
-        data_dir = (
-            root.resolve().parent
+        graph_root = (
+            resolved_root.parent
             / toolchain.state_directory_name
-            / root.name
+            / resolved_root.name
             / toolchain.crg_namespace
         )
-        u.Cli.ensure_dir(data_dir).unwrap()
-        environment = {c.Infra.CRG_DATA_DIR: str(data_dir)}
-        commands: tuple[t.StrSequence, ...] = (
-            (
-                c.Infra.CODE_REVIEW_GRAPH,
-                "update",
-                "--brief",
-                "--repo",
-                str(root),
-                "--data-dir",
-                str(data_dir),
-            ),
-            (
-                c.Infra.CODE_REVIEW_GRAPH,
-                "detect-changes",
-                "--base",
-                "HEAD",
-                "--brief",
-                "--repo",
-                str(root),
-            ),
-            (c.Infra.CODE_REVIEW_GRAPH, "refactor", "suggest", "--repo", str(root)),
-        )
-        for command in commands:
-            cls._run_tool(root, command, env=environment).unwrap()
+        project_roots = u.Infra.governed_project_roots(resolved_root)
+        for index, project_root in enumerate(project_roots, start=1):
+            data_dir = (
+                graph_root
+                if project_root == resolved_root
+                else graph_root / project_root.name
+            )
+            u.Cli.ensure_dir(data_dir).unwrap()
+            environment = {c.Infra.CRG_DATA_DIR: str(data_dir)}
+            sys.stderr.write(
+                f"mod: CRG project {index}/{len(project_roots)} {project_root}\n"
+            )
+            sys.stderr.flush()
+            commands: tuple[t.StrSequence, ...] = (
+                (
+                    c.Infra.CODE_REVIEW_GRAPH,
+                    "update",
+                    "--brief",
+                    "--repo",
+                    str(project_root),
+                    "--data-dir",
+                    str(data_dir),
+                ),
+                (
+                    c.Infra.CODE_REVIEW_GRAPH,
+                    "detect-changes",
+                    "--base",
+                    "HEAD",
+                    "--brief",
+                    "--repo",
+                    str(project_root),
+                ),
+                (
+                    c.Infra.CODE_REVIEW_GRAPH,
+                    "refactor",
+                    "suggest",
+                    "--repo",
+                    str(project_root),
+                ),
+            )
+            for command in commands:
+                cls._run_tool(project_root, command, env=environment).unwrap()
         return r[bool].ok(True)
 
     @classmethod

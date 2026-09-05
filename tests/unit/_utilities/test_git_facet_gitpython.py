@@ -11,11 +11,6 @@ from flext_tests import tm
 from tests import u as test_u
 
 
-def _no_executable(_name: str) -> str | None:
-    """Stand in for ``shutil.which`` when the executable is absent."""
-    return None
-
-
 class TestsFlextInfraGitFacet:
     """Exercise the public Git facade against a real repository worktree."""
 
@@ -146,6 +141,23 @@ class TestsFlextInfraGitFacet:
         assert dirty.value.dirty is True
         assert "dirty.txt" in dirty.value.porcelain
 
+    def test_changed_paths_reports_tracked_and_untracked_files(
+        self, real_git_repo: Path
+    ) -> None:
+        """The public Git facade returns the complete existing worktree delta."""
+        readme = real_git_repo / "README.md"
+        readme.write_text("changed\n", encoding="utf-8")
+        created = real_git_repo / "created.py"
+        created.write_text("VALUE = 1\n", encoding="utf-8")
+
+        changed = tm.ok(
+            u.Infra.git_changed_paths(
+                m.Infra.GitRepoRequest(repo_root=real_git_repo)
+            )
+        )
+
+        tm.that(set(changed), eq={readme.resolve(), created.resolve()})
+
     def test_status_classifies_registered_nested_worktrees_as_administrative(
         self, tmp_path: Path
     ) -> None:
@@ -202,14 +214,12 @@ class TestsFlextInfraGitFacet:
         )
         assert stale.dirty is True
 
-    def test_missing_git_binary_fails_closed(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_missing_git_binary_fails_closed(self, tmp_path: Path) -> None:
         """Missing git on PATH must Result.fail without raising."""
-        monkeypatch.setattr(
-            "flext_infra._utilities._git.repo.shutil.which", _no_executable
-        )
-        result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
+        empty_path = tmp_path / "empty-path"
+        empty_path.mkdir()
+        with tm.scope(env={"PATH": str(empty_path)}):
+            result = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=tmp_path))
         assert result.failure
         assert result.error is not None
         assert "git executable not found" in result.error

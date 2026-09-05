@@ -43,7 +43,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._workspace_scan()
         parsed = self._issues_from_report(scan, project_dir)
-        issues = parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        issues = (
+            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        )
         if not issues and scan.exit_code not in {0, 1}:
             issues = (self._tool_failure_issue(scan),)
         return self._build_check_gate_execution(
@@ -82,9 +84,17 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             )
         scope = self._render_scope_dirs()
         if scope.failure:
-            return m.Cli.CommandOutput(stdout="", stderr=scope.error or "workspace scope resolution failed", exit_code=1)
+            return m.Cli.CommandOutput(
+                stdout="",
+                stderr=scope.error or "workspace scope resolution failed",
+                exit_code=1,
+            )
         if not scope.value:
-            return m.Cli.CommandOutput(stdout="", stderr="jscpd scope resolved no source or test directories", exit_code=1)
+            return m.Cli.CommandOutput(
+                stdout="",
+                stderr="jscpd scope resolved no source or test directories",
+                exit_code=1,
+            )
         config_path = self._render_config()
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
         cmd = (

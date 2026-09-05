@@ -42,6 +42,57 @@ def _with_pep621_identity(repo: Path) -> Path:
     return repo
 
 
+def _seed_public_conform_checkout(root: Path) -> None:
+    """Copy the real public package, config, and tracked Mise inputs into a repo."""
+    project_root = Path(__file__).resolve().parents[3]
+    tm.ok(
+        u.Cli.files_copy_directory(
+            project_root / "src" / "flext_infra",
+            root / "src" / "flext_infra",
+            dirs_exist_ok=True,
+        )
+    )
+    tm.ok(
+        u.Cli.files_copy_directory(
+            project_root / "config", root / "config", dirs_exist_ok=True
+        )
+    )
+    u.Tests.copy_tracked_mise_seeds(root)
+    tm.ok(
+        u.Cli.files_copy(
+            project_root / c.Infra.MISE_TOML_FILENAME, root / c.Infra.MISE_TOML_FILENAME
+        )
+    )
+
+
+def _mise_transaction_state(root: Path) -> tuple[Path, Path]:
+    """Return the public workspace journal and root-project staging paths."""
+    toolchain = config.Infra.codegen.toolchain
+    state_root = (
+        root.parent
+        / toolchain.state_directory_name
+        / root.name
+        / toolchain.mise_namespace
+    )
+    return state_root / "journal.json", state_root / "projects" / "root" / "transaction"
+
+
+def _public_conform_command(root: Path) -> list[str]:
+    """Build the real CLI command whose final argument selects check or apply."""
+    return [
+        sys.executable,
+        "-m",
+        "flext_infra",
+        "codegen",
+        "conform",
+        "--root",
+        str(root),
+        "--scope",
+        "self",
+        "--mode",
+    ]
+
+
 class TestHandleLazyInit:
     """Tests for direct init command dispatch."""
 
@@ -162,22 +213,7 @@ class TestMainEntryPoint:
     ) -> None:
         """Keep live bytes unchanged until the public transaction commits."""
         root = infra_git_repo
-        project_root = Path(__file__).resolve().parents[3]
-        tm.ok(
-            u.Cli.files_copy_directory(
-                project_root / "src" / "flext_infra",
-                root / "src" / "flext_infra",
-                dirs_exist_ok=True,
-            )
-        )
-        tm.ok(
-            u.Cli.files_copy_directory(
-                project_root / "config", root / "config", dirs_exist_ok=True
-            )
-        )
-        # The full surface validates the committed Mise seeds instead of minting
-        # them, so the governed fixture carries them exactly as a repository does.
-        u.Tests.copy_tracked_mise_seeds(root)
+        _seed_public_conform_checkout(root)
         (root / "pyproject.toml").write_text(
             '[project]\nname = "flext-infra"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n'
@@ -195,27 +231,16 @@ class TestMainEntryPoint:
 
         pyproject = root / "pyproject.toml"
         before = pyproject.read_bytes()
-        state_root = root / ".state" / "mise-artifacts"
-        command = [
-            sys.executable,
-            "-m",
-            "flext_infra",
-            "codegen",
-            "conform",
-            "--root",
-            str(root),
-            "--scope",
-            "self",
-            "--mode",
-        ]
+        journal, transaction = _mise_transaction_state(root)
+        command = _public_conform_command(root)
         checked = u.Cli.run_raw(
             [*command, "check"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
         tm.ok(checked)
         tm.that(checked.value.exit_code, eq=1)
         tm.that(pyproject.read_bytes(), eq=before)
-        tm.that((state_root / "journal.json").exists(), eq=False)
-        tm.that((state_root / "transaction").exists(), eq=False)
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
 
         applied = u.Cli.run_raw(
             [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
@@ -233,8 +258,8 @@ class TestMainEntryPoint:
             payload["tool"]["pytest"]["ini_options"]["addopts"],
             has=(f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"),
         )
-        tm.that((state_root / "journal.json").exists(), eq=False)
-        tm.that((state_root / "transaction").exists(), eq=False)
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
 
         published = pyproject.read_bytes()
         fixed_point = u.Cli.run_raw(
@@ -247,8 +272,35 @@ class TestMainEntryPoint:
             msg=fixed_point.value.stderr or fixed_point.value.stdout,
         )
         tm.that(pyproject.read_bytes(), eq=published)
-        tm.that((state_root / "journal.json").exists(), eq=False)
-        tm.that((state_root / "transaction").exists(), eq=False)
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
+
+    def test_present_invalid_mise_artifact_never_enters_external_resolution(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Reject a present invalid artifact before credential/network work."""
+        root = infra_git_repo
+        _seed_public_conform_checkout(root)
+        lock = root / "mise.lock"
+        corrupted = lock.read_bytes() + b"\ninvalid = [\n"
+        lock.write_bytes(corrupted)
+        journal, transaction = _mise_transaction_state(root)
+
+        applied = u.Cli.run_raw(
+            [*_public_conform_command(root), "apply"],
+            cwd=root,
+            env={"MISE_GITHUB_CREDENTIAL_COMMAND": "", "PYTHONPATH": str(root / "src")},
+        )
+
+        tm.ok(applied)
+        tm.that(applied.value.exit_code, eq=1)
+        tm.that(
+            applied.value.stdout + applied.value.stderr,
+            lacks="MISE_GITHUB_CREDENTIAL_COMMAND is required",
+        )
+        tm.that(lock.read_bytes(), eq=corrupted)
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""

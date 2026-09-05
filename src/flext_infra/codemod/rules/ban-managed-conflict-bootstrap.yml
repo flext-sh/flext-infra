@@ -8,6 +8,13 @@ rule:
   pattern: from flext_infra.codegen.managed_conflicts_bootstrap import $$$NAMES
 message: Plan managed conflict recovery through FlextInfraCodegenConform.
 ---
+id: ban-deleted-managed-conflict-owner-import
+language: Python
+severity: error
+rule:
+  pattern: from flext_infra.codegen.managed_conflicts_core import $$$NAMES
+message: Consume managed conflict recovery through u.Infra.recover_managed_toml.
+---
 id: ban-managed-conflict-bootstrap-call
 language: Python
 severity: error

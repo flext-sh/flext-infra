@@ -56,7 +56,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 f"{remaining.findings} finding(s) remained after apply; "
                 "changes retained for mandatory fix-forward repair"
             )
-        cli.display_text("mod: require zero Ruff, Pyrefly, and LSP diagnostics")
+        cli.display_text("mod: require zero Ruff, Pyrefly, LSP, and CRG diagnostics")
         FlextInfraModGateEngine.validate(root, tuple(applied.files)).unwrap()
         cli.display_text(
             f"mod: applied {applied.nodes} node(s) across {len(applied.files)} file(s)"

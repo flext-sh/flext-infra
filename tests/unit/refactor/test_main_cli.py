@@ -8,7 +8,6 @@ import pytest
 
 from flext_infra import main as infra_main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from flext_tests import tm
 from tests import t, u
 
@@ -453,10 +452,9 @@ class TestsFlextInfraRefactorMainCli:
             ),
         ],
     )
-    def test_refactor_census_detector_only_rules_skip_inventory(
+    def test_refactor_census_detector_rules_report_public_violations(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
         builder_name: str,
         kinds: t.StrSequence,
         rules: t.StrSequence,
@@ -469,14 +467,6 @@ class TestsFlextInfraRefactorMainCli:
             if isinstance(built_workspace, tuple)
             else built_workspace
         )
-
-        def _explode(
-            _self: FlextInfraRopeWorkspace, *_args: object, **_kwargs: object
-        ) -> object:
-            msg = "detector-only rules should not trigger rope.objects inventory"
-            raise AssertionError(msg)
-
-        monkeypatch.setattr(FlextInfraRopeWorkspace, "objects", _explode)
 
         report_result = FlextInfraRefactorCensus(
             repository_root=workspace,

@@ -34,7 +34,4 @@ class TestSmellsGate:
 
         tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.issues), eq=1)
-        tm.that(
-            execution.issues[0].severity,
-            eq=str(c.Infra.GateSeverity.ERROR.value),
-        )
+        tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))

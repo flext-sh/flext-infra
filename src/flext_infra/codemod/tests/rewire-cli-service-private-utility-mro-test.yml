@@ -1,0 +1,9 @@
+id: rewire-cli-service-private-utility-mro
+valid:
+  - |
+      class FlextCliPipeline(s):
+          pass
+invalid:
+  - |
+      class FlextCliPipeline(s, FlextCliUtilitiesPipeline):
+          pass

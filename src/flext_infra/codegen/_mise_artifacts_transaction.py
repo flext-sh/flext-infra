@@ -164,13 +164,20 @@ class FlextInfraCodegenMiseArtifactTransaction:
         if source_barrier.failure:
             return result_type.from_failure(source_barrier)
         reuse_live = self._can_reuse_live(plan.value)
+        if reuse_live.failure:
+            return result_type.from_failure(reuse_live)
         credential_command = settings.Infra.mise_github_credential_command
-        if not reuse_live and (
-            credential_command is None or not credential_command.strip()
-        ):
-            return result_type.fail(
-                "MISE_GITHUB_CREDENTIAL_COMMAND is required for Mise lock publication"
-            )
+        validated_credential: str | None = None
+        if not reuse_live.value:
+            if credential_command is None:
+                return result_type.fail(
+                    "MISE_GITHUB_CREDENTIAL_COMMAND is required for Mise lock publication"
+                )
+            validated_credential = credential_command.strip()
+            if not validated_credential:
+                return result_type.fail(
+                    "MISE_GITHUB_CREDENTIAL_COMMAND is required for Mise lock publication"
+                )
         journal_before = state.journal_state(layout)
         if journal_before.failure:
             return result_type.from_failure(journal_before)
@@ -216,8 +223,8 @@ class FlextInfraCodegenMiseArtifactTransaction:
             )
         staged = self._staging.stage(
             plan.value,
-            credential_command=(credential_command or "").strip(),
-            reuse_live=reuse_live,
+            credential_command=validated_credential,
+            reuse_live=reuse_live.value,
         )
         if staged.failure:
             return result_type.from_failure(self._recover_failure(scope_root, staged))
@@ -305,18 +312,30 @@ class FlextInfraCodegenMiseArtifactTransaction:
             return result_type.from_failure(cleaned)
         return result_type.ok(changed)
 
-    def _can_reuse_live(self, plan: m.Infra.MiseToolchainWorkspacePlan) -> bool:
+    def _can_reuse_live(
+        self, plan: m.Infra.MiseToolchainWorkspacePlan
+    ) -> p.Result[bool]:
         """Return whether the exact planned config already has valid live artifacts."""
         if any(
             project.config.before.content != project.config.replacement_content
             or project.config.before.mode != project.config.replacement_mode
             for project in plan.projects
         ):
-            return False
+            return r[bool].ok(False)
+        if any(
+            artifact.content is None
+            for project in plan.projects
+            for artifact in (
+                project.artifacts.unix_launcher,
+                project.artifacts.windows_launcher,
+                project.artifacts.lock,
+            )
+        ):
+            return r[bool].ok(False)
         validated = verify.live(self._owner, plan)
         if validated.failure:
-            return False
-        return True
+            return r[bool].from_failure(validated)
+        return r[bool].ok(True)
 
     def _reconcile(self, scope_root: Path, state_root: Path) -> p.Result[bool]:
         journal = state.journal_state_at(state_root)
@@ -358,8 +377,10 @@ class FlextInfraCodegenMiseArtifactTransaction:
     @staticmethod
     def _attach_secondary(failure: p.FailureLike, secondary: str) -> p.Result[bool]:
         """Attach cleanup evidence without replacing the first causal failure."""
+        if failure.error is None:
+            return r[bool].from_failure(failure)
         return r[bool].fail(
-            f"{failure.error or ''}; {secondary}",
+            f"{failure.error}; {secondary}",
             error_code=failure.error_code,
             error_data=failure.error_data,
             exception=failure.exception,

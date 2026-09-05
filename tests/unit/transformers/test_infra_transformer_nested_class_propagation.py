@@ -54,3 +54,18 @@ class TestsFlextInfraTransformersInfraTransformerNestedClassPropagation:
         code = _transform_source(tmp_path, source)
         tm.that(code, has="from pkg import FlextDispatcher as TE")
         tm.that(code, has="value = TE.TimeoutEnforcer()")
+
+    def test_owner_namespace_does_not_collide_with_a_shadowed_import(
+        self, tmp_path: Path
+    ) -> None:
+        source = (
+            "from pkg import TimeoutEnforcer\n\n"
+            "class FlextDispatcher:\n"
+            "    class TimeoutEnforcer:\n"
+            "        pass\n\n"
+            "value = TimeoutEnforcer()\n"
+        )
+        code = _transform_source(tmp_path, source)
+        tm.that(code, has="from pkg import TimeoutEnforcer")
+        tm.that(code, lacks="from pkg import FlextDispatcher")
+        tm.that(code, has="value = FlextDispatcher.TimeoutEnforcer()")

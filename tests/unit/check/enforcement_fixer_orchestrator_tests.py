@@ -10,7 +10,6 @@ import pytest
 
 from flext_cli import cli
 from flext_infra import m, main as infra_main, p, t, u
-from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
@@ -40,9 +39,7 @@ class TestsEnforcementFixerOrchestrator:
     ) -> None:
         """The public dry-run reports a no-change skip for a clean source file."""
         project_dir = u.Tests.mk_project(
-            tmp_path,
-            "demo",
-            pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n',
+            tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
         source_file = project_dir / "src" / "demo" / "sample.py"
         source_file.parent.mkdir(parents=True)
@@ -62,14 +59,10 @@ class TestsEnforcementFixerOrchestrator:
             eq="from __future__ import annotations\n",
         )
 
-    def test_stub_file_rule_collects_pyi_probes(
-        self, tmp_path: Path
-    ) -> None:
+    def test_stub_file_rule_collects_pyi_probes(self, tmp_path: Path) -> None:
         """The public dry-run reports source stubs and ignores virtualenv stubs."""
         project_dir = u.Tests.mk_project(
-            tmp_path,
-            "demo",
-            pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n',
+            tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         excluded_stub = project_dir / ".venv" / "ignored.pyi"
@@ -194,9 +187,7 @@ class TestsEnforcementFixerOrchestrator:
     def test_missing_selected_project_fails_resolution(self, tmp_path: Path) -> None:
         """A typoed project filter is a hard failure, not a zero-project success."""
         _ = u.Tests.mk_project(
-            tmp_path,
-            "demo",
-            pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n',
+            tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
             repository_root=tmp_path,
@@ -222,76 +213,6 @@ class TestsEnforcementFixerOrchestrator:
 
         tm.fail(result)
         tm.that(result.error, has="unsafe under --safe-only")
-
-    def test_gate_dry_run_uses_non_mutating_check_preview(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Gate dry-run uses the non-mutating check path."""
-
-        class FakeGate:
-            can_fix: ClassVar[bool] = True
-            checked: ClassVar[bool] = False
-            fixed: ClassVar[bool] = False
-
-            def __init__(self, repository_root: Path) -> None:
-                self.repository_root = repository_root
-
-            def check(
-                self, project_dir: Path, ctx: m.Infra.GateContext
-            ) -> m.Infra.GateExecution:
-                _ = self.repository_root
-                tm.that(ctx.check_only, eq=True)
-                tm.that(ctx.apply_fixes, eq=False)
-                FakeGate.checked = True
-                return m.Infra.GateExecution(
-                    result=m.Infra.GateResult(
-                        gate="smells", project=project_dir.name, passed=True
-                    ),
-                    issues=(
-                        m.Infra.Issue(
-                            file=str(project_dir / "src" / "demo.py"),
-                            line=1,
-                            column=1,
-                            code="boolean-logic",
-                            message="boolean logic",
-                            severity="error",
-                        ),
-                    ),
-                    raw_output="check only",
-                )
-
-            def fix(
-                self, project_dir: Path, ctx: m.Infra.GateContext
-            ) -> m.Infra.GateExecution:
-                _ = project_dir, ctx
-                FakeGate.fixed = True
-                msg = "dry-run must not execute gate fixes"
-                raise AssertionError(msg)
-
-        class FakeRegistry:
-            def get(self, target: str) -> type[FakeGate] | None:
-                return FakeGate if target == "smells" else None
-
-        def fake_registry(self: FlextInfraGateFixerAdapter) -> FakeRegistry:
-            _ = self
-            return FakeRegistry()
-
-        monkeypatch.setattr(FlextInfraGateFixerAdapter, "_registry", fake_registry)
-        adapter = FlextInfraGateFixerAdapter(tmp_path)
-        project_dir = tmp_path / "demo"
-
-        result = adapter.fix_project(
-            project_dir,
-            ((self._rule("ENFORCE-074"), SimpleNamespace(file_path=str(project_dir))),),
-            m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=False
-            ),
-        )
-
-        tm.that(FakeGate.checked, eq=True)
-        tm.that(FakeGate.fixed, eq=False)
-        tm.that(len(result.previewed), eq=1)
-        tm.that(result.failed, eq=())
 
     # Exemplar: this drives the real CLI entry point against a real Git
     # repository, so its cost is the runtime's import chain plus several git

@@ -229,7 +229,9 @@ class TestBanditAndMarkdownGates:
         """Prove the real gate cannot bind a host or mise-provided executable."""
         project_dir = u.Tests.mk_project(tmp_path, "markdown-managed-tool")
         (project_dir / "README.md").write_text("# Test\n", encoding="utf-8")
-        with tm.scope(env={"PATH": "/usr/bin:/bin"}):
+        empty_path = tmp_path / "empty-path"
+        empty_path.mkdir()
+        with tm.scope(env={"PATH": str(empty_path)}):
             result = FlextInfraMarkdownGate(tmp_path).check(
                 project_dir, self.make_ctx(tmp_path)
             )

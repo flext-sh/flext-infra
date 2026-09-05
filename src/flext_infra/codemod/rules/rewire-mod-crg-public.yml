@@ -1,0 +1,12 @@
+# CRG hierarchy discovery is a public phase of the canonical mod circuit.
+# Consumers must call the public gate-engine operation so future interface
+# changes are rewired by ast-grep rather than by manual call-site edits.
+id: rewire-mod-crg-public
+language: Python
+severity: error
+files:
+  - "flext-infra/src/**/*.py"
+rule:
+  pattern: FlextInfraModGateEngine._validate_code_review_graph($ROOT)
+fix: FlextInfraModGateEngine.validate_code_review_graph($ROOT)
+message: Use the public CRG hierarchy/refactor phase owned by the mod gate engine.

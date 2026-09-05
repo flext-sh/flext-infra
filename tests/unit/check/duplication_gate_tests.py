@@ -29,14 +29,9 @@ class TestDuplicationGate:
         project = tmp_path / "missing-project"
         project.mkdir()
 
-        execution = FlextInfraDuplicationGate(tmp_path).check(
-            project, _ctx(tmp_path)
-        )
+        execution = FlextInfraDuplicationGate(tmp_path).check(project, _ctx(tmp_path))
 
         tm.that(execution.result.passed, eq=False)
         tm.that(len(execution.issues), eq=1)
         tm.that(execution.issues[0].message, has="project")
-        tm.that(
-            execution.issues[0].severity,
-            eq=str(c.Infra.GateSeverity.ERROR.value),
-        )
+        tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))

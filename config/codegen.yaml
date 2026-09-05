@@ -1397,18 +1397,27 @@ Infra:
             - ".claude/projects/"
             - ".claude/shell-snapshots/"
             - ".claude/settings.local.json.bak"
-        # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
-        # once justified blocking `.agents/` in non-root checkouts no longer
-        # applies: ai-hub materializes them via generate-workspace-config and
-        # never as mode-120000 symlinks (measured: flext-cli, a standalone
-        # checkout, carries 74 regular files and 0 symlinks under .agents/).
-        # Blocking them made governed projections untrackable in exactly the
-        # repositories that must carry their own authorization surface.
-        - name: "WHITELIST: Governed agent projections (every repository role)"
-          profiles: [standalone]
+        # Provider projections are source-controlled authorization surfaces in
+        # every repository role. Blocking a provider directory makes a clean
+        # checkout lose part of its declared governance even when generation
+        # produced the files correctly.
+        - name: "WHITELIST: Governed provider projections (every repository role)"
+          profiles: [workspace, standalone]
           patterns:
             - "!.agents/"
             - "!.agents/**"
+            - "!.claude/"
+            - "!.claude/**"
+            - "!.codex/"
+            - "!.codex/**"
+            - "!.cursor/"
+            - "!.cursor/**"
+            - "!.gemini/"
+            - "!.gemini/**"
+            - "!.github/"
+            - "!.github/**"
+            - "!.opencode/"
+            - "!.opencode/**"
         - name: "WHITELIST: Agent skills owned by the repository root"
           profiles: [workspace]
           patterns:

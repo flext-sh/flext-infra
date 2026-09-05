@@ -13,6 +13,7 @@ from pathlib import Path
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
 
+
 def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
     """Build one member and return the workspace with its verified receipt."""
     project_name = "flext-a"
@@ -61,10 +62,7 @@ class TestsFlextInfraReleasePublish:
 
             tm.that(
                 u.Tests.run_release_main(
-                    workspace,
-                    "--phase",
-                    "publish",
-                    executable_dir=bin_dir,
+                    workspace, "--phase", "publish", executable_dir=bin_dir
                 ),
                 eq=0,
             )
@@ -80,11 +78,7 @@ class TestsFlextInfraReleasePublish:
 
             tm.that(
                 u.Tests.run_release_main(
-                    workspace,
-                    "--phase",
-                    "publish",
-                    "--apply",
-                    executable_dir=bin_dir,
+                    workspace, "--phase", "publish", "--apply", executable_dir=bin_dir
                 ),
                 ne=0,
             )
@@ -111,11 +105,7 @@ class TestsFlextInfraReleasePublish:
             bin_dir = _shim_path(tmp_path)
 
             result = u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                "publish",
-                "--apply",
-                executable_dir=bin_dir,
+                workspace, "--phase", "publish", "--apply", executable_dir=bin_dir
             )
 
             tm.that(result, eq=0)

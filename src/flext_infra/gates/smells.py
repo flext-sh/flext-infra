@@ -51,7 +51,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._workspace_scan()
         parsed = self._issues_from_sarif(scan.stdout, project_dir.name)
-        issues = parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        issues = (
+            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        )
         if not issues and scan.exit_code != 0:
             issues = (self._tool_failure_issue(scan),)
         auto_issues = [issue for issue in issues if self._is_auto_fixable(issue)]
@@ -103,7 +105,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
         started = time.monotonic()
         scan = self._workspace_scan()
         parsed = self._issues_from_sarif(scan.stdout, project_dir.name)
-        issues = parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        issues = (
+            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        )
         if not issues and scan.exit_code != 0:
             issues = (self._tool_failure_issue(scan),)
         return self._build_check_gate_execution(
@@ -130,7 +134,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
         parsed = self._issues_from_sarif(result.stdout, project_dir.name)
-        issues = parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        issues = (
+            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        )
         if not issues and result.exit_code != 0:
             issues = (self._tool_failure_issue(result),)
         return not issues, issues

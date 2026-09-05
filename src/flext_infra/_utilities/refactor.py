@@ -9,6 +9,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 from flext_cli import r, u
@@ -70,6 +71,28 @@ class FlextInfraUtilitiesRefactor:
             if suffix:
                 return Path(*suffix).as_posix()
         return path.as_posix().lstrip("./")
+
+    @staticmethod
+    def module_owns_nested_class(
+        source: str, *, namespace: str, nested_name: str
+    ) -> bool:
+        """Return whether a module defines ``namespace.nested_name`` itself.
+
+        Consumer propagation rewrites ``from module import Old`` to import the
+        surviving namespace.  The owner module is different: it already binds
+        that namespace locally, so rewriting an unrelated/shadowed import to
+        the same name would create a duplicate binding and a type error.
+        """
+        module = ast.parse(source)
+        return any(
+            statement.name == namespace
+            and any(
+                isinstance(child, ast.ClassDef) and child.name == nested_name
+                for child in statement.body
+            )
+            for statement in module.body
+            if isinstance(statement, ast.ClassDef)
+        )
 
     @staticmethod
     def write_impact_map(

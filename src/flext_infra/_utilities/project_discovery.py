@@ -88,10 +88,24 @@ class FlextInfraUtilitiesProjectDiscovery(
         resolved_root = repository_root.resolve()
         members = tuple(
             project.relative_to(resolved_root).as_posix()
-            for project in cls.discover_project_roots(resolved_root)
+            for project in cls.governed_project_roots(resolved_root)
             if project != resolved_root
         )
         return (".", *members)
+
+    @classmethod
+    def governed_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:
+        """Return the workspace root and each declared repository exactly once."""
+        resolved_root = repository_root.resolve()
+        return tuple(
+            dict.fromkeys((
+                resolved_root,
+                *(
+                    project.resolve()
+                    for project in cls.discover_project_roots(resolved_root)
+                ),
+            ))
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesProjectDiscovery"]

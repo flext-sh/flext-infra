@@ -28,12 +28,16 @@ class FlextInfraMiseStaging:
         self,
         plan: m.Infra.MiseToolchainWorkspacePlan,
         *,
-        credential_command: str,
-        reuse_live: bool = False,
+        credential_command: str | None,
+        reuse_live: bool,
     ) -> p.Result[tuple[m.Cli.AtomicFilePublication, ...]]:
         """Generate, hydrate, and validate all destination-local candidates."""
         if reuse_live:
             return self._stage_live(plan)
+        if credential_command is None:
+            return r[tuple[m.Cli.AtomicFilePublication, ...]].fail(
+                "Mise materialization requires an authenticated credential command"
+            )
         receipt = self._runtime.latest_receipt(
             plan.projects[0], credential_command=credential_command
         )

@@ -46,10 +46,18 @@ class FlextInfraNestedClassPropagationTransformer(FlextInfraRopeTransformer):
                 continue
             rename_parts = rename_to.split(".")
             namespace = rename_parts[0]
-            aliases = self._find_import_aliases(updated, old_name=old_name)
-            updated = self._rewrite_import(
-                updated, old_name=old_name, namespace=namespace
+            owner_module = u.Infra.module_owns_nested_class(
+                updated, namespace=namespace, nested_name=old_name
             )
+            aliases = (
+                ()
+                if owner_module
+                else self._find_import_aliases(updated, old_name=old_name)
+            )
+            if not owner_module:
+                updated = self._rewrite_import(
+                    updated, old_name=old_name, namespace=namespace
+                )
             if self._should_propagate(old_name, "propagate_name_references"):
                 updated = self._qualify_name_references(
                     updated, old_name=old_name, qualified=rename_to

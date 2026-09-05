@@ -10,6 +10,7 @@ from git import GitCommandError, Repo
 from flext_core import r
 from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
 from flext_infra.models import m
+from flext_infra.typings import t
 
 _PORCELAIN_PATH_OFFSET = 3
 
@@ -74,6 +75,32 @@ class FlextInfraUtilitiesGitWorktreeStatusMixin(FlextInfraUtilitiesGitRepo):
         if oid.failure:
             return r[m.Infra.GitOidReport].fail(oid.error or "failed to resolve HEAD")
         return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=oid.value))
+
+    @classmethod
+    def git_changed_paths(
+        cls, request: m.Infra.GitRepoRequest
+    ) -> p.Result[t.SequenceOf[Path]]:
+        """Return every existing staged, unstaged, or untracked path in one repo."""
+        repo_path = request.repo_root.expanduser().resolve()
+        try:
+            repo = cls._repo(repo_path)
+            changed = tuple(
+                name
+                for name in repo.git.diff("--name-only", "-z", "HEAD", "--").split("\0")
+                if name
+            )
+            relative_paths = tuple(dict.fromkeys((*changed, *repo.untracked_files)))
+        except GitCommandError as exc:
+            return r[t.SequenceOf[Path]].fail(str(exc))
+        except (OSError, ValueError) as exc:
+            return r[t.SequenceOf[Path]].fail(f"git changed paths failed: {exc}")
+        return r[t.SequenceOf[Path]].ok(
+            tuple(
+                path
+                for relative_path in relative_paths
+                if (path := (repo_path / relative_path).resolve()).is_file()
+            )
+        )
 
     @classmethod
     def _git_head_oid(cls, repo_root: Path) -> p.Result[str]:

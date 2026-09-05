@@ -43,6 +43,27 @@ class TestsCodegenRepositoryRootFanout:
             tm.that(execution.exit_code, eq=0)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
+    def test_repository_root_deps_profiles_canonical_modernization(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated deps profiles and renders the exact modernizer invocation."""
+        repository_root = _render_root_makefile(tmp_path)
+
+        execution = tm.ok(
+            test_u.Cli.run_raw(
+                [c.Infra.MAKE, "--dry-run", c.Infra.VERB_DEPS, "APPLY=Y"],
+                cwd=repository_root,
+                remove_env_keys=("MAKEFLAGS",),
+            )
+        )
+
+        tm.that(execution.exit_code, eq=0)
+        rendered = execution.stdout + execution.stderr
+        tm.that(rendered, has="-m cProfile")
+        tm.that(rendered, has="deps.pstats")
+        tm.that(rendered, has="validate cprofile-report")
+        tm.that(rendered, has="deps.txt")
+
 
 def _render_root_makefile(tmp_path: Path) -> Path:
     """Render base/Makefile.j2 from a typed workspace fixture."""

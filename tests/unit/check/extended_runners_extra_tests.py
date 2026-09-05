@@ -117,7 +117,9 @@ class TestExtendedRunnerExtras:
     ) -> None:
         """Prove the gate cannot bind a host or mise-provided executable."""
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
-        with tm.scope(env={"PATH": "/usr/bin:/bin"}):
+        empty_path = tmp_path / "empty-path"
+        empty_path.mkdir()
+        with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
 
         tm.that(result.result.passed, eq=True)

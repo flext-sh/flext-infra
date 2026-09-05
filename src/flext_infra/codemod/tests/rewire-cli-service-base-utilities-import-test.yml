@@ -1,0 +1,5 @@
+id: rewire-cli-service-base-utilities-import
+valid:
+  - from flext_cli import m, p, t, u
+invalid:
+  - from flext_cli import m, p, t

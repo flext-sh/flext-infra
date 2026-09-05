@@ -1612,9 +1612,7 @@ class TestScriptDispatchMakefile:
         _seed_infra_package_tree(root)
         managed_source = root / "config" / "managed-artifacts.yaml"
         managed_source.parent.mkdir()
-        tm.ok(
-            u.Cli.atomic_write_text_file(managed_source, "ManagedArtifacts: {}\n")
-        )
+        tm.ok(u.Cli.atomic_write_text_file(managed_source, "ManagedArtifacts: {}\n"))
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -1635,9 +1633,7 @@ class TestScriptDispatchMakefile:
             )
         )
         tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-m", "Seed source barrier"], cwd=root
-            )
+            u.Cli.run_checked(["git", "commit", "-m", "Seed source barrier"], cwd=root)
         )
         mise_path = root / c.Infra.MISE_TOML_FILENAME
         before = mise_path.read_bytes()

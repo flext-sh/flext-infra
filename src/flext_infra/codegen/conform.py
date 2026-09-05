@@ -22,7 +22,6 @@ from flext_infra.base import s
 from flext_infra.codegen._mise_artifacts_transaction import (
     FlextInfraCodegenMiseArtifactTransaction,
 )
-from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.constants import c
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
@@ -1851,8 +1850,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         path: Path, source: str, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[str]:
         """Plan declared conflict recovery without changing the live file."""
-        markers = ("<<<<<<< ", "||||||| ", ">>>>>>> ")
-        if not any(line.startswith(markers) for line in source.splitlines()):
+        if u.Infra.first_merge_conflict_marker(source) is None:
             return r[str].ok(source)
         owner = next(
             (
@@ -1866,7 +1864,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[str].fail(
                 f"managed pyproject conflict has no declared owner: {path}"
             )
-        recovered = FlextInfraCodegenManagedConflicts.recover_toml(
+        recovered = u.Infra.recover_managed_toml(
             source, conflict_sections=owner.conflict_sections
         )
         if recovered.failure:
@@ -1884,14 +1882,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.ProjectMetadata].fail(
                 f"cannot parse reconciled project metadata from {root}"
             )
-        try:
-            document = m.PyprojectDocument.model_validate(payload)
-            metadata = u.build_project_metadata(root.resolve(), document)
-        except c.ValidationError as exc:
-            return r[p.ProjectMetadata].fail_op(
-                f"validate reconciled project metadata from {root}", exc
-            )
-        return r[p.ProjectMetadata].ok(metadata)
+        document = m.PyprojectDocument.model_validate(payload)
+        return r[p.ProjectMetadata].ok(
+            u.build_project_metadata(root.resolve(), document)
+        )
 
     def _plan_existing_templates(
         self,
@@ -2075,10 +2069,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 executable=managed.executable,
                 source_states=(
                     *rendered.value.source_states,
-                    *(
-                        composed.value.source_states
-                        or managed_artifacts.sources
-                    ),
+                    *(composed.value.source_states or managed_artifacts.sources),
                 ),
             )
             if file_plan.failure:

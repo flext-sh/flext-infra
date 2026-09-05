@@ -1,0 +1,23 @@
+# Managed conflict recovery is behavior on the canonical u.Infra facade. This
+# rule rewires surviving concrete-class consumers before the old owner is deleted.
+id: rewire-managed-conflict-recovery-call
+language: Python
+severity: error
+files:
+  - "flext-infra/src/**/*.py"
+  - "flext-infra/tests/**/*.py"
+rule:
+  pattern: FlextInfraCodegenManagedConflicts.recover_toml($$$ARGS)
+fix: u.Infra.recover_managed_toml($$$ARGS)
+message: Consume managed conflict recovery through the canonical u.Infra facade.
+---
+id: rewire-managed-conflict-recovery-import
+language: Python
+severity: error
+files:
+  - "flext-infra/src/**/*.py"
+  - "flext-infra/tests/**/*.py"
+rule:
+  pattern: from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
+fix: from flext_infra import u
+message: Remove the deleted managed-conflict implementation import.

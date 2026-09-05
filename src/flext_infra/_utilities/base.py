@@ -87,7 +87,19 @@ class FlextInfraUtilitiesBase:
             (
                 line
                 for line in content.splitlines()
-                if line.startswith(("<<<<<<< ", "||||||| ", ">>>>>>> "))
+                if FlextInfraUtilitiesBase.merge_conflict_control(line) is not None
+            ),
+            None,
+        )
+
+    @staticmethod
+    def merge_conflict_control(line: str) -> str | None:
+        """Classify one Git merge-control line from the protocol SSOT."""
+        return next(
+            (
+                kind
+                for kind, token in c.Infra.MERGE_CONFLICT_CONTROLS
+                if line.startswith(token)
             ),
             None,
         )

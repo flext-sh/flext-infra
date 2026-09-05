@@ -16,6 +16,18 @@ if TYPE_CHECKING:
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
 
+    MERGE_CONFLICT_CONTROLS: Final[tuple[tuple[str, str], ...]] = (
+        ("current", "<<<<<<<"),
+        ("ancestor", "|||||||"),
+        ("separator", "======="),
+        ("incoming", ">>>>>>>"),
+    )
+    "Git merge-control kinds and their immutable protocol tokens."
+    TOML_SECTION_HEADER_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*\[([^\[\]]+)\]\s*(?:#.*)?$"
+    )
+    "Regex: one complete TOML table header with an optional comment."
+
     # --- Directory exclusion sets (was: class Excluded) ---
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
