@@ -18,7 +18,7 @@ import pytest
 
 from flext_infra import c, config
 from flext_infra import main as infra_main
-from flext_infra.services.cli_routes_codegen import CodegenRoutes
+from flext_infra.services.cli_routes import CliRouteService
 from flext_tests import tm
 from tests import u
 
@@ -121,7 +121,7 @@ class TestMainEntryPoint:
         """
         route = next(
             item
-            for item in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
+            for item in CliRouteService.route_table_for(c.Infra.CLI_GROUP_CODEGEN)
             if item.name == "init"
         )
 

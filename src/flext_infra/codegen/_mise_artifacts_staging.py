@@ -81,9 +81,10 @@ class FlextInfraMiseStaging:
         the network and on upstream release timing, so the same sources would
         stop producing the same bytes.
         """
-        if project.artifacts.lock.content is None:
-            return True
-        return project.config.before.content != project.config.replacement_content
+        return (
+            project.artifacts.lock.content is None
+            or project.config.before.content != project.config.replacement_content
+        )
 
     def _stage_project(
         self,
