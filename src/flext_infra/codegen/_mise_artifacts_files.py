@@ -18,13 +18,8 @@ ARTIFACT_SPECS: Final[tuple[tuple[str, int], ...]] = (
     ("mise.lock", 0o644),
 )
 CONFIG_SPEC: Final[tuple[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
-PUBLICATION_SPECS: Final[tuple[tuple[str, int], ...]] = (
-    CONFIG_SPEC,
-    *ARTIFACT_SPECS,
-)
-ARTIFACT_NAMES: Final[tuple[str, ...]] = tuple(
-    name for name, _mode in ARTIFACT_SPECS
-)
+PUBLICATION_SPECS: Final[tuple[tuple[str, int], ...]] = (CONFIG_SPEC, *ARTIFACT_SPECS)
+ARTIFACT_NAMES: Final[tuple[str, ...]] = tuple(name for name, _mode in ARTIFACT_SPECS)
 JOURNAL_NAME: Final[str] = "journal.json"
 JOURNAL_MODE: Final[int] = 0o600
 LOCK_NAME: Final[str] = "publication.lock"
@@ -37,9 +32,7 @@ def digest(content: bytes) -> str:
     return sha256(content).hexdigest()
 
 
-def read_state(
-    path: Path, *, required: bool
-) -> p.Result[m.Cli.AtomicFileState]:
+def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]:
     """Read exact state through the canonical descriptor-authenticated owner."""
     return u.Cli.atomic_read_binary_file_state(path, required=required)
 
@@ -54,10 +47,7 @@ def write_publication(
         return r[m.Cli.AtomicFileState].fail(
             f"Mise publication replacement is absent: {replacement.path}"
         )
-    return u.Cli.atomic_publish_staged_binary_file_guarded(
-        before,
-        replacement,
-    )
+    return u.Cli.atomic_publish_staged_binary_file_guarded(before, replacement)
 
 
 def delete_state(state: m.Cli.AtomicFileState) -> p.Result[bool]:

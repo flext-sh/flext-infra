@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, override
-from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, config, m, u
@@ -16,7 +15,7 @@ from flext_infra.base import s
 from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraWorkspaceDetector(
@@ -665,7 +664,9 @@ class FlextInfraWorkspaceDetector(
                 f"{repository_url}"
             )
         canonical_url = (
-            repository_url if repository_url.endswith(".git") else f"{repository_url}.git"
+            repository_url
+            if repository_url.endswith(".git")
+            else f"{repository_url}.git"
         )
         repository = m.Infra.RepositoryRef(
             name=project_name,
@@ -683,13 +684,12 @@ class FlextInfraWorkspaceDetector(
         beads = cls.load_beads_spec(repository_root)
         if beads.failure:
             return r[m.Infra.WorkspaceSpec].fail(
-                beads.error or f"manifestless projection declares no ledger: {repository_root}"
+                beads.error
+                or f"manifestless projection declares no ledger: {repository_root}"
             )
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
-                name=project_name,
-                beads=beads.value,
-                repository=repository,
+                name=project_name, beads=beads.value, repository=repository
             )
         )
 

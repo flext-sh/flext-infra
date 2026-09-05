@@ -106,7 +106,9 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(plan.releasable, eq=True)
 
         @staticmethod
-        def test_final_version_is_ahead_of_its_own_prerelease_tag(tmp_path: Path) -> None:
+        def test_final_version_is_ahead_of_its_own_prerelease_tag(
+            tmp_path: Path,
+        ) -> None:
             """A final version whose last tag is one of its pre-releases ships as declared.
 
             The release triple is shared, so only a comparison that keeps the
@@ -117,11 +119,21 @@ class TestsFlextInfraReleaseProtocol:
             _tag(workspace, "v0.1.0rc2")
             tm.ok(
                 cli.run_checked(
-                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge pull request #4 from legacy/lane"],
+                    [
+                        c.Infra.GIT,
+                        "commit",
+                        "--allow-empty",
+                        "-m",
+                        "Merge pull request #4 from legacy/lane",
+                    ],
                     cwd=workspace,
                 )
             )
-            tm.ok(cli.run_checked([c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace))
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace
+                )
+            )
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
             plan = _plan(workspace)
@@ -141,15 +153,30 @@ class TestsFlextInfraReleaseProtocol:
             workspace = _released_workspace(tmp_path)
             tm.ok(
                 cli.run_checked(
-                    [c.Infra.GIT, "commit", "--allow-empty", "-m", "Merge pull request #3 from legacy/lane"],
+                    [
+                        c.Infra.GIT,
+                        "commit",
+                        "--allow-empty",
+                        "-m",
+                        "Merge pull request #3 from legacy/lane",
+                    ],
                     cwd=workspace,
                 )
             )
             tm.ok(u.Infra.replace_project_version(workspace, "0.2.0"))
-            tm.ok(cli.run_checked([c.Infra.GIT, "commit", "-am", "chore: baseline 0.2.0"], cwd=workspace))
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "commit", "-am", "chore: baseline 0.2.0"],
+                    cwd=workspace,
+                )
+            )
             # The fixture's origin is the repository itself: refresh the remote
             # ref so the integration base carries the declared version.
-            tm.ok(cli.run_checked([c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace))
+            tm.ok(
+                cli.run_checked(
+                    [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN], cwd=workspace
+                )
+            )
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
             plan = _plan(workspace)

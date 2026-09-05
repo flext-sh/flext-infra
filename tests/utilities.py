@@ -7,7 +7,7 @@ import shutil
 import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_cli import cli as cli_facade
 from flext_infra import config, main, r, u
@@ -28,6 +28,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
     class Tests(FlextTestsUtilities.Tests):
         """Canonical test helper namespace."""
+
+        # The toolchain SSOT no longer declares a Mise selector: the exact
+        # release is carried by the generated launcher receipt, so a hermetic
+        # stub owns its own release string. Three decimal components is the
+        # shape `FlextInfraCodegenMiseArtifacts.is_mise_release` accepts.
+        MISE_STUB_RELEASE: ClassVar[str] = "2026.9.1"
 
         @staticmethod
         def make_read_only(path: Path) -> None:
@@ -712,13 +718,50 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def write_standalone_workspace_manifest(
+            project_dir: Path,
+            name: str,
+            *,
+            upstream: str | None = None,
+            inherited_facets: t.StrSequence = (),
+        ) -> Path:
+            """Write the declared ``config/workspace.yaml`` of one standalone repository.
+
+            The Makefile projection reads declarations only, so this fixture is
+            the complete topology input for ``codegen conform --what makefile
+            --scope self``. Every value is derived from the same typed SSOT the
+            production loader validates against, never frozen by hand.
+            """
+            repository = TestsFlextInfraUtilities.Tests.repository_ref(
+                name, role=c.Infra.MakeProfile.STANDALONE
+            ).model_copy(update={"checkout": c.Infra.CheckoutKind.INDEPENDENT})
+            project = TestsFlextInfraUtilities.Tests.project_spec(name)
+            if upstream is not None:
+                project = project.model_copy(update={"upstream": upstream})
+            if inherited_facets:
+                project = project.model_copy(
+                    update={"inherited_facets": tuple(inherited_facets)}
+                )
+            manifest = m.Infra.WorkspaceManifestSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=name,
+                repository=repository,
+                project=project,
+            )
+            config_dir = project_dir / c.CONFIG_DIR_NAME
+            config_dir.mkdir(parents=True, exist_ok=True)
+            manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
+            tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
+            return manifest_path
+
+        @staticmethod
         def write_mise_stub(path: Path) -> Path:
             """Write the one hermetic Mise contract used by Make setup fixtures."""
             TestsFlextInfraUtilities.Tests.write_executable(
                 path,
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
-                f"printf '%s\\n' '{config.Infra.codegen.toolchain.mise_version}'; exit; fi\n"
+                f"printf '%s\\n' '{TestsFlextInfraUtilities.Tests.MISE_STUB_RELEASE}'; exit; fi\n"
                 f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
                 f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
                 'if [ "$1" = "trust" ]; then exit; fi\n'
@@ -901,7 +944,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 )
                 rendered = u.Cli.template_render(policy_source, policy_context)
                 if rendered.failure:
-                    msg = rendered.error or f"release policy render failed: {policy_path}"
+                    msg = (
+                        rendered.error or f"release policy render failed: {policy_path}"
+                    )
                     raise RuntimeError(msg)
                 policy_target = workspace / policy_path
                 policy_target.parent.mkdir(parents=True, exist_ok=True)

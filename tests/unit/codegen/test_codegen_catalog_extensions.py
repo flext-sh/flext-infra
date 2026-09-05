@@ -64,11 +64,6 @@ class TestsCodegenCatalogExtensions:
     def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
         tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
-    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
-        toolchain = config.Infra.codegen.toolchain
-
-        tm.that(toolchain.mise_version, eq="latest")
-
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
         template = (
@@ -119,7 +114,7 @@ class TestsCodegenCatalogExtensions:
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
-        rendered = tomllib.loads(tm.ok(result))
+        rendered = tomllib.loads(tm.ok(result).rendered)
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(

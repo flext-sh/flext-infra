@@ -1823,11 +1823,7 @@ class TestScriptDispatchMakefile:
                 if waiting:
                     break
                 time.sleep(0.02)
-            tm.that(
-                waiting,
-                eq=True,
-                msg=output_path.read_text(encoding="utf-8"),
-            )
+            tm.that(waiting, eq=True, msg=output_path.read_text(encoding="utf-8"))
             concurrent = b"concurrent human WIP\n"
             makefile.write_bytes(concurrent)
             concurrent_inode = makefile.stat().st_ino
@@ -1919,13 +1915,9 @@ class TestScriptDispatchMakefile:
 
         tm.ok(applied)
         rendered = (root / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
+        tm.that(rendered, has=f"git+{infra_provider.base_url}/{config.Infra.name}.git@")
         tm.that(
-            rendered,
-            has=f"git+{infra_provider.base_url}/{config.Infra.name}.git@",
-        )
-        tm.that(
-            rendered,
-            lacks=f"git+{consumer_provider.base_url}/{config.Infra.name}.git@",
+            rendered, lacks=f"git+{consumer_provider.base_url}/{config.Infra.name}.git@"
         )
 
     @pytest.mark.parametrize("destination_kind", ["symlink", "hardlink", "fifo"])
