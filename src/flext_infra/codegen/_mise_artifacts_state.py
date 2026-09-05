@@ -20,9 +20,7 @@ def _project_depth(item: m.Infra.MiseToolchainProjectLayout) -> int:
     return -len(item.root.parts)
 
 
-def _directory_cleanup_order(
-    item: m.Infra.CodegenJournalDirectory,
-) -> tuple[int, str]:
+def _directory_cleanup_order(item: m.Infra.CodegenJournalDirectory) -> tuple[int, str]:
     """Order journaled directory cleanup from descendants to ancestors."""
     return _relative_order(item.path)
 
@@ -59,10 +57,7 @@ def plan_transaction_directories(
             )
         roots.append(transaction_root)
     return plan_directories(
-        layout,
-        phase="transaction",
-        requested=tuple(roots),
-        disposition="temporary",
+        layout, phase="transaction", requested=tuple(roots), disposition="temporary"
     )
 
 
@@ -91,8 +86,7 @@ def plan_directories(
             return result_type.from_failure(chain)
         for directory in chain.value.directories:
             owner = next(
-                (item for item in projects if directory.is_relative_to(item.root)),
-                None,
+                (item for item in projects if directory.is_relative_to(item.root)), None
             )
             if owner is None or directory == owner.root:
                 return result_type.fail(
@@ -135,9 +129,7 @@ def create_journaled_directories(
             return r[bool].fail(
                 f"journaled directory differs from its project: {entry.path}"
             )
-        before = u.Cli.atomic_read_empty_directory_state(
-            target.value, required=False
-        )
+        before = u.Cli.atomic_read_empty_directory_state(target.value, required=False)
         if before.failure:
             return r[bool].from_failure(before)
         if before.value.exists:
@@ -227,11 +219,7 @@ def cleanup_journaled_directories(
         for directory in journal.directories
         if directory.disposition == "temporary" or include_generated
     )
-    for entry in sorted(
-        removable,
-        key=_directory_cleanup_order,
-        reverse=True,
-    ):
+    for entry in sorted(removable, key=_directory_cleanup_order, reverse=True):
         target = files.resolve_relative(
             layout.scope_root, entry.path, purpose="journaled cleanup directory"
         )
@@ -239,9 +227,7 @@ def cleanup_journaled_directories(
             return r[bool].from_failure(target)
         if not target.value.exists() and not target.value.is_symlink():
             continue
-        current = u.Cli.atomic_read_empty_directory_state(
-            target.value, required=True
-        )
+        current = u.Cli.atomic_read_empty_directory_state(target.value, required=True)
         if current.failure:
             return r[bool].fail(
                 current.error

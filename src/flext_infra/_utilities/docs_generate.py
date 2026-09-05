@@ -97,9 +97,7 @@ class FlextInfraUtilitiesDocsGenerate:
                 if state.value.content is not None:
                     paths.add(fixed_path)
             config_paths = FlextInfraUtilitiesDocsGenerate._source_tree_files(
-                root / "config",
-                recursive=False,
-                suffixes=frozenset({".yaml", ".yml"}),
+                root / "config", recursive=False, suffixes=frozenset({".yaml", ".yml"})
             )
             if config_paths.failure:
                 return r[tuple[Path, ...]].from_failure(config_paths)
@@ -462,9 +460,7 @@ class FlextInfraUtilitiesDocsGenerate:
             ),
         ))
         api_pruned = FlextInfraUtilitiesDocsGenerate._prune_generated_tree_artifacts(
-            workspace_root,
-            workspace_root / "docs/api-reference/generated",
-            rendered,
+            workspace_root, workspace_root / "docs/api-reference/generated", rendered
         )
         if api_pruned.failure:
             return r[tuple[_DocsRenderedArtifact, ...]].from_failure(api_pruned)

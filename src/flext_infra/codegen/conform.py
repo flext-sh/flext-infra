@@ -157,48 +157,40 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             if provider.failure:
                 return r[m.Infra.CodegenResult].from_failure(provider)
-            initialized = u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "init",
-                    "--initial-branch",
-                    provider.value.branch,
-                    str(root),
-                ]
-            )
+            initialized = u.Cli.run_checked([
+                c.Infra.GIT,
+                "init",
+                "--initial-branch",
+                provider.value.branch,
+                str(root),
+            ])
             if initialized.failure:
                 return r[m.Infra.CodegenResult].from_failure(initialized)
-            remote = u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-C",
-                    str(root),
-                    "remote",
-                    "add",
-                    c.Infra.GIT_DEFAULT_REMOTE,
-                    initial_workspace.repository.url,
-                ]
-            )
+            remote = u.Cli.run_checked([
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "remote",
+                "add",
+                c.Infra.GIT_DEFAULT_REMOTE,
+                initial_workspace.repository.url,
+            ])
             if remote.failure:
                 return r[m.Infra.CodegenResult].from_failure(remote)
-            committed = u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "-C",
-                    str(root),
-                    "commit",
-                    "--allow-empty",
-                    "-m",
-                    "chore: initialize generated project",
-                ]
-            )
+            committed = u.Cli.run_checked([
+                c.Infra.GIT,
+                "-C",
+                str(root),
+                "commit",
+                "--allow-empty",
+                "-m",
+                "chore: initialize generated project",
+            ])
             if committed.failure:
                 return r[m.Infra.CodegenResult].from_failure(committed)
             initialized_git = True
         service = cls(
-            workspace_root=root,
-            request=request,
-            initial_workspace=initial_workspace,
+            workspace_root=root, request=request, initial_workspace=initial_workspace
         )
         result = service.execute()
         if result.success:
@@ -567,9 +559,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 inventory = u.Cli.atomic_inventory_physical_tree(route)
                 if inventory.failure:
                     return r[bool].from_failure(inventory)
-                removed = u.Cli.atomic_cleanup_physical_tree_guarded(
-                    inventory.value
-                )
+                removed = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
                 if removed.failure:
                     return r[bool].from_failure(removed)
             linked = u.Cli.ensure_symlink(route, owner)
@@ -801,9 +791,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 local_workspace = workspace
             else:
                 if repository.checkout is c.Infra.CheckoutKind.SUBMODULE:
-                    local_repository = repository.model_copy(
-                        update={"path": Path()}
-                    )
+                    local_repository = repository.model_copy(update={"path": Path()})
                     local_workspace = m.Infra.WorkspaceSpec(
                         name=repository.name,
                         beads=workspace.beads,
@@ -988,8 +976,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     Path(c.Infra.BEADS_METADATA_RELPATH),
                 }
                 and workspace is not None
-                and workspace.repository.checkout
-                is c.Infra.CheckoutKind.SUBMODULE
+                and workspace.repository.checkout is c.Infra.CheckoutKind.SUBMODULE
                 and (root / c.Infra.BEADS_DIRNAME).is_symlink()
             ):
                 continue

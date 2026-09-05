@@ -116,10 +116,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         scope: m.Infra.DocScope, *, workspace_root: Path
     ) -> bool:
         """Return whether a project scope shares the aggregate root path."""
-        return (
-            scope.name != c.Infra.RK_ROOT
-            and scope.path == workspace_root
-        )
+        return scope.name != c.Infra.RK_ROOT and scope.path == workspace_root
 
     def _configured_request(self) -> m.Infra.DocsGenerateRequest:
         """Return the check-only request shared by both planner entry points."""
@@ -170,17 +167,13 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         output_dir = u.Cli.resolve_optional_path(
             request.output_dir, default=Path(c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
         )
-        source_paths = u.Infra.docs_source_paths(
-            workspace_root, tuple(selected_roots)
-        )
+        source_paths = u.Infra.docs_source_paths(workspace_root, tuple(selected_roots))
         if source_paths.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(source_paths)
         sources = u.Infra.docs_snapshot_sources(source_paths.value)
         if sources.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(sources)
-        selected = u.Infra.build_scopes(
-            workspace_root, request.projects, output_dir
-        )
+        selected = u.Infra.build_scopes(workspace_root, request.projects, output_dir)
         if selected.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(selected)
         selected_targets = cls._validate_scope_targets(selected.value, output_dir)
@@ -200,9 +193,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
                 rendered.append((scope, ()))
                 continue
             rendered_artifacts = u.Infra.docs_scope_artifacts(
-                scope,
-                workspace_root=workspace_root,
-                aggregate_scopes=aggregate.value,
+                scope, workspace_root=workspace_root, aggregate_scopes=aggregate.value
             )
             if rendered_artifacts.failure:
                 return r[m.Infra.DocsGenerationBundle].from_failure(rendered_artifacts)
@@ -273,9 +264,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         offset = 0
         for scoped in bundle.scopes:
             size = len(scoped.artifacts)
-            scope_plans.append(
-                (scoped.scope, planned.value[offset : offset + size])
-            )
+            scope_plans.append((scoped.scope, planned.value[offset : offset + size]))
             offset += size
         return r[tuple[_DocsScopePlan, ...]].ok(tuple(scope_plans))
 

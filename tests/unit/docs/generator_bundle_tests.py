@@ -91,9 +91,7 @@ def test_docs_target_leaf_symlink_to_in_project_file_is_rejected(
     tm.that(unmanaged.read_text(encoding="utf-8"), eq="keep\n")
 
 
-def test_docs_generated_parent_symlink_is_rejected_before_prune(
-    tmp_path: Path,
-) -> None:
+def test_docs_generated_parent_symlink_is_rejected_before_prune(tmp_path: Path) -> None:
     """Reject an aliased generated tree before deriving any delete artifact."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     project = workspace / "flext-a"

@@ -319,9 +319,7 @@ def cleanup(
 ) -> p.Result[bool]:
     """Retain journal authority until all journal-authorized cleanup completes."""
     directories = state.cleanup_journaled_directories(
-        layout,
-        journal,
-        include_generated=journal.state != "committed",
+        layout, journal, include_generated=journal.state != "committed"
     )
     if directories.failure:
         return directories

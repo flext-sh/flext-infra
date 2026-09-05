@@ -197,9 +197,7 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# Docs\n", encoding="utf-8")
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace,
-        projects=["flext-infra-fixture"],
-        apply=False,
+        workspace_root=workspace, projects=["flext-infra-fixture"], apply=False
     )
     generator = FlextInfraDocGenerator(
         workspace_root=workspace, selected_projects=["flext-infra-fixture"]
@@ -433,7 +431,10 @@ def test_stale_generated_file_drift_converges_through_file_plans(
 
     stale_plans = _plan_docs(generator)
     tm.that(stale.exists(), eq=True)
-    tm.that(any(plan.path == stale and plan.requires_effect for plan in stale_plans), eq=True)
+    tm.that(
+        any(plan.path == stale and plan.requires_effect for plan in stale_plans),
+        eq=True,
+    )
     published = u.Tests.materialize_codegen_plans(
         r[tuple[m.Infra.CodegenFilePlan, ...]].ok(stale_plans)
     )

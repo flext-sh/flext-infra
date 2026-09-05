@@ -430,9 +430,7 @@ class FlextInfraCodegenTransaction:
                 )
             )
         persisted = journal_io.write(
-            session.plan.layout,
-            extended.value,
-            expected=session.journal_state,
+            session.plan.layout, extended.value, expected=session.journal_state
         )
         if persisted.failure:
             return result_type.from_failure(
@@ -441,9 +439,7 @@ class FlextInfraCodegenTransaction:
                     persisted.error or f"cannot persist {phase} directories",
                 )
             )
-        created = state.create_journaled_directories(
-            session.plan.layout, planned.value
-        )
+        created = state.create_journaled_directories(session.plan.layout, planned.value)
         if created.failure:
             return result_type.from_failure(
                 self._recover_failure(

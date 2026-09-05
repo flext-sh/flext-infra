@@ -66,17 +66,9 @@ def test_generator_plans_root_and_selected_project(tmp_path: Path) -> None:
 
     tm.ok(result)
     planned_paths = {plan.path for plan in planned.value}
-    tm.that(
-        workspace / "docs/projects/generated/catalog.md" in planned_paths, eq=True
-    )
-    tm.that(
-        workspace / "flext-a/README.md" in planned_paths,
-        eq=True,
-    )
-    tm.that(
-        workspace / "flext-b/README.md" not in planned_paths,
-        eq=True,
-    )
+    tm.that(workspace / "docs/projects/generated/catalog.md" in planned_paths, eq=True)
+    tm.that(workspace / "flext-a/README.md" in planned_paths, eq=True)
+    tm.that(workspace / "flext-b/README.md" not in planned_paths, eq=True)
 
 
 def test_validator_execute_fails_before_generation_and_succeeds_after(

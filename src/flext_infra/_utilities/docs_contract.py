@@ -190,8 +190,7 @@ class FlextInfraUtilitiesDocsContract:
             "classifiers": list(classifiers_value)
             if isinstance(classifiers_value, list)
             else [],
-            "site_title": str(docs_meta.get("site_title", "")).strip()
-            or project_name,
+            "site_title": str(docs_meta.get("site_title", "")).strip() or project_name,
             "site_url": str(
                 urls.get("Documentation") or urls.get("Homepage") or ""
             ).strip(),

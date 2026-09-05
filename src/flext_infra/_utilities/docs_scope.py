@@ -195,9 +195,7 @@ class FlextInfraUtilitiesDocsScope:
         resolved_workspace_root = FlextInfraUtilitiesDocsScope._absolute_lexical(
             workspace_root
         )
-        if all(
-            project.path != resolved_workspace_root for project in projects
-        ):
+        if all(project.path != resolved_workspace_root for project in projects):
             root_project = FlextInfraUtilitiesDocsScope._project_info_for_entry(
                 resolved_workspace_root,
                 workspace_subprojects=FlextInfraUtilitiesDocsScope._workspace_subproject_path_set(

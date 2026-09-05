@@ -22,10 +22,7 @@ class FlextInfraMiseRuntime:
         self._owner = owner
 
     def latest_receipt(
-        self,
-        seed_state: m.Cli.AtomicFileState,
-        *,
-        scratch: Path,
+        self, seed_state: m.Cli.AtomicFileState, *, scratch: Path
     ) -> p.Result[Path]:
         """Resolve latest with an isolated seed, then return an exact receipt."""
         prepared = process.prepare_isolation(scratch)

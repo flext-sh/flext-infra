@@ -46,15 +46,12 @@ def journal_topology(
     for directory in journal.directories:
         project = by_selector[directory.project]
         target = files.resolve_relative(
-            layout.scope_root,
-            directory.path,
-            purpose="journaled generation directory",
+            layout.scope_root, directory.path, purpose="journaled generation directory"
         )
         if target.failure:
             return r[bool].from_failure(target)
-        if (
-            target.value == project.root
-            or not target.value.is_relative_to(project.root)
+        if target.value == project.root or not target.value.is_relative_to(
+            project.root
         ):
             return r[bool].fail(
                 f"generation directory escapes its project: {directory.path}"

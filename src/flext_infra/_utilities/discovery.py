@@ -307,8 +307,7 @@ class FlextInfraUtilitiesDiscovery(
         too, and each is analyzed under its own local configuration.
         """
         discovered = cls.discover_python_dirs(
-            project_dir,
-            workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+            project_dir, workspace_excluded_top_dirs=workspace_excluded_top_dirs
         )
         return (
             *declared,

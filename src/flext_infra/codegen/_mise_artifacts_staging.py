@@ -40,9 +40,7 @@ class FlextInfraMiseStaging:
         if seed.failure:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(seed)
         runtime_scratch = coordinator.layout.transaction_root / "runtime"
-        receipt = self._runtime.latest_receipt(
-            seed.value, scratch=runtime_scratch
-        )
+        receipt = self._runtime.latest_receipt(seed.value, scratch=runtime_scratch)
         if receipt.failure:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(receipt)
         environment = process.environment(runtime_scratch)

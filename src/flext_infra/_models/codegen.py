@@ -314,9 +314,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         @u.model_validator(mode="after")
         def _validate_disposition(self) -> Self:
             """Bind transaction paths to temporary cleanup semantics."""
-            if (self.phase == "transaction") != (
-                self.disposition == "temporary"
-            ):
+            if (self.phase == "transaction") != (self.disposition == "temporary"):
                 msg = "transaction phase and temporary disposition must coincide"
                 raise ValueError(msg)
             return self
@@ -696,8 +694,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
             if self.state == "staging" and any(
-                directory.disposition != "temporary"
-                for directory in self.directories
+                directory.disposition != "temporary" for directory in self.directories
             ):
                 msg = "staging codegen journal can authorize only temporary paths"
                 raise ValueError(msg)

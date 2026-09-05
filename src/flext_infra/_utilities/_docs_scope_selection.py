@@ -77,7 +77,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
             workspace_root, (project_root,)
         )
         if roots.failure:
-            raise ValueError(roots.error or f"docs project path is unsafe: {project_root}")
+            raise ValueError(
+                roots.error or f"docs project path is unsafe: {project_root}"
+            )
         if project_root not in roots.value:
             return None
         if not FlextInfraUtilitiesDocsScope.project_state(project_root).payload:

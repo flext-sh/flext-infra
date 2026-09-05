@@ -9,9 +9,7 @@ import pytest
 from flext_infra import m
 from flext_infra.codegen.codegen_transaction import state
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
-from flext_infra.codegen.mise_artifacts_workspace import (
-    FlextInfraMiseWorkspacePlanner,
-)
+from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from flext_tests import tm
 from tests import u as test_u
 
@@ -30,7 +28,9 @@ class TestsTransactionDirectoryJournal:
             workspace_root=root, apply_changes=True, check_only=False
         )
         planned = FlextInfraMiseWorkspacePlanner(owner).layout_from_selectors(
-            root.resolve(), (".",), transaction_id=TestsTransactionDirectoryJournal._TRANSACTION_ID
+            root.resolve(),
+            (".",),
+            transaction_id=TestsTransactionDirectoryJournal._TRANSACTION_ID,
         )
         return tm.ok(planned)
 
@@ -72,9 +72,7 @@ class TestsTransactionDirectoryJournal:
         (transaction_root / "partial-download").write_bytes(b"owned staging bytes")
 
         cleaned = state.cleanup_journaled_directories(
-            layout,
-            self._journal(layout, directories),
-            include_generated=True,
+            layout, self._journal(layout, directories), include_generated=True
         )
 
         tm.ok(cleaned, eq=True)
@@ -87,10 +85,7 @@ class TestsTransactionDirectoryJournal:
         layout = self._layout(tmp_path / "repository")
         target = layout.scope_root / "docs" / "generated"
         planned = state.plan_directories(
-            layout,
-            phase="docs",
-            requested=(target,),
-            disposition="generated",
+            layout, phase="docs", requested=(target,), disposition="generated"
         )
         directories = tm.ok(planned)
         tm.ok(state.create_journaled_directories(layout, directories), eq=True)
@@ -98,9 +93,7 @@ class TestsTransactionDirectoryJournal:
         foreign.write_text("not journaled", encoding="utf-8")
 
         cleaned = state.cleanup_journaled_directories(
-            layout,
-            self._journal(layout, directories),
-            include_generated=True,
+            layout, self._journal(layout, directories), include_generated=True
         )
 
         tm.fail(cleaned, has="not safely empty")
@@ -119,9 +112,7 @@ class TestsTransactionDirectoryJournal:
         (transaction_root / "alias").symlink_to(layout.scope_root)
 
         cleaned = state.cleanup_journaled_directories(
-            layout,
-            self._journal(layout, directories),
-            include_generated=True,
+            layout, self._journal(layout, directories), include_generated=True
         )
 
         tm.fail(cleaned)
