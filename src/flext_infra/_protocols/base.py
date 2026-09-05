@@ -779,14 +779,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class GithubService(Protocol):
-        """Protocol for GitHub operations services."""
-
-        def execute(self) -> p.Result[bool]:
-            """Execute GitHub operations."""
-            ...
-
-    @runtime_checkable
     class RefactorService(Protocol):
         """Protocol for rope-based refactor services."""
 

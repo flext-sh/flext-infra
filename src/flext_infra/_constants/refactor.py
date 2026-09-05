@@ -49,6 +49,14 @@ class FlextInfraConstantsRefactor:
     "Exact structured mod evidence schema version."
     MOD_SCAN_REPORT_MODE: Final[int] = 0o644
     "Canonical permission bits for structured mod evidence."
+    AST_GREP_ERROR_FINDING_RECEIPT: Final[str] = (
+        "Error: {count} error(s) found in code."
+    )
+    "Exact first stderr line emitted for error-severity JSONL findings."
+    AST_GREP_ERROR_FINDING_HELP: Final[str] = (
+        "Help: Scan succeeded and found error level diagnostics in the codebase."
+    )
+    "Exact second stderr line emitted for error-severity JSONL findings."
 
     @unique
     class ModScanCommand(StrEnum):

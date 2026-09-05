@@ -1884,7 +1884,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         document = m.PyprojectDocument.model_validate(payload)
         return r[p.ProjectMetadata].ok(
-            u.Infra.build_project_metadata(root.resolve(), document)
+            u.build_project_metadata(root.resolve(), document)
         )
 
     def _plan_existing_templates(

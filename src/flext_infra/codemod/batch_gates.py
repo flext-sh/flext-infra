@@ -69,8 +69,6 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
         if output.exit_code != 0:
             if output.exit_code == finding_exit_code and output.stdout.strip():
-                if output.stderr.strip():
-                    return r[p.Cli.CommandOutput].fail(output.stderr)
                 return r[p.Cli.CommandOutput].ok(output)
             detail = "\n".join(
                 stream.strip()
@@ -107,6 +105,17 @@ class FlextInfraModGateEngine:
         )
 
     @staticmethod
+    def _validate_finding_receipt(stderr: str, findings: int) -> p.Result[bool]:
+        """Authenticate ast-grep's exact error-finding stderr receipt."""
+        expected = "\n".join((
+            c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=findings),
+            c.Infra.AST_GREP_ERROR_FINDING_HELP,
+        ))
+        if stderr.strip() != expected:
+            return r[bool].fail(stderr)
+        return r[bool].ok(True)
+
+    @staticmethod
     def _rule_ids(rule: Path) -> p.Result[tuple[frozenset[str], frozenset[str]]]:
         """Parse every document and return all IDs plus the fixable subset."""
         documents = rule.read_text(encoding="utf-8").split("\n---")
@@ -136,6 +145,7 @@ class FlextInfraModGateEngine:
     @staticmethod
     def _parse_findings(
         stdout: str,
+        root: Path,
         rule_file: Path,
         rule_ids: frozenset[str],
         fixable_ids: frozenset[str],
@@ -145,6 +155,13 @@ class FlextInfraModGateEngine:
         nodes = 0
         files: set[Path] = set()
         entries: list[m.Infra.ModScanFinding] = []
+        repository_roots = tuple(
+            sorted(
+                u.Infra.governed_project_roots(root),
+                key=lambda candidate: len(candidate.parts),
+                reverse=True,
+            )
+        )
         for raw_line in stdout.splitlines():
             line = raw_line.strip()
             if not line:
@@ -159,28 +176,43 @@ class FlextInfraModGateEngine:
             text = finding.get("text")
             file = finding.get("file")
             source_range = finding.get("range")
+            raw_replacement = finding.get("replacement")
             if (
-                rule_id not in rule_ids
+                not isinstance(rule_id, str)
+                or rule_id not in rule_ids
                 or not isinstance(text, str)
                 or not isinstance(file, str)
                 or not isinstance(source_range, Mapping)
+                or (
+                    raw_replacement is not None
+                    and not isinstance(raw_replacement, str)
+                )
             ):
                 return r.fail(f"invalid ast-grep finding contract: {line}")
             file_path = Path(file)
             files.add(file_path)
-            replacement: str | None = None
+            replacement = (
+                raw_replacement if isinstance(raw_replacement, str) else None
+            )
             actionable = False
             if rule_id in fixable_ids:
-                replacement = finding.get("replacement")
                 if not isinstance(replacement, str):
                     return r.fail(f"fixable ast-grep finding lacks replacement: {line}")
                 actionable = text != replacement
                 if actionable:
                     nodes += 1
-            repository = file_path.parts[0] if len(file_path.parts) > 1 else "."
+            resolved_file = (root / file_path).resolve()
+            repository = next(
+                (
+                    candidate.name
+                    for candidate in repository_roots
+                    if resolved_file.is_relative_to(candidate)
+                ),
+                root.resolve().name,
+            )
             entries.append(
                 m.Infra.ModScanFinding(
-                    rule_file=rule_file.name,
+                    rule_file=str(rule_file.resolve()),
                     rule_id=rule_id,
                     repository=repository,
                     file=file_path,
@@ -312,8 +344,12 @@ class FlextInfraModGateEngine:
             if run.failure:
                 return r[m.Infra.ModScanReport].from_failure(run)
             report = cls._parse_findings(
-                run.value.stdout, rule, rule_ids, fixable_ids
+                run.value.stdout, root, rule, rule_ids, fixable_ids
             ).unwrap()
+            if run.value.exit_code != 0:
+                cls._validate_finding_receipt(
+                    run.value.stderr, report.findings
+                ).unwrap()
             findings += report.findings
             nodes += report.nodes
             files.update(report.files)
