@@ -82,25 +82,6 @@ class FlextInfraModelsScan:
             str, m.Field(description="Name of the detector that produced this result")
         ]
 
-    class ModScanReport(m.ArbitraryTypesModel):
-        """Verified structural findings and actionable rewrite targets."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        findings: Annotated[
-            t.NonNegativeInt, m.Field(description="Complete finding count")
-        ]
-        nodes: Annotated[
-            t.NonNegativeInt, m.Field(description="Actionable rewrite count")
-        ]
-        files: Annotated[
-            frozenset[Path], m.Field(description="Files containing actionable nodes")
-        ]
-        entries: Annotated[
-            tuple[FlextInfraModelsScan.ModScanFinding, ...],
-            m.Field(description="Every validated ast-grep finding in stable order"),
-        ]
-
     class ModScanFinding(m.ArbitraryTypesModel):
         """One complete ast-grep JSONL finding with normalized evidence keys."""
 
@@ -129,6 +110,25 @@ class FlextInfraModelsScan:
         payload: Annotated[
             t.JsonMapping,
             m.Field(description="Complete validated ast-grep finding without field loss"),
+        ]
+
+    class ModScanReport(m.ArbitraryTypesModel):
+        """Verified structural findings and actionable rewrite targets."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+
+        findings: Annotated[
+            t.NonNegativeInt, m.Field(description="Complete finding count")
+        ]
+        nodes: Annotated[
+            t.NonNegativeInt, m.Field(description="Actionable rewrite count")
+        ]
+        files: Annotated[
+            frozenset[Path], m.Field(description="Files containing findings")
+        ]
+        entries: Annotated[
+            tuple[FlextInfraModelsScan.ModScanFinding, ...],
+            m.Field(description="Every validated ast-grep finding in stable order"),
         ]
 
     class ModScanEvidence(m.ArbitraryTypesModel):
