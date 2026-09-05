@@ -827,16 +827,21 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def copy_tracked_mise_seeds(root: Path) -> None:
-            """Copy this checkout's committed Mise launchers and lock into ``root``.
+            """Copy this checkout's committed Mise toolchain seeds into ``root``.
 
             ``codegen conform`` validates the tracked, checksum-verified
             ``bin/mise`` seeds instead of minting them, so a fixture tree that
             conforms the full surface must carry them exactly as a governed
-            repository does. ``.mise.toml`` is deliberately not copied: it is a
-            planned projection the fixture expects conform to write.
+            repository does. The declared ``.mise.toml`` travels with its
+            ``mise.lock``: the lock answers that exact declaration, so a fixture
+            carrying one without the other reads as a changed toolchain and
+            makes conform resolve every selector against its remote registry —
+            a network call inside a unit test. Conform still renders and
+            publishes the configuration; it simply has nothing to re-resolve
+            when the rendered bytes match the seed.
             """
             source_root = Path(__file__).resolve().parents[1]
-            for relative in ("bin/mise", "bin/mise.cmd", "mise.lock"):
+            for relative in (".mise.toml", "bin/mise", "bin/mise.cmd", "mise.lock"):
                 source = source_root / relative
                 destination = root / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)

@@ -794,8 +794,10 @@ class TestCodegenConform:
         tm.that(env_plan.blocked, eq=False)
         tm.that(env_plan.current_sha256, eq="")
         tm.that((root / ".env.example").exists(), eq=False)
-        for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
+        for required in ("Makefile", ".python-version", ".gitignore"):
             tm.that(plans[required].changed, eq=True)
+        # Seeded with its lock (see copy_tracked_mise_seeds): already conformed.
+        tm.that(plans[".mise.toml"].changed, eq=False)
 
         applied = FlextInfraCodegenConform.execute_request(request)
         tm.ok(applied)
