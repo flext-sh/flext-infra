@@ -39,10 +39,8 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
     @staticmethod
     def docs_is_secure_web_url(target: str) -> bool:
         """Return whether a documentation target is an HTTPS URL."""
-        return (
-            FlextInfraUtilitiesDocs.docs_url_scheme(target)
-            == c.Infra.DOCS_SECURE_WEB_SCHEME
-        )
+        secure_scheme: str = c.Infra.DOCS_SECURE_WEB_SCHEME
+        return FlextInfraUtilitiesDocs.docs_url_scheme(target) == secure_scheme
 
     @staticmethod
     def docs_is_external(target: str) -> bool:

@@ -41,7 +41,12 @@ class FlextInfraBanditGate(FlextInfraGate):
         """Build check command."""
         _ = project_dir, ctx
         return self._python_module_command(
-            c.Infra.BANDIT, "-r", *check_dirs, "-f", c.Infra.OUTPUT_JSON
+            c.Infra.BANDIT,
+            "-r",
+            *check_dirs,
+            "-f",
+            c.Infra.OUTPUT_JSON,
+            "--quiet",
         )
 
     @override

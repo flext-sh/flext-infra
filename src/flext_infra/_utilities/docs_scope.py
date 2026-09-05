@@ -8,7 +8,6 @@ from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import FlextCliUtilities as u
 from flext_core.result import FlextResult as r
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
@@ -215,6 +214,8 @@ class FlextInfraUtilitiesDocsScope:
     @staticmethod
     def load_config(repository_root: Path) -> t.JsonMapping:
         """Load the minimal docs policy settings if present."""
+        from flext_infra import u
+
         path = FlextInfraUtilitiesDocsScope.config_path(repository_root)
         empty: t.JsonMapping = {}
         if not path.exists():

@@ -9,10 +9,8 @@ from flext_core import s
 from flext_infra import c, m, p, settings, t, u
 from flext_infra._base_payload import FlextInfraCommandPayloadMixin
 
-type _InfraResultValue = t.Cli.ResultValue
 
-
-class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
+class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     s[TDomainResult], FlextInfraCommandPayloadMixin
 ):
     """Domain command context shared by all flext-infra CLI services.

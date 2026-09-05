@@ -10,8 +10,6 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator
-
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
@@ -93,6 +91,8 @@ class FlextInfraTypesBase:
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = t.SequenceOf[DomainResult]
     "Read-only sequence of typed service result payloads."
+    type StubChainRuntimeState = dict[str, t.GuardInput | None]
+    "Canonical model-construction payload for the stub supply-chain service."
 
     # ── Transformer / edit result types ──────────────────────────────
 
@@ -108,7 +108,7 @@ class FlextInfraTypesBase:
     # ── Lint policy types ────────────────────────────────────────────
 
     type RuffRule = Annotated[
-        str, t.StringConstraints(min_length=1), AfterValidator(_reject_blanket_mask)
+        str, t.StringConstraints(min_length=1), m.AfterValidator(_reject_blanket_mask)
     ]
     """One named Ruff rule exempted for a path.
 

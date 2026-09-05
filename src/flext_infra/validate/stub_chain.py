@@ -16,11 +16,6 @@ from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
-type _StubChainInitValue = (
-    t.GuardInput | p.Settings | p.Context | t.SettingsClass | None
-)
-type _StubChainRuntimeState = dict[str, _StubChainInitValue]
-
 
 class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     """Validate typed dependency supply chain for workspace projects.
@@ -56,7 +51,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         initial_context: p.Context | None = None,
     ) -> None:
         """Initialize with an internal command runner dependency."""
-        model_data: _StubChainRuntimeState = {
+        model_data: t.Infra.StubChainRuntimeState = {
             "repository_root": repository_root or Path.cwd(),
             "apply_changes": apply_changes,
             "check_only": check_only,

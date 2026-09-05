@@ -22,6 +22,14 @@ _MAKE_SERIALIZATION_RULE = (
     / "automation-infrastructure"
     / "ban-make-serialization.yml"
 )
+_BAN_GITPYTHON_OUTSIDE_OWNER_RULE = (
+    Path(__file__).resolve().parents[3]
+    / "src"
+    / "flext_infra"
+    / "codemod"
+    / "rules"
+    / "ban-subprocess-git-outside-owner.yml"
+)
 
 
 def _snapshot(ruff: int, pyrefly: int) -> m.Infra.ModGateSnapshot:
@@ -126,6 +134,27 @@ class TestsFlextInfraModCircuitApply:
         )
         tm.that(report.nodes, eq=1)
         tm.that(report.files, eq=frozenset({Path("sample.py")}))
+
+    def test_gitpython_owner_remains_exempt_while_consumers_are_blocked(
+        self, tmp_path: Path
+    ) -> None:
+        root = tmp_path / "repo"
+        root.mkdir()
+        (root / "consumer.py").write_text("from git import Repo\n", encoding="utf-8")
+        owner = root / "src" / "flext_infra" / "_utilities" / "_git"
+        owner.mkdir(parents=True)
+        (owner / "owner.py").write_text(
+            "from git import Repo\n", encoding="utf-8"
+        )
+
+        report = tm.ok(
+            FlextInfraModGateEngine.scan(
+                root, (_BAN_GITPYTHON_OUTSIDE_OWNER_RULE,), fix=False
+            )
+        )
+
+        tm.that(report.nodes, eq=1)
+        tm.that(report.files, eq=frozenset({Path("consumer.py")}))
 
     def test_apply_reports_verified_node_and_file_counts(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

@@ -41,6 +41,31 @@ class FlextInfraUtilitiesDependencies:
         normalized = text.lower()
         return normalized or None
 
+    @classmethod
+    def project_dependency_names_from_payload(
+        cls, payload: t.JsonMapping
+    ) -> t.StrSequence:
+        """Return strict names from the PEP 621 runtime dependency array."""
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            msg = "pyproject payload must define a [project] mapping"
+            raise TypeError(msg)
+        raw_dependencies = project.get(c.Infra.DEPENDENCIES, [])
+        if not isinstance(raw_dependencies, list):
+            msg = "[project].dependencies must be an array of requirement strings"
+            raise TypeError(msg)
+        names: list[str] = []
+        for raw_requirement in raw_dependencies:
+            if not isinstance(raw_requirement, str):
+                msg = "[project].dependencies entries must be strings"
+                raise TypeError(msg)
+            dependency_name = cls.dep_name(raw_requirement)
+            if dependency_name is None:
+                msg = "[project].dependencies entries must not be blank"
+                raise ValueError(msg)
+            names.append(dependency_name)
+        return tuple(names)
+
     @staticmethod
     def constraint_specifier(version: str) -> str:
         """Return the resolved lock version as an open-ended dependency floor.

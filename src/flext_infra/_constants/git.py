@@ -52,6 +52,29 @@ class FlextInfraConstantsGit:
 
     GIT_DEFAULT_REMOTE: Final[str] = "origin"
     "Canonical upstream remote name."
+    GIT_REMOTE_SSH_SCHEMES: Final[frozenset[str]] = frozenset({"ssh", "git+ssh"})
+    "Remote URL schemes treated as SSH-style remote identifiers."
+    GIT_REMOTE_SENSITIVE_QUERY_KEYS: Final[frozenset[str]] = frozenset({
+        "access_token",
+        "api_key",
+        "apikey",
+        "auth",
+        "authorization",
+        "bearer",
+        "client_secret",
+        "id_token",
+        "jwt",
+        "key",
+        "oauth_token",
+        "password",
+        "passwd",
+        "private_key",
+        "private_token",
+        "refresh_token",
+        "secret",
+        "token",
+    })
+    "Remote query keys whose values are redacted from identity output."
 
     # --- Ref prefixes ---
 
