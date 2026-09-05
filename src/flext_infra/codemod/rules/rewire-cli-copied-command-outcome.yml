@@ -1,0 +1,15 @@
+# Preserve the complete causal process outcome when copying command payloads.
+id: rewire-cli-copied-command-outcome
+language: Python
+severity: error
+rule:
+  all:
+    - kind: keyword_argument
+    - pattern: exit_code=$SOURCE.exit_code
+    - inside:
+        any:
+          - pattern: m.Cli.CommandOutput($$$ARGS)
+          - pattern: m.Cli.CommandBytesOutput($$$ARGS)
+        stopBy: end
+fix: outcome=$SOURCE.outcome
+message: Copy the typed process outcome instead of flattening it to an exit code.

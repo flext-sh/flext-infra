@@ -1,0 +1,45 @@
+id: repair-cli-streamed-process-live-assertion-owner
+valid:
+  - |
+    class TestsRuntime:
+        def test_combined_output_is_byte_exact_and_live(
+            self, tmp_path: Path, capfd: pytest.CaptureFixture[str]
+        ) -> None:
+            output_file = tmp_path / "combined.log"
+            script = "emit"
+            result = u.Cli().run_to_file(
+                [sys.executable, "-c", script], output_file, live=True
+            )
+            expected = b"stdout-one\nstderr-two\n"
+            outcome = tm.ok(result)
+            tm.that(outcome.raw_return_code, eq=c.Cli.EXIT_CODE_SUCCESS)
+            tm.that(outcome.timed_out, eq=False)
+            tm.that(outcome.forwarded_signal, is_=None)
+            tm.that(output_file.read_bytes(), eq=expected)
+
+        def test_silent_live_process_emits_progress_only_to_stderr(
+            self, tmp_path: Path, capfd: pytest.CaptureFixture[str]
+        ) -> None:
+            result = u.Cli().run_to_file([sys.executable], tmp_path / "silent.log")
+            tm.ok(result)
+invalid:
+  - |
+    class TestsRuntime:
+        def test_combined_output_is_byte_exact_and_live(
+            self, tmp_path: Path, capfd: pytest.CaptureFixture[str]
+        ) -> None:
+            output_file = tmp_path / "combined.log"
+            script = "emit"
+            result = u.Cli().run_to_file(
+                [sys.executable, "-c", script], output_file, live=True
+            )
+
+        def test_silent_live_process_emits_progress_only_to_stderr(
+            self, tmp_path: Path, capfd: pytest.CaptureFixture[str]
+        ) -> None:
+            result = u.Cli().run_to_file([sys.executable], tmp_path / "silent.log")
+            tm.ok(result)
+            expected = b"stdout-one\nstderr-two\n"
+            tm.ok(result)
+            tm.that(result.value, eq=0)
+            tm.that(output_file.read_bytes(), eq=expected)
