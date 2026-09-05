@@ -38,6 +38,9 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
             msg = self._failure_detail(f"empty JUnit: {junit}", log)
             raise ValueError(msg)
         root = DefusedET.parse(junit).getroot()
+        if root is None:
+            msg = self._failure_detail(f"JUnit has no document root: {junit}", log)
+            raise ValueError(msg)
         executed = sum(1 for _ in root.iter("testcase"))
         log_text = log.read_text(encoding="utf-8")
         deselected = sum(

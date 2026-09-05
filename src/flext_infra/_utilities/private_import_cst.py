@@ -154,7 +154,7 @@ class FlextInfraUtilitiesPrivateImportCst:
             self.inserted = True
             return updated_node.with_changes(
                 body=updated_node.body.with_changes(
-                    body=imports + updated_node.body.body
+                    body=imports + tuple(updated_node.body.body)
                 )
             )
 

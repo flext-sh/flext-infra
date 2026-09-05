@@ -1,11 +1,7 @@
 id: rewire-cli-command-output-success-assertion-message
 language: Python
 severity: error
-files:
-  - "flext-cli/tests/unit/test_atomic_file_contract.py"
 rule:
-  any:
-    - pattern: tm.that($OUTPUT.exit_code, eq=0, msg=$MESSAGE)
-    - pattern: tm.that($OUTPUT.outcome.raw_return_code, eq=0, msg=$MESSAGE)
+  pattern: tm.that($OUTPUT.outcome.raw_return_code, eq=0, msg=$MESSAGE)
 fix: tm.that(u.Cli.process_succeeded($OUTPUT.outcome), eq=True, msg=$MESSAGE)
 message: Assert complete causal command success while preserving its diagnostic message.

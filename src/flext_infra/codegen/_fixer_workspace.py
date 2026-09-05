@@ -52,7 +52,6 @@ class FlextInfraCodegenFixerWorkspaceMixin(FlextInfraCodegenFixerPassesMixin):
             return self._build_result(project_path.name, ctx)
         u.Infra.normalize_canonical_facades(pkg_dir=pkg_dir, ctx=ctx)
         u.Infra.project_semantic_utility_owners(pkg_dir=pkg_dir, ctx=ctx)
-        self._run_refactor_service(ctx, project_path)
         self._run_namespace_enforcement(ctx, project_path, enforce_namespace)
         self._run_lazy_init_regeneration(ctx, project_path)
         # flext-j47u (codex): each fixer owns Ruff-native output; no post-hoc mutation.

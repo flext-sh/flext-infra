@@ -64,9 +64,6 @@ class FlextInfraUtilitiesProjectDiscovery(
                 relative, len(configured_projects)
             ), candidate.name
 
-        def child_name(path: Path) -> str:
-            return path.name
-
         non_root_candidates = sorted(
             (c for c in candidates if c != resolved_repository_root), key=configured_key
         )

@@ -155,7 +155,11 @@ class FlextInfraUtilitiesClassNesting:
         if len(aliases) > 1:
             msg = f"ambiguous facade aliases for {resource.real_path}: {aliases}"
             raise ValueError(msg)
-        return aliases[0] if aliases else owner.name
+        namespace = aliases[0] if aliases else owner.name
+        if not isinstance(namespace, str):
+            msg = f"invalid facade namespace for {resource.real_path}: {namespace!r}"
+            raise TypeError(msg)
+        return namespace
 
 
 __all__: list[str] = ["FlextInfraUtilitiesClassNesting"]

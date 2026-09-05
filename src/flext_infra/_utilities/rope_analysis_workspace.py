@@ -142,8 +142,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
             if package_name:
                 package_dir_by_name[package_name] = package_dir
                 if (
-                    project_root is not None
-                    and "." not in package_name
+                    "." not in package_name
                     and package_dir.parent.name == c.Infra.DEFAULT_SRC_DIR
                 ):
                     project_package_by_root[str(project_root)] = package_name

@@ -169,9 +169,6 @@ class FlextInfraConstantsCheck:
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
     )
-    BOUNDARY_CONCRETE_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$", re.MULTILINE
-    )
     BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(
         r"\bFlextCli[A-Z]\w*"
     )

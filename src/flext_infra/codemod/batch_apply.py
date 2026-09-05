@@ -59,7 +59,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
         cli.display_text(
             "mod: require canonical formatting and zero Ruff, Pyrefly, and LSP diagnostics"
         )
-        FlextInfraModGateEngine.validate(root, tuple(applied.files)).unwrap()
+        FlextInfraModGateEngine.validate(root).unwrap()
         cli.display_text("mod: verify AST fixed point")
         remaining = FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
         if remaining.actionable or remaining.detection_only:

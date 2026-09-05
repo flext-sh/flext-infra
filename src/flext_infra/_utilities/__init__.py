@@ -123,7 +123,6 @@ if TYPE_CHECKING:
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
     from .silent_failure_ast import FlextInfraUtilitiesSilentFailure
-    from .snapshot import FlextInfraUtilitiesSnapshot
     from .transformer_base import (
         FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer,
@@ -238,7 +237,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSilentFailure",
-    "FlextInfraUtilitiesSnapshot",
     "FlextInfraUtilitiesTransformerHeader",
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
@@ -384,7 +382,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
             ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailure",),
-            ".snapshot": ("FlextInfraUtilitiesSnapshot",),
             ".transformer_base": (
                 "FlextInfraChangeTrackingTransformer",
                 "FlextInfraRopeTransformer",

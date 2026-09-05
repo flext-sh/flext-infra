@@ -171,18 +171,12 @@ if TYPE_CHECKING:
     from .refactor.classvar_constant_autofix import (
         FlextInfraRefactorClassvarConstantAutofix,
     )
-    from .refactor.legacy_text_ops import FlextInfraRefactorLegacyTextOps
-    from .refactor.loader import FlextInfraRefactorRuleLoader
     from .refactor.modernize_orchestrator import FlextInfraModernizeOrchestrator
     from .refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
     from .refactor.namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
     )
-    from .refactor.orchestrator import FlextInfraRefactorOrchestrator
     from .refactor.project_classifier import FlextInfraProjectClassifier
-    from .refactor.safety import FlextInfraRefactorSafetyManager
-    from .refactor.service import FlextInfraRefactorService
-    from .refactor.text_executor import FlextInfraRefactorTextExecutor
     from .refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
     from .release.orchestrator import FlextInfraReleaseOrchestrator
@@ -270,7 +264,6 @@ if TYPE_CHECKING:
     from .workspace.flext_binding import FlextInfraFlextBindingService
     from .workspace.orchestrator import FlextInfraOrchestratorService
     from .workspace.rope import FlextInfraRopeWorkspace
-    from .workspace.sandbox_orchestrator import FlextInfraSandboxOrchestrator
     from .worktree import FlextInfraWorktreeService
 __all__: tuple[str, ...] = (
     "CliDispatchService",
@@ -404,20 +397,14 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorImportBypassRemover",
     "FlextInfraRefactorImportModernizer",
     "FlextInfraRefactorLazyImportFixer",
-    "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLoggingModernizer",
     "FlextInfraRefactorOpenEncoding",
-    "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorResultDiModernizer",
-    "FlextInfraRefactorRuleLoader",
-    "FlextInfraRefactorSafetyManager",
-    "FlextInfraRefactorService",
     "FlextInfraRefactorSignaturePropagator",
     "FlextInfraRefactorSymbolPropagator",
-    "FlextInfraRefactorTextExecutor",
     "FlextInfraRefactorTypingDictAttr",
     "FlextInfraRefactorTypingDictImport",
     "FlextInfraRefactorTypingUnifier",
@@ -431,7 +418,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRuntimeCensusGate",
     "FlextInfraRuntimeCensusValidator",
     "FlextInfraRuntimeDevDependencyDetector",
-    "FlextInfraSandboxOrchestrator",
     "FlextInfraScannerGateMixin",
     "FlextInfraServiceBase",
     "FlextInfraSilentFailureDetector",
@@ -668,18 +654,12 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor.classvar_constant_autofix": (
                 "FlextInfraRefactorClassvarConstantAutofix",
             ),
-            ".refactor.legacy_text_ops": ("FlextInfraRefactorLegacyTextOps",),
-            ".refactor.loader": ("FlextInfraRefactorRuleLoader",),
             ".refactor.modernize_orchestrator": ("FlextInfraModernizeOrchestrator",),
             ".refactor.namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".refactor.namespace_enforcer_phases": (
                 "FlextInfraNamespaceEnforcerPhasesMixin",
             ),
-            ".refactor.orchestrator": ("FlextInfraRefactorOrchestrator",),
             ".refactor.project_classifier": ("FlextInfraProjectClassifier",),
-            ".refactor.safety": ("FlextInfraRefactorSafetyManager",),
-            ".refactor.service": ("FlextInfraRefactorService",),
-            ".refactor.text_executor": ("FlextInfraRefactorTextExecutor",),
             ".refactor.violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
             ".refactor.wrapper_root_namespace": (
                 "FlextInfraWrapperRootNamespaceRefactor",
@@ -794,7 +774,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".workspace.flext_binding": ("FlextInfraFlextBindingService",),
             ".workspace.orchestrator": ("FlextInfraOrchestratorService",),
             ".workspace.rope": ("FlextInfraRopeWorkspace",),
-            ".workspace.sandbox_orchestrator": ("FlextInfraSandboxOrchestrator",),
             ".worktree": ("FlextInfraWorktreeService",),
             "flext_cli": ("d", "e", "h", "r", "x"),
         }),

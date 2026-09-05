@@ -11,7 +11,9 @@ from pathlib import Path
 from flext_infra import c, m, p, r, t, u
 from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
+from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
+from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
 
 
 class FlextInfraModGateEngine:
@@ -385,90 +387,34 @@ class FlextInfraModGateEngine:
         sys.stderr.flush()
 
     @classmethod
-    def validate(cls, root: Path, changed_files: t.SequenceOf[Path]) -> p.Result[bool]:
-        """Require canonical formatting and zero Ruff, Pyrefly, or LSP errors."""
+    def validate(cls, root: Path) -> p.Result[bool]:
+        """Require full-scope canonical formatting, Ruff, Pyrefly, and LSP health."""
         resolved_root = root.resolve()
         project_roots = u.Infra.governed_project_roots(resolved_root)
-        repository_changes = tuple(
-            (project_root, changed_path)
-            for project_root in project_roots
-            for changed_path in u.Infra.git_changed_paths(
-                m.Infra.GitRepoRequest(repo_root=project_root)
-            ).unwrap()
-        )
-        python_files = tuple(
-            sorted({
-                resolved
-                for path in (
-                    *(
-                        (
-                            resolved_root / changed_path
-                            if not changed_path.is_absolute()
-                            else changed_path
-                        )
-                        for changed_path in changed_files
-                    ),
-                    *(
-                        (
-                            project_root / changed_path
-                            if not changed_path.is_absolute()
-                            else changed_path
-                        )
-                        for project_root, changed_path in repository_changes
-                    ),
-                )
-                if (resolved := path.resolve()).is_file()
-                and resolved.suffix == c.Infra.EXT_PYTHON
-            })
-        )
-        deepest_first = tuple(sorted(project_roots, key=cls._path_depth, reverse=True))
-        files_by_root: dict[Path, list[Path]] = {owner: [] for owner in project_roots}
-        for python_file in python_files:
-            owner = next(
-                candidate
-                for candidate in deepest_first
-                if python_file.is_relative_to(candidate)
-            )
-            files_by_root[owner].append(python_file)
-        selected_groups = tuple(
-            (owner, tuple(files)) for owner, files in files_by_root.items() if files
-        )
-        for owner, files in selected_groups:
-            format_execution = FlextInfraRuffFormatGate(owner).check_files(
-                files,
-                owner,
-                m.Infra.GateContext(
-                    workspace=owner,
-                    reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
-                    check_only=True,
-                ),
-            )
-            if not format_execution.result.passed:
-                return r.fail(
-                    format_execution.raw_output
-                    or "\n".join(format_execution.result.errors)
-                )
-        snapshots: dict[Path, t.Infra.LintSnapshot] = {}
-        for index, (owner, files) in enumerate(selected_groups, start=1):
+        for index, owner in enumerate(project_roots, start=1):
             sys.stderr.write(
-                f"mod: validate project {index}/{len(selected_groups)} "
-                f"{owner} files={len(files)}\n"
+                f"mod: validate project {index}/{len(project_roots)} {owner}\n"
             )
             sys.stderr.flush()
-            snapshots.update(
-                u.Infra.lint_snapshots(
-                    files, owner, gates=(c.Infra.RUFF, c.Infra.PYREFLY)
-                )
+            context = m.Infra.GateContext(
+                workspace=owner,
+                reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
+                check_only=True,
             )
-        diagnostics = tuple(
-            f"{path.relative_to(resolved_root)}:{tool}: {message}"
-            for path, snapshot in snapshots.items()
-            for tool, messages in snapshot.items()
-            for message in messages
-        )
-        if diagnostics:
-            return r.fail("\n".join(diagnostics))
-        for owner, files in selected_groups:
+            for gate_type in (
+                FlextInfraRuffFormatGate,
+                FlextInfraRuffLintGate,
+                FlextInfraPyreflyGate,
+            ):
+                execution = gate_type(owner).check(owner, context)
+                if not execution.result.passed:
+                    return r.fail(
+                        execution.raw_output
+                        or "\n".join(execution.result.errors)
+                    )
+            files = u.Infra.iter_python_files(
+                m.Infra.SourceScanRequest(project_roots=(owner,))
+            ).unwrap()
             FlextInfraLspDiagnosticsDetector.validate(owner, files).unwrap()
         return r[bool].ok(True)
 

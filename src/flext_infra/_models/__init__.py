@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from .refactor_ast_grep import FlextInfraModelsRefactorGrep
     from .refactor_census import FlextInfraModelsRefactorCensus
     from .refactor_namespace_enforcer import FlextInfraModelsNamespaceEnforcer
-    from .refactor_renames import FlextInfraModelsRefactorRenames
     from .refactor_violations import FlextInfraModelsRefactorViolations
     from .release import FlextInfraModelsRelease
     from .rope import FlextInfraModelsRope
@@ -79,7 +78,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsRefactor",
     "FlextInfraModelsRefactorCensus",
     "FlextInfraModelsRefactorGrep",
-    "FlextInfraModelsRefactorRenames",
     "FlextInfraModelsRefactorViolations",
     "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
@@ -126,7 +124,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor_ast_grep": ("FlextInfraModelsRefactorGrep",),
             ".refactor_census": ("FlextInfraModelsRefactorCensus",),
             ".refactor_namespace_enforcer": ("FlextInfraModelsNamespaceEnforcer",),
-            ".refactor_renames": ("FlextInfraModelsRefactorRenames",),
             ".refactor_violations": ("FlextInfraModelsRefactorViolations",),
             ".release": ("FlextInfraModelsRelease",),
             ".rope": ("FlextInfraModelsRope",),

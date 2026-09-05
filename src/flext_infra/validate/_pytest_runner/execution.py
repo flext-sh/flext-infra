@@ -61,7 +61,7 @@ class FlextInfraPytestRunnerExecution(
                 c.Infra.PYTEST_ENV_TESTMON_DATAFILE: str(self.testmon_db),
             },
         )
-        exit_code = u.Cli.run_to_file(
+        outcome = u.Cli.run_to_file(
             command,
             pytest_log,
             cwd=self.root,
@@ -69,8 +69,8 @@ class FlextInfraPytestRunnerExecution(
             live=True,
             deadline=deadline,
         ).unwrap()
-        if exit_code != 0:
-            return r.ok(exit_code)
+        if not u.Cli.process_succeeded(outcome):
+            return r.ok(outcome.raw_return_code)
         state = self._inspect_cache(digest=pre_digest).unwrap()
         if not state.restored_accepted and not state.saveable:
             msg = f"testmon cache is unusable: {state.reason}"

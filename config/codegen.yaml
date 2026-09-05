@@ -562,7 +562,6 @@ Infra:
       # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
       # watch/source-scan projections (order-sensitive, after .claude).
       - { name: .direnv, source_scan_ignore: true }
-      - { name: .codegraph }
       - { name: .dolt }
       - { name: .dolt_dropped_databases }
       - { name: .doltcfg }
@@ -1116,6 +1115,12 @@ Infra:
       - path: .gitmodules
         owner: workspace
         policy: manual
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
+      - path: .markdownlintignore
+        owner: codegen
+        policy: full
       - path: .mise.toml
         owner: codegen
         policy: full

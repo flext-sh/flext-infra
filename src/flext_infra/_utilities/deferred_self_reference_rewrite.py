@@ -83,7 +83,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
             *(
                 node.name.id
                 for node in outer.body
-                if isinstance(node, ast.TypeAlias) and isinstance(node.name, ast.Name)
+                if isinstance(node, ast.TypeAlias)
             ),
         })
         offsets = cls._line_offsets(source)

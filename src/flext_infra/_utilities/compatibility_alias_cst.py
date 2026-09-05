@@ -54,8 +54,7 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
             retained = [
                 element
                 for element in value.elements
-                if element is None
-                or not isinstance(element.value, cst.SimpleString)
+                if not isinstance(element.value, cst.SimpleString)
                 or not isinstance(element.value.evaluated_value, str)
                 or element.value.evaluated_value not in aliases
             ]

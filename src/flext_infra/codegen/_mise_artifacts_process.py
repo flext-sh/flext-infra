@@ -215,10 +215,11 @@ def run_live(
     output = u.Cli.files_read_text(output_path)
     if output.failure:
         return r[str].from_failure(output)
-    if executed.value != 0:
+    outcome = executed.value
+    if not u.Cli.process_succeeded(outcome):
         return _process_failure(
             operation,
-            exit_code=executed.value,
+            exit_code=outcome.raw_return_code,
             stdout=output.value,
             stderr="",
             combined=True,

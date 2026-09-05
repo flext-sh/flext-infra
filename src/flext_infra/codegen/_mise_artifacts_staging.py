@@ -174,7 +174,7 @@ class FlextInfraMiseStaging:
             permission_mode=project.config.replacement_mode,
         )
         if config_write.failure:
-            return config_write
+            return r[bool].from_failure(config_write)
         for source, (name, mode) in zip(
             receipt_states, files.ARTIFACT_SPECS[:2], strict=True
         ):
@@ -184,14 +184,14 @@ class FlextInfraMiseStaging:
                 stage_root / name, source.content, permission_mode=mode
             )
             if copied.failure:
-                return copied
+                return r[bool].from_failure(copied)
         lock_before = project.artifacts.lock
         if lock_before.content is not None:
             copied_lock = u.Cli.atomic_create_binary_file_guarded(
                 stage_root / "mise.lock", lock_before.content, permission_mode=0o644
             )
             if copied_lock.failure:
-                return copied_lock
+                return r[bool].from_failure(copied_lock)
         return r[bool].ok(True)
 
     @staticmethod
@@ -267,7 +267,7 @@ class FlextInfraMiseStaging:
             return r[bool].fail(source_lock.error or "generated Mise lock is absent")
         return u.Cli.atomic_create_binary_file_guarded(
             target_stage / "mise.lock", source_lock.value.content, permission_mode=0o644
-        )
+        ).map(lambda _state: True)
 
     def _validate_project(
         self, project: m.Infra.MiseToolchainProjectState, stage_root: Path

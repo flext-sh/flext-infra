@@ -7,7 +7,6 @@ from typing import ClassVar
 
 from flext_infra import m
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
-from flext_infra.codemod.rules.refactor.apply_renames import FlextInfraApplyRenames
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -37,12 +36,6 @@ class RefactorRoutes(CliRouteBase):
     """Own the complete refactor command tuple."""
 
     refactor_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
-        m.Cli.ResultCommandRoute(
-            name="apply-renames",
-            help_text="Check or apply an old,new CSV rename list",
-            model_cls=m.Infra.ApplyRenamesInput,
-            handler=FlextInfraApplyRenames.execute_command,
-        ),
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",

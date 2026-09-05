@@ -2,14 +2,27 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import t
+from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 
 
 class FlextInfraModelsCodegenRender:
     """Typed render contexts for generated codegen artifacts."""
+
+    class MarkdownLintRenderSpec(m.ContractModel):
+        """Validated tooling-only context for Markdown lint projections."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
+            extra="forbid", frozen=True, strict=True
+        )
+
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical validated tooling policy."),
+        ]
 
     # NOTE (multi-agent, flext-wkii.17 / agent: uv_overlay_owner): keep the
     # module-skeleton template boundary model-backed and immutable.

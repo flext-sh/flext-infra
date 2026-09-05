@@ -6,13 +6,13 @@ from collections.abc import Callable
 from pathlib import Path
 
 from flext_infra import m, u
-from flext_infra.codegen._fixer_refactor import FlextInfraCodegenFixerRefactorMixin
+from flext_infra.codegen._fixer_results import FlextInfraCodegenFixerResultsMixin
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 _log = u.fetch_logger(__name__)
 
 
-class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerRefactorMixin):
+class FlextInfraCodegenFixerPassesMixin(FlextInfraCodegenFixerResultsMixin):
     """Private pipeline passes for codegen fixer composition."""
 
     @staticmethod
