@@ -14,7 +14,21 @@ rule:
         - regex: '^from\s+(?:ai_hub|crg|code_relationship_graph)(?:\.|\s)'
     - all:
         - kind: import_statement
-        - regex: '^import\s+(?:ai_hub|crg|code_relationship_graph)(?:\.|\s|$)'
+        - regex: '^import\s+(?:[^#\n]*,\s*)?(?:ai_hub|crg|code_relationship_graph)(?:\.|\s|,|$)'
+---
+id: ban-infra-ai-hub-crg-dynamic-library-import
+language: Python
+severity: error
+files:
+  - "src/flext_infra/**/*.py"
+message: Dynamic library loading cannot bypass the external AI Hub runtime boundary.
+rule:
+  any:
+    - pattern: __import__($MODULE)
+    - pattern: importlib.import_module($MODULE)
+constraints:
+  MODULE:
+    regex: '^["\x27](?:ai_hub|crg|code_relationship_graph)(?:\.|["\x27])'
 ---
 id: ban-infra-crg-function-implementation
 language: Python

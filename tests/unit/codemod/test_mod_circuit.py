@@ -262,7 +262,16 @@ class TestsFlextInfraModCliRoute:
     ) -> None:
         cases = {
             "library": "import crg\n",
+            "library-from": "from ai_hub import runtime\n",
+            "library-compound": "import pathlib, crg as graph\n",
+            "library-dynamic": (
+                "import importlib\n\n"
+                'runtime = importlib.import_module("code_relationship_graph.runtime")\n'
+            ),
+            "library-builtin": 'runtime = __import__("ai_hub.crg")\n',
             "implementation": "def build_crg() -> None:\n    pass\n",
+            "implementation-async": "async def crg_scan() -> None:\n    pass\n",
+            "implementation-class": "class CrgBuilder:\n    pass\n",
         }
         for case, source in cases.items():
             case_root = tmp_path / case
