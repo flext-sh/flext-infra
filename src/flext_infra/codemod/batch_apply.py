@@ -50,7 +50,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     ) -> p.Result[t.Cli.ResultValue]:
         """Apply rules in place and retain failures for mandatory fix-forward."""
         cli.display_text("mod: validate ast-grep rule fixtures")
-        FlextInfraModGateEngine.validate_rule_fixtures(rules).unwrap()
+        FlextInfraModGateEngine.validate_rule_fixtures(root, rules).unwrap()
         cli.display_text("mod: preflight complete AST inventory")
         preflight = FlextInfraModGateEngine.scan(root, rules, fix=False).unwrap()
         FlextInfraCodemodSemanticApply.apply(root, preflight)

@@ -20,6 +20,9 @@ class TestsFlextInfraModCliRoute:
     ) -> None:
         report_path = mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH
         sample_path = mod_workspace / "sample.py"
+        generated_hook = mod_workspace / ".agents/aihub-hooks/session.py"
+        tm.ok(u.Cli.ensure_dir(generated_hook.parent))
+        tm.ok(u.Cli.atomic_write_text_file(generated_hook, "value = 1\n"))
 
         first_exit = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
         first_console_capture = capsys.readouterr()
@@ -51,6 +54,13 @@ class TestsFlextInfraModCliRoute:
         tm.that(
             any(entry.file == Path("sample.py") for entry in first_evidence.entries),
             eq=True,
+        )
+        tm.that(
+            any(
+                entry.file == generated_hook.relative_to(mod_workspace)
+                for entry in first_evidence.entries
+            ),
+            eq=False,
         )
         tm.that(first_console, has=str(report_path))
         tm.that(first_console, has=first_digest)

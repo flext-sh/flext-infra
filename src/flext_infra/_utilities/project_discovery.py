@@ -9,7 +9,7 @@ from __future__ import annotations
 from operator import attrgetter
 from pathlib import Path
 
-from flext_infra import config
+from flext_infra import config, m
 from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
@@ -89,14 +89,27 @@ class FlextInfraUtilitiesProjectDiscovery(
 
     @classmethod
     def ast_grep_scan_targets(cls, repository_root: Path) -> t.StrSequence:
-        """Return root and declared members as deterministic relative scan targets."""
+        """Return only governed handwritten Python surfaces as scan targets.
+
+        A workspace root is not itself a Python source surface. Passing ``.`` to
+        ast-grep also traverses generated agent hooks and other managed
+        projections, so a project-local ``make mod`` could rewrite files owned by
+        another generator. The refactor config is the single scope owner for
+        source trees; root Python modules cover public entry points such as
+        ``conftest.py`` without opening hidden directories.
+        """
         resolved_root = repository_root.resolve()
-        members = tuple(
-            project.relative_to(resolved_root).as_posix()
+        scan_dirs = m.Infra.RefactorConfig().project_scan_dirs
+        targets = {
+            target.relative_to(resolved_root).as_posix()
             for project in cls.governed_project_roots(resolved_root)
-            if project != resolved_root
-        )
-        return (".", *members)
+            for target in (
+                *(project / directory for directory in scan_dirs),
+                *project.glob(f"*{c.Infra.EXT_PYTHON}"),
+            )
+            if target.exists()
+        }
+        return tuple(sorted(targets))
 
     @classmethod
     def governed_project_roots(cls, repository_root: Path) -> t.SequenceOf[Path]:

@@ -18,8 +18,13 @@ class FlextInfraModGateEngine:
     """Execute ast-grep rewrites and strict static/LSP validation."""
 
     @classmethod
-    def validate_rule_fixtures(cls, rules: t.SequenceOf[Path]) -> p.Result[bool]:
-        """Require fixtures at every installed rule owner's config root."""
+    def validate_rule_fixtures(
+        cls, root: Path, rules: t.SequenceOf[Path]
+    ) -> p.Result[bool]:
+        """Validate inherited fixtures and update only rule owners in scope."""
+        governed_roots = frozenset(
+            project.resolve() for project in u.Infra.governed_project_roots(root)
+        )
         rules_by_owner: dict[Path, list[Path]] = {}
         for rule in rules:
             owner = FlextInfraCodemodSnapshotReconciler.config_root(rule)
@@ -27,13 +32,18 @@ class FlextInfraModGateEngine:
         if not rules_by_owner:
             return r.fail("discovered ast-grep rules have no fixture owner")
         for config_root, owner_rules in sorted(rules_by_owner.items()):
+            owner_root = u.Infra.project_root(config_root)
+            owner_is_governed = (
+                owner_root is not None and owner_root.resolve() in governed_roots
+            )
             active_rule_ids: set[str] = set()
             for rule in owner_rules:
                 rule_ids, _fixable_ids = u.Infra.ast_grep_rule_contract(rule)
                 active_rule_ids.update(rule_ids)
-            FlextInfraCodemodSnapshotReconciler.reconcile(
-                config_root, frozenset(active_rule_ids)
-            )
+            if owner_is_governed:
+                FlextInfraCodemodSnapshotReconciler.reconcile(
+                    config_root, frozenset(active_rule_ids)
+                )
             with tempfile.TemporaryDirectory(
                 prefix="mod-rule-fixtures-", dir=config_root.parent
             ) as temp_dir:
@@ -44,17 +54,19 @@ class FlextInfraModGateEngine:
                     temp_root=temp_root,
                     owner_rules=owner_rules,
                 )
-                cls._run_tool(
-                    temp_root,
-                    (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL),
-                    accept_apply_receipt=True,
-                ).unwrap()
+                if owner_is_governed:
+                    cls._run_tool(
+                        temp_root,
+                        (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL),
+                        accept_apply_receipt=True,
+                    ).unwrap()
                 cls._run_tool(temp_root, (c.Infra.SG, c.Infra.TEST)).unwrap()
-                cls._sync_rule_fixture_root(
-                    config_root=config_root,
-                    temp_root=temp_root,
-                    split_rules=split_rules,
-                )
+                if owner_is_governed:
+                    cls._sync_rule_fixture_root(
+                        config_root=config_root,
+                        temp_root=temp_root,
+                        split_rules=split_rules,
+                    )
         return r.ok(True)
 
     @staticmethod
