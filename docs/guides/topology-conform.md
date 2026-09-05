@@ -3,6 +3,9 @@
 <!-- TOC START -->
 - [Authorities](#authorities)
 - [Validation boundary](#validation-boundary)
+- [Scoped projection isolation](#scoped-projection-isolation)
+- [Full refactor workflow](#full-refactor-workflow)
+- [Makefile bootstrap projection](#makefile-bootstrap-projection)
 - [Selection and projections](#selection-and-projections)
 - [uv project boundaries](#uv-project-boundaries)
 <!-- TOC END -->
@@ -26,16 +29,48 @@ loads both files from that lane and every generated write remains in that lane.
 Conformance validates the complete selected topology before planning writes. A
 workspace validates each direct governed path declared by its own `.gitmodules`:
 
-- the checkout exists and remains below the workspace root;
+- the checkout exists and remains below the repository root;
 - its origin matches the URL declared by `.gitmodules`;
 - its branch follows the configured provider contract;
-- the workspace root's `config/beads.yaml` exists and validates.
+- its own `config/beads.yaml` exists and validates.
+
+- the repository root's `config/beads.yaml` exists and validates.
+
+## Makefile bootstrap projection
+
+`codegen conform --what makefile --scope self` (the route `make setup` uses to
+refresh a stale generated dispatcher) plans exactly one artifact from
+declarations only. Its complete input set is the repository's own
+`config/workspace.yaml` when that manifest exists, otherwise its PEP 621
+metadata (`[project].name` plus `[project.urls].Repository` matched against a
+declared provider), together with the packaged codegen configuration and
+Makefile template and the current destination content needed for the
+fixed-point comparison.
+
+It reads nothing else. It does not invoke Git, Beads, `mise`, or `uv`; it does
+not inspect `.gitmodules`, branch ancestry, linked worktrees, sibling checkouts,
+or an environment manager. Those live-topology validations belong to `--what
+all`.
+
+Apply mode plans the projection twice before publication and requires identical
+destination, content digest, content and removal intent. A planning failure or
+nondeterministic result therefore leaves a pre-existing Makefile byte- and
+inode-identical; the validated candidate is then promoted with one atomic write.
+
+The Makefile projection requires a repository-local workspace declaration and
+rejects broader scopes. `--what all` remains the operational conformance route:
+it validates live topology, Beads, environments, and ancestry in addition to
+planning every governed artifact.
+
+## Full refactor workflow
 
 Direct governed submodules have exactly one ledger mode. A checked-in `.beads`
-symlink inherits the workspace root's ledger and requires a routing-only
+symlink inherits the repository root's ledger and requires a routing-only
 `config/beads.yaml` naming the same identity. A real `.beads` directory makes
-the member an independent ledger owner and requires its own local identity.
-Standalone repositories are ledger owners with their own local identity.
+the declared repository an independent ledger owner and requires its own local
+identity. Standalone repositories are ledger owners with their own local
+identity. A repository root never copies its identity into a declared repository
+and never overwrites a declared repository's source config.
 External provider URLs remain read-only dependency paths.
 
 Missing, malformed, duplicate, escaping, or mismatched inputs fail before any
@@ -44,9 +79,9 @@ file write. Conformance does not generate, merge, reorder, fan out, or overwrite
 
 ## Selection and projections
 
-`codegen conform` accepts `self`, `subprojects`, and `all`. `self` always means
-the requested checkout. `subprojects` and `all` are valid only from a workspace
-whose own `.gitmodules` declares governed direct subprojects.
+`codegen conform` accepts `self`, `declared_repositories`, and `all`. `self` always means
+the requested checkout. `declared_repositories` and `all` are valid only from a workspace
+whose own `.gitmodules` declares governed direct declared_repositories.
 
 The generated `.beads/config.yaml` and `.beads/metadata.json` are projections of
 the selected repository's owned Beads identity plus the fleet-owned Gas City
@@ -58,7 +93,7 @@ first and appends the required Gas City baseline. Generation never starts,
 stops, initializes, probes, or mutates Dolt.
 
 The generated Makefile preserves the same boundary: workspace orchestration may
-fan out to direct local subprojects, while standalone repositories and linked
+fan out to direct local declared_repositories, while standalone repositories and linked
 worktrees own their runtime, environment, and writes locally.
 
 ## uv project boundaries
@@ -68,7 +103,7 @@ gitlink. Every generated `pyproject.toml` therefore declares
 `[tool.uv.workspace] members = []`: uv discovers that repository as its own
 project and writes its lock, environment, and distributions below that root.
 
-The composition root does not turn gitlinks into uv workspace members. It keeps
+The composition root does not turn gitlinks into uv declared repositorys. It keeps
 the same empty boundary and projects a local `{ path = ..., editable = true }`
 source only for an internal dependency actually declared by the root project or
 one of its dependency groups. The obsolete `workspace` dependency group and

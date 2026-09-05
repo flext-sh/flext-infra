@@ -24,6 +24,16 @@ def prepare_state_roots(layout: m.Infra.MiseToolchainWorkspaceLayout) -> p.Resul
             return prepared
         try:
             staging_device = project.transaction_root.parent.stat().st_dev
+            # The staged artifacts are promoted into these directories, so a
+            # repository that has never carried one (a governed member whose
+            # `bin/` this transaction is about to create) owns it here. Without
+            # it the device probe below reports ENOENT instead of comparing
+            # filesystems.
+            for artifact in (
+                project.artifacts.unix_launcher,
+                project.artifacts.windows_launcher,
+            ):
+                artifact.parent.mkdir(parents=True, exist_ok=True)
             destination_devices = {
                 artifact.parent.stat().st_dev
                 for artifact in (

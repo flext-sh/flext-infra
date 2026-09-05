@@ -77,13 +77,24 @@ jobs:
       pull-requests: write # Open or update the release pull request.
     env:
       {{ make.ci.variable }}: {{ make.ci.value }}
-      GH_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
+      # A pull request opened with the default GITHUB_TOKEN triggers no CI, so
+      # the release PR would reach merge unvalidated (flext-1wjg1.16.5). The
+      # lane push and the PR use the organization automation token; when that
+      # secret is absent the job fails loud instead of degrading silently.
+      GH_TOKEN: {% raw %}${{ secrets.RELEASE_TOKEN }}{% endraw %}
     steps:
+      - name: Require the release automation token
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::secrets.RELEASE_TOKEN is not configured: a release pull request opened with GITHUB_TOKEN triggers no CI. Configure the organization secret and rerun." >&2
+            exit 1
+          fi
       - name: Checkout
         uses: {{ github_actions["checkout"].repository }}@{{ github_actions["checkout"].sha }}  # {{ github_actions["checkout"].version }}
         with:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
+          token: {% raw %}${{ secrets.RELEASE_TOKEN }}{% endraw %}
 {%- include "_fragments/private_submodules_init.j2" %}
       - name: Release identity
         run: |

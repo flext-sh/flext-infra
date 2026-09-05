@@ -65,6 +65,7 @@ class FlextInfraConstantsCheck:
             "Flext Direnv Environment Contract Gate",
             "internal://flext-infra/direnv",
         ),
+        "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
@@ -213,6 +214,43 @@ class FlextInfraConstantsCheck:
     })
     "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
 
+    # --- jscpd duplication gate SSOT (operator 2026-09-04: flext-infra owns the
+    # jscpd plugin behind one centralized `make check` verb; its config is
+    # rendered from this typed SSOT at scan time, never a hand-maintained file).
+    DUPLICATION_GATE_MODE: Final[GateMode] = GateMode.WARN
+    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
+    JSCPD_BINARY: Final[str] = "jscpd"
+    "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
+    JSCPD_MODE: Final[str] = "strict"
+    JSCPD_MIN_LINES: Final[int] = 8
+    JSCPD_REPORT_DIRNAME: Final[str] = ".reports/jscpd"
+    JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
+    JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
+    JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
+        "**/__pycache__/**",
+        "**/target/**",
+        "**/*.pyc",
+        "**/*.bak",
+        "**/*.tmp",
+        "**/*.orig",
+        "**/.venv/**",
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/.eggs/**",
+        "**/__snapshots__/**",
+        "**/__init__.py",
+        "**/.github/**",
+        "**/.claude/**",
+        "**/.agents/**",
+        "**/.cursor/**",
+        "**/.codex/**",
+        "**/skills/**",
+        "Makefile",
+        "LICENSE.md",
+    )
+    "Same reviewed exclusion set the retired hand-maintained .jscpd.json carried."
+
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
         "ruff",
@@ -291,7 +329,7 @@ class FlextInfraConstantsCheck:
 # Every hook routes through the canonical `uv run --all-packages python -m flext_infra`
 # workspace monopoly; no standalone scripts and no bare tool invocations
 # (AGENTS.md `Build & Test`).
-# Enable locally with `pre-commit install` from the workspace root.
+# Enable locally with `pre-commit install` from the repository root.
 repos:
   - repo: local
     hooks:

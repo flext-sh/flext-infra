@@ -366,9 +366,9 @@ select = ["E501"]
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Exclude nonmember consumer namespaces from FLEXT first-party names."""
-        workspace_root = tmp_path / "workspace"
-        project_dir = workspace_root / "demo-migration-tool"
-        internal_project = workspace_root / "flext-core"
+        repository_root = tmp_path / "workspace"
+        project_dir = repository_root / "demo-migration-tool"
+        internal_project = repository_root / "flext-core"
         project_dir.joinpath("src", "demo_migration_tool").mkdir(
             parents=True, exist_ok=True
         )
@@ -385,7 +385,7 @@ select = ["E501"]
             '[project]\nname = "demo-migration-tool"\nversion = "0.1.0"\ndependencies = ["flext-core>=0.1.0"]\n',
             encoding="utf-8",
         )
-        _ = workspace_root.joinpath("pyproject.toml").write_text(
+        _ = repository_root.joinpath("pyproject.toml").write_text(
             "[project]\nname = 'workspace'\nversion = '0.1.0'\n\n"
             "[tool.uv.workspace]\n"
             "members = ['flext-core']\n",
@@ -397,7 +397,7 @@ select = ["E501"]
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
-            doc, path=workspace_root / "pyproject.toml"
+            doc, path=repository_root / "pyproject.toml"
         )
 
         ruff = u.Tests.toml_mapping(

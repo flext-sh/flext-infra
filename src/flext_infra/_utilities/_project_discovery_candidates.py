@@ -26,30 +26,30 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
 
     @classmethod
     def discover_project_candidates(
-        cls, workspace_root: Path, *, scan_dirs: frozenset[str] | None = None
+        cls, repository_root: Path, *, scan_dirs: frozenset[str] | None = None
     ) -> t.SequenceOf[Path]:
         """Return the root and projects declared by its own ``.gitmodules``."""
         roots: t.MutableSequenceOf[Path] = []
         effective_scan_dirs = scan_dirs or frozenset()
         declared_paths = FlextInfraUtilitiesGit.git_declared_submodule_paths(
-            workspace_root
+            repository_root
         )
         if declared_paths.failure:
             raise ValueError(declared_paths.error or "invalid .gitmodules")
         configured_projects = tuple(path.as_posix() for path in declared_paths.value)
         configured_project_set = frozenset(configured_projects)
-        resolved_workspace_root = workspace_root.resolve()
+        resolved_repository_root = repository_root.resolve()
         configured_entries: set[Path] = set()
         for project in configured_projects:
-            entry = (resolved_workspace_root / project).resolve()
-            if entry.is_dir() and entry.is_relative_to(resolved_workspace_root):
+            entry = (resolved_repository_root / project).resolve()
+            if entry.is_dir() and entry.is_relative_to(resolved_repository_root):
                 configured_entries.add(entry)
         if cls._looks_like_project(
-            resolved_workspace_root,
+            resolved_repository_root,
             effective_scan_dirs=effective_scan_dirs,
             configured_project_set=configured_project_set,
         ):
-            roots.append(resolved_workspace_root)
+            roots.append(resolved_repository_root)
         if configured_projects:
             candidate_entries: t.SequenceOf[Path] = sorted(
                 configured_entries, key=Path.as_posix
@@ -65,8 +65,8 @@ class FlextInfraUtilitiesProjectDiscoveryCandidatesMixin(
                     configured_project_set=configured_project_set,
                 )
             ])
-        if not roots and (resolved_workspace_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
-            return [resolved_workspace_root]
+        if not roots and (resolved_repository_root / c.Infra.DEFAULT_SRC_DIR).is_dir():
+            return [resolved_repository_root]
         return roots
 
 

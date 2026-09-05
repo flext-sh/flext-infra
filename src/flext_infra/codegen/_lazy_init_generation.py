@@ -28,7 +28,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
     """Generate/remove ``__init__.py`` per package directory."""
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
         _modified_files: t.Infra.StrSet
 
     def _generate_all_inits(
@@ -47,8 +47,8 @@ class FlextInfraCodegenLazyInitGenerationMixin(
             total += 1
             if idx == 1 or idx == len(pkg_dirs) or idx % progress_interval == 0:
                 rel_path = (
-                    pkg_dir.relative_to(self.workspace_root)
-                    if self.workspace_root in pkg_dir.parents
+                    pkg_dir.relative_to(self.repository_root)
+                    if self.repository_root in pkg_dir.parents
                     else pkg_dir
                 )
                 u.Cli.info(f"lazy-init: progress {idx}/{len(pkg_dirs)} — {rel_path}")

@@ -121,17 +121,17 @@ class FlextInfraUtilitiesVersioning:
         return r[str].ok(f"{major}.{minor}.{patch}")
 
     @staticmethod
-    def current_workspace_version(workspace_root: Path) -> p.Result[str]:
+    def current_workspace_version(repository_root: Path) -> p.Result[str]:
         """Read the current version from the main pyproject.toml.
 
         Args:
-            workspace_root: The root directory of the workspace.
+            repository_root: The root directory of the workspace.
 
         Returns:
             r[str] with the version string.
 
         """
-        pyproject = workspace_root / c.Infra.PYPROJECT_FILENAME
+        pyproject = repository_root / c.Infra.PYPROJECT_FILENAME
         try:
             content = pyproject.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         except OSError as exc:
@@ -184,6 +184,35 @@ class FlextInfraUtilitiesVersioning:
             return r[bool].ok(Version(candidate) > Version(reference))
         except InvalidVersion as exc:
             return r[bool].fail(f"invalid version: {exc}")
+
+    @staticmethod
+    def latest_release_tag(tags: t.StrSequence) -> p.Result[str]:
+        """Return the highest release tag under PEP 440, or ``""`` when none exist.
+
+        Git's ``--sort=version:refname`` is a refname collation, not a PEP 440
+        ordering: it places ``v0.12.0rc2`` above ``v0.12.0`` because the longer
+        refname collates later. The release protocol then read the newest
+        release as a release candidate, decided the released version still
+        "awaits its tag", and never bumped again in any repository that had
+        ever cut an rc (flext-1wjg1.16.34). Order by the same PEP 440 owner
+        ``version_is_newer`` already uses, and fail loud on a ``v*`` tag that
+        is not a version rather than silently ranking it.
+        """
+        prefix = c.Infra.TAG_FORMAT.format(version="")
+        highest_version: Version | None = None
+        highest_tag = ""
+        for raw_tag in tags:
+            tag = raw_tag.strip()
+            if not tag:
+                continue
+            try:
+                parsed = Version(tag.removeprefix(prefix))
+            except InvalidVersion as exc:
+                return r[str].fail(f"invalid release tag {tag}: {exc}")
+            if highest_version is None or parsed > highest_version:
+                highest_version = parsed
+                highest_tag = tag
+        return r[str].ok(highest_tag)
 
     @staticmethod
     def render_project_version(content: str, version: str) -> p.Result[str]:

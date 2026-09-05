@@ -28,7 +28,7 @@ def _add(
     repository: Path, branch: str, base: str = "HEAD", *, epic: Path | None = None
 ) -> p.Result[str]:
     return FlextInfraWorktreeService(
-        workspace_root=repository,
+        repository_root=repository,
         operation=c.Infra.WorktreeOperation.ADD,
         branch=branch,
         base=base,

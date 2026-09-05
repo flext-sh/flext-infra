@@ -53,11 +53,11 @@ class TestsFlextInfraWorkspaceFactory:
 
     def create_workspace(self, tmp_path: Path, projects: int = 3) -> Path:
         """Create a multi-project workspace using real project fixtures."""
-        workspace_root: Path = tmp_path / "workspace"
-        workspace_root.mkdir(parents=True, exist_ok=True)
+        repository_root: Path = tmp_path / "workspace"
+        repository_root.mkdir(parents=True, exist_ok=True)
         project_names = [f"test-proj-{idx + 1}" for idx in range(projects)]
         for project_name in project_names:
-            self.create_minimal(tmp_path=workspace_root, name=project_name)
+            self.create_minimal(tmp_path=repository_root, name=project_name)
         workspace_pyproject = (
             "[tool.poetry]\n"
             '"name" = "workspace"\n'
@@ -65,13 +65,13 @@ class TestsFlextInfraWorkspaceFactory:
             '"description" = "Generated workspace fixture"\n'
             '"authors" = ["FLEXT Tests <tests@flext.dev>"]\n'
         )
-        (workspace_root / "pyproject.toml").write_text(
+        (repository_root / "pyproject.toml").write_text(
             workspace_pyproject, encoding=self.encoding
         )
-        (workspace_root / "Makefile").write_text(
+        (repository_root / "Makefile").write_text(
             "check:\n\t@echo workspace-check\n", encoding=self.encoding
         )
-        (workspace_root / ".gitmodules").write_text(
+        (repository_root / ".gitmodules").write_text(
             "".join(
                 f'[submodule "{name}"]\n\tpath = {name}\n'
                 f"\turl = https://github.com/flext-sh/{name}.git\n"
@@ -79,7 +79,7 @@ class TestsFlextInfraWorkspaceFactory:
             ),
             encoding=self.encoding,
         )
-        return workspace_root
+        return repository_root
 
     def _create_project(
         self, tmp_path: Path, name: t.NonEmptyStr, deps: t.StrSequence

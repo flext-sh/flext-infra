@@ -18,7 +18,7 @@ class FlextInfraCodegenLazyInitGenerationIOMixin:
     """Compare, write, and remove generated package initializers."""
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
         _modified_files: t.Infra.StrSet
 
         def _cleanup_generated_support_files(

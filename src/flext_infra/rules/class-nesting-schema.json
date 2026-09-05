@@ -18,7 +18,7 @@
           },
           "current_file": {
             "type": "string",
-            "description": "Path to file containing the class (relative to workspace root)"
+            "description": "Path to file containing the class (relative to composition root)"
           },
           "target_namespace": {
             "type": "string",

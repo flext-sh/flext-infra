@@ -63,7 +63,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "FLEXT_INFRA_PYTHON",
             "FLEXT_ROOT",
             "FLEXT_STANDALONE",
-            "FLEXT_WORKSPACE_ROOT",
+            "FLEXT_REPOSITORY_ROOT",
             "MATCH",
             "PROJECT",
             "PROJECTS",
@@ -73,7 +73,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "UV",
             "VALIDATE_GATES",
             "WHAT",
-            "WORKSPACE_ROOT",
+            "REPOSITORY_ROOT",
             *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         """Environment inherited from an outer Make invocation to discard in tests."""

@@ -49,9 +49,9 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
 
     kind: ClassVar[str] = "transformer"
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used to resolve relative file paths."""
-        super().__init__(workspace_root)
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used to resolve relative file paths."""
+        super().__init__(repository_root)
 
     # Canonical transformer registry. New deterministic transformers register here.
     _TRANSFORMERS: ClassVar[dict[str, type[FlextInfraRopeTransformer]]] = {
@@ -178,7 +178,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         lazy exports.
         """
         paths = tuple(Path(path) for path in file_paths)
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             return FlextInfraUtilitiesRopeImports.normalize_imports(
                 rope_project, file_paths=paths, preserve_canonical_aliases=True
             )

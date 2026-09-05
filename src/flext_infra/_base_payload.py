@@ -14,7 +14,7 @@ class FlextInfraCommandPayloadMixin:
     """Private FLEXT payload builder for shared command services."""
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
         apply_changes: bool
         check_only: bool
         dry_run: bool
@@ -27,7 +27,7 @@ class FlextInfraCommandPayloadMixin:
     def command_payload(self) -> t.JsonMapping:
         """Return the normalized shared command payload once."""
         payload: t.MutableJsonMapping = {
-            "workspace_root": str(self.workspace_root),
+            "repository_root": str(self.repository_root),
             "apply_changes": self.apply_changes,
             "check_only": self.check_only,
             "dry_run": self.dry_run,

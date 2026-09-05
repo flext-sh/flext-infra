@@ -146,7 +146,7 @@ class FlextInfraRefactorCensus(
         impact_map_report: m.Infra.Census.WorkspaceReport | None = None
         rope_root = self._rope_root_for_selection()
         with FlextInfraRopeWorkspace.open_workspace(
-            self.root, rope_workspace_root=rope_root
+            self.root, rope_repository_root=rope_root
         ) as rope:
 
             def collect(applied: frozenset[str]) -> m.Infra.Census.WorkspaceReport:

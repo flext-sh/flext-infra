@@ -17,9 +17,9 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
     def generate(
         self, request: m.Infra.DocsGenerateRequest
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
-        """Generate docs across the workspace root and governed FLEXT projects."""
+        """Generate docs across the repository root and governed FLEXT projects."""
         return self.run_scoped_docs(
-            request.workspace_root,
+            request.repository_root,
             projects=request.projects,
             output_dir=request.output_dir,
             handler=lambda scope: self._generate_scope(scope, request=request),
@@ -32,7 +32,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
             "generate",
             self.generate(
                 m.Infra.DocsGenerateRequest(
-                    workspace_root=self.workspace_root,
+                    repository_root=self.repository_root,
                     projects=self.selected_projects,
                     output_dir=self.output_dir,
                     apply=self.apply_changes,
@@ -45,11 +45,11 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
         self, scope: m.Infra.DocScope, *, request: m.Infra.DocsGenerateRequest
     ) -> m.Infra.DocsPhaseReport:
         """Generate one scope via the docs generator utilities and log the result."""
-        workspace_root = request.workspace_root.resolve()
+        repository_root = request.repository_root.resolve()
         collocated_workspace_project = (
             scope.name != c.Infra.RK_ROOT
-            and scope.path.resolve() == workspace_root
-            and bool(u.Infra.workspace_project_paths(workspace_root))
+            and scope.path.resolve() == repository_root
+            and bool(u.Infra.workspace_project_paths(repository_root))
         )
         report: m.Infra.DocsPhaseReport = (
             m.Infra.DocsPhaseReport(
@@ -64,7 +64,7 @@ class FlextInfraDocGenerator(FlextInfraDocServiceBase):
             else u.Infra.docs_generate_scope(
                 scope,
                 apply=request.apply,
-                workspace_root=request.workspace_root,
+                repository_root=request.repository_root,
                 projects=request.projects,
             )
         )

@@ -60,6 +60,11 @@ class FlextInfraConstantsCodegen(
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
     MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
     "Number of numeric components in a generated Mise release version."
+    MISE_PLATFORM_INDEPENDENT_BACKENDS: Final[frozenset[str]] = frozenset({"npm:"})
+    (
+        "Mise backend prefixes whose tools ship one artifact for every platform "
+        "(`mise lock` records no `platforms` table for them, e.g. `npm:jscpd`)."
+    )
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique

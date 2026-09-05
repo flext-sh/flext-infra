@@ -53,7 +53,7 @@ def test_project_without_pyproject_excluded_from_run(tmp_path: Path) -> None:
         },
     )
     u.Tests.declare_workspace_projects(tmp_path, (managed_project.name,))
-    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
+    fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
     results = fixer.fix_workspace()
     project_names = [res.project for res in results]
     tm.that("external-project" not in project_names, eq=True)
@@ -66,7 +66,7 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     (project / "Makefile").touch()
     (project / "pyproject.toml").write_text("[project]\nname='no-src-proj'\n")
     (project / ".git").mkdir()
-    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
+    fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project, package_name="")])
     tm.that(result.project, eq="no-src-proj")
     tm.that(result.violations_fixed, empty=True)
@@ -85,7 +85,7 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
             '__all__: list[str] = ["MAX_RETRIES", "TestProjBase"]\n'
         },
     )
-    fixer = FlextInfraCodegenFixer(workspace_root=tmp_path)
+    fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project)])
     modified_str = " ".join(result.files_modified)
     tm.that(modified_str, contains="__init__.py")

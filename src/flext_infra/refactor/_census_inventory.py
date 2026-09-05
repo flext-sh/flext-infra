@@ -27,11 +27,11 @@ class FlextInfraRefactorCensusInventoryMixin:
 
     @classmethod
     def _build_parent_inventory(
-        cls, workspace_root: Path
+        cls, repository_root: Path
     ) -> t.MappingKV[str, t.StrSequence]:
         """Inventory governed-package alias top-level facade names.
 
-        Discovers governed projects via ``u.Infra.projects(workspace_root)``
+        Discovers governed projects via ``u.Infra.projects(repository_root)``
         (canonical workspace project discovery — SSOT). For each project
         whose hyphenated name converts to a Python package, imports the
         package and walks dynamic facade aliases at depth 1
@@ -52,7 +52,7 @@ class FlextInfraRefactorCensusInventoryMixin:
         NO subprocess. Skips packages that fail to import (sub-repo
         environments may not have every flext-* installed).
         """
-        projects_result = u.Infra.projects(workspace_root)
+        projects_result = u.Infra.projects(repository_root)
         if projects_result.failure:
             return {}
         inventory: dict[str, list[str]] = defaultdict(list)
@@ -86,7 +86,7 @@ class FlextInfraRefactorCensusInventoryMixin:
 
     @classmethod
     def parent_alias_collisions(
-        cls, report: m.Infra.Census.WorkspaceReport, *, workspace_root: Path
+        cls, report: m.Infra.Census.WorkspaceReport, *, repository_root: Path
     ) -> tuple[tuple[m.Infra.Census.Object, t.StrSequence], ...]:
         """Cross-reference workspace objects against upstream parent inventory.
 
@@ -104,7 +104,7 @@ class FlextInfraRefactorCensusInventoryMixin:
                 ``_collect_report(...)``. Reusing the existing report
                 avoids a second Rope-walk; the inventory is the only new
                 I/O.
-            workspace_root: Workspace root used to discover governed
+            repository_root: Repository root used to discover governed
                 projects (parent packages).
 
         Returns:
@@ -112,7 +112,7 @@ class FlextInfraRefactorCensusInventoryMixin:
             no collisions are found.
 
         """
-        inventory = cls._build_parent_inventory(workspace_root)
+        inventory = cls._build_parent_inventory(repository_root)
         collisions: list[tuple[m.Infra.Census.Object, t.StrSequence]] = []
 
         def collision_breadth(

@@ -62,7 +62,7 @@ class FlextInfraCodegenScaffolder(s[str]):
         if projects is not None:
             selected_projects = tuple(projects)
         else:
-            projects_result = u.Infra.projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.repository_root)
             selected_projects = (
                 tuple(projects_result.unwrap()) if projects_result.success else ()
             )

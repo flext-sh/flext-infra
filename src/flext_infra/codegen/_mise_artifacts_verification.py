@@ -177,7 +177,7 @@ def live(
 
 def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    replacements: dict[Path, tuple[bytes, int | None]],
+    replacements: dict[Path, tuple[bytes | None, int | None]],
 ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
     """Capture and validate one complete ordered artifact-state barrier."""
     root_launchers: tuple[bytes, bytes] | None = None

@@ -29,7 +29,7 @@ class TestsCodegenBeadsProjection:
 
     @staticmethod
     def _plan(root: Path) -> m.Infra.CodegenPlan:
-        result = FlextInfraCodegenConform(workspace_root=root).plan(
+        result = FlextInfraCodegenConform(repository_root=root).plan(
             m.Infra.CodegenConformRequest(
                 root=root,
                 scope=c.Infra.CodegenConformScope.SELF,
@@ -147,3 +147,29 @@ class TestsCodegenBeadsProjection:
         tm.that("endpoint" in tool_fields, eq=False)
         tm.that("endpoint_origin" in tool_fields, eq=True)
         tm.that("endpoint_status" in tool_fields, eq=True)
+
+    def test_tracked_ledger_route_owns_no_projection_in_any_checkout(
+        self, tmp_path: Path
+    ) -> None:
+        """A tracked ``.beads`` route disowns the projection, dangling or not.
+
+        Governed members commit ``.beads`` as a symlink into the superproject
+        ledger. A standalone clone of that member resolves the route outside
+        its own root, so a projection planned there escapes the repository and
+        fails the gate. Ownership follows the tracked route, never the physical
+        checkout topology.
+        """
+        root = self._project(
+            tmp_path / "member",
+            database="member_database",
+            issue_prefix="member-prefix",
+        )
+        ledger = root / c.Infra.BEADS_DIRNAME
+        ledger.symlink_to(Path("..") / c.Infra.BEADS_DIRNAME)
+
+        plan = self._plan(root)
+
+        tm.that(ledger.is_symlink(), eq=True)
+        tm.that(ledger.exists(), eq=False)
+        tm.that(self._rendered(plan, c.Infra.BEADS_CONFIG_RELPATH), none=True)
+        tm.that(self._rendered(plan, c.Infra.BEADS_METADATA_RELPATH), none=True)
