@@ -73,10 +73,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
         self._scan_cache.pop(str(self._repository_root), None)
         verified_scan = self._workspace_scan()
         verified = self._issues_from_sarif(verified_scan.stdout, project_dir.name)
-        remaining = (
-            verified.value
-            if verified.success
-            else (self._failure_issue(verified.error),)
+        remaining = self._drop_generated_projections(
+            verified.value if verified.success else (self._failure_issue(verified.error),)
         )
         if not remaining and verified_scan.exit_code != 0:
             remaining = (self._tool_failure_issue(verified_scan),)
@@ -134,7 +132,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
         parsed = self._issues_from_sarif(result.stdout, project_dir.name)
-        issues = (
+        issues = self._drop_generated_projections(
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
         )
         if not issues and result.exit_code != 0:

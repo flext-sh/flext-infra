@@ -311,39 +311,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
                 return r[p.Cli.CommandOutput].ok(result.value)
 
-        class ArtifactDownloadRunner(DeptryRunner):
-            """Typed runner fixture that materializes a requested output artifact."""
-
-            def __init__(self, payload: bytes) -> None:
-                super().__init__(r.ok(m.Cli.CommandOutput()))
-                self._payload = payload
-
-            @override
-            def run_raw(
-                self,
-                cmd: t.StrSequence,
-                cwd: t.Cli.TextPath | None = None,
-                timeout: int | None = None,
-                env: t.StrMapping | None = None,
-                remove_env_keys: t.StrSequence = (),
-                input_data: str | bytes | None = None,
-                *,
-                capture: bool = True,
-            ) -> p.Result[p.Cli.CommandOutput]:
-                self._record(cmd)
-                del timeout, env, remove_env_keys, input_data, capture
-                if "--output" not in cmd or cwd is None:
-                    return r[p.Cli.CommandOutput].fail(
-                        "artifact command requires --output and cwd"
-                    )
-                artifact = Path(cmd[cmd.index("--output") + 1])
-                if artifact.parent.resolve() != Path(cwd).resolve():
-                    return r[p.Cli.CommandOutput].fail(
-                        "artifact output must be inside the command cwd"
-                    )
-                artifact.write_bytes(self._payload)
-                return r[p.Cli.CommandOutput].ok(m.Cli.CommandOutput())
-
             @override
             def run(
                 self,
@@ -401,6 +368,43 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             def _command_result(self) -> p.Result[m.Cli.CommandOutput]:
                 """Replay the next stored result instead of a single one."""
                 return self._next_result()
+
+        class ArtifactDownloadRunner(DeptryRunner):
+            """Typed runner fixture that materializes a requested output artifact."""
+
+            def __init__(self, payload: bytes) -> None:
+                super().__init__(
+                    r.ok(m.Cli.CommandOutput(stdout="", stderr="", exit_code=0))
+                )
+                self._payload = payload
+
+            @override
+            def run_raw(
+                self,
+                cmd: t.StrSequence,
+                cwd: t.Cli.TextPath | None = None,
+                timeout: int | None = None,
+                env: t.StrMapping | None = None,
+                remove_env_keys: t.StrSequence = (),
+                input_data: str | bytes | None = None,
+                *,
+                capture: bool = True,
+            ) -> p.Result[p.Cli.CommandOutput]:
+                self._record(cmd)
+                del timeout, env, remove_env_keys, input_data, capture
+                if "--output" not in cmd or cwd is None:
+                    return r[p.Cli.CommandOutput].fail(
+                        "artifact command requires --output and cwd"
+                    )
+                artifact = Path(cmd[cmd.index("--output") + 1])
+                if artifact.parent.resolve() != Path(cwd).resolve():
+                    return r[p.Cli.CommandOutput].fail(
+                        "artifact output must be inside the command cwd"
+                    )
+                artifact.write_bytes(self._payload)
+                return r[p.Cli.CommandOutput].ok(
+                    m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+                )
 
         @staticmethod
         def infra_mapping(value: t.Infra.InfraMapping) -> t.JsonMapping:

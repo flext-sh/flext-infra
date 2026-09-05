@@ -224,3 +224,22 @@ class TestsFlextInfraModCliRoute:
         tm.that(console, has=str(report_path))
         tm.that(console, has=digest)
         tm.that(console, lacks='"ruleId"')
+
+        empty_receipt = tm.ok(
+            u.Infra.publish_mod_scan_evidence(
+                root,
+                m.Infra.ModScanReport(
+                    findings=0, nodes=0, files=frozenset(), entries=()
+                ),
+                command=c.Infra.ModScanCommand.SCAN,
+                scope=(".",),
+            )
+        )
+        replaced = m.Infra.ModScanEvidence.model_validate_json(
+            report_path.read_bytes()
+        )
+        tm.that(replaced.findings, eq=0)
+        tm.that(replaced.entries, empty=True)
+        tm.that(
+            empty_receipt.sha256, eq=u.Cli.sha256_bytes(report_path.read_bytes())
+        )
