@@ -518,20 +518,24 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     @staticmethod
     def _latest_tag(root: Path) -> p.Result[str]:
-        """Return the highest release tag, or an empty string before the first release."""
+        """Return the highest release tag, or an empty string before the first release.
+
+        The listing is deliberately unsorted: Git's version collation is not a
+        PEP 440 ordering and ranks ``v0.12.0rc2`` above ``v0.12.0``. The typed
+        versioning owner performs the ordering instead.
+        """
         tags = u.Cli.capture(
             [
                 c.Infra.GIT,
                 "tag",
                 "--list",
                 c.Infra.TAG_FORMAT.format(version="*"),
-                "--sort=-version:refname",
             ],
             cwd=root,
         )
         if tags.failure:
             return r[str].fail(tags.error or "release tag listing failed")
-        return r[str].ok(next((line for line in tags.value.splitlines() if line), ""))
+        return u.Infra.latest_release_tag(tags.value.splitlines())
 
     @staticmethod
     def _subjects(

@@ -732,12 +732,15 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             package_root = project_dir / "src" / name.replace("-", "_")
             package_root.mkdir(parents=True, exist_ok=True)
             (package_root / "__init__.py").write_text("", encoding="utf-8")
+            provider = TestsFlextInfraUtilities.Tests.provider()
             (project_dir / "pyproject.toml").write_text(
                 "[project]\n"
                 f'name = "{name}"\n'
                 'version = "0.1.0"\n'
                 'requires-python = ">=3.13,<3.14"\n'
-                "dependencies = []\n",
+                "dependencies = []\n"
+                "[project.urls]\n"
+                f'Repository = "{provider.base_url.rstrip("/")}/{name}"\n',
                 encoding="utf-8",
             )
             TestsFlextInfraUtilities.Tests.write_project_beads_config(project_dir, name)
@@ -782,6 +785,31 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return tm.ok(FlextInfraCodegenMiseArtifacts.launcher_release(root))
 
         @staticmethod
+        def mise_generate_install_script_branch() -> str:
+            """Return the stub branch that materializes a generated launcher.
+
+            ``make setup`` no longer downloads Mise: it asks the tracked
+            launcher to ``generate install-script --write <path>`` and then runs
+            the file that appears there. A stub that ignores the request leaves
+            nothing to run, so it delegates the generated launcher back to
+            itself.
+            """
+            return (
+                'case "$*" in *"generate install-script"*)\n'
+                '  target=""\n'
+                '  while [ "$#" -gt 0 ]; do\n'
+                '    if [ "$1" = "--write" ]; then target="$2"; fi\n'
+                "    shift\n"
+                "  done\n"
+                '  if [ -z "$target" ]; then exit 2; fi\n'
+                '  mkdir -p "${target%/*}"\n'
+                '  printf \'#!/bin/sh\\nexec "%s" "$@"\\n\' "$0" > "$target"\n'
+                '  chmod +x "$target"\n'
+                "  exit 0 ;;\n"
+                "esac\n"
+            )
+
+        @staticmethod
         def write_mise_stub(path: Path) -> Path:
             """Write the one hermetic Mise contract used by Make setup fixtures."""
             TestsFlextInfraUtilities.Tests.write_executable(
@@ -790,6 +818,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 'if [ "$1" = "--version" ]; then '
                 f"printf '%s\\n' '{TestsFlextInfraUtilities.Tests.mise_release()}'; "
                 "exit; fi\n"
+                f"{TestsFlextInfraUtilities.Tests.mise_generate_install_script_branch()}"
                 f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
                 f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
                 'if [ "$1" = "trust" ]; then exit; fi\n'

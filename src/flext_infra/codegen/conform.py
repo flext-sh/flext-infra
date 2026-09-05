@@ -1910,6 +1910,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.CodegenArtifactComposition(rendered=rendered)
             )
         resolved_artifacts = managed_artifacts
+        if resolved_artifacts is None and not repository_root.is_dir():
+            # A scaffold materializes this root in the same plan, so it owns no
+            # declared overlay yet. An existing root that cannot be inspected
+            # still fails loud through the snapshot below.
+            return r[m.Infra.CodegenArtifactComposition].ok(
+                m.Infra.CodegenArtifactComposition(rendered=rendered)
+            )
         if resolved_artifacts is None:
             snapshot = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_project_managed_artifacts(
                 repository_root

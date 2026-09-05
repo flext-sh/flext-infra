@@ -145,6 +145,7 @@ class TestsMakeTestSelector:
                 "#!/bin/sh\n"
                 'if [ "$1" = "--version" ]; then '
                 f"printf '{test_u.Tests.mise_release()}\\n'; exit 0; fi\n"
+                f"{test_u.Tests.mise_generate_install_script_branch()}"
                 'case "$*" in *"exec -- uv --version"*) '
                 f"printf 'uv {toolchain.uv_version}.0\\n'; exit 0 ;; esac\n"
                 'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
