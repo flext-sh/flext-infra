@@ -249,12 +249,21 @@ class TestCodegenCiMatrix:
         workflow = (root / ".github" / "workflows" / "ci.yml").read_text(
             encoding="utf-8"
         )
-        marker = "fetch-depth: 0\n\n      # make setup is the only toolchain installer."
+        # The empty include sits between the checkout and the credential-source
+        # step: no blank line may appear there, and exactly one separates the
+        # last step before the setup commentary from that commentary.
+        tm.that(
+            workflow, has="fetch-depth: 0\n      # Mise resolves GitHub credentials"
+        )
+        marker = (
+            '>> "$GITHUB_ENV"\n\n      # make setup is the only toolchain installer.'
+        )
         tm.that(workflow, has=marker)
         tm.that(
             workflow,
             lacks=(
-                "fetch-depth: 0\n\n\n      # make setup is the only toolchain installer."
+                '>> "$GITHUB_ENV"\n\n\n'
+                "      # make setup is the only toolchain installer."
             ),
         )
         root2 = self._render_project(tmp_path / "member-again")
