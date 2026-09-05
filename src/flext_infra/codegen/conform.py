@@ -67,7 +67,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     @staticmethod
     def _member_beads_is_linked(repository_root: Path) -> bool:
-        """Return whether this gitlink routes an inherited workspace ledger."""
+        """Return whether this checkout tracks an inherited workspace ledger route.
+
+        Governed members track ``.beads`` as a symlink into the superproject
+        ledger. The route is the declaration: it holds in the workspace, where
+        it resolves, and in a standalone clone of the same member, where it
+        dangles. Either way the member owns no Beads projection of its own.
+        """
         route: Path = repository_root / c.Infra.BEADS_DIRNAME
         return route.is_symlink()
 
@@ -1385,11 +1391,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if (
                 destination
                 in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
-                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
                 and self._member_beads_is_linked(root)
             ):
-                # A linked gitlink inherits the workspace ledger; planning a
-                # member-local projection would create a second identity.
+                # A tracked ledger route inherits the workspace ledger; planning
+                # a member-local projection would create a second identity, and
+                # in a standalone clone the route dangles outside the checkout.
                 continue
             if (
                 destination == c.Infra.BEADS_METADATA_RELPATH
@@ -1778,7 +1784,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if (
                 entry.destination
                 in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
-                and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
                 and self._member_beads_is_linked(root)
             ):
                 # Mirror the delegated-template path so both conform routes
@@ -2045,7 +2050,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if (
             destination
             in {c.Infra.BEADS_CONFIG_RELPATH, c.Infra.BEADS_METADATA_RELPATH}
-            and repository.checkout is c.Infra.CheckoutKind.SUBMODULE
             and self._member_beads_is_linked(repository_root)
         ):
             return r[p.Model].fail(
