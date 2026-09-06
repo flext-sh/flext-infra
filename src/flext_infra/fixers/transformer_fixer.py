@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
-from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
 )
@@ -57,7 +56,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     _TRANSFORMERS: ClassVar[
         t.MutableMappingKV[str, type[FlextInfraRopeTransformer]]
     ] = {
-        "cast_remover": FlextInfraRefactorCastRemover,
         "compatibility_alias": FlextInfraRefactorCompatibilityAlias,
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
@@ -72,10 +70,34 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         "typing_unifier": FlextInfraRefactorTypingUnifier,
     }
 
+    # Why: targets whose rewriting mechanism is deactivated inside flext-infra,
+    # mapped to the reason reported for every project that still violates them.
+    # The upstream flext-core catalog keeps declaring the fix action, and the
+    # orchestrator preflight requires exactly one adapter to own every declared
+    # action, so this adapter must keep claiming the target. Claiming it here —
+    # instead of dropping it from ``_TRANSFORMERS`` alone — keeps
+    # ``fix-enforcement`` working for every other rule while guaranteeing the
+    # deactivated target never reaches a transformer and never rewrites a file.
+    _DEACTIVATED_TARGETS: ClassVar[t.MappingKV[str, str]] = {
+        "cast_remover": (
+            "fix deactivated: the cast remover rewrote sources through the raw "
+            "ast module (whole-file ast.unparse), which is not an approved "
+            "rewriting surface — only ast-grep codemod rules (make mod) and "
+            "rope are. Redundancy of a cast is a type-inference question that "
+            "neither approved surface can answer, and the removed casts were "
+            "load-bearing (untyped third-party module lookups, Literal "
+            "narrowing), so removing them raised the type-error count. The "
+            "violation is still reported; only the automatic rewrite is off."
+        ),
+    }
+
     @override
     def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
-        return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
+        return fix_action.kind == self.kind and (
+            fix_action.target in self._TRANSFORMERS
+            or fix_action.target in self._DEACTIVATED_TARGETS
+        )
 
     @override
     def fix_project(
@@ -93,6 +115,16 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         failed: t.MutableSequenceOf[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
         for target, target_violations in self._group_by_target(violations).items():
+            deactivation = self._DEACTIVATED_TARGETS.get(target)
+            if deactivation is not None:
+                skipped.append(
+                    m.Infra.SkippedViolation(
+                        rule_id=self._rule_id(target_violations),
+                        file_path=str(project_dir),
+                        reason=deactivation,
+                    )
+                )
+                continue
             transformer_cls = self._TRANSFORMERS.get(target)
             if transformer_cls is None:
                 rule_id = self._rule_id(target_violations)
