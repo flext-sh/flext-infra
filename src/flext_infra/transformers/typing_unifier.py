@@ -6,8 +6,8 @@ constants — no ``ast`` parsing or tree walking is required:
 - **Inline-union canonicalization**: replaces permutations like
   ``int | str`` with the canonical ``t.<Alias>`` (configured via
   ``canonical_map``).
-- **Built-in annotation canonicalization**: rewrites ``dict[K, V]`` →
-  ``t.MappingKV[K, V]``, ``list[X]`` → ``t.SequenceOf[X]``, and bare
+- **Built-in annotation canonicalization**: rewrites ``t.MutableMappingKV[K, V]`` →
+  ``t.MutableMappingKV[K, V]``, ``t.MutableSequenceOf[X]`` → ``t.SequenceOf[X]``, and bare
   ``Any``/``object`` / ``typing.Any`` → ``t.JsonValue``. The bracket
   forms guard against false positives by requiring an immediate ``[``.
 - **PEP 695 TypeAlias modernization**: rewrites ``X: TypeAlias = expr``
@@ -19,6 +19,7 @@ constants — no ``ast`` parsing or tree walking is required:
 
 from __future__ import annotations
 
+import ast
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c
@@ -45,7 +46,7 @@ class FlextInfraRefactorTypingUnifier(
     def __init__(
         self,
         *,
-        canonical_map: t.MappingKV[frozenset[str], str],
+        canonical_map: t.MutableMappingKV[frozenset[str], str],
         file_path: Path | None = None,
     ) -> None:
         """Initialize with canonical union map and optional file path for skip logic."""
@@ -60,7 +61,7 @@ class FlextInfraRefactorTypingUnifier(
         if self._is_definition_file:
             return source, list(self.changes)
 
-        def union_size(item: tuple[frozenset[str], str]) -> int:
+        def union_size(item: t.Pair[frozenset[str], str]) -> int:
             return len(item[0])
 
         for member_set, canonical in sorted(
@@ -95,11 +96,51 @@ class FlextInfraRefactorTypingUnifier(
         return source, list(self.changes)
 
     def _canonicalize_annotation_builtins(self, source: str) -> str:
-        """Rewrite built-in generic annotations to canonical ``t.*`` aliases."""
-        rewritten, changes = self._rewrite_annotation_text(source)
-        for change in changes:
-            self._record_change(change)
+        """Rewrite built-in generic annotations to canonical ``t.*`` aliases.
+
+        Only annotation spans are rewritten. Passing the whole file to the
+        annotation rewriter made it edit any text that merely looked like one:
+        it rewrote the literal ``"dict["`` inside this package's own rewrite
+        tables, destroying them, and left unbalanced brackets in three
+        transformer modules. An annotation is an AST position, so the AST is
+        what decides which text is eligible.
+        """
+        try:
+            module = ast.parse(source)
+        except SyntaxError:
+            return source
+        spans: list[tuple[int, int]] = []
+        for node in ast.walk(module):
+            annotations = []
+            if isinstance(node, ast.AnnAssign | ast.arg):
+                annotations.append(node.annotation)
+            elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                annotations.append(node.returns)
+            for annotation in annotations:
+                if annotation is None:
+                    continue
+                start = self._offset(source, annotation.lineno, annotation.col_offset)
+                end_lineno = annotation.end_lineno
+                end_col = annotation.end_col_offset
+                if end_lineno is None or end_col is None:
+                    continue
+                spans.append((start, self._offset(source, end_lineno, end_col)))
+        rewritten = source
+        for start, end in sorted(spans, reverse=True):
+            text = rewritten[start:end]
+            replacement, changes = self._rewrite_annotation_text(text)
+            if replacement == text:
+                continue
+            for change in changes:
+                self._record_change(change)
+            rewritten = f"{rewritten[:start]}{replacement}{rewritten[end:]}"
         return rewritten
+
+    @staticmethod
+    def _offset(source: str, lineno: int, col: int) -> int:
+        """Return the character offset of one 1-based line and 0-based column."""
+        lines = source.splitlines(keepends=True)
+        return sum(len(line) for line in lines[: lineno - 1]) + col
 
     @staticmethod
     def _union_pattern(members: frozenset[str]) -> t.Infra.RegexPattern | None:
@@ -132,4 +173,4 @@ class FlextInfraRefactorTypingUnifier(
         return any(part in c.Infra.TYPING_DEFINITION_FILES for part in file_path.parts)
 
 
-__all__: list[str] = ["FlextInfraRefactorTypingUnifier"]
+__all__: t.MutableSequenceOf[str] = ["FlextInfraRefactorTypingUnifier"]
