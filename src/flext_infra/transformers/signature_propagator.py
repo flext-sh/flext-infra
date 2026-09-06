@@ -6,8 +6,7 @@ from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-
-from .._utilities.transformer_base import FlextInfraChangeTrackingTransformer
+from flext_infra._utilities.transformer_base import FlextInfraChangeTrackingTransformer
 
 if TYPE_CHECKING:
     from flext_infra import m, t

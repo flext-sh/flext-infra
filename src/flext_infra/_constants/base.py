@@ -9,9 +9,9 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from .._constants.make import FlextInfraConstantsMake
-from .._constants.source_code import FlextInfraConstantsSourceCode
-from .._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._constants.make import FlextInfraConstantsMake
+from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
+from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
 
 if TYPE_CHECKING:
     from flext_infra import t

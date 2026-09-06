@@ -9,10 +9,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra.constants import c
 from flext_infra.models import m
-
-from .._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

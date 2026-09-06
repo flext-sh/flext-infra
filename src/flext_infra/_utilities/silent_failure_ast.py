@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ast
 
-from .._utilities.silent_failure_ast_rules import (
+from flext_infra._utilities.silent_failure_ast_rules import (
     FlextInfraUtilitiesSilentFailureAstRules,
 )
 

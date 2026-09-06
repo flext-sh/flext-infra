@@ -10,13 +10,12 @@ from operator import attrgetter
 from pathlib import Path
 
 from flext_infra import config, m
-from flext_infra.constants import c
-from flext_infra.typings import t
-
-from .._utilities._project_discovery_candidates import (
+from flext_infra._utilities._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
-from .._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra.constants import c
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesProjectDiscovery(

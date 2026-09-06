@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING
 from git import GitCommandError
 
 from flext_core import r
+from flext_infra._utilities._git.worktree_status import (
+    FlextInfraUtilitiesGitWorktreeStatusMixin,
+)
 from flext_infra.models import m
-
-from ..._utilities._git.worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

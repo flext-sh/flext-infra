@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m
-
-from .._utilities._docs_command_contract import (
+from flext_infra._utilities._docs_command_contract import (
     FlextInfraUtilitiesDocsCommandContractMixin,
 )
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
+from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
 
 if TYPE_CHECKING:
     from flext_infra import t

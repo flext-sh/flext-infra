@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m
+from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 
-from .._enforcement.engine import FlextInfraEnforcementEngine
 from ._census_rules_shared import FlextInfraRefactorCensusRulesSharedMixin
 
 if TYPE_CHECKING:

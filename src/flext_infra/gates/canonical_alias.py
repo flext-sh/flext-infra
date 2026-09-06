@@ -12,13 +12,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, r, t, u
+from flext_infra._utilities.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.detectors import (
     FlextInfraCompatibilityAliasDetector,
     FlextInfraCyclicImportDetector,
 )
 from flext_infra.gates import FlextInfraGate
-
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 
 if TYPE_CHECKING:
     from flext_infra import p

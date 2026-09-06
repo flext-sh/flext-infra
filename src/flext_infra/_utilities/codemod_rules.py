@@ -12,8 +12,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t, u
-
-from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesCodemodRules:
