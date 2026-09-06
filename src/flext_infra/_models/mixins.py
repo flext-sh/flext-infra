@@ -74,9 +74,9 @@ class FlextInfraModelsMixins:
         @property
         def project_names(self) -> t.StrSequence | None:
             """Normalized project names from repeated selectors."""
-            from .base import FlextInfraUtilitiesBase as ub
+            from flext_infra import u
 
-            return ub.normalize_sequence_values(self.projects)
+            return u.Infra.normalize_sequence_values(self.projects)
 
     class ReadMixin(ScopeMixin):
         """Read-only commands — report file + output directory only.
@@ -96,16 +96,16 @@ class FlextInfraModelsMixins:
         @property
         def report_path(self) -> Path | None:
             """Resolved report path when provided."""
-            from .base import FlextInfraUtilitiesBase as ub
+            from flext_infra import u
 
-            return ub.normalize_optional_path(self.report)
+            return u.Infra.normalize_optional_path(self.report)
 
         @property
         def output_dir_path(self) -> Path | None:
             """Resolved output directory when provided."""
-            from .base import FlextInfraUtilitiesBase as ub
+            from flext_infra import u
 
-            return ub.normalize_optional_path(self.output_dir)
+            return u.Infra.normalize_optional_path(self.output_dir)
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.
