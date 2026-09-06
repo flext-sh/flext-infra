@@ -323,7 +323,6 @@ CLAUDE.local.md
 !.github/scripts/
 !.github/scripts/check-beads-policy.sh
 !.github/scripts/check-cqrs-compliance.sh
-!.github/scripts/flext-law-loop.sh
 !.github/scripts/install-git-hooks.sh
 !tests/fixtures/
 !tests/fixtures/ci/

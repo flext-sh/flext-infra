@@ -46,10 +46,26 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
 
     @staticmethod
     def _alias_files(project_dir: Path) -> p.Result[t.SequenceOf[Path]]:
-        """Return Python files from configured namespace roots for alias checks."""
-        return u.Infra.iter_python_files(
-            m.Infra.SourceScanRequest(project_roots=(project_dir,))
-        )
+        """Return Python files from configured namespace roots for alias checks.
+
+        ENFORCE-080 owns every namespace a project publishes, ``tests`` included:
+        a test module reaches the canonical aliases through ``from tests import
+        c``, never through ``flext_core`` directly. Discovery therefore uses the
+        same scope owner as this gate's own cycle analysis
+        (``FlextInfraCyclicImportDetector.scan_project``), not the production-only
+        ``config.Infra.source_scan.roots`` contract, which excludes ``tests``.
+        """
+        try:
+            files = {
+                file_path
+                for directory_name in u.Infra.namespace_scan_dirs(project_dir)
+                for file_path in u.Infra.iter_directory_python_files(
+                    project_dir / directory_name
+                )
+            }
+        except OSError as exc:
+            return r[t.SequenceOf[Path]].fail_op("canonical-alias file scan", exc)
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
 
     @override
     def check(
