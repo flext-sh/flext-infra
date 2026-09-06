@@ -62,9 +62,7 @@ make test PROJECT=flext-demo MATCH=unit
     def test_reads_apply_requirement_from_config_ssot() -> None:
         """A mutating verb documented without the apply token is rejected."""
         mutating = next(
-            spec.name
-            for spec in config.Infra.codegen.make.verbs
-            if spec.requires_apply
+            spec.name for spec in config.Infra.codegen.make.verbs if spec.requires_apply
         )
         content = f"```bash\nmake {mutating}\n```\n"
 

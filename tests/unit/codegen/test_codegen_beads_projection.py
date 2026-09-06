@@ -74,10 +74,9 @@ class TestsCodegenBeadsProjection:
 
         if rendered_config is None:
             pytest.fail("local identity must produce the declarative Beads config")
-        tm.that(rendered_config, has='issue-prefix: "project-prefix"')
-        # The config projection carries the ISSUE prefix, not the database name;
-        # asserting a bare `prefix: <database>` kept this red against a template
-        # that is correct (see any governed .beads/config.yaml on disk).
+        # `issue_prefix` is the key bd itself resolves (`bd config get
+        # issue_prefix`); the hyphenated spelling reads as unset, so bd appended
+        # its own key on first write and left every governed checkout dirty.
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
         tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
         tm.that(rendered_config, has="gc.endpoint_status: verified")

@@ -61,8 +61,13 @@ def test_markdownlint_does_not_suppress_strict_rules() -> None:
 
 
 def test_flext_law_requires_automated_structural_rewires() -> None:
-    law = (REPOSITORY_ROOT / ".agents/skills/flext-law/SKILL.md").read_text(
-        encoding="utf-8"
+    # Markdown reflows a clause across lines at whatever column the formatter
+    # chooses, so a literal match answers about the wrap and not about the law.
+    # Collapse runs of whitespace and assert the sentence itself.
+    law = " ".join(
+        (REPOSITORY_ROOT / ".agents/skills/flext-law/SKILL.md")
+        .read_text(encoding="utf-8")
+        .split()
     )
 
     for required in (
