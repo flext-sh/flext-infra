@@ -15,6 +15,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from packaging.requirements import InvalidRequirement, Requirement
+from packaging.version import InvalidVersion, Version
 from packaging.utils import canonicalize_name
 
 from flext_cli import u
@@ -340,9 +341,23 @@ class FlextInfraUtilitiesDependencies:
         floor built straight from a locally tagged resolution is rejected by
         every build backend. The public release is what a floor means, and the
         local build satisfies it.
+
+        A prerelease resolution is not a floor either: publishing ``>=X.Yb1``
+        forces every downstream consumer onto that beta, which is how the fleet
+        ended up pinned to ``pydantic>=2.14.0b1`` from a single local lock. The
+        empty string means "this resolution cannot serve as a public floor", and
+        every caller keeps the declared constraint instead of rewriting it.
         """
         public_version = version.strip().partition("+")[0]
-        return f">={public_version}" if public_version else ""
+        if not public_version:
+            return ""
+        try:
+            parsed_version = Version(public_version)
+        except InvalidVersion:
+            return ""
+        if parsed_version.is_prerelease:
+            return ""
+        return f">={public_version}"
 
     @classmethod
     def locked_dependency_versions(
@@ -435,6 +450,8 @@ class FlextInfraUtilitiesDependencies:
                                 )
                             )
                             constraint = cls.constraint_specifier(locked_version)
+                            if not constraint:
+                                return None
                             if retained:
                                 constraint = ",".join((constraint, *retained))
                             rewritten = f"{head}{constraint}"
@@ -465,6 +482,8 @@ class FlextInfraUtilitiesDependencies:
             locked_version = locked_versions.get(normalized_name)
             if locked_version is not None:
                 rewritten_specifier = cls.constraint_specifier(locked_version)
+                if not rewritten_specifier:
+                    return None
                 if isinstance(raw_value, str):
                     result = (
                         rewritten_specifier
