@@ -339,12 +339,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[tuple[m.Cli.AtomicDirectoryState, ...]]:
         """Create config-declared scaffold parent chains under the generation lock."""
         if (
-            self.initial_workspace is None
-            or c.Infra.CodegenConformMode(request.mode)
+            c.Infra.CodegenConformMode(request.mode)
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
         workspace = self.initial_workspace
+        if workspace is None:
+            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+                request.root.expanduser().resolve()
+            )
+            if workspace_result.failure:
+                return r[tuple[m.Cli.AtomicDirectoryState, ...]].from_failure(
+                    workspace_result
+                )
+            workspace = workspace_result.value
         project = workspace.project
         if project is None:
             return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
