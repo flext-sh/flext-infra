@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -229,6 +230,27 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                         rule_id=rule_id,
                         file_path=str(file_path),
                         reason="no changes produced",
+                    ),
+                ),
+            )
+        # A fix that does not parse is not a fix. Writing it corrupts the file
+        # for every later rule in the run: the next transformer reads it back,
+        # fails inside its own parser, and reports a location that has nothing
+        # to do with the rule that caused the damage. Validating here keeps the
+        # failure attributable and leaves the tree intact.
+        try:
+            ast.parse(updated)
+        except SyntaxError as exc:
+            return m.Infra.ProjectFixResult(
+                project=file_path.parent.name,
+                failed=(
+                    m.Infra.FailedFix(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        error=(
+                            f"fix produced source that does not parse at line "
+                            f"{exc.lineno}: {exc.msg}"
+                        ),
                     ),
                 ),
             )
