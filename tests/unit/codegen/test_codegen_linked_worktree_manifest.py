@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 # Conform materializes a full managed tree; the real Git scenarios therefore use
@@ -56,31 +56,32 @@ class TestCodegenLinkedWorktreeTopology:
         )
         primary_snapshot = WorktreeFixture.repository_snapshot(primary)
 
-        applied = tm.ok(
-            FlextInfraCodegenConform.execute_request(
-                m.Infra.CodegenConformRequest(
-                    root=lane,
-                    what=c.Infra.CodegenConformSurface.MAKEFILE,
-                    scope=c.Infra.CodegenConformScope.SELF,
-                    mode=c.Infra.CodegenConformMode.APPLY,
-                )
+        request = m.Infra.CodegenConformRequest(
+            root=lane,
+            what=c.Infra.CodegenConformSurface.MAKEFILE,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,
+        )
+        plan = tm.ok(
+            FlextInfraCodegenConform(repository_root=lane, request=request).plan(
+                request
             )
         )
 
-        makefile = (lane / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        tm.that(makefile, has="MAKE_PROFILE := standalone")
-        tm.that(applied.plan.workspace.beads.workspace, eq="lane-workspace")
-        tm.that(applied.plan.workspace.beads.database, eq="lane-database")
-        tm.that(applied.plan.workspace.beads.issue_prefix, eq="lane-prefix")
-        tm.that(bool(applied.written_files), eq=True)
+        (makefile_plan,) = plan.files
         tm.that(
-            all(path.is_relative_to(lane) for path in applied.written_files), eq=True
+            u.Tests.codegen_file_text(makefile_plan), has="MAKE_PROFILE := standalone"
         )
+        tm.that(plan.workspace.beads.workspace, eq="lane-workspace")
+        tm.that(plan.workspace.beads.database, eq="lane-database")
+        tm.that(plan.workspace.beads.issue_prefix, eq="lane-prefix")
+        tm.that(all(item.path.is_relative_to(lane) for item in plan.files), eq=True)
         tm.that(
             tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(lane)),
             eq=lane.resolve(),
         )
         tm.that(lane_beads.read_bytes(), eq=lane_beads_bytes)
+        tm.that((lane / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
         tm.that((primary / c.Infra.MAKEFILE_FILENAME).exists(), eq=False)
         tm.that(WorktreeFixture.repository_snapshot(primary), eq=primary_snapshot)
 

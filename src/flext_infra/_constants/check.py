@@ -15,6 +15,18 @@ class FlextInfraConstantsCheck:
     """Check infrastructure constants."""
 
     @unique
+    class SarifSchema(StrEnum):
+        """Supported SARIF schema identities."""
+
+        V2_1_0 = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json"
+
+    @unique
+    class SarifVersion(StrEnum):
+        """Supported SARIF format versions."""
+
+        V2_1_0 = "2.1.0"
+
+    @unique
     class GateSeverity(StrEnum):
         """Severity levels accepted by gate output parsers."""
 
@@ -22,13 +34,13 @@ class FlextInfraConstantsCheck:
         WARNING = "warning"
         NOTE = "note"
 
-    @unique
-    class GateMode(StrEnum):
-        """Gate enforcement posture — WARN reports without failing; STRICT fails."""
-
-        WARN = "warn"
-        STRICT = "strict"
-
+    AST_GREP_DOCS_URL: Final[str] = "https://ast-grep.github.io/"
+    "Canonical ast-grep documentation URL for gate metadata."
+    # Quality gate identifiers shared with the tool-name vocabulary.
+    LINT: Final[str] = "lint"
+    FORMAT: Final[str] = "format"
+    MARKDOWN: Final[str] = "markdown"
+    SILENT_FAILURE: Final[str] = "silent-failure"
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -38,6 +50,10 @@ class FlextInfraConstantsCheck:
         "silent-failure": (
             "Flext Silent Failure Detector",
             "internal://flext-infra/silent-failure",
+        ),
+        "deferred-self-reference": (
+            "Flext Deferred Self Reference Detector",
+            "internal://flext-infra/deferred-self-reference",
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
@@ -61,13 +77,17 @@ class FlextInfraConstantsCheck:
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
         ),
+        "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "direnv": (
             "Flext Direnv Environment Contract Gate",
             "internal://flext-infra/direnv",
         ),
+        "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
+    "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )
@@ -76,14 +96,13 @@ class FlextInfraConstantsCheck:
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
-    GATE_ERROR_OUTPUT_LIMIT: Final[int] = 20
-    "Maximum parsed gate diagnostics emitted inline before the canonical report."
-
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     PYRIGHT_PROJECT_ARG: Final[str] = "--project"
     PYRIGHT_PROJECT_CONFIG_TARGET: Final[str] = "."
     BANDIT_RESULTS_KEY: Final[str] = "results"
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
+    PYREFLY_ZERO_ERRORS_RECEIPT: Final[str] = "INFO 0 errors"
+    "Exact successful stderr receipt emitted by Pyrefly's per-file check."
     # --- Abstraction-boundary gate (§2.7) detection SSOT ---
     BOUNDARY_SKIP_PROJECTS: Final[frozenset[str]] = frozenset({
         "flext-cli",
@@ -164,32 +183,25 @@ class FlextInfraConstantsCheck:
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
     )
-    BOUNDARY_CONCRETE_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$", re.MULTILINE
-    )
     BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(
         r"\bFlextCli[A-Z]\w*"
     )
 
-    # --- 1000-LOC SUPREME LAW (§3.1) gate SSOT ---
-    # Why (operator 2026-08-07): the 200-LOC ceiling made real modules
-    # unmanageable — enforcing it fragmented cohesive units into artificial
-    # splits. Raised fleet-wide to 1000. Consumers read this constant, never a
-    # literal, so the cap stays a single owned value.
-    LOC_CAP_MAX: Final[int] = 1000
-    "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
+    # --- 200-LOC module law gate SSOT ---
+    # The current operator contract supersedes the former 1000-LOC allowance.
+    # Consumers read this constant so decomposition converges on one value.
+    LOC_CAP_MAX: Final[int] = 200
+    "Per-module logical-LOC ceiling."
     SCC_BINARY: Final[str] = "scc"
     CLI_DIRENV: Final[str] = "direnv"
     SCC_PYTHON_LANG: Final[str] = "Python"
-    "scc language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
+    "scc language key the 200-LOC cap enforces; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
-    SMELLS_GATE_MODE: Final[GateMode] = GateMode.WARN
-    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
     QLTY_BINARY: Final[str] = "qlty"
-    QLTY_BINARY_FALLBACK_SUFFIX: Final[str] = ".qlty/bin/qlty"
-    "Joined to Path.home() when the binary is absent from PATH."
+    QLTY_CONFIG_DIRNAME: Final[str] = ".qlty"
+    QLTY_CONFIG_FILENAME: Final[str] = "qlty.toml"
     SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
         "smells",
         "--all",
@@ -212,6 +224,29 @@ class FlextInfraConstantsCheck:
         "similar-code": "smell_similar_code",
     })
     "qlty ruleId suffix -> flext-core enforcement tag (texts SSOT: core ENFORCEMENT_RULES_TEXT)."
+
+    # --- jscpd duplication gate SSOT (operator 2026-09-04: flext-infra owns the
+    # jscpd plugin behind one centralized `make check` verb; its config is
+    # rendered from this typed SSOT at scan time, never a hand-maintained file).
+    JSCPD_BINARY: Final[str] = "jscpd"
+    "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
+    JSCPD_MODE: Final[str] = "strict"
+    JSCPD_MIN_LINES: Final[int] = 8
+    JSCPD_MIN_TOKENS: Final[int] = 50
+    JSCPD_THRESHOLD_PERCENT: Final[int] = 0
+    JSCPD_SCOPE_DIRNAMES: Final[t.StrSequence] = ("src", "tests", "config", "templates")
+    JSCPD_REPORT_DIRNAME: Final[str] = ".reports/jscpd"
+    JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
+    JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
+    JSCPD_FORMAT_EXTENSIONS: Final[t.MappingKV[str, t.StrSequence]] = MappingProxyType({
+        "django": ("j2",)
+    })
+    "Parse Jinja projections in place; never duplicate templates into a scan tree."
+    JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
+        "**/__snapshots__/**",
+        "**/__init__.py",
+    )
+    "Generated Python surfaces excluded semantically; Git owns artifact visibility."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({
@@ -291,7 +326,7 @@ class FlextInfraConstantsCheck:
 # Every hook routes through the canonical `uv run --all-packages python -m flext_infra`
 # workspace monopoly; no standalone scripts and no bare tool invocations
 # (AGENTS.md `Build & Test`).
-# Enable locally with `pre-commit install` from the workspace root.
+# Enable locally with `pre-commit install` from the repository root.
 repos:
   - repo: local
     hooks:

@@ -14,9 +14,10 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import t
-from flext_infra._typings.adapters import FlextInfraTypesAdapters
-from flext_infra._typings.base import FlextInfraTypesBase
-from flext_infra._typings.rope import FlextInfraTypesRope
+
+from ._typings.adapters import FlextInfraTypesAdapters
+from ._typings.base import FlextInfraTypesBase
+from ._typings.rope import FlextInfraTypesRope
 
 
 class FlextInfraTypes(t):

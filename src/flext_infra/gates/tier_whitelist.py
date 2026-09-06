@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import m
 from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
 
@@ -21,8 +21,6 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
     gate_id: ClassVar[str] = "tier-whitelist"
     gate_name: ClassVar[str] = "Tier Whitelist"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["tier-whitelist"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["tier-whitelist"][1]
 
     @override
     def check(
@@ -30,7 +28,7 @@ class FlextInfraTierWhitelistGate(FlextInfraGate):
     ) -> m.Infra.GateExecution:
         """Run the tier-whitelist scan scoped to ``project_dir``."""
         started = time.monotonic()
-        validator = FlextInfraValidateTierWhitelist(workspace_root=project_dir)
+        validator = FlextInfraValidateTierWhitelist(repository_root=project_dir)
         result = validator.execute()
         passed = result.success and result.value is True
         errors: list[str] = []

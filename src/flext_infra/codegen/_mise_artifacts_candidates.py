@@ -13,42 +13,11 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-def normalize_lock_mode(path: Path) -> p.Result[bool]:
-    """Normalize an external lock output through guarded byte-mode publication."""
-    state = files.read_state(path, required=True)
-    if state.failure:
-        return r[bool].from_failure(state)
-    if state.value.content is None or state.value.mode is None:
-        return r[bool].fail(f"generated Mise lock is absent: {path}")
-    return u.Cli.atomic_write_binary_file_guarded(
-        path,
-        state.value.content,
-        expected_bytes=state.value.content,
-        expected_mode=state.value.mode,
-        permission_mode=files.ARTIFACT_SPECS[2][1],
-    )
-
-
-def receipt_states(receipt: Path) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-    """Capture the two exact launcher states from one validated receipt."""
-    states: list[m.Cli.AtomicFileState] = []
-    for name, expected_mode in files.ARTIFACT_SPECS[:2]:
-        state = files.read_state(receipt / name, required=True)
-        if state.failure:
-            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-        if state.value.mode != expected_mode:
-            return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                f"Mise receipt mode differs after validation: {name}"
-            )
-        states.append(state.value)
-    return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
-
-
 def publication_plan(
     projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
-) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
+) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
     """Bind each staged artifact to its exact pre-lock destination state."""
-    publications: list[m.Infra.MiseToolchainPublication] = []
+    publications: list[m.Infra.CodegenStagedFile] = []
     for project, stage in zip(projects, stages, strict=True):
         before_states = (
             project.config.before,
@@ -61,19 +30,28 @@ def publication_plan(
         ):
             replacement = files.read_state(stage / name, required=True)
             if replacement.failure or replacement.value.content is None:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].fail(
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     replacement.error or f"missing staged Mise artifact: {name}"
                 )
             if replacement.value.mode != mode:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].fail(
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     f"staged Mise artifact mode differs: {stage / name}"
                 )
+            if not u.Infra.atomic_file_state_differs(
+                before,
+                desired_content=replacement.value.content,
+                desired_mode=replacement.value.mode,
+            ):
+                continue
             publications.append(
-                m.Infra.MiseToolchainPublication(
-                    before=before, replacement=replacement.value
+                m.Infra.CodegenStagedFile(
+                    phase="mise",
+                    project=project.layout.root,
+                    before=before,
+                    replacement=replacement.value,
                 )
             )
-    return r[tuple[m.Infra.MiseToolchainPublication, ...]].ok(tuple(publications))
+    return r[tuple[m.Infra.CodegenStagedFile, ...]].ok(tuple(publications))
 
 
-__all__: list[str] = ["normalize_lock_mode", "publication_plan", "receipt_states"]
+__all__: list[str] = ["publication_plan"]

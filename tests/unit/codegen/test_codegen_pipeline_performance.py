@@ -26,12 +26,12 @@ _MODULES_PER_PROJECT = c.Tests.GEN_PIPELINE_MODULES_PER_PROJECT
 
 def _build_synthetic_workspace(tmp_path: Path) -> Path:
     """Create a workspace with N projects, each with M namespace modules."""
-    workspace_root = tmp_path / "gen-perf-workspace"
-    workspace_root.mkdir()
+    repository_root = tmp_path / "gen-perf-workspace"
+    repository_root.mkdir()
     for i in range(_PROJECT_COUNT):
         pkg_name = f"flext_perf_pkg_{i}"
         _, pkg_dir = u.Tests.create_lazy_init_workspace(
-            workspace_root, project_name=f"perf-project-{i}", package_name=pkg_name
+            repository_root, project_name=f"perf-project-{i}", package_name=pkg_name
         )
         for j in range(_MODULES_PER_PROJECT):
             u.Tests.write_lazy_init_namespace_module(
@@ -39,7 +39,7 @@ def _build_synthetic_workspace(tmp_path: Path) -> Path:
                 class_name=f"FlextPerfClass_{i}_{j}",
                 alias=f"alias_{i}_{j}",
             )
-    return workspace_root
+    return repository_root
 
 
 @pytest.mark.performance
@@ -49,12 +49,12 @@ class TestsFlextInfraCodegenPipelinePerformance:
 
     def test_wall_clock_under_threshold(self, tmp_path: Path) -> None:
         """Benchmark: lazy-init generation on synthetic workspace < 30s."""
-        workspace_root = _build_synthetic_workspace(tmp_path)
-        generator = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+        repository_root = _build_synthetic_workspace(tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         start = time.perf_counter()
-        result = generator.generate_inits(check_only=True)
+        result = generator.plan_files()
         elapsed = time.perf_counter() - start
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         tm.that(
             elapsed,
             lt=c.Tests.GEN_PIPELINE_MAX_SECONDS,
@@ -66,16 +66,16 @@ class TestsFlextInfraCodegenPipelinePerformance:
 
     def test_peak_memory_under_500mb(self, tmp_path: Path) -> None:
         """Benchmark: Peak memory < 500MB for gen pipeline."""
-        workspace_root = _build_synthetic_workspace(tmp_path)
-        generator = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+        repository_root = _build_synthetic_workspace(tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         tracemalloc.start()
         try:
-            result = generator.generate_inits(check_only=True)
+            result = generator.plan_files()
             _, peak = tracemalloc.get_traced_memory()
         finally:
             tracemalloc.stop()
         peak_mb = peak / 1024 / 1024
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         tm.that(
             peak_mb,
             lt=c.Tests.GEN_PIPELINE_MEMORY_MAX_MB,
@@ -87,13 +87,13 @@ class TestsFlextInfraCodegenPipelinePerformance:
 
     def test_cprofile_evidence_captures_optimized_paths(self, tmp_path: Path) -> None:
         """Benchmark: cProfile confirms optimized code paths are exercised."""
-        workspace_root = _build_synthetic_workspace(tmp_path)
-        generator = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+        repository_root = _build_synthetic_workspace(tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         profile = cProfile.Profile()
         profile.enable()
-        result = generator.generate_inits(check_only=True)
+        result = generator.plan_files()
         profile.disable()
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         stream = io.StringIO()
         stats = pstats.Stats(profile, stream=stream)
         stats.print_stats()
@@ -118,11 +118,11 @@ class TestsFlextInfraCodegenPipelinePerformance:
 
     def test_repeat_run_is_byte_idempotent(self, tmp_path: Path) -> None:
         """Benchmark: second gen run produces identical output (cache warm)."""
-        workspace_root = _build_synthetic_workspace(tmp_path)
-        generator = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+        repository_root = _build_synthetic_workspace(tmp_path)
+        generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         # First run populates _declared_exports cache
-        result_1 = generator.generate_inits(check_only=True)
-        tm.that(result_1, eq=0, msg=f"First run had errors: {result_1}")
+        result_1 = generator.plan_files()
+        tm.that(result_1.success, eq=True, msg=f"First run had errors: {result_1}")
         # Second run should also succeed (cache should not corrupt output)
-        result_2 = generator.generate_inits(check_only=True)
-        tm.that(result_2, eq=0, msg=f"Second run had errors: {result_2}")
+        result_2 = generator.plan_files()
+        tm.that(result_2.success, eq=True, msg=f"Second run had errors: {result_2}")

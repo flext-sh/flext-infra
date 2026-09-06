@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
-    """Create a new FLEXT project (internal member or external standalone)."""
+    """Scaffold one new repository of a declared governance kind."""
 
     name: Annotated[
         str,
@@ -33,7 +33,11 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     ]
     kind: Annotated[
         c.Infra.ProjectKind,
-        m.Field(description="Project kind: internal (monorepo member) or external."),
+        m.Field(
+            description=(
+                "Governance kind: internal_flext, internal, or third_party_fork."
+            )
+        ),
     ]
     output_root: Annotated[
         Path, m.Field(description="Directory that becomes the generated project root.")
@@ -123,7 +127,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             path=Path(),
             role=c.Infra.MakeProfile.STANDALONE,
             state=c.Infra.RepositoryState.ACTIVE,
-            checkout=c.Infra.CheckoutKind.INDEPENDENT,
+            kind=self.kind,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=False,
@@ -156,6 +160,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                 upstream=self.upstream,
                 homepage=repository_page,
                 documentation=repository_page,
+                repository_root_rel=".",
                 workspace_root_rel=".",
                 year=self.year,
             ),

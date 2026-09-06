@@ -5,19 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
 from flext_cli import m
 
 
 class FlextInfraSettingsModels:
     """Private namespace for validated settings payloads."""
 
-    class Infra(BaseSettings):
+    class Infra(m.BaseSettings):
         """Validated process-start settings owned by flext-infra."""
 
         # flext-wkii.4.15: validate every external alias before singleton export.
-        model_config = SettingsConfigDict(
+        model_config = m.SettingsConfigDict(
             env_prefix="",
             env_ignore_empty=True,
             case_sensitive=True,
@@ -34,12 +32,12 @@ class FlextInfraSettingsModels:
                 description="Force standalone mode and skip workspace auto-detection.",
             ),
         ]
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path | None,
             m.Field(
                 default=None,
-                validation_alias="FLEXT_WORKSPACE_ROOT",
-                description="Explicit workspace root for dependency orchestration.",
+                validation_alias="FLEXT_REPOSITORY_ROOT",
+                description="Explicit repository root for dependency orchestration.",
             ),
         ]
         use_https: Annotated[
@@ -72,17 +70,6 @@ class FlextInfraSettingsModels:
                 default=None,
                 validation_alias="GITHUB_REF_NAME",
                 description="GitHub Actions ref name for dependency sync.",
-            ),
-        ]
-        mise_github_credential_command: Annotated[
-            str | None,
-            m.Field(
-                default=None,
-                validation_alias="MISE_GITHUB_CREDENTIAL_COMMAND",
-                description=(
-                    "Credential command required only by selected Mise GitHub "
-                    "artifact publication"
-                ),
             ),
         ]
 

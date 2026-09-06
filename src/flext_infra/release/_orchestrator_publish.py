@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,7 +28,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         """Return the receipt directory of the declared version."""
         return (
             u.Cli.resolve_report_dir(
-                ctx.workspace_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
+                ctx.repository_root, c.Infra.PROJECT, c.Infra.RK_RELEASE
             )
             / ctx.tag
         )
@@ -38,7 +37,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         """Publish the receipt's artifacts as a GitHub release and, on request, to the index."""
         receipt = self._verified_receipt(ctx)
         if receipt.failure:
-            return r[bool].fail(receipt.error or "release receipt invalid")
+            return r[bool].from_failure(receipt)
         report = receipt.value
         if ctx.dry_run:
             logger.info("release_phase_publish", tag=ctx.tag, dry_run=True)
@@ -60,9 +59,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         report_path = self._release_output_dir(ctx) / c.Infra.RELEASE_REPORT_FILENAME
         content = u.Cli.files_read_text(report_path)
         if content.failure:
-            return r[m.Infra.BuildReport].fail(
-                content.error or f"release receipt missing: {report_path}"
-            )
+            return r[m.Infra.BuildReport].from_failure(content)
         try:
             report = m.Infra.BuildReport.model_validate_json(content.value)
         except c.ValidationError as exc:
@@ -75,7 +72,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
             for artifact in record.artifacts:
                 path = Path(artifact.path)
                 try:
-                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                    digest = u.Cli.sha256_file(path)
                 except OSError as exc:
                     return r[m.Infra.BuildReport].fail_op(f"read artifact {path}", exc)
                 if digest != artifact.sha256:
@@ -89,7 +86,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         ctx: m.Infra.ReleasePhaseDispatchConfig, report: m.Infra.BuildReport
     ) -> p.Result[bool]:
         """Create or refresh the GitHub release with the receipt's artifacts."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         assets = [
             artifact.path for record in report.records for artifact in record.artifacts
         ]
@@ -135,7 +132,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
             tuple((record.project, Path(record.path)) for record in report.records)
         )
         if waves.failure:
-            return r[bool].fail(waves.error or "publish order failed")
+            return r[bool].from_failure(waves)
         for wave in waves.value:
             paths = [path for project in wave for path in artifacts[project]]
             uploaded = u.Cli.run_checked(
@@ -151,7 +148,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
                     "always",
                     *paths,
                 ],
-                cwd=ctx.workspace_root,
+                cwd=ctx.repository_root,
             )
             if uploaded.failure:
                 return uploaded

@@ -313,6 +313,7 @@ class FlextInfraEnsurePyrightConfigPhase:
         declared_python_dirs: t.StrSequence,
         declared_python_dirs_are_complete: bool,
         generated_roots: t.StrSequence,
+        workspace_excluded_top_dirs: frozenset[str] | None = None,
     ) -> t.StrSequence:
         """Resolve the one analyzer-root set consumed by includes and environments."""
         declared = self._declared_environment_dirs(
@@ -323,11 +324,19 @@ class FlextInfraEnsurePyrightConfigPhase:
             and workspace_root is not None
             and (workspace_root / c.Infra.GITMODULES).is_file()
         ):
-            return u.Infra.analyzer_python_roots(workspace_root, generated_roots)
+            return u.Infra.analyzer_python_roots(
+                workspace_root,
+                generated_roots,
+                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+            )
         if declared_python_dirs_are_complete:
             return declared
         if project_dir is not None:
-            return u.Infra.analyzer_python_roots(project_dir, declared)
+            return u.Infra.analyzer_python_roots(
+                project_dir,
+                declared,
+                workspace_excluded_top_dirs=workspace_excluded_top_dirs,
+            )
         if declared:
             return declared
         return self._tool_config.tools.pyright.path_rules.env_dirs
@@ -360,6 +369,11 @@ class FlextInfraEnsurePyrightConfigPhase:
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=declared_python_dirs_are_complete,
             generated_roots=generated_roots,
+            workspace_excluded_top_dirs=(
+                paths_manager.analysis_excluded_top_dirs
+                if paths_manager is not None
+                else None
+            ),
         )
         expected_includes = self._expected_includes(
             is_root=is_root, workspace_root=workspace_root, project_roots=expected_roots

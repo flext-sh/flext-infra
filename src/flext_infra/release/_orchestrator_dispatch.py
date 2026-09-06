@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra.docs.generator import FlextInfraDocGenerator
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -47,10 +47,10 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         """Resolve the declared version once and dispatch the selected phase."""
         current = u.Infra.current_workspace_version(self.root)
         if current.failure:
-            return r[bool].fail(current.error or "project version unresolved")
+            return r[bool].from_failure(current)
         ctx = m.Infra.ReleasePhaseDispatchConfig(
             phase=self.phase,
-            workspace_root=self.root,
+            repository_root=self.root,
             version=current.value,
             tag=c.Infra.TAG_FORMAT.format(version=current.value),
             project_names=self.project_names or (),
@@ -81,7 +81,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self, ctx: m.Infra.ReleasePhaseDispatchConfig
     ) -> p.Result[m.Infra.ReleasePlan]:
         """Derive the next version and prove no version changed outside the protocol."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         if ctx.pr_title and not c.Infra.CONVENTIONAL_SUBJECT_RE.match(ctx.pr_title):
             return r[m.Infra.ReleasePlan].fail(
                 "pull-request title must follow Conventional Commits "
@@ -89,10 +89,10 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             )
         guard = self._guard_version_change(root, ctx.version)
         if guard.failure:
-            return r[m.Infra.ReleasePlan].fail(guard.error or "version guard failed")
+            return r[m.Infra.ReleasePlan].from_failure(guard)
         latest = self._latest_tag(root)
         if latest.failure:
-            return r[m.Infra.ReleasePlan].fail(latest.error or "tag listing failed")
+            return r[m.Infra.ReleasePlan].from_failure(latest)
         plan = self._derive_plan(root, ctx.version, latest.value)
         if plan.failure:
             return plan
@@ -103,7 +103,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             m.Cli.JsonWriteOptions(sort_keys=True),
         )
         if written.failure:
-            return r[m.Infra.ReleasePlan].fail(written.error or "write plan failed")
+            return r[m.Infra.ReleasePlan].from_failure(written)
         self.logger.info(
             "release_plan",
             current=plan.value.current,
@@ -122,7 +122,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         # whole history since the last tag.
         history = self._subjects(root, latest_tag, merges_only=False)
         if history.failure:
-            return r[m.Infra.ReleasePlan].fail(history.error or "history log failed")
+            return r[m.Infra.ReleasePlan].from_failure(history)
         current_tag = c.Infra.TAG_FORMAT.format(version=current)
         if latest_tag != current_tag and any(
             u.Infra.is_release_subject(subject, current) for subject in history.value
@@ -138,10 +138,10 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             )
         final = u.Infra.finalize_version(current)
         if final.failure:
-            return r[m.Infra.ReleasePlan].fail(final.error or "invalid version")
+            return r[m.Infra.ReleasePlan].from_failure(final)
         declared_ahead = self._declared_ahead_of_tag(final.value, latest_tag)
         if declared_ahead.failure:
-            return r[m.Infra.ReleasePlan].fail(declared_ahead.error or "tag unparsable")
+            return r[m.Infra.ReleasePlan].from_failure(declared_ahead)
         if not latest_tag or final.value != current or declared_ahead.value:
             # A first release ships the declared version as is; a declared
             # pre-release ships its base; a declared version beyond the last
@@ -160,13 +160,13 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             )
         merges = self._subjects(root, latest_tag, merges_only=True)
         if merges.failure:
-            return r[m.Infra.ReleasePlan].fail(merges.error or "merge log failed")
+            return r[m.Infra.ReleasePlan].from_failure(merges)
         bump = u.Infra.plan_bump(merges.value, config.Infra.release.bump_types)
         if bump.failure:
-            return r[m.Infra.ReleasePlan].fail(bump.error or "bump derivation failed")
+            return r[m.Infra.ReleasePlan].from_failure(bump)
         next_version = u.Infra.bump_version(current, bump.value)
         if next_version.failure:
-            return r[m.Infra.ReleasePlan].fail(next_version.error or "bump failed")
+            return r[m.Infra.ReleasePlan].from_failure(next_version)
         return r[m.Infra.ReleasePlan].ok(
             m.Infra.ReleasePlan(
                 current=current,
@@ -197,7 +197,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         """
         branch = self._integration_branch(root)
         if branch.failure:
-            return r[bool].fail(branch.error or "integration branch unresolved")
+            return r[bool].from_failure(branch)
         base = u.Cli.capture(
             [
                 c.Infra.GIT,
@@ -208,18 +208,18 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             cwd=root,
         )
         if base.failure:
-            return r[bool].fail(base.error or "merge-base failed")
+            return r[bool].from_failure(base)
         base_oid = base.value.strip()
         head_oid = u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=root)
         if head_oid.failure:
-            return r[bool].fail(head_oid.error or "rev-parse HEAD failed")
+            return r[bool].from_failure(head_oid)
         if base_oid == head_oid.value.strip():
             return r[bool].ok(True)
         base_content = u.Cli.capture(
             [c.Infra.GIT, "show", f"{base_oid}:{c.Infra.PYPROJECT_FILENAME}"], cwd=root
         )
         if base_content.failure:
-            return r[bool].fail(base_content.error or "base pyproject unreadable")
+            return r[bool].from_failure(base_content)
         base_match = c.Infra.VERSION_RE.search(base_content.value)
         base_version = base_match.group(1) if base_match else ""
         if base_version == version:
@@ -230,7 +230,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         # base..HEAD range, not only at HEAD.
         subjects = self._subjects(root, base_oid, merges_only=False)
         if subjects.failure:
-            return r[bool].fail(subjects.error or "git log failed")
+            return r[bool].from_failure(subjects)
         if any(
             u.Infra.is_release_subject(subject, version) for subject in subjects.value
         ):
@@ -247,10 +247,10 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     def phase_version(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Open or update the release pull request for the planned version."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         plan = self.phase_plan(ctx)
         if plan.failure:
-            return r[bool].fail(plan.error or "release plan failed")
+            return r[bool].from_failure(plan)
         if not plan.value.releasable:
             self.logger.info("release_version_none", current=ctx.version)
             return r[bool].ok(True)
@@ -261,7 +261,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return preflight
         branch = self._integration_branch(root)
         if branch.failure:
-            return r[bool].fail(branch.error or "integration branch unresolved")
+            return r[bool].from_failure(branch)
         for step in (
             lambda: self._switch_release_branch(root, branch.value),
             lambda: self._stamp_release(ctx, plan.value),
@@ -280,7 +280,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         """Require a clean checkout on the integration branch and a free tag."""
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
         if status.failure:
-            return r[bool].fail(status.error or "git status failed")
+            return r[bool].from_failure(status)
         if status.value.dirty:
             return r[bool].fail(
                 f"release version requires a clean checkout: {root}\n"
@@ -288,17 +288,17 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             )
         branch = self._integration_branch(root)
         if branch.failure:
-            return r[bool].fail(branch.error or "integration branch unresolved")
+            return r[bool].from_failure(branch)
         current = u.Infra.git_current_branch(m.Infra.GitRepoRequest(repo_root=root))
         if current.failure:
-            return r[bool].fail(current.error or "current branch unresolved")
+            return r[bool].from_failure(current)
         if current.value.text != branch.value:
             return r[bool].fail(
                 f"release version runs on {branch.value}, not {current.value.text}"
             )
         exists = u.Cli.capture([c.Infra.GIT, "tag", "-l", plan.tag], cwd=root)
         if exists.failure:
-            return r[bool].fail(exists.error or "tag check failed")
+            return r[bool].from_failure(exists)
         if exists.value.strip():
             return r[bool].fail(f"release tag already exists: {plan.tag}")
         return r[bool].ok(True)
@@ -345,12 +345,12 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self, ctx: m.Infra.ReleasePhaseDispatchConfig, plan: m.Infra.ReleasePlan
     ) -> p.Result[bool]:
         """Write the version SSOT, the release notes, and the changelog."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
         # Why: the lock records the project's own version, so the stamp
-        # refreshes it the way `make deps WHAT=lock APPLY=Y` does; otherwise
+        # refreshes it the way `make deps APPLY=Y` does; otherwise
         # `make deps` (uv lock --check) is red on the release lane.
         locked = u.Cli.run_checked(
             [c.Infra.UV, "lock", "--project", str(root)], cwd=root
@@ -364,7 +364,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         )
         projects = u.Infra.resolve_projects(root, ctx.project_names)
         if projects.failure:
-            return r[bool].fail(projects.error or "release project resolution failed")
+            return r[bool].from_failure(projects)
         notes = u.Infra.generate_notes(
             plan.next,
             plan.tag,
@@ -379,10 +379,14 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return changelog
         # Why: README, docs/index and the API overview render the version, and
         # the docs generator owns them; the stamp regenerates its projections
-        # so `make gen WHAT=check` stays a fixed point on the release lane.
-        return FlextInfraDocGenerator(
-            workspace=root, projects=ctx.project_names or None, apply=True
-        ).execute()
+        # so `make gen APPLY=Y` stays a fixed point on the release lane.
+        return FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.ALL,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        ).map(lambda _result: True)
 
     def _commit_release(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
         """Commit the stamped SSOT and every projection regenerated from it.
@@ -393,7 +397,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         """
         status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
         if status.failure:
-            return r[bool].fail(status.error or "git status failed")
+            return r[bool].from_failure(status)
         # The status code and the path are whitespace-separated; the first
         # line arrives without its leading status padding.
         produced = tuple(
@@ -408,7 +412,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             m.Infra.GitPathsRequest(repo_root=root, paths=produced)
         )
         if staged.failure:
-            return r[bool].fail(staged.error or "git add failed")
+            return r[bool].from_failure(staged)
         committed = u.Infra.git_commit(
             m.Infra.GitCommitRequest(
                 repo_root=root,
@@ -416,7 +420,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             )
         )
         if committed.failure:
-            return r[bool].fail(committed.error or "git commit failed")
+            return r[bool].from_failure(committed)
         return r[bool].ok(True)
 
     def _publish_release_branch(
@@ -427,7 +431,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             m.Infra.GitPushRequest(repo_root=root, branch=c.Infra.RELEASE_BRANCH)
         )
         if pushed.failure:
-            return r[bool].fail(pushed.error or "git push failed")
+            return r[bool].from_failure(pushed)
         title = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=plan.next)
         body = (
             u.Cli.resolve_report_dir(root, c.Infra.PROJECT, c.Infra.RK_RELEASE)
@@ -459,10 +463,10 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     def phase_tag(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Tag the merged release commit; idempotent when the tag already points here."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         head = self._head_subject(root)
         if head.failure:
-            return r[bool].fail(head.error or "HEAD subject failed")
+            return r[bool].from_failure(head)
         expected = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=ctx.version)
         if not u.Infra.is_release_subject(head.value, ctx.version):
             return r[bool].fail(
@@ -488,7 +492,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
                 [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=workspace_root
             )
             if head.failure:
-                return r[bool].fail(head.error or "rev-parse HEAD failed")
+                return r[bool].from_failure(head)
             if existing.value.strip() != head.value.strip():
                 return r[bool].fail(f"release tag {tag} already points elsewhere")
             return r[bool].ok(True)
@@ -529,7 +533,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             cwd=root,
         )
         if tags.failure:
-            return r[str].fail(tags.error or "release tag listing failed")
+            return r[str].from_failure(tags)
         return r[str].ok(next((line for line in tags.value.splitlines() if line), ""))
 
     @staticmethod
@@ -539,36 +543,23 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         """Return commit subjects reachable from HEAD since ``since`` (all when empty).
 
         Merge commits carry the pull-request titles the bump is derived from;
-        the full history is what the release commit is looked up in. GitHub's
-        default merge subject contains only the PR number and branch, so its
-        first body line is the authoritative PR title. Preserve the default
-        subject when that line is absent so release planning fails loud.
+        the full history is what the release commit is looked up in.
         """
         log = u.Cli.capture(
             [
                 c.Infra.GIT,
                 "log",
-                "--format=%s%x1f%b%x1e",
                 *(("--merges",) if merges_only else ()),
+                "--format=%s",
                 f"{since}..{c.Infra.GIT_HEAD}",
             ],
             cwd=root,
         )
         if log.failure:
-            return r[t.StrSequence].fail(log.error or "merge log failed")
-        titles: list[str] = []
-        for record in log.value.split("\x1e"):
-            if not record.strip():
-                continue
-            subject, _, body = record.strip().partition("\x1f")
-            if merges_only and c.Infra.PULL_REQUEST_MERGE_SUBJECT_RE.match(subject):
-                title = next(
-                    (line.strip() for line in body.splitlines() if line.strip()), ""
-                )
-                titles.append(title or subject)
-            else:
-                titles.append(subject)
-        return r[t.StrSequence].ok(tuple(titles))
+            return r[t.StrSequence].from_failure(log)
+        return r[t.StrSequence].ok(
+            tuple(line for line in log.value.splitlines() if line.strip())
+        )
 
 
 __all__: list[str] = ["FlextInfraReleaseOrchestratorDispatchMixin"]
