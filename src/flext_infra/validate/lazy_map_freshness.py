@@ -45,7 +45,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
             r with ValidationReport listing each stale ``__init__.py`` as a violation.
 
         """
-        planned = FlextInfraCodegenLazyInit(workspace_root=workspace_root).plan_files()
+        planned = FlextInfraCodegenLazyInit(repository_root=workspace_root).plan_files()
         if planned.failure:
             return r[m.Infra.ValidationReport].from_failure(planned)
         modified = tuple(
@@ -73,9 +73,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         """Execute the freshness validation using the repository owner."""
         report_result = self.build_report(self.repository_root)
         if report_result.failure:
-            return r[bool].fail(
-                report_result.error or "lazy-map freshness validation failed"
-            )
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

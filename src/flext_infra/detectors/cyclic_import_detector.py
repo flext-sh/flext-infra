@@ -24,10 +24,8 @@ class FlextInfraCyclicImportDetector:
         project_root: Path,
         rope_project: t.Infra.RopeProject,
         proposed_sources: t.MappingKV[Path, str] | None = None,
-        _parse_failures: t.SequenceOf[m.Infra.ParseFailureViolation] | None = None,
     ) -> t.SequenceOf[m.Infra.CyclicImportViolation]:
         """Build the current or prospective import graph and detect cycles."""
-        del _parse_failures
         source_updates = {
             path.resolve(): source for path, source in (proposed_sources or {}).items()
         }
@@ -44,14 +42,7 @@ class FlextInfraCyclicImportDetector:
             real_path = Path(resource.real_path).resolve()
             if not any(real_path.is_relative_to(scan_dir) for scan_dir in scan_dirs):
                 continue
-            try:
-                module_name = u.Infra.get_pymodule(rope_project, resource).get_name()
-            except (
-                *u.Infra.rope_runtime_errors(),
-                *u.Infra.rope_syntax_errors(),
-                TypeError,
-            ):
-                continue
+            module_name = u.Infra.get_pymodule(rope_project, resource).get_name()
             if module_name:
                 module_resources.append((module_name, str(real_path), resource))
 

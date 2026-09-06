@@ -12,7 +12,7 @@ from flext_infra import c, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u
-from tests import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsRepositoryLocalTopology:
@@ -31,27 +31,17 @@ class TestsRepositoryLocalTopology:
             database=name.replace("-", "_"),
             issue_prefix=name,
         )
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        exclusion = f"{observed.repository.distribution}-excluded"
-        override = f"{observed.repository.distribution}-overridden"
+        exclusion = "fixture-manifest-policy-excluded"
+        override = "fixture-manifest-policy-overridden"
         cutoff = datetime.now(UTC).isoformat()
-        declared = observed.repository.model_copy(
-            update={
+        _ = WorktreeFixture.override_repository_manifest(
+            root,
+            {
                 "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK,
                 "uv_link_mode": "clone",
                 "dependency_cooldown_exclusions": (exclusion,),
                 "dependency_cooldown_overrides": {override: cutoff},
-            }
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+            },
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
@@ -76,19 +66,8 @@ class TestsRepositoryLocalTopology:
             database=name.replace("-", "_"),
             issue_prefix=name,
         )
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        declared = observed.repository.model_copy(
-            update={"distribution": "different-distribution"}
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+        _ = WorktreeFixture.override_repository_manifest(
+            root, {"distribution": "different-distribution"}
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
@@ -279,13 +258,15 @@ class TestsRepositoryLocalTopology:
 
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(child))
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(child))
-        resolved = tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(child))
+        resolved = tm.ok(
+            u.Infra.git_show_toplevel(m.Infra.GitRepoRequest(repo_root=child))
+        ).repository_root
 
         tm.that(mode, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(workspace.repository.name, eq="child")
         tm.that(workspace.name, eq="child-workspace")
         tm.that(u.Tests.required_beads(workspace).workspace, eq="child-workspace")
-        tm.that(workspace.declared_repositories, empty=True)
+        tm.that(workspace.subprojects, empty=True)
         tm.that(resolved, eq=child.resolve())
 
     @staticmethod
@@ -370,17 +351,8 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """One manifest loads standalone and inside a workspace unchanged."""
         member = self._attached_member(tmp_path)
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
-        declared = observed.repository.model_copy(update={"uv_link_mode": "clone"})
-        tm.ok(
-            u.Cli.yaml_dump(
-                member / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": declared.name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+        _ = WorktreeFixture.override_repository_manifest(
+            member, {"uv_link_mode": "clone"}
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
@@ -402,19 +374,8 @@ class TestsRepositoryLocalTopology:
             database=name.replace("-", "_"),
             issue_prefix=name,
         )
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        declared = observed.repository.model_copy(
-            update={"role": c.Infra.MakeProfile.WORKSPACE}
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+        _ = WorktreeFixture.override_repository_manifest(
+            root, {"role": c.Infra.MakeProfile.WORKSPACE}
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
@@ -458,9 +419,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(
-                project.path.as_posix() for project in workspace.declared_repositories
-            ),
+            tuple(project.path.as_posix() for project in workspace.subprojects),
             eq=tuple(identities),
         )
         tm.that(u.Tests.required_beads(workspace).workspace, eq="root-workspace")
@@ -516,9 +475,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(
-                project.path.as_posix() for project in workspace.declared_repositories
-            ),
+            tuple(project.path.as_posix() for project in workspace.subprojects),
             eq=(python_project,),
         )
         tm.that(workspace.external_dependency_paths, eq=(Path(service_project),))
@@ -670,7 +627,7 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="governed declared_repository checkout is missing")
+        tm.fail(result, has="governed subproject checkout is missing")
 
     def test_uninitialized_gitlink_does_not_borrow_parent_origin(
         self, tmp_path: Path
@@ -705,7 +662,7 @@ class TestsRepositoryLocalTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.declared_repositories, empty=True)
+        tm.that(workspace.subprojects, empty=True)
         tm.that(workspace.external_dependency_paths, eq=(child_path,))
 
     def test_gitmodule_rejects_provider_branch_divergence(self, tmp_path: Path) -> None:
@@ -756,7 +713,7 @@ class TestsRepositoryLocalTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.declared_repositories, empty=True)
+        tm.that(workspace.subprojects, empty=True)
         tm.that(workspace.external_dependency_paths, eq=(Path("external-fork"),))
 
     def test_gitmodule_accepts_the_published_integration_branch(
@@ -790,22 +747,7 @@ class TestsRepositoryLocalTopology:
                 cwd=root,
             )
         )
-        child = root / "fixture-child"
-        WorktreeFixture.initialize_governed_project(
-            child,
-            "fixture-child",
-            workspace="fixture-child",
-            database="fixture_child",
-            issue_prefix="fixture-child",
-            beads_owner=False,
-        )
-        WorktreeFixture.link_member_beads(
-            child,
-            root,
-            workspace_name="fixture-workspace",
-            database="fixture_workspace",
-            issue_prefix="fixture-workspace",
-        )
+        _ = WorktreeFixture.attach_member_child(root)
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
@@ -817,7 +759,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            [item.path.as_posix() for item in workspace.declared_repositories],
+            [item.path.as_posix() for item in workspace.subprojects],
             eq=["fixture-child"],
         )
 
@@ -831,22 +773,7 @@ class TestsRepositoryLocalTopology:
             database="fixture_workspace",
             issue_prefix="fixture-workspace",
         )
-        child = root / "fixture-child"
-        WorktreeFixture.initialize_governed_project(
-            child,
-            "fixture-child",
-            workspace="fixture-child",
-            database="fixture_child",
-            issue_prefix="fixture-child",
-            beads_owner=False,
-        )
-        WorktreeFixture.link_member_beads(
-            child,
-            root,
-            workspace_name="fixture-workspace",
-            database="fixture_workspace",
-            issue_prefix="fixture-workspace",
-        )
+        _ = WorktreeFixture.attach_member_child(root)
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
@@ -858,9 +785,7 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(
-            result, has="declared_repository origin differs from its .gitmodules URL"
-        )
+        tm.fail(result, has="subproject origin differs from its .gitmodules URL")
 
     def test_gitmodule_rejects_unknown_provider_without_raw_url(
         self, tmp_path: Path

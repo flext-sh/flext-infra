@@ -156,8 +156,9 @@ def mod_workspace(tmp_path: Path) -> Path:
             workspace / c.Infra.PYPROJECT_FILENAME,
             (
                 "[project]\n"
-                f'name = "{project.project.name}"\n'
+                f'name = "{workspace.name.replace("_", "-")}"\n'
                 f'version = "{project.project.version}"\n'
+                f"{c.Infra.DEPENDENCIES} = []\n"
             ),
         )
     )

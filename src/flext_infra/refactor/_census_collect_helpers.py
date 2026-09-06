@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, config, m
-from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
+
+from .._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -119,15 +120,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         project_root = module.project_root
         if project_root is None:
             return False
-        try:
-            relative_path = module.file_path.resolve().relative_to(
-                project_root.resolve()
-            )
-        except ValueError:
+        resolved_file = module.file_path.resolve()
+        resolved_root = project_root.resolve()
+        if not resolved_file.is_relative_to(resolved_root):
             return False
-        return bool(relative_path.parts) and (
-            relative_path.parts[0] in config.Infra.source_scan.roots
-        )
+        parts = resolved_file.relative_to(resolved_root).parts
+        return bool(parts) and (parts[0] in config.Infra.source_scan.roots)
 
     def _modules_for_rules(
         self,

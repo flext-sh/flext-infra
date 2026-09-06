@@ -173,10 +173,7 @@ class FlextInfraRefactorClassvarConstantAutofix:
                 source = resource.read()
                 prefix = _attribute_prefix(source, offset)
                 if _should_rewrite_prefix(prefix, plan.class_name):
-                    try:
-                        start, end = u.Infra.word_primary_range(source, offset)
-                    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
-                        start, end = occurrence.get_word_range()
+                    start, end = u.Infra.word_primary_range(source, offset)
                     replacement = (
                         f"{plan.constants_module.split('.')[-1]}.{plan.constant_name}"
                     )
@@ -353,10 +350,7 @@ def _declaration_aliases_target_constant(
     declaration_line: str, constants_alias: str, constant_name: str
 ) -> bool:
     """Return whether a class declaration points at the existing constants owner."""
-    try:
-        tree = ast.parse(textwrap.dedent(declaration_line).strip())
-    except SyntaxError:
-        return False
+    tree = ast.parse(textwrap.dedent(declaration_line).strip())
     if len(tree.body) != 1:
         return False
     value = _assignment_value(tree.body[0])
@@ -431,10 +425,7 @@ def _remove_declaration_by_ast(
     source: str, lines: list[str], class_name: str, constant_name: str
 ) -> str | None:
     """Remove a class-body declaration using AST line metadata."""
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return None
+    tree = ast.parse(source)
     for node in tree.body:
         if not isinstance(node, ast.ClassDef) or node.name != class_name:
             continue
@@ -554,8 +545,12 @@ def _attribute_prefix(source: str, offset: int) -> str:
     """
     try:
         return u.Infra.word_primary_at(source, offset)
-    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError):
-        return ""
+    except (*u.Infra.rope_runtime_errors(), TypeError, ValueError) as exc:
+        msg = (
+            f"word primary resolution failed at offset {offset}: "
+            f"{type(exc).__name__}: {exc!s}"
+        )
+        raise RuntimeError(msg) from exc
 
 
 def _should_rewrite_prefix(prefix: str, class_name: str) -> bool:

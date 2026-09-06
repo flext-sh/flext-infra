@@ -36,6 +36,11 @@ class FlextInfraConstantsCheck:
 
     AST_GREP_DOCS_URL: Final[str] = "https://ast-grep.github.io/"
     "Canonical ast-grep documentation URL for gate metadata."
+    # Quality gate identifiers shared with the tool-name vocabulary.
+    LINT: Final[str] = "lint"
+    FORMAT: Final[str] = "format"
+    MARKDOWN: Final[str] = "markdown"
+    SILENT_FAILURE: Final[str] = "silent-failure"
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -67,7 +72,6 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/tier-whitelist",
         ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
-        "codemod": ("ast-grep", "https://ast-grep.github.io/"),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
@@ -82,6 +86,8 @@ class FlextInfraConstantsCheck:
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
+    "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )

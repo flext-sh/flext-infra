@@ -7,11 +7,10 @@ from typing import TYPE_CHECKING
 from git import BaseIndexEntry, GitCommandError, Repo
 
 from flext_core import r
-from flext_infra._utilities._git.semantic_paths import (
-    FlextInfraUtilitiesGitSemanticPathsMixin,
-)
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from ..._utilities._git.semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -73,7 +72,9 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         index_z = repo.git.ls_files("--stage", "-z").encode(c.Cli.ENCODING_DEFAULT)
         try:
             head = repo.head.commit.hexsha.encode(c.Cli.ENCODING_DEFAULT)
-        except (ValueError, OSError):
+        except ValueError:
+            # Unborn HEAD: git itself reports no commit, so the fingerprint
+            # input is the literal "UNBORN" marker, matching `git rev-parse HEAD`.
             head = b"UNBORN"
         return paths_z, index_z, head
 

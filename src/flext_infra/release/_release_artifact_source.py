@@ -11,9 +11,8 @@ from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra.release._release_artifact_metadata import (
-    FlextInfraReleaseArtifactMetadataMixin,
-)
+
+from ._release_artifact_metadata import FlextInfraReleaseArtifactMetadataMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +52,9 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
         try:
             requirement = Requirement(tokens[0])
         except (IndexError, InvalidRequirement) as exc:
-            return r[str].fail_op("parse release build constraint", exc)
+            return r[str].fail(
+                f"parse release build constraint failed: {exc}", exception=exc
+            )
         specifiers = tuple(requirement.specifier)
         if (
             requirement.url is not None
@@ -200,12 +201,10 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             with tarfile.open(archive_path, "r") as archive:
                 extracted = u.Infra.materialize_tar_tree(archive, stage_path)
                 if extracted.failure:
-                    return r[m.Infra.SourceSnapshot].fail(
-                        extracted.error or "extract committed release source failed"
-                    )
+                    return r[m.Infra.SourceSnapshot].from_failure(extracted)
         except (OSError, tarfile.TarError) as exc:
-            return r[m.Infra.SourceSnapshot].fail_op(
-                "extract committed release source", exc
+            return r[m.Infra.SourceSnapshot].fail(
+                f"extract committed release source failed: {exc}", exception=exc
             )
         try:
             snapshot = m.Infra.SourceSnapshot(

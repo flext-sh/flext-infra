@@ -53,7 +53,7 @@ Infra:
       protected_mise_tools:
         - beads
         - gascity
-      go_version: latest
+      go_version: "1.26"
       gascity:
         # The fleet gc is the operator's fork carrying the native-store
         # compatibility correction required by every governed rig.
@@ -258,6 +258,13 @@ Infra:
       # current development line, so both are gated. Parked releases (0.10.0-dev,
       # 0.11.0-dev), snapshots and lane branches are inventoried but never gated.
       governed_branch_patterns:
+        - main
+        - 0.12.0-dev
+        - 0.20.0-dev
+      # Pushes to these branches trigger the generated CI workflow. The renderer
+      # adds the repository's own integration branch to this list; it never
+      # hardcodes a fleet branch name.
+      ci_trigger_branches:
         - main
         - 0.12.0-dev
         - 0.20.0-dev
@@ -466,6 +473,9 @@ Infra:
           requires_apply: true
         - name: fix
           description: Apply every configured safe correction.
+          requires_apply: true
+        - name: fix-enforcement
+          description: Apply the safe fix actions declared by the enforcement catalog.
           requires_apply: true
         - name: audit
           description: Inspect ownership, dependency, and generated-state health.

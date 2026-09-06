@@ -289,8 +289,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Read-only workspace environment validation request."""
 
         @property
-        def workspace_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
+        def repository_root(self) -> Path:
+            """Repository whose active interpreter provenance must be validated."""
             ...
 
     @runtime_checkable
@@ -322,6 +322,21 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def uv_environments(self) -> t.StrSequence:
             """Marker expressions limiting the environments uv resolves."""
+            ...
+
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from the fleet cooldown."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package RFC 3339 cooldown cutoffs."""
+            ...
+
+        @property
+        def uv_exclude_newer(self) -> str:
+            """Shared dependency cooldown rendered in uv duration syntax."""
             ...
 
         @property
@@ -553,7 +568,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
@@ -595,7 +610,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self, workspace_root: Path, venv_bin: Path
+            self, repository_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -661,7 +676,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run(
             self,
-            workspace_root: Path | None = None,
+            repository_root: Path | None = None,
             *,
             output_format: str = "json",
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
@@ -673,7 +688,7 @@ class FlextInfraProtocolsBase(Protocol):
     class MiseArtifactsOwner(Protocol):
         """Single public owner composed by private Mise transaction mechanics."""
 
-        workspace_root: Path
+        repository_root: Path
 
         @classmethod
         def validate_launchers(cls, root: Path) -> p.Result[bool]:
@@ -738,20 +753,4 @@ class FlextInfraProtocolsBase(Protocol):
             self, tag: str | None = None
         ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
             """Iterate over matching elements."""
-            ...
-
-    @runtime_checkable
-    class GithubCliHandlers(Protocol):
-        """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
             ...

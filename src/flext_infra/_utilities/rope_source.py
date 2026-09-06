@@ -9,14 +9,13 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.silent_failure_ast import (
-    FlextInfraUtilitiesSilentFailureAst,
-)
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
 
 
 class FlextInfraUtilitiesRopeSource:
@@ -196,14 +195,11 @@ class FlextInfraUtilitiesRopeSource:
             }
             for item in raw_items
         ]
-        try:
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
-            return [
-                m.Infra.ImportModernizerRuleConfig.model_validate(item)
-                for item in typed_items
-            ]
-        except c.ValidationError:
-            return []
+        typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
+        return [
+            m.Infra.ImportModernizerRuleConfig.model_validate(item)
+            for item in typed_items
+        ]
 
     @staticmethod
     def collect_blocked_aliases(

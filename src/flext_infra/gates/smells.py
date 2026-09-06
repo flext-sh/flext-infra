@@ -34,8 +34,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
     gate_id: ClassVar[str] = "smells"
     gate_name: ClassVar[str] = "Code Smells"
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][1]
+
+    # flext-pulj: process results stay structural outside the Pydantic boundary.
+    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
@@ -69,6 +70,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             fixed, fix_changes = fixer.fix(project_dir, issue)
             if fixed:
                 changes.extend(fix_changes)
+        self._scan_cache.pop(str(self._repository_root), None)
         verified_scan = self._workspace_scan()
         verified = self._issues_from_sarif(verified_scan.stdout, project_dir.name)
         remaining = self._drop_generated_projections(
@@ -141,7 +143,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return not issues, issues
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Run one fresh workspace scan and preserve its exact process result."""
+        """Scan the workspace once per root and preserve its exact process result."""
+        key = str(self._repository_root)
+        cached = self._scan_cache.get(key)
+        if cached is not None:
+            return cached
         binary = self._resolve_binary()
         if binary is None:
             output = m.Cli.CommandOutput(
@@ -160,6 +166,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 self._repository_root,
                 timeout=c.Infra.TIMEOUT_LONG,
             )
+        self._scan_cache[key] = output
         return output
 
     def _materialize_scan_config(self) -> None:

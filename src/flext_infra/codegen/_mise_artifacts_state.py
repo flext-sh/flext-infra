@@ -9,8 +9,10 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_verification as verify
+from flext_infra.codegen import (
+    _mise_artifacts_files as files,
+    _mise_artifacts_verification as verify,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -337,10 +339,7 @@ def cleanup_journaled_directories(
             )
         removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
         if removed.failure:
-            return r[bool].fail(
-                removed.error
-                or f"journaled directory is not safely empty: {entry.path}"
-            )
+            return r[bool].from_failure(removed)
     return r[bool].ok(True)
 
 
@@ -377,7 +376,7 @@ def validate_transaction_roots(
         if (
             recorded is None
             or recorded.created is None
-            or (recorded.created.device, recorded.created.inode) != transaction_identity
+            or (recorded.created.device, recorded.created.inode) != transaction.value
         ):
             return r[bool].fail(
                 f"Mise transaction root identity is not journaled: {relative.value}"

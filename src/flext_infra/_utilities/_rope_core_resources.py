@@ -6,9 +6,9 @@ import operator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._constants.namespace import FlextInfraConstantsNamespace
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .._constants.namespace import FlextInfraConstantsNamespace
+from .._constants.validate import FlextInfraConstantsSharedInfra
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -21,22 +21,27 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
     def get_resource_from_path(
         rope_project: t.Infra.RopeProject, file_path: Path
     ) -> t.Infra.RopeResource | None:
-        """Return rope File for a filesystem Path, or None if outside project."""
-        try:
-            root_real_path = getattr(
-                getattr(rope_project, "root", None), "real_path", None
-            )
-            if not isinstance(root_real_path, str):
-                return None
-            relative_path = str(file_path.resolve().relative_to(Path(root_real_path)))
-            resource = rope_project.get_resource(relative_path)
-            return (
-                resource
-                if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
-                else None
-            )
-        except (*FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(), ValueError):
+        """Return rope File for a filesystem Path, or None if outside project.
+
+        ``None`` is the documented "unresolvable" outcome: the path sits
+        outside the project root or does not exist on disk. Rope failures
+        (resource/type contract bugs) are never converted; they escape.
+        """
+        root_real_path = getattr(
+            getattr(rope_project, "root", None), "real_path", None
+        )
+        if not isinstance(root_real_path, str):
             return None
+        root = Path(root_real_path)
+        resolved_path = file_path.resolve()
+        if not resolved_path.is_relative_to(root) or not resolved_path.exists():
+            return None
+        resource = rope_project.get_resource(str(resolved_path.relative_to(root)))
+        return (
+            resource
+            if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
+            else None
+        )
 
     @staticmethod
     def fetch_python_resource(

@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
 
 
 class FlextInfraUtilitiesProtectedEditLinting:
@@ -228,10 +229,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path, gate_key: t.StrSequence
     ) -> tuple[str, str, t.StrSequence] | None:
         """Lint snapshot cache key."""
-        try:
-            raw_bytes = py_file.read_bytes()
-        except OSError:
-            return None
+        raw_bytes = py_file.read_bytes()
         return (str(py_file.resolve()), hashlib.sha256(raw_bytes).hexdigest(), gate_key)
 
     @classmethod

@@ -6,10 +6,11 @@ import operator
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 
 class FlextInfraUtilitiesRopeAnalysisWorkspace:
@@ -272,7 +273,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 descendant_child_dirs=descendant_child_dirs,
             )
         return m.Infra.RopeWorkspaceIndex(
-            workspace_root=resolved_root,
+            repository_root=resolved_root,
             package_dirs=sorted_package_dirs,
             packages_by_dir=packages_by_dir,
             modules_by_path=modules_by_path,

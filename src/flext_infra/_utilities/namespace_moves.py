@@ -8,19 +8,19 @@ from io import StringIO
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.namespace_common import (
-    FlextInfraUtilitiesRefactorNamespaceCommon,
-)
-from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
+from .._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from .._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from .._utilities.transformer_header import FlextInfraUtilitiesTransformerHeader
 
 
 class FlextInfraUtilitiesRefactorNamespaceMoves:
@@ -410,8 +410,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                 *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
                 TypeError,
                 ValueError,
-            ):
-                continue
+            ) as exc:
+                msg = (
+                    f"rope rename failed for {file_path} at offset {offset}: "
+                    f"{type(exc).__name__}: {exc!s}"
+                )
+                raise RuntimeError(msg) from exc
             rope_project.do(changes)
             changed = True
             source = resource.read()
@@ -497,8 +501,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> t.StrSequence:
         """Collect required import lines using rope-parsed module bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        if source_pymodule is None:
-            return ()
         source_lines = source.splitlines()
         import_map: dict[str, str] = {}
         for node in getattr(source_pymodule.get_ast(), "body", []) or []:
@@ -521,8 +523,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         seen_imports: t.Infra.StrSet = set()
         for block in blocks:
             block_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(block)
-            if block_pymodule is None:
-                continue
             for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
                 block_pymodule.get_ast()
             ):
@@ -539,8 +539,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     def _drop_moved_alias_exports(*, source: str, alias_names: t.Infra.StrSet) -> str:
         """Remove moved aliases from a literal module ``__all__`` assignment."""
         pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        if pymodule is None:
-            return source
         lines = source.splitlines()
         for node in getattr(pymodule.get_ast(), "body", ()) or ():
             if c.Infra.DUNDER_ALL not in (
@@ -696,8 +694,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(
             kept_source
         )
-        if source_pymodule is None:
-            return ()
         referenced_aliases = sorted({
             getattr(node, "id", "")
             for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
@@ -737,7 +733,9 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
                 names_part
             )
-            if not u.Infra.alias_locally_bound(target_source, bound)
+            if not FlextInfraUtilitiesTransformerHeader.alias_locally_bound(
+                target_source, bound
+            )
         ]
         if not kept:
             return ""
@@ -754,15 +752,14 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         )
         runtime_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
         moved_aliases: set[str] = set()
-        if moved_pymodule is not None:
-            for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                moved_pymodule.get_ast()
-            ):
-                if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Name":
-                    continue
-                node_id = getattr(node, "id", "")
-                if node_id in runtime_aliases:
-                    moved_aliases.add(node_id)
+        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+            moved_pymodule.get_ast()
+        ):
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Name":
+                continue
+            node_id = getattr(node, "id", "")
+            if node_id in runtime_aliases:
+                moved_aliases.add(node_id)
         if not moved_aliases:
             return ()
         imported_aliases: t.Infra.StrSet = set()
@@ -793,19 +790,16 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> t.StrSequence:
         """Collect orphaned import lines via rope-parsed bodies."""
         source_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        if source_pymodule is None:
-            return ()
         source_lines = source.splitlines()
         kept_pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(kept_source)
         kept_names: set[str] = set()
-        if kept_pymodule is not None:
-            for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
-                kept_pymodule.get_ast()
-            ):
-                if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) == "Name":
-                    name = getattr(sub, "id", "")
-                    if name:
-                        kept_names.add(name)
+        for sub in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(
+            kept_pymodule.get_ast()
+        ):
+            if FlextInfraUtilitiesRopeAnalysis.node_kind(sub) == "Name":
+                name = getattr(sub, "id", "")
+                if name:
+                    kept_names.add(name)
         import_lines: t.MutableSequenceOf[str] = []
         for node in getattr(source_pymodule.get_ast(), "body", []) or []:
             if FlextInfraUtilitiesRopeAnalysis.node_kind(node) not in {
@@ -859,8 +853,12 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
                     *FlextInfraUtilitiesRopeRuntime.rope_syntax_errors(),
                     TypeError,
-                ):
-                    continue
+                ) as exc:
+                    msg = (
+                        "rope module name resolution failed for moved pair "
+                        f"{source} -> {target}: {type(exc).__name__}: {exc!s}"
+                    )
+                    raise RuntimeError(msg) from exc
                 if source_module and target_module:
                     mappings.append((source_module, target_module, names))
             for py_file in py_files:

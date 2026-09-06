@@ -11,6 +11,7 @@ from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.deps.phases.ensure_pyrefly import FlextInfraEnsurePyreflyConfigPhase
 from flext_tests import tm
 from tests import t, u
+from tests.unit.deps import ExtraPathsTestSupport
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,6 +21,28 @@ if TYPE_CHECKING:
 
 class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
+
+    @staticmethod
+    def _pyrefly_document() -> tuple[t.Cli.TomlDocument, MutableMapping[str, t.JsonValue]]:
+        """Create one fresh TOML document carrying an empty tool.pyrefly table."""
+        doc = u.Cli.toml_document()
+        doc["tool"] = u.Cli.toml_table()
+        tool = doc["tool"]
+        tm.that(tool, is_=MutableMapping)
+        tool["pyrefly"] = u.Cli.toml_table()
+        return doc, tool
+
+    @staticmethod
+    def _pyrefly_section() -> tuple[
+            t.Cli.TomlDocument,
+            MutableMapping[str, t.JsonValue],
+            MutableMapping[str, t.JsonValue],
+        ]:
+        """Create the document plus its typed tool and tool.pyrefly tables."""
+        doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
+        pyrefly = tool["pyrefly"]
+        tm.that(pyrefly, is_=MutableMapping)
+        return doc, tool, pyrefly
 
     def test_modernizer_omits_checkout_specific_analyzer_virtualenvs(
         self, tmp_path: Path
@@ -133,13 +156,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the obsolete fallback interpreter setting is removed."""
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        doc, _, pyrefly = TestsFlextInfraModernizerPyrefly._pyrefly_section()
         pyrefly["fallback-python-interpreter-name"] = "python"
 
         changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
@@ -160,11 +177,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the canonical Python version is written."""
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
+        doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
@@ -176,13 +189,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the retired generated-code suppression is removed."""
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        doc, _, pyrefly = TestsFlextInfraModernizerPyrefly._pyrefly_section()
         pyrefly["ignore-errors-in-generated-code"] = True
 
         changes = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
@@ -201,11 +208,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the default Pyrefly search path is written."""
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
+        doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
@@ -228,11 +231,7 @@ class TestsFlextInfraModernizerPyrefly:
             encoding="utf-8",
         )
 
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
+        doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
 
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
@@ -341,11 +340,7 @@ class TestsFlextInfraModernizerPyrefly:
             "[tool.pyright]\ninclude = ['src']\n", encoding="utf-8"
         )
 
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
+        doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
 
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
@@ -389,36 +384,11 @@ class TestsFlextInfraModernizerPyrefly:
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify root context keeps workspace dependencies out of search-path."""
-        for directory in ("src", "tests"):
-            (tmp_path / directory).mkdir()
+        (tmp_path / "tests").mkdir()
         (tmp_path / "tests" / "__init__.py").write_text("", encoding="utf-8")
-        (tmp_path / "pyproject.toml").write_text(
-            (
-                "[project]\n"
-                "name = 'flext'\n"
-                "dependencies = ['flext-core']\n"
-                "[tool.uv.workspace]\n"
-                "members = ['flext-core']\n"
-            ),
-            encoding="utf-8",
-        )
-        dep_root = tmp_path / "flext-core"
-        dep_root.mkdir()
-        (dep_root / ".git").mkdir()
-        (dep_root / "Makefile").write_text("", encoding="utf-8")
-        (dep_root / "pyproject.toml").write_text(
-            "[project]\nname = 'flext-core'\n", encoding="utf-8"
-        )
-        (dep_root / "src" / "flext_core").mkdir(parents=True)
-        (dep_root / "src" / "flext_core" / "__init__.py").write_text(
-            "", encoding="utf-8"
-        )
+        _ = ExtraPathsTestSupport.workspace_with_dependency(tmp_path)
 
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
+        doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
 
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc,
@@ -436,11 +406,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify the canonical Pyrefly error table is populated."""
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
+        doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
@@ -454,13 +420,7 @@ class TestsFlextInfraModernizerPyrefly:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify stale error keys are removed from TOML documents."""
-        doc = u.Cli.toml_document()
-        doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        tool["pyrefly"] = u.Cli.toml_table()
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        doc, _, pyrefly = TestsFlextInfraModernizerPyrefly._pyrefly_section()
         pyrefly["errors"] = u.Cli.toml_table()
         errors = pyrefly["errors"]
         tm.that(errors, is_=MutableMapping)

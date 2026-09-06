@@ -333,12 +333,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[tuple[m.Cli.AtomicDirectoryState, ...]]:
         """Create config-declared scaffold parent chains under the generation lock."""
         if (
-            self.initial_workspace is None
-            or c.Infra.CodegenConformMode(request.mode)
+            c.Infra.CodegenConformMode(request.mode)
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
         workspace = self.initial_workspace
+        if workspace is None:
+            workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
+                request.root.expanduser().resolve()
+            )
+            if workspace_result.failure:
+                return r[tuple[m.Cli.AtomicDirectoryState, ...]].from_failure(
+                    workspace_result
+                )
+            workspace = workspace_result.value
         project = workspace.project
         if project is None:
             return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
@@ -523,9 +531,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(with_docs)
         published = transaction.commit_locked(
             with_docs.value,
-            lambda: self._validate_managed_fixed_point(
-                request, with_docs.value, lazy_analysis.value
-            ),
+            lambda: self._validate_managed_fixed_point(request, with_docs.value),
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
@@ -599,7 +605,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
-        lazy_analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
         """Replan conform against live bytes before the journal can commit."""
         u.Cli.info("stage=verify-fixed-point")
@@ -1957,10 +1962,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return None
         source = u.Cli.files_read_text(identity)
         if source.failure:
-            return None
+            msg = f"failed to read beads identity at {identity}: {source.error}"
+            raise RuntimeError(msg)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
-            return None
+            msg = f"beads identity at {identity} is not valid TOML"
+            raise ValueError(msg)
         project = payload.get("project")
         if not isinstance(project, Mapping):
             return None
@@ -2077,7 +2084,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     make_profile=target.make_profile,
                     repository_branch=branch,
                     ci_trigger_branches=tuple(
-                        dict.fromkeys(("dev", "develop", "0.12.0-dev", branch, "main"))
+                        dict.fromkeys((
+                            *codegen.branch_policy.ci_trigger_branches,
+                            branch,
+                        ))
                     ),
                     python_version=codegen.toolchain.python_version,
                     state_directory_name=codegen.toolchain.state_directory_name,
@@ -2942,7 +2952,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current = u.Cli.files_read_text(path)
             if current.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
-            if c.Infra.TEMPLATE_GENERATED_MARKER not in current.value:
+            if not any(
+                marker in current.value for marker in c.Infra.TEMPLATE_GENERATED_MARKERS
+            ):
                 continue
             absent_plan = cls._absent_file_plan(root, path)
             if absent_plan.failure:

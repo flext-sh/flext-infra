@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, t
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
+
+from .._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -25,18 +26,14 @@ class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
-    def validate_infra_payload(payload: object) -> t.JsonMapping | None:
+    def validate_infra_payload(payload: object) -> t.JsonMapping:
         """Validate one plain mapping through the infra adapter.
 
-        Centralizes the repeated try/except so callers only decide what sentinel
-        to surface on failure.
+        Centralizes the adapter choice so every caller validates through the
+        same typed boundary; validation failures escape with the precise
+        pydantic error instead of a sentinel.
         """
-        try:
-            result: t.JsonMapping | None = (
-                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-            )
-        except (c.ValidationError, ValueError):
-            return None
+        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         return result
 
     @classmethod
@@ -163,11 +160,14 @@ class FlextInfraUtilitiesPyproject:
             return {}
         payload_result = u.Cli.toml_read_json(pyproject_path)
         if payload_result.failure:
-            return {}
-        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(
+            msg = (
+                f"failed to read pyproject payload at {pyproject_path}: "
+                f"{payload_result.error}"
+            )
+            raise RuntimeError(msg)
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(
             payload_result.value
         )
-        return validated if validated is not None else {}
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
@@ -175,8 +175,7 @@ class FlextInfraUtilitiesPyproject:
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
-        return validated if validated is not None else {}
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:

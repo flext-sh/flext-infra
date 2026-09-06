@@ -208,7 +208,9 @@ class TestMainEntryPoint:
         ])
         tm.ok(result)
         tm.that(
-            result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
+            u.Cli.process_succeeded(result.value.outcome),
+            eq=True,
+            msg=result.value.stderr or result.value.stdout,
         )
         tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
 
@@ -241,7 +243,7 @@ class TestMainEntryPoint:
             [*command, "check"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
         tm.ok(checked)
-        tm.that(checked.value.exit_code, eq=1)
+        tm.that(checked.value.outcome.raw_return_code, eq=1)
         tm.that(pyproject.read_bytes(), eq=before)
         tm.that(journal.exists(), eq=False)
         tm.that(transaction.exists(), eq=False)
@@ -251,8 +253,8 @@ class TestMainEntryPoint:
         )
         tm.ok(applied)
         tm.that(
-            applied.value.exit_code,
-            eq=0,
+            u.Cli.process_succeeded(applied.value.outcome),
+            eq=True,
             msg=applied.value.stderr or applied.value.stdout,
         )
         rendered = pyproject.read_text(encoding="utf-8")
@@ -271,8 +273,8 @@ class TestMainEntryPoint:
         )
         tm.ok(fixed_point)
         tm.that(
-            fixed_point.value.exit_code,
-            eq=0,
+            u.Cli.process_succeeded(fixed_point.value.outcome),
+            eq=True,
             msg=fixed_point.value.stderr or fixed_point.value.stdout,
         )
         tm.that(pyproject.read_bytes(), eq=published)
@@ -310,7 +312,7 @@ class TestMainEntryPoint:
         )
 
         tm.ok(applied)
-        tm.that(applied.value.exit_code, eq=1)
+        tm.that(applied.value.outcome.raw_return_code, eq=1)
         tm.that(
             applied.value.stdout + applied.value.stderr,
             lacks="MISE_GITHUB_CREDENTIAL_COMMAND is required",
@@ -331,7 +333,7 @@ class TestMainEntryPoint:
         )
 
         tm.ok(result)
-        tm.that(result.value.exit_code, eq=2)
+        tm.that(result.value.outcome.raw_return_code, eq=2)
         tm.that(
             result.value.stdout + result.value.stderr,
             contains="No such command 'unknown-command'",

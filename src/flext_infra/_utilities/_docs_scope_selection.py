@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra.models import m
+
+from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -72,9 +73,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         if relative.is_absolute() or ".." in relative.parts:
             msg = f"docs project selector escapes repository: {name}"
             raise ValueError(msg)
-        project_root = repository_root / relative
+        project_root = workspace_root / relative
         roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
-            repository_root, (project_root,)
+            workspace_root, (project_root,)
         )
         if roots.failure:
             raise ValueError(

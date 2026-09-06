@@ -480,6 +480,9 @@ skip-magic-trailing-comma = true
 [tool.ruff.lint]
 # FLEXT Ruff suppression rationale (validated against semantic facet order):
 # FLEXT ruff[import-outside-top-level]: Public facade models are imported lazily only at validation and construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
+# FLEXT ruff[relative-imports]: Same-owner private imports use relative paths per
+# the ban-private-import codemod rule (its fixture declares the parent-relative
+# form valid); parent-relative is the canonical form the residue gate enforces.
 ignore = [
   "ambiguous-unicode-character-comment",
   "ambiguous-unicode-character-docstring",
@@ -487,6 +490,7 @@ ignore = [
   "boolean-positional-value-in-call",
   "camelcase-imported-as-lowercase",
   "complex-structure",
+  "relative-imports",
   "docstring-missing-exception",
   "docstring-missing-returns",
   "docstring-missing-yields",
@@ -674,8 +678,8 @@ dev = [
   "pytest-xdist>=3.8.0",
   "pyupgrade>=3.21.2",
   "radon>=6.0.1",
-  "ruff>=0.16.5",
-  "rumdl>=0.2.62",
+  "ruff>=0.16.0",
+  "rumdl>=0.2.45",
   "types-cachetools>=7.0.0.20260713",
   "types-cffi>=2.1.0.20260827",
   "types-click>=7.1.8",

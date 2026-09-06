@@ -17,6 +17,22 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerMainExtra:
     """Validate edge cases through the public modernizer API."""
 
+    @staticmethod
+    def _ran_modernizer(modernizer_workspace: Path) -> str:
+        """Run the constraint-rewriting modernizer and return the rendered root."""
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            skip_comments=True,
+            skip_check=True,
+        )
+
+        tm.that(modernizer.run(), eq=0)
+        return (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            encoding="utf-8"
+        )
+
     @pytest.mark.parametrize(
         ("content", "expected"),
         [
@@ -218,17 +234,8 @@ class TestsFlextInfraDepsModernizerMainExtra:
             '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n', encoding="utf-8"
         )
 
-        modernizer = FlextInfraPyprojectModernizer(
-            repository_root=modernizer_workspace,
-            apply_changes=True,
-            rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
-        )
-
-        tm.that(modernizer.run(), eq=0)
-        rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-            encoding="utf-8"
+        rendered = TestsFlextInfraDepsModernizerMainExtra._ran_modernizer(
+            modernizer_workspace
         )
         tm.that(rendered, has='"requests>=2.32.4"')
         tm.that(rendered, has="\"httpx[socks]>=0.28.1; python_version < '3.14'\"")
@@ -262,19 +269,11 @@ class TestsFlextInfraDepsModernizerMainExtra:
             encoding="utf-8",
         )
 
-        modernizer = FlextInfraPyprojectModernizer(
-            repository_root=modernizer_workspace,
-            apply_changes=True,
-            rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
+        rendered = TestsFlextInfraDepsModernizerMainExtra._ran_modernizer(
+            modernizer_workspace
         )
-
-        tm.that(modernizer.run(), eq=0)
         tm.that(
-            (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-                encoding="utf-8"
-            ),
+            rendered,
             has='"requests>=2.32.4"',
         )
 

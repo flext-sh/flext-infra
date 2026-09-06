@@ -182,7 +182,6 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         cyclic_imports = FlextInfraCyclicImportDetector.scan_project(
             project_root=project_root,
             rope_project=rope_project,
-            _parse_failures=parse_failures,
         )
         internal_import_violations = self._detect_and_apply(
             py_files=py_files,

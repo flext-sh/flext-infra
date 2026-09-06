@@ -11,7 +11,8 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
+
+from .._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsTransformers:
