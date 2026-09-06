@@ -48,19 +48,5 @@ class FlextInfraModelsCodemod:
             str, m.Field(description="Complete Pyrefly machine output")
         ] = ""
 
-    class ModScanReport(m.ArbitraryTypesModel):
-        """Verified actionable AST-grep rewrite report."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        nodes: Annotated[t.NonNegativeInt, m.Field(description="Actionable node count")]
-        files: Annotated[
-            frozenset[Path], m.Field(description="Files containing actionable nodes")
-        ]
-        findings: Annotated[
-            t.StrSequence,
-            m.Field(description="Complete rule, file, line, and column diagnostics"),
-        ]
-
 
 __all__: list[str] = ["FlextInfraModelsCodemod"]

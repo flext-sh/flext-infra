@@ -266,8 +266,7 @@ class FlextInfraModGateEngine:
     def _parse_findings(
         stdout: str,
         root: Path,
-        rule_file: Path,
-        rule_ids: frozenset[str],
+        rule_files_by_id: Mapping[str, Path],
         fixable_ids: frozenset[str],
     ) -> p.Result[m.Infra.ModScanReport]:
         """Validate every JSONL finding without dropping malformed output."""
@@ -299,7 +298,7 @@ class FlextInfraModGateEngine:
             file = finding.get("file")
             source_range = finding.get("range")
             raw_replacement = finding.get("replacement")
-            if not isinstance(rule_id, str) or rule_id not in rule_ids:
+            if not isinstance(rule_id, str) or rule_id not in rule_files_by_id:
                 return r.fail(f"invalid ast-grep finding contract: {line}")
             if not isinstance(text, str) or not isinstance(file, str):
                 return r.fail(f"invalid ast-grep finding contract: {line}")
@@ -339,7 +338,7 @@ class FlextInfraModGateEngine:
             )
             entries.append(
                 m.Infra.ModScanFinding(
-                    rule_file=str(rule_file.resolve()),
+                    rule_file=str(rule_files_by_id[rule_id].resolve()),
                     rule_id=rule_id,
                     repository=repository,
                     file=file_path,
@@ -429,56 +428,55 @@ class FlextInfraModGateEngine:
         files: set[Path] = set()
         entries: list[m.Infra.ModScanFinding] = []
         known_rule_ids: set[str] = set()
-        rule_contracts: list[tuple[Path, frozenset[str], frozenset[str]]] = []
+        rule_files_by_id: dict[str, Path] = {}
+        fixable_ids: set[str] = set()
         targets = u.Infra.ast_grep_scan_targets(root)
-        total = len(rules)
         for rule in rules:
-            rule_ids, fixable_ids = u.Infra.ast_grep_rule_contract(rule)
+            rule_ids, rule_fixable_ids = u.Infra.ast_grep_rule_contract(rule)
             duplicate_ids = known_rule_ids.intersection(rule_ids)
             if duplicate_ids:
                 duplicates = ", ".join(sorted(duplicate_ids))
                 return r.fail(f"duplicate inherited ast-grep rule id(s): {duplicates}")
             known_rule_ids.update(rule_ids)
-            rule_contracts.append((rule, rule_ids, fixable_ids))
-        for index, (rule, rule_ids, fixable_ids) in enumerate(rule_contracts, start=1):
-            sys.stderr.write(
-                f"mod: rule {index}/{total} {rule.name} {'apply' if fix else 'scan'}\n"
-            )
-            sys.stderr.flush()
-            scan_command = u.Infra.ast_grep_scan_command(
-                rule,
-                rule_ids=tuple(sorted(rule_ids)),
+            fixable_ids.update(rule_fixable_ids)
+            rule_files_by_id.update(dict.fromkeys(rule_ids, rule))
+        sys.stderr.write(
+            f"mod: ast-grep {'apply' if fix else 'scan'} rules={len(known_rule_ids)}\n"
+        )
+        sys.stderr.flush()
+        scan_command = u.Infra.ast_grep_scan_command(
+            rules[0],
+            rule_ids=tuple(sorted(known_rule_ids)),
+            targets=targets,
+            json_stream=True,
+        )
+        run = cls._run_tool(root, scan_command, finding_exit_code=1)
+        if run.failure:
+            return r[m.Infra.ModScanReport].from_failure(run)
+        report = cls._parse_findings(
+            run.value.stdout,
+            root,
+            rule_files_by_id,
+            frozenset(fixable_ids),
+        ).unwrap()
+        if run.value.outcome.raw_return_code != 0:
+            cls._validate_finding_receipt(run.value.stderr, report.findings).unwrap()
+        findings = report.findings
+        actionable_findings = report.actionable
+        detection_only_findings = report.detection_only
+        non_actionable_with_fix_findings = report.non_actionable_with_fix
+        files.update(report.files)
+        entries.extend(report.entries)
+        if fix and report.actionable:
+            apply_command = u.Infra.ast_grep_scan_command(
+                rules[0],
+                rule_ids=tuple(sorted(fixable_ids)),
                 targets=targets,
-                json_stream=True,
+                update_all=True,
             )
-            run = cls._run_tool(root, scan_command, finding_exit_code=1)
-            if run.failure:
-                return r[m.Infra.ModScanReport].from_failure(run)
-            report = cls._parse_findings(
-                run.value.stdout, root, rule, rule_ids, fixable_ids
-            ).unwrap()
-            if run.value.outcome.raw_return_code != 0:
-                cls._validate_finding_receipt(
-                    run.value.stderr, report.findings
-                ).unwrap()
-            findings += report.findings
-            actionable_findings += report.actionable
-            detection_only_findings += report.detection_only
-            non_actionable_with_fix_findings += report.non_actionable_with_fix
-            files.update(report.files)
-            entries.extend(report.entries)
-            if fix and report.actionable:
-                apply_command = u.Infra.ast_grep_scan_command(
-                    rule,
-                    rule_ids=tuple(sorted(rule_ids)),
-                    targets=targets,
-                    update_all=True,
-                )
-                apply_run = cls._run_tool(
-                    root, apply_command, accept_apply_receipt=True
-                )
-                if apply_run.failure:
-                    return r[m.Infra.ModScanReport].from_failure(apply_run)
+            apply_run = cls._run_tool(root, apply_command, accept_apply_receipt=True)
+            if apply_run.failure:
+                return r[m.Infra.ModScanReport].from_failure(apply_run)
         complete_report = m.Infra.ModScanReport(
             findings=findings,
             actionable=actionable_findings,

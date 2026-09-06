@@ -1,6 +1,3 @@
-# AI Hub capabilities are optional external runtime services for flext-infra.
-# This package must neither link their libraries nor recreate CRG behavior.
----
 id: ban-infra-ai-hub-crg-library-import
 language: Python
 severity: error

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from flext_infra import c
 
@@ -85,7 +85,6 @@ class CliRouteService:
             return CodegenRoutes.codegen_routes[group]
         if group in {
             c.Infra.CLI_GROUP_DOCS,
-            c.Infra.CLI_GROUP_GITHUB,
             c.Infra.CLI_GROUP_MAINTENANCE,
             c.Infra.CLI_GROUP_VALIDATE,
         }:

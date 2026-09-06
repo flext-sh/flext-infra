@@ -29,9 +29,7 @@ helm = "3.19"
 kind = "0.31"
 direnv = "2.37"
 taplo = "0.10"
-# The npm owner publishes the sg/ast-grep executables for GNU and musl Linux
-# without pretending one libc artifact is another platform.
-"npm:@ast-grep/cli" = "0.45"
+ast-grep = "0.45"
 gitleaks = "8.30"
 # scc (the loc-cap gate's code counter) ships no bare mise registry alias, so
 # pin the aqua backend explicitly (matching the qlty selector below). Its

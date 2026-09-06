@@ -51,7 +51,6 @@ if TYPE_CHECKING:
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
-    from ._sort_keys import FlextInfraUtilitiesSortKeys
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
@@ -126,7 +125,7 @@ if TYPE_CHECKING:
     from .rope_source import FlextInfraUtilitiesRopeSource
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
-    from .silent_failure_ast import FlextInfraUtilitiesSilentFailure
+    from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
     from .transformer_base import (
         FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer,
@@ -247,7 +246,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeSource",
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
-    "FlextInfraUtilitiesSilentFailure",
+    "FlextInfraUtilitiesSilentFailureAst",
     "FlextInfraUtilitiesTransformerHeader",
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
@@ -315,7 +314,6 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
-            "._sort_keys": ("FlextInfraUtilitiesSortKeys",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
@@ -396,7 +394,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_source": ("FlextInfraUtilitiesRopeSource",),
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
-            ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailure",),
+            ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailureAst",),
             ".transformer_base": (
                 "FlextInfraChangeTrackingTransformer",
                 "FlextInfraRopeTransformer",

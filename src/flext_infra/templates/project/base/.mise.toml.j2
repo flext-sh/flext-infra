@@ -17,6 +17,7 @@ locked = true
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
 #          gitleaks_version, scc_version, kubeconform_version, qlty_version,
+#          node_version, jscpd_version, waza_version,
 #          beads (selector/version/prerelease), gascity (selector/version/prerelease))
 [tools]
 python = "{{ python_version }}"
@@ -27,9 +28,7 @@ helm = "{{ helm_version }}"
 kind = "{{ kind_version }}"
 direnv = "{{ direnv_version }}"
 taplo = "{{ taplo_version }}"
-# The npm owner publishes the sg/ast-grep executables for GNU and musl Linux
-# without pretending one libc artifact is another platform.
-"npm:@ast-grep/cli" = "{{ ast_grep_version }}"
+ast-grep = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
 # scc (the loc-cap gate's code counter) ships no bare mise registry alias, so
 # pin the aqua backend explicitly (matching the qlty selector below). Its
@@ -38,6 +37,9 @@ gitleaks = "{{ gitleaks_version }}"
 # which keeps the offline setup/gen/check/test path source-build-free.
 "aqua:boyter/scc" = "{{ scc_version }}"
 kubeconform = "{{ kubeconform_version }}"
+node = "{{ node_version }}"
+"npm:jscpd" = "{{ jscpd_version }}"
+"github:microsoft/waza" = "{{ waza_version }}"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
 # GitHub Artifact Attestations is an external-token capability and is not

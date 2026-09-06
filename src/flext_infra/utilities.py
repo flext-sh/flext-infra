@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from flext_cli import u
 from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
-from flext_infra._utilities._sort_keys import FlextInfraUtilitiesSortKeys
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
@@ -23,9 +22,6 @@ from flext_infra._utilities.deferred_self_reference_ast import (
     FlextInfraUtilitiesDeferredSelfReference,
 )
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.deferred_self_reference_ast import (
-    FlextInfraUtilitiesDeferredSelfReferenceAst,
-)
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
@@ -59,6 +55,7 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
+from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
 from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
@@ -81,7 +78,9 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.rope_structure import FlextInfraUtilitiesRopeStructure
 from flext_infra._utilities.safety import FlextInfraUtilitiesSafety
-from flext_infra._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailure
+from flext_infra._utilities.silent_failure_ast import (
+    FlextInfraUtilitiesSilentFailureAst,
+)
 from flext_infra._utilities.transformer_header import (
     FlextInfraUtilitiesTransformerHeader,
 )
@@ -91,9 +90,7 @@ from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvi
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
 )
-from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
-from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
-from flext_infra.iteration import FlextInfraUtilitiesIteration
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 
 
 class FlextInfraUtilities(u):
@@ -162,13 +159,11 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesRelease,
         FlextInfraUtilitiesRepository,
         FlextInfraUtilitiesSafety,
-        FlextInfraUtilitiesSilentFailure,
+        FlextInfraUtilitiesSilentFailureAst,
         FlextInfraUtilitiesVersioning,
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
-        FlextInfraWorktreeLifecycle,
-        FlextInfraWorktreeProvisioning,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

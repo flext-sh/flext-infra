@@ -8,10 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import u, m
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 

@@ -1,5 +1,3 @@
-# Rewire behavior modules from private utility classes to the public u.Infra facade.
----
 id: private-infra-utility-call-to-facade
 language: Python
 severity: error
@@ -22,7 +20,6 @@ files:
   - "src/flext_infra/fixers/**/*.py"
   - "src/flext_infra/detectors/**/*.py"
   - "src/flext_infra/deps/**/*.py"
-
 ---
 id: private-infra-utility-alias-call-to-facade
 language: Python
@@ -34,7 +31,6 @@ message: Consume infrastructure utilities through u.Infra.
 files:
   - "src/flext_infra/base.py"
   - "src/flext_infra/_base_projects.py"
-
 ---
 id: private-infra-utility-alias-attribute-to-facade
 language: Python
@@ -46,7 +42,6 @@ message: Consume infrastructure utilities through u.Infra.
 files:
   - "src/flext_infra/base.py"
   - "src/flext_infra/_base_projects.py"
-
 ---
 id: private-infra-utility-import-to-facade
 language: Python

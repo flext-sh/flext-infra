@@ -22,6 +22,10 @@ Infra:
       # structlog<26 cap against flext-core's structlog>=26.1 floor and is
       # unsatisfiable, so uv must skip that split instead of failing the lock.
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
+      # Supply-chain cooldown SSOT shared by uv and generated update policy.
+      dependency_cooldown_days: 7
+      dependency_cooldown_exclusions: [cryptography]
+      dependency_cooldown_overrides: {}
       # Moving selectors consumed by generated .mise.toml and CI. Freezing a
       # major, minor, or patch here would create a second lock owner and prevent
       # setup from converging the fleet on the newest published release.
@@ -36,6 +40,9 @@ Infra:
       scc_version: latest
       kubeconform_version: latest
       qlty_version: "0.642.0"
+      node_version: "26.8"
+      jscpd_version: "5.1.2"
+      waza_version: "0.38.7"
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -507,12 +514,10 @@ Infra:
           requires_apply: true
       custom_handler_policy:
         filename: custom.mk
-        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
-        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
-        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
-        # The validator must accept both shapes the runtime itself dispatches to, or
-        # every project that defines a custom WHAT handler fails `codegen conform`.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|work|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|work|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
+        # Custom behavior is one private whole-verb replacement or one lifecycle
+        # hook. Selector-specific handlers are prohibited because public verbs are
+        # already the complete operation and APPLY=Y is their sole mutation input.
+        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|_custom-[a-z][a-z0-9-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:

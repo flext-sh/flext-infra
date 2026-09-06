@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_core import m
-from flext_infra import t
+from flext_infra import c, t
 from flext_infra._models._defaults import ImmutableEmptyMapping
 
 
@@ -105,16 +105,6 @@ class FlextInfraModelsRefactorGrep:
         diagnostics: Annotated[
             t.StrSequence,
             m.Field(description="Unsuppressed diagnostics from every red gate"),
-        ]
-
-    class ModScanReport(m.ArbitraryTypesModel):
-        """Verified actionable rewrite report."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        nodes: Annotated[t.NonNegativeInt, m.Field(description="Actionable node count")]
-        files: Annotated[
-            frozenset[Path], m.Field(description="Files containing actionable nodes")
         ]
 
     class MethodOrderRule(m.ContractModel):

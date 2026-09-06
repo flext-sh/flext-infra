@@ -54,6 +54,8 @@ class FlextInfraPytestRunnerReports(FlextInfraPytestRunnerBase):
         )
         if executed:
             return r.ok(accounting)
+        if cache_restored and deselected:
+            return r.ok(accounting)
         msg = self._failure_detail("pytest executed zero tests", log)
         raise RuntimeError(msg)
 

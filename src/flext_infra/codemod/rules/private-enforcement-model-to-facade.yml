@@ -1,5 +1,3 @@
-# Canonicalize flext-core enforcement model consumers onto the public m facade.
----
 id: private-enforcement-model-import-to-facade
 language: Python
 severity: error
@@ -12,7 +10,6 @@ files:
 ignores:
   - "**/.git/**"
   - "**/.venv/**"
-
 ---
 id: private-enforcement-model-reference-to-facade
 language: Python

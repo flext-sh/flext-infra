@@ -695,10 +695,6 @@ class FlextInfraProtocolsBase(Protocol):
             """Return whether a runtime identity is an exact Mise release."""
             ...
 
-        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
-            """Hydrate missing checksums in one staged lock."""
-            ...
-
         def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
             """Validate one complete project artifact set."""
             ...

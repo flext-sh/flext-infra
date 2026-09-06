@@ -37,7 +37,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
             )
         ),
     ] = m.Field(
-        default_factory=ub.resolve_repository_root_or_cwd,
+        default_factory=u.Infra.resolve_repository_root_or_cwd,
         validation_alias=t.AliasChoices(
             "repository_root", "workspace_root", "workspace"
         ),

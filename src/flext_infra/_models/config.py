@@ -308,6 +308,25 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ()
+        dependency_cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=1,
+                le=90,
+                description="Supply-chain cooldown shared by uv and update policy",
+            ),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Packages exempted from the fleet cooldown"),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-package RFC 3339 cooldown cutoffs",
+            ),
+        ]
         kubectl_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]
@@ -337,6 +356,15 @@ class FlextInfraConfigModels:
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
+        ]
+        node_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+        ]
+        jscpd_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact jscpd duplication engine release")
+        ]
+        waza_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact Waza governance engine release")
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
@@ -1882,6 +1910,14 @@ class FlextInfraConfigModels:
         ]
 
         dist: Annotated[t.NonEmptyStr, m.Field(description="PEP 621 project name")]
+        state_directory_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="External runtime state directory beside checkout"),
+        ]
+        scratch_namespace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Scratch namespace below external project state"),
+        ]
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
@@ -2319,6 +2355,15 @@ class FlextInfraConfigModels:
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
+        ]
+        node_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Compatible Node.js major.minor line")
+        ]
+        jscpd_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact jscpd duplication engine release")
+        ]
+        waza_version: Annotated[
+            t.NonEmptyStr, _tool_version_field("Exact Waza governance engine release")
         ]
         taplo_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")

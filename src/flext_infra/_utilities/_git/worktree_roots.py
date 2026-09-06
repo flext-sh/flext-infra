@@ -11,6 +11,7 @@ from flext_core import r
 from flext_infra._utilities._git.worktree_status import (
     FlextInfraUtilitiesGitWorktreeStatusMixin,
 )
+from flext_infra.constants import c
 from flext_infra.models import m
 
 if TYPE_CHECKING:

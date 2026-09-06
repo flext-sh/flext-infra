@@ -1338,11 +1338,5 @@ _builtin_gen_apply: _builtin_gen_all
 # Declarative ast-grep refactoring. Universal FLEXT providers, the transitive
 # runtime dependency closure, and the project-local delta are composed once by
 # the public refactor service; Make owns only execution and APPLY acknowledgement.
-_builtin_mod_check: _builtin_require_environment
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
-
-_builtin_mod_all: _builtin_require_environment
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
-
-_builtin_mod_apply: _builtin_mod_all
+_builtin_mod_apply: _builtin_require_environment
+	@cd "$(PROJECT_ROOT)" && $(PROJECT_FLEXT_INFRA) refactor mod --apply
