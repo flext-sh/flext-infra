@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, Self, override
 
 from flext_core import r
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m, t, u
 from flext_infra.base import s
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.pytest_diag import FlextInfraPytestDiagExtractor
@@ -21,7 +21,7 @@ from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
 
 if TYPE_CHECKING:
     from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-    from flext_infra import p, t
+    from flext_infra import p
 
     PytestPolicy = FlextInfraModelsDepsToolSettings.PytestConfig
 
@@ -227,16 +227,28 @@ class FlextInfraPytestRunner(s[int]):
             return ("--testmon", "--testmon-noselect", "--no-cov")
         return ("--testmon", "--no-cov")
 
-    def build_command(self, report_dir: Path) -> tuple[str, ...]:
-        """Build the exact child argv from the typed tooling policy."""
+    def build_command(
+        self, report_dir: Path, selected_node_ids: t.StrSequence | None = None
+    ) -> tuple[str, ...]:
+        """Build the exact child argv from the typed tooling policy.
+
+        ``selected_node_ids`` is the selection the controller already resolved:
+        ``None`` when it resolved none (each worker selects, as before), an
+        empty sequence when testmon selected nothing, and node ids otherwise.
+        Passing explicit node ids also switches testmon to prioritize-only,
+        which is what keeps every xdist worker collecting the same set.
+        """
         pytest = config.Infra.tooling.tools.pytest
         focused = self.file is not None or self.match is not None
-        target = self.file or self.target
+        targets: t.StrSequence = selected_node_ids or (self.file or self.target,)
         report_args = pytest.diagnostic_args if self.diagnostic else pytest.report_args
         coverage_args = self._coverage_argv(report_dir, focused=focused)
+        # An empty resolved selection has nothing to distribute; one process
+        # reports it without starting workers.
+        single_process = focused or selected_node_ids == ()
         parallel_args = (
             ("-n", "0")
-            if focused
+            if single_process
             else (
                 "-n",
                 str(self.parallel_worker_budget(pytest)),
@@ -275,7 +287,7 @@ class FlextInfraPytestRunner(s[int]):
         )
         return (
             *python_argv,
-            target,
+            *targets,
             *pytest.progress_args,
             *report_args,
             "-p",
@@ -366,6 +378,78 @@ class FlextInfraPytestRunner(s[int]):
         )
         return r[int].ok(0 if value.reason != "testmon db missing or empty" else 1)
 
+    def _selection_runs_per_worker(self) -> bool:
+        """True when each xdist worker would resolve testmon selection itself.
+
+        Two workers resolving the same selection concurrently is a race: one
+        of them can observe the database mid-write and collect a different
+        set, which xdist reports as "Different tests were collected". The
+        selection is therefore resolved once, by the controller, whenever this
+        is true.
+        """
+        pytest = config.Infra.tooling.tools.pytest
+        return (
+            self.file is None
+            and self.match is None
+            and not self._cov_enabled()
+            and self.what != "full"
+            # A `-m` expression already forces testmon to prioritize-only.
+            and not self._ci_disables_coverage()
+            and self.parallel_worker_budget(pytest) > 1
+        )
+
+    def _resolve_selection(self, report_dir: Path) -> p.Result[t.StrSequence]:
+        """Return the node ids testmon selects, resolved in one process."""
+        pytest = config.Infra.tooling.tools.pytest
+        command: t.StrSequence = (
+            sys.executable,
+            "-m",
+            "pytest",
+            self.target,
+            "--testmon",
+            # Read the database, never write it: this pass runs no test.
+            "--testmon-nocollect",
+            "--collect-only",
+            "-q",
+            "-p",
+            pytest.enforcement_plugin,
+            "-p",
+            "no:metadata",
+            "-p",
+            "no:randomly",
+            "-n",
+            "0",
+            "--no-cov",
+        )
+        project_src = str(self.root / c.Infra.DEFAULT_SRC_DIR)
+        run = u.Cli.run_raw(
+            command,
+            cwd=self.root,
+            timeout=pytest.run_timeout_seconds,
+            env=u.Cli.process_env(
+                remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
+                overrides={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: project_src},
+            ),
+        )
+        if run.failure:
+            return r[t.StrSequence].fail(run.error or "testmon selection failed")
+        output = run.value
+        # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
+        if output.exit_code not in {0, 5}:
+            detail = (output.stderr or output.stdout).strip()
+            return r[t.StrSequence].fail(
+                detail or f"testmon selection exited with {output.exit_code}"
+            )
+        node_ids = tuple(
+            line.strip()
+            for line in (output.stdout or "").splitlines()
+            if "::" in line and not line.startswith(" ")
+        )
+        u.Cli.atomic_write_text_file(
+            report_dir / "testmon-selection.txt", "\n".join(node_ids) + "\n"
+        ).unwrap()
+        return r[t.StrSequence].ok(node_ids)
+
     @override
     def execute(self) -> p.Result[int]:
         """Execute pytest, profile it, and preserve reports under one deadline."""
@@ -376,7 +460,13 @@ class FlextInfraPytestRunner(s[int]):
         pre_run_digest = FlextInfraTestmonDbInspector.digest_file(
             self._testmon_db_path()
         )
-        command = self.build_command(report_dir)
+        selected_node_ids: t.StrSequence | None = None
+        if self._selection_runs_per_worker():
+            selection = self._resolve_selection(report_dir)
+            if selection.failure:
+                return r[int].fail(selection.error or "testmon selection failed")
+            selected_node_ids = selection.value
+        command = self.build_command(report_dir, selected_node_ids)
         u.Cli.atomic_write_text_file(
             report_dir / "command.txt", f"{shlex.join(command)}\n"
         ).unwrap()

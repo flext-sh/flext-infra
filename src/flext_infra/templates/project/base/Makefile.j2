@@ -187,6 +187,7 @@ ifeq ($(GEN_INIT_ONLY),Y)
 {% endfor %}endif
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
+CHECK_GATES_FIXABLE :={% for gate in make.check_gates_fixable %} {{ gate }}{% endfor %}
  DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
  # End SECTION: verb dispatch
 
@@ -673,6 +674,9 @@ _builtin_fix_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_fix_apply: _builtin_fix_all
+
+_builtin_fix_enforcement: _builtin_require_environment
+	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=enforcement" $(if $(filter Y,$(APPLY)),--make-arg "APPLY={{ make.apply_value }}") $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -747,18 +751,39 @@ _builtin_fmt_all: _builtin_require_environment
 
 _builtin_fmt_apply: _builtin_fmt_all
 
-# Read-only fixed point: plain `make fix` re-checks via its config-owned default
-# WHAT (mutations require explicit APPLY=Y). Dual of `ruff check --fix` — never
-# mutate here.
+# `fix` repairs findings: the mutating ruff lint pass plus every gate that can
+# repair what it reports (CHECK_GATES_FIXABLE, derived from the gate SSOT).
+# Plain `make fix` is the read-only fixed point of the same tools; mutations
+# require explicit APPLY=Y.
 _builtin_fix_check: _builtin_require_environment
 	@$(UV_RUN) ruff check $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$(printf '%s' '$(CHECK_GATES_FIXABLE)' | tr ' ' ',')" --projects .
 
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "$$(printf '%s' '$(CHECK_GATES_FIXABLE)' | tr ' ' ',')" --projects . --fix
 
 _builtin_fix_apply: _builtin_fix_all
+
+# Catalog-driven enforcement fixes (ENFORCE-NNN rules with a fix_action).
+# Safe fixes only; dry-run previews, APPLY=Y applies and re-checks.
+_builtin_fix_enforcement: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --workspace "$(PROJECT_ROOT)" --safe-only $(if $(filter Y,$(APPLY)),--apply,--dry-run)
 {% endif %}
+
+# `mod` batch-applies the ast-grep rules discovered through the packaged
+# cascade plus this project's own rule dir under the ruff/pyrefly rollback
+# circuit (checkpoint + re-measure). Plain `make mod` is the read-only fixed
+# point: it fails while any actionable fix is pending.
+_builtin_mod_check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
+
+_builtin_mod_all: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
+
+_builtin_mod_apply: _builtin_mod_all
 
 _builtin_run_default: _builtin_require_environment
 	@$(UV_RUN) $(PROJECT_NAME) $(ARGS)

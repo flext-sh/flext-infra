@@ -223,6 +223,29 @@ class TestsFlextInfraModCircuitApply:
         tm.that((root / "sample.py").read_text(encoding="utf-8"), eq=dirty_source)
         tm.that(_git(root, "log", "-1", "--format=%s"), eq=_CHECKPOINT_SUBJECT)
 
+    def test_pending_report_names_file_line_and_rule(self, tmp_path: Path) -> None:
+        root = _repo(tmp_path, "value = dict()\n")
+        _rule(root, pattern="value = dict()", fix="value = {}")
+
+        result = FlextInfraCodemodBatchApply(repository_root=root).execute()
+
+        tm.that(result.failure, eq=True)
+        tm.that(result.error or "", has="sample.py:1 mod-fix")
+
+    def test_two_rule_files_claiming_one_rule_id_fail(self, tmp_path: Path) -> None:
+        root = _repo(tmp_path, "value = dict()\n")
+        _rule(root, pattern="value = dict()", fix="value = {}")
+        (root / "ast-grep-rules" / "mod-fix-copy.yml").write_text(
+            "id: mod-fix\nlanguage: Python\nrule:\n  pattern: value = list()\n"
+            "severity: warning\n",
+            encoding="utf-8",
+        )
+
+        result = FlextInfraCodemodBatchApply(repository_root=root).execute()
+
+        tm.that(result.failure, eq=True)
+        tm.that(result.error or "", has="duplicate ast-grep rule id")
+
     def test_check_mode_reports_pending_without_mutation(self, tmp_path: Path) -> None:
         root = _repo(tmp_path, "value = dict()\n")
         _rule(root, pattern="value = dict()", fix="value = {}")

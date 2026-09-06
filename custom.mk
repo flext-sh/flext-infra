@@ -2,7 +2,7 @@
 # The typed Make verb/WHAT matrix owns every handler. This file may contain
 # only pre/post hooks for declared handlers; it cannot create or shadow one.
 
-.PHONY: _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout _custom_check_layout
+.PHONY: _custom_run_cprofile-report _custom_run_cprofile-test _custom_build_layout
 
 _custom_run_cprofile-test:
 	@set -eu; \
@@ -41,10 +41,3 @@ _custom_build_layout:
 	project=""; \
 	if [ -n "$(strip $(PROJECT))" ]; then project="--project $(strip $(PROJECT))"; fi; \
 	$(PROJECT_FLEXT_INFRA) codegen layout --workspace "$(REPOSITORY_ROOT)" $$project $$apply
-
-# flext-0wuz: layout warning gate (severity from codegen.yaml layout.severity).
-_custom_check_layout:
-	@set -eu; \
-	projects="."; \
-	if [ -n "$(strip $(PROJECT))" ]; then projects="$(strip $(PROJECT))"; fi; \
-	$(PROJECT_FLEXT_INFRA) check run --workspace "$(REPOSITORY_ROOT)" --gates layout --projects "$$projects"

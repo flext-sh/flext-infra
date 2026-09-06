@@ -124,7 +124,6 @@ class TestDuplicationGate:
     def test_gate_identity(self) -> None:
         tm.that(FlextInfraDuplicationGate.gate_id, eq="duplication")
         tm.that(FlextInfraDuplicationGate.can_fix, eq=False)
-        tm.that(FlextInfraDuplicationGate.tool_name, eq="jscpd")
 
     def test_registered_and_allowed(self) -> None:
         tm.that("duplication" in c.Infra.ALLOWED_GATES, eq=True)

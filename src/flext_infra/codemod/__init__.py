@@ -16,14 +16,15 @@ if TYPE_CHECKING:
         FlextInfraModGateSnapshot,
         FlextInfraModScanReport,
     )
-    from .discovery import discover_rule_ids, discover_rules
+    from .discovery import discover_rules, index_rules_by_id, rule_documents
 __all__: tuple[str, ...] = (
     "FlextInfraCodemodBatchApply",
     "FlextInfraModGateEngine",
     "FlextInfraModGateSnapshot",
     "FlextInfraModScanReport",
-    "discover_rule_ids",
     "discover_rules",
+    "index_rules_by_id",
+    "rule_documents",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -35,7 +36,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraModGateSnapshot",
                 "FlextInfraModScanReport",
             ),
-            ".discovery": ("discover_rule_ids", "discover_rules"),
+            ".discovery": ("discover_rules", "index_rules_by_id", "rule_documents"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

@@ -38,10 +38,30 @@ class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
     def __init__(self) -> None:
-        """Build the gate-id to gate-class mapping used by check execution."""
+        """Build the gate-id to gate-class mapping used by check execution.
+
+        The gate classes and ``c.Infra.SARIF_TOOL_INFO`` are two producers of
+        the same conclusion — the gate vocabulary — keyed by ``gate_id``. They
+        collapse here; any divergence (a registered class the vocabulary does
+        not know, a vocabulary id with no class, or two classes claiming one
+        id) is a defect that fails the registry before a single gate can run,
+        never a gate that silently cannot be reached through ``make check``.
+        """
+        classes = self._gate_classes()
         self._gates: dict[str, type[FlextInfraGate]] = {
-            gate_cls.gate_id: gate_cls for gate_cls in self._gate_classes()
+            gate_cls.gate_id: gate_cls for gate_cls in classes
         }
+        if len(self._gates) != len(classes):
+            msg = "gate registry declares duplicate gate ids"
+            raise ValueError(msg)
+        registered = frozenset(self._gates)
+        if registered != c.Infra.ALLOWED_GATES:
+            msg = (
+                "gate registry diverges from c.Infra.SARIF_TOOL_INFO: "
+                f"unregistered={sorted(c.Infra.ALLOWED_GATES - registered)} "
+                f"unknown={sorted(registered - c.Infra.ALLOWED_GATES)}"
+            )
+            raise ValueError(msg)
 
     @staticmethod
     def _gate_classes() -> t.VariadicTuple[type[FlextInfraGate]]:

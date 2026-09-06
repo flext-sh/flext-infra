@@ -29,6 +29,11 @@ class FlextInfraConstantsCheck:
         WARN = "warn"
         STRICT = "strict"
 
+    # Quality gate identifiers shared with the tool-name vocabulary.
+    LINT: Final[str] = "lint"
+    FORMAT: Final[str] = "format"
+    MARKDOWN: Final[str] = "markdown"
+    SILENT_FAILURE: Final[str] = "silent-failure"
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -38,6 +43,10 @@ class FlextInfraConstantsCheck:
         "silent-failure": (
             "Flext Silent Failure Detector",
             "internal://flext-infra/silent-failure",
+        ),
+        "deferred-self-reference": (
+            "Flext Deferred Self Reference Detector",
+            "internal://flext-infra/deferred-self-reference",
         ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
@@ -66,9 +75,13 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/direnv",
         ),
         "duplication": ("jscpd", "https://github.com/kucherenko/jscpd"),
+        "codemod": ("ast-grep", "https://ast-grep.github.io/"),
     })
+    "Gate id -> (tool name, tool URL): the gate vocabulary SSOT and the SARIF rule helpUri source."
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
+    "Gates that rewrite files: owned by `fmt`/`fix`, never part of a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )

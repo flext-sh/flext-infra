@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from .import_modernizer import FlextInfraRefactorImportModernizer
     from .lazy_import_fixer import FlextInfraRefactorLazyImportFixer
     from .logging_modernizer import FlextInfraRefactorLoggingModernizer
+    from .mro_remover import FlextInfraRefactorMroRemover
     from .nested_class_propagation import FlextInfraNestedClassPropagationTransformer
     from .open_encoding import FlextInfraRefactorOpenEncoding
     from .pattern import FlextInfraRefactorPatternTransformer
@@ -69,6 +70,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorImportModernizer",
     "FlextInfraRefactorLazyImportFixer",
     "FlextInfraRefactorLoggingModernizer",
+    "FlextInfraRefactorMroRemover",
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
@@ -114,6 +116,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".import_modernizer": ("FlextInfraRefactorImportModernizer",),
             ".lazy_import_fixer": ("FlextInfraRefactorLazyImportFixer",),
             ".logging_modernizer": ("FlextInfraRefactorLoggingModernizer",),
+            ".mro_remover": ("FlextInfraRefactorMroRemover",),
             ".nested_class_propagation": (
                 "FlextInfraNestedClassPropagationTransformer",
             ),

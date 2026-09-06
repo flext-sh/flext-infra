@@ -11,6 +11,7 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m
@@ -18,8 +19,6 @@ from flext_infra.codemod.discovery import discover_rules
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p, t
 
 
@@ -29,17 +28,24 @@ class FlextInfraCodemodGate(FlextInfraGate):
     gate_id: ClassVar[str] = "codemod"
     gate_name: ClassVar[str] = "Codemod Enforcement"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = "ast-grep"
-    tool_url: ClassVar[str] = "https://ast-grep.github.io/"
 
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Run ast-grep scan with cascaded codemod rules."""
-        _ = ctx
         started = time.monotonic()
-        rules = discover_rules()
+        discovered = discover_rules()
+        if discovered.failure:
+            return self._build_single_issue_result(
+                project_dir,
+                Path(c.Infra.PYPROJECT_FILENAME),
+                discovered.error or "ast-grep rule discovery failed",
+                passed=False,
+                started=started,
+                ctx=ctx,
+            )
+        rules = discovered.value
         if not rules:
             return self._build_check_gate_execution(
                 project_dir,
@@ -101,25 +107,3 @@ class FlextInfraCodemodGate(FlextInfraGate):
             for line in scan.stdout.splitlines()
             if line.strip()
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """Per-rule scans are issued by check(); expose the first rule command."""
-        _ = ctx, check_dirs
-        rules = discover_rules()
-        if not rules:
-            return (c.Infra.SG, c.Infra.SCAN, str(project_dir))
-        return self._scan_command(rules[0], project_dir)
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Parse a single ast-grep scan result into issues."""
-        _ = ctx
-        rules = discover_rules()
-        rule_path = rules[0] if rules else project_dir
-        issues = self._issues_from_scan(result, rule_path)
-        return not issues, issues

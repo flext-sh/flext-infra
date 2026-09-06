@@ -528,7 +528,8 @@ Infra:
           apply_what: apply
         - name: fix
           default_what: check
-          whats: [check, all, apply]
+          # enforcement = catalog fix actions (check fix-enforcement --safe-only).
+          whats: [check, all, apply, enforcement]
           apply_guarded: true
           apply_what: apply
         - name: run

@@ -313,6 +313,23 @@ class TestsEnforcementFixerOrchestrator:
         tm.fail(result)
         tm.that(result.error, has="unsafe under --safe-only")
 
+    def test_every_catalog_fix_action_resolves_to_an_adapter(
+        self, tmp_path: Path
+    ) -> None:
+        """Preflight proves the catalog and the adapter registry agree.
+
+        An enabled rule declaring a fix action the runtime cannot route is a
+        contract defect: it must stop the run before any project is touched,
+        not surface later as a per-project failed fix.
+        """
+        orchestrator = FlextInfraEnforcementFixerOrchestrator(
+            repository_root=tmp_path, selected_projects=("demo",)
+        )
+
+        result = orchestrator.execute()
+
+        tm.that((result.error or ""), lacks="no registered fixer adapter")
+
     def test_gate_dry_run_uses_non_mutating_check_preview(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

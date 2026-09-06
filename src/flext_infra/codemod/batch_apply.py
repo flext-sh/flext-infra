@@ -17,7 +17,7 @@ from flext_cli import cli
 from flext_infra import config, m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
 from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.discovery import discover_rules
+from flext_infra.codemod.discovery import discover_rules, index_rules_by_id
 
 _CHECKPOINT_MESSAGE: Final[str] = "chore(git): checkpoint before ast-grep batch apply"
 
@@ -57,21 +57,30 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
     def _rules(self) -> p.Result[t.SequenceOf[Path]]:
         """Resolve the batch: packaged cascade plus project-local own rules.
 
-        Project-local ``ast-grep-rules/`` files are applied last so a
-        hand-written rule overrides a packaged rule with the same rule ID.
+        Project-local rule directories are indexed last so a hand-written rule
+        overrides a packaged rule with the same ast-grep rule id.
         """
-        rules = {rule.stem: rule for rule in discover_rules()}
+        discovered = discover_rules()
+        if discovered.failure:
+            return discovered
+        rules: dict[str, Path] = {}
+        indexed = index_rules_by_id(rules, discovered.value, source="packages")
+        if indexed.failure:
+            return r[t.SequenceOf[Path]].from_failure(indexed)
         for rule_dir_name in config.Infra.codegen.sgconfig.rule_dirs:
             rule_dir = self.repository_root / rule_dir_name
             if not rule_dir.is_dir():
                 continue
-            for rule_file in sorted(rule_dir.rglob("*.yml")):
-                rules[rule_file.stem] = rule_file
+            indexed = index_rules_by_id(
+                rules, tuple(sorted(rule_dir.rglob("*.yml"))), source=rule_dir_name
+            )
+            if indexed.failure:
+                return r[t.SequenceOf[Path]].from_failure(indexed)
         if not rules:
             return r[t.SequenceOf[Path]].fail(
                 f"no ast-grep rules discovered for {self.repository_root}"
             )
-        return r[t.SequenceOf[Path]].ok(tuple(sorted(rules.values())))
+        return r[t.SequenceOf[Path]].ok(tuple(sorted(set(rules.values()))))
 
     @override
     def execute(self) -> p.Result[t.Cli.ResultValue]:
@@ -83,6 +92,16 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                 rules_result.error or "ast-grep rule discovery failed"
             )
         rules = rules_result.value
+        tested = FlextInfraModGateEngine.test_rules(
+            root,
+            tuple(
+                root / test_dir for test_dir in config.Infra.codegen.sgconfig.test_dirs
+            ),
+        )
+        if tested.failure:
+            return r[t.Cli.ResultValue].fail(
+                tested.error or "ast-grep rule tests failed"
+            )
         effective_dry_run: bool = self.effective_dry_run
         if effective_dry_run:
             pending = FlextInfraModGateEngine.scan(root, rules, fix=False)
@@ -91,9 +110,10 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     pending.error or "ast-grep scan failed"
                 )
             if pending.value.nodes:
+                listed = "\n".join(pending.value.findings)
                 return r[t.Cli.ResultValue].fail(
                     f"{pending.value.nodes} pending actionable ast-grep fix(es) "
-                    f"across {len(rules)} discovered rule file(s)"
+                    f"across {len(rules)} discovered rule file(s):\n{listed}"
                 )
             cli.display_text("mod: no pending ast-grep fixes")
             return r[t.Cli.ResultValue].ok(True)

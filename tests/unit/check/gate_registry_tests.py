@@ -1,7 +1,7 @@
-"""Tests for gate registration of the new durissimas gates.
+"""Gate vocabulary contract: one SSOT, every gate reachable.
 
-`loc-cap`, `boundary`, and `canonical-alias` must be in the SSOT-derived
-ALLOWED_GATES and resolve through the registry.
+``c.Infra.SARIF_TOOL_INFO`` owns the gate ids; the registry classes and the
+`make check` vocabulary are derived from it and must never diverge.
 """
 
 from __future__ import annotations
@@ -18,20 +18,25 @@ if TYPE_CHECKING:
 
 
 class TestGateRegistry:
-    def test_new_gates_in_allowed(self) -> None:
-        tm.that("loc-cap" in c.Infra.ALLOWED_GATES, eq=True)
-        tm.that("boundary" in c.Infra.ALLOWED_GATES, eq=True)
-        tm.that("canonical-alias" in c.Infra.ALLOWED_GATES, eq=True)
+    def test_every_allowed_gate_resolves_in_registry(self) -> None:
+        registry = FlextInfraGateRegistry.default()
+        for gate_id in c.Infra.ALLOWED_GATES:
+            gate_cls = registry.get(gate_id)
+            tm.that(gate_cls is not None, eq=True)
+            tm.that(gate_cls is not None and gate_cls.gate_id == gate_id, eq=True)
 
-    def test_registry_resolves_loc_cap(self) -> None:
-        tm.that(FlextInfraGateRegistry.default().get("loc-cap") is not None, eq=True)
+    def test_check_vocabulary_is_allowed_minus_mutating(self) -> None:
+        allowed = frozenset(c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+        tm.that(allowed, eq=c.Infra.ALLOWED_GATES - c.Infra.MUTATING_GATES)
+        tm.that(allowed & c.Infra.MUTATING_GATES, eq=frozenset())
 
-    def test_registry_resolves_boundary(self) -> None:
-        tm.that(FlextInfraGateRegistry.default().get("boundary") is not None, eq=True)
-
-    def test_registry_resolves_canonical_alias(self) -> None:
+    def test_default_and_fixable_are_subsets_of_check_vocabulary(self) -> None:
+        allowed = frozenset(c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES)
         tm.that(
-            FlextInfraGateRegistry.default().get("canonical-alias") is not None, eq=True
+            frozenset(c.Infra.PROJECT_CHECK_GATES_DEFAULT_VALUES) <= allowed, eq=True
+        )
+        tm.that(
+            frozenset(c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES) <= allowed, eq=True
         )
 
     def test_canonical_alias_check_detects_root_tests_consumer(

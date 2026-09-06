@@ -39,6 +39,9 @@ if TYPE_CHECKING:
     from .test_infra_transformer_logging_modernizer import (
         TestsFlextInfraTransformersLoggingModernizer,
     )
+    from .test_infra_transformer_mro_remover import (
+        TestsFlextInfraTransformersMroRemover,
+    )
     from .test_infra_transformer_nested_class_propagation import (
         TestsFlextInfraTransformersInfraTransformerNestedClassPropagation,
     )
@@ -63,6 +66,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
     "TestsFlextInfraTransformersLoggingModernizer",
+    "TestsFlextInfraTransformersMroRemover",
     "TestsFlextInfraTransformersOpenEncoding",
     "TestsFlextInfraTransformersPattern",
     "TestsFlextInfraTransformersPatternList",
@@ -120,6 +124,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".test_infra_transformer_logging_modernizer": (
                 "TestsFlextInfraTransformersLoggingModernizer",
+            ),
+            ".test_infra_transformer_mro_remover": (
+                "TestsFlextInfraTransformersMroRemover",
             ),
             ".test_infra_transformer_nested_class_propagation": (
                 "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",

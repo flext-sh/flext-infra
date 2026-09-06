@@ -166,6 +166,35 @@ class TestsFlextInfraPytestRunner:
 
         tm.that(runner.build_command(report_dir), has=("-n", "7"))
 
+    def test_controller_selection_switches_workers_to_prioritize_only(
+        self, tmp_path: Path
+    ) -> None:
+        """Resolved node ids replace the target so workers never re-select.
+
+        Two xdist workers resolving the same testmon selection concurrently
+        can read the database mid-write and collect different sets, which
+        aborts the run with "Different tests were collected". Passing the
+        node ids the controller already resolved removes that race.
+        """
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+        node_ids = ("tests/unit/a_tests.py::TestA::test_one",)
+
+        command = runner.build_command(report_dir, node_ids)
+
+        tm.that(command, has=list(node_ids))
+        tm.that(command, lacks="tests")
+
+    def test_empty_resolved_selection_runs_in_one_process(self, tmp_path: Path) -> None:
+        """Nothing selected means nothing to distribute across workers."""
+        runner = self._runner(tmp_path)
+        report_dir = tmp_path / ".reports" / "tests" / "run"
+
+        command = runner.build_command(report_dir, ())
+
+        tm.that(command, has=["-n", "0"])
+        tm.that(command, lacks="--dist")
+
     def test_profile_requires_explicit_opt_in(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

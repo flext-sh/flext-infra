@@ -261,16 +261,8 @@ class FlextInfraConstantsBase(
     MAKE: Final[str] = "make"
     "Make build tool binary."
 
-    # Quality gate identifiers.
     CHECK: Final[str] = "check"
     "Generic check command/subcommand identifier."
-    LINT: Final[str] = "lint"
-    FORMAT: Final[str] = "format"
-    MARKDOWN: Final[str] = "markdown"
-    SILENT_FAILURE: Final[str] = "silent-failure"
-    DEFAULT_CSV: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
-    )
 
     @unique
     class TomlMergeMode(StrEnum):

@@ -23,6 +23,7 @@ from flext_infra.transformers.hardcoded_version import (
 from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
 )
+from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
 from flext_infra.transformers.project_alias_migrator import (
@@ -60,6 +61,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
         "import_modernizer": FlextInfraRefactorImportModernizer,
+        "mro_remover": FlextInfraRefactorMroRemover,
         "open_encoding": FlextInfraRefactorOpenEncoding,
         "pattern": FlextInfraRefactorPatternTransformer,
         "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,

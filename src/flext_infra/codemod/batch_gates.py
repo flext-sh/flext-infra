@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Final
 
 from flext_infra import c, m, p, r, t, u
+from flext_infra.codemod.discovery import rule_documents
 
 _TOOL_TIMEOUT_SECONDS: Final[int] = 900
 
@@ -33,6 +34,10 @@ class FlextInfraModScanReport(m.ArbitraryTypesModel):
     nodes: Annotated[t.NonNegativeInt, m.Field(description="actionable node count")]
     files: Annotated[
         frozenset[Path], m.Field(description="files containing actionable nodes")
+    ]
+    findings: Annotated[
+        t.StrSequence,
+        m.Field(description="actionable findings as `<file>:<line> <ruleId>`"),
     ]
 
 
@@ -77,40 +82,40 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _fixable_rule_ids(rule: Path) -> p.Result[frozenset[str]]:
-        documents = rule.read_text(encoding="utf-8").split("\n---")
-        fixable_ids: set[str] = set()
-        for raw_document in documents:
-            if not any(
-                line.strip() and not line.lstrip().startswith("#")
-                for line in raw_document.splitlines()
-            ):
-                continue
-            parsed = u.Cli.yaml_parse(raw_document)
-            if parsed.failure:
-                return r[frozenset[str]].fail(
-                    parsed.error or f"invalid ast-grep rule document in {rule}"
-                )
-            rule_id = parsed.value.get("id")
-            if not isinstance(rule_id, str) or not rule_id:
-                return r[frozenset[str]].fail(
-                    f"ast-grep rule document missing required id: {rule}"
-                )
-            if "fix" in parsed.value:
-                fixable_ids.add(rule_id)
-        return r[frozenset[str]].ok(frozenset(fixable_ids))
+        documents = rule_documents(rule)
+        if documents.failure:
+            return r[frozenset[str]].from_failure(documents)
+        return r[frozenset[str]].ok(
+            frozenset(
+                str(document["id"]) for document in documents.value if "fix" in document
+            )
+        )
 
     @staticmethod
     def _actionable_findings(
         stdout: str, fixable_ids: frozenset[str]
-    ) -> FlextInfraModScanReport:
+    ) -> p.Result[FlextInfraModScanReport]:
+        """Parse `sg scan --json=stream` output into the verified rewrite set.
+
+        Every stdout line is one JSON finding by contract; a line that is not
+        is a tool failure, never a finding to skip. A finding is actionable
+        when its rule is fixable and its replacement differs from the match.
+        """
         nodes = 0
         files: set[Path] = set()
+        findings: list[str] = []
         for raw_line in stdout.splitlines():
-            parsed = u.Cli.json_parse(raw_line.strip())
-            if parsed.failure or not isinstance(parsed.value, Mapping):
+            line = raw_line.strip()
+            if not line:
                 continue
+            parsed = u.Cli.json_parse(line)
+            if parsed.failure or not isinstance(parsed.value, Mapping):
+                return r[FlextInfraModScanReport].fail(
+                    f"ast-grep emitted a non-JSON finding line: {line}"
+                )
             finding = parsed.value
-            if finding.get("ruleId") not in fixable_ids:
+            rule_id = finding.get("ruleId")
+            if rule_id not in fixable_ids:
                 continue
             text = finding.get("text")
             replacement = finding.get("replacement")
@@ -121,7 +126,14 @@ class FlextInfraModGateEngine:
                 continue
             nodes += 1
             files.add(Path(file))
-        return FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
+            # ast-grep reports zero-based lines; findings print one-based.
+            line_no = u.Cli.json_nested_int(finding, "range", "start", "line") + 1
+            findings.append(f"{file}:{line_no} {rule_id}")
+        return r[FlextInfraModScanReport].ok(
+            FlextInfraModScanReport(
+                nodes=nodes, files=frozenset(files), findings=tuple(findings)
+            )
+        )
 
     @classmethod
     def _count_tool_errors(cls, stdout: str) -> int:
@@ -135,6 +147,26 @@ class FlextInfraModGateEngine:
                 errors = value.get("errors")
                 return len(errors) if isinstance(errors, list) else 0
         return cls._count_json_lines(stdout)
+
+    @classmethod
+    def test_rules(cls, root: Path, test_dirs: t.SequenceOf[Path]) -> p.Result[bool]:
+        """Run `sg test` over the project's rule fixtures before any scan.
+
+        A rule with fixtures is only trusted once its snapshots pass; a failing
+        or erroring `sg test` stops the circuit. Projects without a fixture
+        directory have nothing to test and return ``False``.
+        """
+        if not any(test_dir.is_dir() for test_dir in test_dirs):
+            return r[bool].ok(False)
+        run = u.Cli.run_raw(
+            (c.Infra.SG, "test"), cwd=root, timeout=_TOOL_TIMEOUT_SECONDS
+        )
+        if run.failure:
+            return r[bool].fail(run.error or "sg test execution failed")
+        if run.value.exit_code != 0:
+            detail = (run.value.stderr or run.value.stdout).strip()
+            return r[bool].fail(detail or f"sg test exited with {run.value.exit_code}")
+        return r[bool].ok(True)
 
     @classmethod
     def measure(cls, root: Path) -> p.Result[FlextInfraModGateSnapshot]:
@@ -195,6 +227,7 @@ class FlextInfraModGateEngine:
         """Scan or apply actionable rewrite documents."""
         nodes = 0
         files: set[Path] = set()
+        findings: list[str] = []
         for rule in rules:
             fixable = cls._fixable_rule_ids(rule)
             if fixable.failure:
@@ -206,9 +239,13 @@ class FlextInfraModGateEngine:
             run = cls._run_tool(root, tuple(command))
             if run.failure:
                 return r[FlextInfraModScanReport].from_failure(run)
-            report = cls._actionable_findings(run.value.stdout or "", fixable.value)
+            parsed = cls._actionable_findings(run.value.stdout or "", fixable.value)
+            if parsed.failure:
+                return parsed
+            report = parsed.value
             nodes += report.nodes
             files.update(report.files)
+            findings.extend(report.findings)
             if fix and report.nodes:
                 apply_run = cls._run_tool(
                     root,
@@ -224,7 +261,9 @@ class FlextInfraModGateEngine:
                 if apply_run.failure:
                     return r[FlextInfraModScanReport].from_failure(apply_run)
         return r[FlextInfraModScanReport].ok(
-            FlextInfraModScanReport(nodes=nodes, files=frozenset(files))
+            FlextInfraModScanReport(
+                nodes=nodes, files=frozenset(files), findings=tuple(findings)
+            )
         )
 
 

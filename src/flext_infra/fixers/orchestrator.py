@@ -10,7 +10,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_core import r
-from flext_infra import c, m, p, t, u
+from flext_infra import m, p, t, u
 from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
@@ -95,24 +95,26 @@ class FlextInfraEnforcementFixerOrchestrator(
     ) -> tuple[me.EnforcementRuleSpec, ...]:
         """Return enabled rules with fix actions matching the CLI filter.
 
-        In the default mode (no explicit ``--rules``), adapterless fix actions
-        stay selected so the routing phase emits a failed fix instead of
-        silently hiding an unsupported catalog contract. When ``--rules`` is
-        used, every requested rule must be enabled, declare a fix action, and
-        have an available adapter; otherwise a ``ValueError`` is raised so the
-        caller can surface a clear failure.
+        Preflight: every enabled rule that declares a fix action must resolve
+        to exactly one registered adapter. A catalog contract the runtime
+        cannot honour is a defect of the catalog or the adapter registry, so it
+        fails here, before any project is touched, naming rule and action —
+        never a per-project failed fix discovered mid-run.
         """
         catalog = catalog or FlextInfraEnforcementEngine.canonical_catalog()
         adapterless = tuple(
-            rule.id
+            f"{rule.id} {rule.fix_action.kind}:{rule.fix_action.target}"
             for rule in catalog.enabled_rules()
             if rule.fix_action is not None and not self._has_adapter(rule)
         )
+        if adapterless:
+            msg = (
+                "enforcement catalog declares fix actions with no registered "
+                f"fixer adapter: {', '.join(adapterless)}"
+            )
+            raise ValueError(msg)
         return FlextInfraEnforcementEngine.selected_rules(
-            catalog=catalog,
-            wanted=self.rules,
-            safe_only=self.safe_only,
-            adapterless=adapterless,
+            catalog=catalog, wanted=self.rules, safe_only=self.safe_only
         )
 
     def _has_adapter(self, rule: me.EnforcementRuleSpec) -> bool:
@@ -155,29 +157,15 @@ class FlextInfraEnforcementFixerOrchestrator(
     def _fix_project(
         self, project: p.Infra.ProjectInfo, rules: t.SequenceOf[me.EnforcementRuleSpec]
     ) -> t.SequenceOf[m.Infra.ProjectFixResult]:
-        """Collect violations and apply fixes for one project."""
+        """Collect violations and apply fixes for one project.
+
+        Every rule reaching this point resolved to an adapter at preflight. An
+        adapter that raises is a defect of that adapter: the exception escapes
+        with its traceback instead of becoming a per-project finding.
+        """
         project_dir = project.path
         results: list[m.Infra.ProjectFixResult] = []
-        by_adapter, unhandled = self._group_by_adapter(rules)
-        if unhandled:
-            results.append(
-                m.Infra.ProjectFixResult(
-                    project=project_dir.name,
-                    failed=tuple(
-                        self._collection_failure(
-                            project_dir,
-                            rule,
-                            "no registered fixer adapter for "
-                            f"{rule.fix_action.kind if rule.fix_action else 'none'}:"
-                            f"{rule.fix_action.target if rule.fix_action else 'none'}",
-                        )
-                        for rule in unhandled
-                    ),
-                )
-            )
-            if self.fail_fast:
-                return tuple(results)
-        for adapter_cls, adapter_rules in by_adapter.items():
+        for adapter_cls, adapter_rules in self._group_by_adapter(rules).items():
             adapter = self._instantiate_adapter(adapter_cls)
             violations, failures = self._collect_violations(
                 project_dir=project_dir, rules=adapter_rules
@@ -192,30 +180,7 @@ class FlextInfraEnforcementFixerOrchestrator(
                     return tuple(results)
             if not violations:
                 continue
-            try:
-                result = adapter.fix_project(
-                    project_dir, violations, self._command_ctx()
-                )
-            except c.EXC_BROAD_RUNTIME as exc:
-                rule_id = violations[0][0].id
-                results.append(
-                    m.Infra.ProjectFixResult(
-                        project=project_dir.name,
-                        failed=(
-                            m.Infra.FailedFix(
-                                rule_id=rule_id,
-                                file_path=str(project_dir),
-                                error=(
-                                    f"{adapter_cls.__name__} failed: "
-                                    f"{type(exc).__name__}: {exc}"
-                                ),
-                            ),
-                        ),
-                    )
-                )
-                if self.fail_fast:
-                    return tuple(results)
-                continue
+            result = adapter.fix_project(project_dir, violations, self._command_ctx())
             results.append(result)
             if result.failed and self.fail_fast:
                 return tuple(results)
@@ -223,26 +188,21 @@ class FlextInfraEnforcementFixerOrchestrator(
 
     def _group_by_adapter(
         self, rules: t.SequenceOf[me.EnforcementRuleSpec]
-    ) -> tuple[
-        dict[type[FlextInfraFixerAdapter], list[me.EnforcementRuleSpec]],
-        tuple[me.EnforcementRuleSpec, ...],
-    ]:
-        """Group rules by the adapter that can handle their fix_action."""
+    ) -> dict[type[FlextInfraFixerAdapter], list[me.EnforcementRuleSpec]]:
+        """Group preflighted rules by the adapter that owns their fix_action."""
         grouped: dict[type[FlextInfraFixerAdapter], list[me.EnforcementRuleSpec]] = (
             defaultdict(list)
         )
-        unhandled: list[me.EnforcementRuleSpec] = []
         for rule in rules:
             fix_action = rule.fix_action
             if fix_action is None:
-                unhandled.append(rule)
                 continue
             adapter_cls = self._adapter_for(fix_action)
-            if adapter_cls is not None:
-                grouped[adapter_cls].append(rule)
-                continue
-            unhandled.append(rule)
-        return grouped, tuple(unhandled)
+            if adapter_cls is None:
+                msg = f"fix action without adapter escaped preflight: {rule.id}"
+                raise ValueError(msg)
+            grouped[adapter_cls].append(rule)
+        return grouped
 
     def _adapter_for(
         self, fix_action: me.EnforcementFixAction

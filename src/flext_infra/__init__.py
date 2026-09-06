@@ -78,7 +78,7 @@ if TYPE_CHECKING:
         FlextInfraModGateSnapshot,
         FlextInfraModScanReport,
     )
-    from .codemod.discovery import discover_rule_ids, discover_rules
+    from .codemod.discovery import discover_rules, index_rules_by_id, rule_documents
     from .constants import FlextInfraConstants, FlextInfraConstants as c
     from .deps.detection import FlextInfraDependencyDetectionService
     from .deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
@@ -234,6 +234,7 @@ if TYPE_CHECKING:
     from .transformers.import_modernizer import FlextInfraRefactorImportModernizer
     from .transformers.lazy_import_fixer import FlextInfraRefactorLazyImportFixer
     from .transformers.logging_modernizer import FlextInfraRefactorLoggingModernizer
+    from .transformers.mro_remover import FlextInfraRefactorMroRemover
     from .transformers.nested_class_propagation import (
         FlextInfraNestedClassPropagationTransformer,
     )
@@ -445,6 +446,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorLegacyTextOps",
     "FlextInfraRefactorLoggingModernizer",
     "FlextInfraRefactorLooseClassScanner",
+    "FlextInfraRefactorMroRemover",
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorOrchestrator",
     "FlextInfraRefactorPatternModernizer",
@@ -529,7 +531,6 @@ __all__: tuple[str, ...] = (
     "d",
     "deps",
     "detectors",
-    "discover_rule_ids",
     "discover_rules",
     "docs",
     "docs_main",
@@ -538,6 +539,7 @@ __all__: tuple[str, ...] = (
     "fixers",
     "gates",
     "h",
+    "index_rules_by_id",
     "infra",
     "m",
     "main",
@@ -549,6 +551,7 @@ __all__: tuple[str, ...] = (
     "refactor",
     "register_smell_fixer",
     "release",
+    "rule_documents",
     "s",
     "services",
     "settings",
@@ -609,7 +612,11 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraModGateSnapshot",
                 "FlextInfraModScanReport",
             ),
-            ".codemod.discovery": ("discover_rule_ids", "discover_rules"),
+            ".codemod.discovery": (
+                "discover_rules",
+                "index_rules_by_id",
+                "rule_documents",
+            ),
             ".constants": ("FlextInfraConstants", "c"),
             ".deps": ("deps",),
             ".deps.detection": ("FlextInfraDependencyDetectionService",),
@@ -797,6 +804,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".transformers.logging_modernizer": (
                 "FlextInfraRefactorLoggingModernizer",
             ),
+            ".transformers.mro_remover": ("FlextInfraRefactorMroRemover",),
             ".transformers.nested_class_propagation": (
                 "FlextInfraNestedClassPropagationTransformer",
             ),

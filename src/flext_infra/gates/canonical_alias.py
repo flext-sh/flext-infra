@@ -29,8 +29,6 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     gate_id: ClassVar[str] = "canonical-alias"
     gate_name: ClassVar[str] = "Canonical Alias"
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = "Flext Canonical Alias Detector"
-    tool_url: ClassVar[str] = "internal://flext-infra/canonical-alias"
 
     # Packages that define the canonical aliases themselves. Rewriting imports
     # inside them risks creating import cycles during package initialization.

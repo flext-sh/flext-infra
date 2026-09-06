@@ -115,9 +115,12 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
         tm.that(
             sdist["only-include"],
-            eq=sorted(
-                ["src/app", "src/app_client", "src/app_launch.py", *present_data_dirs]
-            ),
+            eq=sorted([
+                "src/app",
+                "src/app_client",
+                "src/app_launch.py",
+                *present_data_dirs,
+            ]),
         )
 
 

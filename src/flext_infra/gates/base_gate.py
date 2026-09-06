@@ -19,8 +19,6 @@ class FlextInfraGate:
     gate_id: ClassVar[str] = ""
     gate_name: ClassVar[str] = ""
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = ""
-    tool_url: ClassVar[str] = ""
 
     def __init__(
         self, repository_root: Path, *, runner: p.Cli.CommandRunner | None = None

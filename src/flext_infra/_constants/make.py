@@ -10,6 +10,8 @@ import re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
+from flext_infra._constants.check import FlextInfraConstantsCheck
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -70,14 +72,29 @@ class FlextInfraConstantsMake:
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
     CHECK_GATES_VARIABLE: Final[str] = "CHECK_GATES"
     "Make variable carrying the gate selection."
-    # The BUILT-IN check vocabulary: read-only gates this package implements.
-    # It is the BASE of the vocabulary, never the whole of it -- a project
-    # declares its own gates in config and they are unioned in by
-    # MakeSpec.check_gates_allowed. `format` is NOT here: it rewrites files, so
-    # it is owned by `make fmt APPLY=Y` / `make fix APPLY=Y`
-    # (PROJECT_CHECK_GATES_FIXABLE_VALUES) and a read-only verb must never
-    # invoke it.
-    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = (
+    # The BUILT-IN check vocabulary: every read-only gate this package
+    # implements, derived from the gate SSOT (c.Infra.SARIF_TOOL_INFO) so a
+    # registered gate is always reachable through `make check`. It is the BASE
+    # of the vocabulary, never the whole of it -- a project declares its own
+    # gates in config and they are unioned in by MakeSpec.check_gates_allowed.
+    # Mutating gates (`format`) are excluded: they rewrite files, so they are
+    # owned by `make fmt APPLY=Y` / `make fix APPLY=Y` and a read-only verb
+    # must never invoke them.
+    PROJECT_CHECK_GATES_ALLOWED_VALUES: Final[tuple[str, ...]] = tuple(
+        gate
+        for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
+        if gate not in FlextInfraConstantsCheck.MUTATING_GATES
+    )
+    # The gates CI=N owns: the type checkers only. They are the slow, whole-
+    # program analyses, so CI=Y runs the strict complement of this set -- ruff
+    # lint included -- and the two contexts can never overlap nor leave a gate
+    # unowned. An unset CI runs every allowed gate.
+    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = ("pyrefly", "mypy")
+    # The gates a bare `make check` runs. Every allowed gate stays addressable
+    # (`make check WHAT=<gate>`); this explicit set is the fleet-wide default
+    # posture, so widening it is a deliberate fleet decision, not a side effect
+    # of registering a new gate.
+    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
         "lint",
         "pyrefly",
         "mypy",
@@ -87,14 +104,6 @@ class FlextInfraConstantsMake:
         "smells",
         "direnv",
         "duplication",
-    )
-    # The gates CI=N owns: the type checkers only. They are the slow, whole-
-    # program analyses, so CI=Y runs the strict complement of this set -- ruff
-    # lint included -- and the two contexts can never overlap nor leave a gate
-    # unowned. An unset CI runs every allowed gate.
-    PROJECT_CHECK_GATES_LOCAL_VALUES: Final[tuple[str, ...]] = ("pyrefly", "mypy")
-    PROJECT_CHECK_GATES_DEFAULT_VALUES: Final[tuple[str, ...]] = (
-        PROJECT_CHECK_GATES_ALLOWED_VALUES
     )
     # flext-38p39: the gates that can repair what they report. `make fix APPLY=Y`
     # routes through `check run --fix`, which without a selector would execute
@@ -109,7 +118,11 @@ class FlextInfraConstantsMake:
     # fmt/fix's ruff stage, and this set must stay DISJOINT from the CI=N gates
     # (lint, pyrefly) so `make fix` under the local token resolves to a
     # documented no-op instead of colliding with the pre-push gate set.
-    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = ("markdown", "smells")
+    PROJECT_CHECK_GATES_FIXABLE_VALUES: Final[tuple[str, ...]] = (
+        "markdown",
+        "smells",
+        "canonical-alias",
+    )
     PROJECT_CHECK_GATES_ALLOWED: Final[str] = ",".join(
         PROJECT_CHECK_GATES_ALLOWED_VALUES
     )

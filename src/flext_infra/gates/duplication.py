@@ -41,8 +41,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][1]
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
