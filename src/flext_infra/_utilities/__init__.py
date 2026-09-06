@@ -3,15 +3,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import _git as _git
-    from . import _rope as _rope
+    from . import _git as _git, _rope as _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -61,6 +59,8 @@ if TYPE_CHECKING:
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
+    from .class_nesting_cst import FlextInfraUtilitiesClassNestingCst
+    from .class_nesting_references import FlextInfraUtilitiesClassNestingReferences
     from .codegen import FlextInfraUtilitiesCodegen
     from .codegen_facades import FlextInfraUtilitiesCodegenFacades
     from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
@@ -87,6 +87,7 @@ if TYPE_CHECKING:
     from .docs_scope import FlextInfraUtilitiesDocsScope
     from .docs_validate import FlextInfraUtilitiesDocsValidate
     from .git import FlextInfraUtilitiesGit
+    from .iteration import FlextInfraUtilitiesIteration
     from .iteration_directory import FlextInfraUtilitiesIterationDirectory
     from .iteration_matching import FlextInfraUtilitiesIterationMatching
     from .iteration_project import FlextInfraUtilitiesIterationProject
@@ -104,6 +105,7 @@ if TYPE_CHECKING:
     from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
     from .private_imports import FlextInfraUtilitiesPrivateImports
     from .process import FlextInfraUtilitiesProcess
+    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -154,10 +156,13 @@ if TYPE_CHECKING:
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
+    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRopeProject",
     "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
+    "FlextInfraUtilitiesClassNestingCst",
+    "FlextInfraUtilitiesClassNestingReferences",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
@@ -213,6 +218,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
+    "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
     "FlextInfraUtilitiesIterationProject",
@@ -348,6 +354,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
+            ".class_nesting_cst": ("FlextInfraUtilitiesClassNestingCst",),
+            ".class_nesting_references": ("FlextInfraUtilitiesClassNestingReferences",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".codegen_facades": ("FlextInfraUtilitiesCodegenFacades",),
             ".codegen_file_plan": ("FlextInfraUtilitiesCodegenFilePlan",),
@@ -376,6 +384,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             ".git": ("FlextInfraUtilitiesGit",),
+            ".iteration": ("FlextInfraUtilitiesIteration",),
             ".iteration_directory": ("FlextInfraUtilitiesIterationDirectory",),
             ".iteration_matching": ("FlextInfraUtilitiesIterationMatching",),
             ".iteration_project": ("FlextInfraUtilitiesIterationProject",),
@@ -395,6 +404,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".private_imports": ("FlextInfraUtilitiesPrivateImports",),
             ".process": ("FlextInfraUtilitiesProcess",),
+            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",

@@ -8,7 +8,8 @@ from typing import Annotated, ClassVar
 
 from flext_core import m, u
 from flext_infra import c, t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCheck:
@@ -236,11 +237,18 @@ class FlextInfraModelsCheck:
 
         id: Annotated[str, m.Field(description="Rule identifier")]
         short_description: Annotated[str, m.Field(description="Rule short description")]
+        help_uri: Annotated[
+            str, m.Field(description="Documentation URL of the tool behind the gate")
+        ]
 
         @u.model_serializer
         def _serialize(self) -> t.JsonMapping:
             """Serialize."""
-            return {"id": self.id, "shortDescription": {"text": self.short_description}}
+            return {
+                "id": self.id,
+                "shortDescription": {"text": self.short_description},
+                "helpUri": self.help_uri,
+            }
 
     class SarifLocation(m.ContractModel):
         """Compact SARIF location source span."""

@@ -5,7 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c
+<<<<<<< HEAD
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
+=======
+from flext_infra.check import FlextInfraGateRegistry
+>>>>>>> origin/0.12.0-dev
 from flext_infra.gates.duplication import FlextInfraDuplicationGate
 from flext_tests import tm
 from tests import m, u
@@ -33,8 +37,13 @@ class TestDuplicationGate:
     """Exercise observable gate behavior with the real setup-provisioned tool."""
 
     def test_registry_exposes_the_canonical_gate(self) -> None:
+<<<<<<< HEAD
         gate = FlextInfraGateRegistry.default().create("duplication", Path.cwd())
         tm.that(isinstance(gate, FlextInfraDuplicationGate), eq=True)
+=======
+        gate = FlextInfraGateRegistry.default().get(FlextInfraDuplicationGate.gate_id)
+        tm.that(gate is FlextInfraDuplicationGate, eq=True)
+>>>>>>> origin/0.12.0-dev
 
     def test_empty_workspace_scope_is_a_blocking_failure(self, tmp_path: Path) -> None:
         project = tmp_path / "missing-project"

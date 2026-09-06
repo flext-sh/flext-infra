@@ -195,7 +195,6 @@ class FlextInfraCodegenVscodeMixin:
         extensions_changed = cls._apply_union_settings(
             settings, spec.map_union_settings
         )
-        return r[bool].ok(artifacts_changed or extensions_changed or changed.value)
 
     @classmethod
     def _apply_enforced_settings(

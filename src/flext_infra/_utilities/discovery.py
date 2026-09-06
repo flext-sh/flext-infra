@@ -8,17 +8,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
-from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
+from .._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from .._utilities.pyproject import FlextInfraUtilitiesPyproject
+from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from importlib.machinery import ModuleSpec
 
     from flext_infra import p
 
@@ -32,17 +32,6 @@ class FlextInfraUtilitiesDiscovery(
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
-
-    @staticmethod
-    def _package_spec(package_name: str) -> ModuleSpec | None:
-        """Resolve a dotted package without asking importlib for a missing parent."""
-        spec: ModuleSpec | None = None
-        parts = package_name.split(".")
-        for depth in range(1, len(parts) + 1):
-            spec = importlib_util.find_spec(".".join(parts[:depth]))
-            if spec is None:
-                return None
-        return spec
 
     @staticmethod
     def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
@@ -203,18 +192,18 @@ class FlextInfraUtilitiesDiscovery(
         # Standalone consumers inherit aliases
         # from installed FLEXT artifacts; plain modules are never facade parents.
         try:
-            spec = FlextInfraUtilitiesDiscovery._package_spec(package_name)
-        except c.EXC_OS_TYPE_VALUE:
-            return False
-        else:
-            return spec is not None and spec.submodule_search_locations is not None
+            spec = importlib_util.find_spec(package_name)
+        except ModuleNotFoundError:
+            # A missing parent package means the name cannot resolve here.
+            spec = None
+        return spec is not None and spec.submodule_search_locations is not None
 
     @classmethod
     @cache
     def installed_package_exports(cls, package_name: str) -> frozenset[str]:
         """Return the explicit ABI published by one installed package root."""
         try:
-            spec = cls._package_spec(package_name)
+            spec = importlib_util.find_spec(package_name)
         except c.EXC_OS_TYPE_VALUE:
             return frozenset()
         if spec is None or spec.submodule_search_locations is None or not spec.origin:
@@ -379,8 +368,9 @@ class FlextInfraUtilitiesDiscovery(
                 return Path(candidate)
         try:
             installed = importlib_util.find_spec(package_name)
-        except c.EXC_OS_TYPE_VALUE:
-            return None
+        except ModuleNotFoundError:
+            # A missing parent package means the name cannot resolve here.
+            installed = None
         if (
             installed is not None
             and installed.submodule_search_locations is not None
@@ -430,7 +420,7 @@ class FlextInfraUtilitiesDiscovery(
         ownership_root = (
             project_root.resolve() if project_root is not None else resolved_root
         )
-        from flext_infra._utilities.git import FlextInfraUtilitiesGit
+        from .._utilities.git import FlextInfraUtilitiesGit
 
         for candidate in (execution_dir, *execution_dir.parents):
             if not (candidate / c.Infra.GITMODULES).is_file():

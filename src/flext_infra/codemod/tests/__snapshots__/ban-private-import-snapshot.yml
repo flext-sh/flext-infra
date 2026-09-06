@@ -13,14 +13,17 @@ snapshots:
       start: 0
       end: 42
   from flext_core._protocols import FlextProtocols:
+<<<<<<< HEAD
     labels:
     - source: from flext_core._protocols import FlextProtocols
       style: primary
       start: 0
       end: 48
   import flext_core._utilities as utilities:
+=======
+>>>>>>> origin/0.12.0-dev
     labels:
-    - source: import flext_core._utilities as utilities
+    - source: from flext_core._protocols import FlextProtocols
       style: primary
       start: 0
-      end: 41
+      end: 48

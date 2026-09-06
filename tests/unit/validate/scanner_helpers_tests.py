@@ -47,24 +47,40 @@ class TestScannerHelpers:
         """Canonical file selection prefers tracked files when Git is active."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
+<<<<<<< HEAD
         tm.that(init_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         email_result = u.Cli.run_raw(
             ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
         )
         tm.ok(email_result)
+<<<<<<< HEAD
         tm.that(email_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(email_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         name_result = u.Cli.run_raw(
             ["git", "config", "user.name", "Test User"], cwd=tmp_path
         )
         tm.ok(name_result)
+<<<<<<< HEAD
         tm.that(name_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(name_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         tracked_file = tmp_path / "tracked.py"
         tracked_file.write_text("")
         untracked_file = tmp_path / "untracked.py"
         untracked_file.write_text("")
         add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
         tm.ok(add_result)
+<<<<<<< HEAD
         tm.that(add_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(add_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
 
         files = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
 
@@ -76,7 +92,11 @@ class TestScannerHelpers:
         """An ignored nested scope cannot bypass its ancestor repository policy."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
+<<<<<<< HEAD
         tm.that(init_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         (tmp_path / ".gitignore").write_text("scratch/\n", encoding="utf-8")
         scope = tmp_path / "scratch" / "project"
         scope.mkdir(parents=True)
@@ -93,7 +113,11 @@ class TestScannerHelpers:
         """A long-running pipeline observes files created after its first scan."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
+<<<<<<< HEAD
         tm.that(init_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         source = tmp_path / "src"
         source.mkdir()
         first = source / "first.py"
@@ -117,7 +141,11 @@ class TestScannerHelpers:
 
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
+<<<<<<< HEAD
         tm.that(init_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
 
         tm.that(infra_u.Infra.git_tracked_scope_paths(source), eq=[unmanaged])
 
@@ -127,7 +155,11 @@ class TestScannerHelpers:
         """A valid empty Git scope stays distinct from an external scope."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
+<<<<<<< HEAD
         tm.that(init_result.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         scope = tmp_path / "empty"
         scope.mkdir()
 

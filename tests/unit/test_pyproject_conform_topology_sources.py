@@ -24,12 +24,14 @@ _PROVIDER = _PROVIDER_SPEC.name
 
 
 def _repository(
-    distribution: str,
-    *,
-    role: c.Infra.MakeProfile,
-    path: str,
-    checkout: c.Infra.CheckoutKind,
+    distribution: str, *, role: c.Infra.MakeProfile, path: str
 ) -> m.Infra.RepositoryRef:
+    """Declare one governed repository by its role and its own path.
+
+    Topology is exactly ``role`` (``.gitmodules`` present or not) plus the
+    path the workspace root sees; nothing else records where the checkout
+    physically sits.
+    """
     return m.Infra.RepositoryRef(
         name=distribution,
         distribution=distribution,
@@ -37,7 +39,7 @@ def _repository(
         path=Path(path),
         role=role,
         provider=_PROVIDER,
-        checkout=checkout,
+        kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=True,
         editable=True,
@@ -49,6 +51,7 @@ def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
         beads=tu.Tests.beads_project("flext"),
         name="workspace",
+<<<<<<< HEAD
         repository=_repository(
             "workspace",
             role=_ROLE.WORKSPACE,
@@ -62,18 +65,18 @@ def _workspace() -> m.Infra.WorkspaceSpec:
                 path="flext-core",
                 checkout=c.Infra.CheckoutKind.SUBMODULE,
             ),
+=======
+        repository=_repository("workspace", role=_ROLE.WORKSPACE, path="."),
+        subprojects=(
+            _repository("flext-core", role=_ROLE.STANDALONE, path="flext-core"),
+>>>>>>> origin/0.12.0-dev
         ),
     )
 
 
 def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
     workspace = _workspace()
-    consumer = _repository(
-        "flext-api",
-        role=_ROLE.STANDALONE,
-        path="flext-api",
-        checkout=c.Infra.CheckoutKind.SUBMODULE,
-    )
+    consumer = _repository("flext-api", role=_ROLE.STANDALONE, path="flext-api")
     return workspace.model_copy(
         update={"subprojects": (*workspace.subprojects, consumer)}
     )
@@ -267,7 +270,11 @@ workspace = true
             )
         )
 
+<<<<<<< HEAD
         tm.that(lock_result.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(lock_result.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
         lock_content = (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
         packages = tu.Tests.toml_tables_at(lock_content, "package")
         provider_packages = [

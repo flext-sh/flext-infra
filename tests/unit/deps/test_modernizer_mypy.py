@@ -9,7 +9,7 @@ from flext_infra.deps.phases.ensure_pydantic_mypy import (
     FlextInfraEnsurePydanticMypyConfigPhase,
 )
 from flext_tests import tm
-from tests import u
+from tests import t, u
 
 if TYPE_CHECKING:
     from tests import m
@@ -18,17 +18,30 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerMypy:
     """Declarative tests for generated mypy and pydantic-mypy settings."""
 
+    @staticmethod
+    def _applied_mypy_document(
+        tool_config_document: m.Infra.ToolConfigDocument,
+    ) -> t.Cli.TomlDocument:
+        """Apply the mypy phase once to a fresh TOML document."""
+        doc = u.Cli.toml_document()
+        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
+        return doc
+
+    @staticmethod
+    def _mypy_mapping(doc: t.Cli.TomlDocument) -> t.JsonMapping:
+        """Unwrap the canonical tool.mypy table from one document."""
+        return u.Tests.toml_mapping(
+            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        )
+
     def test_mypy_phase_sets_expected_state(
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase sets expected state."""
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        doc = TestsFlextInfraDepsModernizerMypy._applied_mypy_document(
+            tool_config_document
         )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(mypy_mapping["python_version"], eq="3.13")
         tm.that(
             set(u.Tests.toml_strings(mypy_mapping["plugins"])),
@@ -56,13 +69,10 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase keeps misc globally disabled."""
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        doc = TestsFlextInfraDepsModernizerMypy._applied_mypy_document(
+            tool_config_document
         )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(u.Tests.toml_strings(mypy_mapping["disable_error_code"]), has="misc")
 
     def test_mypy_phase_keeps_only_current_scoped_override(
@@ -86,13 +96,10 @@ class TestsFlextInfraDepsModernizerMypy:
         self, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Verify mypy phase removes legacy test overrides."""
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        doc = TestsFlextInfraDepsModernizerMypy._applied_mypy_document(
+            tool_config_document
         )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         override_modules = {
             tuple(u.Tests.toml_strings(u.Tests.toml_mapping(entry)["module"]))
             for entry in u.Tests.toml_list(mypy_mapping["overrides"])
@@ -129,10 +136,7 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
         )
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
-        )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(
             list(u.Tests.toml_strings(mypy_mapping["plugins"])),
             eq=list(tool_config_document.tools.mypy.plugins),
@@ -164,10 +168,7 @@ warn_return_any = false
         )
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
-
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
-        )
+        mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         tm.that(mypy_mapping, lacks="strict_concatenate")
         tm.that(
             mypy_mapping["warn_return_any"],

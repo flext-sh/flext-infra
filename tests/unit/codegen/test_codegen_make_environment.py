@@ -59,7 +59,7 @@ class TestsCodegenMakeEnvironment:
         )
         repository_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_declared_repositories = (
+        local_subprojects = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
@@ -69,7 +69,7 @@ class TestsCodegenMakeEnvironment:
             beads=test_u.Tests.beads_project("fixture-project"),
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
-            declared_repositories=local_declared_repositories,
+            subprojects=local_subprojects,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -89,6 +89,17 @@ class TestsCodegenMakeEnvironment:
         tm.ok(
             u.Cli.atomic_write_text_file(
                 project_root / "Makefile", test_u.Tests.codegen_file_text(makefile)
+            )
+        )
+        # The generated project environment is owned by two projections, not
+        # one: the Makefile owns the runtime binding of every verb, and .envrc
+        # owns the interactive shell's view of the same state roots. Writing
+        # only the Makefile made an environment guarantee untestable the moment
+        # it moved between the two owners.
+        envrc = next(file for file in plan.files if file.path.name == ".envrc")
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                project_root / ".envrc", test_u.Tests.codegen_file_text(envrc)
             )
         )
         return project_root, repository_root
@@ -135,15 +146,36 @@ class TestsCodegenMakeEnvironment:
             )
         )
         tm.that(
+<<<<<<< HEAD
             process.outcome.raw_return_code,
             eq=0,
+=======
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+>>>>>>> origin/0.12.0-dev
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
         tm.that(output[0], eq=f"FLEXT_INFRA_PYTHON={runtime_python}")
         tm.that(output[1], eq=f"UV_PROJECT_ENVIRONMENT={runtime_root / '.venv'}")
         tm.that(output[2], eq=f"VIRTUAL_ENV={runtime_root / '.venv'}")
-        tm.that(output[3], eq=f"PATH={runtime_bin}:{os.environ['PATH']}")
+        # The generated shell PREPENDS the profile runtime bin and REMOVES the
+        # caller's active venv bin, preserving every other caller entry in
+        # order. Byte equality with the caller PATH is not the contract and
+        # never was: whatever launched make — a tool shim, a wrapper — may
+        # legitimately have inserted its own managed bin dir before make read
+        # the environment at all, and that entry is not the hostile venv.
+        path_entries = output[3].removeprefix("PATH=").split(os.pathsep)
+        tm.that(path_entries[0], eq=str(runtime_bin))
+        tm.that(str(hostile_bin) in path_entries, eq=False)
+        surviving = iter(path_entries[1:])
+        tm.that(
+            all(
+                any(entry == candidate for candidate in surviving)
+                for entry in os.environ["PATH"].split(os.pathsep)
+            ),
+            eq=True,
+        )
         tm.that(output[4], eq=str(runtime_python))
 
     @pytest.mark.parametrize(
@@ -197,7 +229,13 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(
+<<<<<<< HEAD
             process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+=======
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+>>>>>>> origin/0.12.0-dev
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
@@ -274,9 +312,18 @@ class TestsCodegenMakeEnvironment:
             "VIRTUAL_ENV": str(hostile_venv),
         }
 
+        # `test` declares requires_apply in the typed Make owner, so the verb
+        # only runs once the write-enable token is present.
+        apply_variable = config.Infra.codegen.make.apply_variable
+        apply_value = config.Infra.codegen.make.apply_value
         process = tm.ok(
             u.Cli.run_raw(
-                [c.Infra.MAKE, "--no-print-directory", "test"],
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "test",
+                    f"{apply_variable}={apply_value}",
+                ],
                 cwd=project_root,
                 env=active_env,
                 remove_env_keys=(*c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, "UV"),
@@ -284,7 +331,13 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(
+<<<<<<< HEAD
             process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+=======
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+>>>>>>> origin/0.12.0-dev
         )
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
@@ -313,9 +366,12 @@ class TestsCodegenMakeEnvironment:
             eq=True,
         )
         toolchain = config.Infra.codegen.toolchain
+        # The state root is a SIBLING of the checkout, never a directory inside
+        # it: derived from the Makefile's own PROJECT_ROOT so a verb invoked
+        # from a foreign CWD still writes beside the tree that owns the verb.
         tm.that(
             (
-                "PROJECT_STATE_ROOT := $(abspath $(dir $(REPOSITORY_ROOT))/"
+                "PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../"
                 f"{toolchain.state_directory_name}/$(notdir $(PROJECT_ROOT)))"
             )
             in makefile,
@@ -326,44 +382,86 @@ class TestsCodegenMakeEnvironment:
             in makefile,
             eq=True,
         )
+        tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
+        # Every gate the typed owner schedules by default reaches the runtime in
+        # ONE `check run --gates` invocation. The Make layer no longer publishes
+        # a per-gate selector, so the gate list itself is the reachability proof.
+        gates = ",".join(config.Infra.codegen.make.check_gates_default)
+        tm.that(makefile, has=f'gates="{gates}"')
         tm.that(
-            "override export PYTHONPYCACHEPREFIX := "
-            f"$(PROJECT_STATE_ROOT)/{toolchain.pycache_namespace}" in makefile,
+            '$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" '
+            '--gates "$$gates" --projects .' in makefile,
             eq=True,
         )
-        tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
-        tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
-        tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
         tm.that("$(UV_RUN) actionlint" in makefile, eq=False)
         tm.that('$(UV) sync --frozen --project "$(PROJECT_ROOT)"' in makefile, eq=True)
         tm.that('$(UV) build --project "$(PROJECT_ROOT)"' in makefile, eq=True)
+        # Bytecode still lands in the project state root and never inside the
+        # checkout. The Makefile stopped exporting it because the shell owns
+        # the interactive environment now, so the guarantee is proved at .envrc
+        # — its current owner — instead of being dropped with the old export.
+        envrc = (project_root / ".envrc").read_text(encoding="utf-8")
+        tm.that(
+            envrc,
+            has=(
+                "export PYTHONPYCACHEPREFIX="
+                f'"${{PROJECT_STATE_ROOT}}/{toolchain.pycache_namespace}"'
+            ),
+        )
 
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
-    def test_every_published_check_selector_has_a_generated_handler(
+    def test_every_declared_check_gate_reaches_the_runtime(
         self, tmp_path: Path, profile: c.Infra.MakeProfile
     ) -> None:
-        """Every WHAT advertised by the typed Make owner resolves in both profiles."""
+        """Every declared gate is scheduled by the one check handler, both profiles.
+
+        The Make layer no longer publishes a per-gate `WHAT=` selector with a
+        `_builtin_check_<gate>` target behind it; the public boundary accepts
+        only APPLY. Reachability is therefore proved where it now lives: the
+        single generated handler passes the complete declared gate list to the
+        typed `check run` owner, so a gate the owner declares cannot be left
+        unscheduled by the projection.
+        """
         project_root, _workspace_root = self._render_makefile(tmp_path, profile)
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
-        phony_targets = tuple(
-            token
+        phony_declarations = tuple(
+            line.removeprefix(".PHONY:").strip()
             for line in makefile.splitlines()
             if line.startswith(".PHONY:")
-            for token in line.removeprefix(".PHONY:").split()
         )
 
-        for gate in config.Infra.codegen.make.check_gates_allowed:
-            handler = f"_builtin_check_{gate}"
-            tm.that(makefile, has=f"{handler}: _builtin_require_environment")
-            tm.that(phony_targets, has=handler)
+        # `check` is phony through the verb vocabulary, and its dispatch target
+        # through the generated `_builtin-` prefix expansion of that same list.
+        tm.that(
+            phony_declarations,
+            has="$(PUBLIC_VERBS) $(addprefix _builtin-,$(PUBLIC_VERBS))",
+        )
+        verbs = tuple(verb.name for verb in config.Infra.codegen.make.verbs)
+        tm.that(verbs, has="check")
+        # The dispatch chain that carries the declared gate list to the runtime.
+        tm.that(makefile, has="_builtin-check: _builtin_check_all")
+        tm.that(makefile, has="_builtin_check_all: _builtin_require_environment")
+        scheduled = ",".join(config.Infra.codegen.make.check_gates_default)
+        tm.that(makefile, has=f'gates="{scheduled}"')
+        for gate in config.Infra.codegen.make.check_gates_default:
+            tm.that(scheduled.split(","), has=gate)
+        tm.that(makefile, has='--gates "$$gates" --projects .')
 
+<<<<<<< HEAD
     def test_standalone_check_executes_the_canonical_gate_set(
         self, tmp_path: Path
     ) -> None:
         """Run the sole canonical check executor with the declared default gates."""
         project_root, _workspace_root = self._render_makefile(
+=======
+    def test_standalone_check_executes_its_declared_default_gates(
+        self, tmp_path: Path
+    ) -> None:
+        """Standalone check runs exactly the owner-declared default gate set."""
+        project_root, _repository_root = self._render_makefile(
+>>>>>>> origin/0.12.0-dev
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         invocation_log = tmp_path / "check-invocation.log"
@@ -374,24 +472,35 @@ class TestsCodegenMakeEnvironment:
         uv = tmp_path / "bin" / "uv"
         test_u.Tests.write_executable(uv, "#!/bin/sh\nexit 0\n")
 
+        # APPLY is the ONLY public Make input; the generated boundary rejects
+        # every other command-line variable by name, so the uv override that
+        # used to ride on the command line is supplied through the environment.
+        apply_variable = config.Infra.codegen.make.apply_variable
+        apply_value = config.Infra.codegen.make.apply_value
         process = tm.ok(
             u.Cli.run_raw(
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "check",
+<<<<<<< HEAD
                     (
                         f"{config.Infra.codegen.make.apply_variable}="
                         f"{config.Infra.codegen.make.apply_value}"
                     ),
                     f"UV={uv}",
+=======
+                    f"{apply_variable}={apply_value}",
+>>>>>>> origin/0.12.0-dev
                 ],
                 cwd=project_root,
+                env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
         tm.that(
+<<<<<<< HEAD
             process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
         )
         invocation = invocation_log.read_text(encoding="utf-8")
@@ -404,11 +513,21 @@ class TestsCodegenMakeEnvironment:
                 " --projects ."
             ),
         )
+=======
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
+        gates = ",".join(config.Infra.codegen.make.check_gates_default)
+        invocation = invocation_log.read_text(encoding="utf-8")
+        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(invocation, has=f"--gates {gates} --projects .")
+>>>>>>> origin/0.12.0-dev
 
-    def test_dependency_upgrade_selects_only_one_distribution(
+    def test_dependency_upgrade_scopes_to_declared_project_locks(
         self, tmp_path: Path
     ) -> None:
-        """Refresh one Git dependency without globally upgrading the lock."""
+        """Upgrade exactly the declared project locks through the deps verb."""
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -423,6 +542,7 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
+<<<<<<< HEAD
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
@@ -430,6 +550,9 @@ class TestsCodegenMakeEnvironment:
                     "DEPENDENCY=flext-cli",
                     "APPLY=Y",
                 ],
+=======
+                [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=Y"],
+>>>>>>> origin/0.12.0-dev
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
@@ -438,19 +561,33 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
+<<<<<<< HEAD
         tm.that(
             process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
+=======
+>>>>>>> origin/0.12.0-dev
         tm.that(
-            commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
         )
-        tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
+        # The upgrade scope is exactly the declared project locks: one pass with
+        # the upgrade flag, then one plain lock verification of the same root.
+        tm.that(
+            [line for line in commands if line.startswith("lock")],
+            eq=(
+                f"lock --project {project_root} --upgrade",
+                f"lock --project {project_root}",
+            ),
+        )
 
-    def test_dependency_upgrade_rejects_non_distribution_selector(
+    def test_dependency_upgrade_requires_the_write_enable_token(
         self, tmp_path: Path
     ) -> None:
-        """Fail before uv when the dependency selector is not one package name."""
+        """Fail before uv when the write-enable token is absent."""
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -464,6 +601,7 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
+<<<<<<< HEAD
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
@@ -471,6 +609,9 @@ class TestsCodegenMakeEnvironment:
                     "DEPENDENCY=flext-cli --all",
                     "APPLY=Y",
                 ],
+=======
+                [c.Infra.MAKE, "--no-print-directory", "deps"],
+>>>>>>> origin/0.12.0-dev
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -478,8 +619,14 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
+<<<<<<< HEAD
+=======
+        apply_variable = config.Infra.codegen.make.apply_variable
+        apply_value = config.Infra.codegen.make.apply_value
+>>>>>>> origin/0.12.0-dev
         tm.that(
-            process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
+            process.stdout + process.stderr,
+            has=f"this action requires {apply_variable}={apply_value}",
         )
         tm.that(uv_log.exists(), eq=False)
 
@@ -516,8 +663,20 @@ class TestsCodegenMakeEnvironment:
             "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
             "SETUP_BOOTSTRAP_ONLY := Y",
             'if [ -n "$${GITHUB_PATH:-}" ]; then',
-            'managed_path=$$(MISE_CONFIG_DIR="$$config_dir"',
-            "for bin_dir in $$managed_path; do",
+            # Managed tools reach the setup lifecycle by RUNNING it inside the
+            # bootstrapped Mise, not by the old inline PATH computation: the
+            # toolchain is installed from the committed lock and the lifecycle
+            # is executed through `mise exec`, so nothing needs an ambient mise
+            # and nothing hand-assembles a managed PATH any more.
+            (
+                'mise_exec project "$$latest_mise" -C "$$project_root" '
+                "install --locked --yes"
+            ),
+            (
+                'mise_checked "$$scratch/lifecycle.log" mise_exec project '
+                '"$$latest_mise" -C "$$project_root" exec -- env '
+                '"SETUP_DIRENV=$$direnv_executable"'
+            ),
             '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --frozen --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',

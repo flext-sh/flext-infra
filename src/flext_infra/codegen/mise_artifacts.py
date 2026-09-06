@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenMiseArtifacts(s[bool]):
-    """Hydrate generated lock checksums or validate committed Mise artifacts."""
+    """Validate committed Mise artifacts entirely offline."""
 
     _PLATFORM_PREFIX: ClassVar[str] = "platforms."
 
@@ -26,7 +26,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[t.JsonMapping].fail(source.error or f"cannot read {path.name}")
+            return r[t.JsonMapping].from_failure(source)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
             return r[t.JsonMapping].fail(f"invalid TOML in {path.name}")
@@ -94,10 +94,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             for raw_entry in raw_entries:
                 normalized = cls._normalize_lock_entry(raw_selector, raw_entry)
                 if normalized.failure:
-                    return r[t.JsonMapping].fail(
-                        normalized.error
-                        or f"mise.lock contains an invalid entry for {raw_selector}"
-                    )
+                    return r[t.JsonMapping].from_failure(normalized)
                 normalized_entries.append(dict(normalized.value))
             normalized_tools[raw_selector] = normalized_entries
         return r[t.JsonMapping].ok({
@@ -389,8 +386,13 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one native staged bootstrap seed without executing live bytes."""
         source = u.Cli.files_read_text(path)
         if source.failure:
+<<<<<<< HEAD
             return r[str].fail(source.error or f"missing generated Mise seed: {path}")
         windows = path.name == c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
+=======
+            return r[str].from_failure(source)
+        windows = path.name == "mise.cmd"
+>>>>>>> origin/0.12.0-dev
         release = (
             cls._assignment(source.value, "pinned_version")
             if windows
@@ -401,7 +403,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         try:
             mode = path.stat().st_mode
         except OSError as exc:
-            return r[str].fail(f"cannot inspect generated Mise seed: {exc}")
+            return r[str].fail(
+                f"cannot inspect generated Mise seed: {exc}", exception=exc
+            )
         if not windows and not mode & 0o100:
             return r[str].fail("generated Unix Mise seed is not executable")
         checksums = (
@@ -449,7 +453,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one project's committed Mise artifacts entirely offline."""
         config_result = self._read_toml(project_root / ".mise.toml")
         if config_result.failure:
-            return r[bool].fail(config_result.error or "invalid .mise.toml")
+            return r[bool].from_failure(config_result)
         raw_settings = config_result.value.get("settings")
         raw_tool_config = config_result.value.get("tool_config")
         if (
@@ -461,17 +465,22 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].fail(".mise.toml must enable lockfile and locked mode")
         tools_result = self._tool_specifiers(config_result.value)
         if tools_result.failure:
+<<<<<<< HEAD
             return r[bool].fail(tools_result.error or "invalid .mise.toml tools")
         lock_result = self._read_toml(project_root / c.Infra.MISE_LOCK_FILENAME)
+=======
+            return r[bool].from_failure(tools_result)
+        lock_result = self._read_toml(project_root / "mise.lock")
+>>>>>>> origin/0.12.0-dev
         if lock_result.failure:
-            return r[bool].fail(lock_result.error or "invalid mise.lock")
+            return r[bool].from_failure(lock_result)
         normalized_lock = self._normalize_lock_payload(lock_result.value)
         if normalized_lock.failure:
-            return r[bool].fail(normalized_lock.error or "invalid mise.lock")
+            return r[bool].from_failure(normalized_lock)
         try:
             lock = m.Infra.MiseLockSpec.model_validate(normalized_lock.value)
         except c.ValidationError as exc:
-            return r[bool].fail(f"invalid mise.lock metadata: {exc}")
+            return r[bool].fail(f"invalid mise.lock metadata: {exc}", exception=exc)
         launcher_result = self.validate_launchers(project_root)
         if launcher_result.failure:
             return launcher_result
@@ -500,17 +509,17 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[bool].fail(f"Mise lock specifier drift for {selector}")
             if selector.startswith("github:") and entry.backend != selector:
                 return r[bool].fail(f"Mise lock backend drift for {selector}")
-            excluded = frozenset(
-                toolchain.mise_lock_platform_exclusions.get(selector, ())
-            )
-            expected_platforms = declared_platforms - excluded
             actual_platforms = frozenset(entry.platforms)
+<<<<<<< HEAD
             # A lock entry without platform metadata is a platform-independent
             # tool (npm backend); the declared platform policy cannot bind it.
             if actual_platforms and actual_platforms != expected_platforms:
+=======
+            if not actual_platforms <= declared_platforms:
+>>>>>>> origin/0.12.0-dev
                 return r[bool].fail(
                     f"Mise lock platform metadata mismatch for {selector}: "
-                    f"expected={sorted(expected_platforms)} "
+                    f"declared={sorted(declared_platforms)} "
                     f"actual={sorted(actual_platforms)}"
                 )
         return r[bool].ok(True)

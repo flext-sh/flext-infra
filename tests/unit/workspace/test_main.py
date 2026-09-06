@@ -86,17 +86,7 @@ class TestsFlextInfraWorkspaceMain:
 
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
         tm.that(
-            (
-                workspace_main([
-                    "orchestrate",
-                    "--verb",
-                    "legacy-check",
-                    "--projects",
-                    "p-a",
-                ])
-                == 1
-            ),
-            eq=True,
+            (workspace_main(["orchestrate", "--verb", "legacy-check"]) == 1), eq=True
         )
 
     def test_workspace_main_without_command_returns_failure(self) -> None:

@@ -3,9 +3,6 @@
 This is the canonical in-process surface for keeping one workspace's direnv
 activation aligned with the codegen SSOT. ``codegen conform`` exclusively owns
 ``.mise.toml`` so environment sync cannot race toolchain publication.
-
-Consumers must reach this through ``from flext_infra import infra`` — the
-module itself stays private service composition.
 """
 
 from __future__ import annotations

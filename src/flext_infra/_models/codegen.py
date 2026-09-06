@@ -9,20 +9,20 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import c, p, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
-from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
-from flext_infra._models.config import FlextInfraConfigModels
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
-from flext_infra._models.workspace import FlextInfraModelsWorkspace
+
+from .._models._defaults import ImmutableEmptyMapping
+from .._models.codegen_render import FlextInfraModelsCodegenRender
+from .._models.config import FlextInfraConfigModels
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class MiseToolchainLockLease(m.ArbitraryTypesModel):
-        """Authenticated Git state plus its dedicated locked descriptor."""
+        """Authenticated Git HEAD state plus its locked native descriptor."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         descriptor: Annotated[
             int,
@@ -33,11 +33,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 description="Caller-owned locked descriptor",
             ),
         ]
-        lock_state: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Exact administrative lock identity"),
-        ]
-        head_state: Annotated[
+        state: Annotated[
             m.Cli.AtomicFileState,
             m.Field(description="Exact HEAD bytes, mode, leaf, and parent identity"),
         ]
@@ -45,7 +41,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainArtifactPaths(m.ArbitraryTypesModel):
         """Canonical live toolchain-bundle destinations for one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         config: Annotated[
             Path, m.Field(description="Generated Mise configuration destination")
@@ -59,7 +55,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Workspace-relative project selector")
@@ -79,7 +75,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainWorkspaceLayout(m.ArbitraryTypesModel):
         """Stable recovery topology independent of mutable source contents."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         scope_root: Annotated[Path, m.Field(description="Resolved transaction scope")]
         state_root: Annotated[
@@ -106,7 +102,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainConfigState(m.ArbitraryTypesModel):
         """Current destination plus the exact planned Mise configuration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         before: Annotated[
             m.Cli.AtomicFileState,
@@ -137,7 +133,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainProjectState(m.ArbitraryTypesModel):
         """Immutable source and destination snapshot for one project layout."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegen.MiseToolchainProjectLayout,
@@ -175,7 +171,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainArtifactSet(m.ArbitraryTypesModel):
         """Named file states that prevent artifact-order ambiguity."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         unix_launcher: Annotated[
             m.Cli.AtomicFileState, m.Field(description="Observed Unix launcher state")
@@ -192,7 +188,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
         """One stable layout plus a coherent mutable-state snapshot."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         layout: Annotated[
             FlextInfraModelsCodegen.MiseToolchainWorkspaceLayout,
@@ -217,7 +213,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenStagedFile(m.ArbitraryTypesModel):
         """One destination state and its optional destination-local replacement."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
             t.NonEmptyStr,
@@ -255,7 +251,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenJournalProject(m.ArbitraryTypesModel):
         """One journal participant bound to its physical directory identity."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         selector: Annotated[
             t.NonEmptyStr, m.Field(description="Workspace-relative project selector")
@@ -283,7 +279,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenJournalDirectory(m.ArbitraryTypesModel):
         """One journal-authorized directory creation and its physical identity."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
             t.NonEmptyStr,
@@ -382,7 +378,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenJournalSource(m.ArbitraryTypesModel):
         """One immutable full source identity guarded by a generation journal."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
             t.NonEmptyStr, m.Field(description="Generation phase that consumed source")
@@ -446,7 +442,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenJournalEntry(m.ArbitraryTypesModel):
         """Recoverable full before/after identity for one generated file."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
             t.NonEmptyStr, m.Field(description="Generation phase owning this entry")
@@ -712,7 +708,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenRecoveryAction(m.ArbitraryTypesModel):
         """One preclassified recovery decision with no live effect applied."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         entry: Annotated[
             FlextInfraModelsCodegen.CodegenJournalEntry,
@@ -730,7 +726,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenTransactionJournal(m.ArbitraryTypesModel):
         """Persisted recovery contract for one workspace-wide generation."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         version: Annotated[
             Literal[8], m.Field(description="Exact journal schema version")
@@ -785,6 +781,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             if self.state == "staging" and self.entries:
                 msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
+            if self.state == "staging" and any(
+                directory.disposition != "temporary" for directory in self.directories
+            ):
+                msg = "staging codegen journal can authorize only temporary paths"
+                raise ValueError(msg)
             entry_paths = tuple(entry.path for entry in self.entries)
             if len(set(entry_paths)) != len(entry_paths):
                 msg = "codegen journal destination paths must be unique"
@@ -815,7 +816,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenTransactionSession(m.ArbitraryTypesModel):
         """Immutable cursor for one live prepared generation transaction."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         plan: Annotated[
             FlextInfraModelsCodegen.MiseToolchainWorkspacePlan,
@@ -847,10 +848,10 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenPhaseAnalysis(m.ArbitraryTypesModel):
         """Immutable planner receipt reused for publication verification."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
-            Literal["docs", "lazy-init"],
+            Literal["lazy-init"],
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[
@@ -921,7 +922,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class ScaffoldDirRequest(m.ArbitraryTypesModel):
         """Directory-level scaffold request and accumulation state."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, revalidate_instances="never"
         )
 
@@ -1271,7 +1272,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class ViolationKey(m.ContractModel):
         """Content-stable violation identifier — resilient to line shifts."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         module: Annotated[str, m.Field(description="Module containing the violation")]
         rule: Annotated[str, m.Field(description="Rule that was violated")]
@@ -1300,12 +1301,12 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     class CodegenPipelineState(m.ArbitraryTypesModel):
         """Typed inter-stage state for the codegen pipeline — Pydantic v2 model."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", arbitrary_types_allowed=True
         )
 
         discovered_projects: Annotated[
-            t.SequenceOf[FlextInfraModelsWorkspace.ProjectInfo],
+            t.SequenceOf[p.Infra.ProjectInfo],
             m.Field(description="Projects discovered at pipeline start"),
         ] = ()
         census_service: Annotated[

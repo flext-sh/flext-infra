@@ -21,8 +21,6 @@ class FlextInfraBanditGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.SECURITY
     gate_name: ClassVar[str] = "Bandit"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.SECURITY][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.SECURITY][1]
 
     @override
     def _get_check_dirs(
@@ -51,7 +49,11 @@ class FlextInfraBanditGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
+<<<<<<< HEAD
         if result.outcome.raw_return_code != 0 and not result.stdout.strip():
+=======
+        if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
+>>>>>>> origin/0.12.0-dev
             detail = result.stderr.strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -59,7 +61,14 @@ class FlextInfraBanditGate(FlextInfraGate):
                     line=0,
                     column=0,
                     code="TOOL_ERROR",
+<<<<<<< HEAD
                     message=f"bandit exited with code {result.outcome.raw_return_code}: {detail}",
+=======
+                    message=(
+                        "bandit exited with code "
+                        f"{result.outcome.raw_return_code}: {detail}"
+                    ),
+>>>>>>> origin/0.12.0-dev
                     severity="ERROR",
                 )
             )

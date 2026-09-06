@@ -46,13 +46,9 @@ def _prepare_project(
 
 
 @pytest.mark.slow
-def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> None:
-    """The public generator emits matching bounded wheel and sdist targets."""
-    root_module, root_package = _prepare_project(
-        infra_git_repo, materialize_module=True, materialize_package=True
-    )
-
-    applied = infra_main([
+def _conform_self(infra_git_repo: Path) -> int:
+    """Run codegen conform self-apply through the public CLI entrypoint."""
+    return infra_main([
         c.Infra.CLI_GROUP_CODEGEN,
         "conform",
         "--root",
@@ -62,6 +58,15 @@ def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> No
         "--mode",
         c.Infra.CodegenConformMode.APPLY.value,
     ])
+
+
+def test_conform_packages_every_declared_python_root(infra_git_repo: Path) -> None:
+    """The public generator emits matching bounded wheel and sdist targets."""
+    root_module, root_package = _prepare_project(
+        infra_git_repo, materialize_module=True, materialize_package=True
+    )
+
+    applied = _conform_self(infra_git_repo)
 
     tm.that(applied, eq=0)
     payload = tomllib.loads(
@@ -107,16 +112,7 @@ def test_conform_rejects_missing_declared_python_root(
     )
     before = (infra_git_repo / c.Infra.PYPROJECT_FILENAME).read_bytes()
 
-    exit_code = infra_main([
-        c.Infra.CLI_GROUP_CODEGEN,
-        "conform",
-        "--root",
-        str(infra_git_repo),
-        "--scope",
-        c.Infra.CodegenConformScope.SELF.value,
-        "--mode",
-        c.Infra.CodegenConformMode.APPLY.value,
-    ])
+    exit_code = _conform_self(infra_git_repo)
 
     output = capsys.readouterr()
     tm.that(exit_code, ne=0)

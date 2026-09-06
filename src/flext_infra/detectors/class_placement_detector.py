@@ -30,18 +30,6 @@ class FlextInfraClassPlacementDetector:
         file_path = ctx.file_path
         parts = file_path.parts
         violations: list[m.Infra.ClassPlacementViolation] = []
-        project_root = ctx.project_root or u.Infra.resolve_project_root(file_path)
-        nesting_plans = (
-            {
-                plan.class_name: plan
-                for plan in u.Infra.class_nesting_plans(
-                    project_root, file_path, ctx.rope_project, res
-                )
-            }
-            if project_root is not None
-            else {}
-        )
-
         governed_classes = (
             FlextInfraClassPlacementDetector._governed_classes_with_family(
                 ctx.rope_project, res
@@ -57,11 +45,7 @@ class FlextInfraClassPlacementDetector:
                 continue
             violations.append(
                 FlextInfraClassPlacementDetector._violation_for_class(
-                    ctx=ctx,
-                    ci=ci,
-                    family=family,
-                    fixable=single_governed_class,
-                    nesting_plan=nesting_plans.get(ci.name),
+                    ctx=ctx, ci=ci, family=family
                 )
             )
 
@@ -143,12 +127,7 @@ class FlextInfraClassPlacementDetector:
 
     @staticmethod
     def _violation_for_class(
-        *,
-        ctx: m.Infra.DetectorContext,
-        ci: m.Infra.ClassInfo,
-        family: str,
-        fixable: bool,
-        nesting_plan: m.Infra.ClassNestingViolation | None,
+        *, ctx: m.Infra.DetectorContext, ci: m.Infra.ClassInfo, family: str
     ) -> m.Infra.ClassPlacementViolation:
         """Build a ClassPlacementViolation for a misplaced class."""
         return m.Infra.ClassPlacementViolation(
@@ -157,13 +136,9 @@ class FlextInfraClassPlacementDetector:
             name=ci.name,
             base_class=ci.bases[0] if ci.bases else "object",
             suggestion=FlextInfraClassPlacementDetector._suggestion_for_family(family),
-            action="one_class_per_module",
-            fixable=fixable,
-            target_facade=(
-                nesting_plan.target_namespace
-                if nesting_plan is not None
-                else FlextInfraClassPlacementDetector._target_facade(ctx, family)
-            ),
+            action="relocate_facade_class",
+            fixable=True,
+            target_facade=FlextInfraClassPlacementDetector._target_facade(ctx, family),
             family=family,
         )
 
@@ -213,10 +188,7 @@ class FlextInfraClassPlacementDetector:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[m.Infra.ClassInfo]:
         """Return public top-level classes from the current Rope AST."""
-        try:
-            tree = u.Infra.get_pymodule(rope_project, resource).get_ast()
-        except u.Infra.rope_runtime_errors():
-            return ()
+        tree = u.Infra.get_pymodule(rope_project, resource).get_ast()
         classes: list[m.Infra.ClassInfo] = []
         for node in getattr(tree, "body", ()) or ():
             if u.Infra.node_kind(node) != "ClassDef":
@@ -260,10 +232,7 @@ class FlextInfraClassPlacementDetector:
         Includes explicit ``ClassVar[...]`` annotations and implicit
         UPPER_CASE assignments whose value looks like a canonical constant.
         """
-        try:
-            pymodule = u.Infra.get_pymodule(rope_project, resource)
-        except u.Infra.rope_runtime_errors():
-            return ()
+        pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
         body = FlextInfraClassPlacementDetector._class_body_nodes(
             tree, class_name=class_name
@@ -332,10 +301,7 @@ class FlextInfraClassPlacementDetector:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[tuple[str, int]]:
         """Return module-level type aliases as (name, line) pairs."""
-        try:
-            pymodule = u.Infra.get_pymodule(rope_project, resource)
-        except u.Infra.rope_runtime_errors():
-            return ()
+        pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
         aliases: list[tuple[str, int]] = []
         for node in getattr(tree, "body", []) or []:

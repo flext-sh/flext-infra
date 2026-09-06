@@ -9,14 +9,18 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
+from .._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
+from .._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 
-class FlextInfraUtilitiesCodegen(FlextInfraUtilitiesCodegenFacades):
+
+class FlextInfraUtilitiesCodegen(
+    FlextInfraUtilitiesCodegenFacades, FlextInfraUtilitiesCodegenFilePlan
+):
     """Compose all codegen utility concerns for ``u.Infra``."""
 
     if TYPE_CHECKING:

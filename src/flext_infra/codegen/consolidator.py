@@ -8,10 +8,9 @@ from typing import Annotated, override
 from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base import s
-from flext_infra.codegen._consolidator_steps import (
-    FlextInfraCodegenConsolidatorStepsMixin,
-)
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+from ._consolidator_steps import FlextInfraCodegenConsolidatorStepsMixin
 
 
 class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMixin):

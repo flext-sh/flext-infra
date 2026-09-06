@@ -55,6 +55,17 @@ class TestsFlextInfraPytestRunner:
         )
         tm.that((reports_root / latest_name / "junit.xml").is_file(), eq=True)
         tm.that((reports_root / latest_name / "coverage.xml").is_file(), eq=True)
+        # The controller resolves the testmon selection once and records it;
+        # workers receive node ids, so none of them re-resolves the selection
+        # against a database another worker is writing.
+        selection = tm.ok(
+            u.Cli.files_read_text(reports_root / latest_name / "testmon-selection.txt")
+        )
+        command = tm.ok(
+            u.Cli.files_read_text(reports_root / latest_name / "command.txt")
+        )
+        for node_id in (line for line in selection.splitlines() if line):
+            tm.that(command, has=node_id)
 
 
 __all__: list[str] = []

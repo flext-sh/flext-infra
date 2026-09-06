@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from flext_tests import tm
-from tests import c, m, u
+from tests import c, m, p, u
 
 
 class TestsFlextInfraReleaseHelpers:
@@ -59,20 +59,50 @@ class TestsFlextInfraReleaseHelpers:
         """Changelog behavior."""
 
         @staticmethod
-        def test_update_changelog_creates_expected_files(tmp_path: Path) -> None:
-            """Create changelog, latest and versioned release documents."""
-            workspace = tmp_path / "workspace"
+        def write_notes(workspace: Path) -> Path:
+            """Write the release-notes fixture the changelog updates consume."""
             notes_path = workspace / "notes.md"
             notes_path.parent.mkdir(parents=True, exist_ok=True)
             notes_path.write_text(
                 c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8"
             )
+            return notes_path
 
-            result = u.Infra.update_changelog(
+        @staticmethod
+        def update_changelog_at(workspace: Path, notes_path: Path) -> p.Result[bool]:
+            """Run the public changelog update at the canonical release targets."""
+            return u.Infra.update_changelog(
                 workspace,
                 c.Tests.RELEASE_VERSION_TARGET,
                 c.Tests.RELEASE_TAG_TARGET,
                 notes_path,
+            )
+
+        @staticmethod
+        def update_changelog_from_seed(workspace: Path, changelog_text: str) -> str:
+            """Seed one existing changelog, update it, and return the rewritten text."""
+            docs_dir = workspace / "docs"
+            docs_dir.mkdir(parents=True, exist_ok=True)
+            (docs_dir / "CHANGELOG.md").write_text(changelog_text, encoding="utf-8")
+            notes_path = TestsFlextInfraReleaseHelpers.TestsChangelog.write_notes(
+                workspace
+            )
+            result = TestsFlextInfraReleaseHelpers.TestsChangelog.update_changelog_at(
+                workspace, notes_path
+            )
+            tm.ok(result)
+            return (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
+
+        @staticmethod
+        def test_update_changelog_creates_expected_files(tmp_path: Path) -> None:
+            """Create changelog, latest and versioned release documents."""
+            workspace = tmp_path / "workspace"
+            notes_path = TestsFlextInfraReleaseHelpers.TestsChangelog.write_notes(
+                workspace
+            )
+
+            result = TestsFlextInfraReleaseHelpers.TestsChangelog.update_changelog_at(
+                workspace, notes_path
             )
 
             tm.ok(result)
@@ -96,24 +126,13 @@ class TestsFlextInfraReleaseHelpers:
         def test_update_changelog_is_idempotent(tmp_path: Path) -> None:
             """Keep one release heading across repeated public updates."""
             workspace = tmp_path / "workspace"
-            notes_path = workspace / "notes.md"
-            notes_path.parent.mkdir(parents=True, exist_ok=True)
-            notes_path.write_text(
-                c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8"
+            notes_path = TestsFlextInfraReleaseHelpers.TestsChangelog.write_notes(
+                workspace
             )
 
-            first_result = u.Infra.update_changelog(
-                workspace,
-                c.Tests.RELEASE_VERSION_TARGET,
-                c.Tests.RELEASE_TAG_TARGET,
-                notes_path,
-            )
-            second_result = u.Infra.update_changelog(
-                workspace,
-                c.Tests.RELEASE_VERSION_TARGET,
-                c.Tests.RELEASE_TAG_TARGET,
-                notes_path,
-            )
+            update = TestsFlextInfraReleaseHelpers.TestsChangelog.update_changelog_at
+            first_result = update(workspace, notes_path)
+            second_result = update(workspace, notes_path)
 
             changelog = (workspace / "docs" / "CHANGELOG.md").read_text(
                 encoding="utf-8"
@@ -133,28 +152,16 @@ class TestsFlextInfraReleaseHelpers:
             must rewrite it even though the release section already exists.
             """
             workspace = tmp_path / "workspace"
-            docs_dir = workspace / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "CHANGELOG.md").write_text(
-                f"# Changelog\n\n## {c.Tests.RELEASE_VERSION_TARGET} - 2026-01-01\n\n"
-                f"- Release tag: `{c.Tests.RELEASE_TAG_TARGET}`\n\n"
-                f"Full notes: `docs/releases/{c.Tests.RELEASE_TAG_TARGET}.md`\n\n\n",
-                encoding="utf-8",
+            changelog = (
+                TestsFlextInfraReleaseHelpers.TestsChangelog.update_changelog_from_seed(
+                    workspace,
+                    f"# Changelog\n\n## {c.Tests.RELEASE_VERSION_TARGET} - "
+                    f"2026-01-01\n\n"
+                    f"- Release tag: `{c.Tests.RELEASE_TAG_TARGET}`\n\n"
+                    f"Full notes: `docs/releases/{c.Tests.RELEASE_TAG_TARGET}.md`"
+                    "\n\n\n",
+                )
             )
-            notes_path = workspace / "notes.md"
-            notes_path.write_text(
-                c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8"
-            )
-
-            result = u.Infra.update_changelog(
-                workspace,
-                c.Tests.RELEASE_VERSION_TARGET,
-                c.Tests.RELEASE_TAG_TARGET,
-                notes_path,
-            )
-
-            changelog = (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
-            tm.ok(result)
             tm.that(changelog.count(f"## {c.Tests.RELEASE_VERSION_TARGET} - "), eq=1)
             tm.that(changelog.endswith("\n"), eq=True)
             tm.that(changelog.endswith("\n\n"), eq=False)
@@ -163,25 +170,11 @@ class TestsFlextInfraReleaseHelpers:
         def test_update_changelog_adds_default_header(tmp_path: Path) -> None:
             """Add the canonical header when an existing file lacks it."""
             workspace = tmp_path / "workspace"
-            docs_dir = workspace / "docs"
-            docs_dir.mkdir(parents=True, exist_ok=True)
-            (docs_dir / "CHANGELOG.md").write_text(
-                "Existing notes only\n", encoding="utf-8"
+            changelog = (
+                TestsFlextInfraReleaseHelpers.TestsChangelog.update_changelog_from_seed(
+                    workspace, "Existing notes only\n"
+                )
             )
-            notes_path = workspace / "notes.md"
-            notes_path.write_text(
-                c.Tests.RELEASE_NOTES_HEADING + "\n", encoding="utf-8"
-            )
-
-            result = u.Infra.update_changelog(
-                workspace,
-                c.Tests.RELEASE_VERSION_TARGET,
-                c.Tests.RELEASE_TAG_TARGET,
-                notes_path,
-            )
-
-            changelog = (docs_dir / "CHANGELOG.md").read_text(encoding="utf-8")
-            tm.ok(result)
             tm.that(changelog, starts=c.Tests.RELEASE_CHANGELOG_HEADER)
 
         @staticmethod
@@ -206,11 +199,7 @@ class TestsFlextInfraReleaseHelpers:
         def test_duplicate_project_selectors_build_once(tmp_path: Path) -> None:
             """Build each selected project once with strict modeled artifacts."""
             project_name = "flext-a"
-            workspace = u.Tests.create_release_workspace(
-                tmp_path,
-                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
-                initialize_project_git=True,
-            )
+            workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
 
             result = u.Tests.run_release_main(
                 workspace,
@@ -223,13 +212,7 @@ class TestsFlextInfraReleaseHelpers:
                 "--apply",
             )
 
-            report_path = (
-                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_BASE)
-                / "build-report.json"
-            )
-            report = m.Infra.BuildReport.model_validate_json(
-                report_path.read_text(encoding="utf-8")
-            )
+            report = u.Tests.release_build_report(workspace)
             tm.that(result, eq=0)
             tm.that(report.total, eq=1)
             tm.that([record.project for record in report.records], eq=[project_name])
@@ -247,7 +230,9 @@ class TestsFlextInfraReleaseHelpers:
                     eq=artifact.sha256,
                 )
             staged_metadata = (
-                report_path.parent / "metadata" / f"{project_name}-pyproject.toml"
+                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_BASE)
+                / "metadata"
+                / f"{project_name}-pyproject.toml"
             ).read_text(encoding="utf-8")
             # Siblings are pinned to the compatible range of the version their
             # own pyproject declares, never to this project's release version.
@@ -300,22 +285,11 @@ class TestsFlextInfraReleaseHelpers:
         def test_collision_preserves_complete_existing_set(tmp_path: Path) -> None:
             """Fail on immutable collision without partial or temporary output."""
             project_name = "flext-a"
-            workspace = u.Tests.create_release_workspace(
-                tmp_path,
-                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
-                initialize_project_git=True,
-            )
-            arguments = (
-                "--phase",
-                c.Tests.RELEASE_PHASE_BUILD,
-                "--projects",
-                project_name,
-                "--apply",
-            )
+            workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
             artifact_dir = u.Tests.release_artifact_dir(
                 workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             )
-            first_result = u.Tests.run_release_main(workspace, *arguments)
+            first_result = u.Tests.run_release_build(workspace, project_name)
             original_artifacts = {
                 path.name: path.read_bytes() for path in artifact_dir.iterdir()
             }
@@ -326,14 +300,12 @@ class TestsFlextInfraReleaseHelpers:
                 collided_artifact.name: collision_bytes
             }
 
-            second_result = u.Tests.run_release_main(workspace, *arguments)
+            second_result = u.Tests.run_release_build(workspace, project_name)
 
             current_artifacts = {
                 path.name: path.read_bytes() for path in artifact_dir.iterdir()
             }
-            build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
-            ).read_text(encoding="utf-8")
+            build_log = u.Tests.release_build_log_text(workspace, project_name)
             tm.that(first_result, eq=0)
             tm.that(second_result, eq=1)
             tm.that(current_artifacts, eq=expected_artifacts)
@@ -345,11 +317,7 @@ class TestsFlextInfraReleaseHelpers:
         ) -> None:
             """Reject a real Hatch build that emits a third output entry."""
             project_name = "flext-a"
-            workspace = u.Tests.create_release_workspace(
-                tmp_path,
-                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
-                initialize_project_git=True,
-            )
+            workspace = u.Tests.release_internal_workspace(tmp_path, project_name)
             project = workspace / project_name
             pyproject = project / "pyproject.toml"
             wheel_target = "[tool.hatch.build.targets.sdist]"
@@ -375,18 +343,9 @@ class TestsFlextInfraReleaseHelpers:
             )
             u.Tests.commit_git_changes(project, "emit unexpected build output")
 
-            result = u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                c.Tests.RELEASE_PHASE_BUILD,
-                "--projects",
-                project_name,
-                "--apply",
-            )
+            result = u.Tests.run_release_build(workspace, project_name)
 
-            build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
-            ).read_text(encoding="utf-8")
+            build_log = u.Tests.release_build_log_text(workspace, project_name)
             tm.that(result, eq=1)
             tm.that(build_log, has="uv build emitted unexpected output")
             tm.that(build_log, has="unexpected.txt")

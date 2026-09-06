@@ -12,7 +12,11 @@ from typing import Never
 
 from filelock import lock_descriptor, unlock_descriptor
 
+<<<<<<< HEAD
 from flext_infra import c, m, u
+=======
+from flext_infra import m, u
+>>>>>>> origin/0.12.0-dev
 
 _LEASE_FAILURES: tuple[type[BaseException], ...] = (
     Exception,

@@ -291,7 +291,11 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
 def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
     """Prove every snapshotted Mise config source is byte-identical."""
     for project in plan.projects:
+<<<<<<< HEAD
         current = states_current(project.config.sources)
+=======
+        current = u.Infra.snapshot_config_sources(project.layout.root)
+>>>>>>> origin/0.12.0-dev
         if current.failure:
             return r[bool].fail(
                 current.error or f"Mise sources changed: {project.layout.selector}"
@@ -359,7 +363,7 @@ def live(
     source_before = sources(plan)
     if source_before.failure:
         return source_before
-    replacements: dict[Path, tuple[bytes | None, int | None]] = {}
+    replacements: dict[Path, tuple[bytes, int | None]] = {}
     for publication in publications or ():
         replacement = publication.replacement
         if replacement is None or replacement.content is None:
@@ -373,10 +377,7 @@ def live(
     for project in plan.projects:
         validated = owner.validate_artifacts(project.layout.root)
         if validated.failure:
-            return r[bool].fail(
-                validated.error
-                or f"published Mise validation failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(validated)
     artifact_after = _artifact_snapshot(plan, replacements)
     if artifact_after.failure:
         return r[bool].from_failure(artifact_after)

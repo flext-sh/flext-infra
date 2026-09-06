@@ -21,9 +21,7 @@ def prepare_isolation(
         return r[bool].fail("PATH is required for isolated Mise execution")
     if scratch.exists() or scratch.is_symlink():
         return r[bool].fail(f"isolated Mise runtime already exists: {scratch}")
-    empty_files = tuple(
-        scratch / relative for relative in c.Infra.MISE_BOOTSTRAP_EMPTY_FILES
-    )
+    empty_files = tuple(scratch / relative for relative in contract.empty_files)
     transient_directories = {
         scratch / relative
         for _name, relative in contract.transient_environment
@@ -94,6 +92,7 @@ def run(
     command: t.StrSequence, *, cwd: Path, env: t.StrMapping, operation: str
 ) -> p.Result[str]:
     """Run one Mise process and reject nonzero status or any Mise warning."""
+    u.Cli.info(f"mise-toolchain: start operation={operation}")
     executed = u.Cli.run_raw(
         command,
         cwd=cwd,
@@ -102,7 +101,7 @@ def run(
         timeout=c.Infra.TIMEOUT_LONG,
     )
     if executed.failure:
-        return r[str].fail(executed.error or f"{operation} failed to execute")
+        return r[str].from_failure(executed)
     command_output = executed.value
     output = command_output.stdout + command_output.stderr
     if not u.Cli.process_succeeded(command_output.outcome):
@@ -110,6 +109,7 @@ def run(
         return r[str].fail(f"{operation} failed: {detail}")
     if "mise WARN" in output:
         return r[str].fail(f"{operation} emitted a warning: {output.strip()}")
+    u.Cli.info(f"mise-toolchain: complete operation={operation}")
     return r[str].ok(command_output.stdout.strip())
 
 

@@ -9,9 +9,9 @@ from __future__ import annotations
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final
 
-from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from .._constants.make import FlextInfraConstantsMake
+from .._constants.source_code import FlextInfraConstantsSourceCode
+from .._constants.validate import FlextInfraConstantsSharedInfra
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -273,16 +273,8 @@ class FlextInfraConstantsBase(
     MAKE: Final[str] = "make"
     "Make build tool binary."
 
-    # Quality gate identifiers.
     CHECK: Final[str] = "check"
     "Generic check command/subcommand identifier."
-    LINT: Final[str] = "lint"
-    FORMAT: Final[str] = "format"
-    MARKDOWN: Final[str] = "markdown"
-    SILENT_FAILURE: Final[str] = "silent-failure"
-    DEFAULT_CSV: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
-    )
 
     @unique
     class TomlMergeMode(StrEnum):

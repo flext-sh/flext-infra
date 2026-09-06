@@ -23,10 +23,7 @@ def publish(
         u.Cli.emit_raw(f"  publish [{index}/{total}] {publication.before.path}\n")
         changed = files.write_publication(publication)
         if changed.failure:
-            return r[tuple[Path, ...]].fail(
-                changed.error
-                or f"generation publication failed: {publication.before.path}"
-            )
+            return r[tuple[Path, ...]].from_failure(changed)
         written.append(publication.before.path)
     return r[tuple[Path, ...]].ok(tuple(written))
 

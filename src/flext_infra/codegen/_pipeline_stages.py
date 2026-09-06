@@ -39,7 +39,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         ) -> p.Result[m.Cli.PipelineStageResult]: ...
 
     def _stage_discover(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Discover workspace projects once for reuse across all stages.
 
@@ -62,7 +66,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.DISCOVER, _action, _emit)
 
     def _stage_toolchain(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Conform workspace toolchains through the canonical codegen planner."""
 
@@ -96,7 +104,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_deps(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Conform dependencies to reality via deptry + typing-stub detection.
 
@@ -134,7 +146,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_py_typed(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run PEP 561 py.typed marker generation."""
 
@@ -149,7 +165,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_census_before(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (before fixes) and cache reports in typed state."""
 
@@ -174,7 +194,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.CENSUS_BEFORE, _action, _emit)
 
     def _stage_scaffold(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run scaffold stage and cache results."""
 
@@ -195,7 +219,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.SCAFFOLD, _action, _emit)
 
     def _stage_auto_fix(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run auto-fix stage and cache results."""
 
@@ -216,7 +244,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         return self._run_stage(c.Infra.PipelineStage.AUTO_FIX, _action, _emit)
 
     def _stage_lazy_init(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Measure lazy-init drift without publishing outside conform."""
 
@@ -227,9 +259,13 @@ class FlextInfraCodegenPipelineStagesMixin:
                 .unwrap()
             )
             return sum(
+<<<<<<< HEAD
                 1
                 for plan in analysis.files
                 if u.Infra.codegen_file_requires_effect(plan)
+=======
+                u.Infra.codegen_file_requires_effect(plan) for plan in plans.files
+>>>>>>> origin/0.12.0-dev
             )
 
         return self._run_stage(
@@ -239,7 +275,11 @@ class FlextInfraCodegenPipelineStagesMixin:
         )
 
     def _stage_census_after(
+<<<<<<< HEAD
         self, ctx: p.Cli.PipelineStageContext
+=======
+        self, ctx: p.Cli.PipelineStageContext, /
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[m.Cli.PipelineStageResult]:
         """Run census (after fixes) and cache reports."""
 

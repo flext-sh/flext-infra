@@ -160,8 +160,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def checkout(self) -> str:
-            """Physical checkout topology."""
+        def kind(self) -> str:
+            """Governance kind; only internal_flext repositories are rewritten."""
             ...
 
         @property
@@ -289,8 +289,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Read-only workspace environment validation request."""
 
         @property
-        def workspace_root(self) -> Path:
-            """Workspace whose active interpreter provenance must be validated."""
+        def repository_root(self) -> Path:
+            """Repository whose active interpreter provenance must be validated."""
             ...
 
     @runtime_checkable
@@ -320,12 +320,12 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def uv_exclude_newer(self) -> str:
-            """Rendered uv cooldown duration for exclude-newer."""
+        def uv_environments(self) -> t.StrSequence:
+            """Marker expressions limiting the environments uv resolves."""
             ...
 
         @property
-        def dependency_cooldown_exclusions(self) -> tuple[str, ...]:
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
             """Packages exempted from the fleet cooldown."""
             ...
 
@@ -335,8 +335,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def uv_environments(self) -> t.StrSequence:
-            """Marker expressions limiting the environments uv resolves."""
+        def uv_exclude_newer(self) -> str:
+            """Shared dependency cooldown rendered in uv duration syntax."""
             ...
 
         @property
@@ -568,26 +568,20 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self, repository_root: Path, projects_filter: t.StrSequence | None = None
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
-            """Discover project paths under the repository root."""
+            """Discover project paths in workspace root."""
             ...
 
         def run_deptry(
-            self,
-            project_path: Path,
-            venv_bin: Path,
-            *,
-            config_path: Path | None = None,
-            json_output_path: Path | None = None,
-            extend_exclude: t.StrSequence | None = None,
+            self, project_path: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.SequenceOf[t.JsonMapping], int]]:
             """Run deptry on a project and return issues."""
             ...
 
         def build_project_report(
             self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
-        ) -> m.Infra.ProjectDependencyReport:
+        ) -> FlextInfraProtocolsBase.ProjectReportLike:
             """Build project report from deptry issues."""
             ...
 
@@ -616,7 +610,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self, workspace_root: Path, venv_bin: Path
+            self, repository_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...
@@ -685,7 +679,7 @@ class FlextInfraProtocolsBase(Protocol):
             repository_root: Path | None = None,
             *,
             output_format: str = "json",
-            projects: t.SequenceOf[m.Infra.ProjectInfo] | None = None,
+            projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
         ) -> t.SequenceOf[m.Infra.CensusReport]:
             """Run census and return typed reports."""
             ...
@@ -697,11 +691,6 @@ class FlextInfraProtocolsBase(Protocol):
         repository_root: Path
 
         @classmethod
-        def bootstrap_launchers(cls) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-            """Return the complete validated packaged launcher receipt."""
-            ...
-
-        @classmethod
         def validate_launchers(cls, root: Path) -> p.Result[bool]:
             """Validate one generated launcher receipt."""
             ...
@@ -709,10 +698,6 @@ class FlextInfraProtocolsBase(Protocol):
         @classmethod
         def validate_seed(cls, path: Path) -> p.Result[str]:
             """Validate one staged native launcher seed without executing it."""
-            ...
-
-        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
-            """Hydrate staged lock checksum metadata at one transaction root."""
             ...
 
         @classmethod

@@ -64,7 +64,11 @@ class TestCodegenManifestlessExisting:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         initial_plan = tm.ok(
+<<<<<<< HEAD
             FlextInfraCodegenConform(repository_root=root).plan(request)
+=======
+            FlextInfraCodegenConform(repository_root=root).plan(artifact_request)
+>>>>>>> origin/0.12.0-dev
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -91,7 +95,13 @@ class TestCodegenManifestlessExisting:
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that((root / required).is_file(), eq=True)
         fixed_point = FlextInfraCodegenConform(repository_root=root).plan(
+<<<<<<< HEAD
             request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
+=======
+            artifact_request.model_copy(
+                update={"mode": c.Infra.CodegenConformMode.CHECK}
+            )
+>>>>>>> origin/0.12.0-dev
         )
         verified = tm.ok(fixed_point)
         tm.that(

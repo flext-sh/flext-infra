@@ -90,15 +90,7 @@ class TestsAttachedRepositoryWorktree(WorktreeFixture):
         ).primary_root
         expected_lane = self._lane(primary, superproject, branch)
 
-        lane = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=attached,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        lane = self.add_worktree(attached, branch)
         tm.that(lane, eq=str(expected_lane))
         tm.that(
             f"{c.Infra.WORKTREES_DIRNAME}/{c.Infra.WORKTREES_DIRNAME}"

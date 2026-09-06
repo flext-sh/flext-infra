@@ -33,7 +33,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, ClassVar
 
-from ..rope_runtime import FlextInfraUtilitiesRopeRuntime
+from ..._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

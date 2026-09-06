@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 import sys
 import tempfile
@@ -50,7 +51,11 @@ class FlextInfraModGateEngine:
                 prefix="mod-rule-fixtures-", dir=config_root.parent
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
-                shutil.copytree(config_root, temp_root)
+                shutil.copytree(
+                    config_root,
+                    temp_root,
+                    ignore=shutil.ignore_patterns(c.Infra.DUNDER_PYCACHE),
+                )
                 split_rules = cls._materialize_split_rule_files(
                     config_root=config_root,
                     temp_root=temp_root,
@@ -58,9 +63,7 @@ class FlextInfraModGateEngine:
                 )
                 if owner_is_governed:
                     cls._run_tool(
-                        temp_root,
-                        (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL),
-                        accept_apply_receipt=True,
+                        temp_root, (c.Infra.SG, c.Infra.TEST, c.Infra.SG_UPDATE_ALL)
                     ).unwrap()
                 cls._run_tool(temp_root, (c.Infra.SG, c.Infra.TEST)).unwrap()
                 if owner_is_governed:
@@ -172,10 +175,12 @@ class FlextInfraModGateEngine:
         env: t.StrMapping | None = None,
         remove_env_keys: t.StrSequence = (),
         finding_exit_code: int | None = None,
-        accept_apply_receipt: bool = False,
+        accept_source_apply_receipt: bool = False,
     ) -> p.Result[p.Cli.CommandOutput]:
         """Run one AST tool and preserve its documented finding status."""
-        sys.stderr.write(f"mod: start {' '.join(command)}\n")
+        sys.stderr.write(
+            f"mod: start {' '.join(command[:2])} arguments={max(0, len(command) - 2)}\n"
+        )
         sys.stderr.flush()
         run = u.Cli.run_raw(
             command,
@@ -198,10 +203,6 @@ class FlextInfraModGateEngine:
                 and output.stdout.strip()
             ):
                 return r[p.Cli.CommandOutput].ok(output)
-            if accept_apply_receipt and FlextInfraModGateEngine._is_update_receipt(
-                output.stdout, output.stderr
-            ):
-                return r[p.Cli.CommandOutput].ok(output)
             detail = "\n".join(
                 stream.strip()
                 for stream in (output.stdout, output.stderr)
@@ -213,8 +214,9 @@ class FlextInfraModGateEngine:
             )
         stderr = output.stderr.strip()
         if stderr:
-            if accept_apply_receipt and FlextInfraModGateEngine._is_apply_receipt(
-                stderr
+            if (
+                accept_source_apply_receipt
+                and FlextInfraModGateEngine._is_apply_receipt(stderr)
             ):
                 return r[p.Cli.CommandOutput].ok(output)
             return r[p.Cli.CommandOutput].fail(stderr)
@@ -222,27 +224,8 @@ class FlextInfraModGateEngine:
 
     @staticmethod
     def _is_apply_receipt(stderr: str) -> bool:
-        """Recognize only ast-grep's successful update receipt."""
-        words = stderr.split()
-        match words:
-            case ["Applied", count, "changes"]:
-                return count.isdigit()
-            case _:
-                return False
-
-    @staticmethod
-    def _is_update_receipt(stdout: str, stderr: str) -> bool:
-        """Recognize ast-grep's ``--update-all`` snapshot update receipt."""
-        combined = "\n".join(
-            stream for stream in (stdout.strip(), stderr.strip()) if stream
-        )
-        if not combined:
-            return False
-        return any(
-            line.startswith("[Updated] Rule ")
-            and "snapshot baseline has been updated" in line
-            for line in combined.splitlines()
-        )
+        """Recognize only ast-grep's successful source-apply receipt."""
+        return re.fullmatch(r"Applied [0-9]+ changes", stderr.strip()) is not None
 
     @staticmethod
     def _path_depth(path: Path) -> int:
@@ -250,14 +233,17 @@ class FlextInfraModGateEngine:
         return len(path.parts)
 
     @staticmethod
-    def _validate_finding_receipt(stderr: str, findings: int) -> p.Result[bool]:
+    def _validate_finding_receipt(stderr: str, errors: int) -> p.Result[bool]:
         """Authenticate ast-grep's exact error-finding stderr receipt."""
         expected = "\n".join((
-            c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=findings),
+            c.Infra.AST_GREP_ERROR_FINDING_RECEIPT.format(count=errors),
             c.Infra.AST_GREP_ERROR_FINDING_HELP,
         ))
         if stderr.strip() != expected:
-            return r[bool].fail(stderr)
+            return r[bool].fail(
+                f"ast-grep finding receipt mismatch: parsed_errors={errors} "
+                f"expected={expected!r} actual={stderr.strip()!r}"
+            )
         return r[bool].ok(True)
 
     @staticmethod
@@ -296,6 +282,7 @@ class FlextInfraModGateEngine:
             file = finding.get("file")
             source_range = finding.get("range")
             raw_replacement = finding.get("replacement")
+            severity = finding.get("severity")
             if not isinstance(rule_id, str) or rule_id not in rule_files_by_id:
                 return r.fail(f"invalid ast-grep finding contract: {line}")
             if not isinstance(text, str) or not isinstance(file, str):
@@ -304,6 +291,8 @@ class FlextInfraModGateEngine:
                 return r.fail(f"invalid ast-grep finding contract: {line}")
             if raw_replacement is not None and not isinstance(raw_replacement, str):
                 return r.fail(f"invalid ast-grep finding contract: {line}")
+            if severity not in {"error", "warning", "info", "hint"}:
+                return r.fail(f"invalid ast-grep finding severity: {line}")
             file_path = Path(file)
             files.add(file_path)
             replacement = raw_replacement if isinstance(raw_replacement, str) else None
@@ -415,33 +404,26 @@ class FlextInfraModGateEngine:
         return r[bool].ok(True)
 
     @classmethod
-    def scan(
-        cls, root: Path, rules: t.SequenceOf[Path], *, fix: bool
-    ) -> p.Result[m.Infra.ModScanReport]:
-        """Scan or apply actionable rewrite documents."""
+    def scan(cls, root: Path, *, fix: bool) -> p.Result[m.Infra.ModScanReport]:
+        """Scan or apply every ruleset elected by the composed rule-plan SSOT."""
+        planned = u.Infra.codemod_rule_plan(root)
+        if planned.failure:
+            return r[m.Infra.ModScanReport].from_failure(planned)
+        plan = planned.value
         findings = 0
         actionable_findings = 0
         detection_only_findings = 0
         non_actionable_with_fix_findings = 0
         files: set[Path] = set()
         entries: list[m.Infra.ModScanFinding] = []
-        known_rule_ids: set[str] = set()
-        rule_files_by_id: dict[str, Path] = {}
-        fixable_ids: set[str] = set()
+        rule_files_by_id = {rule.id: rule.resource for rule in plan.rules}
         targets = u.Infra.ast_grep_scan_targets(root)
-        for rule in rules:
-            rule_ids, rule_fixable_ids = u.Infra.ast_grep_rule_contract(rule)
-            duplicate_ids = known_rule_ids.intersection(rule_ids)
-            if duplicate_ids:
-                duplicates = ", ".join(sorted(duplicate_ids))
-                return r.fail(f"duplicate inherited ast-grep rule id(s): {duplicates}")
-            known_rule_ids.update(rule_ids)
-            fixable_ids.update(rule_fixable_ids)
-            rule_files_by_id.update(dict.fromkeys(rule_ids, rule))
         sys.stderr.write(
-            f"mod: ast-grep {'apply' if fix else 'scan'} rules={len(known_rule_ids)}\n"
+            f"mod: ast-grep {'apply' if fix else 'scan'} "
+            f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n"
         )
         sys.stderr.flush()
+<<<<<<< HEAD
         scan_command = u.Infra.ast_grep_scan_command(
             rules[0],
             rule_ids=tuple(sorted(known_rule_ids)),
@@ -463,13 +445,49 @@ class FlextInfraModGateEngine:
         files.update(report.files)
         entries.extend(report.entries)
         if fix and report.actionable:
+=======
+        for ruleset in plan.rulesets:
+            ruleset_files = {
+                rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
+            }
+            scan_command = u.Infra.ast_grep_scan_command(
+                ruleset.config,
+                rule_ids=ruleset.rule_ids,
+                targets=targets,
+                json_stream=True,
+            )
+            run = cls._run_tool(root, scan_command, finding_exit_code=1)
+            if run.failure:
+                return r[m.Infra.ModScanReport].from_failure(run)
+            report = cls._parse_findings(
+                run.value.stdout,
+                root,
+                ruleset_files,
+                frozenset(ruleset.fixable_rule_ids),
+            ).unwrap()
+            if run.value.outcome.raw_return_code != 0:
+                error_findings = sum(
+                    entry.payload.get("severity") == "error" for entry in report.entries
+                )
+                cls._validate_finding_receipt(run.value.stderr, error_findings).unwrap()
+            findings += report.findings
+            actionable_findings += report.actionable
+            detection_only_findings += report.detection_only
+            non_actionable_with_fix_findings += report.non_actionable_with_fix
+            files.update(report.files)
+            entries.extend(report.entries)
+            if not (fix and report.actionable and ruleset.fixable_rule_ids):
+                continue
+>>>>>>> origin/0.12.0-dev
             apply_command = u.Infra.ast_grep_scan_command(
-                rules[0],
-                rule_ids=tuple(sorted(fixable_ids)),
+                ruleset.config,
+                rule_ids=ruleset.fixable_rule_ids,
                 targets=targets,
                 update_all=True,
             )
-            apply_run = cls._run_tool(root, apply_command, accept_apply_receipt=True)
+            apply_run = cls._run_tool(
+                root, apply_command, accept_source_apply_receipt=True
+            )
             if apply_run.failure:
                 return r[m.Infra.ModScanReport].from_failure(apply_run)
         complete_report = m.Infra.ModScanReport(

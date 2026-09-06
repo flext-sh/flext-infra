@@ -9,7 +9,6 @@ import pytest
 from flext_infra import m, p, r
 from flext_infra.gates.mypy import FlextInfraMypyGate
 from flext_infra.gates.pyright import FlextInfraPyrightGate
-from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u
 
 if TYPE_CHECKING:
@@ -20,14 +19,6 @@ if TYPE_CHECKING:
 
 class TestTypeGates:
     """Declarative public-contract tests for Python type gates."""
-
-    @staticmethod
-    def make_ctx(root: Path) -> m.Infra.GateContext:
-        return m.Infra.GateContext(workspace=root, reports_dir=root)
-
-    @staticmethod
-    def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
-        return u.Tests.SequenceRunner(list(results))
 
     @pytest.mark.parametrize(
         ("gate_class", "project_has_src", "runner_result", "passed", "issues_len"),
@@ -82,16 +73,19 @@ class TestTypeGates:
             (project_dir / "src").mkdir()
             (project_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
 
-        gate = gate_class(
-            tmp_path,
-            runner=self.make_runner(runner_result)
+        runner = (
+            u.Tests.sequence_runner(runner_result)
             if runner_result is not None
-            else None,
+            else None
         )
-        result = gate.check(project_dir, self.make_ctx(tmp_path))
-
-        tm.that(result.result.passed, eq=passed)
-        tm.that(len(result.issues), eq=issues_len)
+        _ = u.Tests.check_gate_asserting(
+            gate_class,
+            tmp_path,
+            project_dir,
+            runner=runner,
+            passed=passed,
+            issues_len=issues_len,
+        )
 
 
 __all__: list[str] = []

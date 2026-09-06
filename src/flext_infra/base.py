@@ -7,7 +7,8 @@ from typing import Annotated, ClassVar, Self, override
 
 from flext_core import s
 from flext_infra import c, m, p, settings, t, u
-from flext_infra._base_payload import FlextInfraCommandPayloadMixin
+
+from ._base_payload import FlextInfraCommandPayloadMixin
 
 
 class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
@@ -19,7 +20,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
     apply/dry-run toggles, output formatting, and project filtering.
     """
 
-    model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+    model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
         validate_by_name=True, validate_by_alias=True
     )
 
@@ -38,6 +39,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         ),
     ] = m.Field(
         default_factory=u.Infra.resolve_repository_root_or_cwd,
+        alias="workspace",
         validation_alias=t.AliasChoices(
             "repository_root", "workspace_root", "workspace"
         ),

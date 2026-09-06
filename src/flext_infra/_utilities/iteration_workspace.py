@@ -16,6 +16,9 @@ from flext_infra._utilities.iteration_directory import (
     FlextInfraUtilitiesIterationDirectory,
 )
 
+from .._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
+from .._utilities.iteration_directory import FlextInfraUtilitiesIterationDirectory
+
 if TYPE_CHECKING:
     from flext_infra import p
 

@@ -6,25 +6,120 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Mapping
 from importlib.metadata import requires
 from importlib.resources import files
 from pathlib import Path
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
 from flext_cli import u
 from flext_core import r
-from flext_infra import p
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
-from flext_infra.typings import t
+
+from .._utilities.pyproject import FlextInfraUtilitiesPyproject
+
+if TYPE_CHECKING:
+    from flext_infra.protocols import p
+    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
     """Static helpers for inspecting dependency declarations in pyproject payloads."""
+
+    @staticmethod
+    def update_mise_lock(
+        project_root: Path, *, platforms: t.StrSequence, staging_parent: Path
+    ) -> p.Result[bool]:
+        """Generate a fresh native Mise lock and publish it atomically."""
+        launcher = project_root / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
+        if not launcher.is_file():
+            return r[bool].fail(f"generated Mise launcher is absent: {launcher}")
+        config_path = project_root / c.Infra.MISE_TOML_FILENAME
+        config_state = u.Cli.atomic_read_binary_file_state(config_path, required=True)
+        if config_state.failure:
+            return r[bool].from_failure(config_state)
+        if config_state.value.content is None:
+            return r[bool].fail(f"generated Mise config is absent: {config_path}")
+        live_lock = u.Cli.atomic_read_binary_file_state(
+            project_root / c.Infra.MISE_LOCK_FILENAME, required=False
+        )
+        if live_lock.failure:
+            return r[bool].from_failure(live_lock)
+        parent_plan = u.Cli.atomic_plan_directory_chain(staging_parent)
+        if parent_plan.failure:
+            return r[bool].from_failure(parent_plan)
+        parent_created = u.Cli.atomic_create_directory_chain_guarded(
+            parent_plan.value, permission_mode=0o700
+        )
+        if parent_created.failure:
+            return r[bool].from_failure(parent_created)
+        temporary = u.Cli.files_create_temporary_directory(
+            prefix="mise-lock-", parent_path=staging_parent
+        )
+        if temporary.failure:
+            return r[bool].from_failure(temporary)
+        stage_root = temporary.value
+        staged_config = u.Cli.atomic_create_binary_file_guarded(
+            stage_root / config_path.name,
+            config_state.value.content,
+            permission_mode=config_state.value.mode or 0o644,
+        )
+        generated: p.Result[bytes]
+        if staged_config.failure:
+            generated = r[bytes].from_failure(staged_config)
+        else:
+            executed = u.Cli.run_live(
+                (
+                    str(launcher),
+                    "-C",
+                    str(stage_root),
+                    "lock",
+                    "--bump",
+                    "--platform",
+                    ",".join(platforms),
+                ),
+                cwd=stage_root,
+                timeout=c.Infra.TIMEOUT_LONG,
+            )
+            if executed.failure:
+                generated = r[bytes].from_failure(executed)
+            else:
+                staged_lock = u.Cli.atomic_read_binary_file_state(
+                    stage_root / c.Infra.MISE_LOCK_FILENAME, required=True
+                )
+                if staged_lock.failure:
+                    generated = r[bytes].from_failure(staged_lock)
+                elif staged_lock.value.content is None:
+                    generated = r[bytes].fail("Mise generated an empty lock state")
+                else:
+                    generated = r[bytes].ok(staged_lock.value.content)
+        manifest = u.Cli.atomic_inventory_physical_tree(stage_root)
+        if manifest.failure:
+            return r[bool].fail(
+                f"{generated.error}; {manifest.error}"
+                if generated.failure
+                else manifest.error or "Mise staging inventory failed"
+            )
+        cleaned = u.Cli.atomic_cleanup_physical_tree_guarded(manifest.value)
+        if cleaned.failure:
+            return r[bool].fail(
+                f"{generated.error}; {cleaned.error}"
+                if generated.failure
+                else cleaned.error or "Mise staging cleanup failed"
+            )
+        if generated.failure:
+            return r[bool].from_failure(generated)
+        published = u.Cli.atomic_write_binary_file_guarded(
+            live_lock.value, generated.value, permission_mode=0o644
+        )
+        if published.failure:
+            return r[bool].from_failure(published)
+        return r[bool].ok(True)
 
     @staticmethod
     def dep_name(requirement: str, *, active_only: bool = False) -> str | None:
@@ -82,29 +177,6 @@ class FlextInfraUtilitiesDependencies:
         return tuple(names)
 
     @staticmethod
-    def dependency_waves(
-        edges: t.MappingKV[str, t.StrSequence],
-    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
-        """Layer a dependency graph deterministically and reject every cycle."""
-        pending = {name: set(dependencies) for name, dependencies in edges.items()}
-        waves: t.MutableSequenceOf[t.StrSequence] = []
-        while pending:
-            ready = tuple(
-                sorted(name for name, blockers in pending.items() if not blockers)
-            )
-            if not ready:
-                return r[t.SequenceOf[t.StrSequence]].fail(
-                    "dependency cycle blocks topological order: "
-                    + ", ".join(sorted(pending))
-                )
-            waves.append(ready)
-            for name in ready:
-                del pending[name]
-            for blockers in pending.values():
-                blockers.difference_update(ready)
-        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
-
-    @staticmethod
     def dependency_order(
         direct_names: t.StrSequence,
         *,
@@ -159,6 +231,43 @@ class FlextInfraUtilitiesDependencies:
         for root in roots:
             visit(root)
         return tuple(ordered)
+
+    @staticmethod
+    def dependency_waves(
+        edges: Mapping[str, t.StrSequence],
+    ) -> t.SequenceOf[t.StrSequence]:
+        """Split a closed named dependency graph into dependency-first waves.
+
+        Wave ``n`` contains only names whose dependencies all live in earlier
+        waves, so each wave may proceed in parallel while the sequence between
+        waves stays strict. The graph is closed: every referenced name must be
+        a key of ``edges``, and a cycle fails loudly.
+        """
+        unknown = sorted({
+            dependency
+            for deps in edges.values()
+            for dependency in deps
+            if dependency not in edges
+        })
+        if unknown:
+            msg = "dependency graph references names outside the graph: " + ", ".join(
+                unknown
+            )
+            raise ValueError(msg)
+        pending = {name: set(deps) for name, deps in edges.items()}
+        waves: list[t.StrSequence] = []
+        while pending:
+            ready = frozenset(name for name, deps in pending.items() if not deps)
+            if not ready:
+                msg = "cyclic dependency graph: " + ", ".join(sorted(pending))
+                raise ValueError(msg)
+            waves.append(tuple(sorted(ready)))
+            pending = {
+                name: deps - ready
+                for name, deps in pending.items()
+                if name not in ready
+            }
+        return tuple(waves)
 
     @classmethod
     def project_dependency_resource_files(
@@ -246,39 +355,34 @@ class FlextInfraUtilitiesDependencies:
         """
         result: t.MappingKV[str, str] = {}
         if lock_path.is_file():
-            try:
-                raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError:
-                pass
-            else:
-                payload_source = u.Cli.toml_mapping_from_text(raw_text)
-                if payload_source is not None:
-                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
-                        payload_source
-                    )
-                    if payload is not None:
-                        raw_packages = payload.get("package")
-                        if isinstance(raw_packages, list):
-                            versions: dict[str, str] = {}
-                            for raw_package in raw_packages:
-                                if not isinstance(raw_package, Mapping):
-                                    continue
-                                raw_source = raw_package.get("source")
-                                if not isinstance(raw_source, Mapping) or not any(
-                                    kind in raw_source for kind in sources
-                                ):
-                                    continue
-                                raw_name = raw_package.get("name")
-                                raw_version = raw_package.get(c.Infra.VERSION)
-                                if not isinstance(raw_name, str) or not isinstance(
-                                    raw_version, str
-                                ):
-                                    continue
-                                dependency_name = cls.dep_name(raw_name)
-                                if dependency_name is None:
-                                    continue
-                                versions[dependency_name] = raw_version.strip()
-                            result = dict(versions)
+            raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            payload_source = u.Cli.toml_mapping_from_text(raw_text)
+            if payload_source is not None:
+                payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
+                    payload_source
+                )
+                raw_packages = payload.get("package")
+                if isinstance(raw_packages, list):
+                    versions: dict[str, str] = {}
+                    for raw_package in raw_packages:
+                        if not isinstance(raw_package, Mapping):
+                            continue
+                        raw_source = raw_package.get("source")
+                        if not isinstance(raw_source, Mapping) or not any(
+                            kind in raw_source for kind in sources
+                        ):
+                            continue
+                        raw_name = raw_package.get("name")
+                        raw_version = raw_package.get(c.Infra.VERSION)
+                        if not isinstance(raw_name, str) or not isinstance(
+                            raw_version, str
+                        ):
+                            continue
+                        dependency_name = cls.dep_name(raw_name)
+                        if dependency_name is None:
+                            continue
+                        versions[dependency_name] = raw_version.strip()
+                    result = dict(versions)
         return result
 
     @classmethod
@@ -561,8 +665,6 @@ class FlextInfraUtilitiesDependencies:
         # flext-j47u (codex): FLEXT dependencies are first-party contracts even
         # when their uv source declaration is owned by an enclosing workspace.
         normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
-        if normalized is None:
-            return ()
         return tuple(
             sorted(
                 name.replace("-", "_")

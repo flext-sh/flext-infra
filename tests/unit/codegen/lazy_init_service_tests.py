@@ -13,6 +13,30 @@ from tests import c, u
 class TestsFlextInfraCodegenLazyInitService:
     """Validate real service execution without mocks or internal branching asserts."""
 
+    @staticmethod
+    def read_only_check_result(
+        workspace_root: Path,
+        package_root: Path,
+        *,
+        check_only: bool = True,
+        apply_changes: bool = False,
+        dry_run: bool = False,
+    ) -> tuple[object, object, Path, bytes]:
+        """Run one lazy-init pass without writing and return its observable drift."""
+        u.Tests.write_lazy_init_namespace_module(
+            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        )
+        init_path = package_root / c.Infra.INIT_PY
+        original_init = init_path.read_bytes()
+        service = u.Tests.create_lazy_init_service(workspace_root)
+        service.target_module = "flext_test_project"
+        service.check_only = check_only
+        service.apply_changes = apply_changes
+        service.dry_run = dry_run
+
+        result = service.execute()
+        return service, result, init_path, original_init
+
     def test_execute_applies_only_selected_root_artifact_set(
         self, tmp_path: Path
     ) -> None:
@@ -267,17 +291,12 @@ class TestsFlextInfraCodegenLazyInitService:
 
     def test_check_mode_is_read_only_and_reports_drift(self, tmp_path: Path) -> None:
         """Check reports missing generated artifacts as a failure without writing."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        service, result, init_path, original_init = (
+            TestsFlextInfraCodegenLazyInitService.read_only_check_result(
+                *u.Tests.create_lazy_init_workspace(tmp_path)
+            )
         )
-        init_path = package_root / c.Infra.INIT_PY
-        original_init = init_path.read_bytes()
-        service = u.Tests.create_lazy_init_service(workspace_root)
-        service.target_module = "flext_test_project"
-        service.check_only = True
-
-        result = service.execute()
+        package_root = init_path.parent
 
         tm.that(result.success, eq=False)
         tm.that(init_path.read_bytes(), eq=original_init)
@@ -288,18 +307,14 @@ class TestsFlextInfraCodegenLazyInitService:
         self, tmp_path: Path
     ) -> None:
         """Explicit dry-run wins over apply and reports drift without writing."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
-        u.Tests.write_lazy_init_namespace_module(
-            package_root / "models.py", class_name="FlextTestsModels", alias="m"
+        service, result, init_path, original_init = (
+            TestsFlextInfraCodegenLazyInitService.read_only_check_result(
+                *u.Tests.create_lazy_init_workspace(tmp_path),
+                apply_changes=True,
+                dry_run=True,
+            )
         )
-        init_path = package_root / c.Infra.INIT_PY
-        original_init = init_path.read_bytes()
-        service = u.Tests.create_lazy_init_service(workspace_root)
-        service.target_module = "flext_test_project"
-        service.apply_changes = True
-        service.dry_run = True
-
-        result = service.execute()
+        package_root = init_path.parent
 
         tm.that(result.success, eq=False)
         tm.that(init_path.read_bytes(), eq=original_init)
@@ -411,7 +426,11 @@ class TestsFlextInfraCodegenLazyInitService:
             str(init_path),
         ])
         tm.that(ruff_check.success, eq=True)
+<<<<<<< HEAD
         tm.that(ruff_check.value.outcome.raw_return_code, eq=0)
+=======
+        tm.that(u.Cli.process_succeeded(ruff_check.value.outcome), eq=True)
+>>>>>>> origin/0.12.0-dev
 
     def test_execute_command_rejects_publication_outside_conform(
         self, tmp_path: Path

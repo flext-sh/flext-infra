@@ -24,8 +24,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["duplication"][1]
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
@@ -40,7 +38,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """Run and validate jscpd, then expose every owned clone as an error."""
         _ = ctx
         started = time.monotonic()
-        scan = self._workspace_scan()
+        scan = self._scan_workspace()
         parsed = self._issues_from_report(scan, project_dir)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
@@ -55,7 +53,11 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             started=started,
         )
 
+<<<<<<< HEAD
     def _workspace_scan(self) -> p.Cli.CommandOutput:
+=======
+    def _scan_workspace(self) -> p.Cli.CommandOutput:
+>>>>>>> origin/0.12.0-dev
         """Create one fresh report; tool, scope, and report failures escape."""
         binary = shutil.which(c.Infra.JSCPD_BINARY)
         if binary is None:
@@ -136,6 +138,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 )
             )
         )
+<<<<<<< HEAD
 
     def _declared_trees_by_path(self) -> p.Result[Mapping[Path, t.StrSequence]]:
         """Map declared repositories to their declared duplication scan trees."""
@@ -152,6 +155,8 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                     repository.duplication_trees
                 )
         return r[Mapping[Path, t.StrSequence]].ok(declared)
+=======
+>>>>>>> origin/0.12.0-dev
 
     def _scope_paths(self) -> t.StrSequence:
         """Resolve canonical source, test, config, and template roots once."""
@@ -265,16 +270,17 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second_name = u.Cli.json_pick_str(second, "name")
             if not cls._is_semantic_clone(duplicate, first, second):
                 continue
+            record = m.Infra.JscpdDuplicate.model_validate(duplicate)
             if first_name.startswith(prefix):
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, first, first_name, second_name, project_dir
+                    cls._issue(
+                        record, record.first_file, record.second_file, project_dir
                     )
                 )
             elif second_name.startswith(prefix) and second_name != first_name:
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, second, second_name, first_name, project_dir
+                    cls._issue(
+                        record, record.second_file, record.first_file, project_dir
                     )
                 )
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
@@ -324,10 +330,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     @staticmethod
     def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
         """Parse one module into ranges for statements with runtime behavior."""
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        except (OSError, SyntaxError, UnicodeError):
-            return ((1, 2**31 - 1),)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         parents = {
             child: parent
             for parent in ast.walk(tree)

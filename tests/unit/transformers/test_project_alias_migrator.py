@@ -6,9 +6,13 @@ from pathlib import Path
 
 import pytest
 
+<<<<<<< HEAD
 from flext_infra.refactor.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
+=======
+from flext_infra.gates.canonical_alias import FlextInfraRefactorProjectAliasMigrator
+>>>>>>> origin/0.12.0-dev
 from tests import tm
 
 

@@ -17,11 +17,10 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.codegen._lazy_init_generation import (
-    FlextInfraCodegenLazyInitGenerationMixin,
-)
 from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -73,7 +72,11 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         self._duplicate_class_names = 0
         if not self.repository_root.is_dir():
             return r[m.Infra.CodegenPhaseAnalysis].fail(
+<<<<<<< HEAD
                 f"lazy-init repository is not a directory: {self.repository_root}"
+=======
+                f"lazy-init workspace is not a directory: {self.repository_root}"
+>>>>>>> origin/0.12.0-dev
             )
         started_at = perf_counter()
         u.Cli.info(

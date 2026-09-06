@@ -7,8 +7,13 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
+<<<<<<< HEAD
 from flext_infra.docs._generator_bundle import FlextInfraDocGeneratorBundleMixin
+=======
+>>>>>>> origin/0.12.0-dev
 from flext_infra.docs.base import FlextInfraDocServiceBase
+
+from ._generator_bundle import FlextInfraDocGeneratorBundleMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

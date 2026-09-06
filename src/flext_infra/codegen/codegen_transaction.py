@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+<<<<<<< HEAD
 from flext_infra import c, m, u
+=======
+from flext_infra import m, u
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen import (
     _codegen_staging as generic_staging,
     _mise_artifacts_journal as journal_io,
@@ -16,10 +20,16 @@ from flext_infra.codegen import (
     _mise_artifacts_state as state,
     _mise_artifacts_verification as verify,
 )
+<<<<<<< HEAD
 from flext_infra.codegen._mise_artifacts_recovery import FlextInfraMiseRecovery
 from flext_infra.codegen._mise_artifacts_staging import FlextInfraMiseStaging
+=======
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
+
+from ._mise_artifacts_recovery import FlextInfraMiseRecovery
+from ._mise_artifacts_staging import FlextInfraMiseStaging
 
 if TYPE_CHECKING:
     from flext_infra import p

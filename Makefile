@@ -11,9 +11,6 @@
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
-ifneq ($(strip $(WHAT)),)
-$(error WHAT selectors are retired; invoke the canonical verb and use APPLY=Y as the sole mutation flag)
-endif
 ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
 ifneq ($(filter setup,$(MAKECMDGOALS)),)
 SETUP_BOOTSTRAP_ONLY := Y
@@ -108,8 +105,8 @@ endif
 # End SECTION: WORKSPACE_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs and the canonical gate vocabulary.
-PUBLIC_VERBS := help setup deps build check test fmt fix audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
-BUILTIN_VERBS := help setup deps build check test fmt fix audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
+PUBLIC_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
+BUILTIN_VERBS := help setup deps build check test fmt fix fix-enforcement audit status docs clean release-plan release-version release-tag release-build publication gen conform initialize mod waza duplication
 SCRIPT_VERBS :=
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/custom.mk
 CUSTOM_DECLARED_TARGETS :=
@@ -178,7 +175,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-ifneq ($(filter Y,$(SETUP_BOOTSTRAP_ONLY)),)
+ifneq ($(filter Y,$(GEN_INIT_ONLY) $(SETUP_BOOTSTRAP_ONLY)),)
 RESOLVED_UV :=
 else
 RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)")
@@ -281,7 +278,7 @@ if [ -z "$$mise_storage_root" ]; then \
 	mkdir -p "$$scratch_parent"; \
 	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
 	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/home" "$$scratch/home" "$$scratch/appdata" "$$scratch/appdata" "$$scratch/xdg-config" "$$scratch/xdg-data" "$$scratch/xdg-cache" "$$scratch/xdg-state" "$$scratch/config" "$$scratch/tmp" "$$scratch/." "$$scratch/system-config" "$$scratch/system-data" "$$scratch/system-installs" "$$scratch/system-shims" "$$scratch/tmp" "$$scratch/tmp" "$$scratch/tmp"; \
+	mkdir -p "$$scratch/receipt/bin" "$$scratch/home" "$$scratch/home" "$$scratch/appdata" "$$scratch/appdata" "$$scratch/xdg-config" "$$scratch/xdg-data" "$$scratch/xdg-cache" "$$scratch/xdg-state" "$$scratch/config" "$$scratch/tmp" "$$scratch/." "$$scratch/system-config" "$$scratch/system-data" "$$scratch/system-installs" "$$scratch/system-shims" "$$scratch/tmp" "$$scratch/tmp" "$$scratch/tmp"; \
 : > "$$scratch/global-config.toml"; chmod 600 "$$scratch/global-config.toml"; \
 : > "$$scratch/system-config/config.toml"; chmod 600 "$$scratch/system-config/config.toml"; \
 : > "$$scratch/gitconfig"; chmod 600 "$$scratch/gitconfig"; \
@@ -392,14 +389,17 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		printf '%s\n' "$$launcher_release"; \
 	}; \
 	case "$${OS:-}" in \
-		Windows_NT) mise_runtime_suffix='.exe' ;; \
-		*) mise_runtime_suffix= ;; \
+		Windows_NT) mise_runtime_suffix='.exe'; latest_mise="$$scratch/receipt/bin/mise.cmd" ;; \
+		*) mise_runtime_suffix=; latest_mise="$$scratch/receipt/bin/mise" ;; \
 	esac; \
-	latest_mise="$$mise"; \
+	seed_release=$$(mise_release_from_launcher "$$mise"); \
+	mise_install_path="$$mise_storage_root/bootstrap/mise-$$seed_release$$mise_runtime_suffix"; \
+	mise_checked "$$scratch/generate.log" mise_exec no-config "$$mise" -C "$$scratch" generate install-script --write "$$scratch/receipt/bin/mise" --windows; \
+	chmod +x "$$scratch/receipt/bin/mise"; \
 	mise_release=$$(mise_release_from_launcher "$$latest_mise"); \
 	mise_install_path="$$mise_storage_root/bootstrap/mise-$$mise_release$$mise_runtime_suffix"; \
-	mise_checked_stdout "$$scratch/runtime-version.stdout" "$$scratch/runtime-version.stderr" mise_exec no-config "$$latest_mise" --version; \
-	receipt_runtime=$$(cat "$$scratch/runtime-version.stdout"); \
+	mise_checked_stdout "$$scratch/receipt-version.stdout" "$$scratch/receipt-version.stderr" mise_exec no-config "$$latest_mise" --version; \
+	receipt_runtime=$$(cat "$$scratch/receipt-version.stdout"); \
 	case "$$receipt_runtime" in \
 		'mise '*) runtime_release=$${receipt_runtime#mise }; runtime_release=$${runtime_release%% *} ;; \
 		*) runtime_release=$${receipt_runtime%% *} ;; \
@@ -562,6 +562,10 @@ fix: _builtin_require_environment
 	$(call _require_apply)
 	$(call RUN_PUBLIC,fix)
 
+fix-enforcement: _builtin_require_environment
+	$(call _require_apply)
+	$(call RUN_PUBLIC,fix-enforcement)
+
 audit: _builtin_require_environment
 	$(call RUN_PUBLIC,audit)
 
@@ -656,6 +660,8 @@ _builtin-help:
 	@printf '  %-16s %s (APPLY=Y)\n' 'fmt' 'Apply canonical formatting.';
 
 	@printf '  %-16s %s (APPLY=Y)\n' 'fix' 'Apply every configured safe correction.';
+
+	@printf '  %-16s %s (APPLY=Y)\n' 'fix-enforcement' 'Apply the safe fix actions declared by the enforcement catalog.';
 
 	@printf '  %-16s %s\n' 'audit' 'Inspect ownership, dependency, and generated-state health.';
 
@@ -866,7 +872,7 @@ _builtin_deps_upgrade: _builtin_require_environment
 	if [ -z "$$selected" ]; then selected="."; fi; \
 	set --; \
 	for project in $$selected; do set -- "$$@" --projects "$$project"; done; \
-	$(PROJECT_FLEXT_INFRA) deps modernize --repository-root "$(PROJECT_ROOT)" \
+	$(PROJECT_FLEXT_INFRA) deps modernize --workspace "$(PROJECT_ROOT)" \
 		--apply --rewrite-constraints --skip-check "$$@"
 	$(call _run_for_all_projects,)
 
@@ -882,10 +888,10 @@ _builtin_build_artifacts:
 # make.ci.local_check_gates.
 _builtin_check_all: _builtin_require_environment
 	@set -eu; \
-		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,boundary,canonical-alias,runtime-census,namespace,layout,tier-whitelist,smells,codemod,direnv,duplication"; \
+		gates="lint,pyrefly,mypy,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,layout,canonical-alias,codemod,direnv,duplication"; \
 		if [ "$(strip $(CI))" = "Y" ]; then \
-			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,boundary,canonical-alias,runtime-census,namespace,layout,tier-whitelist,smells,codemod,direnv,duplication"; \
-			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown boundary canonical-alias runtime-census namespace layout tier-whitelist smells codemod direnv duplication\n'; \
+			gates="lint,pyright,silent-failure,deferred-self-reference,security,markdown,loc-cap,boundary,runtime-census,namespace,tier-whitelist,smells,layout,canonical-alias,codemod,direnv,duplication"; \
+			printf 'INFO: CI=Y runs check gates: lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication\n'; \
 		fi; \
 		if [ -z "$$gates" ]; then \
 		printf 'ERROR: no check gates remain after CI=Y filtering\n' >&2; \
@@ -921,8 +927,15 @@ _builtin_fix_check: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --workspace "$(PROJECT_ROOT)" --gates "lint,markdown,canonical-alias,smells" --projects . --fix
 
 _builtin_fix_apply: _builtin_fix_all
+
+# Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
+# declared safe, applied through its registered adapter.
+_builtin_fix_enforcement: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --workspace "$(PROJECT_ROOT)" --safe-only --apply
 
 
 _builtin_run_default: _builtin_require_environment
@@ -1002,6 +1015,11 @@ _builtin_release_publish: _builtin_require_environment
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
 
+_builtin_gen_init:
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
+	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
+
 _builtin_gen_all:
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
@@ -1020,6 +1038,7 @@ _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
+_builtin-fix-enforcement: _builtin_fix_enforcement
 _builtin-audit:
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@$(UV) pip check --python "$(RUNTIME_VENV)"

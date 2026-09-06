@@ -2,25 +2,33 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from pathlib import Path
 
+<<<<<<< HEAD
 import pytest
 
 from flext_infra import c, m, p, r, u
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
+=======
+from flext_infra import p, r, u
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 from flext_tests import tm
-from tests import u as test_u
+from tests.unit.codegen.mise_generation_lock_fixture import (
+    lock_identity,
+    lock_owner,
+    lock_repository,
+)
 
 
 class TestsMiseGenerationLock:
     """Coordinate generation through one worktree-specific Git lock file."""
 
     @staticmethod
+<<<<<<< HEAD
     def _repository(root: Path) -> Path:
         root.mkdir(parents=True)
         test_u.Tests.initialize_git_repo(root)
@@ -53,6 +61,11 @@ class TestsMiseGenerationLock:
     def _submodule(cls, tmp_path: Path) -> tuple[Path, Path]:
         source = cls._repository(tmp_path / "source")
         superproject = cls._repository(tmp_path / "superproject")
+=======
+    def _submodule(tmp_path: Path) -> tuple[Path, Path]:
+        source = lock_repository(tmp_path / "source")
+        superproject = lock_repository(tmp_path / "superproject")
+>>>>>>> origin/0.12.0-dev
         tm.ok(
             u.Cli.run_checked([
                 "git",
@@ -84,8 +97,8 @@ class TestsMiseGenerationLock:
         self, tmp_path: Path
     ) -> None:
         """Reach the locked check operation while a clean checkout stays untouched."""
-        root = self._repository(tmp_path / "standalone")
-        transaction = FlextInfraCodegenTransaction(self._owner(root))
+        root = lock_repository(tmp_path / "standalone")
+        transaction = FlextInfraCodegenTransaction(lock_owner(root))
         observed: list[Path] = []
 
         def observe(scope: Path) -> p.Result[bool]:
@@ -104,6 +117,7 @@ class TestsMiseGenerationLock:
             eq=True,
         )
 
+<<<<<<< HEAD
     def test_second_process_contends_on_same_scope_lock(self, tmp_path: Path) -> None:
         """Make a distinct process lose one nonblocking attempt on the same inode."""
         root = self._repository(tmp_path / "contended")
@@ -134,19 +148,21 @@ except BlockingIOError:
             contended.value.outcome.raw_return_code, eq=0, msg=contended.value.stderr
         )
 
+=======
+>>>>>>> origin/0.12.0-dev
     def test_nested_independent_repo_ignores_ancestor_journal(
         self, tmp_path: Path
     ) -> None:
         """Resolve the requested repository before considering its own recovery state."""
-        parent = self._repository(tmp_path / "parent")
+        parent = lock_repository(tmp_path / "parent")
         journal = (
-            self._identity(parent).git_dir
+            lock_identity(parent).git_dir
             / "flext-infra-codegen-transaction-journal.json"
         )
         journal.write_bytes(b"foreign ancestor journal")
-        nested = self._repository(parent / "nested")
+        nested = lock_repository(parent / "nested")
 
-        scope = FlextInfraMiseWorkspacePlanner(self._owner(nested)).scope_identity()
+        scope = FlextInfraMiseWorkspacePlanner(lock_owner(nested)).scope_identity()
 
         tm.ok(scope)
         tm.that(scope.value.repo_root, eq=nested.resolve())
@@ -156,10 +172,10 @@ except BlockingIOError:
         self, tmp_path: Path
     ) -> None:
         """Carry one distinctive journal path from the authenticated Git identity."""
-        root = self._repository(tmp_path / "journal-layout")
-        identity = self._identity(root)
+        root = lock_repository(tmp_path / "journal-layout")
+        identity = lock_identity(root)
 
-        layout = FlextInfraMiseWorkspacePlanner(self._owner(root)).journal_layout(
+        layout = FlextInfraMiseWorkspacePlanner(lock_owner(root)).journal_layout(
             identity
         )
 
@@ -176,7 +192,7 @@ except BlockingIOError:
     ) -> None:
         """Bind a governed member to the superproject worktree Git directory."""
         superproject, member = self._submodule(tmp_path)
-        planner = FlextInfraMiseWorkspacePlanner(self._owner(member))
+        planner = FlextInfraMiseWorkspacePlanner(lock_owner(member))
 
         scope = planner.scope_identity()
 
@@ -187,6 +203,7 @@ except BlockingIOError:
         tm.ok(layout)
         tm.that(layout.value.journal_path.parent, eq=scope.value.git_dir)
 
+<<<<<<< HEAD
     def test_head_replacement_is_rejected_while_lease_is_held(
         self, tmp_path: Path
     ) -> None:
@@ -247,16 +264,18 @@ except BlockingIOError:
         ):
             pass
 
+=======
+>>>>>>> origin/0.12.0-dev
     def test_head_validation_and_reconcile_create_no_state(
         self, tmp_path: Path
     ) -> None:
         """Keep Git validation and journal discovery read-only before the operation."""
-        root = self._repository(tmp_path / "apply")
-        identity = self._identity(root)
+        root = lock_repository(tmp_path / "apply")
+        identity = lock_identity(root)
         head = identity.git_dir / "HEAD"
         journal = identity.git_dir / "flext-infra-codegen-transaction-journal.json"
         head.chmod(0o666)
-        transaction = FlextInfraCodegenTransaction(self._owner(root))
+        transaction = FlextInfraCodegenTransaction(lock_owner(root))
 
         rejected = transaction.run_locked(
             prepare=True, operation=lambda _scope: r[bool].ok(True)

@@ -36,6 +36,11 @@ class FlextInfraConstantsCheck:
 
     AST_GREP_DOCS_URL: Final[str] = "https://ast-grep.github.io/"
     "Canonical ast-grep documentation URL for gate metadata."
+    # Quality gate identifiers shared with the tool-name vocabulary.
+    LINT: Final[str] = "lint"
+    FORMAT: Final[str] = "format"
+    MARKDOWN: Final[str] = "markdown"
+    SILENT_FAILURE: Final[str] = "silent-failure"
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -81,6 +86,8 @@ class FlextInfraConstantsCheck:
     })
     ALLOWED_GATES: Final[frozenset[str]] = frozenset(SARIF_TOOL_INFO)
     "Gate identifiers — derived from SARIF_TOOL_INFO keys (single SSOT)."
+    MUTATING_GATES: Final[frozenset[str]] = frozenset({FORMAT})
+    "Gates that rewrite files: owned by `fmt`/`fix`, never a read-only `check` vocabulary."
     RUFF_FORMAT_FILE_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*-->\s*(.+?):\d+:\d+\s*$"
     )
@@ -194,14 +201,6 @@ class FlextInfraConstantsCheck:
     QLTY_BINARY: Final[str] = "qlty"
     QLTY_CONFIG_DIRNAME: Final[str] = ".qlty"
     QLTY_CONFIG_FILENAME: Final[str] = "qlty.toml"
-    QLTY_CONFIG_CONTENT: Final[str] = (
-        "# AUTO-GENERATED FILE — Materialized by the qlty smells gate at scan\n"
-        "# time from this typed constant; never hand-edit. Removal is safe: the\n"
-        "# next scan rewrites it.\n"
-        'config_version = "0"\n'
-    )
-    "Minimal repository-root config qlty requires before scanning; a generated\n"
-    "projection of the gate, never a hand-maintained file."
     SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
         "smells",
         "--all",

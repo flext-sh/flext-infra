@@ -12,240 +12,261 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
+<<<<<<< HEAD:src/flext_infra/refactor/project_alias_migrator.py
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
 from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+=======
+>>>>>>> origin/0.12.0-dev:src/flext_infra/_utilities/project_alias_migrator.py
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from .discovery import FlextInfraUtilitiesDiscovery
+from .transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
-class _CstImportHelpers:
-    """Static libcst helpers for reading and building import statements."""
+class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
+    class _CstImportHelpers:
+        """Static libcst helpers for reading and building import statements."""
 
-    # flext-j47u: keep CST rendering typed; Rope remains the semantic source.
-    @staticmethod
-    def dotted_name(module: cst.BaseExpression | None) -> str | None:
-        """Return a dotted name for a libcst import expression."""
-        if module is None:
+        # flext-j47u: keep CST rendering typed; Rope remains the semantic source.
+        @staticmethod
+        def dotted_name(module: cst.BaseExpression | None) -> str | None:
+            """Return a dotted name for a libcst import expression."""
+            if module is None:
+                return None
+            parts: list[str] = []
+            current: cst.BaseExpression = module
+            while isinstance(current, cst.Attribute):
+                parts.append(current.attr.value)
+                current = current.value
+            if isinstance(current, cst.Name):
+                parts.append(current.value)
+                return ".".join(reversed(parts))
             return None
-        parts: list[str] = []
-        current: cst.BaseExpression = module
-        while isinstance(current, cst.Attribute):
-            parts.append(current.attr.value)
-            current = current.value
-        if isinstance(current, cst.Name):
-            parts.append(current.value)
-            return ".".join(reversed(parts))
-        return None
 
-    @staticmethod
-    def import_aliases(node: cst.ImportFrom) -> tuple[cst.ImportAlias, ...]:
-        """Return plain import aliases, ignoring ``*`` imports."""
-        if isinstance(node.names, cst.ImportStar):
-            return ()
-        return tuple(node.names)
+        @staticmethod
+        def import_aliases(node: cst.ImportFrom) -> tuple[cst.ImportAlias, ...]:
+            """Return plain import aliases, ignoring ``*`` imports."""
+            if isinstance(node.names, cst.ImportStar):
+                return ()
+            return tuple(node.names)
 
-    @staticmethod
-    def make_import_alias(display: str) -> cst.ImportAlias:
-        """Build a libcst ImportAlias from ``Name`` or ``LongName as alias``."""
-        if " as " in display:
-            name, alias = display.split(" as ", maxsplit=1)
-            return cst.ImportAlias(
-                name=cst.Name(name), asname=cst.AsName(name=cst.Name(alias))
-            )
-        return cst.ImportAlias(name=cst.Name(display))
-
-    @staticmethod
-    def module_expression(module: str) -> cst.Attribute | cst.Name:
-        """Build a typed libcst expression for a dotted module name."""
-        parts = module.split(".")
-        expression: cst.Attribute | cst.Name = cst.Name(parts[0])
-        for part in parts[1:]:
-            expression = cst.Attribute(value=expression, attr=cst.Name(part))
-        return expression
-
-    @classmethod
-    def insert_local_imports(
-        cls, tree: cst.Module, imports_to_add: dict[str, dict[str, str]]
-    ) -> cst.Module:
-        """Prepend newly required local alias imports after __future__/docstring."""
-        if not imports_to_add:
-            return tree
-
-        new_stmts: list[cst.SimpleStatementLine] = []
-        for module in sorted(imports_to_add):
-            aliases = [
-                cls.make_import_alias(display)
-                for _bound, display in sorted(imports_to_add[module].items())
-            ]
-            new_stmts.append(
-                cst.SimpleStatementLine(
-                    body=[
-                        cst.ImportFrom(
-                            module=cls.module_expression(module), names=aliases
-                        )
-                    ]
+        @staticmethod
+        def make_import_alias(display: str) -> cst.ImportAlias:
+            """Build a libcst ImportAlias from ``Name`` or ``LongName as alias``."""
+            if " as " in display:
+                name, alias = display.split(" as ", maxsplit=1)
+                return cst.ImportAlias(
+                    name=cst.Name(name), asname=cst.AsName(name=cst.Name(alias))
                 )
-            )
+            return cst.ImportAlias(name=cst.Name(display))
 
-        insert_pos = 0
-        for idx, stmt in enumerate(tree.body):
-            if idx != insert_pos:
-                break
-            if isinstance(stmt, cst.SimpleStatementLine) and len(stmt.body) == 1:
-                body_stmt = stmt.body[0]
-                if isinstance(body_stmt, cst.ImportFrom):
-                    mod = cls.dotted_name(body_stmt.module)
-                    if mod == "__future__":
+        @staticmethod
+        def module_expression(module: str) -> cst.Attribute | cst.Name:
+            """Build a typed libcst expression for a dotted module name."""
+            parts = module.split(".")
+            expression: cst.Attribute | cst.Name = cst.Name(parts[0])
+            for part in parts[1:]:
+                expression = cst.Attribute(value=expression, attr=cst.Name(part))
+            return expression
+
+        @classmethod
+        def insert_local_imports(
+            cls, tree: cst.Module, imports_to_add: dict[str, dict[str, str]]
+        ) -> cst.Module:
+            """Prepend newly required local alias imports after __future__/docstring."""
+            if not imports_to_add:
+                return tree
+
+            new_stmts: list[cst.SimpleStatementLine] = []
+            for module in sorted(imports_to_add):
+                aliases = [
+                    cls.make_import_alias(display)
+                    for _bound, display in sorted(imports_to_add[module].items())
+                ]
+                new_stmts.append(
+                    cst.SimpleStatementLine(
+                        body=[
+                            cst.ImportFrom(
+                                module=cls.module_expression(module), names=aliases
+                            )
+                        ]
+                    )
+                )
+
+            insert_pos = 0
+            for idx, stmt in enumerate(tree.body):
+                if idx != insert_pos:
+                    break
+                if isinstance(stmt, cst.SimpleStatementLine) and len(stmt.body) == 1:
+                    body_stmt = stmt.body[0]
+                    if isinstance(body_stmt, cst.ImportFrom):
+                        mod = cls.dotted_name(body_stmt.module)
+                        if mod == "__future__":
+                            insert_pos = idx + 1
+                            continue
+                    if isinstance(body_stmt, cst.Expr) and isinstance(
+                        body_stmt.value, cst.SimpleString
+                    ):
                         insert_pos = idx + 1
                         continue
-                if isinstance(body_stmt, cst.Expr) and isinstance(
-                    body_stmt.value, cst.SimpleString
-                ):
-                    insert_pos = idx + 1
-                    continue
-            break
+                break
 
-        new_body = list(tree.body)
-        for offset, stmt in enumerate(new_stmts):
-            new_body.insert(insert_pos + offset, stmt)
-        return tree.with_changes(body=new_body)
+            new_body = list(tree.body)
+            for offset, stmt in enumerate(new_stmts):
+                new_body.insert(insert_pos + offset, stmt)
+            return tree.with_changes(body=new_body)
 
+    class _TypeCheckingContext:
+        """Mixin tracking whether we are inside an ``if TYPE_CHECKING:`` block."""
 
-class _TypeCheckingContext:
-    """Mixin tracking whether we are inside an ``if TYPE_CHECKING:`` block."""
+        _tc_stack: list[bool]
 
-    _tc_stack: list[bool]
-
-    def _enter_if(self, node: cst.If) -> bool:
-        """Return True and push when this is a TYPE_CHECKING branch."""
-        is_tc = isinstance(node.test, cst.Name) and node.test.value == "TYPE_CHECKING"
-        self._tc_stack.append(is_tc)
-        return is_tc
-
-    def _leave_if(self) -> None:
-        self._tc_stack.pop()
-
-    def _in_type_checking(self) -> bool:
-        return any(self._tc_stack)
-
-
-class _CollectExistingLocal(cst.CSTVisitor, _TypeCheckingContext):
-    """Collect bound names already imported from the project's local facades."""
-
-    def __init__(self, import_root: str) -> None:
-        self.import_root = import_root
-        self.existing_local: dict[str, set[str]] = {}
-        self._tc_stack = []
-
-    @override
-    def visit_If(self, node: cst.If) -> bool:
-        self._enter_if(node)
-        return True
-
-    @override
-    def leave_If(self, original_node: cst.If) -> None:
-        self._leave_if()
-
-    @override
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-        if self._in_type_checking():
-            return
-        module = _CstImportHelpers.dotted_name(node.module)
-        if module is None or not (
-            module == self.import_root or module.startswith(f"{self.import_root}.")
-        ):
-            return
-        for alias in _CstImportHelpers.import_aliases(node):
-            bound = alias.evaluated_alias or alias.evaluated_name
-            self.existing_local.setdefault(module, set()).add(bound)
-
-
-class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
-    """Rewrite flext_core canonical-alias imports to local project facades."""
-
-    def __init__(
-        self,
-        *,
-        import_root: str,
-        local_aliases: frozenset[str],
-        existing_local: dict[str, set[str]],
-        alias_to_module: t.StrMapping,
-        record_change: t.Infra.ChangeCallback,
-    ) -> None:
-        self._import_root = import_root
-        self._local_aliases = local_aliases
-        self._existing_local = existing_local
-        self._alias_to_module = alias_to_module
-        self._record_change = record_change
-        self.imports_to_add: dict[str, dict[str, str]] = {}
-        self.changes: list[str] = []
-        self._tc_stack = []
-
-    @override
-    def visit_If(self, node: cst.If) -> bool:
-        self._enter_if(node)
-        return True
-
-    @override
-    def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
-        _ = original_node
-        self._leave_if()
-        return updated_node
-
-    @override
-    def leave_ImportFrom(
-        self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
-    ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-        _ = original_node
-        module = _CstImportHelpers.dotted_name(updated_node.module)
-        if (
-            module is None
-            or not module.startswith(c.Infra.PKG_CORE_UNDERSCORE)
-            or self._in_type_checking()
-        ):
-            return updated_node
-
-        kept: list[cst.ImportAlias] = []
-        aliases = _CstImportHelpers.import_aliases(updated_node)
-        for alias in aliases:
-            bound = alias.evaluated_alias or alias.evaluated_name
-            if bound not in self._local_aliases:
-                kept.append(alias)
-                continue
-
-            suffix = self._alias_to_module.get(bound)
-            if suffix is None:
-                kept.append(alias)
-                continue
-
-            local_module = (
-                self._import_root
-                if self._import_root == c.Infra.DIR_TESTS
-                else f"{self._import_root}.{suffix}"
+        def _enter_if(self, node: cst.If) -> bool:
+            """Return True and push when this is a TYPE_CHECKING branch."""
+            is_tc = (
+                isinstance(node.test, cst.Name) and node.test.value == "TYPE_CHECKING"
             )
-            display = bound
-            if bound not in self._existing_local.get(local_module, set()):
-                self.imports_to_add.setdefault(local_module, {})[bound] = display
-            message = f"Migrated {display} from flext_core to {local_module}"
-            self.changes.append(message)
-            if self._record_change is not None:
-                self._record_change(message)
+            self._tc_stack.append(is_tc)
+            return is_tc
 
-        if not kept:
-            return cst.RemoveFromParent()
-        if len(kept) == len(aliases):
+        def _leave_if(self) -> None:
+            self._tc_stack.pop()
+
+        def _in_type_checking(self) -> bool:
+            return any(self._tc_stack)
+
+    class _CollectExistingLocal(cst.CSTVisitor, _TypeCheckingContext):
+        """Collect bound names already imported from the project's local facades."""
+
+        def __init__(self, import_root: str) -> None:
+            self.import_root = import_root
+            self.existing_local: dict[str, set[str]] = {}
+            self._tc_stack = []
+
+        @override
+        def visit_If(self, node: cst.If) -> bool:
+            self._enter_if(node)
+            return True
+
+        @override
+        def leave_If(self, original_node: cst.If) -> None:
+            self._leave_if()
+
+        @override
+        def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+            if self._in_type_checking():
+                return
+            module = (
+                FlextInfraRefactorProjectAliasMigrator._CstImportHelpers.dotted_name(
+                    node.module
+                )
+            )
+            if module is None or not (
+                module == self.import_root or module.startswith(f"{self.import_root}.")
+            ):
+                return
+            for alias in (
+                FlextInfraRefactorProjectAliasMigrator._CstImportHelpers.import_aliases(
+                    node
+                )
+            ):
+                bound = alias.evaluated_alias or alias.evaluated_name
+                self.existing_local.setdefault(module, set()).add(bound)
+
+    class _AliasMigrationTransformer(cst.CSTTransformer, _TypeCheckingContext):
+        """Rewrite flext_core canonical-alias imports to local project facades."""
+
+        def __init__(
+            self,
+            *,
+            import_root: str,
+            local_aliases: frozenset[str],
+            existing_local: dict[str, set[str]],
+            alias_to_module: t.StrMapping,
+            record_change: t.Infra.ChangeCallback,
+        ) -> None:
+            self._import_root = import_root
+            self._local_aliases = local_aliases
+            self._existing_local = existing_local
+            self._alias_to_module = alias_to_module
+            self._record_change = record_change
+            self.imports_to_add: dict[str, dict[str, str]] = {}
+            self.changes: list[str] = []
+            self._tc_stack = []
+
+        @override
+        def visit_If(self, node: cst.If) -> bool:
+            self._enter_if(node)
+            return True
+
+        @override
+        def leave_If(self, original_node: cst.If, updated_node: cst.If) -> cst.If:
+            _ = original_node
+            self._leave_if()
             return updated_node
-        return updated_node.with_changes(
-            names=[
-                cst.ImportAlias(name=alias.name, asname=alias.asname) for alias in kept
-            ]
-        )
 
+        @override
+        def leave_ImportFrom(
+            self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
+        ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
+            _ = original_node
+            module = (
+                FlextInfraRefactorProjectAliasMigrator._CstImportHelpers.dotted_name(
+                    updated_node.module
+                )
+            )
+            if (
+                module is None
+                or not module.startswith(c.Infra.PKG_CORE_UNDERSCORE)
+                or self._in_type_checking()
+            ):
+                return updated_node
 
-class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
+            kept: list[cst.ImportAlias] = []
+            aliases = (
+                FlextInfraRefactorProjectAliasMigrator._CstImportHelpers.import_aliases(
+                    updated_node
+                )
+            )
+            for alias in aliases:
+                bound = alias.evaluated_alias or alias.evaluated_name
+                if bound not in self._local_aliases:
+                    kept.append(alias)
+                    continue
+
+                suffix = self._alias_to_module.get(bound)
+                if suffix is None:
+                    kept.append(alias)
+                    continue
+
+                local_module = (
+                    self._import_root
+                    if self._import_root == c.Infra.DIR_TESTS
+                    else f"{self._import_root}.{suffix}"
+                )
+                display = bound
+                if bound not in self._existing_local.get(local_module, set()):
+                    self.imports_to_add.setdefault(local_module, {})[bound] = display
+                message = f"Migrated {display} from flext_core to {local_module}"
+                self.changes.append(message)
+                if self._record_change is not None:
+                    self._record_change(message)
+
+            if not kept:
+                return cst.RemoveFromParent()
+            if len(kept) == len(aliases):
+                return updated_node
+            return updated_node.with_changes(
+                names=[
+                    cst.ImportAlias(name=alias.name, asname=alias.asname)
+                    for alias in kept
+                ]
+            )
+
     """Rewrite ``from flext_core import c`` to ``from <proj>.constants import c``."""
 
     _description = "rewrite foreign canonical alias imports to local project facade"
@@ -308,10 +329,12 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             msg = f"canonical alias parse failed: {exc!s}"
             raise ValueError(msg) from exc
 
-        collector = _CollectExistingLocal(context.import_root)
+        collector = FlextInfraRefactorProjectAliasMigrator._CollectExistingLocal(
+            context.import_root
+        )
         tree.visit(collector)
 
-        transformer = _AliasMigrationTransformer(
+        transformer = FlextInfraRefactorProjectAliasMigrator._AliasMigrationTransformer(
             import_root=context.import_root,
             local_aliases=frozenset(local_aliases),
             existing_local=collector.existing_local,
@@ -322,7 +345,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         if not transformer.changes:
             return source, []
 
-        final_tree = _CstImportHelpers.insert_local_imports(
+        final_tree = FlextInfraRefactorProjectAliasMigrator._CstImportHelpers.insert_local_imports(
             new_tree, transformer.imports_to_add
         )
         return final_tree.code, list(self.changes)

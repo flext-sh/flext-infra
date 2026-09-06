@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+<<<<<<< HEAD
 from flext_infra import c, config, m, u
+=======
+from flext_infra import m, u
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen import (
     _mise_artifacts_candidates as candidates,
     _mise_artifacts_files as files,
@@ -27,6 +31,7 @@ class FlextInfraMiseStaging:
     def stage(
         self, plan: m.Infra.MiseToolchainWorkspacePlan
     ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
+<<<<<<< HEAD
         """Generate, hydrate, and validate all destination-local candidates."""
         coordinator = plan.projects[0]
         if coordinator.layout.transaction_root is None:
@@ -64,6 +69,9 @@ class FlextInfraMiseStaging:
             for state in receipt_states.value
             if state.path.name == launcher_name
         )
+=======
+        """Stage and validate the committed lock selected before publication."""
+>>>>>>> origin/0.12.0-dev
         stages: list[Path] = []
         for project in plan.projects:
             if project.layout.transaction_root is None:
@@ -71,6 +79,7 @@ class FlextInfraMiseStaging:
                     f"Mise transaction root is absent: {project.layout.selector}"
                 )
             stage_root = project.layout.transaction_root / "stage"
+<<<<<<< HEAD
             staged = self._stage_project(
                 project,
                 stage_root=stage_root,
@@ -78,6 +87,9 @@ class FlextInfraMiseStaging:
                 receipt_states=receipt_states.value,
                 environment=environment.value,
             )
+=======
+            staged = self._stage_project(project, stage_root=stage_root)
+>>>>>>> origin/0.12.0-dev
             if staged.failure:
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(staged)
             stages.append(stage_root)
@@ -106,6 +118,7 @@ class FlextInfraMiseStaging:
         )
 
     def _stage_project(
+<<<<<<< HEAD
         self,
         project: m.Infra.MiseToolchainProjectState,
         *,
@@ -113,6 +126,9 @@ class FlextInfraMiseStaging:
         launcher: Path,
         receipt_states: tuple[m.Cli.AtomicFileState, ...],
         environment: dict[str, str],
+=======
+        self, project: m.Infra.MiseToolchainProjectState, *, stage_root: Path
+>>>>>>> origin/0.12.0-dev
     ) -> p.Result[bool]:
         """Build and validate one project without reading mutable source bytes."""
         stage_plan = u.Cli.atomic_plan_directory_chain(
@@ -191,10 +207,7 @@ class FlextInfraMiseStaging:
             return normalized
         validated = self._owner.validate_artifacts(stage_root)
         if validated.failure:
-            return r[bool].fail(
-                validated.error
-                or f"Mise artifact validation failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(validated)
         return r[bool].ok(True)
 
 

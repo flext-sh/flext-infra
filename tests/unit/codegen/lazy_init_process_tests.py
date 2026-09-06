@@ -82,7 +82,7 @@ class TestsFlextInfraLazyInitProcessing:
         level_two_content, level_three_content, level_four_content = (
             path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in generated_paths
         )
-        format_result = u.Cli.run_raw(
+        u.Cli.run_raw(
             [
                 c.Infra.RUFF,
                 c.Infra.FORMAT,
@@ -91,8 +91,12 @@ class TestsFlextInfraLazyInitProcessing:
             ],
             cwd=workspace_root,
         ).unwrap()
+<<<<<<< HEAD
         tm.that(format_result.outcome.raw_return_code, eq=0)
         lint_result = u.Cli.run_raw(
+=======
+        u.Cli.run_raw(
+>>>>>>> origin/0.12.0-dev
             [
                 c.Infra.RUFF,
                 c.Infra.CHECK,

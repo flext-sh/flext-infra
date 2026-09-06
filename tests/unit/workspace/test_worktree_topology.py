@@ -20,15 +20,7 @@ class TestsWorktreeTopology(WorktreeFixture):
         repository = self._repository(tmp_path)
         branch = "feature/update"
         lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
-        tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        _ = self.add_worktree(repository, branch)
         (repository / "owner.txt").write_text("owner\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "owner.txt"], cwd=repository))
         tm.ok(
@@ -76,17 +68,7 @@ class TestsWorktreeTopology(WorktreeFixture):
         """A child lane is namespaced by the epic lane that owns it."""
         repository = self._repository(tmp_path)
         epic_branch = "feature/epic-alpha"
-        epic = Path(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    repository_root=repository,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=epic_branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute()
-            )
-        )
+        epic = Path(self.add_worktree(repository, epic_branch))
         child_branch = "feature/child-one"
 
         child = tm.ok(

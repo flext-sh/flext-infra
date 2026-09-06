@@ -14,6 +14,196 @@ from tests import t, u
 if TYPE_CHECKING:
     from pathlib import Path
 
+_FUTURE_INIT = "from __future__ import annotations\n"
+
+_MISSING_RUNTIME_ALIAS_MODULE = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["FlextDemoModels"]\n\n'
+    "class FlextDemoModels:\n"
+    "    pass\n"
+)
+
+_DUPLICATE_RUNTIME_ALIAS_MODULE = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
+    "class FlextDemoModels:\n"
+    "    pass\n\n"
+    "m = FlextDemoModels\n"
+    "m = FlextDemoModels\n"
+)
+
+_FACADE_MEMBER_MODULE = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
+    "class FlextDemoModels:\n"
+    "    pass\n\n"
+    "m = FlextDemoModels\n"
+)
+
+_COMPATIBILITY_ALIAS_MODULE = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["NewThing"]\n\n'
+    "class NewThing:\n"
+    "    pass\n\n"
+    "LegacyThing = NewThing\n"
+)
+
+_BASIC_INIT = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.service import consume\n\n"
+    '__all__: list[str] = ["consume"]\n'
+)
+
+_BASIC_SERVICE = (
+    "from __future__ import annotations\n"
+    "from typing import TypeAlias\n\n"
+    "from flext_core import t\n\n"
+    '__all__: list[str] = ["consume"]\n\n'
+    "PayloadMap: TypeAlias = t.StrMapping\n"
+    "def consume(payload: PayloadMap) -> PayloadMap:\n"
+    "    return payload\n"
+)
+
+_TEST_ONLY_FUNCTION_SERVICE = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["only_for_tests"]\n\n'
+    "def only_for_tests(value: int) -> int:\n"
+    "    return value + 1\n"
+)
+
+_TEST_ONLY_FUNCTION_TEST = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.service import only_for_tests\n\n"
+    "def test_only_for_tests_returns_incremented_value() -> None:\n"
+    "    assert only_for_tests(1) == 2\n"
+)
+
+_SEQUENCE_TEST_ONLY_SERVICE = (
+    "from __future__ import annotations\n"
+    "from collections.abc import Sequence\n\n"
+    '__all__: list[str] = ["only_for_tests"]\n\n'
+    "def only_for_tests(values: t.SequenceOf[int]) -> int:\n"
+    "    return len(values)\n"
+)
+
+_SEQUENCE_TEST_ONLY_TEST = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.service import only_for_tests\n\n"
+    "def test_only_for_tests_uses_sequence_signature() -> None:\n"
+    "    assert only_for_tests([1, 2]) == 2\n"
+)
+
+_TEST_ONLY_METHOD_SERVICE = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["Service"]\n\n'
+    "class Service:\n"
+    "    def only_for_tests(self, value: int) -> int:\n"
+    "        return value + 1\n"
+)
+
+_TEST_ONLY_METHOD_TEST = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.service import Service\n\n"
+    "def test_only_for_tests_method_returns_incremented_value() -> None:\n"
+    "    assert Service().only_for_tests(1) == 2\n"
+)
+
+_UNUSED_NESTED_FUNCTION_SERVICE = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["outer"]\n\n'
+    "def outer(value: int) -> int:\n"
+    "    def only_for_cleanup(inner: int) -> int:\n"
+    "        return inner + 1\n\n"
+    "    return value\n\n"
+    "OBSERVED_VALUE = outer(1)\n"
+)
+
+_UNUSED_NESTED_FUNCTION_TEST = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.service import outer\n\n"
+    "OBSERVED_VALUE = outer(1)\n"
+    "assert OBSERVED_VALUE == 1\n"
+)
+
+_UNUSED_TOP_LEVEL_SERVICE = (
+    "from __future__ import annotations\n"
+    "from collections.abc import Sequence\n\n"
+    '__all__: list[str] = ["only_for_cleanup"]\n\n'
+    "def only_for_cleanup(values: t.SequenceOf[int]) -> int:\n"
+    "    return len(values)\n"
+)
+
+_UNUSED_LOCAL_SERVICE = (
+    "from __future__ import annotations\n\n"
+    "def outer(value: int) -> int:\n"
+    "    only_for_cleanup = value + 1\n"
+    "    return value\n"
+)
+
+_UNUSED_LOCAL_TEST = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.service import outer\n\n"
+    "assert outer(1) == 1\n"
+)
+
+_DECORATED_UNUSED_SERVICE = (
+    "from __future__ import annotations\n\n"
+    "import functools\n\n"
+    '__all__: list[str] = ["only_for_tests"]\n\n'
+    "def log_entry(fn):\n"
+    "    @functools.wraps(fn)\n"
+    "    def wrapper(*args, **kwargs):\n"
+    "        return fn(*args, **kwargs)\n"
+    "    return wrapper\n\n"
+    "@log_entry\n"
+    "def only_for_tests(value: int) -> int:\n"
+    "    return value + 1\n"
+)
+
+_DECORATED_UNUSED_TEST = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.service import only_for_tests\n\n"
+    "def test_decorated_only_for_tests() -> None:\n"
+    "    assert only_for_tests(1) == 2\n"
+)
+
+_LAZY_CASCADE_INIT = (
+    "# AUTO-GENERATED FILE — Regenerate with: make gen\n"
+    '"""Sample package."""\n\n'
+    "from __future__ import annotations\n\n"
+    "import typing as _t\n\n"
+    "from flext_core.lazy import build_lazy_import_map, install_lazy_exports\n\n"
+    "if _t.TYPE_CHECKING:\n"
+    "    from sample_pkg.operations import helper_used, only_for_tests\n"
+    "_LAZY_IMPORTS = build_lazy_import_map(\n"
+    "    {\n"
+    '        ".operations": ("helper_used", "only_for_tests"),\n'
+    "    },\n"
+    ")\n\n"
+    "install_lazy_exports(__name__, globals(), _LAZY_IMPORTS)\n\n"
+    "__all__: list[str] = [\n"
+    '    "helper_used",\n'
+    '    "only_for_tests",\n'
+    "]\n"
+)
+
+_LAZY_CASCADE_OPERATIONS = (
+    "from __future__ import annotations\n\n"
+    '__all__: list[str] = ["helper_used", "only_for_tests"]\n\n'
+    "def helper_used(value: int) -> int:\n"
+    "    return value * 2\n\n"
+    "def only_for_tests(value: int) -> int:\n"
+    "    return value + 1\n\n"
+    "OBSERVED = helper_used(2)\n"
+)
+
+_LAZY_CASCADE_TEST = (
+    "from __future__ import annotations\n\n"
+    "from sample_pkg.operations import only_for_tests\n\n"
+    "def test_only_for_tests_returns_incremented_value() -> None:\n"
+    "    assert only_for_tests(1) == 2\n"
+)
+
 
 def _parse_source_ast(source: str) -> object | None:
     try:
@@ -52,108 +242,86 @@ class TestsFlextInfraRefactorMainCli:
             'search-path = [".", "src"]\n\n' + u.Tests.ruff_per_file_ignores_toml(),
         )
 
+    @classmethod
+    def _apply_census(
+        cls, workspace: Path, *, rules: str, kinds: str | None = None
+    ) -> None:
+        """Run one applying census through the CLI, asserting a clean exit."""
+        args = ["--workspace", str(workspace), "census", "--apply", "--rules", rules]
+        if kinds is not None:
+            args = [*args, "--kinds", kinds]
+        tm.that(cls._refactor_main(*args), eq=0)
+
     @staticmethod
-    def _build_basic_workspace(tmp_path: Path) -> tuple[Path, Path]:
+    def _impact_map_entries(impact_map_path: Path) -> list[t.JsonMapping]:
+        """Read the written impact map and return its typed file entries."""
+        payload_result = u.Cli.json_read(impact_map_path)
+        tm.ok(payload_result)
+        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
+        return [u.Tests.toml_mapping(item) for item in files]
+
+    @staticmethod
+    def _assert_no_unused_functions(workspace: Path) -> None:
+        """Assert the workspace reports no unused function after a cutover."""
+        report = u.Tests.census_report(
+            workspace, kinds=("function",), rules=("unused",)
+        )
+        tm.that(report.unused_count, eq=0)
+        tm.that(report.removal_candidate_count, eq=0)
+
+    @staticmethod
+    def _build_module_workspace(
+        tmp_path: Path, module_source: str
+    ) -> tuple[Path, Path]:
+        """Build a lazy-init demo package holding one authored ``models.py``."""
+        workspace, package_root = u.Tests.create_lazy_init_workspace(
+            tmp_path, project_name="flext-demo", package_name="flext_demo"
+        )
+        module_path = package_root / "models.py"
+        module_path.write_text(module_source, encoding="utf-8")
+        return workspace, module_path
+
+    @classmethod
+    def _build_service_workspace(
+        cls,
+        tmp_path: Path,
+        *,
+        service_source: str,
+        test_source: str | None = None,
+        init_source: str = _FUTURE_INIT,
+    ) -> tuple[Path, Path]:
+        """Build the ``sample_pkg`` workspace around one service module."""
         workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.service import consume\n\n"
-            '__all__: list[str] = ["consume"]\n',
-        )
+        cls._write_workspace_pyproject(workspace)
+        cls._write(workspace / "src" / "sample_pkg" / "__init__.py", init_source)
         service_file = workspace / "src" / "sample_pkg" / "service.py"
-        TestsFlextInfraRefactorMainCli._write(
-            service_file,
-            "from __future__ import annotations\n"
-            "from typing import TypeAlias\n\n"
-            "from flext_core import t\n\n"
-            '__all__: list[str] = ["consume"]\n\n'
-            "PayloadMap: TypeAlias = t.StrMapping\n"
-            "def consume(payload: PayloadMap) -> PayloadMap:\n"
-            "    return payload\n",
-        )
+        cls._write(service_file, service_source)
+        if test_source is not None:
+            cls._write(workspace / "tests" / "test_service.py", test_source)
         return workspace, service_file
 
-    @staticmethod
-    def _build_runtime_alias_duplicate_workspace(tmp_path: Path) -> tuple[Path, Path]:
-        workspace, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
+    @classmethod
+    def _build_basic_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
+        return cls._build_service_workspace(
+            tmp_path, service_source=_BASIC_SERVICE, init_source=_BASIC_INIT
         )
-        module_path = package_root / "models.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
-                "class FlextDemoModels:\n"
-                "    pass\n\n"
-                "m = FlextDemoModels\n"
-                "m = FlextDemoModels\n"
-            ),
-            encoding="utf-8",
-        )
-        return workspace, module_path
 
-    @staticmethod
-    def _build_facade_member_workspace(tmp_path: Path) -> tuple[Path, Path]:
-        workspace, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        module_path = package_root / "models.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                '__all__: list[str] = ["FlextDemoModels", "m"]\n\n'
-                "class FlextDemoModels:\n"
-                "    pass\n\n"
-                "m = FlextDemoModels\n"
-            ),
-            encoding="utf-8",
-        )
-        return workspace, module_path
+    @classmethod
+    def _build_runtime_alias_duplicate_workspace(
+        cls, tmp_path: Path
+    ) -> tuple[Path, Path]:
+        return cls._build_module_workspace(tmp_path, _DUPLICATE_RUNTIME_ALIAS_MODULE)
 
-    @staticmethod
-    def _build_compatibility_alias_workspace(tmp_path: Path) -> tuple[Path, Path]:
-        workspace, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        module_path = package_root / "models.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                '__all__: list[str] = ["NewThing"]\n\n'
-                "class NewThing:\n"
-                "    pass\n\n"
-                "LegacyThing = NewThing\n"
-            ),
-            encoding="utf-8",
-        )
-        return workspace, module_path
+    @classmethod
+    def _build_facade_member_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
+        return cls._build_module_workspace(tmp_path, _FACADE_MEMBER_MODULE)
 
-    @staticmethod
-    def _build_test_only_workspace(tmp_path: Path) -> Path:
-        workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "service.py",
-            "from __future__ import annotations\n\n"
-            '__all__: list[str] = ["only_for_tests"]\n\n'
-            "def only_for_tests(value: int) -> int:\n"
-            "    return value + 1\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_service.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.service import only_for_tests\n\n"
-            "def test_only_for_tests_returns_incremented_value() -> None:\n"
-            "    assert only_for_tests(1) == 2\n",
-        )
-        return workspace
+    @classmethod
+    def _build_compatibility_alias_workspace(cls, tmp_path: Path) -> tuple[Path, Path]:
+        return cls._build_module_workspace(tmp_path, _COMPATIBILITY_ALIAS_MODULE)
 
+<<<<<<< HEAD
     @staticmethod
     def _build_lazy_init_cascade_workspace(tmp_path: Path) -> tuple[Path, Path, Path]:
         workspace = tmp_path / "workspace"
@@ -198,130 +366,70 @@ class TestsFlextInfraRefactorMainCli:
             "    assert only_for_tests(1) == 2\n",
         )
         return workspace, service_file, init_path
+=======
+    @classmethod
+    def _build_test_only_workspace(cls, tmp_path: Path) -> Path:
+        return cls._build_service_workspace(
+            tmp_path,
+            service_source=_TEST_ONLY_FUNCTION_SERVICE,
+            test_source=_TEST_ONLY_FUNCTION_TEST,
+        )[0]
+>>>>>>> origin/0.12.0-dev
 
-    @staticmethod
+    @classmethod
     def _build_test_only_workspace_with_source_import(
-        tmp_path: Path,
+        cls, tmp_path: Path
     ) -> tuple[Path, Path]:
-        workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
+        return cls._build_service_workspace(
+            tmp_path,
+            service_source=_SEQUENCE_TEST_ONLY_SERVICE,
+            test_source=_SEQUENCE_TEST_ONLY_TEST,
         )
-        service_file = workspace / "src" / "sample_pkg" / "service.py"
-        TestsFlextInfraRefactorMainCli._write(
-            service_file,
-            "from __future__ import annotations\n"
-            "from collections.abc import Sequence\n\n"
-            '__all__: list[str] = ["only_for_tests"]\n\n'
-            "def only_for_tests(values: t.SequenceOf[int]) -> int:\n"
-            "    return len(values)\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_service.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.service import only_for_tests\n\n"
-            "def test_only_for_tests_uses_sequence_signature() -> None:\n"
-            "    assert only_for_tests([1, 2]) == 2\n",
-        )
-        return workspace, service_file
 
-    @staticmethod
-    def _build_test_only_method_workspace(tmp_path: Path) -> Path:
-        workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "service.py",
-            "from __future__ import annotations\n\n"
-            '__all__: list[str] = ["Service"]\n\n'
-            "class Service:\n"
-            "    def only_for_tests(self, value: int) -> int:\n"
-            "        return value + 1\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_service.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.service import Service\n\n"
-            "def test_only_for_tests_method_returns_incremented_value() -> None:\n"
-            "    assert Service().only_for_tests(1) == 2\n",
-        )
-        return workspace
+    @classmethod
+    def _build_test_only_method_workspace(cls, tmp_path: Path) -> Path:
+        return cls._build_service_workspace(
+            tmp_path,
+            service_source=_TEST_ONLY_METHOD_SERVICE,
+            test_source=_TEST_ONLY_METHOD_TEST,
+        )[0]
 
-    @staticmethod
-    def _build_unused_nested_function_workspace(tmp_path: Path) -> Path:
-        workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "service.py",
-            "from __future__ import annotations\n\n"
-            '__all__: list[str] = ["outer"]\n\n'
-            "def outer(value: int) -> int:\n"
-            "    def only_for_cleanup(inner: int) -> int:\n"
-            "        return inner + 1\n\n"
-            "    return value\n\n"
-            "OBSERVED_VALUE = outer(1)\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_service.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.service import outer\n\n"
-            "OBSERVED_VALUE = outer(1)\n"
-            "assert OBSERVED_VALUE == 1\n",
-        )
-        return workspace
+    @classmethod
+    def _build_unused_nested_function_workspace(cls, tmp_path: Path) -> Path:
+        return cls._build_service_workspace(
+            tmp_path,
+            service_source=_UNUSED_NESTED_FUNCTION_SERVICE,
+            test_source=_UNUSED_NESTED_FUNCTION_TEST,
+        )[0]
 
-    @staticmethod
+    @classmethod
     def _build_unused_top_level_workspace_with_source_import(
-        tmp_path: Path,
+        cls, tmp_path: Path
     ) -> tuple[Path, Path]:
-        workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
+        return cls._build_service_workspace(
+            tmp_path, service_source=_UNUSED_TOP_LEVEL_SERVICE
         )
-        service_file = workspace / "src" / "sample_pkg" / "service.py"
-        TestsFlextInfraRefactorMainCli._write(
-            service_file,
-            "from __future__ import annotations\n"
-            "from collections.abc import Sequence\n\n"
-            '__all__: list[str] = ["only_for_cleanup"]\n\n'
-            "def only_for_cleanup(values: t.SequenceOf[int]) -> int:\n"
-            "    return len(values)\n",
-        )
-        return workspace, service_file
 
-    @staticmethod
-    def _build_unused_local_workspace(tmp_path: Path) -> Path:
+    @classmethod
+    def _build_unused_local_workspace(cls, tmp_path: Path) -> Path:
+        return cls._build_service_workspace(
+            tmp_path,
+            service_source=_UNUSED_LOCAL_SERVICE,
+            test_source=_UNUSED_LOCAL_TEST,
+        )[0]
+
+    @classmethod
+    def _build_lazy_init_cascade_workspace(
+        cls, tmp_path: Path
+    ) -> tuple[Path, Path, Path]:
         workspace = tmp_path / "workspace"
-        TestsFlextInfraRefactorMainCli._write_workspace_pyproject(workspace)
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "src" / "sample_pkg" / "service.py",
-            "from __future__ import annotations\n\n"
-            "def outer(value: int) -> int:\n"
-            "    only_for_cleanup = value + 1\n"
-            "    return value\n",
-        )
-        TestsFlextInfraRefactorMainCli._write(
-            workspace / "tests" / "test_service.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.service import outer\n\n"
-            "assert outer(1) == 1\n",
-        )
-        return workspace
+        cls._write_workspace_pyproject(workspace)
+        init_path = workspace / "src" / "sample_pkg" / "__init__.py"
+        cls._write(init_path, _LAZY_CASCADE_INIT)
+        service_file = workspace / "src" / "sample_pkg" / "operations.py"
+        cls._write(service_file, _LAZY_CASCADE_OPERATIONS)
+        cls._write(workspace / "tests" / "test_operations.py", _LAZY_CASCADE_TEST)
+        return workspace, service_file, init_path
 
     def test_refactor_census_accepts_workspace_before_subcommand(
         self, tmp_path: Path
@@ -334,30 +442,12 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_apply_fixes_missing_runtime_alias(
         self, tmp_path: Path
     ) -> None:
-        workspace, package_root = u.Tests.create_lazy_init_workspace(
-            tmp_path, project_name="flext-demo", package_name="flext_demo"
-        )
-        module_path = package_root / "models.py"
-        module_path.write_text(
-            (
-                "from __future__ import annotations\n\n"
-                '__all__: list[str] = ["FlextDemoModels"]\n\n'
-                "class FlextDemoModels:\n"
-                "    pass\n"
-            ),
-            encoding="utf-8",
+        workspace, module_path = self._build_module_workspace(
+            tmp_path, _MISSING_RUNTIME_ALIAS_MODULE
         )
 
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "runtime_alias",
-        )
+        self._apply_census(workspace, rules="runtime_alias")
 
-        tm.that(result, eq=0)
         source = module_path.read_text(encoding="utf-8")
         tm.that(source, has='"m"')
         tm.that(source, has="m = FlextDemoModels")
@@ -367,18 +457,11 @@ class TestsFlextInfraRefactorMainCli:
     ) -> None:
         workspace, _ = self._build_runtime_alias_duplicate_workspace(tmp_path)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("class",),
-            rules=("runtime_alias",),
-        ).execute()
+        report = u.Tests.census_report(
+            workspace, kinds=("class",), rules=("runtime_alias",)
+        )
+        violations = u.Tests.census_violations(report)
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
         tm.that(len(violations), eq=1)
         tm.that(report.fixes_total, eq=1)
         tm.that(violations[0].kind, eq="runtime_alias")
@@ -388,18 +471,11 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_reports_manual_typing_alias(self, tmp_path: Path) -> None:
         workspace, _ = self._build_basic_workspace(tmp_path)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("assignment",),
-            rules=("manual_typing_alias",),
-        ).execute()
+        report = u.Tests.census_report(
+            workspace, kinds=("assignment",), rules=("manual_typing_alias",)
+        )
+        violations = u.Tests.census_violations(report)
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
         tm.that(len(violations), eq=1)
         tm.that(report.fixes_total, eq=1)
         tm.that(violations[0].kind, eq="manual_typing_alias")
@@ -410,18 +486,11 @@ class TestsFlextInfraRefactorMainCli:
     def test_refactor_census_reports_compatibility_alias(self, tmp_path: Path) -> None:
         workspace, _ = self._build_compatibility_alias_workspace(tmp_path)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("class",),
-            rules=("compatibility_alias",),
-        ).execute()
+        report = u.Tests.census_report(
+            workspace, kinds=("class",), rules=("compatibility_alias",)
+        )
+        violations = u.Tests.census_violations(report)
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
         tm.that(len(violations), eq=1)
         tm.that(report.fixes_total, eq=1)
         tm.that(violations[0].kind, eq="compatibility_alias")
@@ -468,18 +537,9 @@ class TestsFlextInfraRefactorMainCli:
             else built_workspace
         )
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=kinds,
-            rules=rules,
-        ).execute()
+        report = u.Tests.census_report(workspace, kinds=kinds, rules=rules)
+        violations = u.Tests.census_violations(report)
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
         tm.that(violations, empty=False)
         tm.that(
             all(violation.kind == expected_kind for violation in violations), eq=True
@@ -491,16 +551,8 @@ class TestsFlextInfraRefactorMainCli:
         workspace, service_file = self._build_basic_workspace(tmp_path)
         typings_file = service_file.parent / "typings.py"
 
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "manual_typing_alias",
-        )
+        self._apply_census(workspace, rules="manual_typing_alias")
 
-        tm.that(result, eq=0)
         service_source = service_file.read_text(encoding="utf-8")
         typings_source = typings_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="PayloadMap: TypeAlias = t.StrMapping")
@@ -513,16 +565,8 @@ class TestsFlextInfraRefactorMainCli:
     ) -> None:
         workspace, module_path = self._build_compatibility_alias_workspace(tmp_path)
 
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "compatibility_alias",
-        )
+        self._apply_census(workspace, rules="compatibility_alias")
 
-        tm.that(result, eq=0)
         source = module_path.read_text(encoding="utf-8")
         tm.that(source, lacks="LegacyThing = NewThing")
         tm.that(source, has="class NewThing:")
@@ -532,18 +576,10 @@ class TestsFlextInfraRefactorMainCli:
     ) -> None:
         workspace = self._build_test_only_workspace(tmp_path)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
+        report = u.Tests.census_report(
+            workspace, kinds=("function",), rules=("unused",)
+        )
+        violations = u.Tests.census_violations(report)
 
         tm.that(report.unused_count, eq=1)
         tm.that(report.removal_candidate_count, eq=1)
@@ -566,15 +602,10 @@ class TestsFlextInfraRefactorMainCli:
     ) -> None:
         workspace, _module_path = self._build_facade_member_workspace(tmp_path)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("class", "assignment"),
-            rules=("unused",),
-        ).execute()
+        report = u.Tests.census_report(
+            workspace, kinds=("class", "assignment"), rules=("unused",)
+        )
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
         tm.that(report.unused_count, eq=0)
         tm.that(report.removal_candidate_count, eq=0)
         tm.that(report.removal_candidates, eq=())
@@ -586,18 +617,8 @@ class TestsFlextInfraRefactorMainCli:
         service_file = workspace / "src" / "sample_pkg" / "service.py"
         test_file = workspace / "tests" / "test_service.py"
 
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "unused",
-            "--kinds",
-            "function",
-        )
+        self._apply_census(workspace, rules="unused", kinds="function")
 
-        tm.that(result, eq=0)
         service_source = service_file.read_text(encoding="utf-8")
         test_source = test_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="only_for_tests")
@@ -605,17 +626,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(_parse_source_ast(service_source), none=False)
         tm.that(_parse_source_ast(test_source), none=False)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        tm.that(report.unused_count, eq=0)
-        tm.that(report.removal_candidate_count, eq=0)
+        self._assert_no_unused_functions(workspace)
 
     def test_refactor_census_preserves_published_lazy_exports(
         self, tmp_path: Path
@@ -625,18 +636,8 @@ class TestsFlextInfraRefactorMainCli:
         )
         test_file = workspace / "tests" / "test_operations.py"
 
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "unused",
-            "--kinds",
-            "function",
-        )
+        self._apply_census(workspace, rules="unused", kinds="function")
 
-        tm.that(result, eq=0)
         init_source = init_path.read_text(encoding="utf-8")
         helpers_source = helpers_file.read_text(encoding="utf-8")
         test_source = test_file.read_text(encoding="utf-8")
@@ -655,62 +656,19 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(_parse_source_ast(helpers_source), none=False)
         tm.that(_parse_source_ast(test_source), none=False)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        tm.that(report.unused_count, eq=0)
-        tm.that(report.removal_candidate_count, eq=0)
+        self._assert_no_unused_functions(workspace)
 
     def test_refactor_census_apply_removes_decorated_unused_function(
         self, tmp_path: Path
     ) -> None:
-        workspace = tmp_path / "workspace"
-        self._write_workspace_pyproject(workspace)
-        self._write(
-            workspace / "src" / "sample_pkg" / "__init__.py",
-            "from __future__ import annotations\n",
-        )
-        service_file = workspace / "src" / "sample_pkg" / "service.py"
-        self._write(
-            service_file,
-            "from __future__ import annotations\n\n"
-            "import functools\n\n"
-            '__all__: list[str] = ["only_for_tests"]\n\n'
-            "def log_entry(fn):\n"
-            "    @functools.wraps(fn)\n"
-            "    def wrapper(*args, **kwargs):\n"
-            "        return fn(*args, **kwargs)\n"
-            "    return wrapper\n\n"
-            "@log_entry\n"
-            "def only_for_tests(value: int) -> int:\n"
-            "    return value + 1\n",
-        )
-        self._write(
-            workspace / "tests" / "test_service.py",
-            "from __future__ import annotations\n\n"
-            "from sample_pkg.service import only_for_tests\n\n"
-            "def test_decorated_only_for_tests() -> None:\n"
-            "    assert only_for_tests(1) == 2\n",
+        workspace, service_file = self._build_service_workspace(
+            tmp_path,
+            service_source=_DECORATED_UNUSED_SERVICE,
+            test_source=_DECORATED_UNUSED_TEST,
         )
 
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "unused",
-            "--kinds",
-            "function",
-        )
+        self._apply_census(workspace, rules="unused", kinds="function")
 
-        tm.that(result, eq=0)
         service_source = service_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="only_for_tests")
         tm.that(service_source, lacks="@log_entry")
@@ -744,18 +702,8 @@ class TestsFlextInfraRefactorMainCli:
         clone_init = clone / origin_init.relative_to(origin)
         clone_test = clone / "tests" / "test_operations.py"
 
-        result = self._refactor_main(
-            "--workspace",
-            str(clone),
-            "census",
-            "--apply",
-            "--rules",
-            "unused",
-            "--kinds",
-            "function",
-        )
+        self._apply_census(clone, rules="unused", kinds="function")
 
-        tm.that(result, eq=0)
         tm.that(origin_helpers.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(origin_init.read_text(encoding="utf-8"), has="only_for_tests")
         tm.that(clone_helpers.read_text(encoding="utf-8"), has="only_for_tests")
@@ -769,14 +717,8 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(clone_init_source, has="install_lazy_exports(")
         tm.that(clone_init_source, has="build_lazy_import_map(")
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=clone,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-        tm.ok(report_result)
-        tm.that(report_result.unwrap().unused_count, eq=0)
+        report = u.Tests.census_report(clone, kinds=("function",), rules=("unused",))
+        tm.that(report.unused_count, eq=0)
 
     def test_refactor_census_apply_removes_unused_top_level_and_cleans_imports(
         self, tmp_path: Path
@@ -785,34 +727,14 @@ class TestsFlextInfraRefactorMainCli:
             self._build_unused_top_level_workspace_with_source_import(tmp_path)
         )
 
-        result = self._refactor_main(
-            "--workspace",
-            str(workspace),
-            "census",
-            "--apply",
-            "--rules",
-            "unused",
-            "--kinds",
-            "function",
-        )
+        self._apply_census(workspace, rules="unused", kinds="function")
 
-        tm.that(result, eq=0)
         service_source = service_file.read_text(encoding="utf-8")
         tm.that(service_source, lacks="def only_for_cleanup")
         tm.that(service_source, lacks="from collections.abc import Sequence")
         tm.that(_parse_source_ast(service_source), none=False)
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
-
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        tm.that(report.unused_count, eq=0)
-        tm.that(report.removal_candidate_count, eq=0)
+        self._assert_no_unused_functions(workspace)
 
     def test_refactor_census_dry_run_validates_candidate_after_import_cleanup(
         self, tmp_path: Path
@@ -821,15 +743,10 @@ class TestsFlextInfraRefactorMainCli:
             tmp_path
         )
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            include_local_scopes=False,
-            kinds=("function",),
-            rules=("unused",),
-        ).execute()
+        report = u.Tests.census_report(
+            workspace, kinds=("function",), rules=("unused",)
+        )
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
         tm.that(report.unused_count, eq=1)
         tm.that(report.removal_candidate_count, eq=1)
         tm.that(report.removal_candidates[0].object_name, eq="only_for_tests")
@@ -844,17 +761,14 @@ class TestsFlextInfraRefactorMainCli:
         service_file = workspace / "src" / "sample_pkg" / "service.py"
         test_file = workspace / "tests" / "test_service.py"
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            apply_changes=True,
-            dry_run=True,
-            include_local_scopes=False,
+        report = u.Tests.census_report(
+            workspace,
             kinds=("function",),
             rules=("unused",),
-        ).execute()
+            apply_changes=True,
+            dry_run=True,
+        )
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
         tm.that(report.unused_count, eq=1)
         tm.that(report.removal_candidate_count, eq=1)
         tm.that(service_file.read_text(encoding="utf-8"), has="only_for_tests")
@@ -875,18 +789,14 @@ class TestsFlextInfraRefactorMainCli:
         Bundle: ``kind``/``rule`` violation detected, no removal candidate
         produced, empty impact-map ``files``.
         """
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            impact_map_output=str(impact_map_path),
-            include_local_scopes=True,
+        report = u.Tests.census_report(
+            workspace,
             kinds=(kind,),
             rules=(rule,),
-        ).execute()
-        tm.ok(report_result)
-        report = report_result.unwrap()
-        violations = [
-            violation for project in report.projects for violation in project.violations
-        ]
+            include_local_scopes=True,
+            impact_map_output=str(impact_map_path),
+        )
+        violations = u.Tests.census_violations(report)
         tm.that(getattr(report, count_attr), eq=1)
         tm.that(report.removal_candidate_count, eq=0)
         tm.that(len(report.removal_candidates), eq=0)
@@ -894,11 +804,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].kind, eq=rule)
         tm.that(violations[0].object_kind, eq=kind)
         tm.that(violations[0].object_name, eq=expected_object_name)
-        payload_result = u.Cli.json_read(impact_map_path)
-        tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        tm.that(len(files), eq=0)
+        tm.that(len(self._impact_map_entries(impact_map_path)), eq=0)
 
     def test_refactor_census_dry_run_excludes_unsupported_method_candidate(
         self, tmp_path: Path
@@ -932,16 +838,13 @@ class TestsFlextInfraRefactorMainCli:
         )
         impact_map_path = tmp_path / "unused-impact-map.json"
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            impact_map_output=str(impact_map_path),
-            include_local_scopes=False,
+        report = u.Tests.census_report(
+            workspace,
             kinds=("function",),
             rules=("unused",),
-        ).execute()
+            impact_map_output=str(impact_map_path),
+        )
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
         tm.that(report.unused_count, eq=1)
         tm.that(report.removal_candidate_count, eq=1)
         candidate = report.removal_candidates[0]
@@ -952,11 +855,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(service_source, has="from collections.abc import Sequence")
         tm.that(service_source, has="def only_for_cleanup")
 
-        payload_result = u.Cli.json_read(impact_map_path)
-        tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = self._impact_map_entries(impact_map_path)
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
@@ -985,20 +884,13 @@ class TestsFlextInfraRefactorMainCli:
         workspace = self._build_test_only_workspace(tmp_path)
         impact_map_path = tmp_path / "impact-map.json"
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            impact_map_output=str(impact_map_path),
-            include_local_scopes=False,
+        u.Tests.census_report(
+            workspace,
             kinds=("function",),
             rules=("unused",),
-        ).execute()
-
-        tm.ok(report_result)
-        payload_result = u.Cli.json_read(impact_map_path)
-        tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+            impact_map_output=str(impact_map_path),
+        )
+        entries = self._impact_map_entries(impact_map_path)
 
         tm.that(len(entries), eq=1)
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
@@ -1030,13 +922,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         tm.that(result, eq=0)
-        payload_result = u.Cli.json_read(impact_map_path)
-        tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
-
-        tm.that(len(entries), eq=1)
+        tm.that(len(self._impact_map_entries(impact_map_path)), eq=1)
 
     def test_refactor_census_apply_preserves_impact_map_plan(
         self, tmp_path: Path
@@ -1044,24 +930,15 @@ class TestsFlextInfraRefactorMainCli:
         workspace = self._build_test_only_workspace(tmp_path)
         impact_map_path = tmp_path / "apply-impact-map.json"
 
-        report_result = FlextInfraRefactorCensus(
-            repository_root=workspace,
-            impact_map_output=str(impact_map_path),
-            apply_changes=True,
-            include_local_scopes=False,
+        report = u.Tests.census_report(
+            workspace,
             kinds=("function",),
             rules=("unused",),
-        ).execute()
+            apply_changes=True,
+            impact_map_output=str(impact_map_path),
+        )
 
-        tm.ok(report_result)
-        report = report_result.unwrap()
         tm.that(report.unused_count, eq=0)
         tm.that(report.removal_candidate_count, eq=0)
 
-        payload_result = u.Cli.json_read(impact_map_path)
-        tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
-        files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
-
-        tm.that(len(entries), eq=1)
+        tm.that(len(self._impact_map_entries(impact_map_path)), eq=1)

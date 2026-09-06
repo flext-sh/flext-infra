@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Final
 
+from .._constants.check import FlextInfraConstantsCheck
+
 if TYPE_CHECKING:
     from flext_infra import t
 
@@ -53,31 +55,16 @@ class FlextInfraConstantsMake:
     TIMEOUT_COMMAND: Final[str] = "timeout"
     TIMEOUT_KILL_AFTER_SECONDS: Final[int] = 5
 
-    # loc-cap is deliberately absent from the canonical cycle: the fleet's
-    # integrated reality carries 145+ over-ceiling modules, so enforcing now
-    # would block every landing (operator authorization 2026-09-06). The gate
-    # stays registered and its ceiling is config-owned
-    # (codegen.loc_cap.max_lines); re-entry into this tuple is owned by the
-    # module-split epic.
-    CANONICAL_GATE_IDS: Final[tuple[str, ...]] = (
-        "lint",
-        "pyrefly",
-        "mypy",
-        "pyright",
-        "silent-failure",
-        "deferred-self-reference",
-        "security",
-        "markdown",
-        "boundary",
-        "canonical-alias",
-        "runtime-census",
-        "namespace",
-        "layout",
-        "tier-whitelist",
-        "smells",
-        "codemod",
-        "direnv",
-        "duplication",
+    # Every read-only gate this package implements, derived from the gate SSOT
+    # (c.Infra.SARIF_TOOL_INFO) so registering a gate makes it reachable
+    # through `make check` in the same edit and no second list can drift.
+    # Mutating gates (`format`) are excluded: they rewrite files, so they are
+    # owned by `make fmt APPLY=Y` / `make fix APPLY=Y` and a read-only verb
+    # must never invoke them.
+    CANONICAL_GATE_IDS: Final[tuple[str, ...]] = tuple(
+        gate
+        for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
+        if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
     CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = CANONICAL_GATE_IDS
     CANONICAL_FIXABLE_GATE_IDS: Final[tuple[str, ...]] = (

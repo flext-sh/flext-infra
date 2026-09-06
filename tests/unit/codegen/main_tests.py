@@ -208,8 +208,13 @@ class TestMainEntryPoint:
         ])
         tm.ok(result)
         tm.that(
+<<<<<<< HEAD
             result.value.outcome.raw_return_code,
             eq=0,
+=======
+            u.Cli.process_succeeded(result.value.outcome),
+            eq=True,
+>>>>>>> origin/0.12.0-dev
             msg=result.value.stderr or result.value.stdout,
         )
         tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
@@ -253,8 +258,13 @@ class TestMainEntryPoint:
         )
         tm.ok(applied)
         tm.that(
+<<<<<<< HEAD
             applied.value.outcome.raw_return_code,
             eq=0,
+=======
+            u.Cli.process_succeeded(applied.value.outcome),
+            eq=True,
+>>>>>>> origin/0.12.0-dev
             msg=applied.value.stderr or applied.value.stdout,
         )
         rendered = pyproject.read_text(encoding="utf-8")
@@ -273,8 +283,13 @@ class TestMainEntryPoint:
         )
         tm.ok(fixed_point)
         tm.that(
+<<<<<<< HEAD
             fixed_point.value.outcome.raw_return_code,
             eq=0,
+=======
+            u.Cli.process_succeeded(fixed_point.value.outcome),
+            eq=True,
+>>>>>>> origin/0.12.0-dev
             msg=fixed_point.value.stderr or fixed_point.value.stdout,
         )
         tm.that(pyproject.read_bytes(), eq=published)

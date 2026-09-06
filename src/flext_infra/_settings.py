@@ -13,7 +13,8 @@ from typing import ClassVar
 
 from flext_core import FlextSettings
 from flext_infra import m
-from flext_infra._models.settings import FlextInfraSettingsModels
+
+from ._models.settings import FlextInfraSettingsModels
 
 
 # NOTE (multi-agent): migrated base FlextCliSettings->FlextSettings to
