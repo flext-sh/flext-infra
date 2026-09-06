@@ -6,9 +6,9 @@ import operator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._constants.namespace import FlextInfraConstantsNamespace
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .._constants.namespace import FlextInfraConstantsNamespace
+from .._constants.validate import FlextInfraConstantsSharedInfra
+from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

@@ -5,15 +5,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra._utilities._docs_scope_selection import (
-    FlextInfraUtilitiesDocsScopeSelectionMixin,
-)
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities._docs_scope_selection import (
+    FlextInfraUtilitiesDocsScopeSelectionMixin,
+)
+from .._utilities.base import FlextInfraUtilitiesBase
+from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from .._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -11,12 +11,13 @@ from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_core import r
 from flext_infra import m, p, t, u
-from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
+
+from .._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
     from pathlib import Path

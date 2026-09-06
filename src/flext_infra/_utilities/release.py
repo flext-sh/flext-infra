@@ -8,11 +8,12 @@ from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 
 from flext_cli import r, u
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesRelease:

@@ -23,8 +23,8 @@ import ast
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 from ._canonical_t_import import FlextInfraEnsureCanonicalTImportMixin
 from ._typing_rewrite import FlextInfraRefactorTypingUnifierRewriteMixin
 
