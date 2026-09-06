@@ -558,7 +558,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if workspace_result.failure:
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
-        if not workspace.declared_repositories:
+        if not workspace.subprojects:
             return r[bool].ok(True)
         owner = root / c.Infra.BEADS_DIRNAME
         if not owner.is_dir() or owner.is_symlink():
@@ -570,7 +570,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
-        for repository in workspace.declared_repositories:
+        for repository in workspace.subprojects:
             route = (root / repository.path).resolve() / c.Infra.BEADS_DIRNAME
             if route.is_symlink():
                 return r[bool].fail(
