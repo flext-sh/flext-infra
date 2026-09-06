@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
+from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_tests import tm
 from tests import m, p, t
 
@@ -35,6 +36,26 @@ class TestsFlextInfraUtilitiesGatesMixin:
         )
         return adapter.fix_project(
             project_dir, ((rule, SimpleNamespace(file_path=str(file_path))),), ctx
+        )
+
+    @staticmethod
+    def detector_context(
+        target: Path,
+        source: str,
+        rope_project: t.Infra.RopeProject,
+        *,
+        project_name: str = "",
+    ) -> m.Infra.DetectorContext:
+        """Write one fixture module and build the context detectors scan.
+
+        Every detector declares its own violation type, so the shared owner
+        stops at the context: the caller keeps its own ``detect_file`` call
+        and therefore its precise return type.
+        """
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(source, encoding="utf-8")
+        return m.Infra.DetectorContext(
+            file_path=target, rope_project=rope_project, project_name=project_name
         )
 
     @staticmethod
@@ -150,6 +171,40 @@ class TestsFlextInfraUtilitiesGatesMixin:
                 workspace_root, reports_dir=reports_dir
             ),
         )
+
+    @staticmethod
+    def census_report(
+        workspace: Path,
+        *,
+        rules: t.StrSequence,
+        kinds: t.StrSequence | None = None,
+        include_local_scopes: bool = False,
+        impact_map_output: str | None = None,
+        apply_changes: bool = False,
+        dry_run: bool = False,
+    ) -> m.Infra.Census.WorkspaceReport:
+        """Execute one refactor census and unwrap its successful report."""
+        result = FlextInfraRefactorCensus(
+            repository_root=workspace,
+            apply_changes=apply_changes,
+            dry_run=dry_run,
+            impact_map_output=impact_map_output,
+            include_local_scopes=include_local_scopes,
+            kinds=kinds,
+            rules=rules,
+        ).execute()
+        tm.ok(result)
+        report: m.Infra.Census.WorkspaceReport = result.unwrap()
+        return report
+
+    @staticmethod
+    def census_violations(
+        report: m.Infra.Census.WorkspaceReport,
+    ) -> list[m.Infra.Census.Violation]:
+        """Flatten every per-project violation of one census report."""
+        return [
+            violation for project in report.projects for violation in project.violations
+        ]
 
 
 __all__: list[str] = ["TestsFlextInfraUtilitiesGatesMixin"]

@@ -41,15 +41,29 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
 
     @staticmethod
     def write_mise_stub(path: Path) -> Path:
-        """Write the one hermetic Mise contract used by Make setup fixtures."""
+        """Write the one hermetic Mise contract used by Make setup fixtures.
+
+        The generated setup owner reads the launcher's pinned release out of
+        the launcher FILE before executing a single byte of it, and then
+        requires the runtime's own ``--version`` to equal that pinned release.
+        A stub therefore has to carry the same release in both places, in the
+        exact declaration shape ``FlextInfraCodegenMiseArtifacts`` parses.
+        """
+        release = "2026.9.1"
         TestsFlextInfraUtilitiesToolingFixtureMixin.write_executable(
             path.with_name("direnv"), "#!/bin/sh\nexit 0\n"
         )
         TestsFlextInfraUtilitiesToolingFixtureMixin.write_executable(
             path,
             "#!/bin/sh\n"
+            # Never invoked: `local` is only valid inside a function, and the
+            # setup owner parses this declaration statically, never runs it.
+            "mise_pinned_release() {\n"
+            f'  local mise_version="${{MISE_VERSION:-{release}}}"\n'
+            '  printf \'%s\\n\' "$mise_version"\n'
+            "}\n"
             'if [ "$1" = "--version" ]; then '
-            "printf '%s\\n' '2026.9.1'; exit; fi\n"
+            f"printf '%s\\n' '{release}'; exit; fi\n"
             'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
             "'0.12.5'; exit ;; esac\n"
             'case " $* " in *" generate install-script "*)\n'
@@ -58,6 +72,10 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             '      test "$#" -ge 2\n'
             '      cp -- "$0" "$2"\n'
             '      cp -- "$0" "$2.cmd"\n'
+            # The setup owner asks the BOOTSTRAPPED launcher — not the tracked
+            # seed — to resolve direnv, so the managed sibling has to travel
+            # with every copy or `which direnv` names a path that is not there.
+            '      cp -- "${0%/*}/direnv" "${2%/*}/direnv"\n'
             "      exit\n"
             "    fi\n"
             "    shift\n"
