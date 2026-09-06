@@ -50,7 +50,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return r[bool].from_failure(current)
         ctx = m.Infra.ReleasePhaseDispatchConfig(
             phase=self.phase,
-            workspace_root=self.root,
+            repository_root=self.root,
             version=current.value,
             tag=c.Infra.TAG_FORMAT.format(version=current.value),
             project_names=self.project_names or (),
@@ -81,7 +81,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self, ctx: m.Infra.ReleasePhaseDispatchConfig
     ) -> p.Result[m.Infra.ReleasePlan]:
         """Derive the next version and prove no version changed outside the protocol."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         if ctx.pr_title and not c.Infra.CONVENTIONAL_SUBJECT_RE.match(ctx.pr_title):
             return r[m.Infra.ReleasePlan].fail(
                 "pull-request title must follow Conventional Commits "
@@ -247,7 +247,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     def phase_version(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Open or update the release pull request for the planned version."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         plan = self.phase_plan(ctx)
         if plan.failure:
             return r[bool].from_failure(plan)
@@ -345,7 +345,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         self, ctx: m.Infra.ReleasePhaseDispatchConfig, plan: m.Infra.ReleasePlan
     ) -> p.Result[bool]:
         """Write the version SSOT, the release notes, and the changelog."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         stamped = u.Infra.replace_project_version(root, plan.next)
         if stamped.failure:
             return stamped
@@ -463,7 +463,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     def phase_tag(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
         """Tag the merged release commit; idempotent when the tag already points here."""
-        root = ctx.workspace_root
+        root = ctx.repository_root
         head = self._head_subject(root)
         if head.failure:
             return r[bool].from_failure(head)

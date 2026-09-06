@@ -9,13 +9,15 @@ from __future__ import annotations
 import fnmatch
 from typing import TYPE_CHECKING
 
+from flext_infra._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
+
 if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_infra import t
 
 
-class FlextInfraUtilitiesIterationMatching:
+class FlextInfraUtilitiesIterationMatching(FlextInfraUtilitiesGitScopeMixin):
     """Static helpers for matching files by include/exclude glob patterns."""
 
     @classmethod

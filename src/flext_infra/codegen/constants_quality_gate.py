@@ -38,7 +38,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
     def build_report(self) -> p.Result[t.JsonMapping]:
         """Execute quality gate and return structured report payload."""
         lazy_plans = FlextInfraCodegenLazyInit(
-            workspace_root=self.repository_root
+            repository_root=self.repository_root
         ).plan_files()
         if lazy_plans.failure:
             return r[t.JsonMapping].from_failure(lazy_plans)
@@ -112,7 +112,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             "status",
             "--porcelain",
         ])
-        if result.failure or result.value.exit_code != 0:
+        if result.failure or not u.Cli.process_succeeded(result.value.outcome):
             return []
         for line in (
             entry.strip() for entry in result.value.stdout.splitlines() if entry.strip()
@@ -174,9 +174,9 @@ class FlextInfraCodegenQualityGate(s[bool]):
         output = (run.value.stderr or run.value.stdout or "").strip()
         lines = [line for line in output.splitlines() if line.strip()]
         return {
-            "passed": run.value.exit_code == 0,
+            "passed": u.Cli.process_succeeded(run.value.outcome),
             "detail": " | ".join(lines[:5]) if lines else "ok",
-            "exit_code": run.value.exit_code,
+            "exit_code": run.value.outcome.raw_return_code,
         }
 
     @classmethod

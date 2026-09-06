@@ -39,21 +39,29 @@ def plan_transaction_directories(
             return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail(
                 "Mise mutating layout has no transaction root"
             )
-        try:
-            destination_devices = {
-                artifact.parent.lstat().st_dev
-                for artifact in (
-                    project.artifacts.config,
-                    project.artifacts.unix_launcher,
-                    project.artifacts.windows_launcher,
-                    project.artifacts.lock,
+        # A destination parent that generation has not materialized yet is
+        # absent, not a filesystem defect: the device that owns it is the
+        # device of its nearest existing ancestor, which only a mount point
+        # could change, and a mount point must already exist.
+        destination_devices: set[int] = set()
+        for artifact in (
+            project.artifacts.config,
+            project.artifacts.unix_launcher,
+            project.artifacts.windows_launcher,
+            project.artifacts.lock,
+        ):
+            anchor = u.Cli.atomic_plan_directory_chain(artifact.parent)
+            if anchor.failure:
+                return r[tuple[m.Infra.CodegenJournalDirectory, ...]].from_failure(
+                    anchor
                 )
-            }
-            project_device = project.root.lstat().st_dev
-        except OSError as exc:
-            return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail_op(
-                "inspect Mise staging filesystem", exc
+            destination_devices.add(anchor.value.anchor_device)
+        project_anchor = u.Cli.atomic_plan_directory_chain(project.root)
+        if project_anchor.failure:
+            return r[tuple[m.Infra.CodegenJournalDirectory, ...]].from_failure(
+                project_anchor
             )
+        project_device = project_anchor.value.anchor_device
         if destination_devices != {project_device}:
             return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail(
                 f"Mise state is not on destination filesystem: {project.selector}"
@@ -367,6 +375,7 @@ def validate_transaction_roots(
             return r[bool].from_failure(transaction)
         if transaction.value is False:
             continue
+        transaction_identity = transaction.value
         relative = files.workspace_relative(layout.scope_root, transaction_root)
         if relative.failure:
             return r[bool].from_failure(relative)

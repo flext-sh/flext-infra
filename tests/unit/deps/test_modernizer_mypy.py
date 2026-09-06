@@ -26,8 +26,8 @@ class TestsFlextInfraDepsModernizerMypy:
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        mypy_mapping = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
         tm.that(mypy_mapping["python_version"], eq="3.13")
         tm.that(
@@ -60,8 +60,8 @@ class TestsFlextInfraDepsModernizerMypy:
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        mypy_mapping = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
         tm.that(u.Tests.toml_strings(mypy_mapping["disable_error_code"]), has="misc")
 
@@ -90,11 +90,11 @@ class TestsFlextInfraDepsModernizerMypy:
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        mypy_mapping = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
         override_modules = {
-            tuple(u.Tests.toml_strings(u.Tests.toml_mapping(entry)["module"]))
+            tuple(u.Tests.toml_strings(u.Tests.mapping(entry)["module"]))
             for entry in u.Tests.toml_list(mypy_mapping["overrides"])
         }
         tm.that(
@@ -130,8 +130,8 @@ overrides = [{ module = ["legacy.*"], disable_error_code = ["misc"] }]
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        mypy_mapping = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
         tm.that(
             list(u.Tests.toml_strings(mypy_mapping["plugins"])),
@@ -165,8 +165,8 @@ warn_return_any = false
 
         _ = FlextInfraEnsureMypyConfigPhase(tool_config_document).apply(doc)
 
-        mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
+        mypy_mapping = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["mypy"]
         )
         tm.that(mypy_mapping, lacks="strict_concatenate")
         tm.that(
@@ -194,8 +194,8 @@ warn_return_any = false
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
-        pydantic_mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
+        pydantic_mypy_mapping = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
         )
         tm.that(
             pydantic_mypy_mapping["init_forbid_extra"],

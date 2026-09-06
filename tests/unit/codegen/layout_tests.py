@@ -182,7 +182,9 @@ def test_gate_reports_violations_but_passes_on_warning(tmp_path: Path) -> None:
     """Gate posture follows the SSOT severity: warning reports, never fails."""
     project = _build_loose_project(tmp_path)
     gate = FlextInfraLayoutGate(tmp_path)
-    ctx = m.Infra.GateContext(workspace=tmp_path, reports_dir=tmp_path / ".reports")
+    ctx = m.Infra.GateContext(
+        repository_root=tmp_path, reports_dir=tmp_path / ".reports"
+    )
 
     execution = gate.check(project, ctx)
 

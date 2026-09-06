@@ -117,9 +117,7 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
-        runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.create_command_output(stdout='{"results": []}'))
-        ])
+        runner = u.Tests.command_runner(stdout='{"results": []}')
         with tm.scope(env={"PATH": str(empty_path)}):
             result = u.Tests.run_gate_check(
                 FlextInfraBanditGate, tmp_path, project_dir, runner=runner

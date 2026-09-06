@@ -9,12 +9,12 @@ from types import SimpleNamespace
 import pytest
 
 from flext_cli import cli
-from flext_infra import m, main as infra_main, p, t, u
+from flext_infra import m, main as infra_main, p, t
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_tests import tm
-from tests import c, u as test_u
+from tests import c, u
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -38,9 +38,12 @@ class TestsEnforcementFixerOrchestrator:
         self, tmp_path: Path
     ) -> None:
         """The public dry-run reports a no-change skip for a clean source file."""
-        project_dir = test_u.Tests.mk_project(
+        project_dir = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
+        # Discovery only reaches declared members: an undeclared child directory
+        # is not a project of this root, so the selector would not resolve.
+        u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         source_file = project_dir / "src" / "demo" / "sample.py"
         source_file.parent.mkdir(parents=True)
         source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
@@ -61,9 +64,12 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_stub_file_rule_collects_pyi_probes(self, tmp_path: Path) -> None:
         """The public dry-run reports source stubs and ignores virtualenv stubs."""
-        project_dir = test_u.Tests.mk_project(
+        project_dir = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
+        # Discovery only reaches declared members: an undeclared child directory
+        # is not a project of this root, so the selector would not resolve.
+        u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         excluded_stub = project_dir / ".venv" / "ignored.pyi"
         stub_file.parent.mkdir(parents=True)
@@ -91,7 +97,7 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=False
+            repository_root=str(tmp_path), projects=("demo",), apply=False
         )
 
         result = adapter.fix_project(
@@ -113,7 +119,7 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=True
+            repository_root=str(tmp_path), projects=("demo",), apply=True
         )
 
         result = adapter.fix_project(
@@ -148,7 +154,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=False
+                repository_root=str(tmp_path), projects=("demo",), apply=False
             ),
         )
 
@@ -176,7 +182,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=True
+                repository_root=str(tmp_path), projects=("demo",), apply=True
             ),
         )
 
@@ -186,7 +192,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_missing_selected_project_fails_resolution(self, tmp_path: Path) -> None:
         """A typoed project filter is a hard failure, not a zero-project success."""
-        _ = test_u.Tests.mk_project(
+        _ = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
@@ -253,7 +259,7 @@ class TestsEnforcementFixerOrchestrator:
 
         def run_git(args: t.StrSequence) -> None:
             output = cli.run_raw([c.Infra.GIT, *args], cwd=project_dir).value
-            tm.that(output.exit_code, eq=0)
+            tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
 
         run_git(("init",))
         run_git(("add", "--", "pyproject.toml", "src"))
@@ -284,7 +290,7 @@ class TestsEnforcementFixerOrchestrator:
             exit_code = infra_main([
                 "check",
                 "fix-enforcement",
-                "--workspace",
+                "--repository-root",
                 str(project_dir),
                 "--rules",
                 "ENFORCE-079",

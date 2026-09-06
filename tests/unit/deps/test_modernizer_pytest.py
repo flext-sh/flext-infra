@@ -23,9 +23,9 @@ class TestsFlextInfraDepsModernizerPytest:
 
         _ = phase.apply(doc)
 
-        ini = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(
-                u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pytest"]
+        ini = u.Tests.mapping(
+            u.Tests.mapping(
+                u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pytest"]
             )["ini_options"]
         )
         tm.that(
@@ -40,9 +40,9 @@ class TestsFlextInfraDepsModernizerPytest:
 
         _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
-        ini = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(
-                u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pytest"]
+        ini = u.Tests.mapping(
+            u.Tests.mapping(
+                u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pytest"]
             )["ini_options"]
         )
         pytest_policy = tool_config.tools.pytest
@@ -80,9 +80,9 @@ markers = ["custom: custom marker"]
 
         _ = FlextInfraEnsurePytestConfigPhase(tool_config).apply(doc)
 
-        ini = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(
-                u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pytest"]
+        ini = u.Tests.mapping(
+            u.Tests.mapping(
+                u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pytest"]
             )["ini_options"]
         )
         pytest_policy = tool_config.tools.pytest

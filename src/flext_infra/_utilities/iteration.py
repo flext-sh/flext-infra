@@ -14,8 +14,8 @@ from .iteration_workspace import FlextInfraUtilitiesIterationWorkspace
 
 class FlextInfraUtilitiesIteration(
     FlextInfraUtilitiesIterationMatching,
-    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationWorkspace,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationProject,
 ):
     """Static helpers for discovering and iterating Python files in workspace."""

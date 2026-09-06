@@ -360,7 +360,7 @@ def live(
     source_before = sources(plan)
     if source_before.failure:
         return source_before
-    replacements: dict[Path, tuple[bytes | None, int | None]] = {}
+    replacements: dict[Path, tuple[bytes, int | None]] = {}
     for publication in publications or ():
         replacement = publication.replacement
         if replacement is None or replacement.content is None:
@@ -659,19 +659,6 @@ def _file_identity(
         value.file_attributes,
         value.reparse_tag,
     )
-
-
-def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
-    try:
-        observed = path.lstat()
-    except OSError as exc:
-        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
-    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
-        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
-    )
-    if not stat.S_ISDIR(observed.st_mode) or reparse:
-        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
-    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
 
 
 __all__: list[str] = [

@@ -26,7 +26,7 @@ class TestsExtendedProjectRunners:
     # beyond the default case timeout while the nested checker publishes reports.
     @pytest.mark.slow
     def test_run_projects_records_requested_gates(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         fake_modules = tmp_path / "fake_modules"
@@ -64,7 +64,7 @@ class TestsExtendedProjectRunners:
     def test_public_method_returns_gate_result(
         self, gate_method: str, tmp_path: Path
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         fake_bin = tmp_path / "fake_bin"

@@ -30,7 +30,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def discover_project_paths(
-        self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
+        self, repository_root: Path, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
         del repository_root
         del projects_filter
@@ -54,9 +54,9 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def run_pip_check(
-        self, repository_root: Path, venv_bin: Path
+        self, workspace_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        del repository_root
+        del workspace_root
         del venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
 

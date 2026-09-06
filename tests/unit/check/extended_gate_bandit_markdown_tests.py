@@ -21,7 +21,7 @@ class TestBanditAndMarkdownGates:
 
     @staticmethod
     def make_ctx(root: Path) -> m.Infra.GateContext:
-        return m.Infra.GateContext(workspace=root, reports_dir=root)
+        return m.Infra.GateContext(repository_root=root, reports_dir=root)
 
     @staticmethod
     def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> u.Tests.SequenceRunner:
@@ -326,7 +326,7 @@ class TestBanditAndMarkdownGates:
         (project_dir / "README.md").write_text("# Title   \n", encoding="utf-8")
         runner = self.make_runner(r.ok(u.Tests.create_command_output()))
         context = m.Infra.GateContext(
-            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+            repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
         )
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)

@@ -157,6 +157,12 @@ class FlextInfraUtilitiesPrivateImports:
                 target_reference = relative_module
                 if target_reference is None:
                     target_reference = (
+                        FlextInfraUtilitiesPrivateImportFacades.facade_alias_binding(
+                            owners=facades.get(package, ()), alias=imported.asname
+                        )
+                    )
+                if target_reference is None:
+                    target_reference = (
                         FlextInfraUtilitiesPrivateImportFacades.public_reference(
                             owners=facades.get(package, ()),
                             package=package,
@@ -244,9 +250,8 @@ class FlextInfraUtilitiesPrivateImports:
                                     facade_alias
                                 )
             all_removals = {
-                module: frozenset(
-                    removals.get(module, set()) | obsolete_imports.get(module, set())
-                )
+                module: removals.get(module, set())
+                | obsolete_imports.get(module, set())
                 for module in removals.keys() | obsolete_imports.keys()
             }
             for facade_alias, package in public_imports.items():

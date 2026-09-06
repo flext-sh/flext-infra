@@ -267,14 +267,14 @@ workspace = true
             )
         )
 
-        tm.that(lock_result.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(lock_result.outcome), eq=True)
         lock_content = (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
         packages = tu.Tests.toml_tables_at(lock_content, "package")
         provider_packages = [
             package for package in packages if package["name"] == provider.distribution
         ]
         tm.that(len(provider_packages), eq=1)
-        provider_source = tu.Tests.toml_mapping(provider_packages[0]["source"])
+        provider_source = tu.Tests.mapping(provider_packages[0]["source"])
         tm.that(provider_source.get("editable"), eq=provider.path.as_posix())
         tm.that("git" in provider_source, eq=False)
 

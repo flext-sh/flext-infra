@@ -359,7 +359,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
             applied_one = False
             try:
                 FlextInfraRefactorClassvarConstantAutofix.apply(
-                    workspace_root=ctx.project_root,
+                    repository_root=ctx.project_root,
                     class_full_name=class_full_name,
                     constant_name=violation.name,
                     constants_module=constants_module,
@@ -452,7 +452,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
 
     def _preflight_inits_via_codegen(self) -> None:
         """Prove initializer planning before conform publishes the transaction."""
-        FlextInfraCodegenLazyInit(workspace_root=self.root).plan_files().unwrap()
+        FlextInfraCodegenLazyInit(repository_root=self.root).plan_files().unwrap()
 
 
 def _find_parent(tree: ast.AST, target: ast.AST) -> ast.AST | None:

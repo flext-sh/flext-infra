@@ -95,16 +95,20 @@ def test_required_directories_match_final_file_plan_targets(tmp_path: Path) -> N
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-a"]
     )
-    directories_before = {path for path in workspace.rglob("*") if path.is_dir()}
+    # `rglob` never yields the root it walks, and a scope root always exists,
+    # so it is a directory the plan writes into and never has to create.
+
+    def _directories() -> set[Path]:
+        return {workspace, *(path for path in workspace.rglob("*") if path.is_dir())}
+
+    directories_before = _directories()
 
     prepared = generator.prepare_bundle()
     tm.ok(prepared)
     required = generator.required_directories(prepared.value)
 
     tm.ok(required)
-    tm.that(
-        {path for path in workspace.rglob("*") if path.is_dir()}, eq=directories_before
-    )
+    tm.that(_directories(), eq=directories_before)
     tm.that(any(not directory.exists() for directory in required.value), eq=True)
     for directory in required.value:
         if not directory.exists():

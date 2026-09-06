@@ -6,9 +6,12 @@ from flext_infra.constants import c
 from flext_infra.typings import t
 
 from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
+from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
 
 
-class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeBracketBalanceMixin):
+class FlextInfraUtilitiesRopeHelpers(
+    FlextInfraUtilitiesRopeBracketBalanceMixin, FlextInfraUtilitiesRopeMethodOrderMixin
+):
     """Generic text, import-placement, and method-order helpers."""
 
     @staticmethod

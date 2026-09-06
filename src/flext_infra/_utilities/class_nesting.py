@@ -71,7 +71,6 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                     class_name=item.name,
                     target_namespace=target_namespace,
                     confidence=confidence,
-                    rewrite_scope=c.Infra.RK_FILE,
                 )
                 for item in top_level_classes
                 if item.name != target_namespace

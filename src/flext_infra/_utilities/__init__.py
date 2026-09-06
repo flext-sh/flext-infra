@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
+    from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
@@ -99,12 +100,12 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
+    from .network import FlextInfraUtilitiesNetwork
     from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
     from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
     from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
     from .private_imports import FlextInfraUtilitiesPrivateImports
     from .process import FlextInfraUtilitiesProcess
-    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -155,7 +156,6 @@ if TYPE_CHECKING:
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRopeProject",
     "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
@@ -225,6 +225,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesNamespaceConfig",
+    "FlextInfraUtilitiesNetwork",
     "FlextInfraUtilitiesPrivateImportCst",
     "FlextInfraUtilitiesPrivateImportFacades",
     "FlextInfraUtilitiesPrivateImportValidation",
@@ -264,6 +265,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
@@ -348,6 +350,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
+            "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
@@ -394,6 +397,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
+            ".network": ("FlextInfraUtilitiesNetwork",),
             ".private_import_cst": ("FlextInfraUtilitiesPrivateImportCst",),
             ".private_import_facades": ("FlextInfraUtilitiesPrivateImportFacades",),
             ".private_import_validation": (
@@ -401,7 +405,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".private_imports": ("FlextInfraUtilitiesPrivateImports",),
             ".process": ("FlextInfraUtilitiesProcess",),
-            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",

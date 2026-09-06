@@ -40,13 +40,18 @@ class TestsCodegenRepositoryRootFanout:
                     remove_env_keys=("MAKEFLAGS",),
                 )
             )
-            tm.that(execution.exit_code, eq=0)
+            tm.that(test_u.Cli.process_succeeded(execution.outcome), eq=True)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
-    def test_repository_root_deps_profiles_canonical_modernization(
+    def test_repository_root_deps_dispatches_into_the_managed_lock(
         self, tmp_path: Path
     ) -> None:
-        """Generated deps profiles and renders the exact modernizer invocation."""
+        """A dry run descends into the verb and shows the work it would do.
+
+        Profiling is opt-in and therefore absent from a gate-path verb; what the
+        dispatcher must prove is that `-n` reaches the builtin recipe at all,
+        which it does only because the recursive line is marked with `+`.
+        """
         repository_root = _render_root_makefile(tmp_path)
 
         execution = tm.ok(
@@ -57,12 +62,11 @@ class TestsCodegenRepositoryRootFanout:
             )
         )
 
-        tm.that(execution.exit_code, eq=0)
+        tm.that(test_u.Cli.process_succeeded(execution.outcome), eq=True)
         rendered = execution.stdout + execution.stderr
-        tm.that(rendered, has="-m cProfile")
-        tm.that(rendered, has="deps.pstats")
-        tm.that(rendered, has="validate cprofile-report")
-        tm.that(rendered, has="deps.txt")
+        tm.that(rendered, has="_builtin-deps")
+        tm.that(rendered, has="lock --project")
+        tm.that(rendered, lacks="-m cProfile")
 
 
 def _render_root_makefile(tmp_path: Path) -> Path:
@@ -101,8 +105,10 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     )
     tm.that(makefile_plans, len=1)
     makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
+    rendered_content = tm.not_none(makefile_plans[0].desired_content)
     makefile_path.write_text(
-        makefile_plans[0].rendered, encoding=c.Infra.ENCODING_DEFAULT
+        rendered_content.decode(c.Infra.ENCODING_DEFAULT),
+        encoding=c.Infra.ENCODING_DEFAULT,
     )
     return repository_root
 

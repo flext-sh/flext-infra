@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 def make_ctx(root: Path) -> m.Infra.GateContext:
     """Build the minimal typed gate context for one workspace."""
-    return m.Infra.GateContext(workspace=root, reports_dir=root)
+    return m.Infra.GateContext(repository_root=root, reports_dir=root)
 
 
 class TestsDirenvContractLint:

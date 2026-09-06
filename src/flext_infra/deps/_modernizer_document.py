@@ -54,6 +54,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # field an incompatible override of a read-only descriptor.
         tomlsort_sort_first: t.StrSequence
 
+        # Caller-owned project ManagedArtifacts resolution, supplied by the
+        # composed owner (FlextInfraPyprojectModernizer) as a Pydantic field.
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
+
         def _reorder_document_inplace(
             self,
             doc: t.Cli.TomlDocument,

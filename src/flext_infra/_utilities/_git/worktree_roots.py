@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from git import GitCommandError
 
@@ -77,6 +77,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         return r[Path].ok(Path(top_level).resolve())
 
     @classmethod
+    @override
     def _git_primary_worktree_root_path(cls, repository_path: Path) -> p.Result[Path]:
         """Private Path-based primary worktree resolver."""
         try:

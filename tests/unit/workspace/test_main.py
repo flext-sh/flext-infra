@@ -7,7 +7,8 @@ from pathlib import Path
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import WorktreeFixture, c, u
+from tests import c, u
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -72,14 +73,14 @@ class TestsFlextInfraWorkspaceMain:
         _write_workspace(repository_root)
         member_root = repository_root / "demo-a"
 
-        tm.that(workspace_main(["detect", "--workspace", str(member_root)]), eq=0)
+        tm.that(workspace_main(["detect", "--repository-root", str(member_root)]), eq=0)
 
     def test_workspace_main_detect_runs_public_command(self, tmp_path: Path) -> None:
         """``workspace detect`` runs as a public CLI command."""
         project_root = tmp_path / "project"
         _write_project(project_root, "demo-project")
 
-        exit_code = workspace_main(["detect", "--workspace", str(project_root)])
+        exit_code = workspace_main(["detect", "--repository-root", str(project_root)])
 
         tm.that(exit_code, eq=0)
 

@@ -94,6 +94,7 @@ class FlextInfraConstantsRefactor:
     CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
     CODEMOD_RULE_SUFFIX: Final[str] = ".yml"
     CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
+    # Why: restored — deleted declaration with consumers left behind in codemod_rules.py
     CODEMOD_CONFIG_RELPATH: Final[Path] = Path(CODEMOD_RESOURCE_DIRNAME) / (
         CODEMOD_CONFIG_FILENAME
     )

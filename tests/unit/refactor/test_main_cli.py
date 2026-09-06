@@ -323,12 +323,13 @@ class TestsFlextInfraRefactorMainCli:
         )
         return workspace
 
-    def test_refactor_census_accepts_workspace_before_subcommand(
+    def test_refactor_census_accepts_the_repository_root_option(
         self, tmp_path: Path
     ) -> None:
+        """The root is a subcommand option, not a group flag ahead of the verb."""
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
-        result = self._refactor_main("--workspace", str(workspace), "census")
+        result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 
     def test_refactor_census_apply_fixes_missing_runtime_alias(
@@ -349,7 +350,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--apply",
@@ -492,7 +493,7 @@ class TestsFlextInfraRefactorMainCli:
         typings_file = service_file.parent / "typings.py"
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--apply",
@@ -514,7 +515,7 @@ class TestsFlextInfraRefactorMainCli:
         workspace, module_path = self._build_compatibility_alias_workspace(tmp_path)
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--apply",
@@ -587,7 +588,7 @@ class TestsFlextInfraRefactorMainCli:
         test_file = workspace / "tests" / "test_service.py"
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--apply",
@@ -626,7 +627,7 @@ class TestsFlextInfraRefactorMainCli:
         test_file = workspace / "tests" / "test_operations.py"
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--apply",
@@ -711,7 +712,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--apply",
@@ -756,7 +757,7 @@ class TestsFlextInfraRefactorMainCli:
         clone_test = clone / "tests" / "test_operations.py"
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(clone),
             "census",
             "--apply",
@@ -797,7 +798,7 @@ class TestsFlextInfraRefactorMainCli:
         )
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--apply",
@@ -907,7 +908,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].object_name, eq=expected_object_name)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         tm.that(len(files), eq=0)
 
@@ -965,9 +966,9 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
@@ -1007,9 +1008,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.ok(report_result)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
@@ -1029,7 +1030,7 @@ class TestsFlextInfraRefactorMainCli:
         impact_map_path = tmp_path / "cli-impact-map.json"
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--rules",
@@ -1043,9 +1044,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(result, eq=0)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
 
@@ -1071,8 +1072,8 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)

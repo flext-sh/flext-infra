@@ -23,7 +23,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(result)
         envrc = (workspace / ".envrc").read_text(encoding="utf-8")
@@ -37,7 +37,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         custom = workspace / ".envrc"
         _ = custom.write_text("PATH_add bin\n", encoding="utf-8")
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(result)
         tm.that(custom.read_text(encoding="utf-8"), eq="PATH_add bin\n")
@@ -51,7 +51,7 @@ class TestsFlextInfraFacadeEnvironmentSync:
         _ = custom.write_text("PATH_add bin\n", encoding="utf-8")
         result = infra.sync_environment_files(
             m.Infra.WorkspaceEnvironmentSyncRequest(
-                workspace_root=workspace, force=True
+                repository_root=workspace, force=True
             )
         )
         tm.ok(result)
@@ -85,12 +85,12 @@ class TestsFlextInfraFacadeEnvironmentSync:
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
         setup = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(setup)
         (workspace / "pyproject.toml").unlink()
         result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
+            m.Infra.WorkspaceEnvironmentSyncRequest(repository_root=workspace)
         )
         tm.ok(result)
         tm.that((workspace / ".envrc").exists(), eq=False)

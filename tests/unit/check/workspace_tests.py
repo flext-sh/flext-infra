@@ -38,7 +38,7 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
         """Test that checker accepts custom workspace root."""
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         tm.that(checker, none=False)
 
     def test_execute_returns_failure(self) -> None:
@@ -54,7 +54,7 @@ class TestFlextInfraWorkspaceChecker:
         self, tmp_path: Path
     ) -> None:
         """Test that check run fails when a workspace has no projects."""
-        exit_code = main(["check", "run", "--workspace", str(tmp_path)])
+        exit_code = main(["check", "run", "--repository-root", str(tmp_path)])
         tm.that(exit_code, eq=1)
 
     def test_cli_auto_discovers_projects(self, tmp_path: Path) -> None:
@@ -86,7 +86,7 @@ class TestFlextInfraWorkspaceChecker:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(tmp_path),
             "--gates",
             "lint",
@@ -105,11 +105,10 @@ class TestFlextInfraWorkspaceChecker:
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
 
-    def test_resolve_gates_deduplicates(self) -> None:
-        """Test that resolve_gates removes duplicate gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
-        tm.ok(result)
-        tm.that(result.value.count("lint"), eq=1)
+    def test_resolve_gates_rejects_duplicate_request(self) -> None:
+        """A repeated gate is an ambiguous request, never silently collapsed."""
+        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint"])
+        tm.fail(result)
 
     def test_resolve_gates_with_invalid_gate(self) -> None:
         """Test that resolve_gates fails on invalid gate name."""
@@ -118,7 +117,7 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_run_projects_with_missing_projects(self, tmp_path: Path) -> None:
         """Test that run_projects handles missing project directories gracefully."""
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         result = checker.run_projects(
             ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
         )
@@ -127,7 +126,7 @@ class TestFlextInfraWorkspaceChecker:
 
     def test_run_projects_creates_reports_dir(self, tmp_path: Path) -> None:
         """Test that run_projects creates reports directory if missing."""
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         reports_dir = tmp_path / "reports"
         result = checker.run_projects([], ["lint"], reports_dir=reports_dir)
         tm.ok(result)

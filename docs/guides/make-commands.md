@@ -20,7 +20,7 @@ grammar. This guide records the invariants that every declared verb must keep.
 ## Discover commands
 
 ```bash
-make setup APPLY=Y
+make setup
 make help
 ```
 

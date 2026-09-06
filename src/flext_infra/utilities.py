@@ -42,6 +42,7 @@ from ._utilities.namespace_analysis import FlextInfraUtilitiesRefactorNamespaceF
 from ._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
 from ._utilities.namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
 from ._utilities.namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
+from ._utilities.network import FlextInfraUtilitiesNetwork
 from ._utilities.private_imports import FlextInfraUtilitiesPrivateImports
 from ._utilities.process import FlextInfraUtilitiesProcess
 from ._utilities.project_managed_artifacts import (
@@ -94,6 +95,7 @@ class FlextInfraUtilities(cli_u):
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
+        FlextInfraUtilitiesNetwork,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCompatibilityAliases,

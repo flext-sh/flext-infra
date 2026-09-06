@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+import pytest
+
 from flext_infra import FlextInfraPytestRunner, config, u
 from flext_tests import tm
 
@@ -12,6 +14,7 @@ from flext_tests import tm
 class TestsFlextInfraPytestRunner:
     """Exercise the real pytest, testmon, coverage, and report lifecycle."""
 
+    @pytest.mark.slow
     def test_complete_suite_persists_cache_and_zero_diagnostic_evidence(
         self, cached_runner_project: Path
     ) -> None:
@@ -28,8 +31,8 @@ class TestsFlextInfraPytestRunner:
         runner = FlextInfraPytestRunner(
             repository_root=cached_runner_project,
             started_at_monotonic=time.monotonic(),
-            target=cache.target_directory.as_posix(),
-            reports=cache.reports_directory.as_posix(),
+            target=cache.target_directory,
+            reports=cache.reports_directory,
             testmon_db=testmon_db,
         )
 

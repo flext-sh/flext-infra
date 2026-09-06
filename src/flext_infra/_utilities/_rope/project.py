@@ -10,15 +10,18 @@ warning or weakening the process warning policy.
 
 from __future__ import annotations
 
+from typing import override
+
 from rope.base.project import Project
 
 
 class FlextInfraRopeProject(Project):
     """Rope project with the upstream self-warning initializer repaired."""
 
+    @override
     def _init_source_folders(self) -> None:
         """Initialize configured source roots without Rope's warning wrapper."""
-        for path in self.prefs.get("source_folders", []):
+        for path in self.prefs.get("source_folders", []) or []:
             self._custom_source_folders.append(self.get_resource(path))
 
 

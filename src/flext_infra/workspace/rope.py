@@ -20,7 +20,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     rope_repository_root_override: Annotated[
         Path | None,
-        m.Field(description="Optional Rope project root; defaults to workspace_root"),
+        m.Field(description="Optional Rope project root; defaults to repository_root"),
     ] = None
 
     _rope_repository_root: Path
@@ -78,7 +78,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
             repository_root
         )
         workspace = cls(
-            workspace=repository_root, rope_repository_root_override=resolved_rope_root
+            repository_root=repository_root,
+            rope_repository_root_override=resolved_rope_root,
         )
         _ = workspace.rope_project
         return workspace
@@ -130,7 +131,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def session_snapshot(self) -> m.Infra.RopeWorkspaceSession:
         """Return the current public Rope session state."""
         return m.Infra.RopeWorkspaceSession(
-            workspace_root=self.repository_root,
+            repository_root=self.repository_root,
             rope_repository_root=self._rope_repository_root,
             workspace_index=self.workspace_index,
         )

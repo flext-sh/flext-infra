@@ -66,7 +66,7 @@ def test_execute_scans_real_package_layout(tmp_path: Path) -> None:
     (package_dir / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
     u.Tests.declare_workspace_projects(repository_root, ("flext-demo",))
 
-    result = u.Tests.consolidate_codegen(repository_root=repository_root, dry_run=True)
+    result = u.Tests.consolidate_codegen(workspace_root=repository_root, dry_run=True)
 
     tm.ok(result)
     tm.that(result.value, has="Found")
@@ -129,7 +129,7 @@ def test_execute_apply_mode_replaces_literal_with_canonical_reference(
         repository_root / "flext-demo" / "src" / "flext_demo" / "consumer.py"
     )
 
-    result = u.Tests.consolidate_codegen(repository_root=repository_root, dry_run=False)
+    result = u.Tests.consolidate_codegen(workspace_root=repository_root, dry_run=False)
 
     tm.ok(result)
     tm.that(result.value, has="Applied 1 replacements")

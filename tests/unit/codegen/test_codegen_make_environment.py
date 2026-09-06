@@ -91,6 +91,10 @@ class TestsCodegenMakeEnvironment:
                 project_root / "Makefile", test_u.Tests.codegen_file_text(makefile)
             )
         )
+        # `make setup` bootstraps through the committed toolchain seeds, exactly
+        # as a governed checkout does; a fixture without them is not the tree the
+        # generated Makefile was written for.
+        test_u.Tests.copy_tracked_mise_seeds(project_root)
         return project_root, repository_root
 
     @pytest.mark.parametrize(
@@ -112,9 +116,11 @@ class TestsCodegenMakeEnvironment:
         hostile_python = hostile_bin / "python"
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
+        # The grammar carries no selector: a repository overrides a whole verb
+        # through `_custom-<verb>`, so the probe is the custom `status` handler.
         (project_root / "custom.mk").write_text(
-            ".PHONY: _custom_status_probe\n"
-            "_custom_status_probe:\n"
+            ".PHONY: _custom-status\n"
+            "_custom-status:\n"
             "\t@printf '%s\\n' "
             "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
@@ -131,18 +137,12 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             test_u.Tests.run_isolated_make(
-                [
-                    "--no-print-directory",
-                    "status",
-                    f"{config.Infra.codegen.make.selector}=probe",
-                ],
-                cwd=project_root,
-                env=active_env,
+                ["--no-print-directory", "status"], cwd=project_root, env=active_env
             )
         )
         tm.that(
-            process.exit_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
@@ -202,7 +202,11 @@ class TestsCodegenMakeEnvironment:
         )
 
         process = tm.ok(result)
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --frozen --project")
@@ -233,7 +237,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
         tm.that(process.stdout + process.stderr, has="missing generated mise launcher")
         tm.that(mise.is_file(), eq=True)
         tm.that(mise_log.exists(), eq=False)
@@ -287,7 +291,11 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
@@ -382,7 +390,7 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "check",
-                    f"{config.Infra.codegen.make.selector}=lint",
+                    "WHAT=lint",
                     f"UV={uv}",
                 ],
                 cwd=project_root,
@@ -390,7 +398,11 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
         tm.that(invocation, has="--gates lint --projects .")
@@ -417,7 +429,7 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "deps",
-                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "WHAT=upgrade",
                     "DEPENDENCY=flext-cli",
                     "APPLY=Y",
                 ],
@@ -429,7 +441,11 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
@@ -457,7 +473,7 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "deps",
-                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "WHAT=upgrade",
                     "DEPENDENCY=flext-cli --all",
                     "APPLY=Y",
                 ],
@@ -467,7 +483,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
         tm.that(
             process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
         )
@@ -489,7 +505,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(u.Cli.process_succeeded(process.outcome), eq=False)
         tm.that(
             process.stdout + process.stderr,
             has=["missing environment interpreter", "make setup creates it"],

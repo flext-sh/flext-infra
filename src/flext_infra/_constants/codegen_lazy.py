@@ -63,15 +63,21 @@ class FlextInfraConstantsCodegenLazy:
         "src/**/__init__.py",
         "tests/**/__init__.py",
         "examples/**/__init__.py",
-        "scripts/**/__init__.py",
     )
-    "Glob patterns for all directories the lazy-init generator scans."
+    """Glob patterns for all directories the lazy-init generator scans.
+
+    ``scripts/`` is deliberately absent: its modules are entry points, each
+    owning its own ``main``, not a package whose names a generated initializer
+    should re-export.
+    """
     NON_PUBLIC_LAZY_ROOTS: Final[frozenset[str]] = frozenset({
         "examples",
         "scripts",
         "tests",
     })
     "Root import surfaces generated as private lazy plumbing, not public ABI."
+    WRAPPER_NAMESPACE_DEPTH: Final[int] = 2
+    "Dotted depth of a namespace package under a governed wrapper surface."
     # flext-pulj (codex): pytest must register fixture plugins before importing
     # them, so their private package initializer is always side-effect free.
     # Real cycle exceptions are the bootstrap packages imported while

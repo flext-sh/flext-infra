@@ -45,7 +45,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         cls, request: m.Infra.WorkspaceEnvironmentSyncRequest
     ) -> p.Result[bool]:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
-        rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
+        rendered = cls._render_environment_template(
+            c.Infra.ENVRC_FILENAME, context=u.Infra.envrc_render_spec()
+        )
         if rendered.failure:
             return r[bool].from_failure(rendered)
         return cls._write_generated_text(
@@ -60,9 +62,13 @@ class FlextInfraWorkspaceEnvironmentMixin:
         cls,
         destination: str,
         *,
-        context: m.Infra.BeadsWorkspaceEnvironmentSpec | None = None,
+        context: m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.EnvrcRenderSpec,
     ) -> p.Result[str]:
-        """Render one SSOT environment template from the toolchain spec."""
+        """Render one environment template from the caller's declared context.
+
+        The context is always the typed owner that declares every variable the
+        template reads; this owner never substitutes a narrower default.
+        """
         template_path = (
             Path(__file__).resolve().parents[2]
             / "templates"
@@ -70,10 +76,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
             / "base"
             / f"{destination}.j2"
         )
-        render_context: (
-            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.ToolchainSpec
-        ) = context if context is not None else config.Infra.codegen.toolchain
-        return u.Cli.template_render(template_path, render_context)
+        return u.Cli.template_render(template_path, context)
 
     @classmethod
     def _remove_generated_environment_files(

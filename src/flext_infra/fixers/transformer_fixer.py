@@ -23,13 +23,15 @@ from flext_infra.transformers.import_modernizer import (
 )
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
 from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
