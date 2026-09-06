@@ -141,12 +141,12 @@ class FlextInfraConfigModels:
         """Immutable download metadata for one tool platform."""
 
         checksum: Annotated[
-            t.NonEmptyStr,
+            t.NonEmptyStr | None,
             m.Field(
                 pattern=r"^sha256:[0-9a-f]{64}$",
-                description="SHA-256 digest emitted by Mise",
+                description="SHA-256 digest emitted by Mise when the backend provides one",
             ),
-        ]
+        ] = None
         url: Annotated[
             t.NonEmptyStr,
             m.Field(

@@ -79,7 +79,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
         # Modernization writes only the requested repository root and its
-        # declared declared_repositories, never siblings.
+        # declared subprojects, never siblings.
         include_root = not project_names or "." in project_names
         selected_names = (
             [name for name in project_names if name != "."]
@@ -98,7 +98,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         ]
         if outside_declared_repository_names:
             u.Cli.error(
-                "workspace declared_repositories outside root: "
+                "workspace subprojects outside root: "
                 f"{', '.join(sorted(outside_declared_repository_names))}"
             )
             return 2

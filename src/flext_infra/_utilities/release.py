@@ -310,14 +310,13 @@ class FlextInfraUtilitiesRelease:
                     if dependency in selected and dependency != name
                 )
             )
-        ordered = FlextInfraUtilitiesDependencies.dependency_waves(edges)
-        if ordered.failure:
+        try:
+            waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
+        except ValueError as exc:
             return r[t.SequenceOf[t.StrSequence]].fail(
-                (ordered.error or "dependency cycle blocks topological order").replace(
-                    "dependency cycle", "release dependency cycle", 1
-                )
+                str(exc).replace("cyclic dependency graph", "release dependency cycle", 1)
             )
-        return ordered
+        return r[t.SequenceOf[t.StrSequence]].ok(waves)
 
     @staticmethod
     def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:
