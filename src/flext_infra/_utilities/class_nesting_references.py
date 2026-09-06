@@ -93,6 +93,21 @@ class FlextInfraUtilitiesClassNestingReferences:
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
 
+        def _inside_owner(self, node: cst.CSTNode, owner_name: str) -> bool:
+            """Report whether ``node`` sits lexically inside the owner class body.
+
+            After nesting, a moved class is a sibling of everything already in
+            the owner, so inside that body the bare name is the reachable form.
+            Qualifying it as ``Owner.Name`` there is a NameError: the owner is
+            not bound until its own definition completes.
+            """
+            current: cst.CSTNode | None = node
+            while current is not None:
+                if isinstance(current, cst.ClassDef) and current.name.value == owner_name:
+                    return True
+                current = self.get_metadata(ParentNodeProvider, current, None)
+            return False
+
         @override
         def leave_Name(
             self, original_node: cst.Name, updated_node: cst.Name
@@ -117,6 +132,9 @@ class FlextInfraUtilitiesClassNestingReferences:
             if isinstance(parent, cst.Attribute) and parent.attr is original_node:
                 return updated_node
             if isinstance(parent, cst.Arg) and parent.keyword is original_node:
+                return updated_node
+            owner = self.definitions.get(original_node.value)
+            if owner is not None and self._inside_owner(original_node, owner):
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)
             if replacement is None:
