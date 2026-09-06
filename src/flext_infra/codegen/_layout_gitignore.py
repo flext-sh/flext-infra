@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flext_infra import c, config, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -89,13 +89,13 @@ class FlextInfraCodegenLayoutGitignoreMixin:
     @staticmethod
     def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
         """Make profile when the project is governed by a workspace."""
-        repository_root = FlextInfraWorkspaceDetector.resolve_repository_root(
-            project_dir
+        repository_root = u.Infra.git_show_toplevel(
+            m.Infra.GitRepoRequest(repo_root=project_dir)
         )
         if repository_root.failure:
             return None
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
-            repository_root.value
+            repository_root.value.repository_root
         )
         if workspace.failure:
             return None

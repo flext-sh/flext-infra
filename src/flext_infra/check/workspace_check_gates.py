@@ -267,7 +267,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         ctx: m.Infra.GateContext,
         gates_sink: MutableMapping[str, m.Infra.GateExecution],
-    ) -> t.Cli.PipelineHandler:
+    ) -> p.Cli.PipelineStage:
         """Build a pipeline stage handler that executes a single gate.
 
         The handler writes GateExecution into *gates_sink* as a side-effect
@@ -277,7 +277,7 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_name = project_dir.name
 
         def _handler(
-            _pipeline_ctx: m.Cli.PipelineStageContext,
+            _pipeline_ctx: p.Cli.PipelineStageContext, /
         ) -> p.Result[m.Cli.PipelineStageResult]:
             """Run the gate and record its execution in the sink."""
             gate_ctx = m.Infra.GateContext(

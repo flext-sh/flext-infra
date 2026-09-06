@@ -113,7 +113,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output=self._scan_output(scan),
+            raw_output="\n".join(part for part in (scan.stdout, scan.stderr) if part),
             started=started,
         )
 

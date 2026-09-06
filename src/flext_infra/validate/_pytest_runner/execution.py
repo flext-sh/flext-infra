@@ -51,7 +51,9 @@ class FlextInfraPytestRunnerExecution(
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         if outcome.outcome.raw_return_code not in {0, 5}:
             detail = (outcome.stderr or outcome.stdout).strip()
-            msg = f"testmon selection failed ({outcome.exit_code}): {detail}"
+            msg = (
+                f"testmon selection failed ({outcome.outcome.raw_return_code}): {detail}"
+            )
             raise RuntimeError(msg)
         node_ids = tuple(
             line.strip()

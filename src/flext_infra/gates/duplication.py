@@ -239,16 +239,17 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second_name = u.Cli.json_pick_str(second, "name")
             if not cls._is_semantic_clone(duplicate, first, second):
                 continue
+            record = m.Infra.JscpdDuplicate.model_validate(duplicate)
             if first_name.startswith(prefix):
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, first, first_name, second_name, project_dir
+                    cls._issue(
+                        record, record.first_file, record.second_file, project_dir
                     )
                 )
             elif second_name.startswith(prefix) and second_name != first_name:
                 issues.append(
-                    cls._issue_from_duplicate(
-                        duplicate, second, second_name, first_name, project_dir
+                    cls._issue(
+                        record, record.second_file, record.first_file, project_dir
                     )
                 )
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))

@@ -530,7 +530,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         published = transaction.commit_locked(
             with_docs.value,
             lambda: self._validate_managed_fixed_point(
-                request, with_docs.value, transaction, lazy_analysis.value
+                request, with_docs.value, transaction
             ),
         )
         if published.failure:
@@ -617,7 +617,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
         transaction: FlextInfraCodegenTransaction,
-        lazy_analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
         """Replan conform against live bytes before the journal can commit."""
         u.Cli.info("stage=verify-fixed-point")
@@ -2989,7 +2988,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current = u.Cli.files_read_text(path)
             if current.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
-            if c.Infra.TEMPLATE_GENERATED_MARKER not in current.value:
+            if not any(
+                marker in current.value
+                for marker in c.Infra.TEMPLATE_GENERATED_MARKERS
+            ):
                 continue
             absent_plan = cls._absent_file_plan(root, path)
             if absent_plan.failure:

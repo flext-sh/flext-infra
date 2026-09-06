@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
+    from collections.abc import Set as AbstractSet
+
     from flext_infra.typings import t
 
 
@@ -161,7 +163,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
         package: str,
         alias: str,
         file_path: Path,
-        removals: t.MappingKV[str, t.Infra.StrSet],
+        removals: t.MappingKV[str, AbstractSet[str]],
     ) -> None:
         """Reject any binding that would shadow the inserted public facade."""
         allowed_imports = {

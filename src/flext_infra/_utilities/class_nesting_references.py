@@ -54,6 +54,20 @@ class FlextInfraUtilitiesClassNestingReferences:
                 return f"{parent}.{node.attr.value}" if parent else None
             return None
 
+        @staticmethod
+        def _alias_name(asname: cst.AsName) -> str:
+            """Return the bound alias identifier, rejecting impossible shapes.
+
+            libcst types ``AsName.name`` as ``Name | Tuple | List``, but import
+            aliases parsed from valid Python can only carry a ``Name``
+            (``import x as (a, b)`` is a SyntaxError); Tuple/List belong to
+            ``WithItem``/``ExceptHandler`` clauses only.
+            """
+            if not isinstance(asname.name, cst.Name):
+                msg = f"unsupported import alias target: {type(asname.name).__name__}"
+                raise TypeError(msg)
+            return asname.name.value
+
         def _import_module(self, node: cst.ImportFrom) -> str:
             suffix = self._dotted_name(node.module) or ""
             if not node.relative:
@@ -67,6 +81,7 @@ class FlextInfraUtilitiesClassNestingReferences:
             prefix = package_parts[: len(package_parts) - ascend]
             return ".".join((*prefix, suffix) if suffix else prefix)
 
+        @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
             bindings = self.bindings_by_module.get(self._import_module(node), {})
             if not bindings or isinstance(node.names, cst.ImportStar):
@@ -75,7 +90,9 @@ class FlextInfraUtilitiesClassNestingReferences:
                 name = self._dotted_name(imported.name) or ""
                 if name not in bindings:
                     continue
-                local_name = imported.asname.name.value if imported.asname else name
+                local_name = (
+                    self._alias_name(imported.asname) if imported.asname else name
+                )
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
 
@@ -152,7 +169,7 @@ class FlextInfraUtilitiesClassNestingReferences:
                 )
                 identity = (
                     self._dotted_name(rewritten.name) or "",
-                    rewritten.asname.name.value if rewritten.asname else "",
+                    self._alias_name(rewritten.asname) if rewritten.asname else "",
                 )
                 if identity not in seen:
                     seen.add(identity)

@@ -32,7 +32,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         """Execute the configured docs validation flow."""
         result = self.validate_workspace(
             m.Infra.DocsGenerateRequest(
-                workspace_root=self.repository_root,
+                repository_root=self.repository_root,
                 projects=self.selected_projects,
                 output_dir=self.output_dir,
                 apply=self.apply_changes,

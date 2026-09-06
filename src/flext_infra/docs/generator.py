@@ -104,7 +104,7 @@ class FlextInfraDocGenerator(
             "generate",
             self.generate(
                 m.Infra.DocsGenerateRequest(
-                    workspace_root=self.repository_root,
+                    repository_root=self.repository_root,
                     projects=self.selected_projects,
                     output_dir=self.output_dir,
                     apply=self.apply_changes,
@@ -116,7 +116,7 @@ class FlextInfraDocGenerator(
     def _configured_request(self) -> m.Infra.DocsGenerateRequest:
         """Return the check-only request shared by both planner entry points."""
         return m.Infra.DocsGenerateRequest(
-            workspace_root=self.repository_root,
+            repository_root=self.repository_root,
             projects=self.selected_projects,
             output_dir=self.output_dir,
             apply=False,

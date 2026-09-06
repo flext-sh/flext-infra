@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Callable, Container, MutableMapping
+from collections.abc import Callable, Container as _Container, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
@@ -66,7 +66,7 @@ class FlextInfraTypesBase:
     "Result for writing generated __init__.py."
     type StrSet = set[str]
     "Mutable string set (supports .update/.intersection/etc)."
-    type Container[T] = Container[T]
+    type Container[T] = _Container[T]
     "Structural membership container (supports ``in``) for any item type."
     type CanonicalValue = t.Scalar | t.StrSequence
     "Canonical governance value: scalar payload or string sequence."
