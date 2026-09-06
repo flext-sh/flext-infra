@@ -43,9 +43,7 @@ class FlextInfraReleaseOrchestratorPhases(
         """
         projects_result = u.Infra.resolve_projects(workspace_root, project_names)
         if projects_result.failure:
-            return r[t.SequenceOf[t.Pair[str, Path]]].fail(
-                projects_result.error or "release project resolution failed"
-            )
+            return r[t.SequenceOf[t.Pair[str, Path]]].from_failure(projects_result)
         prefixes = tuple(config.Infra.release.publishable_prefixes)
         seen: t.Infra.StrSet = set()
         unique: t.MutableSequenceOf[t.Pair[str, Path]] = []
@@ -71,9 +69,7 @@ class FlextInfraReleaseOrchestratorPhases(
         """
         projects = u.Infra.resolve_projects(workspace_root, ())
         if projects.failure:
-            return r[t.StrMapping].fail(
-                projects.error or "internal version resolution failed"
-            )
+            return r[t.StrMapping].from_failure(projects)
         versions: dict[str, str] = dict(
             u.Infra.locked_dependency_versions(
                 workspace_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
@@ -82,9 +78,7 @@ class FlextInfraReleaseOrchestratorPhases(
         for project in projects.value:
             declared = u.Infra.current_workspace_version(project.path)
             if declared.failure:
-                return r[t.StrMapping].fail(
-                    declared.error or f"version unresolved: {project.name}"
-                )
+                return r[t.StrMapping].from_failure(declared)
             versions[project.name] = declared.value
         return r[t.StrMapping].ok(versions)
 
@@ -119,9 +113,7 @@ class FlextInfraReleaseOrchestratorPhases(
             log, (record_result.error or "release build failed") + "\n"
         )
         if write_result.failure:
-            return r[m.Infra.BuildRecord].fail(
-                write_result.error or f"write failed build log: {name}"
-            )
+            return r[m.Infra.BuildRecord].from_failure(write_result)
         return r[m.Infra.BuildRecord].ok(
             self._build_record(
                 project=name, project_path=path, log_path=log, exit_code=1
@@ -138,18 +130,14 @@ class FlextInfraReleaseOrchestratorPhases(
         """Build every selected project and retain its strict report record."""
         versions = self._internal_versions(ctx.workspace_root)
         if versions.failure:
-            return r[t.SequenceOf[m.Infra.BuildRecord]].fail(
-                versions.error or "internal version resolution failed"
-            )
+            return r[t.SequenceOf[m.Infra.BuildRecord]].from_failure(versions)
         records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
         for name, path in targets:
             record_result = self._build_project_record(
                 ctx, policy, name, path, output_dir, versions.value
             )
             if record_result.failure:
-                return r[t.SequenceOf[m.Infra.BuildRecord]].fail(
-                    record_result.error or f"release build record failed: {name}"
-                )
+                return r[t.SequenceOf[m.Infra.BuildRecord]].from_failure(record_result)
             record = record_result.value
             records.append(record)
             logger.info(
@@ -202,9 +190,7 @@ class FlextInfraReleaseOrchestratorPhases(
             policy_root=policy_dir,
         )
         if constraints_result.failure:
-            return r[m.Infra.BuildPolicy].fail(
-                constraints_result.error or "snapshot build constraints failed"
-            )
+            return r[m.Infra.BuildPolicy].from_failure(constraints_result)
         gitleaks_path = policy_dir / "gitleaks-release.toml"
         gitleaks_result = cls._snapshot_policy_file(
             workspace_root / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
@@ -212,9 +198,7 @@ class FlextInfraReleaseOrchestratorPhases(
             policy_root=policy_dir,
         )
         if gitleaks_result.failure:
-            return r[m.Infra.BuildPolicy].fail(
-                gitleaks_result.error or "snapshot Gitleaks policy failed"
-            )
+            return r[m.Infra.BuildPolicy].from_failure(gitleaks_result)
         return r[m.Infra.BuildPolicy].ok(
             m.Infra.BuildPolicy(
                 build_constraints_path=str(constraints_path.resolve()),
@@ -250,7 +234,7 @@ class FlextInfraReleaseOrchestratorPhases(
             m.Cli.JsonWriteOptions(sort_keys=True),
         )
         if write_result.failure:
-            return r[int].fail(write_result.error or "write build report failed")
+            return r[int].from_failure(write_result)
         logger.info("release_phase_build_report", report=str(report_path))
         return r[int].ok(failures)
 
@@ -263,26 +247,22 @@ class FlextInfraReleaseOrchestratorPhases(
             return r[bool].fail_op("report dir creation", exc)
         targets_result = self._build_targets(ctx.workspace_root, ctx.project_names)
         if targets_result.failure:
-            return r[bool].fail(
-                targets_result.error or "release build target resolution failed"
-            )
+            return r[bool].from_failure(targets_result)
         if not targets_result.value:
             return r[bool].fail("release build selected no publishable projects")
         policy_result = self._snapshot_build_policy(ctx.workspace_root, output_dir)
         if policy_result.failure:
-            return r[bool].fail(
-                policy_result.error or "release build policy snapshot failed"
-            )
+            return r[bool].from_failure(policy_result)
         records_result = self._build_records(
             ctx, policy_result.value, targets_result.value, output_dir
         )
         if records_result.failure:
-            return r[bool].fail(records_result.error or "release build records failed")
+            return r[bool].from_failure(records_result)
         report_result = self._write_build_report(
             ctx, policy_result.value, output_dir, records_result.value
         )
         if report_result.failure:
-            return r[bool].fail(report_result.error or "write build report failed")
+            return r[bool].from_failure(report_result)
         if report_result.value:
             return r[bool].fail(f"build failed: {report_result.value} project(s)")
         return r[bool].ok(True)

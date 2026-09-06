@@ -294,10 +294,7 @@ class FlextInfraWorkspaceDetector(
             )
         )
         if contract.failure:
-            return r[tuple[str, str]].fail(
-                contract.error
-                or f"invalid .gitmodules entry: {subproject_path.as_posix()}"
-            )
+            return r[tuple[str, str]].from_failure(contract)
         return r[tuple[str, str]].ok((contract.value.url, contract.value.branch))
 
     @classmethod
@@ -312,9 +309,7 @@ class FlextInfraWorkspaceDetector(
         """Build repository policy from local metadata and an immutable Git URL."""
         metadata = u.read_project_metadata(repository_root)
         if metadata.failure:
-            return r[m.Infra.RepositoryRef].fail(
-                metadata.error or f"unable to read project metadata: {repository_root}"
-            )
+            return r[m.Infra.RepositoryRef].from_failure(metadata)
         origin = cls._git_origin_url(repository_root)
         if origin.failure:
             return r[m.Infra.RepositoryRef].fail(origin.error)
@@ -502,9 +497,7 @@ class FlextInfraWorkspaceDetector(
             )
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
         if identity.failure:
-            return r[m.Infra.WorkspaceSpec].fail(
-                identity.error or "failed to resolve local Git identity"
-            )
+            return r[m.Infra.WorkspaceSpec].from_failure(identity)
         beads_result = cls.load_beads_spec(resolved_root)
         member_root = identity.value.primary_root
         member_beads = member_root / c.Infra.BEADS_DIRNAME
@@ -516,10 +509,7 @@ class FlextInfraWorkspaceDetector(
                 )
             inherited_beads = cls.load_beads_spec(superproject_root)
             if inherited_beads.failure:
-                return r[m.Infra.WorkspaceSpec].fail(
-                    inherited_beads.error
-                    or "workspace member ledger inheritance failed"
-                )
+                return r[m.Infra.WorkspaceSpec].from_failure(inherited_beads)
             try:
                 member_path = member_root.relative_to(superproject_root)
             except ValueError:
@@ -624,9 +614,7 @@ class FlextInfraWorkspaceDetector(
         (provider,) = providers
         metadata = u.read_project_metadata(resolved_root)
         if metadata.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                metadata.error or f"unable to read project metadata: {resolved_root}"
-            )
+            return r[m.Infra.RepositoryConformTarget].from_failure(metadata)
         canonical_project_name = metadata.value.project.name
         if canonical_project_name != workspace.repository.distribution:
             return r[m.Infra.RepositoryConformTarget].fail(
@@ -646,10 +634,7 @@ class FlextInfraWorkspaceDetector(
             ),
         )
         if baseline_result.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                baseline_result.error
-                or f"integration baseline resolution failed: {resolved_root}"
-            )
+            return r[m.Infra.RepositoryConformTarget].from_failure(baseline_result)
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,

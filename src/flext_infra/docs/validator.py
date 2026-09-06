@@ -21,7 +21,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
     ) -> p.Result[t.SequenceOf[m.Infra.DocsPhaseReport]]:
         """Validate documentation across the repository root and governed projects."""
         return self.run_scoped_docs(
-            request.repository_root,
+            request.workspace_root,
             projects=request.projects,
             output_dir=request.output_dir,
             handler=lambda scope: self._validate_scope(scope, apply_mode=request.apply),
@@ -32,7 +32,7 @@ class FlextInfraDocValidator(FlextInfraDocServiceBase):
         """Execute the configured docs validation flow."""
         result = self.validate_workspace(
             m.Infra.DocsGenerateRequest(
-                repository_root=self.repository_root,
+                workspace_root=self.repository_root,
                 projects=self.selected_projects,
                 output_dir=self.output_dir,
                 apply=self.apply_changes,

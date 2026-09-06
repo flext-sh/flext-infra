@@ -72,7 +72,7 @@ class FlextInfraExtraPathsManager(
             dry_run=self.effective_dry_run, project_dirs=self.project_dirs
         )
         if result.failure:
-            return r[bool].fail(result.error or "extra-path synchronization failed")
+            return r[bool].from_failure(result)
         return r[bool].ok(True)
 
     @override

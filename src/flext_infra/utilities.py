@@ -34,6 +34,7 @@ from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
@@ -55,8 +56,8 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
 from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
@@ -85,11 +86,14 @@ from flext_infra._utilities.transformer_header import (
     FlextInfraUtilitiesTransformerHeader,
 )
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
-from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
 )
+from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
+from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
+
+
+from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 
 
@@ -164,6 +168,7 @@ class FlextInfraUtilities(u):
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
+        FlextInfraUtilitiesCodemodRules,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

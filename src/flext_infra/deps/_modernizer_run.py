@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -257,6 +257,24 @@ class FlextInfraPyprojectModernizerRunMixin:
             u.Cli.info(f"Total: {total} change(s) across {len(violations)} file(s)")
             if dry_run:
                 u.Cli.info("(dry-run — no files modified)")
+        if not dry_run:
+            for project_root in sorted({
+                state.pyproject_path.parent for state in document_states
+            }):
+                locked = u.Infra.update_mise_lock(
+                    project_root,
+                    platforms=config.Infra.codegen.toolchain.mise_lock_platforms,
+                    staging_parent=u.Infra.external_tool_state_dir(
+                        self.root,
+                        project_root,
+                        config.Infra.codegen.toolchain.mise_namespace,
+                    ),
+                )
+                if locked.failure:
+                    u.Cli.error(
+                        locked.error or f"Mise lock update failed for {project_root}"
+                    )
+                    return 2
         if check_mode and total > 0:
             return 1
         if not dry_run and (not self.skip_check):

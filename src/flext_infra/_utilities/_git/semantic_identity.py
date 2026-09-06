@@ -49,9 +49,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
                 )
             primary = cls._git_primary_worktree_root_path(request.repo_root)
             if primary.failure:
-                return r[m.Infra.GitIdentityReport].fail(
-                    primary.error or "failed to resolve primary worktree"
-                )
+                return r[m.Infra.GitIdentityReport].from_failure(primary)
             report = cls._collect_identity_facts(
                 repo, primary_root=primary.value, requested_path=request.repo_root
             )

@@ -272,7 +272,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 descendant_child_dirs=descendant_child_dirs,
             )
         return m.Infra.RopeWorkspaceIndex(
-            workspace_root=resolved_root,
+            repository_root=resolved_root,
             package_dirs=sorted_package_dirs,
             packages_by_dir=packages_by_dir,
             modules_by_path=modules_by_path,

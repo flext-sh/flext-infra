@@ -13,14 +13,15 @@ from difflib import unified_diff
 from pathlib import Path
 
 import pytest
+
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
 from tests import c, m, p, r, u
+
 
 def _generation_lock_path(root: Path) -> Path:
     """Resolve the public Git identity used by the generation lock."""
@@ -1647,7 +1648,7 @@ class TestScriptDispatchMakefile:
         )
 
         tm.ok(invoked)
-        tm.that(invoked.value.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=True)
         tm.that(forbidden.exists(), eq=False)
         tm.that(
             calls.read_text(encoding="utf-8").splitlines(),

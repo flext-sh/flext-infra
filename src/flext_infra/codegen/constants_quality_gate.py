@@ -28,7 +28,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         """Execute the quality gate and return its CLI success/failure status."""
         report_result = self.build_report()
         if report_result.failure:
-            return r[bool].fail(report_result.error or "quality gate build failed")
+            return r[bool].from_failure(report_result)
         verdict = u.Cli.json_pick_str(report_result.value, "verdict", "FAIL")
         if self.successful_verdict(verdict):
             return r[bool].ok(True)
@@ -91,9 +91,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             render_text=self.render_text(report),
         )
         if artifacts.failure:
-            return r[t.JsonMapping].fail(
-                artifacts.error or "quality gate artifact write failed"
-            )
+            return r[t.JsonMapping].from_failure(artifacts)
         report_data["artifacts"] = artifacts.value
         return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
@@ -352,14 +350,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ),
         )
         if json_write.failure:
-            return r[t.JsonMapping].fail(
-                json_write.error or f"cannot write {report_json}"
-            )
+            return r[t.JsonMapping].from_failure(json_write)
         txt_write = u.Cli.atomic_write_text_file(report_txt, render_text)
         if txt_write.failure:
-            return r[t.JsonMapping].fail(
-                txt_write.error or f"cannot write {report_txt}"
-            )
+            return r[t.JsonMapping].from_failure(txt_write)
         return r[t.JsonMapping].ok({
             "report_json": str(report_json),
             "report_text": str(report_txt),

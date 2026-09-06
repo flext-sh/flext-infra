@@ -159,7 +159,7 @@ def test_generate_rejects_direct_apply_without_effects(tmp_path: Path) -> None:
     before = readme.read_bytes()
 
     result = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(repository_root=workspace, apply=True)
+        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=True)
     )
 
     tm.fail(result)

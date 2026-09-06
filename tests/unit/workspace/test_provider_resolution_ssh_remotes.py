@@ -13,8 +13,7 @@ from pathlib import Path
 from flext_infra import c
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture, u
 
 
 def _governed_project(root: Path, name: str) -> Path:

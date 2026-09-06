@@ -26,6 +26,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
     return tuple(sorted(normalized))
 """
 
+
 def _ctx(root: Path) -> m.Infra.GateContext:
     return m.Infra.GateContext(workspace=root, reports_dir=root / "reports")
 

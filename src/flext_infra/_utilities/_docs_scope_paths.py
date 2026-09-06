@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import FlextCliUtilities as u
+from flext_cli import u
 from flext_core.result import FlextResult as r
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra.constants import FlextInfraConstants as c

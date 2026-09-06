@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from importlib.metadata import Distribution, distributions, packages_distributions
 from importlib.util import find_spec
 from pathlib import Path
-import re
+
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from flext_cli import p, r, u
 from flext_infra import c, m, t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
 
 
 class FlextInfraUtilitiesCodemodRules:
@@ -191,10 +192,13 @@ class FlextInfraUtilitiesCodemodRules:
             )
             for name in selected
         }
-        waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
-        if waves.failure:
-            return r[t.StrSequence].from_failure(waves)
-        return r[t.StrSequence].ok(tuple(name for wave in waves.value for name in wave))
+        try:
+            ordered = u.Infra.dependency_order(
+                tuple(selected), dependencies=lambda name: edges.get(name, ())
+            )
+        except ValueError as exc:
+            return r[t.StrSequence].fail(f"codemod provider cycle: {exc}")
+        return r[t.StrSequence].ok(ordered)
 
     @staticmethod
     def _provider_configs(

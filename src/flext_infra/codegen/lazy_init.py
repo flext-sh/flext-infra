@@ -72,7 +72,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         self._modified_files.clear()
         self._duplicate_class_names = 0
         if not self.repository_root.is_dir():
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[m.Infra.CodegenPhaseAnalysis].fail(
                 f"lazy-init workspace is not a directory: {self.repository_root}"
             )
         started_at = perf_counter()
@@ -93,13 +93,13 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             f"Lazy-init plan: {len(changed)} effects "
             f"({perf_counter() - started_at:.2f}s)"
         )
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans)
+        return r[m.Infra.CodegenPhaseAnalysis].ok(analysis)
 
     def _plan_in_workspace(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Open Rope once and propagate every planner or filesystem failure."""
         try:
             with FlextInfraRopeWorkspace.open_workspace(
-                self.repository_root, rope_workspace_root=self.repository_root
+                self.repository_root, rope_repository_root=self.repository_root
             ) as rope:
                 return self._plan_open_workspace(rope)
         except c.EXC_OS_VALUE as exc:

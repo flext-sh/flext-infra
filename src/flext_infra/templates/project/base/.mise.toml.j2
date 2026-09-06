@@ -9,6 +9,7 @@
 [settings]
 # The lockfile is a generated, committed projection of immutable tool metadata.
 lockfile = true
+lockfile_platforms = {{ mise_lock_platforms | list | tojson }}
 
 [tool_config]
 locked = true
@@ -40,6 +41,8 @@ kubeconform = "{{ kubeconform_version }}"
 node = "{{ node_version }}"
 "npm:jscpd" = "{{ jscpd_version }}"
 "github:microsoft/waza" = "{{ waza_version }}"
+# Go runtime for the Go projects in this workspace.
+go = "{{ go_version }}"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
 # GitHub Artifact Attestations is an external-token capability and is not
@@ -48,8 +51,6 @@ node = "{{ node_version }}"
 [tools."github:qltysh/qlty"]
 version = "{{ qlty_version }}"
 github_attestations = false
-# Go runtime for the Go projects in this workspace.
-go = "{{ go_version }}"
 [tools."{{ beads.selector }}"]
 version = "{{ beads.version }}"
 prerelease = {{ "true" if beads.prerelease else "false" }}

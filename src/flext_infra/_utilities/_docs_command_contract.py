@@ -89,7 +89,7 @@ class FlextInfraUtilitiesDocsCommandContractMixin:
                     elif verb_spec.requires_apply and not has_apply:
                         issue = f"`make {verb}` requires `APPLY=Y`"
                     elif not verb_spec.requires_apply and has_apply:
-                        issue = f"read-only `make {verb}` rejects `APPLY=Y`"
+                        issue = f"`make {verb}` does not accept `APPLY=Y`"
                 if issue:
                     break
             if not issue and c.Infra.DOCS_TEST_DOUBLE_HEADING_RE.match(line):

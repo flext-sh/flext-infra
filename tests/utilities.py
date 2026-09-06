@@ -90,7 +90,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
                 result = self._command_result()
                 if result.failure:
-                    return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
+                    return r[p.Cli.CommandOutput].from_failure(result)
                 return r[p.Cli.CommandOutput].ok(result.value)
 
             @override
@@ -109,7 +109,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 del cmd, cwd, timeout, env, remove_env_keys, input_data, capture
                 result = self._command_result()
                 if result.failure:
-                    return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
+                    return r[p.Cli.CommandOutput].from_failure(result)
                 output = result.value
                 if output.exit_code != 0:
                     return r[p.Cli.CommandOutput].fail(
@@ -132,15 +132,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 del cmd, cwd, timeout, env, remove_env_keys, input_data
                 result = self._command_result()
                 if result.failure:
-                    return r[p.Cli.CommandBytesOutput].fail(
-                        result.error or "Command failed"
-                    )
+                    return r[p.Cli.CommandBytesOutput].from_failure(result)
                 output = result.value
                 return r[p.Cli.CommandBytesOutput].ok(
                     m.Cli.CommandBytesOutput(
                         stdout=output.stdout.encode(),
                         stderr=output.stderr.encode(),
-                        exit_code=output.exit_code,
+                        outcome=output.outcome,
                         duration=output.duration,
                     )
                 )
@@ -165,7 +163,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     remove_env_keys=remove_env_keys,
                 )
                 if result.failure:
-                    return r[str].fail(result.error or "Command failed")
+                    return r[str].from_failure(result)
                 return r[str].ok(result.unwrap().stdout.strip())
 
             @override
@@ -190,7 +188,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     remove_env_keys=remove_env_keys,
                 )
                 if result.failure:
-                    return r[bool].fail(result.error or "Command failed")
+                    return r[bool].from_failure(result)
                 return r[bool].ok(True)
 
             @override
@@ -241,7 +239,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     remove_env_keys=remove_env_keys,
                 )
                 if result.failure:
-                    return r[int].fail(result.error or "Command failed")
+                    return r[int].from_failure(result)
                 output_path = (
                     output_file if isinstance(output_file, Path) else Path(output_file)
                 )

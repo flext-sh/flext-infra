@@ -420,9 +420,7 @@ class TestsFlextInfraPrivateImportCutover:
 
     def test_relativizes_handwritten_package_initializer(self, tmp_path: Path) -> None:
         """Apply the same owner rule to handwritten ``__init__.py`` modules."""
-        consumer_path = (
-            tmp_path / "flext-sample/src/flext_sample/_models/__init__.py"
-        )
+        consumer_path = tmp_path / "flext-sample/src/flext_sample/_models/__init__.py"
         private_import = (
             "from flext_sample._models.config import FlextSampleModelsConfig"
         )
@@ -439,10 +437,7 @@ class TestsFlextInfraPrivateImportCutover:
         )
         updated = edits[0].updated_source
 
-        tm.that(
-            updated,
-            has="from .config import FlextSampleModelsConfig",
-        )
+        tm.that(updated, has="from .config import FlextSampleModelsConfig")
         tm.that(updated, lacks=private_import)
 
     def test_relativizes_same_owner_root_facade_without_package_reentry(
