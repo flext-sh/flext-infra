@@ -28,6 +28,36 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
 
     _PLATFORM_PREFIX: ClassVar[str] = "platforms."
 
+    toolchain_resolution: c.Infra.MiseResolutionMode = m.Field(
+        default=c.Infra.MiseResolutionMode.AUTO,
+        description=(
+            "Requested Mise toolchain resolution; auto is decided once by the "
+            "declared release probe before any effect"
+        ),
+    )
+
+    def resolution_mode(self) -> c.Infra.MiseResolutionMode:
+        """Select online or offline toolchain resolution before any effect.
+
+        Online means the newest Mise release and every moving tool selector are
+        resolved and published; offline keeps the published launchers and lock
+        byte-identical. The probe is read-only and bounded by its declared
+        timeout, so the path is chosen in preflight and never as a fallback
+        after a failed download.
+        """
+        requested = c.Infra.MiseResolutionMode(self.toolchain_resolution)
+        if requested is not c.Infra.MiseResolutionMode.AUTO:
+            return requested
+        probe = config.Infra.codegen.toolchain.mise_release_probe
+        reachable = u.Infra.endpoint_reachable(
+            probe.url, timeout_seconds=probe.timeout_seconds
+        )
+        return (
+            c.Infra.MiseResolutionMode.ONLINE
+            if reachable
+            else c.Infra.MiseResolutionMode.OFFLINE
+        )
+
     @staticmethod
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
         source = u.Cli.files_read_text(path)

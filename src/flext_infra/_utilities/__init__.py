@@ -77,6 +77,7 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
+    from .network import FlextInfraUtilitiesNetwork
     from .policy import FlextInfraUtilitiesRefactorPolicy
     from .process import FlextInfraUtilitiesProcess
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
@@ -165,6 +166,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGithubSyncMixin",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesNamespaceConfig",
+    "FlextInfraUtilitiesNetwork",
     "FlextInfraUtilitiesProcess",
     "FlextInfraUtilitiesProjectDiscovery",
     "FlextInfraUtilitiesProjectDiscoveryCandidatesMixin",
@@ -302,6 +304,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
+            ".network": ("FlextInfraUtilitiesNetwork",),
             ".policy": ("FlextInfraUtilitiesRefactorPolicy",),
             ".process": ("FlextInfraUtilitiesProcess",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),

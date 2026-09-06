@@ -81,18 +81,31 @@ def validate_lock_path(scope_root: Path, *, require_existing: bool) -> p.Result[
 
 def journal_state(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[m.Cli.AtomicFileState]:
+) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
     """Read the common journal without creating its parent in check mode."""
     return journal_state_for_scope(layout.scope_root)
 
 
-def journal_state_for_scope(scope_root: Path) -> p.Result[m.Cli.AtomicFileState]:
-    """Read the common journal before mutable workspace topology is loaded."""
+def journal_state_for_scope(
+    scope_root: Path,
+) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    """Read the common journal before mutable workspace topology is loaded.
+
+    The empty tuple is the typed absence of a journal: the state directory was
+    never created (a fresh checkout) or exists without the file. A present
+    journal is the single element, with its exact bytes and physical identity;
+    no identity is ever invented for a parent that does not exist, and a
+    successful Result never carries ``None``.
+    """
     state_root = scope_root / files.STATE_DIRECTORY
-    journal = state_root / files.JOURNAL_NAME
     if not state_root.exists() and not state_root.is_symlink():
-        return r[m.Cli.AtomicFileState].ok(m.Cli.AtomicFileState(path=journal))
-    return files.read_state(journal, required=False)
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
+    observed = files.read_state(state_root / files.JOURNAL_NAME, required=False)
+    if observed.failure:
+        return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(observed)
+    if observed.value.content is None:
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
+    return r[tuple[m.Cli.AtomicFileState, ...]].ok((observed.value,))
 
 
 def transaction_residue(

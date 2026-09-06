@@ -42,6 +42,7 @@ from flext_infra._utilities.namespace_facades import (
 from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
+from flext_infra._utilities.network import FlextInfraUtilitiesNetwork
 from flext_infra._utilities.policy import FlextInfraUtilitiesRefactorPolicy
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_managed_artifacts import (
@@ -94,6 +95,7 @@ class FlextInfraUtilities(u):
     class Infra(
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesProcess,
+        FlextInfraUtilitiesNetwork,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
         FlextInfraUtilitiesCodegenNamespace,

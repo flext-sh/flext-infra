@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import m, t
+    from flext_infra import c, m, t
 
 
 @runtime_checkable
@@ -743,6 +743,10 @@ class FlextInfraProtocolsBase(Protocol):
             config_sources: tuple[m.Cli.AtomicFileState, ...],
         ) -> p.Result[bool]:
             """Validate one complete project artifact set."""
+            ...
+
+        def resolution_mode(self) -> c.Infra.MiseResolutionMode:
+            """Select online or offline toolchain resolution before any effect."""
             ...
 
     @runtime_checkable

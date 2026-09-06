@@ -412,6 +412,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             repository_root=request.root,
             apply_changes=mode is c.Infra.CodegenConformMode.APPLY,
             check_only=mode is c.Infra.CodegenConformMode.CHECK,
+            toolchain_resolution=c.Infra.MiseResolutionMode(
+                request.toolchain_resolution
+            ),
         )
         transaction = FlextInfraCodegenMiseArtifactTransaction(mise_owner)
         return transaction.run_locked(

@@ -41,6 +41,19 @@ ManagedArtifacts:
 - Tool versions are validated against the declared selector. Moving selectors
   such as `latest` remain moving; `mise.lock` records the exact resolved tool
   artifacts and checksums used by the generated project.
+- `make gen APPLY=Y` decides the toolchain resolution once, before any effect,
+  by probing the release endpoint declared under `toolchain.mise_release_probe`
+  in `config/codegen.yaml`. Any HTTP answer selects **online** resolution: the
+  newest Mise launcher is regenerated through an isolated seed and every moving
+  tool selector is re-resolved with `mise lock --bump`, so a networked apply
+  always publishes the newest toolchain. A connection failure or timeout
+  selects **offline** resolution: the published `bin/mise`, `bin/mise.cmd` and
+  `mise.lock` are republished byte-identical, and a project that has never
+  published them fails loud instead of inventing an artifact. The mode is
+  never a fallback taken after a failed download. `MISE_GITHUB_CREDENTIAL_COMMAND`
+  is required only by the online path. A caller may pin the path through the
+  `toolchain_resolution` field of the conform request; the Make verb never
+  exposes a selector for it.
 - `platforms` is optional. Absent means the tool publishes assets for every
   fleet lock platform. A subset records, in the project that owns the tool, the
   platforms its backend cannot lock; the lock validator then expects exactly

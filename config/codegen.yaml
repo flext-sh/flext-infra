@@ -47,8 +47,17 @@ Infra:
       # so no gate ever resolves a runner or a version outside this SSOT.
       node_version: "26.8"
       jscpd_version: "5.1.2"
-      # Moving selector is deliberate: setup must always provision the newest
+      # Moving selectors are deliberate: setup must always provision the newest
       # Mise release instead of rejecting a newer binary than code generation.
+      # `make gen APPLY=Y` reaches this probe once, read-only, before any
+      # effect: an HTTP answer selects online resolution (newest Mise launcher
+      # and every moving tool selector re-resolved), a connection failure or
+      # timeout selects offline resolution (published launchers and lock kept
+      # byte-identical). The path is chosen in preflight, never after a failed
+      # download.
+      mise_release_probe:
+        url: https://api.github.com/repos/jdx/mise/releases/latest
+        timeout_seconds: 3
       mise_lock_platforms:
         - linux-x64
         - linux-arm64

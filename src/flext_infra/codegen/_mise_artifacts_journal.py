@@ -103,21 +103,34 @@ def write(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     journal: m.Infra.MiseToolchainJournal,
     *,
-    expected: m.Cli.AtomicFileState,
+    expected: tuple[m.Cli.AtomicFileState, ...],
 ) -> p.Result[m.Cli.AtomicFileState]:
-    """Create or transition the common journal with exact bytes and mode."""
+    """Create or transition the common journal with exact bytes and mode.
+
+    ``expected`` is the journal state the caller observed, or the empty tuple
+    when no journal existed. Absence is still a guarded precondition: it is
+    read through the owner under the state root the caller has already
+    prepared, so the publication fails if a journal appeared in between.
+    """
     content = journal.model_dump_json(indent=2).encode(c.Cli.ENCODING_DEFAULT)
     journal_path = layout.state_root / files.JOURNAL_NAME
-    if expected.path != journal_path:
+    if expected:
+        before = expected[0]
+    else:
+        absent = files.read_state(journal_path, required=False)
+        if absent.failure:
+            return r[m.Cli.AtomicFileState].from_failure(absent)
+        if absent.value.content is not None:
+            return r[m.Cli.AtomicFileState].fail(
+                "Mise journal appeared before its first publication"
+            )
+        before = absent.value
+    if before.path != journal_path:
         return r[m.Cli.AtomicFileState].fail(
             "Mise journal expected state belongs to another path"
         )
     written = u.Cli.atomic_write_binary_file_guarded(
-        journal_path,
-        content,
-        expected_bytes=expected.content,
-        expected_mode=expected.mode,
-        permission_mode=files.JOURNAL_MODE,
+        before, content, permission_mode=files.JOURNAL_MODE
     )
     if written.failure:
         return r[m.Cli.AtomicFileState].fail(
@@ -126,11 +139,15 @@ def write(
     observed = state.journal_state(layout)
     if observed.failure:
         return r[m.Cli.AtomicFileState].from_failure(observed)
-    if observed.value.content != content or observed.value.mode != files.JOURNAL_MODE:
+    if (
+        not observed.value
+        or observed.value[0].content != content
+        or observed.value[0].mode != files.JOURNAL_MODE
+    ):
         return r[m.Cli.AtomicFileState].fail(
             "published Mise journal differs from staged bytes or mode"
         )
-    return observed
+    return r[m.Cli.AtomicFileState].ok(observed.value[0])
 
 
 def read(
@@ -148,17 +165,18 @@ def read_scope(
     result_type = r[tuple[m.Infra.MiseToolchainJournal, m.Cli.AtomicFileState]]
     if snapshot.failure:
         return result_type.from_failure(snapshot)
-    if snapshot.value.content is None:
+    if not snapshot.value:
         return result_type.fail("Mise transaction journal is absent")
-    if snapshot.value.mode != files.JOURNAL_MODE:
+    present = snapshot.value[0]
+    if present.content is None:
+        return result_type.fail("Mise transaction journal is absent")
+    if present.mode != files.JOURNAL_MODE:
         return result_type.fail("Mise transaction journal mode is not 0600")
     try:
-        journal = m.Infra.MiseToolchainJournal.model_validate_json(
-            snapshot.value.content
-        )
+        journal = m.Infra.MiseToolchainJournal.model_validate_json(present.content)
     except c.ValidationError as exc:
         return result_type.fail_op("validate Mise transaction journal", exc)
-    return result_type.ok((journal, snapshot.value))
+    return result_type.ok((journal, present))
 
 
 def cleanup(

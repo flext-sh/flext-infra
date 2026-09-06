@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import socket
+import threading
+from functools import partial
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 import pytest
 from flext_infra import c, config, m, r, u
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 
@@ -146,6 +151,162 @@ class TestsCodegenMiseArtifacts:
             extra_lock_selector=extra_lock_selector,
         )
         return root
+
+    @staticmethod
+    def _seed_offline_conform_repo(root: Path) -> None:
+        """Seed a manifest-only tree whose Mise declaration matches this checkout.
+
+        Rendering ``.mise.toml`` for a repository sharing this checkout's own
+        distribution name reproduces the exact bytes ``copy_tracked_mise_seeds``
+        copies in, so a real ``codegen conform`` apply finds nothing changed
+        for the toolchain.
+        """
+        distribution = config.Infra.name
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                root / "pyproject.toml",
+                f'[project]\nname = "{distribution}"\nversion = "0.1.0"\n'
+                'requires-python = ">=3.13,<3.14"\n',
+            )
+        )
+        package_init = root / "src" / "flext_infra" / "__init__.py"
+        package_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(package_init, ""))
+        tests_init = root / "tests" / "__init__.py"
+        tests_init.parent.mkdir(parents=True, exist_ok=True)
+        tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        test_u.Tests.write_project_beads_config(root, distribution)
+        test_u.Tests.copy_tracked_mise_seeds(root)
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "--no-verify", "-m", "Seed Mise toolchain"],
+                cwd=root,
+            )
+        )
+
+    @staticmethod
+    def _offline_apply_request(root: Path) -> m.Infra.CodegenConformRequest:
+        """Pin offline resolution so the run never depends on the sandbox network."""
+        return m.Infra.CodegenConformRequest(
+            root=root,
+            what=c.Infra.CodegenConformSurface.ALL,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.APPLY,
+            toolchain_resolution=c.Infra.MiseResolutionMode.OFFLINE,
+        )
+
+    @pytest.mark.slow
+    def test_offline_apply_keeps_the_published_toolchain_byte_identical(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Offline resolution republishes the exact published launchers and lock.
+
+        Nothing is resolved from the network, so the same sources produce the
+        same bytes, and the transaction leaves no staging root or journal.
+        """
+        root = infra_git_repo
+        self._seed_offline_conform_repo(root)
+        tracked = (
+            root / c.Infra.MISE_TOML_FILENAME,
+            root / "mise.lock",
+            root / "bin" / "mise",
+            root / "bin" / "mise.cmd",
+        )
+        before = {path: path.read_bytes() for path in tracked}
+
+        result = FlextInfraCodegenConform.execute_request(
+            self._offline_apply_request(root)
+        )
+
+        tm.ok(result)
+        for path, content in before.items():
+            tm.that(path.read_bytes(), eq=content)
+        transaction_root = (
+            root / c.Infra.TRANSACTION_STATE_DIRNAME / "mise-artifacts" / "transaction"
+        )
+        journal_file = (
+            root / c.Infra.TRANSACTION_STATE_DIRNAME / "mise-artifacts" / "journal.json"
+        )
+        tm.that(transaction_root.exists(), eq=False)
+        tm.that(journal_file.exists(), eq=False)
+
+    @pytest.mark.slow
+    def test_offline_apply_cannot_stage_an_unpublished_launcher(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Offline resolution fails loud instead of inventing a missing artifact.
+
+        A launcher that was never published can only come from the network, so
+        the offline stage refuses before any effect and publishes nothing.
+        """
+        root = infra_git_repo
+        self._seed_offline_conform_repo(root)
+        windows_launcher = root / "bin" / "mise.cmd"
+        windows_launcher.unlink()
+        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
+        tm.ok(
+            u.Cli.run_checked(
+                ["git", "commit", "-q", "--no-verify", "-m", "Drop windows launcher"],
+                cwd=root,
+            )
+        )
+
+        result = FlextInfraCodegenConform.execute_request(
+            self._offline_apply_request(root)
+        )
+
+        tm.fail(result, has="offline Mise resolution")
+        tm.that(windows_launcher.exists(), eq=False)
+        transaction_root = (
+            root / c.Infra.TRANSACTION_STATE_DIRNAME / "mise-artifacts" / "transaction"
+        )
+        tm.that(transaction_root.exists(), eq=False)
+
+    def test_explicit_resolution_is_selected_without_probing(
+        self, tmp_path: Path
+    ) -> None:
+        """An explicit online or offline request pins the path before effects."""
+        root = self._project(tmp_path / "project")
+        for requested in (
+            c.Infra.MiseResolutionMode.ONLINE,
+            c.Infra.MiseResolutionMode.OFFLINE,
+        ):
+            owner = FlextInfraCodegenMiseArtifacts.model_validate({
+                "repository_root": root,
+                "check_only": True,
+                "toolchain_resolution": requested,
+            })
+            tm.that(owner.resolution_mode(), eq=requested)
+
+    def test_unreachable_endpoint_is_offline(self) -> None:
+        """A closed local port answers nothing, so the probe reports offline."""
+        with socket.socket() as probe_socket:
+            probe_socket.bind(("127.0.0.1", 0))
+            port = probe_socket.getsockname()[1]
+        tm.that(
+            u.Infra.endpoint_reachable(
+                f"http://127.0.0.1:{port}/", timeout_seconds=0.5
+            ),
+            eq=False,
+        )
+
+    def test_any_http_answer_is_online(self, tmp_path: Path) -> None:
+        """A server that answers the HEAD request at all is reachable."""
+        handler = partial(SimpleHTTPRequestHandler, directory=str(tmp_path))
+        server = HTTPServer(("127.0.0.1", 0), handler)
+        thread = threading.Thread(target=server.handle_request, daemon=True)
+        thread.start()
+        try:
+            tm.that(
+                u.Infra.endpoint_reachable(
+                    f"http://127.0.0.1:{server.server_port}/", timeout_seconds=2
+                ),
+                eq=True,
+            )
+        finally:
+            thread.join(timeout=2)
+            server.server_close()
 
     def test_complete_artifacts_validate_without_running_mise(
         self, tmp_path: Path

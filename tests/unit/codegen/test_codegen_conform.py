@@ -1669,13 +1669,9 @@ class TestScriptDispatchMakefile:
             ],
         )
         tm.that("_require_apply" in gen_all_body, eq=True)
-        credential_preflight = "MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR"
-        tm.that(credential_preflight in gen_all_body, eq=True)
-        tm.that(
-            gen_all_body.index(credential_preflight)
-            < gen_all_body.index("codegen conform"),
-            eq=True,
-        )
+        # The credential is required only by online toolchain resolution, which
+        # the conform owner decides in preflight; the Makefile never demands it.
+        tm.that(gen_all_body, lacks="MISE_GITHUB_CREDENTIAL_COMMAND")
         # flext-udpm5: continuous gen apply regenerates lazy inits after conform
         # and before the generated-docs write, so config drift never lands stale.
         tm.that(

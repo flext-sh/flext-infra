@@ -52,6 +52,26 @@ class FlextInfraConfigModels:
     # YAML is accepted only at the flext-cli loading boundary and is immediately
     # model-validated here.
 
+    class MiseReleaseProbeSpec(_ConfigContract):
+        """Read-only reachability probe deciding online or offline resolution."""
+
+        url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://",
+                description=(
+                    "HTTPS endpoint of the Mise release feed; any HTTP answer "
+                    "means online, a connection failure or timeout means offline"
+                ),
+            ),
+        ]
+        timeout_seconds: Annotated[
+            float,
+            m.Field(
+                gt=0, le=30, description="Bound of the single preflight probe request"
+            ),
+        ]
+
     class MiseToolSpec(_ConfigContract):
         """One exact mise backend selector and immutable version."""
 
@@ -390,6 +410,15 @@ class FlextInfraConfigModels:
                 description=(
                     "Explicit platforms a backend cannot represent in mise.lock"
                 ),
+            ),
+        ]
+        mise_release_probe: Annotated[
+            FlextInfraConfigModels.MiseReleaseProbeSpec,
+            m.Field(
+                description=(
+                    "Preflight probe that selects online or offline Mise "
+                    "toolchain resolution for an apply-mode generation"
+                )
             ),
         ]
         beads: Annotated[
@@ -3524,6 +3553,15 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.CodegenConformMode,
             m.Field(description="Read-only check or atomic apply"),
         ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
+        toolchain_resolution: Annotated[
+            FlextInfraConstantsCodegenProject.MiseResolutionMode,
+            m.Field(
+                description=(
+                    "Mise toolchain resolution for apply: auto probes the "
+                    "declared release endpoint, online and offline pin the path"
+                )
+            ),
+        ] = FlextInfraConstantsCodegenProject.MiseResolutionMode.AUTO
 
     class CodegenArtifactComposition(_ConfigContract):
         """Rendered artifact plus the exact source states used to compose it."""

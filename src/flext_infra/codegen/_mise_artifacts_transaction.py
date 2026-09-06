@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from filelock import FileLock, Timeout
 from flext_core import r
-from flext_infra import m, settings
+from flext_infra import c, m, settings, u
 from flext_infra.codegen import _mise_artifacts_journal as journal_io
 from flext_infra.codegen import _mise_artifacts_publication as publication
 from flext_infra.codegen import _mise_artifacts_state as state
@@ -57,7 +57,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
         journal = state.journal_state(layout)
         if journal.failure:
             return r[bool].from_failure(journal)
-        if journal.value.content is not None:
+        if journal.value:
             return r[bool].fail("pending Mise transaction requires apply-mode recovery")
         residue = state.transaction_residue(layout)
         if residue:
@@ -140,15 +140,20 @@ class FlextInfraCodegenMiseArtifactTransaction:
         plan = self._planner.snapshot(layout, config_plans)
         if plan.failure:
             return result_type.from_failure(plan)
+        resolution = self._owner.resolution_mode()
+        u.Cli.info(f"mise-toolchain: resolution={resolution}")
         credential_command = settings.Infra.mise_github_credential_command
-        if credential_command is None or not credential_command.strip():
+        if resolution is c.Infra.MiseResolutionMode.ONLINE and (
+            credential_command is None or not credential_command.strip()
+        ):
             return result_type.fail(
-                "MISE_GITHUB_CREDENTIAL_COMMAND is required for Mise lock publication"
+                "MISE_GITHUB_CREDENTIAL_COMMAND is required for online Mise "
+                "toolchain resolution"
             )
         journal_before = state.journal_state(layout)
         if journal_before.failure:
             return result_type.from_failure(journal_before)
-        if journal_before.value.content is not None:
+        if journal_before.value:
             return result_type.fail("Mise journal appeared after locked recovery")
         roots = state.prepare_state_roots(layout)
         if roots.failure:
@@ -177,7 +182,9 @@ class FlextInfraCodegenMiseArtifactTransaction:
                 )
             )
         staged = self._staging.stage(
-            plan.value, credential_command=credential_command.strip()
+            plan.value,
+            resolution=resolution,
+            credential_command=(credential_command or "").strip(),
         )
         if staged.failure:
             return result_type.from_failure(
@@ -235,7 +242,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
                 )
             )
         prepared_state = journal_io.write(
-            layout, prepared_journal.value, expected=staging_state.value
+            layout, prepared_journal.value, expected=(staging_state.value,)
         )
         if prepared_state.failure:
             return result_type.from_failure(
@@ -277,7 +284,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
                 )
             )
         committed_state = journal_io.write(
-            layout, committed_journal.value, expected=prepared_state.value
+            layout, committed_journal.value, expected=(prepared_state.value,)
         )
         if committed_state.failure:
             return result_type.from_failure(
@@ -295,7 +302,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
         journal = state.journal_state_for_scope(scope_root)
         if journal.failure:
             return r[bool].from_failure(journal)
-        if journal.value.content is not None:
+        if journal.value:
             recovered = self._recover(scope_root)
             if recovered.failure:
                 return recovered
@@ -309,7 +316,7 @@ class FlextInfraCodegenMiseArtifactTransaction:
             return r[bool].fail(
                 f"{failure}; journal inspection failed: {observed.error}"
             )
-        if observed.value.content is None:
+        if not observed.value:
             return r[bool].fail(f"{failure}; durable journal disappeared")
         return self._recover_failure(scope_root, failure)
 

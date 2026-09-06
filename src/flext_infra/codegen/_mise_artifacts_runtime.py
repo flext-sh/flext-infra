@@ -22,11 +22,15 @@ class FlextInfraMiseRuntime:
         self._owner = owner
 
     def latest_receipt(
-        self, root: m.Infra.MiseToolchainProjectState, *, credential_command: str
+        self,
+        root: m.Infra.MiseToolchainProjectState,
+        *,
+        data_root: Path,
+        credential_command: str,
     ) -> p.Result[Path]:
         """Resolve latest with an isolated seed, then return an exact receipt."""
         scratch = root.layout.transaction_root / "runtime"
-        prepared = process.prepare_isolation(scratch)
+        prepared = process.prepare_isolation(scratch, data_root=data_root)
         if prepared.failure:
             return r[Path].from_failure(prepared)
         seed_state = (
@@ -45,7 +49,9 @@ class FlextInfraMiseRuntime:
             return r[Path].fail(
                 seed_validation.error or "captured Mise seed is invalid"
             )
-        environment = process.credential_environment(scratch, credential_command)
+        environment = process.credential_environment(
+            scratch, data_root=data_root, command=credential_command
+        )
         updated = process.run(
             (str(seed), "self-update", "--yes", "--no-plugins"),
             cwd=scratch,
@@ -125,11 +131,7 @@ class FlextInfraMiseRuntime:
             if state.value.content is None or state.value.mode is None:
                 return r[bool].fail(f"generated Mise receipt is absent: {name}")
             normalized = u.Cli.atomic_write_binary_file_guarded(
-                state.value.path,
-                state.value.content,
-                expected_bytes=state.value.content,
-                expected_mode=state.value.mode,
-                permission_mode=mode,
+                state.value, state.value.content, permission_mode=mode
             )
             if normalized.failure:
                 return r[bool].fail(

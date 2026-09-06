@@ -24,6 +24,7 @@ JOURNAL_NAME: Final[str] = "journal.json"
 JOURNAL_MODE: Final[int] = 0o600
 LOCK_NAME: Final[str] = "publication.lock"
 STATE_DIRECTORY: Final[Path] = Path(".state") / "mise-artifacts"
+BOOTSTRAP_DIR_NAME: Final[str] = "bootstrap"
 TRANSACTION_DIR_NAME: Final[str] = "transaction"
 
 
@@ -35,14 +36,12 @@ def digest(content: bytes) -> str:
 def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]:
     """Read exact state through the canonical descriptor-authenticated owner.
 
-    The descriptor-bound reader authenticates a file through its parent
-    directory, so a repository that has never carried ``bin/`` fails there
-    before it can report the file itself as absent. An optional read treats a
-    missing parent as exactly what it is -- an absent artifact -- while a
-    required read still fails loud with the original cause.
+    The reader authenticates a file through its physical parent directory and
+    never invents an identity for a parent that does not exist, so a governed
+    repository that has never carried ``bin/`` fails here with the original
+    cause. An optional read reports an absent file under an existing parent as
+    exactly that: a state whose content and mode are ``None``.
     """
-    if not required and not path.parent.is_dir():
-        return r[m.Cli.AtomicFileState].ok(m.Cli.AtomicFileState(path=path))
     return u.Cli.atomic_read_binary_file_state(path, required=required)
 
 
@@ -63,9 +62,7 @@ def delete_state(state: m.Cli.AtomicFileState) -> p.Result[bool]:
     """Delete one exact existing state through the CLI owner."""
     if state.content is None or state.mode is None:
         return r[bool].fail(f"cannot delete absent Mise file state: {state.path}")
-    return u.Cli.atomic_delete_binary_file_guarded(
-        state.path, expected_bytes=state.content, expected_mode=state.mode
-    )
+    return u.Cli.atomic_delete_binary_file_guarded(state)
 
 
 def workspace_relative(root: Path, path: Path) -> p.Result[str]:
@@ -101,6 +98,7 @@ def resolve_relative(root: Path, selector: str, *, purpose: str) -> p.Result[Pat
 __all__: list[str] = [
     "ARTIFACT_NAMES",
     "ARTIFACT_SPECS",
+    "BOOTSTRAP_DIR_NAME",
     "CONFIG_SPEC",
     "JOURNAL_MODE",
     "JOURNAL_NAME",

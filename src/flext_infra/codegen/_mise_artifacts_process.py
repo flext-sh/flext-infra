@@ -15,10 +15,20 @@ if TYPE_CHECKING:
 CREDENTIAL_SOURCE: Final[str] = "source: credential_command"
 
 
-def prepare_isolation(scratch: Path) -> p.Result[bool]:
-    """Create fresh private config/cache/home paths with fallback auth disabled."""
+def prepare_isolation(scratch: Path, *, data_root: Path) -> p.Result[bool]:
+    """Create fresh private config/cache/home paths with fallback auth disabled.
+
+    ``data_root`` is the one persistent directory: the launcher bootstraps the
+    pinned Mise binary into ``<data>/bootstrap/mise-<release>`` and reuses it
+    on the next transaction instead of downloading the release again. It lives
+    under the persistent coordination root, never inside the disposable scratch.
+    """
     if not os.environ.get("PATH"):
         return r[bool].fail("PATH is required for isolated Mise execution")
+    try:
+        data_root.mkdir(mode=0o700, exist_ok=True)
+    except OSError as exc:
+        return r[bool].fail_op("create persistent Mise bootstrap root", exc)
     directories = (
         scratch / "seed" / "bin",
         scratch / "receipt" / "bin",
@@ -33,7 +43,6 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
                 "xdg-state",
                 "gh-config",
                 "config",
-                "data",
                 "cache",
                 "state",
                 "tmp",
@@ -63,7 +72,7 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
     return r[bool].ok(True)
 
 
-def environment(scratch: Path) -> dict[str, str]:
+def environment(scratch: Path, *, data_root: Path) -> dict[str, str]:
     """Build the complete child environment with every fallback disabled."""
     isolated = {
         "HOME": str(scratch / "home"),
@@ -101,7 +110,7 @@ def environment(scratch: Path) -> dict[str, str]:
         "MISE_OVERRIDE_TOOL_VERSIONS_FILENAMES": "none",
         "MISE_GLOBAL_CONFIG_FILE": str(scratch / "global-config.toml"),
         "MISE_CONFIG_DIR": str(scratch / "config"),
-        "MISE_DATA_DIR": str(scratch / "data"),
+        "MISE_DATA_DIR": str(data_root),
         "MISE_CACHE_DIR": str(scratch / "cache"),
         "MISE_STATE_DIR": str(scratch / "state"),
         "MISE_TMP_DIR": str(scratch / "tmp"),
@@ -130,9 +139,11 @@ def environment(scratch: Path) -> dict[str, str]:
     return isolated
 
 
-def credential_environment(scratch: Path, command: str) -> dict[str, str]:
+def credential_environment(
+    scratch: Path, *, data_root: Path, command: str
+) -> dict[str, str]:
     """Select one declared credential command on top of strict isolation."""
-    result = environment(scratch)
+    result = environment(scratch, data_root=data_root)
     result["MISE_GITHUB_CREDENTIAL_COMMAND"] = command
     return result
 
@@ -173,9 +184,16 @@ def run(
 
 
 def write_new(path: Path, content: bytes, mode: int) -> p.Result[bool]:
-    """Create exact isolated state through the canonical atomic owner."""
+    """Create exact isolated state through the canonical atomic owner.
+
+    The precondition is the physical absence of the file under an existing
+    parent, captured by the same owner that later publishes against it.
+    """
+    before = u.Cli.atomic_read_binary_file_state(path, required=False)
+    if before.failure:
+        return r[bool].from_failure(before)
     return u.Cli.atomic_write_binary_file_guarded(
-        path, content, expected_bytes=None, expected_mode=None, permission_mode=mode
+        before.value, content, permission_mode=mode
     )
 
 

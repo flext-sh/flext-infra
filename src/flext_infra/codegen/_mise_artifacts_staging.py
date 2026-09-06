@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, m
+from flext_infra import c, config, m, u
 from flext_infra.codegen import _mise_artifacts_candidates as candidates
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_process as process
@@ -25,73 +25,90 @@ class FlextInfraMiseStaging:
         self._runtime = FlextInfraMiseRuntime(owner)
 
     def stage(
-        self, plan: m.Infra.MiseToolchainWorkspacePlan, *, credential_command: str
+        self,
+        plan: m.Infra.MiseToolchainWorkspacePlan,
+        *,
+        resolution: c.Infra.MiseResolutionMode,
+        credential_command: str,
     ) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
-        """Generate, hydrate, and validate all destination-local candidates."""
-        receipt = self._runtime.latest_receipt(
-            plan.projects[0], credential_command=credential_command
-        )
-        if receipt.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(receipt)
-        runtime_scratch = plan.projects[0].layout.transaction_root / "runtime"
-        environment = process.credential_environment(
-            runtime_scratch, credential_command
-        )
-        launcher = receipt.value / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
-        credential = process.validate_credential_source(
-            launcher, cwd=runtime_scratch, env=environment
-        )
-        if credential.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                credential
+        """Generate, hydrate, and validate all destination-local candidates.
+
+        Online resolution regenerates the newest launcher through the isolated
+        seed and re-resolves every moving selector with ``mise lock --bump``.
+        Offline resolution copies the published launchers and lock, so the same
+        sources produce the same bytes without reaching any registry; a project
+        that has never published an artifact cannot be staged offline.
+        """
+        result_type = r[tuple[m.Infra.MiseToolchainPublication, ...]]
+        online = resolution is c.Infra.MiseResolutionMode.ONLINE
+        launcher: Path | None = None
+        environment: dict[str, str] = {}
+        receipt_states: tuple[m.Cli.AtomicFileState, ...] | None = None
+        if online:
+            data_root = plan.layout.state_root / files.BOOTSTRAP_DIR_NAME
+            receipt = self._runtime.latest_receipt(
+                plan.projects[0],
+                data_root=data_root,
+                credential_command=credential_command,
             )
-        receipt_states = candidates.receipt_states(receipt.value)
-        if receipt_states.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                receipt_states
+            if receipt.failure:
+                return result_type.from_failure(receipt)
+            runtime_scratch = plan.projects[0].layout.transaction_root / "runtime"
+            environment = process.credential_environment(
+                runtime_scratch, data_root=data_root, command=credential_command
             )
+            launcher = (
+                receipt.value / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
+            )
+            credential = process.validate_credential_source(
+                launcher, cwd=runtime_scratch, env=environment
+            )
+            if credential.failure:
+                return result_type.from_failure(credential)
+            resolved_states = candidates.receipt_states(receipt.value)
+            if resolved_states.failure:
+                return result_type.from_failure(resolved_states)
+            receipt_states = resolved_states.value
         stages: list[Path] = []
         for project in plan.projects:
             stage_root = project.layout.transaction_root / "stage"
+            published = self._published_launchers(project)
+            if receipt_states is None and published.failure:
+                return result_type.from_failure(published)
             staged = self._stage_project(
                 project,
                 stage_root=stage_root,
                 launcher=launcher,
-                receipt_states=receipt_states.value,
+                receipt_states=receipt_states or published.value,
                 environment=environment,
             )
             if staged.failure:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                    staged
-                )
+                return result_type.from_failure(staged)
             stages.append(stage_root)
         return candidates.publication_plan(plan.projects, tuple(stages))
 
     @staticmethod
-    def _lock_resolution_is_required(
+    def _published_launchers(
         project: m.Infra.MiseToolchainProjectState,
-    ) -> bool:
-        """Return whether this project's lock must be resolved from the network.
-
-        ``mise lock --bump`` re-resolves every declared selector against its
-        remote registry. That is required exactly when the declaration changed
-        or no lock exists yet. When the rendered configuration is byte-identical
-        to the published one and a lock is already present, the lock already
-        answers that declaration: re-resolving would make generation depend on
-        the network and on upstream release timing, so the same sources would
-        stop producing the same bytes.
-        """
-        return (
-            project.artifacts.lock.content is None
-            or project.config.before.content != project.config.replacement_content
-        )
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+        """Return the published launcher pair an offline stage copies verbatim."""
+        artifacts = project.artifacts
+        launchers = (artifacts.unix_launcher, artifacts.windows_launcher)
+        if artifacts.lock.content is None or any(
+            launcher.content is None for launcher in launchers
+        ):
+            return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                "offline Mise resolution cannot stage an unpublished toolchain "
+                f"for {project.layout.selector}; network access is required"
+            )
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(launchers)
 
     def _stage_project(
         self,
         project: m.Infra.MiseToolchainProjectState,
         *,
         stage_root: Path,
-        launcher: Path,
+        launcher: Path | None,
         receipt_states: tuple[m.Cli.AtomicFileState, ...],
         environment: dict[str, str],
     ) -> p.Result[bool]:
@@ -124,7 +141,8 @@ class FlextInfraMiseStaging:
             )
             if copied_lock.failure:
                 return copied_lock
-        if self._lock_resolution_is_required(project):
+        if launcher is not None:
+            u.Cli.info(f"mise-toolchain: resolving lock for {project.layout.selector}")
             project_environment = dict(environment)
             project_environment.update({
                 "MISE_CEILING_PATHS": str(stage_root.parent),
@@ -146,6 +164,9 @@ class FlextInfraMiseStaging:
             )
             if locked.failure:
                 return r[bool].from_failure(locked)
+            u.Cli.info(
+                f"mise-toolchain: hydrating lock checksums for {project.layout.selector}"
+            )
         hydrated = self._owner.hydrate_lock_checksums_at(stage_root)
         if hydrated.failure:
             return r[bool].fail(
