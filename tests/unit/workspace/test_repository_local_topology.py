@@ -37,7 +37,7 @@ class TestsRepositoryLocalTopology:
         _ = WorktreeFixture.override_repository_manifest(
             root,
             {
-                "checkout": c.Infra.CheckoutKind.INDEPENDENT,
+                "kind": c.Infra.ProjectKind.THIRD_PARTY_FORK,
                 "uv_link_mode": "clone",
                 "dependency_cooldown_exclusions": (exclusion,),
                 "dependency_cooldown_overrides": {override: cutoff},
@@ -46,7 +46,7 @@ class TestsRepositoryLocalTopology:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
-        tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
+        tm.that(workspace.repository.kind, eq=c.Infra.ProjectKind.THIRD_PARTY_FORK)
         tm.that(workspace.repository.uv_link_mode, eq="clone")
         tm.that(workspace.repository.dependency_cooldown_exclusions, eq=(exclusion,))
         tm.that(
@@ -291,10 +291,12 @@ class TestsRepositoryLocalTopology:
         )
         member = parent / "apps" / "member"
         shutil.copytree(child_source, member)
-        WorktreeFixture.link_member_beads(
+        # A composed project follows the workspace ledger through its own
+        # declared identity. The ``.beads -> ../.beads`` link that used to
+        # carry it is prohibited, and both conform and the detector reject it.
+        WorktreeFixture.write_beads_project(
             member,
-            parent,
-            workspace_name="parent-workspace",
+            workspace="parent-workspace",
             database="parent-database",
             issue_prefix="parent-prefix",
         )
@@ -329,37 +331,42 @@ class TestsRepositoryLocalTopology:
         )
         return member
 
-    def test_submodule_self_load_preserves_its_checkout_relationship(
+    def test_composed_self_load_records_its_workspace_checkout(
         self, tmp_path: Path
     ) -> None:
-        """A member keeps the physical gitlink fact and inherits root identity."""
+        """A composed project keeps its own coordinates and the root ledger."""
         member = self._attached_member(tmp_path)
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
+        # Topology is the declared role alone; being checked out inside a
+        # workspace right now is the Git fact carried by ``editable``.
         tm.that(workspace.repository.path, eq=Path())
-        tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
+        tm.that(workspace.repository.role, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(workspace.repository.editable, eq=True)
+        tm.that(workspace.beads.workspace, eq="parent-workspace")
 
-    def test_submodule_self_load_accepts_a_self_coordinate_manifest(
+    def test_composed_self_load_accepts_a_self_coordinate_manifest(
         self, tmp_path: Path
     ) -> None:
-        """A member manifest declares its own checkout; Git keeps the gitlink fact."""
+        """One manifest loads standalone and inside a workspace unchanged."""
         member = self._attached_member(tmp_path)
         _ = WorktreeFixture.override_repository_manifest(
-            member, {"checkout": c.Infra.CheckoutKind.ROOT}
+            member, {"uv_link_mode": "clone"}
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
-        tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.SUBMODULE)
         tm.that(workspace.repository.path, eq=Path())
+        tm.that(workspace.repository.role, eq=c.Infra.MakeProfile.STANDALONE)
+        tm.that(workspace.repository.uv_link_mode, eq="clone")
 
-    def test_standalone_rejects_a_manifest_that_claims_to_be_a_submodule(
+    def test_standalone_rejects_a_manifest_that_claims_the_workspace_role(
         self, tmp_path: Path
     ) -> None:
-        """A standalone checkout cannot declare a submodule relationship."""
-        root = tmp_path / "manifest-submodule-claim"
-        name = "fixture-manifest-submodule-claim"
+        """A checkout without .gitmodules cannot declare the workspace role."""
+        root = tmp_path / "manifest-role-claim"
+        name = "fixture-manifest-role-claim"
         WorktreeFixture.initialize_governed_project(
             root,
             name,
@@ -368,12 +375,12 @@ class TestsRepositoryLocalTopology:
             issue_prefix=name,
         )
         _ = WorktreeFixture.override_repository_manifest(
-            root, {"checkout": c.Infra.CheckoutKind.SUBMODULE}
+            root, {"role": c.Infra.MakeProfile.WORKSPACE}
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="checkout 'submodule' contradicts the observed topology")
+        tm.fail(result, has="role 'workspace' contradicts the observed topology")
 
     def test_workspace_members_inherit_a_single_ledger_identity(
         self, tmp_path: Path

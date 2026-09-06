@@ -9,8 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
+from flext_infra import m
+
 if TYPE_CHECKING:
-    from flext_infra import m, p, t
+    from flext_infra import p, t
 
 
 class FlextInfraFixerAdapter:
@@ -39,6 +41,32 @@ class FlextInfraFixerAdapter:
         """Apply fixes for the given violations in ``project_dir``."""
         msg = f"{self.__class__.__name__}.fix_project must be implemented"
         raise NotImplementedError(msg)
+
+    @staticmethod
+    def _build_project_fix_result(
+        project_dir: Path,
+        fixed: t.SequenceOf[m.Infra.FixedViolation],
+        previewed: t.SequenceOf[m.Infra.PreviewedViolation],
+        skipped: t.SequenceOf[m.Infra.SkippedViolation],
+        failed: t.SequenceOf[m.Infra.FailedFix],
+        files_modified: t.IterableOf[str] = (),
+    ) -> m.Infra.ProjectFixResult:
+        """Build the immutable ``ProjectFixResult`` from accumulated outcomes.
+
+        Every adapter ends its run by naming the same six things, so the shape
+        belongs to the adapter contract rather than to each adapter. Callers
+        accumulate ``files_modified`` in a set, whose iteration order is not
+        stable between runs; sorting here makes the reported file list
+        deterministic for the caller that prints or diffs it.
+        """
+        return m.Infra.ProjectFixResult(
+            project=project_dir.name,
+            fixed=tuple(fixed),
+            previewed=tuple(previewed),
+            skipped=tuple(skipped),
+            failed=tuple(failed),
+            files_modified=tuple(sorted(files_modified)),
+        )
 
     @staticmethod
     def _group_by_target(

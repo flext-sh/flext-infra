@@ -36,9 +36,9 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         from a registry. Only the provider contract (generic policy) is
         read from config, which keeps the fixture valid for any provider.
 
-        A non-empty path denotes the root's view of one subproject. The
-        subproject still classifies itself as standalone; only its checkout
-        relationship is ``submodule``.
+        A non-empty path denotes the workspace's view of one composed
+        project. That project is standalone in its own right; being composed
+        is carried by ``editable``, a fact of the parent's Git tree.
         """
         provider = TestsFlextInfraUtilitiesProjectFixtureMixin.provider()
         resolved_path = Path() if path is None else path
@@ -55,11 +55,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             path=resolved_path,
             role=resolved_role,
             provider=provider.name,
-            checkout=(
-                c.Infra.CheckoutKind.SUBMODULE
-                if is_subproject
-                else c.Infra.CheckoutKind.ROOT
-            ),
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=is_subproject,

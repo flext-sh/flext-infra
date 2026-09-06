@@ -39,6 +39,15 @@ def _tool_version_field(description: str) -> object:
 
 
 class FlextInfraConfigModels:
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        # Rendered file payloads are
+        # byte contracts; Pydantic must never trim their final newline.
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
+
     """Field-only models for config loading and codegen plans."""
 
     # These models replace the former model-less workspace/make dictionaries.
@@ -754,6 +763,17 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        custom_steps: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Verbatim project-owned workflow steps injected before the "
+                    "toolchain installer, read from the project's own "
+                    "custom-steps file; empty when the project declares none"
+                ),
+            ),
+        ] = ""
         private_submodules: Annotated[
             FlextInfraConfigModels.CiPrivateSubmodulesSpec | None,
             m.Field(
@@ -1732,9 +1752,14 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Provider key from the codegen configuration"),
         ]
-        checkout: Annotated[
-            FlextInfraConstantsCodegenProject.CheckoutKind,
-            m.Field(description="Physical checkout topology"),
+        kind: Annotated[
+            FlextInfraConstantsCodegenProject.ProjectKind,
+            m.Field(
+                description=(
+                    "Governance kind; only internal_flext repositories are "
+                    "rewritten by generation"
+                )
+            ),
         ]
         codegen: Annotated[
             FlextInfraConstantsCodegenProject.CodegenKind,
@@ -2149,6 +2174,42 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
+        root_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional top-level packages under the source directory "
+                    "that the distribution must ship beyond the primary "
+                    "package. Declared per repository because the layout is a "
+                    "fact of that repository, not of its upstream profile."
+                ),
+            ),
+        ] = ()
+        root_modules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Top-level single-file modules under the source directory "
+                    "shipped alongside the packages; see the root_packages "
+                    "namesake for why the declaration is per repository."
+                ),
+            ),
+        ] = ()
+        runtime_dependency_overlay: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Runtime requirements this repository adds ahead of its "
+                    "dependency profile's runtime set. The profile states what "
+                    "every project on that upstream needs; the overlay states "
+                    "what this one additionally needs, so neither owner has to "
+                    "encode the other's scope."
+                ),
+            ),
+        ] = ()
         homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
@@ -2358,6 +2419,37 @@ class FlextInfraConfigModels:
                 description=(
                     "Upstream facets re-exported by the project root; see the "
                     "RepositoryRef namesake for the lazy-init contract."
+                ),
+            ),
+        ] = ()
+        root_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional shipped top-level packages; see the ProjectSpec "
+                    "namesake for the declaration contract."
+                ),
+            ),
+        ] = ()
+        root_modules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional shipped top-level modules; see the ProjectSpec "
+                    "namesake for the declaration contract."
+                ),
+            ),
+        ] = ()
+        runtime_dependency_overlay: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Repository-declared runtime requirements rendered ahead of "
+                    "the dependency profile's runtime set; see the ProjectSpec "
+                    "namesake."
                 ),
             ),
         ] = ()
@@ -2587,10 +2679,10 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             member_paths = tuple(item.path for item in self.members)
             if len(set(member_paths)) != len(member_paths):
-                msg = "workspace member paths must be unique"
+                msg = "composed project paths must be unique"
                 raise ValueError(msg)
             if set(member_paths).intersection(external_paths):
-                msg = "workspace members cannot also be external dependencies"
+                msg = "composed projects cannot also be external dependencies"
                 raise ValueError(msg)
             projects = tuple(item.project for item in self.repository_policy_overlays)
             if len(set(projects)) != len(projects):

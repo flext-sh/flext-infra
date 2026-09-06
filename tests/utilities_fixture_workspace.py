@@ -41,6 +41,47 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return project_dir
 
     @staticmethod
+    def src_package(project_dir: Path, package_name: str, *, pyproject: str) -> Path:
+        """Create one ``src``-layout package plus its ``pyproject.toml``.
+
+        The distribution name a scan resolves is part of the fixture's
+        contract, so ``pyproject`` is declared by the caller and never
+        derived from the directory name.
+        """
+        package_dir = project_dir / "src" / package_name
+        package_dir.mkdir(parents=True, exist_ok=True)
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        (project_dir / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+        return package_dir
+
+    @staticmethod
+    def namespace_workspace(
+        tmp_path: Path,
+        *,
+        project_name: str = "sample-proj",
+        package_name: str = "sample_pkg",
+        pyproject: str = "[project]\nname='sample'\n",
+        declare: bool = True,
+    ) -> tuple[Path, Path, Path]:
+        """Materialize the workspace tree the namespace enforcer scans.
+
+        Returns ``(workspace, project, package)``. ``declare`` writes the
+        governed ``.gitmodules`` row; a scan that must observe an undeclared
+        project sets it to ``False``.
+        """
+        workspace = tmp_path / "workspace"
+        project = workspace / project_name
+        package = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.src_package(
+            project, package_name, pyproject=pyproject
+        )
+        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        if declare:
+            TestsFlextInfraUtilitiesProjectFixtureMixin.declare_workspace_projects(
+                workspace, (project_name,)
+            )
+        return workspace, project, package
+
+    @staticmethod
     def write_standalone_workspace_manifest(
         project_dir: Path,
         name: str,
@@ -49,6 +90,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         inherited_facets: t.StrSequence = (),
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
     ) -> Path:
         """Write the declared ``config/workspace.yaml`` of one standalone repository.
 
@@ -56,10 +98,16 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         the complete topology input for ``codegen conform --what makefile
         --scope self``. Every value is derived from the same typed SSOT the
         production loader validates against, never frozen by hand.
+
+        ``extra_verbs`` declares the repository-owned public Make verbs the
+        managed Makefile renders into its help block, so a caller controls
+        real rendered content through the declaration the loader validates.
         """
         repository = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
             name, role=c.Infra.MakeProfile.STANDALONE
-        ).model_copy(update={"checkout": c.Infra.CheckoutKind.INDEPENDENT})
+        )
+        if extra_verbs:
+            repository = repository.model_copy(update={"extra_verbs": extra_verbs})
         project = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)
         if upstream is not None:
             project = project.model_copy(update={"upstream": upstream})

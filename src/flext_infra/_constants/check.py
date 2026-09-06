@@ -202,14 +202,6 @@ class FlextInfraConstantsCheck:
     QLTY_BINARY: Final[str] = "qlty"
     QLTY_CONFIG_DIRNAME: Final[str] = ".qlty"
     QLTY_CONFIG_FILENAME: Final[str] = "qlty.toml"
-    QLTY_CONFIG_CONTENT: Final[str] = (
-        "# AUTO-GENERATED FILE — Materialized by the qlty smells gate at scan\n"
-        "# time from this typed constant; never hand-edit. Removal is safe: the\n"
-        "# next scan rewrites it.\n"
-        'config_version = "0"\n'
-    )
-    "Minimal repository-root config qlty requires before scanning; a generated\n"
-    "projection of the gate, never a hand-maintained file."
     SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
         "smells",
         "--all",

@@ -20,7 +20,7 @@ from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import c, m, p, r, u
+from tests import c, m, p, u
 
 pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]
 
@@ -164,9 +164,15 @@ class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
     def _conform_with_rendered_makefile(
-        self, root: Path, monkeypatch: pytest.MonkeyPatch, suffix: str
+        self, root: Path, help_text: str
     ) -> p.Result[m.Infra.CodegenResult]:
-        """Apply conform with ``suffix`` appended to the rendered Makefile."""
+        """Apply conform after declaring ``help_text`` into the rendered Makefile.
+
+        The managed Makefile renders ``verb.description`` for every declared
+        ``extra_verbs`` entry into its help block, so a repository manifest
+        carrying multi-line help puts those exact lines in the rendered
+        artifact through the production renderer -- no substitution of it.
+        """
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
         (root / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "0.12.0.dev0"\n'
@@ -176,15 +182,15 @@ class TestCodegenConform:
         package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
         package_init.parent.mkdir(parents=True, exist_ok=True)
         package_init.write_text("", encoding="utf-8")
-        original_render = u.Cli.template_render
-
-        def _render(path: Path, context: p.Model) -> p.Result[str]:
-            rendered = original_render(path, context)
-            if rendered.failure or path.name != f"{c.Infra.MAKEFILE_FILENAME}.j2":
-                return rendered
-            return r[str].ok(f"{rendered.value}{suffix}")
-
-        monkeypatch.setattr(u.Cli, "template_render", _render)
+        u.Tests.write_standalone_workspace_manifest(
+            root,
+            config.Infra.name,
+            extra_verbs=(
+                m.Infra.MakeVerbSpec(
+                    name="probe", description=help_text, requires_apply=False
+                ),
+            ),
+        )
         return FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,
@@ -196,17 +202,16 @@ class TestCodegenConform:
 
     @pytest.mark.slow
     def test_rendered_conflict_marker_is_rejected_before_target_changes(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+        self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
         target = root / c.Infra.MAKEFILE_FILENAME
         original = "existing generated makefile\n"
         target.write_text(original, encoding="utf-8")
 
-        with monkeypatch.context() as render_patch:
-            rejected = self._conform_with_rendered_makefile(
-                root, render_patch, "\n<<<<<<< incoming\n"
-            )
+        rejected = self._conform_with_rendered_makefile(
+            root, "Probe verb help\n<<<<<<< incoming\ntrailing help"
+        )
 
         tm.fail(rejected)
         tm.that(rejected.error, has="base/Makefile.j2")
@@ -214,10 +219,13 @@ class TestCodegenConform:
         tm.that(rejected.error, has=str(root))
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
-        # The outer autouse fixture owns GITHUB_SHA isolation. Exiting the
-        # narrow render patch must not undo that fixture and restore a CI SHA
-        # that cannot belong to this synthetic repository.
+        # The autouse fixture owns GITHUB_SHA isolation for the whole module.
+        # A conform run must not restore a CI SHA that cannot belong to this
+        # synthetic repository.
         tm.that(os.getenv(c.Infra.ENV_VAR_GITHUB_SHA), eq=None)
+        # Withdraw only the declaration that carried the marker. The same real
+        # renderer must now produce a clean artifact and apply it.
+        u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.MAKEFILE,
@@ -235,17 +243,17 @@ class TestCodegenConform:
 
     @pytest.mark.slow
     def test_setext_underline_is_accepted_as_ordinary_content(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+        self, infra_git_repo: Path
     ) -> None:
         """A Markdown Setext underline is content, so conform must not reject it."""
         applied = self._conform_with_rendered_makefile(
-            infra_git_repo, monkeypatch, "\n# Title\n=======\n"
+            infra_git_repo, "Probe verb help\n# Title\n=======\ntrailing help"
         )
 
         tm.ok(applied)
 
     def test_diff3_ancestor_fence_is_rejected_before_target_changes(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+        self, infra_git_repo: Path
     ) -> None:
         """A diff3 merge leaves an ancestor fence that must stop the plan."""
         target = infra_git_repo / c.Infra.MAKEFILE_FILENAME
@@ -253,7 +261,7 @@ class TestCodegenConform:
         target.write_text(original, encoding="utf-8")
 
         rejected = self._conform_with_rendered_makefile(
-            infra_git_repo, monkeypatch, "\n||||||| base\nancestor\n"
+            infra_git_repo, "Probe verb help\n||||||| base\nancestor"
         )
 
         tm.fail(rejected)
@@ -591,20 +599,17 @@ class TestCodegenConform:
     # point in a fresh interpreter. The slow marker opts into the single
     # config-owned slow-item budget; tests must not restate that policy locally.
     @pytest.mark.slow
-    @pytest.mark.parametrize(
-        ("kind", "name"),
-        [
-            (c.Infra.ProjectKind.EXTERNAL, "flext-demo"),
-            (c.Infra.ProjectKind.INTERNAL, "flext-member"),
-        ],
-    )
+    @pytest.mark.parametrize("name", ["flext-demo", "flext-member"])
     def test_new_project_is_complete_and_idempotent(
-        self, tmp_path: Path, kind: c.Infra.ProjectKind, name: str
+        self, tmp_path: Path, name: str
     ) -> None:
-        root = tmp_path / kind.value
+        # Generation rewrites an internal_flext repository and nothing else, so
+        # a scaffold that must come out complete declares that kind; the two
+        # rows prove the result does not depend on the distribution name.
+        root = tmp_path / name
         service = FlextInfraCodegenProjectNew(
             name=name,
-            kind=kind,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
             beads_workspace=name,
@@ -689,7 +694,7 @@ class TestCodegenConform:
         existing_root = infra_git_repo
         created = FlextInfraCodegenProjectNew(
             name="flext-demo",
-            kind=c.Infra.ProjectKind.EXTERNAL,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=existing_root,
             provider="flext-sh",
             beads_workspace="flext-demo",
@@ -1342,7 +1347,7 @@ class TestScriptDispatchMakefile:
             # Script dispatch is a generic capability: exercise it on standalone.
             role=c.Infra.MakeProfile.STANDALONE,
             provider=provider.name,
-            checkout=c.Infra.CheckoutKind.ROOT,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=False,
             editable=False,

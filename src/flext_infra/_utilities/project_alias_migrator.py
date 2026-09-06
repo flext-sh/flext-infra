@@ -25,106 +25,6 @@ if TYPE_CHECKING:
 class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
     """Rewrite ``from flext_core import c`` to ``from <proj>.constants import c``."""
 
-    _description = "rewrite foreign canonical alias imports to local project facade"
-    _ALIAS_TO_LOCAL_MODULE: ClassVar[t.StrMapping] = c.Infra.FAMILY_PUBLIC_MODULES
-
-    def __init__(
-        self,
-        *,
-        file_path: Path | None = None,
-        project_alias_owners: t.StrSequenceMapping | None = None,
-        current_project: str = "",
-        on_change: t.Infra.ChangeCallback = None,
-    ) -> None:
-        """Initialize with project -> local aliases SSOT from flext-core.
-
-        Args:
-            file_path: Optional file path used to infer the owning project.
-            project_alias_owners: SSOT mapping project package -> local aliases.
-                Defaults to ``c.ENFORCEMENT_PROJECT_ALIAS_OWNERS``.
-            current_project: Explicit project package; overrides inference.
-            on_change: Optional callback invoked for each recorded change.
-
-        """
-        super().__init__(on_change=on_change)
-        owners = (
-            project_alias_owners
-            if project_alias_owners is not None
-            else c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
-        )
-        self._project_alias_owners = dict(owners)
-        self._file_path = file_path
-        self._explicit_project = current_project
-
-    @override
-    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
-        """Apply alias migration to source text."""
-        from flext_infra import u
-
-        self.changes.clear()
-        if self._file_path is not None and (
-            self._is_private_facade_implementation(self._file_path)
-            or u.Infra.looks_like_facade_file(file_path=self._file_path, source=source)
-        ):
-            return source, []
-        context = self._resolve_context(
-            file_path=self._file_path, current_project=self._explicit_project
-        )
-        if (
-            not context.policy_owner
-            or context.policy_owner == c.Infra.PKG_CORE_UNDERSCORE
-        ):
-            return source, []
-        local_aliases = self._project_alias_owners.get(context.policy_owner)
-        if not local_aliases:
-            return source, []
-
-        try:
-            tree = cst.parse_module(source)
-        except cst.ParserSyntaxError as exc:
-            msg = f"canonical alias parse failed: {exc!s}"
-            raise ValueError(msg) from exc
-
-        collector = FlextInfraRefactorProjectAliasMigrator._CollectExistingLocal(
-            context.import_root
-        )
-        tree.visit(collector)
-
-        transformer = FlextInfraRefactorProjectAliasMigrator._AliasMigrationTransformer(
-            import_root=context.import_root,
-            local_aliases=frozenset(local_aliases),
-            existing_local=collector.existing_local,
-            alias_to_module=self._ALIAS_TO_LOCAL_MODULE,
-            record_change=self._record_change,
-        )
-        new_tree = tree.visit(transformer)
-        if not transformer.changes:
-            return source, []
-
-        final_tree = FlextInfraRefactorProjectAliasMigrator._CstImportHelpers.insert_local_imports(
-            new_tree, transformer.imports_to_add
-        )
-        return final_tree.code, list(self.changes)
-
-    @staticmethod
-    def _resolve_context(
-        *, file_path: Path | None, current_project: str
-    ) -> m.Infra.AliasMigrationContext:
-        """Resolve explicit or path-backed alias migration context."""
-        if current_project:
-            return m.Infra.AliasMigrationContext(
-                policy_owner=current_project, import_root=current_project
-            )
-        if file_path is None:
-            return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
-        return FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
-
-    @staticmethod
-    def _is_private_facade_implementation(file_path: Path) -> bool:
-        """Return whether ``file_path`` implements a project facade namespace."""
-        family_dirs = frozenset(c.Infra.FAMILY_DIRECTORIES.values())
-        return bool(family_dirs.intersection(file_path.parts))
-
     class _CstImportHelpers:
         """Static libcst helpers for reading and building import statements."""
 
@@ -364,5 +264,105 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
                 ]
             )
 
+    """Rewrite ``from flext_core import c`` to ``from <proj>.constants import c``."""
 
+    _description = "rewrite foreign canonical alias imports to local project facade"
+    _ALIAS_TO_LOCAL_MODULE: ClassVar[t.StrMapping] = c.Infra.FAMILY_PUBLIC_MODULES
+
+    def __init__(
+        self,
+        *,
+        file_path: Path | None = None,
+        project_alias_owners: t.StrSequenceMapping | None = None,
+        current_project: str = "",
+        on_change: t.Infra.ChangeCallback = None,
+    ) -> None:
+        """Initialize with project -> local aliases SSOT from flext-core.
+
+        Args:
+            file_path: Optional file path used to infer the owning project.
+            project_alias_owners: SSOT mapping project package -> local aliases.
+                Defaults to ``c.ENFORCEMENT_PROJECT_ALIAS_OWNERS``.
+            current_project: Explicit project package; overrides inference.
+            on_change: Optional callback invoked for each recorded change.
+
+        """
+        super().__init__(on_change=on_change)
+        owners = (
+            project_alias_owners
+            if project_alias_owners is not None
+            else c.ENFORCEMENT_PROJECT_ALIAS_OWNERS
+        )
+        self._project_alias_owners = dict(owners)
+        self._file_path = file_path
+        self._explicit_project = current_project
+
+    @override
+    def apply_to_source(self, source: str) -> t.Infra.TransformResult:
+        """Apply alias migration to source text."""
+        from flext_infra import u
+
+        self.changes.clear()
+        if self._file_path is not None and (
+            self._is_private_facade_implementation(self._file_path)
+            or u.Infra.looks_like_facade_file(file_path=self._file_path, source=source)
+        ):
+            return source, []
+        context = self._resolve_context(
+            file_path=self._file_path, current_project=self._explicit_project
+        )
+        if (
+            not context.policy_owner
+            or context.policy_owner == c.Infra.PKG_CORE_UNDERSCORE
+        ):
+            return source, []
+        local_aliases = self._project_alias_owners.get(context.policy_owner)
+        if not local_aliases:
+            return source, []
+
+        try:
+            tree = cst.parse_module(source)
+        except cst.ParserSyntaxError as exc:
+            msg = f"canonical alias parse failed: {exc!s}"
+            raise ValueError(msg) from exc
+
+        collector = FlextInfraRefactorProjectAliasMigrator._CollectExistingLocal(
+            context.import_root
+        )
+        tree.visit(collector)
+
+        transformer = FlextInfraRefactorProjectAliasMigrator._AliasMigrationTransformer(
+            import_root=context.import_root,
+            local_aliases=frozenset(local_aliases),
+            existing_local=collector.existing_local,
+            alias_to_module=self._ALIAS_TO_LOCAL_MODULE,
+            record_change=self._record_change,
+        )
+        new_tree = tree.visit(transformer)
+        if not transformer.changes:
+            return source, []
+
+        final_tree = FlextInfraRefactorProjectAliasMigrator._CstImportHelpers.insert_local_imports(
+            new_tree, transformer.imports_to_add
+        )
+        return final_tree.code, list(self.changes)
+
+    @staticmethod
+    def _resolve_context(
+        *, file_path: Path | None, current_project: str
+    ) -> m.Infra.AliasMigrationContext:
+        """Resolve explicit or path-backed alias migration context."""
+        if current_project:
+            return m.Infra.AliasMigrationContext(
+                policy_owner=current_project, import_root=current_project
+            )
+        if file_path is None:
+            return m.Infra.AliasMigrationContext(policy_owner="", import_root="")
+        return FlextInfraUtilitiesDiscovery.alias_migration_context(file_path)
+
+    @staticmethod
+    def _is_private_facade_implementation(file_path: Path) -> bool:
+        """Return whether ``file_path`` implements a project facade namespace."""
+        family_dirs = frozenset(c.Infra.FAMILY_DIRECTORIES.values())
+        return bool(family_dirs.intersection(file_path.parts))
 __all__: list[str] = ["FlextInfraRefactorProjectAliasMigrator"]

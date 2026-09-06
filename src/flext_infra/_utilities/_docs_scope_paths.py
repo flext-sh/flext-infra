@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             selector = Path(declared_path)
             if selector.is_absolute() or ".." in selector.parts:
                 return r[tuple[Path, ...]].fail(
-                    f"invalid docs workspace member path: {selector}"
+                    f"invalid docs composed project path: {selector}"
                 )
             candidates.append(root / selector)
         for candidate in extra_roots:

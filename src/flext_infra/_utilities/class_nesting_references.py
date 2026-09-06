@@ -93,6 +93,33 @@ class FlextInfraUtilitiesClassNestingReferences:
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
 
+        def _resolves_bare_after_nesting(self, node: cst.CSTNode) -> bool:
+            """Report whether a moved class stays reachable by its bare name here.
+
+            References are rewritten before the structural move, so the current
+            tree cannot answer this; the plan can. After nesting, the owner's
+            class body holds every moved class as a sibling, and a class body
+            reaches its siblings by bare name while it is executing. A method
+            body does not: the enclosing class scope is invisible from inside a
+            function, so there the qualified form is the only one that resolves.
+            Walking outward, a function boundary therefore means qualify, and a
+            class that is the owner or is itself being moved under the owner
+            means the reference will land in that shared class scope.
+            """
+            current: cst.CSTNode | None = self.get_metadata(
+                ParentNodeProvider, node, None
+            )
+            while current is not None:
+                if isinstance(current, cst.FunctionDef):
+                    return False
+                if isinstance(current, cst.ClassDef):
+                    name = current.name.value
+                    return name in self.definitions or name in set(
+                        self.definitions.values()
+                    )
+                current = self.get_metadata(ParentNodeProvider, current, None)
+            return False
+
         @override
         def leave_Name(
             self, original_node: cst.Name, updated_node: cst.Name
@@ -117,6 +144,10 @@ class FlextInfraUtilitiesClassNestingReferences:
             if isinstance(parent, cst.Attribute) and parent.attr is original_node:
                 return updated_node
             if isinstance(parent, cst.Arg) and parent.keyword is original_node:
+                return updated_node
+            if original_node.value in self.definitions and (
+                self._resolves_bare_after_nesting(original_node)
+            ):
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)
             if replacement is None:

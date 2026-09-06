@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -73,7 +72,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
             for artifact in record.artifacts:
                 path = Path(artifact.path)
                 try:
-                    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                    digest = u.Cli.sha256_file(path)
                 except OSError as exc:
                     return r[m.Infra.BuildReport].fail_op(f"read artifact {path}", exc)
                 if digest != artifact.sha256:

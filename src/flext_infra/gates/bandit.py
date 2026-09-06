@@ -57,7 +57,10 @@ class FlextInfraBanditGate(FlextInfraGate):
                     line=0,
                     column=0,
                     code="TOOL_ERROR",
-                    message=f"bandit exited with code {result.outcome.raw_return_code}: {detail}",
+                    message=(
+                        "bandit exited with code "
+                        f"{result.outcome.raw_return_code}: {detail}"
+                    ),
                     severity="ERROR",
                 )
             )

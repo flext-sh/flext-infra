@@ -160,8 +160,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def checkout(self) -> str:
-            """Physical checkout topology."""
+        def kind(self) -> str:
+            """Governance kind; only internal_flext repositories are rewritten."""
             ...
 
         @property
