@@ -48,6 +48,14 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- if custom_steps %}
+
+      # Project-owned steps, the CI counterpart of custom.mk: the generator
+      # injects this block verbatim from the project's own custom-steps file
+      # and never interprets it, so a project extends its pipeline without the
+      # generator carrying that project's concerns.
+{{ custom_steps }}
+{%- endif %}
 
       # make setup is the only toolchain installer. It bootstraps the newest
       # released Mise, installs the committed fleet toolchain, publishes that
@@ -150,6 +158,14 @@ jobs:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- if custom_steps %}
+
+      # Project-owned steps, the CI counterpart of custom.mk: the generator
+      # injects this block verbatim from the project's own custom-steps file
+      # and never interprets it, so a project extends its pipeline without the
+      # generator carrying that project's concerns.
+{{ custom_steps }}
+{%- endif %}
       - name: Boot
         run: make setup
       - name: Release plan and guard

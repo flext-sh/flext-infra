@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import stat
-from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
@@ -30,7 +29,7 @@ TRANSACTION_ID_LENGTH: Final[int] = 32
 
 def digest(content: bytes) -> str:
     """Return the exact lowercase SHA-256 identity for raw bytes."""
-    return sha256(content).hexdigest()
+    return u.Cli.sha256_bytes(content)
 
 
 def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]:

@@ -16,10 +16,11 @@ from flext_infra.codegen import (
     _mise_artifacts_state as state,
     _mise_artifacts_verification as verify,
 )
-from flext_infra.codegen._mise_artifacts_recovery import FlextInfraMiseRecovery
-from flext_infra.codegen._mise_artifacts_staging import FlextInfraMiseStaging
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
+
+from ._mise_artifacts_recovery import FlextInfraMiseRecovery
+from ._mise_artifacts_staging import FlextInfraMiseStaging
 
 if TYPE_CHECKING:
     from flext_infra import p

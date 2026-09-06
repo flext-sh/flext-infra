@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen._codegen_generation_type_checking import (
+from ._codegen_generation_type_checking import (
     FlextInfraCodegenGenerationTypeCheckingMixin,
 )
 

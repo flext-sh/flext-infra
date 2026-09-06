@@ -249,10 +249,7 @@ class FlextInfraMiseStaging:
                 )
         validated = self._owner.validate_artifacts(stage_root)
         if validated.failure:
-            return r[bool].fail(
-                validated.error
-                or f"Mise artifact validation failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(validated)
         return r[bool].ok(True)
 
     @staticmethod

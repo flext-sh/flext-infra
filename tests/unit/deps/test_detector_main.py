@@ -67,9 +67,9 @@ class _DepsStub(
 
     @override
     def run_pip_check(
-        self, workspace_root: Path, venv_bin: Path
+        self, repository_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        del workspace_root, venv_bin
+        del repository_root, venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], 0))
 
 
@@ -130,6 +130,25 @@ def _setup_typings_detector(
     return runtime, captured_commands
 
 
+def _apply_typings_run(
+    tmp_path: Path, to_add: t.StrSequence
+) -> tuple[FlextInfraDependencyDetectorRuntime, t.SequenceOf[t.StrSequence]]:
+    """Run one applied typings detection against the stub detector."""
+    run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
+        u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
+    )
+    runtime, calls = _setup_typings_detector(tmp_path, to_add, run_result)
+    params = m.Infra.DetectCommand(
+        repository_root=str(tmp_path),
+        typings=True,
+        apply_typings=True,
+        apply=True,
+        no_pip_check=True,
+    )
+    tm.ok(runtime.run(params))
+    return runtime, calls
+
+
 class TestsFlextInfraDepsDetectorMain:
     """Test flext infra deps detector main behavior."""
 
@@ -166,40 +185,14 @@ class TestsFlextInfraDepsDetectorMain:
 
     def test_run_with_apply_typings_success(self, tmp_path: Path) -> None:
         """Verify run with apply typings success."""
-        run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
-        )
-        runtime, calls = _setup_typings_detector(
-            tmp_path, ["types-requests"], run_result
-        )
-        params = m.Infra.DetectCommand(
-            repository_root=str(tmp_path),
-            typings=True,
-            apply_typings=True,
-            apply=True,
-            no_pip_check=True,
-        )
-        tm.ok(runtime.run(params))
+        _, calls = _apply_typings_run(tmp_path, ["types-requests"])
         tm.that(len(calls), eq=1)
 
     def test_run_with_apply_typings_multiple_packages(self, tmp_path: Path) -> None:
         """Verify run with apply typings multiple packages."""
-        run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
+        _, calls = _apply_typings_run(
+            tmp_path, ["types-requests", "types-python-dateutil", "types-pyyaml"]
         )
-        runtime, calls = _setup_typings_detector(
-            tmp_path,
-            ["types-requests", "types-python-dateutil", "types-pyyaml"],
-            run_result,
-        )
-        params = m.Infra.DetectCommand(
-            repository_root=str(tmp_path),
-            typings=True,
-            apply_typings=True,
-            apply=True,
-            no_pip_check=True,
-        )
-        tm.ok(runtime.run(params))
         tm.that(len(calls), eq=3)
 
     def test_run_with_apply_typings_poetry_add_failure(self, tmp_path: Path) -> None:

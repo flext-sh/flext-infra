@@ -186,10 +186,7 @@ class FlextInfraClassPlacementDetector:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[m.Infra.ClassInfo]:
         """Return public top-level classes from the current Rope AST."""
-        try:
-            tree = u.Infra.get_pymodule(rope_project, resource).get_ast()
-        except u.Infra.rope_runtime_errors():
-            return ()
+        tree = u.Infra.get_pymodule(rope_project, resource).get_ast()
         classes: list[m.Infra.ClassInfo] = []
         for node in getattr(tree, "body", ()) or ():
             if u.Infra.node_kind(node) != "ClassDef":
@@ -233,10 +230,7 @@ class FlextInfraClassPlacementDetector:
         Includes explicit ``ClassVar[...]`` annotations and implicit
         UPPER_CASE assignments whose value looks like a canonical constant.
         """
-        try:
-            pymodule = u.Infra.get_pymodule(rope_project, resource)
-        except u.Infra.rope_runtime_errors():
-            return ()
+        pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
         body = FlextInfraClassPlacementDetector._class_body_nodes(
             tree, class_name=class_name
@@ -305,10 +299,7 @@ class FlextInfraClassPlacementDetector:
         rope_project: t.Infra.RopeProject, resource: t.Infra.RopeResource
     ) -> t.SequenceOf[tuple[str, int]]:
         """Return module-level type aliases as (name, line) pairs."""
-        try:
-            pymodule = u.Infra.get_pymodule(rope_project, resource)
-        except u.Infra.rope_runtime_errors():
-            return ()
+        pymodule = u.Infra.get_pymodule(rope_project, resource)
         tree = pymodule.get_ast()
         aliases: list[tuple[str, int]] = []
         for node in getattr(tree, "body", []) or []:

@@ -10,7 +10,8 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import u
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.duplication import FlextInfraModelsDuplication
+
+from .._models.duplication import FlextInfraModelsDuplication
 
 
 class FlextInfraModelsGates(FlextInfraModelsDuplication):

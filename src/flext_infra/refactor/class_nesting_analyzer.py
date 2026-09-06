@@ -6,7 +6,8 @@ from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra import c, m, t, u
+from flext_infra import m, t, u
+from flext_infra.api import infra
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -19,31 +20,18 @@ class FlextInfraRefactorClassNestingAnalyzer:
     def analyze_files(cls, files: t.SequenceOf[Path]) -> m.Infra.ClassNestingReport:
         """Analyze files and return aggregated class-nesting violations."""
         grouped_targets = cls._group_targets_by_project_root(files)
-        if not grouped_targets:
-            return m.Infra.ClassNestingReport(
-                violations_count=0,
-                confidence_counts={},
-                violations=(),
-                per_file_counts={},
-            )
         confidence_counts: Counter[str] = Counter()
         per_file_counts: Counter[str] = Counter()
         violations: t.MutableSequenceOf[m.Infra.ClassNestingViolation] = []
         for project_root, target_files in grouped_targets.items():
-            with u.Infra.open_project(project_root) as rope_project:
-                for module_path in sorted(target_files):
-                    file_path = (
-                        project_root / c.Infra.DEFAULT_SRC_DIR / module_path
-                    ).resolve()
-                    resource = u.Infra.get_resource_from_path(rope_project, file_path)
-                    if resource is None:
-                        raise FileNotFoundError(file_path)
-                    for plan in u.Infra.class_nesting_plans(
-                        project_root, file_path, rope_project, resource
-                    ):
-                        violations.append(plan)
-                        confidence_counts[plan.confidence] += 1
-                        per_file_counts[plan.file] += 1
+            with infra.rope_workspace(project_root) as rope_workspace:
+                for file_path in target_files:
+                    for violation in u.Infra.class_nesting_plan(
+                        rope_workspace, file_path
+                    ).unwrap():
+                        violations.append(violation)
+                        confidence_counts[violation.confidence] += 1
+                        per_file_counts[violation.file] += 1
         return m.Infra.ClassNestingReport(
             violations_count=len(violations),
             confidence_counts=dict(confidence_counts),
@@ -54,23 +42,17 @@ class FlextInfraRefactorClassNestingAnalyzer:
     @staticmethod
     def _group_targets_by_project_root(
         files: t.SequenceOf[Path],
-    ) -> t.MappingKV[Path, tuple[str, ...]]:
+    ) -> t.MappingKV[Path, tuple[Path, ...]]:
         """Group resolved targets by their canonical project root."""
-        grouped: MutableMapping[Path, set[str]] = {}
+        grouped: MutableMapping[Path, list[Path]] = {}
         for file_path in files:
             resolved_file = file_path.resolve()
             project_root = u.Infra.resolve_project_root(resolved_file)
             if project_root is None:
-                msg = f"class-nesting target has no project root: {file_path}"
+                msg = f"Could not resolve project root for {resolved_file}"
                 raise ValueError(msg)
-            module_path = file_path.resolve().relative_to(
-                (project_root / c.Infra.DEFAULT_SRC_DIR).resolve()
-            )
-            grouped.setdefault(project_root, set()).add(module_path.as_posix())
-        return {
-            project_root: tuple(module_paths)
-            for project_root, module_paths in grouped.items()
-        }
+            grouped.setdefault(project_root, []).append(resolved_file)
+        return {root: tuple(paths) for root, paths in grouped.items()}
 
 
 __all__: list[str] = ["FlextInfraRefactorClassNestingAnalyzer"]

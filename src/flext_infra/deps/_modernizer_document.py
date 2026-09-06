@@ -41,6 +41,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     if TYPE_CHECKING:
         # Members provided by the composed dependency modernizer.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         @property
         def root(self) -> Path: ...
@@ -83,9 +84,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         """Read one pyproject once and keep one validated plain payload state."""
         read = u.Cli.files_read_text(path)
         if read.failure:
-            return r[m.Infra.PyprojectDocumentState].fail(
-                read.error or f"failed to read {path}"
-            )
+            return r[m.Infra.PyprojectDocumentState].from_failure(read)
         original_rendered = read.value
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:

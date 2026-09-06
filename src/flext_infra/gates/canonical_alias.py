@@ -17,9 +17,9 @@ from flext_infra.detectors import (
     FlextInfraCyclicImportDetector,
 )
 from flext_infra.gates import FlextInfraGate
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
+from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+
+from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -31,8 +31,6 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     gate_id: ClassVar[str] = "canonical-alias"
     gate_name: ClassVar[str] = "Canonical Alias"
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = "Flext Canonical Alias Detector"
-    tool_url: ClassVar[str] = "internal://flext-infra/canonical-alias"
 
     # Packages that define the canonical aliases themselves. Rewriting imports
     # inside them risks creating import cycles during package initialization.
@@ -191,27 +189,21 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             )
 
         changed_files = tuple(edit.file_path for edit in edits)
-        try:
-            write_ok, write_reports = u.Infra.protected_source_writes(
-                updates,
-                request=m.Infra.ProtectedSourceWritesRequest(
-                    workspace=project_dir,
-                    expected_sources={
-                        edit.file_path: edit.original_source for edit in edits
-                    },
-                    gates=("lint",),
-                    post_write=lambda: self._format_files(changed_files),
-                    skip_pytest=True,
-                ),
-            )
-        except (OSError, RuntimeError) as exc:
-            return self._fix_failure_result(
-                project_dir=project_dir,
-                file_path=project_dir,
-                message=f"canonical-alias transactional write failed: {exc!s}",
-                started=started,
-                ctx=ctx,
-            )
+        # protected_source_writes rolls the workspace back in its finally
+        # block when the write phase fails; a residual OSError/RuntimeError
+        # escapes loudly instead of being normalized into a fix result.
+        write_ok, write_reports = u.Infra.protected_source_writes(
+            updates,
+            request=m.Infra.ProtectedSourceWritesRequest(
+                workspace=project_dir,
+                expected_sources={
+                    edit.file_path: edit.original_source for edit in edits
+                },
+                gates=("lint",),
+                post_write=lambda: self._format_files(changed_files),
+                skip_pytest=True,
+            ),
+        )
         if not write_ok:
             return self._fix_failure_result(
                 project_dir=project_dir,

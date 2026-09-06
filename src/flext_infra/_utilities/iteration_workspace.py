@@ -15,6 +15,9 @@ from flext_infra._utilities.iteration_directory import (
     FlextInfraUtilitiesIterationDirectory,
 )
 
+from .._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
+from .._utilities.iteration_directory import FlextInfraUtilitiesIterationDirectory
+
 if TYPE_CHECKING:
     from flext_infra import p
 
@@ -61,12 +64,16 @@ class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirector
             for directory_name in config.Infra.source_scan.roots
             if (path := (project_root / directory_name).resolve()).is_dir()
         )
-        tracked_files = cls.git_tracked_scope_paths(project_root)
+        tracked_files = FlextInfraUtilitiesGitScopeMixin.git_tracked_scope_paths(
+            project_root
+        )
         if tracked_files is None:
             return tuple(
                 file_path
                 for source_root in source_roots
-                for file_path in cls.iter_directory_python_files(source_root)
+                for file_path in FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
+                    source_root
+                )
             )
         ignored = frozenset(config.Infra.codegen.source_scan_ignored)
         return tuple(

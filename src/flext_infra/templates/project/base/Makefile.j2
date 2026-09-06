@@ -407,6 +407,10 @@ _builtin_fix_all: _builtin_require_environment
 	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_fix_apply: _builtin_fix_all
+
+_builtin_fix_enforcement: _builtin_require_environment
+	$(call _require_apply)
+	@$(WORKSPACE_ORCHESTRATE) --verb fix-enforcement $(WORKSPACE_PROJECT_ARGS) --make-arg "APPLY={{ make.apply_value }}" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 {% else %}
 _builtin_build_artifacts:
 	@$(UV) build --project "$(PROJECT_ROOT)"
@@ -454,8 +458,15 @@ _builtin_fix_check: _builtin_require_environment
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
 	@$(UV_RUN) ruff check --fix $(RUFF_PATHS)
+	@$(PROJECT_FLEXT_INFRA) check run --repository-root "$(PROJECT_ROOT)" --gates "{% for gate in make.check_gates_fixable %}{{ gate }}{% if not loop.last %},{% endif %}{% endfor %}" --projects . --fix
 
 _builtin_fix_apply: _builtin_fix_all
+
+# Catalog-driven enforcement fixes: every ENFORCE rule whose fix action is
+# declared safe, applied through its registered adapter.
+_builtin_fix_enforcement: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) check fix-enforcement --repository-root "$(PROJECT_ROOT)" --safe-only --apply
 {% endif %}
 
 _builtin_run_default: _builtin_require_environment
@@ -558,6 +569,7 @@ _builtin-check: _builtin_check_all
 _builtin-test: _builtin_test_all
 _builtin-fmt: _builtin_fmt_all
 _builtin-fix: _builtin_fix_all
+_builtin-fix-enforcement: _builtin_fix_enforcement
 _builtin-audit:
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@$(UV) pip check --python "$(RUNTIME_VENV)"

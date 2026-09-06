@@ -88,6 +88,9 @@ def stage_file_plans(
                 )
             phase_root = project.transaction_root / f"phase-{phase}"
             if phase_root not in phase_roots:
+                # Distinct name: `before` above is this file's AtomicFileState
+                # and is published below; reusing it here bound a Result and
+                # the staged-file model rejected it.
                 phase_root_before = u.Cli.atomic_read_empty_directory_state(
                     phase_root, required=False
                 )

@@ -6,11 +6,12 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import r, u
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.repository import FlextInfraUtilitiesRepository
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+from .._utilities.repository import FlextInfraUtilitiesRepository
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -65,13 +66,11 @@ class FlextInfraUtilitiesPyprojectConform:
             canonicalize_all=True,
         )
         if normalized.failure:
-            return r[str].fail(normalized.error or "dependency normalization failed")
+            return r[str].from_failure(normalized)
         cls._remove_legacy_tooling(source)
         typecheck_paths = cls._sync_typecheck_paths(source)
         if typecheck_paths.failure:
-            return r[str].fail(
-                typecheck_paths.error or "type checker path conformance failed"
-            )
+            return r[str].from_failure(typecheck_paths)
         sources_result = cls._sync_uv_sources(
             source,
             project_name=project_name,
@@ -93,7 +92,7 @@ class FlextInfraUtilitiesPyprojectConform:
             uv_environments=toolchain.uv_environments,
         )
         if sources_result.failure:
-            return r[str].fail(sources_result.error or "uv source conformance failed")
+            return r[str].from_failure(sources_result)
         provenance_result = cls._validate_dependency_provenance(
             source,
             project_name=project_name,
@@ -101,9 +100,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
-            return r[str].fail(
-                provenance_result.error or "dependency provenance validation failed"
-            )
+            return r[str].from_failure(provenance_result)
 
         rendered = u.Cli.toml_dumps(source)
         if u.Cli.toml_parse_text(rendered) is None:
@@ -140,9 +137,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 source, workspace=workspace, providers=providers
             )
             if sources_result.failure:
-                return r[str].fail(
-                    sources_result.error or "uv source conformance failed"
-                )
+                return r[str].from_failure(sources_result)
         normalized = cls._normalize_requirements(
             source,
             project_name=project_name,
@@ -152,7 +147,7 @@ class FlextInfraUtilitiesPyprojectConform:
             canonicalize_all=False,
         )
         if normalized.failure:
-            return r[str].fail(normalized.error or "dependency normalization failed")
+            return r[str].from_failure(normalized)
         cls._sync_workspace_dependency_group(
             source,
             project_name=project_name,
@@ -170,7 +165,7 @@ class FlextInfraUtilitiesPyprojectConform:
             )
         )
         if sources_result.failure:
-            return r[str].fail(sources_result.error or "uv source conformance failed")
+            return r[str].from_failure(sources_result)
         provenance_result = cls._validate_dependency_provenance(
             source,
             project_name=project_name,
@@ -178,9 +173,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace_mode=workspace_mode,
         )
         if provenance_result.failure:
-            return r[str].fail(
-                provenance_result.error or "dependency provenance validation failed"
-            )
+            return r[str].from_failure(provenance_result)
         rendered = u.Cli.toml_dumps(source)
         if u.Cli.toml_parse_text(rendered) is None:
             return r[str].fail("dependency conformance produced invalid TOML")
@@ -272,9 +265,7 @@ class FlextInfraUtilitiesPyprojectConform:
                 workspace_dependencies=workspace_dependencies,
             )
             if normalized.failure:
-                return r[bool].fail(
-                    normalized.error or f"normalize dependency group {key} failed"
-                )
+                return r[bool].from_failure(normalized)
             normalized_items.append(normalized.value)
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
@@ -319,21 +310,16 @@ class FlextInfraUtilitiesPyprojectConform:
             dependency_name, repositories=repositories, providers=providers
         )
         if reference_result.failure:
-            return r[str].fail(
-                reference_result.error
-                or f"repository resolution failed: {dependency_name}"
-            )
+            return r[str].from_failure(reference_result)
         reference = reference_result.value
         provider = FlextInfraUtilitiesRepository.repository_provider(
             reference, providers
         )
         if provider.failure:
-            return r[str].fail(
-                provider.error or "repository provider resolution failed"
-            )
+            return r[str].from_failure(provider)
         git_url = cls._git_requirement_url(reference.url)
         if git_url.failure:
-            return r[str].fail(git_url.error or "repository URL validation failed")
+            return r[str].from_failure(git_url)
         canonical = f"{head} @ {git_url.value}@{provider.value.branch}"
         return r[str].ok(
             f"{canonical}; {marker_text}" if separator and marker_text else canonical
@@ -763,7 +749,7 @@ class FlextInfraUtilitiesPyprojectConform:
             workspace=workspace, providers=providers
         )
         if resolved_result.failure:
-            return r[bool].fail(resolved_result.error or "repository resolution failed")
+            return r[bool].from_failure(resolved_result)
         expected_sources = resolved_result.value
         if tuple(sources) != tuple(expected_sources):
             return r[bool].fail("root uv workspace sources differ from workspace SSOT")

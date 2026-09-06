@@ -222,9 +222,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 )
             loaded = u.Cli.yaml_parse(source_text)
             if loaded.failure:
-                return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                    loaded.error or f"project config load failed: {source}"
-                )
+                return r[m.Infra.ProjectManagedArtifactsResolution].from_failure(loaded)
             managed = loaded.value.get("ManagedArtifacts")
             if not managed:
                 continue
@@ -281,7 +279,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         """Add local tools from one caller-owned immutable YAML snapshot."""
         resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)
         if resolved.failure:
-            return r[str].fail(resolved.error or "project artifact load failed")
+            return r[str].from_failure(resolved)
         local_tools = resolved.value.artifacts.Mise.tools
         if not local_tools:
             return r[str].ok(rendered)
@@ -290,10 +288,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 (selector,), source=resolved.value.mise_tool_sources[selector]
             )
             if selector_validation.failure:
-                return r[str].fail(
-                    selector_validation.error
-                    or "project Mise identity validation failed"
-                )
+                return r[str].from_failure(selector_validation)
         doc = u.Cli.toml_parse_text(rendered)
         if doc is None:
             return r[str].fail("canonical .mise.toml template is invalid")

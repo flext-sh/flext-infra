@@ -142,6 +142,9 @@ Infra:
             # requiring every test to opt in would let live state leak whenever
             # one consumer omitted the fixture.
             - pytest-fixture-autouse
+            # See the rationale below: this rule and ban-private-import demand
+            # opposite forms for the same import.
+            - relative-imports
             - too-many-arguments
             - too-many-branches
             - too-many-locals
@@ -154,6 +157,15 @@ Infra:
             - typing-only-standard-library-import
             - typing-only-third-party-import
           ignored-rule-rationales:
+            relative-imports: >-
+              The codemod rule ban-private-import requires the opposite form.
+              Same-owner implementation modules use relative sibling imports and
+              every other consumer uses a public facade, because an absolute
+              private import couples a consumer to an owner layout. Selecting
+              both gates makes every internal import fail one of them.
+              Converting the 304 findings produced 301 ban-private-import
+              errors and took the suite from 1717 to 3135, so the architectural
+              rule decides.
             import-outside-top-level:
               Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.

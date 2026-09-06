@@ -21,7 +21,14 @@ class FlextInfraRopeProject(Project):
     @override
     def _init_source_folders(self) -> None:
         """Initialize configured source roots without Rope's warning wrapper."""
-        for path in self.prefs.get("source_folders", []) or []:
+        source_folders = self.prefs.get("source_folders", [])
+        if source_folders is None:
+            msg = (
+                "rope preference 'source_folders' is None; "
+                "expected a list of source folder paths"
+            )
+            raise ValueError(msg)
+        for path in source_folders:
             self._custom_source_folders.append(self.get_resource(path))
 
 

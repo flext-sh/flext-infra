@@ -13,23 +13,16 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
-from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.release import FlextInfraConstantsRelease
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-from flext_infra._models._defaults import immutable_empty_mapping
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from flext_infra._models.layout import FlextInfraModelsLayout
 
+from .._constants.codegen_project import FlextInfraConstantsCodegenProject
+from .._constants.make import FlextInfraConstantsMake
+from .._constants.release import FlextInfraConstantsRelease
+from .._constants.validate import FlextInfraConstantsSharedInfra
+from .._models._defaults import immutable_empty_mapping
+from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
+from .._models.layout import FlextInfraModelsLayout
 
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    # Rendered file payloads are
-    # byte contracts; Pydantic must never trim their final newline.
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
+__all__: list[str] = ["FlextInfraConfigModels"]
 
 
 def _tool_version_field(description: str) -> object:
@@ -46,6 +39,15 @@ def _tool_version_field(description: str) -> object:
 
 
 class FlextInfraConfigModels:
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        # Rendered file payloads are
+        # byte contracts; Pydantic must never trim their final newline.
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
+
     """Field-only models for config loading and codegen plans."""
 
     # These models replace the former model-less workspace/make dictionaries.
@@ -161,12 +163,19 @@ class FlextInfraConfigModels:
         """Immutable download metadata for one tool platform."""
 
         checksum: Annotated[
-            t.NonEmptyStr,
+            t.NonEmptyStr | None,
             m.Field(
                 pattern=r"^sha256:[0-9a-f]{64}$",
-                description="SHA-256 digest emitted by Mise",
+                description=(
+                    "SHA-256 digest emitted by Mise, when the upstream release "
+                    "publishes one. mise.lock is an external artifact this "
+                    "project reads: it records platforms whose asset carries no "
+                    "digest (observed on taplo windows-x64), and requiring one "
+                    "here rejected the whole lock over a platform the declared "
+                    "environments never install."
+                ),
             ),
-        ]
+        ] = None
         url: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -450,6 +459,7 @@ class FlextInfraConfigModels:
                     "linux-arm64-musl",
                     "macos-x64",
                     "macos-arm64",
+                    "windows-x64",
                 ],
                 ...,
             ],
@@ -458,7 +468,6 @@ class FlextInfraConfigModels:
                 description="Platforms materialized into the project mise lockfile",
             ),
         ]
-
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -496,7 +505,6 @@ class FlextInfraConfigModels:
             if len(set(self.mise_lock_platforms)) != len(self.mise_lock_platforms):
                 msg = "mise_lock_platforms must be unique"
                 raise ValueError(msg)
-
             return self
 
         @m.computed_field
@@ -570,6 +578,17 @@ class FlextInfraConfigModels:
                     "Development lines whose descent from the baseline is enforced. "
                     "Refs outside this allowlist are inventoried but never gated: "
                     "parked releases, snapshots and lane branches must not block."
+                ),
+            ),
+        ]
+        ci_trigger_branches: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description=(
+                    "Branches whose pushes trigger the generated CI workflow. "
+                    "Config owns this list: the renderer adds only the repository's "
+                    "own integration branch, so no fleet name is hardcoded in code."
                 ),
             ),
         ]
@@ -720,9 +739,15 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="External runtime state directory name")
         ]
         dependency_cooldown_days: Annotated[
-            int,
+            t.PositiveInt,
             m.Field(
-                ge=1, le=90, description="Shared uv and Dependabot dependency cooldown"
+                ge=1,
+                le=90,
+                description=(
+                    "Shared uv and Dependabot dependency cooldown rendered into "
+                    "dependabot.yml; the template reads it on every ecosystem "
+                    "block, so the spec must declare it or the whole render dies"
+                ),
             ),
         ]
         github_actions: Annotated[
@@ -781,6 +806,17 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        custom_steps: Annotated[
+            str,
+            m.Field(
+                default="",
+                description=(
+                    "Verbatim project-owned workflow steps injected before the "
+                    "toolchain installer, read from the project's own "
+                    "custom-steps file; empty when the project declares none"
+                ),
+            ),
+        ] = ""
         private_submodules: Annotated[
             FlextInfraConfigModels.CiPrivateSubmodulesSpec | None,
             m.Field(
@@ -1734,7 +1770,7 @@ class FlextInfraConfigModels:
     class RepositoryRef(_ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Catalog key")]
         distribution: Annotated[
@@ -1759,9 +1795,14 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Provider key from the codegen configuration"),
         ]
-        checkout: Annotated[
-            FlextInfraConstantsCodegenProject.CheckoutKind,
-            m.Field(description="Physical checkout topology"),
+        kind: Annotated[
+            FlextInfraConstantsCodegenProject.ProjectKind,
+            m.Field(
+                description=(
+                    "Governance kind; only internal_flext repositories are "
+                    "rewritten by generation"
+                )
+            ),
         ]
         codegen: Annotated[
             FlextInfraConstantsCodegenProject.CodegenKind,
@@ -1883,7 +1924,7 @@ class FlextInfraConfigModels:
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
@@ -2456,6 +2497,13 @@ class FlextInfraConfigModels:
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
+        mise_lock_platforms: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Fleet platforms projected into native Mise lock policy",
+            ),
+        ]
         kubectl_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact kubectl toolchain version")
         ]
@@ -2667,10 +2715,10 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             member_paths = tuple(item.path for item in self.members)
             if len(set(member_paths)) != len(member_paths):
-                msg = "workspace member paths must be unique"
+                msg = "composed project paths must be unique"
                 raise ValueError(msg)
             if set(member_paths).intersection(external_paths):
-                msg = "workspace members cannot also be external dependencies"
+                msg = "composed projects cannot also be external dependencies"
                 raise ValueError(msg)
             projects = tuple(item.project for item in self.repository_policy_overlays)
             if len(set(projects)) != len(projects):
@@ -3202,7 +3250,7 @@ class FlextInfraConfigModels:
 
         # The bump map is consumed as enum members by the strict release plan,
         # so the contract base's value coercion is switched off here.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             strict=False, frozen=True, extra="forbid", use_enum_values=False
         )
 
@@ -3366,7 +3414,7 @@ class FlextInfraConfigModels:
         """CLI-safe request for one Python workspace environment sync."""
 
         repository_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
@@ -3383,7 +3431,7 @@ class FlextInfraConfigModels:
         """Validated internal request for one workspace environment sync."""
 
         repository_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
@@ -3650,6 +3698,3 @@ class FlextInfraConfigModels:
             tuple[str, ...],
             m.Field(description="Fail-closed validation or write errors"),
         ] = ()
-
-
-__all__: list[str] = ["FlextInfraConfigModels"]

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra._utilities._docs_generate_root import (
-    FlextInfraUtilitiesDocsGenerateRootMixin,
-)
+from .._utilities._docs_generate_root import FlextInfraUtilitiesDocsGenerateRootMixin
 
 # Why: restored lost composition — FlextInfraUtilitiesDocsGuidesMixin was
 # never wired into any composed Docs* facade, leaving consumers unresolved.

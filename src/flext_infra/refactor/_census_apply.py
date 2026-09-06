@@ -23,12 +23,11 @@ from flext_infra.detectors.manual_typing_alias_detector import (
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.refactor._census_apply_formatting import (
-    FlextInfraRefactorCensusApplyFormattingMixin,
-)
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
+
+from ._census_apply_formatting import FlextInfraRefactorCensusApplyFormattingMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -238,7 +237,7 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
                     error=msg,
                 )
                 continue
-            if apply_result.unwrap_or(False):
+            if apply_result.unwrap():
                 applied.add(
                     self._fix_key(Path(candidate.file_path), candidate.object_name)
                 )
@@ -290,8 +289,12 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         try:
             pymodule = u.Infra.get_pymodule(rope.rope_project, resource)
             tree = pymodule.get_ast()
-        except (*u.Infra.rope_runtime_errors(), TypeError):
-            return False
+        except (*u.Infra.rope_runtime_errors(), TypeError) as exc:
+            msg = (
+                f"census inline-import apply could not parse {file_path}: "
+                f"{type(exc).__name__}: {exc!s}"
+            )
+            raise RuntimeError(msg) from exc
         if not isinstance(tree, ast.Module):
             return False
         source = rope.source(file_path)
@@ -319,8 +322,12 @@ class FlextInfraRefactorCensusApplyMixin(FlextInfraRefactorCensusApplyFormatting
         new_source = "".join(updated_lines)
         try:
             compile(new_source, str(file_path), "exec")
-        except SyntaxError:
-            return False
+        except SyntaxError as exc:
+            msg = (
+                f"census inline-import apply produced invalid syntax for "
+                f"{file_path}: {exc}"
+            )
+            raise RuntimeError(msg) from exc
         resource.write(new_source)
         for module_name, names in imports_to_add:
             if module_name:

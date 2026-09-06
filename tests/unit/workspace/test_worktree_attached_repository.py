@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsAttachedRepositoryWorktree(WorktreeFixture):
@@ -90,15 +90,7 @@ class TestsAttachedRepositoryWorktree(WorktreeFixture):
         ).primary_root
         expected_lane = self._lane(primary, superproject, branch)
 
-        lane = tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=attached,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        lane = self.add_worktree(attached, branch)
         tm.that(lane, eq=str(expected_lane))
         tm.that(
             f"{c.Infra.WORKTREES_DIRNAME}/{c.Infra.WORKTREES_DIRNAME}"

@@ -152,12 +152,12 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                     error=execution.raw_output or "gate fix failed",
                 )
             ]
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
+        return self._build_project_fix_result(
+            project_dir,
+            fixed,
+            previewed,
+            skipped,
+            failed,
         )
 
     def _preview_from_check(

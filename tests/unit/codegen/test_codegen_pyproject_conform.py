@@ -22,11 +22,7 @@ def _repository(
         path=Path(path),
         role=role,
         provider=provider.name,
-        checkout=(
-            c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.MakeProfile.WORKSPACE
-            else c.Infra.CheckoutKind.SUBMODULE
-        ),
+        kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=role is not c.Infra.MakeProfile.WORKSPACE,
         editable=role is not c.Infra.MakeProfile.WORKSPACE,

@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
 
@@ -49,12 +51,6 @@ def _shim_path(tmp_path: Path) -> Path:
     return bin_dir
 
 
-def _run_publish_main(bin_dir: Path, workspace: Path, *arguments: str) -> int:
-    """Run the release CLI with the recording shims resolved first on PATH."""
-    with tm.scope(env={"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}"}):
-        return u.Tests.run_release_main(workspace, *arguments)
-
-
 class TestsFlextInfraReleasePublish:
     """Behavior contract for the public release publish phase."""
 
@@ -62,24 +58,30 @@ class TestsFlextInfraReleasePublish:
         """The receipt is the only publishable input."""
 
         @staticmethod
-        def test_dry_run_verifies_the_receipt_without_effects(tmp_path: Path) -> None:
+        def test_dry_run_verifies_the_receipt_without_effects(
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             """A dry run proves the receipt and calls no external service."""
             workspace, _report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
-            tm.that(_run_publish_main(bin_dir, workspace, "--phase", "publish"), eq=0)
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "publish"), eq=0)
             tm.that((bin_dir / f"{c.Infra.GH}.log").exists(), eq=False)
 
         @staticmethod
-        def test_tampered_artifact_is_refused(tmp_path: Path) -> None:
+        def test_tampered_artifact_is_refused(
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             """An artifact whose bytes no longer match the receipt never leaves."""
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
             artifact = Path(report.records[0].artifacts[0].path)
             artifact.write_bytes(artifact.read_bytes() + b"\n")
 
             tm.that(
-                _run_publish_main(bin_dir, workspace, "--phase", "publish", "--apply"),
+                u.Tests.run_release_main(workspace, "--phase", "publish", "--apply"),
                 ne=0,
             )
 
@@ -98,14 +100,15 @@ class TestsFlextInfraReleasePublish:
 
         @staticmethod
         def test_github_release_carries_exactly_the_receipt_artifacts(
-            tmp_path: Path,
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         ) -> None:
             """The release is created with the receipt's wheel and sdist, nothing else."""
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
-            result = _run_publish_main(
-                bin_dir, workspace, "--phase", "publish", "--apply"
+            result = u.Tests.run_release_main(
+                workspace, "--phase", "publish", "--apply"
             )
 
             tm.that(result, eq=0)
@@ -117,13 +120,16 @@ class TestsFlextInfraReleasePublish:
             tm.that((bin_dir / f"{c.Infra.UV}.log").exists(), eq=False)
 
         @staticmethod
-        def test_index_upload_uses_trusted_publishing_per_wave(tmp_path: Path) -> None:
+        def test_index_upload_uses_trusted_publishing_per_wave(
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             """``--index`` uploads the verified artifacts through trusted publishing."""
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
-            result = _run_publish_main(
-                bin_dir, workspace, "--phase", "publish", "--apply", "--index"
+            result = u.Tests.run_release_main(
+                workspace, "--phase", "publish", "--apply", "--index"
             )
 
             tm.that(result, eq=0)

@@ -57,9 +57,7 @@ class FlextInfraMiseWorkspacePlanner:
         """Reject Git parent discovery when the requested path is not its root."""
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=requested))
         if identity.failure:
-            return r[m.Infra.GitIdentityReport].fail(
-                identity.error or "cannot resolve Mise workspace Git identity"
-            )
+            return r[m.Infra.GitIdentityReport].from_failure(identity)
         if identity.value.repo_root != requested:
             return r[m.Infra.GitIdentityReport].fail(
                 "Mise workspace request is not the exact Git worktree root: "
@@ -80,9 +78,7 @@ class FlextInfraMiseWorkspacePlanner:
         scope_root = resolved_scope.value
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(scope_root)
         if workspace.failure:
-            return r[m.Infra.MiseToolchainWorkspaceLayout].fail(
-                workspace.error or "cannot load governed Mise workspace"
-            )
+            return r[m.Infra.MiseToolchainWorkspaceLayout].from_failure(workspace)
         if requested != scope_root and not any(
             (scope_root / project.path).absolute() == requested
             for project in workspace.value.subprojects

@@ -59,6 +59,8 @@ if TYPE_CHECKING:
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
+    from .class_nesting_cst import FlextInfraUtilitiesClassNestingCst
+    from .class_nesting_references import FlextInfraUtilitiesClassNestingReferences
     from .codegen import FlextInfraUtilitiesCodegen
     from .codegen_facades import FlextInfraUtilitiesCodegenFacades
     from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
@@ -158,6 +160,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
+    "FlextInfraUtilitiesClassNestingCst",
+    "FlextInfraUtilitiesClassNestingReferences",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
     "FlextInfraUtilitiesCodegenFilePlan",
@@ -350,6 +354,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
+            ".class_nesting_cst": ("FlextInfraUtilitiesClassNestingCst",),
+            ".class_nesting_references": ("FlextInfraUtilitiesClassNestingReferences",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".codegen_facades": ("FlextInfraUtilitiesCodegenFacades",),
             ".codegen_file_plan": ("FlextInfraUtilitiesCodegenFilePlan",),
