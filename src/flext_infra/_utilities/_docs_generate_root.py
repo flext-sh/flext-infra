@@ -116,9 +116,9 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
                 FlextInfraUtilitiesDocsRender.docs_modules_index(scope, module_names),
             ))
             for module_name in module_names:
-                relative = module_name.removeprefix(
-                    f"{scope.package_name}."
-                ).replace(".", "/")
+                relative = module_name.removeprefix(f"{scope.package_name}.").replace(
+                    ".", "/"
+                )
                 rendered.append((
                     modules_root / f"{relative}.md",
                     FlextInfraUtilitiesDocsRender.docs_directive_page(

@@ -174,16 +174,14 @@ def create_journaled_directory(
             return result_type.fail(
                 f"journaled directory parent has no durable identity: {entry.path}"
             )
-        observed = u.Cli.atomic_read_empty_directory_state(
-            target.value, required=False
-        )
+        observed = u.Cli.atomic_read_empty_directory_state(target.value, required=False)
         if observed.failure:
             return result_type.from_failure(observed)
         before = observed.value
-        if before.exists or (
-            before.parent_device,
-            before.parent_inode,
-        ) != (parent_entry.created.device, parent_entry.created.inode):
+        if before.exists or (before.parent_device, before.parent_inode) != (
+            parent_entry.created.device,
+            parent_entry.created.inode,
+        ):
             return result_type.fail(
                 f"journaled directory parent changed before creation: {entry.path}"
             )
@@ -192,8 +190,7 @@ def create_journaled_directory(
             f"journaled absent state belongs to another path: {entry.path}"
         )
     created = u.Cli.atomic_create_empty_directory_guarded(
-        before,
-        permission_mode=0o700 if entry.disposition == "temporary" else 0o755,
+        before, permission_mode=0o700 if entry.disposition == "temporary" else 0o755
     )
     if created.failure:
         return result_type.from_failure(created)
@@ -308,9 +305,7 @@ def cleanup_journaled_directories(
                     "manifest": observed.value,
                 })
             except c.ValidationError as exc:
-                return r[bool].fail_op(
-                    "validate recovery temporary-tree manifest", exc
-                )
+                return r[bool].fail_op("validate recovery temporary-tree manifest", exc)
             removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
         else:
             observed = verify.authorized_cleanup_manifest(layout, journal, entry)
@@ -406,9 +401,7 @@ def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | bool]
     try:
         state = target.lstat()
     except OSError as exc:
-        return r[tuple[int, int] | bool].fail_op(
-            "inspect Mise transaction target", exc
-        )
+        return r[tuple[int, int] | bool].fail_op("inspect Mise transaction target", exc)
     if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
         return r[tuple[int, int] | bool].fail(
             f"Mise transaction target is not physical: {target}"

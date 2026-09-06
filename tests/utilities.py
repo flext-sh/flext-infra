@@ -664,7 +664,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 "  exit 2\n"
                 ";; esac\n"
                 'case "$*" in *" which direnv"*) '
-                'printf \'%s\\n\' "${0%/*}/direnv"; exit ;; esac\n'
+                "printf '%s\\n' \"${0%/*}/direnv\"; exit ;; esac\n"
                 'if [ "$1" = "trust" ]; then exit; fi\n'
                 'case "$*" in *" install "*) exit ;; esac\n'
                 'while [ "$1" != "--" ]; do shift; done\n'

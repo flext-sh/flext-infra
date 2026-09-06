@@ -40,8 +40,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         root = owner.absolute_lexical(workspace_root)
         if all(project.path != root for project in projects):
             root_project = owner.project_info_for_entry(
-                root,
-                workspace_subprojects=owner.workspace_subproject_path_set(root),
+                root, workspace_subprojects=owner.workspace_subproject_path_set(root)
             )
             if root_project is not None:
                 projects.append(root_project)
@@ -101,10 +100,8 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         has_src = FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
             entry / c.Infra.DEFAULT_SRC_DIR
         )
-        has_tests = (
-            FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
-                entry / c.Infra.DIR_TESTS
-            )
+        has_tests = FlextInfraUtilitiesDocsScopeProjectsMixin.physical_directory_exists(
+            entry / c.Infra.DIR_TESTS
         )
         has_deps = bool(project_section.get("dependencies"))
         if (
@@ -157,11 +154,8 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         for project_root in project_roots:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
-            if (
-                project_root == workspace_root
-                and not owner.physical_directory_exists(
-                    project_root / c.Infra.DEFAULT_SRC_DIR
-                )
+            if project_root == workspace_root and not owner.physical_directory_exists(
+                project_root / c.Infra.DEFAULT_SRC_DIR
             ):
                 continue
             project_info = owner.project_info_for_entry(

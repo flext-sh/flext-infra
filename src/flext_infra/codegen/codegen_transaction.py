@@ -354,8 +354,7 @@ class FlextInfraCodegenTransaction:
         if manifested.failure:
             return result_type.from_failure(
                 self._recover_failure(
-                    layout,
-                    manifested.error or f"cannot register {phase} staging tree",
+                    layout, manifested.error or f"cannot register {phase} staging tree"
                 )
             )
         persisted = journal_io.write(
@@ -533,13 +532,9 @@ class FlextInfraCodegenTransaction:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,
-    ) -> p.Result[
-        tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
-    ]:
+    ) -> p.Result[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
         """Create and durably bind one directory identity at a time."""
-        result_type = r[
-            tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
-        ]
+        result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
         current_journal = journal
         current_state = journal_state
         for intent in current_journal.directories:
@@ -568,9 +563,7 @@ class FlextInfraCodegenTransaction:
                     journal_write=False,
                 )
                 return result_type.from_failure(failed)
-            persisted = journal_io.write(
-                layout, recorded.value, expected=current_state
-            )
+            persisted = journal_io.write(layout, recorded.value, expected=current_state)
             if persisted.failure:
                 failed = self._compensate_directory_persistence(
                     layout,
@@ -595,8 +588,7 @@ class FlextInfraCodegenTransaction:
         compensated = state.compensate_created_directory(created)
         if compensated.failure:
             return r[bool].fail(
-                f"{failure}; created-directory compensation failed: "
-                f"{compensated.error}"
+                f"{failure}; created-directory compensation failed: {compensated.error}"
             )
         if journal_write:
             return self._handle_journal_write_failure(layout, failure)

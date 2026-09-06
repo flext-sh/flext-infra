@@ -172,16 +172,10 @@ class TestsFlextInfraModCliRoute:
             )
         )
 
-        exit_code = infra_main([
-            "refactor",
-            "mod",
-            "--workspace",
-            str(mod_workspace),
-        ])
+        exit_code = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
-                mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH,
-                required=True,
+                mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True
             )
         )
         report = m.Infra.ModScanEvidence.model_validate_json(

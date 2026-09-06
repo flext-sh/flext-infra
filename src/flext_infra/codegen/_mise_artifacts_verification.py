@@ -144,7 +144,9 @@ def journal_topology(
     for directory in journal.directories:
         project = by_selector[directory.project]
         target = next(
-            path for path, candidate in directory_targets.items() if candidate == directory
+            path
+            for path, candidate in directory_targets.items()
+            if candidate == directory
         )
         if target == project.root or not target.is_relative_to(project.root):
             return r[bool].fail(
@@ -161,10 +163,7 @@ def journal_topology(
                 )
             parent = directory_targets.get(target.parent)
             expected_parent = (
-                (
-                    directory.before.parent_device,
-                    directory.before.parent_inode,
-                )
+                (directory.before.parent_device, directory.before.parent_inode)
                 if directory.before is not None
                 else (
                     None
@@ -172,10 +171,11 @@ def journal_topology(
                     else (parent.created.device, parent.created.inode)
                 )
             )
-            if expected_parent is None or (
-                directory.created.parent_device,
-                directory.created.parent_inode,
-            ) != expected_parent:
+            if (
+                expected_parent is None
+                or (directory.created.parent_device, directory.created.parent_inode)
+                != expected_parent
+            ):
                 return r[bool].fail(
                     f"generation directory parent binding differs: {directory.path}"
                 )
@@ -382,9 +382,7 @@ def _validate_manifest_transition(
         if current_entry is None:
             if entry.kind == "file" and path in consumable:
                 continue
-            return r[bool].fail(
-                f"journaled temporary-tree entry is missing: {path}"
-            )
+            return r[bool].fail(f"journaled temporary-tree entry is missing: {path}")
         if entry.kind == "directory":
             if not _same_directory_identity(entry, current_entry):
                 return r[bool].fail(
@@ -392,9 +390,7 @@ def _validate_manifest_transition(
                 )
         elif current_entry != entry:
             return r[bool].fail(f"temporary-tree file identity changed: {path}")
-    additions = tuple(
-        entry for path, entry in current.items() if path not in expected
-    )
+    additions = tuple(entry for path, entry in current.items() if path not in expected)
     if additions and not allow_registered_additions:
         return r[bool].fail(
             f"unregistered temporary-tree entry exists: {additions[0].path}"
@@ -419,12 +415,8 @@ def _journal_file_specs(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     journal: m.Infra.CodegenTransactionJournal,
 ) -> p.Result[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]:
-    result_type = r[
-        dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
-    ]
-    specs: dict[
-        Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]
-    ] = {}
+    result_type = r[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]
+    specs: dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]] = {}
     for entry in journal.entries:
         selectors: tuple[tuple[_JournalFileRole, str | None], ...] = (
             ("desired", entry.desired_staging),
@@ -498,8 +490,7 @@ def _matches_journal_file(
 
 
 def _same_directory_identity(
-    expected: m.Cli.AtomicPhysicalTreeEntry,
-    observed: m.Cli.AtomicPhysicalTreeEntry,
+    expected: m.Cli.AtomicPhysicalTreeEntry, observed: m.Cli.AtomicPhysicalTreeEntry
 ) -> bool:
     return (
         expected.path,
@@ -538,9 +529,7 @@ def _manifest_root_matches_created(
 ) -> p.Result[bool]:
     created = directory.created
     if created is None:
-        return r[bool].fail(
-            f"temporary tree has no created identity: {directory.path}"
-        )
+        return r[bool].fail(f"temporary tree has no created identity: {directory.path}")
     root = manifest.root
     if (
         root.path,

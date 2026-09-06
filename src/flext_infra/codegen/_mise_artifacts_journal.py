@@ -169,12 +169,8 @@ def record_directories(
     ):
         return result_type.fail("recorded directory topology differs from journal")
     for previous, current in zip(journal.directories, directories, strict=True):
-        stable_previous = previous.model_dump(
-            exclude={"before", "created", "manifest"}
-        )
-        stable_current = current.model_dump(
-            exclude={"before", "created", "manifest"}
-        )
+        stable_previous = previous.model_dump(exclude={"before", "created", "manifest"})
+        stable_current = current.model_dump(exclude={"before", "created", "manifest"})
         if stable_current != stable_previous:
             return result_type.fail(
                 f"recorded directory intent changed: {previous.path}"

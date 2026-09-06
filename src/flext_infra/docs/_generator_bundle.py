@@ -13,8 +13,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 type _DocsScopeArtifacts = tuple[
-    m.Infra.DocScope,
-    tuple[t.Triple[Path, Path, str | None], ...],
+    m.Infra.DocScope, tuple[t.Triple[Path, Path, str | None], ...]
 ]
 
 

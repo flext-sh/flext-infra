@@ -668,8 +668,7 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
         state_directory_name: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="External runtime state directory name"),
+            t.NonEmptyStr, m.Field(description="External runtime state directory name")
         ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
@@ -1389,10 +1388,9 @@ class FlextInfraConfigModels:
             invalid_apply = [
                 step.verb
                 for step in self.workflow
-                if step.apply != next(
-                    verb.requires_apply
-                    for verb in self.verbs
-                    if verb.name == step.verb
+                if step.apply
+                != next(
+                    verb.requires_apply for verb in self.verbs if verb.name == step.verb
                 )
             ]
             if invalid_apply:

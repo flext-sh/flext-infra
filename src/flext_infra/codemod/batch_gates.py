@@ -409,8 +409,7 @@ class FlextInfraModGateEngine:
                 execution = gate_type(owner).check(owner, context)
                 if not execution.result.passed:
                     return r.fail(
-                        execution.raw_output
-                        or "\n".join(execution.result.errors)
+                        execution.raw_output or "\n".join(execution.result.errors)
                     )
             files = u.Infra.iter_python_files(
                 m.Infra.SourceScanRequest(project_roots=(owner,))

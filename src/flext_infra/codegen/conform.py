@@ -2720,7 +2720,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # live baseline tip remains the correct anchor.
             verify_command = (c.Infra.GIT, "cat-file", "-t", triggering_sha)
             verify_result = u.Cli.run_raw(verify_command, cwd=root)
-            if verify_result.success and u.Cli.process_succeeded(verify_result.value.outcome):
+            if verify_result.success and u.Cli.process_succeeded(
+                verify_result.value.outcome
+            ):
                 merge_base_command = (
                     c.Infra.GIT,
                     "merge-base",
