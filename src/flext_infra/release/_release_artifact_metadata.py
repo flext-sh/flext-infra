@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import tarfile
 import zipfile
 from email.parser import Parser
@@ -335,7 +334,7 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
             ].from_failure(requirements_result)
         try:
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            digest = u.Cli.sha256_file(path)
         except OSError as exc:
             return r[
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]

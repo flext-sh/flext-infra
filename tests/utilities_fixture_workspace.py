@@ -49,6 +49,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         inherited_facets: t.StrSequence = (),
         root_modules: t.StrSequence = (),
         root_packages: t.StrSequence = (),
+        extra_verbs: tuple[m.Infra.MakeVerbSpec, ...] = (),
     ) -> Path:
         """Write the declared ``config/workspace.yaml`` of one standalone repository.
 
@@ -56,10 +57,16 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         the complete topology input for ``codegen conform --what makefile
         --scope self``. Every value is derived from the same typed SSOT the
         production loader validates against, never frozen by hand.
+
+        ``extra_verbs`` declares the repository-owned public Make verbs the
+        managed Makefile renders into its help block, so a caller controls
+        real rendered content through the declaration the loader validates.
         """
         repository = TestsFlextInfraUtilitiesProjectFixtureMixin.repository_ref(
             name, role=c.Infra.MakeProfile.STANDALONE
         )
+        if extra_verbs:
+            repository = repository.model_copy(update={"extra_verbs": extra_verbs})
         project = TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(name)
         if upstream is not None:
             project = project.model_copy(update={"upstream": upstream})

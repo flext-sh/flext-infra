@@ -1,18 +1,13 @@
 # Test doubles hide observable runtime behavior and are forbidden in FLEXT tests.
 #
-# What makes a double is replacing behaviour, not the fixture that carries it.
-# This rule matched the bare `monkeypatch` parameter, so it also forbade the
-# only sanctioned way to provision a test sandbox — and the testing law requires
-# that provisioning: "a unit test opens no network socket and writes nowhere
-# outside its tmp_path fixture; fixtures provision the contract under test
-# physically inside that sandbox". Ten call sites did exactly that with setenv,
-# delenv and syspath_prepend, while three replaced a production callable.
-#
-# The ban is therefore on the behaviour-replacing forms: every unittest.mock
-# entry point, and the monkeypatch methods that swap an attribute or item.
-# Environment and path isolation stay available, because they reveal runtime
-# behaviour instead of hiding it.
-
+# A double replaces a real collaborator with a scripted stand-in, so the test
+# stops proving what the code does. Isolating the process environment is the
+# opposite: it makes the real code run against a sandbox the test owns, which
+# the testing law requires ("a unit test opens no network socket and writes
+# nowhere outside its tmp_path fixture"). This rule therefore bans the forms
+# that substitute behavior -- every unittest.mock entry point, the pytest-mock
+# `mocker` fixture, and the four monkeypatch verbs that replace an attribute or
+# item -- and leaves setenv, delenv, chdir and syspath_prepend alone.
 id: ban-test-doubles
 language: Python
 severity: error
@@ -26,17 +21,16 @@ rule:
         - inside:
             kind: parameters
             stopBy: end
+    - pattern: $CTX.setattr($$$ARGS)
+    - pattern: $CTX.setitem($$$ARGS)
+    - pattern: $CTX.delattr($$$ARGS)
+    - pattern: $CTX.delitem($$$ARGS)
     - pattern: import unittest.mock
     - pattern: from unittest.mock import $$$NAMES
     - pattern: Mock($$$ARGS)
     - pattern: MagicMock($$$ARGS)
     - pattern: patch($$$ARGS)
     - pattern: mock.patch($$$ARGS)
-    - pattern: monkeypatch.setattr($$$ARGS)
-    - pattern: monkeypatch.setitem($$$ARGS)
-    - pattern: monkeypatch.delattr($$$ARGS)
-    - pattern: monkeypatch.delitem($$$ARGS)
-    - pattern: $CTX.setattr($$$ARGS)
 message: >-
   Test doubles are forbidden. Exercise the public facade and observable runtime
   behavior through typed real fixtures.
