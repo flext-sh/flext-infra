@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
-from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
+from tests.unit.deps.extra_paths_support import ExtraPathsTestSupport
 
 if TYPE_CHECKING:
     from pathlib import Path

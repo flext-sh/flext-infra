@@ -69,7 +69,9 @@ class TestCodegenLinkedWorktreeTopology:
         )
 
         (makefile_plan,) = plan.files
-        tm.that(u.Tests.codegen_file_text(makefile_plan), has="MAKE_PROFILE := standalone")
+        tm.that(
+            u.Tests.codegen_file_text(makefile_plan), has="MAKE_PROFILE := standalone"
+        )
         tm.that(plan.workspace.beads.workspace, eq="lane-workspace")
         tm.that(plan.workspace.beads.database, eq="lane-database")
         tm.that(plan.workspace.beads.issue_prefix, eq="lane-prefix")

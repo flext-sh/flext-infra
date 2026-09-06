@@ -8,11 +8,12 @@ from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
 
 from flext_cli import r, u
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesRelease:
@@ -314,7 +315,9 @@ class FlextInfraUtilitiesRelease:
             waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
         except ValueError as exc:
             return r[t.SequenceOf[t.StrSequence]].fail(
-                str(exc).replace("cyclic dependency graph", "release dependency cycle", 1)
+                str(exc).replace(
+                    "cyclic dependency graph", "release dependency cycle", 1
+                )
             )
         return r[t.SequenceOf[t.StrSequence]].ok(waves)
 

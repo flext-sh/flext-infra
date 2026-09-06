@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
+    from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
@@ -264,6 +265,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
@@ -348,6 +350,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
+            "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),

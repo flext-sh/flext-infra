@@ -455,9 +455,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(
-                project.path.as_posix() for project in workspace.subprojects
-            ),
+            tuple(project.path.as_posix() for project in workspace.subprojects),
             eq=tuple(identities),
         )
         tm.that(u.Tests.required_beads(workspace).workspace, eq="root-workspace")
@@ -513,9 +511,7 @@ class TestsRepositoryLocalTopology:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
 
         tm.that(
-            tuple(
-                project.path.as_posix() for project in workspace.subprojects
-            ),
+            tuple(project.path.as_posix() for project in workspace.subprojects),
             eq=(python_project,),
         )
         tm.that(workspace.external_dependency_paths, eq=(Path(service_project),))

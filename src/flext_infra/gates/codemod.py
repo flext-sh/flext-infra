@@ -118,7 +118,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
                     severity=str(c.Infra.GateSeverity.ERROR.value),
                 ),
             )
-        findings = tuple(
+        return tuple(
             m.Infra.Issue(
                 file=provider,
                 line=1,
@@ -130,7 +130,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
             for line in scan.stdout.splitlines()
             if line.strip()
         )
-        return findings
 
     @override
     def _build_check_command(

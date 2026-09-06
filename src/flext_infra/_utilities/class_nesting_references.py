@@ -11,6 +11,16 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
+def _dotted_name(node: cst.BaseExpression | None) -> str | None:
+    """Return the dotted path of a libcst expression, or None when unresolvable."""
+    if isinstance(node, cst.Name):
+        return node.value
+    if isinstance(node, cst.Attribute):
+        parent = _dotted_name(node.value)
+        return f"{parent}.{node.attr.value}" if parent else None
+    return None
+
+
 class FlextInfraUtilitiesClassNestingReferences:
     """Rewrite imports and usages of classes moved below a module owner."""
 
@@ -42,19 +52,6 @@ class FlextInfraUtilitiesClassNestingReferences:
             }
 
         @staticmethod
-        def _dotted_name(node: cst.BaseExpression | None) -> str | None:
-            if isinstance(node, cst.Name):
-                return node.value
-            if isinstance(node, cst.Attribute):
-                parent = (
-                    FlextInfraUtilitiesClassNestingReferences._Transformer._dotted_name(
-                        node.value
-                    )
-                )
-                return f"{parent}.{node.attr.value}" if parent else None
-            return None
-
-        @staticmethod
         def _alias_name(asname: cst.AsName) -> str:
             """Return the bound alias identifier, rejecting impossible shapes.
 
@@ -69,7 +66,7 @@ class FlextInfraUtilitiesClassNestingReferences:
             return asname.name.value
 
         def _import_module(self, node: cst.ImportFrom) -> str:
-            suffix = self._dotted_name(node.module) or ""
+            suffix = _dotted_name(node.module) or ""
             if not node.relative:
                 return suffix
             package_parts = self.module_name.split(".")
@@ -87,7 +84,7 @@ class FlextInfraUtilitiesClassNestingReferences:
             if not bindings or isinstance(node.names, cst.ImportStar):
                 return
             for imported in node.names:
-                name = self._dotted_name(imported.name) or ""
+                name = _dotted_name(imported.name) or ""
                 if name not in bindings:
                     continue
                 local_name = (
@@ -113,15 +110,13 @@ class FlextInfraUtilitiesClassNestingReferences:
                 msg = f"ambiguous class-nesting binding: {sorted(replacements)}"
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if (
-                isinstance(parent, cst.ClassDef)
-                and parent.name is original_node
-                or isinstance(parent, cst.ImportAlias)
-                or isinstance(parent, cst.Attribute)
-                and parent.attr is original_node
-                or isinstance(parent, cst.Arg)
-                and parent.keyword is original_node
-            ):
+            if isinstance(parent, cst.ImportAlias):
+                return updated_node
+            if isinstance(parent, cst.ClassDef) and parent.name is original_node:
+                return updated_node
+            if isinstance(parent, cst.Attribute) and parent.attr is original_node:
+                return updated_node
+            if isinstance(parent, cst.Arg) and parent.keyword is original_node:
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)
             if replacement is None:
@@ -162,13 +157,13 @@ class FlextInfraUtilitiesClassNestingReferences:
             aliases: list[cst.ImportAlias] = []
             seen: set[tuple[str, str]] = set()
             for imported in updated_node.names:
-                name = self._dotted_name(imported.name) or ""
+                name = _dotted_name(imported.name) or ""
                 owner = bindings.get(name)
                 rewritten = (
                     imported.with_changes(name=cst.Name(owner)) if owner else imported
                 )
                 identity = (
-                    self._dotted_name(rewritten.name) or "",
+                    _dotted_name(rewritten.name) or "",
                     self._alias_name(rewritten.asname) if rewritten.asname else "",
                 )
                 if identity not in seen:

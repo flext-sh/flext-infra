@@ -64,14 +64,9 @@ class TestsFlextInfraReleasePublish:
             """A dry run proves the receipt and calls no external service."""
             workspace, _report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
-            monkeypatch.setenv(
-                "PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
-            )
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
-            tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "publish"),
-                eq=0,
-            )
+            tm.that(u.Tests.run_release_main(workspace, "--phase", "publish"), eq=0)
             tm.that((bin_dir / f"{c.Infra.GH}.log").exists(), eq=False)
 
         @staticmethod
@@ -81,9 +76,7 @@ class TestsFlextInfraReleasePublish:
             """An artifact whose bytes no longer match the receipt never leaves."""
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
-            monkeypatch.setenv(
-                "PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
-            )
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
             artifact = Path(report.records[0].artifacts[0].path)
             artifact.write_bytes(artifact.read_bytes() + b"\n")
 
@@ -112,9 +105,7 @@ class TestsFlextInfraReleasePublish:
             """The release is created with the receipt's wheel and sdist, nothing else."""
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
-            monkeypatch.setenv(
-                "PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
-            )
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
             result = u.Tests.run_release_main(
                 workspace, "--phase", "publish", "--apply"
@@ -135,16 +126,10 @@ class TestsFlextInfraReleasePublish:
             """``--index`` uploads the verified artifacts through trusted publishing."""
             workspace, report = _built_workspace(tmp_path)
             bin_dir = _shim_path(tmp_path)
-            monkeypatch.setenv(
-                "PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
-            )
+            monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
 
             result = u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                "publish",
-                "--apply",
-                "--index",
+                workspace, "--phase", "publish", "--apply", "--index"
             )
 
             tm.that(result, eq=0)

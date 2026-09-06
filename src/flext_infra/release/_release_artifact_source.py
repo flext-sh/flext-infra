@@ -11,9 +11,8 @@ from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra.release._release_artifact_metadata import (
-    FlextInfraReleaseArtifactMetadataMixin,
-)
+
+from ._release_artifact_metadata import FlextInfraReleaseArtifactMetadataMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

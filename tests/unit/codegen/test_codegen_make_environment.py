@@ -131,14 +131,12 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "status"],
-                cwd=project_root,
-                env=active_env,
+                ["--no-print-directory", "status"], cwd=project_root, env=active_env
             )
         )
         tm.that(
-            process.outcome.raw_return_code,
-            eq=0,
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
@@ -198,7 +196,11 @@ class TestsCodegenMakeEnvironment:
         )
 
         process = tm.ok(result)
-        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --frozen --project")
@@ -283,7 +285,11 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
@@ -374,18 +380,17 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "check",
-                    f"UV={uv}",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "check", f"UV={uv}"],
                 cwd=project_root,
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
 
-        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         gates = ",".join(config.Infra.codegen.make.check_gates_default)
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
@@ -409,12 +414,7 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "deps",
-                    "APPLY=Y",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=Y"],
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
@@ -423,7 +423,11 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            u.Cli.process_succeeded(process.outcome),
+            eq=True,
+            msg=process.stdout + process.stderr,
+        )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         # The upgrade scope is exactly the declared project locks: one pass with
         # the upgrade flag, then one plain lock verification of the same root.
@@ -452,11 +456,7 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "deps",
-                ],
+                [c.Infra.MAKE, "--no-print-directory", "deps"],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,

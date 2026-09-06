@@ -568,10 +568,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self,
-            repository_root: Path,
-            *,
-            projects_filter: t.StrSequence | None = None,
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...

@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
+
+from ._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

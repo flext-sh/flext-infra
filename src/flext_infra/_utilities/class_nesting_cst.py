@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from flext_infra._utilities.class_nesting_references import (
+from .._utilities.class_nesting_references import (
     FlextInfraUtilitiesClassNestingReferences,
 )
 
@@ -92,8 +92,7 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
             body = cst.IndentedBlock(body=(*existing_lines, *nested))
         else:
             msg = (
-                f"unsupported class body for {owner_name}: "
-                f"{type(owner.body).__name__}"
+                f"unsupported class body for {owner_name}: {type(owner.body).__name__}"
             )
             raise TypeError(msg)
         nested_owner = owner.with_changes(body=body)

@@ -270,7 +270,7 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
-        tm.that(result.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
         tm.that(result.stderr, lacks="conflicting branch")
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"),
@@ -321,7 +321,7 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
-        tm.that(result.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
         tm.that(result.stderr, lacks="fetch origin")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="feature/lane")
         tm.that(self._git(checkout, "rev-parse", "HEAD"), eq=head)
@@ -372,7 +372,7 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
-        tm.that(result.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
         tm.that(marker.read_text(encoding="utf-8"), eq="local change")
         tm.that((project / "uv.log").is_file(), eq=True)
 
@@ -471,7 +471,7 @@ class TestsCodegenSetupSubmodules:
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
-        tm.that(result.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(result.outcome), eq=True)
         tm.that(dirty.read_text(encoding="utf-8"), eq="preserve me")
         tm.that(self._git(checkout, "branch", "--show-current"), eq="declared-dev")
 

@@ -108,8 +108,14 @@ class FlextInfraModelsDuplication:
         ]
         is_new: Annotated[
             t.StrictBool,
-            m.Field(alias="isNew", description="Whether jscpd marked the clone new"),
-        ]
+            m.Field(
+                alias="isNew",
+                description=(
+                    "Whether jscpd marked the clone new; the flag is absent from "
+                    "some jscpd report versions and defaults to False"
+                ),
+            ),
+        ] = False
         lines: Annotated[
             t.PositiveInt, m.Field(description="Duplicated logical line count")
         ]

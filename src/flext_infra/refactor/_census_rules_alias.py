@@ -9,9 +9,8 @@ from flext_infra.detectors.manual_typing_alias_detector import (
     FlextInfraManualTypingAliasDetector,
 )
 from flext_infra.detectors.runtime_alias_detector import FlextInfraRuntimeAliasDetector
-from flext_infra.refactor._census_rules_shared import (
-    FlextInfraRefactorCensusRulesSharedMixin,
-)
+
+from ._census_rules_shared import FlextInfraRefactorCensusRulesSharedMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

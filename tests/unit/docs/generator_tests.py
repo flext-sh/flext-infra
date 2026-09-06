@@ -497,9 +497,10 @@ def test_link_sanitizer_preserves_external_schemes_and_fragments() -> None:
         f"{c.Infra.DOCS_FRAGMENT_PREFIX}section",
     ]
     local = "guides/setup"
-    content = "\n".join(
-        [*[f"[link]({target})" for target in preserved], f"[link]({local})"]
-    )
+    content = "\n".join([
+        *[f"[link]({target})" for target in preserved],
+        f"[link]({local})",
+    ])
 
     sanitized = guides.docs_sanitize_internal_anchor_links(content)
 

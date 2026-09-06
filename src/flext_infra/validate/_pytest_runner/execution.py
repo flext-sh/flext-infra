@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra.validate._pytest_runner.command import FlextInfraPytestRunnerCommand
-from flext_infra.validate._pytest_runner.reports import FlextInfraPytestRunnerReports
 from flext_infra.validate.testmon_db import FlextInfraTestmonDbInspector
+
+from .command import FlextInfraPytestRunnerCommand
+from .reports import FlextInfraPytestRunnerReports
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -51,9 +52,7 @@ class FlextInfraPytestRunnerExecution(
         # Exit code 5 is pytest's "no tests ran": testmon selected nothing.
         if outcome.outcome.raw_return_code not in {0, 5}:
             detail = (outcome.stderr or outcome.stdout).strip()
-            msg = (
-                f"testmon selection failed ({outcome.outcome.raw_return_code}): {detail}"
-            )
+            msg = f"testmon selection failed ({outcome.outcome.raw_return_code}): {detail}"
             raise RuntimeError(msg)
         node_ids = tuple(
             line.strip()

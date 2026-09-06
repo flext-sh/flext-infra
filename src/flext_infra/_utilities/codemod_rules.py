@@ -12,7 +12,8 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesCodemodRules:
@@ -196,7 +197,9 @@ class FlextInfraUtilitiesCodemodRules:
                 tuple(selected), dependencies=lambda name: edges.get(name, ())
             )
         except ValueError as exc:
-            return r[t.StrSequence].fail(f"codemod provider cycle: {exc}")
+            return r[t.StrSequence].fail(
+                f"codemod provider cycle: {exc}", exception=exc
+            )
         return r[t.StrSequence].ok(ordered)
 
     @staticmethod

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m
-from flext_infra._utilities.class_nesting_cst import FlextInfraUtilitiesClassNestingCst
+
+from .._utilities.class_nesting_cst import FlextInfraUtilitiesClassNestingCst
 
 if TYPE_CHECKING:
     from flext_infra import p, t

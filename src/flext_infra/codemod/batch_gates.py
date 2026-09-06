@@ -51,7 +51,11 @@ class FlextInfraModGateEngine:
                 prefix="mod-rule-fixtures-", dir=config_root.parent
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
-                shutil.copytree(config_root, temp_root)
+                shutil.copytree(
+                    config_root,
+                    temp_root,
+                    ignore=shutil.ignore_patterns(c.Infra.DUNDER_PYCACHE),
+                )
                 split_rules = cls._materialize_split_rule_files(
                     config_root=config_root,
                     temp_root=temp_root,

@@ -13,7 +13,7 @@ from pathlib import Path
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import u, u as test_u
 
 
 class TestsCodegenRepositoryRootFanout:
@@ -40,7 +40,7 @@ class TestsCodegenRepositoryRootFanout:
                     remove_env_keys=("MAKEFLAGS",),
                 )
             )
-            tm.that(execution.outcome.raw_return_code, eq=0)
+            tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
     def test_repository_root_deps_profiles_canonical_modernization(
@@ -57,7 +57,7 @@ class TestsCodegenRepositoryRootFanout:
             )
         )
 
-        tm.that(execution.outcome.raw_return_code, eq=0)
+        tm.that(u.Cli.process_succeeded(execution.outcome), eq=True)
         rendered = execution.stdout + execution.stderr
         tm.that(rendered, has="-m cProfile")
         tm.that(rendered, has="deps.pstats")

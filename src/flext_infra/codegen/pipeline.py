@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, override
 from flext_cli import cli
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
+
+from ._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -55,12 +56,16 @@ class FlextInfraCodegenPipeline(
             c.Infra.PipelineStage.DISCOVER: lambda ctx, /: self._stage_discover(ctx),
             c.Infra.PipelineStage.TOOLCHAIN: lambda ctx, /: self._stage_toolchain(ctx),
             c.Infra.PipelineStage.PY_TYPED: lambda ctx, /: self._stage_py_typed(ctx),
-            c.Infra.PipelineStage.CENSUS_BEFORE: lambda ctx, /: self._stage_census_before(ctx),
+            c.Infra.PipelineStage.CENSUS_BEFORE: lambda ctx, /: (
+                self._stage_census_before(ctx)
+            ),
             c.Infra.PipelineStage.SCAFFOLD: lambda ctx, /: self._stage_scaffold(ctx),
             c.Infra.PipelineStage.AUTO_FIX: lambda ctx, /: self._stage_auto_fix(ctx),
             c.Infra.PipelineStage.DEPS: lambda ctx, /: self._stage_deps(ctx),
             c.Infra.PipelineStage.LAZY_INIT: lambda ctx, /: self._stage_lazy_init(ctx),
-            c.Infra.PipelineStage.CENSUS_AFTER: lambda ctx, /: self._stage_census_after(ctx),
+            c.Infra.PipelineStage.CENSUS_AFTER: lambda ctx, /: self._stage_census_after(
+                ctx
+            ),
         }
         return cli.linear_pipeline(c.Infra.PIPELINE_STAGE_ORDER, handlers)
 

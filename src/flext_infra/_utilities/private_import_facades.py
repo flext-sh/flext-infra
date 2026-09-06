@@ -65,14 +65,25 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     target, value = node.targets[0], node.value
                 elif isinstance(node, ast.AnnAssign):
                     target, value = node.target, node.value
+                facade_class: str | None = None
+                if isinstance(value, ast.Name):
+                    facade_class = value.id
+                elif (
+                    isinstance(value, ast.Call)
+                    and isinstance(value.func, ast.Attribute)
+                    and isinstance(value.func.value, ast.Name)
+                ):
+                    # Canonical facade singleton form:
+                    # ``alias: Facade = Facade.fetch_global()``.
+                    facade_class = value.func.value.id
                 if (
                     isinstance(target, ast.Name)
                     and len(target.id) == 1
                     and target.id.islower()
-                    and isinstance(value, ast.Name)
-                    and value.id in class_names
+                    and facade_class is not None
+                    and facade_class in class_names
                 ):
-                    owners.add((target.id, value.id))
+                    owners.add((target.id, facade_class))
             for alias, root_name in sorted(owners):
                 discovered.setdefault(package, []).append((
                     tree,
@@ -117,7 +128,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
             if root_class is None:
                 continue
 
-            def collect(node: ast.ClassDef, public_path: str) -> None:
+            def collect(
+                node: ast.ClassDef, public_path: str, imports: dict[str, str] = imports
+            ) -> None:
                 if any(
                     isinstance(base, ast.Name) and imports.get(base.id) == qualified
                     for base in node.bases

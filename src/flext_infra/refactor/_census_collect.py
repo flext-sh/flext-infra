@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra.refactor._census_rules_dispatch import (
-    FlextInfraRefactorCensusRulesDispatchMixin,
-)
-from flext_infra.refactor._census_validate import FlextInfraRefactorCensusValidateMixin
+
+from ._census_rules_dispatch import FlextInfraRefactorCensusRulesDispatchMixin
+from ._census_validate import FlextInfraRefactorCensusValidateMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

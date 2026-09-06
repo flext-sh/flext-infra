@@ -15,9 +15,8 @@ from packaging.version import InvalidVersion, Version
 
 from flext_core import r
 from flext_infra import c, t, u
-from flext_infra.release._release_artifact_archive import (
-    FlextInfraReleaseArtifactArchiveMixin,
-)
+
+from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -6,10 +6,8 @@ import operator
 from typing import override
 
 from flext_infra import c, m, t, u
-from flext_infra._utilities._rope_method_order import (
-    FlextInfraUtilitiesRopeMethodOrderMixin,
-)
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
@@ -86,9 +84,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         def method_sort_key(
             item: tuple[m.Infra.MethodInfo, int, int, str],
         ) -> tuple[int, int, str]:
-            return FlextInfraUtilitiesRopeMethodOrderMixin.build_method_sort_key(
-                item[0], self._order_config
-            )
+            return u.Infra.build_method_sort_key(item[0], self._order_config)
 
         source = "".join(lines)
         edits: list[tuple[int, int, str]] = []
@@ -144,9 +140,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             )
             method_info = m.Infra.MethodInfo(
                 name=method_name,
-                category=FlextInfraUtilitiesRopeMethodOrderMixin.categorize_method(
-                    method_name, decorators
-                ),
+                category=u.Infra.categorize_method(method_name, decorators),
                 node=None,
                 decorators=decorators,
             )

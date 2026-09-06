@@ -7,14 +7,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core.result import FlextResult as r
-from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
-from flext_infra._utilities._docs_scope_policy import (
-    FlextInfraUtilitiesDocsScopePolicyMixin,
-)
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
+
+from .._models.workspace import FlextInfraModelsWorkspace as mw
+from .._utilities._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
+from .._utilities.git import FlextInfraUtilitiesGit
+from .._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraProtocols as p

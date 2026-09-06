@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import stat
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
