@@ -140,13 +140,13 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                         error=normalize_result.error or "import normalization failed",
                     )
                 )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+        return self._build_project_fix_result(
+            project_dir,
+            fixed,
+            previewed,
+            skipped,
+            failed,
+            files_modified,
         )
 
     @staticmethod

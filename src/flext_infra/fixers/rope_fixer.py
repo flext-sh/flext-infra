@@ -48,25 +48,6 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
         """Bind the repository root used to open rope projects."""
         super().__init__(repository_root)
 
-    @staticmethod
-    def _build_project_fix_result(
-        project_dir: Path,
-        fixed: list[m.Infra.FixedViolation],
-        previewed: list[m.Infra.PreviewedViolation],
-        skipped: list[m.Infra.SkippedViolation],
-        failed: list[m.Infra.FailedFix],
-        files_modified: set[str],
-    ) -> m.Infra.ProjectFixResult:
-        """Build the immutable ``ProjectFixResult`` from accumulated lists."""
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
-        )
-
     def _record_file_fix_outcome(
         self,
         ctx: m.Infra.FixEnforcementCommand,
