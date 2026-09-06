@@ -1,8 +1,4 @@
-"""Per-project uv cooldown overlay for repositories with a security floor.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Per-project uv cooldown overlay for repositories with a security floor."""
 
 from __future__ import annotations
 
@@ -12,15 +8,7 @@ from tests import u as test_u
 
 
 class TestCodegenUvExcludeNewerOverlay:
-    """Resolve ``[tool.uv].exclude-newer`` from the repository policy overlay.
-
-    The fleet default is a rolling window. A repository that declares a
-    security floor through ``override-dependencies`` cannot use it: once the
-    pinned version ages past the window it is excluded, the floor becomes
-    unsatisfiable, and resolution fails without any code change. Such a
-    repository declares an absolute cutoff through the overlay instead of
-    hand-editing the generated ``pyproject.toml``.
-    """
+    """Validate the public conform surface against the repository policy overlay."""
 
     SOURCE = (
         '[project]\nname = "flext-demo"\nversion = "0.12.0.dev0"\n'
@@ -28,8 +16,7 @@ class TestCodegenUvExcludeNewerOverlay:
     )
 
     @staticmethod
-    def _workspace() -> m.Infra.WorkspaceSpec:
-        """Build the local repository context consumed by pyproject conform."""
+    def _repository() -> m.Infra.WorkspaceSpec:
         repository = test_u.Tests.repository_ref(config.Infra.name)
         return m.Infra.WorkspaceSpec(
             name=repository.distribution,
@@ -44,14 +31,13 @@ class TestCodegenUvExcludeNewerOverlay:
 
     @classmethod
     def _render(cls, *, overlay_window: str | None) -> str:
-        """Conform a minimal pyproject the way codegen does for a repository."""
-        workspace = cls._workspace()
+        repository = cls._repository()
         return tm.ok(
             u.Infra.pyproject_conform(
                 cls.SOURCE,
                 providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace=repository,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=(),
                 uv_exclude_newer=overlay_window,
@@ -59,22 +45,24 @@ class TestCodegenUvExcludeNewerOverlay:
         )
 
     def test_absent_overlay_keeps_the_fleet_cooldown(self) -> None:
-        """Without the overlay the generated cooldown is the fleet window."""
         rendered = self._render(overlay_window=None)
-        fleet: str = config.Infra.codegen.toolchain.uv_exclude_newer
-        tm.that(rendered, has=f'exclude-newer = "{fleet}"')
+        tm.that(
+            rendered,
+            has=(
+                f'exclude-newer = "{config.Infra.codegen.toolchain.uv_exclude_newer}"'
+            ),
+        )
 
     def test_overlay_pins_the_absolute_cutoff(self) -> None:
-        """A declared overlay replaces the rolling fleet default."""
         pinned = "2026-08-05T00:00:00Z"
         rendered = self._render(overlay_window=pinned)
-        fleet: str = config.Infra.codegen.toolchain.uv_exclude_newer
         tm.that(rendered, has=f'exclude-newer = "{pinned}"')
-        tm.that(rendered, lacks=f'exclude-newer = "{fleet}"')
+        tm.that(
+            rendered,
+            lacks=(
+                f'exclude-newer = "{config.Infra.codegen.toolchain.uv_exclude_newer}"'
+            ),
+        )
 
-    def test_overlay_declares_an_absolute_instant_not_a_window(self) -> None:
-        """The pinned form is an instant, so it never ages past a floor."""
-        pinned = "2026-08-05T00:00:00Z"
-        rendered = self._render(overlay_window=pinned)
-        tm.that(rendered, has="exclude-newer")
-        tm.that(rendered, match=r'exclude-newer = "\d{4}-\d{2}-\d{2}T[\d:]+Z"')
+
+__all__: tuple[str, ...] = ()

@@ -462,7 +462,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         tm.that(updated, has="from flext_demo import t")
         tm.that(
             updated,
-            has="data: t.MutableMappingKV[str, t.MutableSequenceOf[t.JsonValue]]",
+            has="data: t.MappingKV[str, t.SequenceOf[t.JsonValue]]",
         )
         tm.that(updated, has="-> t.Pair[str, int]")
         tm.that(
@@ -523,7 +523,7 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         tm.that(updated, has="from flext_demo import (\n    c,\n    m,\n)")
         tm.that(updated, has="from flext_demo import t")
         tm.that(updated.index("from flext_demo import t"), gt=updated.index("    m,"))
-        tm.that(updated, has="value: t.MutableSequenceOf[t.JsonValue]")
+        tm.that(updated, has="value: t.SequenceOf[t.JsonValue]")
 
     def test_skips_duplicate_t_import_in_parenthesized_import_block(
         self, tmp_path: Path
@@ -547,4 +547,4 @@ class TestsFlextInfraRefactorInfraRefactorTypingUnifier:
         )
         tm.that(updated, has="from flext_demo import (\n    c,\n    m,\n    t,\n)")
         tm.that(updated.count("from flext_demo import t"), eq=0)
-        tm.that(updated, has="value: t.MutableSequenceOf[t.JsonValue]")
+        tm.that(updated, has="value: t.SequenceOf[t.JsonValue]")

@@ -11,11 +11,10 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from pydantic_settings import SettingsConfigDict
-
 from flext_core import FlextSettings
 from flext_infra import m
-from flext_infra._models.settings import FlextInfraSettingsModels
+
+from ._models.settings import FlextInfraSettingsModels
 
 
 # NOTE (multi-agent): migrated base FlextCliSettings->FlextSettings to
@@ -24,7 +23,7 @@ from flext_infra._models.settings import FlextInfraSettingsModels
 class _FlextInfraSettings(FlextSettings):
     """Environment-backed infra settings; fields under ``settings.Infra.*``."""
 
-    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
+    model_config: ClassVar[m.SettingsConfigDict] = m.SettingsConfigDict(
         env_prefix="FLEXT_INFRA_",
         env_nested_delimiter="__",
         extra="ignore",

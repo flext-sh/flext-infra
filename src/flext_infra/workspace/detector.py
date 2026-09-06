@@ -8,19 +8,19 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, override
-from urllib.parse import urlparse
 
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.workspace._governance import FlextInfraWorkspaceGovernanceMixin
+
+from ._governance import FlextInfraWorkspaceGovernanceMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
 class FlextInfraWorkspaceDetector(
-    FlextInfraWorkspaceGovernanceMixin, s[c.Infra.WorkspaceMode]
+    FlextInfraWorkspaceGovernanceMixin, s[c.Infra.MakeProfile]
 ):
     """Classify a repository only from files and Git facts inside that checkout."""
 
@@ -30,32 +30,77 @@ class FlextInfraWorkspaceDetector(
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
 
     @staticmethod
+    def _workspace_manifest_path(repository_root: Path) -> Path:
+        """Return the optional, explicitly selected workspace manifest path."""
+        return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
+
+    @classmethod
+    def _composed_beads_identity_error(
+        cls, subproject_root: Path, workspace_beads: m.Infra.BeadsProjectSpec
+    ) -> str | None:
+        member_identity = (
+            subproject_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
+        )
+        # Detection observes the topology; it does not enforce the ledger-route
+        # prohibition. Refusing to load a workspace because one composed project
+        # still carries the old cross-project symlink makes the migration
+        # impossible to perform — nothing can plan the fix for a repository it
+        # cannot describe. `codegen conform` owns the prohibition and rejects
+        # the link there, per repository and within the requested scope.
+        if not member_identity.is_file():
+            return f"missing required member Beads routing identity: {member_identity}"
+        member_identity_result = cls.load_beads_spec(subproject_root)
+        if member_identity_result.failure:
+            return member_identity_result.error
+        member_identity = member_identity_result.value
+        member_key = (
+            member_identity.workspace,
+            member_identity.database,
+            member_identity.issue_prefix,
+        )
+        workspace_key = (
+            workspace_beads.workspace,
+            workspace_beads.database,
+            workspace_beads.issue_prefix,
+        )
+        if member_key != workspace_key:
+            return (
+                "member Beads routing identity differs from the workspace ledger: "
+                f"{member_key} != {workspace_key}"
+            )
+        return None
+
+    @staticmethod
+    def _provider_owns_url(provider: m.Infra.ProviderSpec, url: str) -> bool:
+        """Require the remote identity to name this provider's organization.
+
+        Compares the normalized ``owner/repository`` identity instead of the raw
+        URL. CI rewrites private submodule origins to SSH deploy-key URLs, and
+        ``urlparse`` cannot read SCP-style Git syntax: ``git@host:org/repo.git``
+        yields an empty scheme and netloc, so comparing those fields rejected
+        every SSH remote for every provider. ``git_remote_identity`` is the
+        owner that already normalizes HTTPS, SSH and Host-alias forms — this
+        class uses it to compare declared and live origins — and the
+        organization is the discriminator, exactly as ``_provider_for_url``
+        documents.
+        """
+        organization, separator, repository = u.Infra.git_remote_identity(
+            url
+        ).partition("/")
+        return (
+            bool(separator)
+            and bool(repository)
+            and organization == provider.organization.casefold()
+        )
+
+    @staticmethod
     def repository_is_governed(
         repository: m.Infra.RepositoryRef, provider: m.Infra.ProviderSpec
     ) -> bool:
-        """Require provider key, host, and organization to agree exactly."""
+        """Require the provider key and the owned canonical URL to agree."""
         if repository.provider != provider.name:
             return False
-        provider_url = urlparse(provider.base_url)
-        repository_url = urlparse(repository.url)
-        provider_path = provider_url.path.strip("/")
-        repository_path = repository_url.path.strip("/")
-        repository_name = repository_path.removeprefix(
-            f"{provider.organization}/"
-        ).removesuffix(".git")
-        canonical_path = f"{provider.organization}/{repository_name}.git"
-        actual_path = (
-            repository_path
-            if repository_path.endswith(".git")
-            else f"{repository_path}.git"
-        )
-        return (
-            provider_url.scheme == repository_url.scheme
-            and provider_url.netloc == repository_url.netloc
-            and provider_path == provider.organization
-            and bool(repository_name)
-            and actual_path == canonical_path
-        )
+        return FlextInfraWorkspaceDetector._provider_owns_url(provider, repository.url)
 
     @classmethod
     def load_beads_spec(
@@ -94,37 +139,135 @@ class FlextInfraWorkspaceDetector(
             )
         return r[str].ok(result.value.text.strip())
 
-    @staticmethod
-    def _declared_provider_for_url(url: str) -> m.Infra.ProviderSpec | None:
+    @classmethod
+    def _declared_provider_for_url(cls, url: str) -> m.Infra.ProviderSpec | None:
         """Return the exact configured provider owning ``url``."""
-        parsed = urlparse(url)
         for provider in config.Infra.codegen.providers:
-            provider_url = urlparse(provider.base_url)
-            if (
-                provider_url.scheme == parsed.scheme
-                and provider_url.netloc == parsed.netloc
-                and parsed.path.strip("/").startswith(f"{provider.organization}/")
-            ):
+            if cls._provider_owns_url(provider, url):
                 return provider
         return None
 
     @classmethod
     def _provider_for_url(cls, url: str) -> p.Result[m.Infra.ProviderSpec]:
-        """Resolve one configured provider, failing closed without leaking the URL.
+        """Resolve one configured provider, failing closed without leaking the URL."""
+        declared = cls._declared_provider_for_url(url)
+        if declared is not None:
+            return r[m.Infra.ProviderSpec].ok(declared)
+        return r[m.Infra.ProviderSpec].fail(
+            "repository owner must resolve exactly once"
+        )
 
-        Every configured provider is hosted on the same forge, so the host alone
-        does not identify one: matching on it returned whichever provider came
-        first in the list, and `repository_is_governed` then rejected the
-        repository for belonging to a different organization than the one just
-        chosen for it. The organization is the discriminator, and
-        `_declared_provider_for_url` already applies it.
-        """
-        provider = cls._declared_provider_for_url(url)
-        if provider is None:
-            return r[m.Infra.ProviderSpec].fail(
-                "repository owner must resolve exactly once"
+    @staticmethod
+    def _manifest_git_contradictions(
+        declared: m.Infra.RepositoryRef, observed: m.Infra.RepositoryRef
+    ) -> list[str]:
+        """Describe every manifest identity or topology conflict with Git."""
+        comparisons = (
+            (
+                declared.name != observed.name,
+                f"name {declared.name!r} != {observed.name!r}",
+            ),
+            (
+                declared.distribution != observed.distribution,
+                f"distribution {declared.distribution!r} != {observed.distribution!r}",
+            ),
+            (
+                declared.provider != observed.provider,
+                f"provider {declared.provider!r} != {observed.provider!r}",
+            ),
+            (
+                declared.path != observed.path,
+                f"path {declared.path.as_posix()!r} != {observed.path.as_posix()!r}",
+            ),
+            (
+                declared.role is not observed.role,
+                f"role {declared.role.value!r} != {observed.role.value!r}",
+            ),
+        )
+        contradictions = [message for differs, message in comparisons if differs]
+        if u.Infra.git_remote_identity(declared.url) != u.Infra.git_remote_identity(
+            observed.url
+        ):
+            contradictions.append("url identity differs from Git origin")
+        # Why (cosmos-d0qn4): a repository-local manifest carries the
+        # repository's own coordinates. Whether that repository is currently
+        # checked out as a submodule is a fact of the parent's Git tree, not of
+        # the manifest, so the same manifest must load both standalone (its own
+        # CI observes root) and inside a workspace (the parent's conform
+        # observes submodule). Only a manifest that claims to be a submodule
+        # while Git shows a standalone checkout contradicts reality.
+        if declared.role is not observed.role:
+            contradictions.append(
+                f"role {declared.role.value!r} contradicts the observed topology"
             )
-        return r[m.Infra.ProviderSpec].ok(provider)
+        return contradictions
+
+    @classmethod
+    def _manifest_repository_ref(
+        cls,
+        repository_root: Path,
+        *,
+        observed: m.Infra.RepositoryRef,
+        beads: m.Infra.BeadsProjectSpec,
+    ) -> p.Result[m.Infra.RepositoryRef]:
+        """Load a selected repository manifest and reconcile it with Git truth.
+
+        A checkout without ``config/workspace.yaml`` remains a valid observed
+        repository. Once the manifest exists, however, its complete typed
+        ``repository`` record is authoritative for repository policy and must
+        agree with the immutable identity and topology observed from Git.
+        """
+        manifest_path = cls._workspace_manifest_path(repository_root)
+        if not manifest_path.is_file():
+            return r[m.Infra.RepositoryRef].ok(observed)
+        loaded = u.Cli.config_load(manifest_path, expand_env=False)
+        if loaded.failure:
+            error = loaded.error
+            if error is None:
+                msg = "workspace manifest load failed without an error"
+                raise RuntimeError(msg)
+            return r[m.Infra.RepositoryRef].fail(
+                f"invalid workspace manifest ({manifest_path}): {error}"
+            )
+        try:
+            manifest = m.Infra.WorkspaceManifestSpec.model_validate(loaded.value.data)
+        except c.ValidationError as exc:
+            return r[m.Infra.RepositoryRef].fail_op(
+                f"workspace manifest model validation ({manifest_path})", exc
+            )
+        declared = manifest.repository
+        contradictions = cls._manifest_git_contradictions(declared, observed)
+        if contradictions:
+            return r[m.Infra.RepositoryRef].fail(
+                f"workspace manifest contradicts Git ({manifest_path}): "
+                + "; ".join(contradictions)
+            )
+        provider = cls._provider_for_url(observed.url)
+        if provider.failure:
+            error = provider.error
+            if error is None:
+                msg = "repository owner resolution failed without an error"
+                raise RuntimeError(msg)
+            return r[m.Infra.RepositoryRef].fail(error)
+        if not cls.repository_is_governed(declared, provider.value):
+            return r[m.Infra.RepositoryRef].fail(
+                f"workspace manifest repository is not governed: {manifest_path}"
+            )
+        if manifest.ledger_id is not None and manifest.ledger_id != beads.database:
+            return r[m.Infra.RepositoryRef].fail(
+                "workspace manifest ledger_id contradicts Beads identity "
+                f"({manifest_path}): {manifest.ledger_id!r} != {beads.database!r}"
+            )
+        if (
+            manifest.ledger_prefix is not None
+            and manifest.ledger_prefix != beads.issue_prefix
+        ):
+            return r[m.Infra.RepositoryRef].fail(
+                "workspace manifest ledger_prefix contradicts Beads identity "
+                f"({manifest_path}): {manifest.ledger_prefix!r} != "
+                f"{beads.issue_prefix!r}"
+            )
+        return r[m.Infra.RepositoryRef].ok(declared)
 
     @staticmethod
     def _gitmodule_contract(
@@ -137,10 +280,7 @@ class FlextInfraWorkspaceDetector(
             )
         )
         if contract.failure:
-            return r[tuple[str, str]].fail(
-                contract.error
-                or f"invalid .gitmodules entry: {subproject_path.as_posix()}"
-            )
+            return r[tuple[str, str]].from_failure(contract)
         return r[tuple[str, str]].ok((contract.value.url, contract.value.branch))
 
     @classmethod
@@ -149,15 +289,13 @@ class FlextInfraWorkspaceDetector(
         repository_root: Path,
         *,
         path: Path = Path(),
-        checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.ROOT,
+        composed: bool = False,
         declared_url: str | None = None,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Build repository policy from local metadata and an immutable Git URL."""
         metadata = u.read_project_metadata(repository_root)
         if metadata.failure:
-            return r[m.Infra.RepositoryRef].fail(
-                metadata.error or f"unable to read project metadata: {repository_root}"
-            )
+            return r[m.Infra.RepositoryRef].from_failure(metadata)
         origin = cls._git_origin_url(repository_root)
         if origin.failure:
             return r[m.Infra.RepositoryRef].fail(origin.error)
@@ -173,9 +311,9 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.RepositoryRef].fail(provider_result.error)
         provider = provider_result.value
         role = (
-            c.Infra.RepositoryRole.WORKSPACE
+            c.Infra.MakeProfile.WORKSPACE
             if (repository_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.RepositoryRole.STANDALONE
+            else c.Infra.MakeProfile.STANDALONE
         )
         project_name = metadata.value.project.name
         repository = m.Infra.RepositoryRef(
@@ -185,10 +323,10 @@ class FlextInfraWorkspaceDetector(
             path=path,
             role=role,
             provider=provider.name,
-            checkout=checkout,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
-            editable=checkout is c.Infra.CheckoutKind.SUBMODULE,
+            editable=composed,
             read_only=False,
         )
         if not cls.repository_is_governed(repository, provider):
@@ -199,7 +337,7 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def _load_subprojects(
-        cls, repository_root: Path
+        cls, repository_root: Path, *, workspace_beads: m.Infra.BeadsProjectSpec
     ) -> p.Result[tuple[tuple[m.Infra.RepositoryRef, ...], tuple[Path, ...]]]:
         """Validate every direct governed .gitmodules entry before planning writes."""
         declared = u.Infra.git_declared_submodule_paths(repository_root)
@@ -220,7 +358,10 @@ class FlextInfraWorkspaceDetector(
                 )
             seen.add(path)
             loaded = cls._load_subproject(
-                repository_root, path, integration_branch=integration_branch
+                repository_root,
+                path,
+                integration_branch=integration_branch,
+                workspace_beads=workspace_beads,
             )
             if loaded.failure:
                 return result_type.fail(loaded.error)
@@ -232,7 +373,12 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def _load_subproject(
-        cls, repository_root: Path, path: Path, *, integration_branch: str | None = None
+        cls,
+        repository_root: Path,
+        path: Path,
+        *,
+        integration_branch: str | None = None,
+        workspace_beads: m.Infra.BeadsProjectSpec,
     ) -> p.Result[m.Infra.RepositoryRef | Path]:
         """Load one governed entry, or its declared path for external entries.
 
@@ -295,14 +441,25 @@ class FlextInfraWorkspaceDetector(
             )
         if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return result_type.ok(path)
-        beads = cls.load_beads_spec(subproject_root)
-        if beads.failure:
-            return result_type.fail(beads.error)
+        route_error = (
+            cls._composed_beads_identity_error(subproject_root, workspace_beads)
+            if (subproject_root / c.Infra.BEADS_DIRNAME).is_symlink()
+            else None
+        )
+        if (
+            route_error is None
+            and not (subproject_root / c.Infra.BEADS_DIRNAME).is_symlink()
+        ):
+            beads = cls.load_beads_spec(subproject_root)
+            if beads.failure:
+                return result_type.fail(beads.error)
+        if route_error is not None:
+            return result_type.fail(
+                "composed project must follow the workspace Beads ledger: "
+                f"{route_error}"
+            )
         repository = cls._local_repository_ref(
-            subproject_root,
-            path=path,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
-            declared_url=declared_url,
+            subproject_root, path=path, composed=True, declared_url=declared_url
         )
         if repository.failure:
             return result_type.fail(repository.error)
@@ -319,21 +476,81 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.WorkspaceSpec].fail(
                 f"repository root is not a directory: {resolved_root}"
             )
-        beads = cls.load_beads_spec(resolved_root)
-        if beads.failure:
-            return r[m.Infra.WorkspaceSpec].fail(beads.error)
-        repository = cls._local_repository_ref(resolved_root)
+        identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=resolved_root))
+        if identity.failure:
+            return r[m.Infra.WorkspaceSpec].from_failure(identity)
+        beads_result = cls.load_beads_spec(resolved_root)
+        member_root = identity.value.primary_root
+        member_beads = member_root / c.Infra.BEADS_DIRNAME
+        if identity.value.is_attached_submodule and member_beads.is_symlink():
+            superproject_root = identity.value.superproject_root
+            if superproject_root is None:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    f"Git submodule has no superproject: {resolved_root}"
+                )
+            inherited_beads = cls.load_beads_spec(superproject_root)
+            if inherited_beads.failure:
+                return r[m.Infra.WorkspaceSpec].from_failure(inherited_beads)
+            try:
+                member_path = member_root.relative_to(superproject_root)
+            except ValueError:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    f"Git submodule escapes its superproject: {member_root}"
+                )
+            baseline = u.Infra.repository_baseline_branch(superproject_root)
+            loaded_member = cls._load_subproject(
+                superproject_root,
+                member_path,
+                integration_branch=baseline.value if baseline.success else None,
+                workspace_beads=inherited_beads.value,
+            )
+            if loaded_member.failure or isinstance(loaded_member.value, Path):
+                return r[m.Infra.WorkspaceSpec].fail(
+                    loaded_member.error
+                    or "Git submodule is not a declared governed project: "
+                    f"{resolved_root}"
+                )
+            route_error = cls._composed_beads_identity_error(
+                resolved_root, inherited_beads.value
+            )
+            if route_error is not None:
+                return r[m.Infra.WorkspaceSpec].fail(
+                    "composed project must follow the workspace Beads ledger: "
+                    f"{route_error}"
+                )
+            beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited_beads.value)
+        if beads_result.failure:
+            return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
+        beads = beads_result
+        repository = cls._local_repository_ref(
+            resolved_root, composed=identity.value.is_attached_submodule
+        )
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
-        topology = cls._load_subprojects(resolved_root)
+        topology = cls._load_subprojects(resolved_root, workspace_beads=beads.value)
         if topology.failure:
             return r[m.Infra.WorkspaceSpec].fail(topology.error)
         subprojects, external = topology.value
+        observed_repository = repository.value.model_copy(
+            update={
+                "role": (
+                    c.Infra.MakeProfile.WORKSPACE
+                    if subprojects
+                    else c.Infra.MakeProfile.STANDALONE
+                )
+            }
+        )
+        declared_repository = cls._manifest_repository_ref(
+            resolved_root, observed=observed_repository, beads=beads.value
+        )
+        if declared_repository.failure:
+            return r[m.Infra.WorkspaceSpec].fail(declared_repository.error)
+        repository_ref = declared_repository.value
         return r[m.Infra.WorkspaceSpec].ok(
             m.Infra.WorkspaceSpec(
                 name=beads.value.workspace,
                 beads=beads.value,
-                repository=repository.value,
+                repository=repository_ref,
                 subprojects=subprojects,
                 external_dependency_paths=external,
             )
@@ -373,20 +590,14 @@ class FlextInfraWorkspaceDetector(
         (provider,) = providers
         metadata = u.read_project_metadata(resolved_root)
         if metadata.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                metadata.error or f"unable to read project metadata: {resolved_root}"
-            )
+            return r[m.Infra.RepositoryConformTarget].from_failure(metadata)
         canonical_project_name = metadata.value.project.name
         if canonical_project_name != workspace.repository.distribution:
             return r[m.Infra.RepositoryConformTarget].fail(
                 "project metadata and repository identity differ: "
                 f"{canonical_project_name} != {workspace.repository.distribution}"
             )
-        make_profile = (
-            c.Infra.MakeProfile.WORKSPACE
-            if (resolved_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.MakeProfile.STANDALONE
-        )
+        make_profile = workspace.repository.role
         # The provider default is the fallback, never the answer: this
         # repository's own published integration branch decides. Line 206 of
         # this same file already derives it that way for submodule discovery;
@@ -399,10 +610,7 @@ class FlextInfraWorkspaceDetector(
             ),
         )
         if baseline_result.failure:
-            return r[m.Infra.RepositoryConformTarget].fail(
-                baseline_result.error
-                or f"integration baseline resolution failed: {resolved_root}"
-            )
+            return r[m.Infra.RepositoryConformTarget].from_failure(baseline_result)
         return r[m.Infra.RepositoryConformTarget].ok(
             m.Infra.RepositoryConformTarget(
                 repository=workspace.repository,
@@ -411,6 +619,7 @@ class FlextInfraWorkspaceDetector(
                 beads=workspace.beads,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_result.value,
+                baseline_reference=f"refs/remotes/origin/{baseline_result.value}",
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
@@ -442,36 +651,46 @@ class FlextInfraWorkspaceDetector(
         cls, repository_root: Path
     ) -> p.Result[tuple[Path, ...]]:
         """Load exclusions for governed repositories; ignore ungoverned trees."""
-        origin = cls._git_origin_url(repository_root)
+        resolved_root = repository_root.expanduser().resolve()
+        if not cls._beads_path(resolved_root).is_file():
+            return r[tuple[Path, ...]].ok(())
+        # External analysis exclusions are declared exclusively by this
+        # checkout's own .gitmodules. A composed project may follow its Beads
+        # ledger from the parent, but that does not make the parent's complete
+        # repository graph part of the member's analyzer scope. Loading the
+        # inherited workspace here revalidated every sibling once per tooling
+        # phase and turned one member conform into thousands of Git processes.
+        if not (resolved_root / c.Infra.GITMODULES).is_file():
+            return r[tuple[Path, ...]].ok(())
+        origin = cls._git_origin_url(resolved_root)
         if origin.failure or cls._declared_provider_for_url(origin.value) is None:
             return r[tuple[Path, ...]].ok(())
-        workspace = cls.load_workspace_spec(repository_root)
+        workspace = cls.load_workspace_spec(resolved_root)
         if workspace.failure:
             return r[tuple[Path, ...]].fail(workspace.error)
         return r[tuple[Path, ...]].ok(
             cls.workspace_analysis_exclusion_paths(workspace.value)
         )
 
-    def detect(self, project_root: Path) -> p.Result[c.Infra.WorkspaceMode]:
-        """Classify solely by the requested repository's own ``.gitmodules``."""
+    def detect(self, project_root: Path) -> p.Result[c.Infra.MakeProfile]:
+        """Classify from governed members, not mere vendored Git topology."""
         try:
             resolved_root = project_root.expanduser().resolve()
         except c.EXC_OS_RUNTIME_TYPE as exc:
-            return r[c.Infra.WorkspaceMode].fail_op("Workspace detection", exc)
+            return r[c.Infra.MakeProfile].fail_op("Workspace detection", exc)
         if not resolved_root.is_dir():
-            return r[c.Infra.WorkspaceMode].fail(
+            return r[c.Infra.MakeProfile].fail(
                 f"project root is not a directory: {resolved_root}"
             )
-        return r[c.Infra.WorkspaceMode].ok(
-            c.Infra.WorkspaceMode.WORKSPACE
-            if (resolved_root / c.Infra.GITMODULES).is_file()
-            else c.Infra.WorkspaceMode.STANDALONE
-        )
+        workspace = self.load_workspace_spec(resolved_root)
+        if workspace.failure:
+            return r[c.Infra.MakeProfile].fail(workspace.error)
+        return r[c.Infra.MakeProfile].ok(workspace.value.repository.role)
 
     @override
-    def execute(self) -> p.Result[c.Infra.WorkspaceMode]:
+    def execute(self) -> p.Result[c.Infra.MakeProfile]:
         """Execute workspace detection for the configured root."""
-        return self.detect(self.workspace_root)
+        return self.detect(self.repository_root)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceDetector"]

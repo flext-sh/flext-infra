@@ -6,18 +6,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
-from flext_infra._enforcement.collection_base import (
+
+from .._enforcement.collection_base import (
     FlextInfraEnforcementCollectionBase,
     FlextInfraEnforcementEvaluation,
 )
-from flext_infra._enforcement.collection_tests import (
-    FlextInfraEnforcementTestsCollector,
-)
-from flext_infra._enforcement.metadata import FlextInfraEnforcementMetadata
-from flext_infra._enforcement.selection import FlextInfraEnforcementSelection
+from .._enforcement.collection_tests import FlextInfraEnforcementTestsCollector
+from .._enforcement.metadata import FlextInfraEnforcementMetadata
+from .._enforcement.selection import FlextInfraEnforcementSelection
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
 
 
@@ -29,17 +27,17 @@ class FlextInfraEnforcementSourceCollectors(
 ):
     """Collect enforcement probes for supported catalog source kinds."""
 
-    def __init__(self, workspace_root: Path) -> None:
-        """Bind the workspace root used for project discovery and Rope sessions."""
-        self._workspace_root = workspace_root
+    def __init__(self, repository_root: Path) -> None:
+        """Bind the repository root used for project discovery and Rope sessions."""
+        self._repository_root = repository_root
 
     def collect_project(
-        self, project_dir: Path, rules: t.SequenceOf[me.EnforcementRuleSpec]
+        self, project_dir: Path, rules: t.SequenceOf[m.EnforcementRuleSpec]
     ) -> FlextInfraEnforcementEvaluation:
         """Collect rule probes for one project using one shared dispatcher."""
-        violations: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
+        violations: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]] = []
         failures: list[m.Infra.FailedFix] = []
-        declarative_rules: list[me.EnforcementRuleSpec] = []
+        declarative_rules: list[m.EnforcementRuleSpec] = []
         for rule in rules:
             source = rule.source
             if source.kind == "flext_tests_validator":
@@ -70,9 +68,9 @@ class FlextInfraEnforcementSourceCollectors(
         return FlextInfraEnforcementEvaluation(violations, failures)
 
     def collect_python_file_probes(
-        self, project_dir: Path, rule: me.EnforcementRuleSpec
+        self, project_dir: Path, rule: m.EnforcementRuleSpec
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Return one structural probe per Python file for file-wide transformers."""
         files_result = u.Infra.iter_python_files(
@@ -87,9 +85,9 @@ class FlextInfraEnforcementSourceCollectors(
         return ([(rule, self.probe_for_path(path)) for path in files_result.value], [])
 
     def collect_declarative(
-        self, project_dir: Path, rules: t.SequenceOf[me.EnforcementRuleSpec]
+        self, project_dir: Path, rules: t.SequenceOf[m.EnforcementRuleSpec]
     ) -> tuple[
-        list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
+        list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]], list[m.Infra.FailedFix]
     ]:
         """Run catalog-driven declarative rules across one project."""
         files, errors = self.collect_python_file_probes(project_dir, rules[0])
@@ -100,9 +98,9 @@ class FlextInfraEnforcementSourceCollectors(
         ]
         if any(self.rule_requires_stub_file(rule) for rule in rules):
             file_paths.extend(self.stub_file_paths(project_dir))
-        probes: list[tuple[me.EnforcementRuleSpec, p.AttributeProbe]] = []
+        probes: list[tuple[m.EnforcementRuleSpec, p.AttributeProbe]] = []
         failures: list[m.Infra.FailedFix] = []
-        with u.Infra.open_project(self._workspace_root) as rope_project:
+        with u.Infra.open_project(self._repository_root) as rope_project:
             for file_path in file_paths:
                 ctx = m.Infra.DetectorContext(
                     file_path=file_path,

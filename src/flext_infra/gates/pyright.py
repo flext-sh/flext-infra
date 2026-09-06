@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -20,8 +21,6 @@ class FlextInfraPyrightGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.PYRIGHT
     gate_name: ClassVar[str] = "Pyright"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYRIGHT][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.PYRIGHT][1]
 
     @override
     def _get_check_dirs(
@@ -40,7 +39,12 @@ class FlextInfraPyrightGate(FlextInfraGate):
         """Build check command."""
         _ = project_dir
         return self._python_module_command(
-            c.Infra.PYRIGHT, *check_dirs, *ctx.pyright_args, "--outputjson"
+            c.Infra.PYRIGHT,
+            "--pythonpath",
+            sys.executable,
+            *check_dirs,
+            *ctx.pyright_args,
+            "--outputjson",
         )
 
     @staticmethod
@@ -101,11 +105,11 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 )
             )
             return False, issues
-        if (not issues) and result.exit_code != 0:
+        if (not issues) and not u.Cli.process_succeeded(result.outcome):
             message = (result.stderr or result.stdout).strip()
             if not message:
                 message = (
-                    f"pyright exited with code {result.exit_code} "
+                    f"pyright exited with code {result.outcome.raw_return_code} "
                     "without JSON diagnostics"
                 )
             issues.append(
@@ -118,7 +122,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraPyrightGate"]

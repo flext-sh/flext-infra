@@ -6,14 +6,17 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import m
-from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
+
+from .._enforcement.engine import FlextInfraEnforcementEngine
+from ._census_rules_shared import FlextInfraRefactorCensusRulesSharedMixin
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
 
 
-class FlextInfraRefactorCensusRulesDispatchMixin:
+class FlextInfraRefactorCensusRulesDispatchMixin(
+    FlextInfraRefactorCensusRulesSharedMixin
+):
     """Run every selected structural rule for one module and collect outcomes.
 
     Parent of FlextInfraRefactorCensusCollectMixin (its ``_scan_module`` calls
@@ -117,30 +120,6 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
             symbol_index: dict[str, tuple[str, int]],
             convention: m.Infra.RopeModuleConvention,
         ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
-        @staticmethod
-        def _detector_context(
-            rope: p.Infra.RopeWorkspaceDsl,
-            file_path: Path,
-            *,
-            convention: m.Infra.RopeModuleConvention | None = None,
-            parse_failures: t.MutableSequenceOf[m.Infra.ParseFailureViolation]
-            | None = None,
-        ) -> m.Infra.DetectorContext: ...
-        @staticmethod
-        def _fix_key(file_path: Path, object_name: str, action: str = "") -> str: ...
-        @staticmethod
-        def _raw_violation(
-            *,
-            project: str,
-            object_name: str,
-            object_kind: str,
-            kind: str,
-            file_path: Path,
-            line: int,
-            description: str,
-            fixable: bool = False,
-            fix_action: str = "",
-        ) -> m.Infra.Census.Violation: ...
 
     def _module_rules(
         self,
@@ -277,7 +256,7 @@ class FlextInfraRefactorCensusRulesDispatchMixin:
         return (tuple(violations), tuple(fixes))
 
     @staticmethod
-    def _declarative_catalog_rules() -> tuple[me.EnforcementRuleSpec, ...]:
+    def _declarative_catalog_rules() -> tuple[m.EnforcementRuleSpec, ...]:
         """Return enabled catalog rules handled by the declarative engine."""
         return FlextInfraEnforcementEngine.declarative_rules()
 

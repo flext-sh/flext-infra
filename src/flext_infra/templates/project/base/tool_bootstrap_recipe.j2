@@ -1,50 +1,210 @@
-{% macro tool_bootstrap_recipe(target, project_root, mise, mise_version, uv_version) -%}
+{% macro mise_latest_runtime_bootstrap(project_root, mise, bootstrap) -%}
+	project_root="{{ project_root }}"; \
+	mise="{{ mise }}"; \
+	mise_storage_root="$({{ bootstrap.storage_root_variable }})"; \
+	caller_home="$${HOME:-}"; \
+	caller_xdg_data_home="$${XDG_DATA_HOME:-}"; \
+	if [ -z "$$caller_xdg_data_home" ] && [ -n "$$caller_home" ]; then \
+		caller_xdg_data_home="$$caller_home/.local/share"; \
+	fi; \
+	caller_path="$$PATH"; \
+{% for name in bootstrap.passthrough_environment if name != "PATH" -%}
+	caller_{{ name | lower }}="$({{ name }})"; \
+{% endfor -%}
+	if [ -z "$$mise_storage_root" ]; then \
+		if [ -n "$$caller_xdg_data_home" ]; then \
+			mise_storage_root="$$caller_xdg_data_home/mise"; \
+		elif [ -n "$$caller_home" ]; then \
+			mise_storage_root="$$caller_home/.local/share/mise"; \
+		else \
+			printf 'ERROR: {{ bootstrap.storage_root_variable }}, XDG_DATA_HOME, or HOME must identify persistent Mise storage\n' >&2; \
+			exit 2; \
+		fi; \
+	fi; \
+	case "$$mise_storage_root" in \
+		/*) ;; \
+		*) printf 'ERROR: {{ bootstrap.storage_root_variable }} must be absolute: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
+	esac; \
+	case "$$mise_storage_root/" in \
+		*'/../'*|*'/./'*|*'//'*) printf 'ERROR: {{ bootstrap.storage_root_variable }} must be normalized: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
+	esac; \
+	project_root=$$(cd "$$project_root" && pwd -P); \
+	project_parent=$${project_root%/*}; \
+	if [ -z "$$project_parent" ]; then project_parent=/; fi; \
+	if [ -L "$$mise_storage_root" ]; then \
+		printf 'ERROR: {{ bootstrap.storage_root_variable }} must not be a symlink: %s\n' "$$mise_storage_root" >&2; \
+		exit 2; \
+	fi; \
+	umask 077; \
+	mkdir -p "$$mise_storage_root"; \
+	if [ -L "$$mise_storage_root" ]; then \
+		printf 'ERROR: {{ bootstrap.storage_root_variable }} became a symlink: %s\n' "$$mise_storage_root" >&2; \
+		exit 2; \
+	fi; \
+	mise_storage_root=$$(cd "$$mise_storage_root" && pwd -P); \
+	case "$$mise_storage_root/" in \
+		/tmp/|/tmp/*) printf 'ERROR: persistent Mise storage must not live under /tmp: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
+	esac; \
+	case "$$mise_storage_root/" in \
+		"$$project_root/"*) printf 'ERROR: persistent Mise storage must be outside the checkout: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
+	esac; \
+	case "$$project_root/" in \
+		"$$mise_storage_root/"*) printf 'ERROR: persistent Mise storage must not contain the checkout: %s\n' "$$mise_storage_root" >&2; exit 2 ;; \
+	esac; \
+	for persistent_path in{% for _name, relative in bootstrap.persistent_environment %} "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}"{% endfor %} "$$mise_storage_root/bootstrap"; do \
+		if [ -L "$$persistent_path" ]; then \
+			printf 'ERROR: persistent Mise path must not be a symlink: %s\n' "$$persistent_path" >&2; exit 2; \
+		fi; \
+		mkdir -p "$$persistent_path"; \
+		if [ -L "$$persistent_path" ]; then \
+			printf 'ERROR: persistent Mise path became a symlink: %s\n' "$$persistent_path" >&2; exit 2; \
+		fi; \
+		persistent_physical=$$(cd "$$persistent_path" && pwd -P); \
+		case "$$persistent_physical" in \
+			"$$mise_storage_root"|"$$mise_storage_root"/*) ;; \
+			*) printf 'ERROR: persistent Mise path escaped storage: %s\n' "$$persistent_physical" >&2; exit 2 ;; \
+		esac; \
+	done; \
+	scratch_parent="$$project_root/.test-tmp"; \
+	if [ -L "$$scratch_parent" ]; then \
+		printf 'ERROR: Mise scratch parent must not be a symlink: %s\n' "$$scratch_parent" >&2; exit 2; \
+	fi; \
+	mkdir -p "$$scratch_parent"; \
+	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
+	trap 'find "$$scratch" -depth -delete' EXIT; \
+	mkdir -p "$$scratch/receipt/bin"{% for _name, relative in bootstrap.transient_environment if relative not in bootstrap.empty_files %} "$$scratch/{{ relative }}"{% endfor %}; \
+{% for relative in bootstrap.empty_files -%}
+	: > "$$scratch/{{ relative }}"; chmod 600 "$$scratch/{{ relative }}"; \
+{% endfor -%}
+	mise_exec() { \
+		mise_config_mode="$$1"; shift; \
+		case "$$mise_config_mode" in \
+			no-config) mise_config_argument='MISE_NO_CONFIG=1' ;; \
+			project) mise_config_argument= ;; \
+			*) printf 'ERROR: invalid Mise config mode: %s\n' "$$mise_config_mode" >&2; return 2 ;; \
+		esac; \
+		env -i \
+{% for name, value in bootstrap.fixed_environment -%}
+			'{{ name }}={{ value }}' \
+{% endfor -%}
+{% for name, relative in bootstrap.transient_environment -%}
+			"{{ name }}=$$scratch/{{ relative }}" \
+{% endfor -%}
+{% for name, relative in bootstrap.persistent_environment -%}
+			"{{ name }}=$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}" \
+{% endfor -%}
+			"GIT_CEILING_DIRECTORIES=$$project_parent" \
+			"MISE_CEILING_PATHS=$$project_parent" \
+			"MISE_TRUSTED_CONFIG_PATHS=$$project_root" \
+			"MISE_INSTALL_PATH=$$mise_install_path" \
+{% for name in bootstrap.passthrough_environment -%}
+			"{{ name }}=$$caller_{{ name | lower }}" \
+{% endfor -%}
+			$${mise_config_argument:+"$$mise_config_argument"} \
+			"$$@"; \
+	}; \
+	mise_checked() { \
+		mise_log="$$1"; shift; \
+		if "$$@" >"$$mise_log" 2>&1; then :; \
+		else mise_status=$$?; cat "$$mise_log"; return "$$mise_status"; fi; \
+		cat "$$mise_log"; \
+		if grep -Fq 'mise WARN' "$$mise_log"; then \
+			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
+		fi; \
+	}; \
+	mise_checked_stdout() { \
+		mise_stdout_log="$$1"; mise_stderr_log="$$2"; shift 2; \
+		if "$$@" >"$$mise_stdout_log" 2>"$$mise_stderr_log"; then :; \
+		else mise_status=$$?; cat "$$mise_stderr_log" >&2; cat "$$mise_stdout_log"; return "$$mise_status"; fi; \
+		cat "$$mise_stderr_log" >&2; cat "$$mise_stdout_log"; \
+		if grep -Fq 'mise WARN' "$$mise_stderr_log" || grep -Fq 'mise WARN' "$$mise_stdout_log"; then \
+			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
+		fi; \
+	}; \
+	mise_release_from_launcher() { \
+		launcher_path="$$1"; \
+		launcher_release=$$(sed -n 's/^[[:space:]]*local mise_version="$${MISE_VERSION:-\([0-9][0-9.]*\)}"$$/\1/p' "$$launcher_path"); \
+		if [ -z "$$launcher_release" ]; then \
+			launcher_release=$$(sed -n 's/^[[:space:]]*set "pinned_version=\([0-9][0-9.]*\)"$$/\1/p' "$$launcher_path"); \
+		fi; \
+		case "$$launcher_release" in \
+			''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise launcher has invalid release: %s\n' "$$launcher_path" >&2; return 2 ;; \
+		esac; \
+		launcher_old_ifs=$$IFS; IFS=.; set -- $$launcher_release; IFS=$$launcher_old_ifs; \
+		if [ "$$#" -ne 3 ]; then \
+			printf 'ERROR: Mise launcher has invalid release: %s\n' "$$launcher_path" >&2; return 2; \
+		fi; \
+		printf '%s\n' "$$launcher_release"; \
+	}; \
+	case "$${OS:-}" in \
+		Windows_NT) mise_runtime_suffix='.exe'; latest_mise="$$scratch/receipt/bin/mise.cmd" ;; \
+		*) mise_runtime_suffix=; latest_mise="$$scratch/receipt/bin/mise" ;; \
+	esac; \
+	seed_release=$$(mise_release_from_launcher "$$mise"); \
+	mise_install_path="$$mise_storage_root/bootstrap/mise-$$seed_release$$mise_runtime_suffix"; \
+	mise_checked "$$scratch/generate.log" mise_exec no-config "$$mise" -C "$$scratch" generate install-script --write "$$scratch/receipt/bin/mise" --windows; \
+	chmod +x "$$scratch/receipt/bin/mise"; \
+	mise_release=$$(mise_release_from_launcher "$$latest_mise"); \
+	mise_install_path="$$mise_storage_root/bootstrap/mise-$$mise_release$$mise_runtime_suffix"; \
+	mise_checked_stdout "$$scratch/receipt-version.stdout" "$$scratch/receipt-version.stderr" mise_exec no-config "$$latest_mise" --version; \
+	receipt_runtime=$$(cat "$$scratch/receipt-version.stdout"); \
+	case "$$receipt_runtime" in \
+		'mise '*) runtime_release=$${receipt_runtime#mise }; runtime_release=$${runtime_release%% *} ;; \
+		*) runtime_release=$${receipt_runtime%% *} ;; \
+	esac; \
+	case "$$runtime_release" in \
+		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2 ;; \
+	esac; \
+	old_ifs=$$IFS; IFS=.; set -- $$runtime_release; IFS=$$old_ifs; \
+	if [ "$$#" -ne 3 ]; then \
+		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
+	fi; \
+	if [ "$$runtime_release" != "$$mise_release" ]; then \
+		printf 'ERROR: Mise runtime differs from its exact receipt: expected=%s actual=%s\n' "$$mise_release" "$$runtime_release" >&2; exit 2; \
+	fi; \
+	printf 'mise setup receipt=%s storage=%s\n' "$$mise_release" "$$mise_storage_root"
+{%- endmacro %}
+
+{% macro tool_bootstrap_recipe(target, project_root, mise, uv_version, lifecycle, bootstrap) -%}
 .PHONY: {{ target }}
 
 {{ target }}:
 	@set -eu; \
-	project_root="{{ project_root }}"; \
-	mise="{{ mise }}"; \
-	mise_version="{{ mise_version }}"; \
-	uv_required="{{ uv_version }}"; \
-	if [ ! -f "$$mise" ]; then \
-		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$$mise" >&2; \
+	uv_selector="{{ uv_version }}"; \
+	if [ ! -f "{{ mise }}" ]; then \
+		printf 'ERROR: missing generated mise launcher: %s; run make gen APPLY=Y\n' "{{ mise }}" >&2; \
 		exit 2; \
 	fi; \
-	current=$$("$$mise" --version); \
-	current=$${current%% *}; \
-	if [ "$$current" != "$$mise_version" ]; then \
-		printf 'ERROR: mise launcher version mismatch: expected %s, got %s\n' \
-			"$$mise_version" "$$current" >&2; \
+	if [ ! -f "{{ project_root }}/mise.lock" ]; then \
+		printf 'ERROR: missing generated mise.lock; run make gen APPLY=Y and commit it\n' >&2; \
 		exit 2; \
 	fi; \
-	if [ ! -f "$$project_root/mise.lock" ]; then \
-		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
-		exit 2; \
-	fi; \
-	scratch_parent="$$project_root/.test-tmp"; \
-	mkdir -p "$$scratch_parent"; \
-	scratch=$$(mktemp -d "$$scratch_parent/mise-setup.XXXXXX"); \
-	trap 'find "$$scratch" -depth -delete' EXIT; \
-	global_config="$$scratch/global-config.toml"; \
-	config_dir="$$scratch/config"; \
-	mkdir -p "$$config_dir"; \
-	: > "$$global_config"; \
-	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" trust "$$project_root/.mise.toml"; \
-	MISE_CONFIG_DIR="$$config_dir" MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" install --locked --yes; \
-	uv_output=$$(MISE_CONFIG_DIR="$$config_dir" \
-		MISE_GLOBAL_CONFIG_FILE="$$global_config" \
-		"$$mise" -C "$$project_root" \
-		exec -- uv --version); \
+	{{ mise_latest_runtime_bootstrap(project_root, mise, bootstrap) }}; \
+	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --locked --yes; \
+	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
+	uv_output=$$(cat "$$scratch/uv-version.log"); \
 	case "$$uv_output" in \
 		'uv '*) uv_actual=$${uv_output#uv }; uv_actual=$${uv_actual%% *} ;; \
 		*) printf 'ERROR: uv --version returned an invalid value\n' >&2; exit 2 ;; \
 	esac; \
 	case "$$uv_actual" in \
-		"$$uv_required"|"$$uv_required".*) ;; \
-		*) printf 'ERROR: mise must install uv %s.x, found %s\n' \
-			"$$uv_required" "$$uv_actual" >&2; exit 2 ;; \
-	esac
+		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: uv --version returned an invalid release: %s\n' "$$uv_actual" >&2; exit 2 ;; \
+	esac; \
+	old_ifs=$$IFS; IFS=.; set -- $$uv_actual; IFS=$$old_ifs; \
+	if [ "$$#" -ne 3 ]; then \
+		printf 'ERROR: uv --version returned an invalid release: %s\n' "$$uv_actual" >&2; exit 2; \
+	fi; \
+	printf 'uv setup selector=%s receipt=%s\n' "$$uv_selector" "$$uv_actual"; \
+	mise_checked "$$scratch/direnv-path.log" mise_exec project "$$latest_mise" -C "$$project_root" which direnv; \
+	direnv_executable=$$(cat "$$scratch/direnv-path.log"); \
+	if [ ! -x "$$direnv_executable" ]; then \
+		printf 'ERROR: Mise resolved a non-executable direnv path: %s\n' "$$direnv_executable" >&2; exit 2; \
+	fi; \
+	if [ -n "$${GITHUB_PATH:-}" ]; then \
+		printf '%s\n' "$$project_root/bin" >> "$$GITHUB_PATH"; \
+{% for name, relative in bootstrap.persistent_environment if name == "MISE_SHIMS_DIR" -%}
+		printf '%s\n' "$$mise_storage_root{% if relative != "." %}/{{ relative }}{% endif %}" >> "$$GITHUB_PATH"; \
+{% endfor -%}
+	fi; \
+	mise_checked "$$scratch/lifecycle.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- env "SETUP_DIRENV=$$direnv_executable" "SETUP_DIRENV_XDG_DATA_HOME=$$caller_xdg_data_home" {{ lifecycle }}
 {%- endmacro %}

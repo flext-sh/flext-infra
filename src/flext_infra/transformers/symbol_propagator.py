@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c
-from flext_infra.transformers.base import FlextInfraRopeTransformer
+
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from flext_infra import t
