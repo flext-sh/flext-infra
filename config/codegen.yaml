@@ -1453,6 +1453,31 @@ Infra:
         # symlinks (the release snapshot validator rejected flext-infra's own
         # build on `.agents/skills/core.gc-agents`). Only Gas City packs project
         # dotted skill names; governed skills are kebab-case directories.
+        # Why (operator law 2026-09-06): personal config, personal skills and
+        # agent hooks are written only in their own project, never into a
+        # workspace member. The ai-hub daemon materializes these hook trees into
+        # every governed checkout whenever it runs, so they are runtime state
+        # and must never become trackable source here. This blocks the hook
+        # projections specifically; the governed provider surfaces whitelisted
+        # above (settings, law documents, skills) stay trackable.
+        - name: "Agent hook projections (runtime state, never source)"
+          patterns:
+            - ".agents/aihub-hooks/"
+            - ".agents/hooks.json"
+            - ".agents/.hooks.json.agents-governance.json"
+            - ".claude/aihub-hooks/"
+            - ".claude/hooks.json"
+            - ".claude/.hooks.json.agents-governance.json"
+            - ".codex/aihub-hooks/"
+            - ".codex/hooks.json"
+            - ".codex/.hooks.json.agents-governance.json"
+            - ".cursor/aihub-hooks/"
+            - ".cursor/hooks.json"
+            - ".cursor/.hooks.json.agents-governance.json"
+            - ".gemini/aihub-hooks/"
+            - ".gemini/hooks.json"
+            - ".gemini/.hooks.json.agents-governance.json"
+            - ".github/hooks/aihub-hooks/"
         - name: "Gas City skill projections (runtime state, never source)"
           patterns:
             - ".agents/skills/.gc-skill-ownership.json"

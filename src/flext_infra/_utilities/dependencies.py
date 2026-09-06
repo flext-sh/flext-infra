@@ -21,12 +21,15 @@ from packaging.version import InvalidVersion, Version
 from flext_cli import u
 from flext_core import r
 from flext_infra.constants import c
+# Why: dependency_waves subscripts r[t.SequenceOf[t.StrSequence]] at runtime, so
+# the typings facade cannot be TYPE_CHECKING-only here. c -> t is a forward
+# facade import and stays cycle-free.
+from flext_infra.typings import t
 
 from .pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
-    from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
@@ -236,13 +239,15 @@ class FlextInfraUtilitiesDependencies:
     @staticmethod
     def dependency_waves(
         edges: Mapping[str, t.StrSequence],
-    ) -> t.SequenceOf[t.StrSequence]:
+    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
         """Split a closed named dependency graph into dependency-first waves.
 
         Wave ``n`` contains only names whose dependencies all live in earlier
         waves, so each wave may proceed in parallel while the sequence between
         waves stays strict. The graph is closed: every referenced name must be
-        a key of ``edges``, and a cycle fails loudly.
+        a key of ``edges``; an unknown reference or a cycle fails the result
+        instead of raising, so callers (release publish ordering, codemod
+        provider ordering) compose it through ``p.Result`` chaining.
         """
         unknown = sorted({
             dependency
@@ -251,24 +256,25 @@ class FlextInfraUtilitiesDependencies:
             if dependency not in edges
         })
         if unknown:
-            msg = "dependency graph references names outside the graph: " + ", ".join(
-                unknown
+            return r[t.SequenceOf[t.StrSequence]].fail(
+                "dependency graph references names outside the graph: "
+                + ", ".join(unknown)
             )
-            raise ValueError(msg)
         pending = {name: set(deps) for name, deps in edges.items()}
         waves: list[t.StrSequence] = []
         while pending:
             ready = frozenset(name for name, deps in pending.items() if not deps)
             if not ready:
-                msg = "cyclic dependency graph: " + ", ".join(sorted(pending))
-                raise ValueError(msg)
+                return r[t.SequenceOf[t.StrSequence]].fail(
+                    "cyclic dependency graph: " + ", ".join(sorted(pending))
+                )
             waves.append(tuple(sorted(ready)))
             pending = {
                 name: deps - ready
                 for name, deps in pending.items()
                 if name not in ready
             }
-        return tuple(waves)
+        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
     @classmethod
     def project_dependency_resource_files(
