@@ -145,8 +145,7 @@ class TestsRepositoryRootMakeContract:
 
         generated: p.Cli.CommandOutput = tm.ok(
             u.Tests.run_isolated_make(
-                ["-C", str(repository_root), "--dry-run", "gen", "WHAT=check"],
-                cwd=repository_root,
+                ["-C", str(repository_root), "--dry-run", "gen"], cwd=repository_root
             )
         )
         retired: p.Cli.CommandOutput = tm.ok(
@@ -158,7 +157,8 @@ class TestsRepositoryRootMakeContract:
         output = generated.stdout + generated.stderr
 
         tm.that(generated.exit_code, eq=0, msg=output)
-        tm.that(output, has="_builtin_gen_$what")
+        tm.that(output, has='builtin="_builtin_gen_$what"')
+        tm.that(output, has='what="check"')
         tm.that(output, lacks="_serialized_")
         tm.that(output, lacks="serialize-make")
         tm.that(declared, lacks="codegen")

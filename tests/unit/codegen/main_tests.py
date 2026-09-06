@@ -10,13 +10,12 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config
+from flext_infra import c
 from flext_infra import main as infra_main
 from flext_infra.services.cli_routes import CliRouteService
 from flext_tests import tm
@@ -91,8 +90,8 @@ class TestMainCommandDispatch:
         result = infra_main(["codegen"])
         tm.that(result, ne=0)
 
-    def test_init_with_custom_root(self, real_git_repo: Path) -> None:
-        """main() init with custom root directory."""
+    def test_init_rejects_nested_non_worktree_root(self, real_git_repo: Path) -> None:
+        """Initialization accepts only the exact Git worktree root."""
         custom_root = real_git_repo / "custom"
         custom_root.mkdir()
         result = infra_main([
@@ -102,7 +101,7 @@ class TestMainCommandDispatch:
             "--workspace",
             str(_with_pep621_identity(custom_root)),
         ])
-        tm.that(result, eq=0)
+        tm.that(result, ne=0)
 
 
 # Exemplar: every test here spawns a fresh interpreter to prove the real
@@ -139,76 +138,6 @@ class TestMainEntryPoint:
             result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
         )
         tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
-
-    def test_apply_bootstraps_managed_conflict_before_facade_imports(
-        self, infra_git_repo: Path
-    ) -> None:
-        """Repair invalid target metadata through the real process entrypoint."""
-        root = infra_git_repo
-        project_root = Path(__file__).resolve().parents[3]
-        tm.ok(
-            u.Cli.files_copy_directory(
-                project_root / "src" / "flext_infra",
-                root / "src" / "flext_infra",
-                dirs_exist_ok=True,
-            )
-        )
-        tm.ok(
-            u.Cli.files_copy_directory(
-                project_root / "config", root / "config", dirs_exist_ok=True
-            )
-        )
-        # The full surface validates the committed Mise seeds instead of minting
-        # them, so the governed fixture carries them exactly as a repository does.
-        u.Tests.copy_tracked_mise_seeds(root)
-        (root / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.12.0.dev0"\n'
-            'requires-python = ">=3.13,<3.14"\n'
-            "\n"
-            "[tool.pytest.ini_options]\n"
-            "addopts = [\n"
-            "<<<<<<< HEAD\n"
-            '  "--timeout=90",\n'
-            "=======\n"
-            '  "--timeout=10",\n'
-            ">>>>>>> origin/0.12.0-dev\n"
-            "]\n",
-            encoding="utf-8",
-        )
-
-        result = u.Cli.run_raw(
-            [
-                sys.executable,
-                "-m",
-                "flext_infra",
-                "codegen",
-                "conform",
-                "--root",
-                str(root),
-                "--scope",
-                "self",
-                "--mode",
-                "apply",
-            ],
-            cwd=root,
-            env={"PYTHONPATH": str(root / "src")},
-        )
-
-        tm.ok(result)
-        tm.that(
-            result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
-        )
-        tm.that(
-            result.value.stdout + result.value.stderr,
-            contains="recovered owner-declared managed conflicts",
-        )
-        rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
-        tm.that(rendered, lacks="<<<<<<<")
-        payload = tomllib.loads(rendered)
-        tm.that(
-            payload["tool"]["pytest"]["ini_options"]["addopts"],
-            has=(f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"),
-        )
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""

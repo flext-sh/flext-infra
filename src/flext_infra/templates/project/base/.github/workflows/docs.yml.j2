@@ -42,7 +42,7 @@ jobs:
         run: make setup
 
       - name: Generation drift (blocking)
-        run: make gen WHAT=check
+        run: make gen
 
       - name: Docs audit (blocking)
         run: make docs WHAT=audit

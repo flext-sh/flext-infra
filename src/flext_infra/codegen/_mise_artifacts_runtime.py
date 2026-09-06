@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_process as process
 
@@ -35,7 +35,7 @@ class FlextInfraMiseRuntime:
             return r[Path].from_failure(prepared)
         if seed_state.content is None or seed_state.mode is None:
             return r[Path].fail(f"native Mise seed is absent: {seed_state.path}")
-        seed = scratch / "seed" / "bin" / seed_state.path.name
+        seed = scratch / "seed" / c.Infra.MISE_LAUNCHER_DIRECTORY / seed_state.path.name
         created = process.write_new(seed, seed_state.content, seed_state.mode)
         if created.failure:
             return r[Path].from_failure(created)
@@ -58,7 +58,11 @@ class FlextInfraMiseRuntime:
                 "generate",
                 "install-script",
                 "--write",
-                str(receipt / "bin" / "mise"),
+                str(
+                    receipt
+                    / c.Infra.MISE_LAUNCHER_DIRECTORY
+                    / c.Infra.MISE_UNIX_LAUNCHER_FILENAME
+                ),
                 "--windows",
             ),
             cwd=scratch,
@@ -81,7 +85,15 @@ class FlextInfraMiseRuntime:
         )
         if runtime_environment.failure:
             return r[Path].from_failure(runtime_environment)
-        launcher = receipt / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
+        launcher = (
+            receipt
+            / c.Infra.MISE_LAUNCHER_DIRECTORY
+            / (
+                c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
+                if os.name == "nt"
+                else c.Infra.MISE_UNIX_LAUNCHER_FILENAME
+            )
+        )
         runtime = process.run(
             (str(launcher), "--version"),
             cwd=scratch,

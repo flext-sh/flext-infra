@@ -71,8 +71,17 @@ class FlextInfraWorkspaceEnvironmentMixin:
             / f"{destination}.j2"
         )
         render_context: (
-            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.ToolchainSpec
-        ) = context if context is not None else config.Infra.codegen.toolchain
+            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.EnvrcRenderSpec
+        ) = (
+            context
+            if context is not None
+            else m.Infra.EnvrcRenderSpec(
+                environment_path_prepends=(
+                    config.Infra.codegen.toolchain.environment_path_prepends
+                ),
+                mise_bootstrap=u.Infra.mise_bootstrap_environment(),
+            )
+        )
         return u.Cli.template_render(template_path, render_context)
 
     @classmethod

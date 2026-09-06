@@ -14,9 +14,12 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 ARTIFACT_SPECS: Final[tuple[tuple[str, int], ...]] = (
-    ("bin/mise", 0o755),
-    ("bin/mise.cmd", 0o644),
-    ("mise.lock", 0o644),
+    (f"{c.Infra.MISE_LAUNCHER_DIRECTORY}/{c.Infra.MISE_UNIX_LAUNCHER_FILENAME}", 0o755),
+    (
+        f"{c.Infra.MISE_LAUNCHER_DIRECTORY}/{c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME}",
+        0o644,
+    ),
+    (c.Infra.MISE_LOCK_FILENAME, 0o644),
 )
 CONFIG_SPEC: Final[tuple[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
 PUBLICATION_SPECS: Final[tuple[tuple[str, int], ...]] = (CONFIG_SPEC, *ARTIFACT_SPECS)

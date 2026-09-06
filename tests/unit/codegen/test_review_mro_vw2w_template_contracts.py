@@ -60,7 +60,7 @@ class TestsReviewTemplateContracts:
         text = _MAKEFILE.read_text(encoding="utf-8")
         tm.that(text, has='$(UV) sync --frozen --project "$(PROJECT_ROOT)"')
         ci = _CI.read_text(encoding="utf-8")
-        tm.that(ci.index("make gen WHAT=check") < ci.index("make deps"), eq=True)
+        tm.that(ci.index("make gen") < ci.index("make deps"), eq=True)
 
     def test_makefile_deps_modernize_uses_selected_projects(self) -> None:
         text = _MAKEFILE.read_text(encoding="utf-8")

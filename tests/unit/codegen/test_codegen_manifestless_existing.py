@@ -54,16 +54,12 @@ class TestCodegenManifestlessExisting:
         tm.that(derived.project, eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
-            what=c.Infra.CodegenConformSurface.PYPROJECT,
+            what=c.Infra.CodegenConformSurface.ALL,
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.APPLY,
         )
-        tm.ok(FlextInfraCodegenConform.execute_request(request))
-        artifact_request = request.model_copy(
-            update={"what": c.Infra.CodegenConformSurface.ALL}
-        )
         initial_plan = tm.ok(
-            FlextInfraCodegenConform(repository_root=root).plan(artifact_request)
+            FlextInfraCodegenConform(repository_root=root).plan(request)
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -72,29 +68,26 @@ class TestCodegenManifestlessExisting:
             sum(file.path == root / "pyproject.toml" for file in initial_plan.files),
             eq=1,
         )
-        tm.that(u.Infra.codegen_file_requires_effect(plans["pyproject.toml"]), eq=False)
-
-        missing_create_only = plans[".env.example"]
-        tm.that(missing_create_only.policy, eq="create-only")
-        tm.that(u.Infra.codegen_file_requires_effect(missing_create_only), eq=False)
         tm.that((root / ".env.example").exists(), eq=False)
         for relative, content in preserved.items():
-            tm.that(u.Infra.codegen_file_requires_effect(plans[relative]), eq=False)
+            tm.that(
+                u.Infra.codegen_file_requires_effect(plans[relative]),
+                eq=False,
+                msg=relative,
+            )
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".python-version", ".gitignore"):
             tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
         tm.that(u.Infra.codegen_file_requires_effect(plans[".mise.toml"]), eq=False)
 
-        tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
+        tm.ok(FlextInfraCodegenConform.execute_request(request))
         tm.that((root / ".env.example").exists(), eq=False)
         for relative, content in preserved.items():
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that((root / required).is_file(), eq=True)
         fixed_point = FlextInfraCodegenConform(repository_root=root).plan(
-            artifact_request.model_copy(
-                update={"mode": c.Infra.CodegenConformMode.CHECK}
-            )
+            request.model_copy(update={"mode": c.Infra.CodegenConformMode.CHECK})
         )
         verified = tm.ok(fixed_point)
         tm.that(

@@ -14,25 +14,8 @@
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
-ifneq ($(filter command line override,$(origin WHAT)),)
+ifneq ($(strip $(WHAT)),)
 $(error WHAT selectors are retired; invoke the canonical verb and use APPLY=Y as the sole mutation flag)
-endif
-{# GEN_INIT_ONLY gates the parse-time bypasses (custom.mk include, REPOSITORY_ROOT
-   git probe, runtime and topology discovery, uv resolution) that `gen WHAT=init`
-   must skip while bootstrapping a repository. It is derived at the very top,
-   before the first $(shell) probe: a recipe-level assignment runs far too late
-   for `ifeq`/`-include` to observe, and nothing below may probe an external
-   tool once init is the selector. A caller may still force it explicitly. #}
-ifeq ($(filter command line override,$(origin GEN_INIT_ONLY)),)
-ifeq ($(filter gen,$(MAKECMDGOALS)),gen)
-ifeq ($(strip $(WHAT)),init)
-GEN_INIT_ONLY := Y
-# _dispatch re-invokes this Makefile through SELF_MAKE, and a derived (non
-# command-line) variable is not inherited by that sub-make, so the bypass would
-# silently switch off exactly where the recipes run.
-export GEN_INIT_ONLY
-endif
-endif
 endif
 ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
 ifneq ($(filter setup,$(MAKECMDGOALS)),)
@@ -106,7 +89,6 @@ override export FLEXT_PYTEST_MATCH_RAW := $(value MATCH)
 override export FLEXT_PYTEST_DIAG_RAW := $(value DIAG)
 override export FLEXT_PYTEST_FAIL_FAST_RAW := $(value FAIL_FAST)
 override export FLEXT_PYTEST_REPORTS_RAW := $(value PYTEST_REPORTS_DIR)
-override export FLEXT_PYTEST_WHAT_RAW := $(value WHAT)
 override export FLEXT_PYTEST_VERBOSE_RAW := $(value VERBOSE)
 override export FLEXT_PYTEST_COV_RAW := $(value COV)
 override export FLEXT_PYTEST_PROFILE_RAW := $(value PROFILE)
@@ -142,14 +124,8 @@ WORKSPACE ?= $(PROJECT_ROOT)
 # must never redirect verbs to another working tree. The git queries therefore
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
-# `gen WHAT=init` (GEN_INIT_ONLY) must probe NO external tool — the checkout may
-# have no git metadata yet.
-ifeq ($(GEN_INIT_ONLY),Y)
-REPOSITORY_ROOT := $(PROJECT_ROOT)
-else
 ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
 REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
-endif
 endif
 # End SECTION: REPOSITORY_ROOT isolation
 # A verb may select a declared member through PROJECT; the member checkout is
@@ -171,23 +147,17 @@ BUILTIN_VERBS :={% for verb in make.verbs %} {{ verb.name }}{% endfor %}
 SCRIPT_VERBS :={% for verb in extra_verbs %} {{ verb.name }}{% endfor %}
 CUSTOM_MAKEFILE := $(MAKEFILE_ROOT)/{{ make.custom_handler_policy.filename }}
 CUSTOM_DECLARED_TARGETS :=
-ifneq ($(GEN_INIT_ONLY),Y)
 ifneq ($(wildcard $(CUSTOM_MAKEFILE)),)
 CUSTOM_DECLARED_TARGETS := $(shell awk '/^(pre|post)-[a-z][a-z0-9-]*:|^_custom_[a-z][a-z0-9_-]*:/ { target=$$1; sub(/:.*/, "", target); if (!seen[target]++) printf "%s ", target }' "$(CUSTOM_MAKEFILE)")
 ifneq ($(.SHELLSTATUS),0)
 $(error Failed to inspect custom Make targets in $(CUSTOM_MAKEFILE))
 endif
 endif
-endif
 {# Builtin whats from config, plus selectors derived from the one validated
    custom target inventory above. #}
-ifeq ($(GEN_INIT_ONLY),Y)
-{% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in make.handler_whats[verb.name] %} {{ what }}{% endfor %}
-{% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %}
-{% endfor %}else
 {% for verb in make.verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in make.handler_whats[verb.name] %} {{ what }}{% endfor %} $(patsubst _custom_{{ verb.name }}_%,%,$(filter _custom_{{ verb.name }}_%,$(CUSTOM_DECLARED_TARGETS)))
 {% endfor %}{% for verb in extra_verbs %}_ALLOWED_WHATS_{{ verb.name }} :={% for what in verb.whats %} {{ what }}{% endfor %} $(patsubst _custom_{{ verb.name }}_%,%,$(filter _custom_{{ verb.name }}_%,$(CUSTOM_DECLARED_TARGETS)))
-{% endfor %}endif
+{% endfor %}
 CHECK_GATES_ALLOWED :={% for gate in make.check_gates_allowed %} {{ gate }}{% endfor %}
 CHECK_GATES_DEFAULT :={% for gate in make.check_gates_default %} {{ gate }}{% endfor %}
  DOCS_ACTIONS :={% for action in make.handler_whats["docs"] if action != "all" %} {{ action }}{% endfor %}
@@ -260,7 +230,7 @@ ifeq ($(SANITIZED_CALLER_PATH),$(CALLER_VIRTUAL_ENV_BIN))
 SANITIZED_CALLER_PATH :=
 endif
 endif
-ifneq ($(filter Y,$(GEN_INIT_ONLY) $(SETUP_BOOTSTRAP_ONLY)),)
+ifneq ($(filter Y,$(SETUP_BOOTSTRAP_ONLY)),)
 RESOLVED_UV :=
 else
 RESOLVED_UV := $(shell PATH="$(SANITIZED_CALLER_PATH)" command -v "$(UV_REQUESTED)")
@@ -332,7 +302,7 @@ SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$
 {% endif %}
 WORKSPACE_PROJECT_ARGS := $(foreach project,$(SELECTED_PROJECTS),--projects $(project))
 WORKSPACE_CHECK_ARGS := $(if $(strip $(CHECK_GATES)),--make-arg "CHECK_GATES=$(strip $(CHECK_GATES))")
-WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}") $(if $(strip $(FLEXT_PYTEST_WHAT_RAW)),--what "$${FLEXT_PYTEST_WHAT_RAW}")
+WORKSPACE_TEST_ARGS := $(if $(strip $(FLEXT_PYTEST_FILE_RAW)),--file "$${FLEXT_PYTEST_FILE_RAW}") $(if $(strip $(FLEXT_PYTEST_MATCH_RAW)),--match "$${FLEXT_PYTEST_MATCH_RAW}")
 DOCS_PROJECT_ARGS := $(foreach project,$(REQUESTED_PROJECTS),--projects $(project))
 ORCHESTRATED_VERBS :={% for verb in orchestrated_verbs %} {{ verb }}{% endfor %}
 
@@ -367,14 +337,8 @@ endif
 _SCRIPT_DISPATCH_ROOTS :={% for root in script_dispatch.roots %} {{ root }}{% endfor %}
 {% endif %}
 
-{# `gen WHAT=init` bootstraps a repository that may not have a valid custom.mk
-   yet, and an -include evaluates the file (its $(error) fires) before any
-   target runs. The init selector already skips runtime and topology discovery
-   through GEN_INIT_ONLY; the custom surface belongs to the same bypass. #}
-ifneq ($(GEN_INIT_ONLY),Y)
 {{ makefile_custom_include }}
-endif
-SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)" $(if $(filter Y,$(GEN_INIT_ONLY)),GEN_INIT_ONLY=Y)
+SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
 define _dispatch
 	@set -eu; \
@@ -469,33 +433,13 @@ endef
 
 # `setup` builds the environment it would otherwise require. `help` documents
 # how to build it, so demanding an interpreter to print that documentation
-# makes an unprovisioned checkout undiscoverable. `gen WHAT=init` scaffolds a
-# repository that has no environment yet — it is the verb that MAKES the tree
-# provisionable, so requiring a provisioned tree first is circular. All three
-# still dispatch; they only drop the prerequisite.
-# `gen WHAT=init` bootstraps only this generated Makefile and may run before an
-# environment exists. It is excluded from the require-environment fan-out and
-# runs directly so an old parsed dispatcher cannot continue into stale recipes.
-ifeq ($(filter gen,$(PUBLIC_VERBS)),gen)
-$(filter-out setup gen,$(PUBLIC_VERBS)): _builtin_require_environment
-	$(call _dispatch,$@)
-
-# The hermetic bootstrap route for WHAT=init: run the init selector directly,
-# never through _dispatch (which re-enters make and re-parses every surface
-# the init bypass exists to skip). Any other WHAT dispatches normally.
-gen:
-ifeq ($(strip $(WHAT)),init)
-	@$(SELF_MAKE) _builtin_gen_init APPLY=$(APPLY)
-else
-	$(call _dispatch,$@)
-endif
-else
+# makes an unprovisioned checkout undiscoverable. Every other public verb uses
+# the same dispatcher and environment precondition.
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
 help:
 	$(call _dispatch,$@)
-endif
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -653,7 +597,7 @@ _builtin_test_{{ what }}: _builtin_require_environment
 {% endfor %}
 
 _builtin_fmt_check: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb fmt $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_fmt_all: _builtin_require_environment
 	$(call _require_apply)
@@ -665,7 +609,7 @@ _builtin_fmt_apply: _builtin_fmt_all
 # WHAT (mutations require explicit APPLY=Y). Dual of `ruff check --fix` — never
 # mutate here.
 _builtin_fix_check: _builtin_require_environment
-	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) --make-arg "WHAT=check" $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
+	@$(WORKSPACE_ORCHESTRATE) --verb fix $(WORKSPACE_PROJECT_ARGS) $(if $(filter 1,$(FAIL_FAST)),--fail-fast)
 
 _builtin_fix_all: _builtin_require_environment
 	$(call _require_apply)
@@ -841,11 +785,6 @@ _builtin_release_publish: _builtin_require_environment
 # lock floors; gen never runs another writer before or after conform's journal.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-
-_builtin_gen_init:
-	$(call _require_apply)
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --apply
-	@$(PROJECT_FLEXT_INFRA) codegen init --workspace "$(PROJECT_ROOT)" --check
 
 _builtin_gen_all:
 	$(call _require_apply)

@@ -13,7 +13,7 @@ from flext_core import r
 from flext_infra._utilities._git.worktree_roots import (
     FlextInfraUtilitiesGitWorktreeRootsMixin,
 )
-from flext_infra._utilities._sort_keys import path_depth_then_text
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -180,7 +180,9 @@ class FlextInfraUtilitiesGitWorktreeDiscoveryMixin(
             relative_path = Path(relative_path_text)
             if (repository_root / relative_path / ".git").exists():
                 paths.append(relative_path)
-        return r[t.SequenceOf[Path]].ok(tuple(sorted(paths, key=path_depth_then_text)))
+        return r[t.SequenceOf[Path]].ok(
+            tuple(sorted(paths, key=FlextInfraUtilitiesBase.path_depth_then_text))
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesGitWorktreeDiscoveryMixin"]

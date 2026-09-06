@@ -54,7 +54,7 @@ class FlextInfraCodegenFixerRefactorMixin(FlextInfraCodegenFixerResultsMixin):
             )
         )
         ctx.files_modified |= {
-            str(result.file_path) for result in refactor_results if result.success
+            str(result.file_path) for result in refactor_results if result.modified
         }
         ctx.violations_fixed.extend(
             m.Infra.CensusViolation(

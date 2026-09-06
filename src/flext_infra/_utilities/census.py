@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
-from flext_infra._utilities._sort_keys import path_depth
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if not matching_roots:
             unknown: str = c.Infra.DEFAULT_UNKNOWN
             return unknown
-        best = max(matching_roots, key=path_depth)
+        best = max(matching_roots, key=FlextInfraUtilitiesBase.path_depth)
         name: str = best.name
         return name
 

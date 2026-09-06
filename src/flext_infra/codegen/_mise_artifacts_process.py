@@ -17,10 +17,6 @@ def prepare_isolation(
     scratch: Path, contract: m.Infra.MiseBootstrapEnvironmentSpec
 ) -> p.Result[bool]:
     """Create only invocation-local policy, home, and receipt paths."""
-
-    def directory_key(path: Path) -> tuple[int, str]:
-        return len(path.parts), path.as_posix()
-
     if not os.environ.get("PATH"):
         return r[bool].fail("PATH is required for isolated Mise execution")
     if scratch.exists() or scratch.is_symlink():
@@ -33,12 +29,12 @@ def prepare_isolation(
     }
     directories = sorted(
         {
-            scratch / "seed" / "bin",
-            scratch / "receipt" / "bin",
+            scratch / "seed" / c.Infra.MISE_LAUNCHER_DIRECTORY,
+            scratch / "receipt" / c.Infra.MISE_LAUNCHER_DIRECTORY,
             *(path.parent for path in empty_files),
             *transient_directories,
         },
-        key=directory_key,
+        key=u.Infra.path_depth_then_text,
     )
     for directory in directories:
         planned = u.Cli.atomic_plan_directory_chain(directory)

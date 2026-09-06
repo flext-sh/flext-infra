@@ -36,13 +36,6 @@ def stage_file_plans(
     publications: list[m.Infra.CodegenStagedFile] = []
     phase_roots: set[Path] = set()
     for index, file_plan in enumerate(changed):
-        before_result = u.Infra.codegen_file_before_state(file_plan)
-        if before_result.failure:
-            return result_type.fail(
-                f"{phase} destination parent was not materialized before staging: "
-                f"{file_plan.path.parent}"
-            )
-        before = before_result.value
         project = next(
             (item for item in layout.projects if item.root == file_plan.project), None
         )
@@ -53,6 +46,14 @@ def stage_file_plans(
         current = files.read_state(file_plan.path, required=False)
         if current.failure:
             return result_type.from_failure(current)
+        if isinstance(file_plan.before, m.Cli.AtomicDirectoryChainPlan):
+            before = current.value
+            if before.content is not None:
+                return result_type.fail(
+                    f"{phase} destination appeared after planning: {file_plan.path}"
+                )
+        else:
+            before = file_plan.before
         if current.value != before:
             return result_type.fail(
                 f"{phase} destination changed after planning: {file_plan.path}"
@@ -86,17 +87,17 @@ def stage_file_plans(
                 )
             phase_root = project.transaction_root / f"phase-{phase}"
             if phase_root not in phase_roots:
-                before = u.Cli.atomic_read_empty_directory_state(
+                phase_root_before = u.Cli.atomic_read_empty_directory_state(
                     phase_root, required=False
                 )
-                if before.failure:
-                    return result_type.from_failure(before)
-                if before.value.exists:
+                if phase_root_before.failure:
+                    return result_type.from_failure(phase_root_before)
+                if phase_root_before.value.exists:
                     return result_type.fail(
                         f"{phase} staging root already exists: {phase_root}"
                     )
                 created = u.Cli.atomic_create_empty_directory_guarded(
-                    before.value, permission_mode=0o700
+                    phase_root_before.value, permission_mode=0o700
                 )
                 if created.failure:
                     return result_type.from_failure(created)

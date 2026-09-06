@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, m, u
+from flext_infra import c, config, m, u
 from flext_infra.codegen import _mise_artifacts_candidates as candidates
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_process as process
@@ -33,10 +33,7 @@ class FlextInfraMiseStaging:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                 "Mise staging requires an explicit transaction coordinator"
             )
-        seed_name = "mise.cmd" if os.name == "nt" else "mise"
-        seed = files.read_state(
-            plan.layout.scope_root / "bin" / seed_name, required=True
-        )
+        seed = self._owner.bootstrap_seed()
         if seed.failure:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(seed)
         bootstrap = u.Infra.mise_bootstrap_environment()
@@ -62,7 +59,15 @@ class FlextInfraMiseStaging:
         )
         if environment.failure:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(environment)
-        launcher = receipt.value / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
+        launcher = (
+            receipt.value
+            / c.Infra.MISE_LAUNCHER_DIRECTORY
+            / (
+                c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
+                if os.name == "nt"
+                else c.Infra.MISE_UNIX_LAUNCHER_FILENAME
+            )
+        )
         receipt_states = candidates.receipt_states(receipt.value)
         if receipt_states.failure:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(receipt_states)
@@ -126,10 +131,15 @@ class FlextInfraMiseStaging:
         environment: dict[str, str],
     ) -> p.Result[bool]:
         """Build and validate one project without reading mutable source bytes."""
-        stage_plan = u.Cli.atomic_plan_directory_chain(stage_root / "bin")
+        stage_plan = u.Cli.atomic_plan_directory_chain(
+            stage_root / c.Infra.MISE_LAUNCHER_DIRECTORY
+        )
         if stage_plan.failure:
             return r[bool].from_failure(stage_plan)
-        if tuple(stage_plan.value.directories) != (stage_root, stage_root / "bin"):
+        if tuple(stage_plan.value.directories) != (
+            stage_root,
+            stage_root / c.Infra.MISE_LAUNCHER_DIRECTORY,
+        ):
             return r[bool].fail(
                 f"Mise stage already exists for {project.layout.selector}"
             )
@@ -156,7 +166,9 @@ class FlextInfraMiseStaging:
         lock_before = project.artifacts.lock
         if lock_before.content is not None:
             copied_lock = process.write_new(
-                stage_root / "mise.lock", lock_before.content, 0o644
+                stage_root / c.Infra.MISE_LOCK_FILENAME,
+                lock_before.content,
+                files.ARTIFACT_SPECS[2][1],
             )
             if copied_lock.failure:
                 return copied_lock
@@ -188,7 +200,9 @@ class FlextInfraMiseStaging:
                 hydrated.error
                 or f"Mise checksum hydration failed for {project.layout.selector}"
             )
-        normalized = candidates.normalize_lock_mode(stage_root / "mise.lock")
+        normalized = candidates.normalize_lock_mode(
+            stage_root / c.Infra.MISE_LOCK_FILENAME
+        )
         if normalized.failure:
             return normalized
         validated = self._owner.validate_artifacts(stage_root)

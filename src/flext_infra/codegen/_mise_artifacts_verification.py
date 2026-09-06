@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
@@ -292,15 +289,13 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
 
 
 def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
-    """Prove every Mise config source still equals its full snapshot."""
+    """Prove every snapshotted Mise config source is byte-identical."""
     for project in plan.projects:
-        current = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
-            project.layout.root
-        )
+        current = states_current(project.config.sources)
         if current.failure:
-            return r[bool].from_failure(current)
-        if current.value != project.config.sources:
-            return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
+            return r[bool].fail(
+                current.error or f"Mise sources changed: {project.layout.selector}"
+            )
     return r[bool].ok(True)
 
 

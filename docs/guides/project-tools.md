@@ -77,8 +77,8 @@ edit the declaration, never `.gitignore`.
 ## Landing a declaration
 
 ```
-make gen WHAT=apply APPLY=Y
-make gen WHAT=check
+make gen APPLY=Y
+make gen
 make setup
 ```
 

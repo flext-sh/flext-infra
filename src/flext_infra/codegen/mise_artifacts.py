@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
@@ -254,7 +255,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
 
     def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
         """Download exact resolved artifacts and atomically add missing SHA-256 values."""
-        lock_path = root / "mise.lock"
+        lock_path = root / c.Infra.MISE_LOCK_FILENAME
         source = u.Cli.files_read_text(lock_path)
         if source.failure:
             return r[bool].fail(source.error or "cannot read mise.lock")
@@ -338,8 +339,14 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     @classmethod
     def launcher_release(cls, root: Path) -> p.Result[str]:
         """Return the one exact release embedded by both generated launchers."""
-        shell = cls.validate_seed(root / "bin" / "mise")
-        windows = cls.validate_seed(root / "bin" / "mise.cmd")
+        shell = cls.validate_seed(
+            root / c.Infra.MISE_LAUNCHER_DIRECTORY / c.Infra.MISE_UNIX_LAUNCHER_FILENAME
+        )
+        windows = cls.validate_seed(
+            root
+            / c.Infra.MISE_LAUNCHER_DIRECTORY
+            / c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
+        )
         if shell.failure or windows.failure:
             return r[str].fail(shell.error or windows.error or "invalid Mise launcher")
         if shell.value != windows.value:
@@ -347,12 +354,39 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return r[str].ok(shell.value)
 
     @classmethod
+    def bootstrap_seed(cls) -> p.Result[m.Cli.AtomicFileState]:
+        """Return the packaged native bootstrap seed used to mint launchers."""
+        seed_name = (
+            c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
+            if os.name == "nt"
+            else c.Infra.MISE_UNIX_LAUNCHER_FILENAME
+        )
+        seed_path = (
+            Path(__file__).resolve().parents[1]
+            / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
+            / seed_name
+        )
+        state = u.Cli.atomic_read_binary_file_state(seed_path, required=True)
+        if state.failure:
+            return r[m.Cli.AtomicFileState].from_failure(state)
+        validated = cls.validate_seed(seed_path)
+        if validated.failure:
+            return r[m.Cli.AtomicFileState].fail(
+                validated.error or f"invalid packaged Mise seed: {seed_path}"
+            )
+        if state.value.content is None or state.value.mode is None:
+            return r[m.Cli.AtomicFileState].fail(
+                f"packaged Mise seed is absent: {seed_path}"
+            )
+        return r[m.Cli.AtomicFileState].ok(state.value)
+
+    @classmethod
     def validate_seed(cls, path: Path) -> p.Result[str]:
         """Validate one native staged bootstrap seed without executing live bytes."""
         source = u.Cli.files_read_text(path)
         if source.failure:
             return r[str].fail(source.error or f"missing generated Mise seed: {path}")
-        windows = path.name == "mise.cmd"
+        windows = path.name == c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
         release = (
             cls._assignment(source.value, "pinned_version")
             if windows
@@ -424,7 +458,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         tools_result = self._tool_specifiers(config_result.value)
         if tools_result.failure:
             return r[bool].fail(tools_result.error or "invalid .mise.toml tools")
-        lock_result = self._read_toml(project_root / "mise.lock")
+        lock_result = self._read_toml(project_root / c.Infra.MISE_LOCK_FILENAME)
         if lock_result.failure:
             return r[bool].fail(lock_result.error or "invalid mise.lock")
         normalized_lock = self._normalize_lock_payload(lock_result.value)

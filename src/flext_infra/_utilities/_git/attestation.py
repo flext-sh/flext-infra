@@ -73,7 +73,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     ) -> p.Result[tuple[m.Infra.GateCommandEvidence, ...]]:
         evidence: list[m.Infra.GateCommandEvidence] = []
         for gate in gates:
-            command = f"make {gate}" if gate != "gen" else "make gen WHAT=check"
+            command = f"make {gate}"
             started = datetime.now(UTC)
             outcome = u.Cli.run_raw(command.split(), cwd=repo_root)
             completed = datetime.now(UTC)

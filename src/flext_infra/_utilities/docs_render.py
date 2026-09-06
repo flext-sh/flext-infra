@@ -236,7 +236,7 @@ class FlextInfraUtilitiesDocsRender:
             "## Quality Gates",
             "",
             (
-                f"Canonical `make` verbs (`check`, `test`, `fmt WHAT=apply APPLY=Y`, "
+                f"Canonical `make` verbs (`check`, `test`, `fmt APPLY=Y`, "
                 f"`val`, `docs`) — see [`/flext/AGENTS.md`]({agents_link}) `Build & Test` "
                 f"and `Required Python quality gates`; selector routing is owned "
                 f"universally by `config.AiHub.paths.agents_home`/"

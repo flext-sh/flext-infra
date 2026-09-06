@@ -840,14 +840,19 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def write_mise_stub(path: Path) -> Path:
             """Write the one hermetic Mise contract used by Make setup fixtures."""
+            release = TestsFlextInfraUtilities.Tests.mise_release()
             TestsFlextInfraUtilities.Tests.write_executable(
                 path.with_name("direnv"), "#!/bin/sh\nexit 0\n"
             )
             TestsFlextInfraUtilities.Tests.write_executable(
                 path,
                 "#!/bin/sh\n"
+                "mise_release_contract() {\n"
+                f'  local mise_version="${{MISE_VERSION:-{release}}}"\n'
+                '  : "$mise_version"\n'
+                "}\n"
                 'if [ "$1" = "--version" ]; then '
-                f"printf '%s\\n' '{TestsFlextInfraUtilities.Tests.mise_release()}'; "
+                f"printf '%s\\n' '{release}'; "
                 "exit; fi\n"
                 f"{TestsFlextInfraUtilities.Tests.mise_generate_install_script_branch()}"
                 f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
@@ -1339,8 +1344,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             baseline_branch = TestsFlextInfraUtilities.Tests.provider().branch
             bootstrap = TestsFlextInfraUtilities.Tests.git_bootstrap
             bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
-            bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))
-            bootstrap(repo_root, ("config", "user.name", "Flext Tests"))
+            TestsFlextInfraUtilities.Tests.configure_git_identity(repo_root)
             bootstrap(
                 repo_root,
                 ("remote", "add", c.Infra.GIT_ORIGIN, origin_url or str(repo_root)),
@@ -1618,7 +1622,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def run_lazy_init(repository_root: Path, *, check_only: bool = False) -> int:
             """Materialize immutable lazy-init plans only inside test workspaces."""
             service = FlextInfraCodegenLazyInit(repository_root=repository_root)
-            planned = service.plan_files().unwrap()
+            planned_result = service.plan_files()
+            if planned_result.failure:
+                return 1
+            planned = planned_result.value
             changed = tuple(
                 plan
                 for plan in planned.files
@@ -1626,7 +1633,9 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             if check_only:
                 return len(changed)
-            materialized = TestsFlextInfraUtilities.Tests.materialize_lazy_init(service)
+            materialized = TestsFlextInfraUtilities.Tests.materialize_codegen_plans(
+                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(planned.files)
+            )
             return 0 if materialized.success else 1
 
         @staticmethod
@@ -1637,6 +1646,28 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 return r[bool].from_failure(planned)
             return TestsFlextInfraUtilities.Tests.materialize_codegen_plans(
                 r[tuple[m.Infra.CodegenFilePlan, ...]].ok(planned.value.files)
+            )
+
+        @staticmethod
+        def materialize_docs_bundle(
+            bundle: m.Infra.DocsGenerationBundle,
+        ) -> p.Result[bool]:
+            """Publish one immutable docs bundle through atomic file primitives."""
+            required = u.Infra.docs_required_directories(bundle)
+            if required.failure:
+                return r[bool].from_failure(required)
+            for directory in required.value:
+                directory_plan = u.Cli.atomic_plan_directory_chain(directory)
+                if directory_plan.failure:
+                    return r[bool].from_failure(directory_plan)
+                if directory_plan.value.directories:
+                    created = u.Cli.atomic_create_directory_chain_guarded(
+                        directory_plan.value, permission_mode=0o755
+                    )
+                    if created.failure:
+                        return r[bool].from_failure(created)
+            return TestsFlextInfraUtilities.Tests.materialize_codegen_plans(
+                u.Infra.docs_file_plans(bundle)
             )
 
         @staticmethod

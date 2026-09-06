@@ -99,9 +99,13 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
         tm.that(len(changes) > 0, eq=True)
         tm.that(wheel["packages"], eq=["src/app", "src/app_client"])
-        tm.that(wheel["force-include"], eq={"src/app_launch.py": "app_launch.py"})
         tm.that(
-            sdist["only-include"], eq=["src/app", "src/app_client", "src/app_launch.py"]
+            wheel["force-include"],
+            eq={"src/app_launch.py": "app_launch.py", "config": "app/config"},
+        )
+        tm.that(
+            sdist["only-include"],
+            eq=["src/app", "src/app_client", "src/app_launch.py", "config"],
         )
 
 

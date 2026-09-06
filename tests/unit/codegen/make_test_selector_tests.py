@@ -144,6 +144,7 @@ class TestsMakeTestSelector:
             mise,
             (
                 "#!/bin/sh\n"
+                f'__mise_bootstrap() {{ local mise_version="${{MISE_VERSION:-{test_u.Tests.mise_release()}}}"; }}\n'
                 'if [ "$1" = "--version" ]; then '
                 f"printf '{test_u.Tests.mise_release()}\\n'; exit 0; fi\n"
                 f"{test_u.Tests.mise_generate_install_script_branch()}"
@@ -179,7 +180,6 @@ class TestsMakeTestSelector:
                     "-f",
                     str(selected_makefile),
                     "gen",
-                    "WHAT=check",
                     f"UV={uv}",
                 ],
                 cwd=caller_root,
@@ -275,10 +275,14 @@ class TestsMakeTestSelector:
             has=[
                 "FLEXT_PYTEST_FILE_RAW",
                 "FLEXT_PYTEST_MATCH_RAW",
-                "FLEXT_PYTEST_WHAT_RAW",
                 "FLEXT_PYTEST_FAIL_FAST_RAW",
             ],
-            lacks=["PYTEST_TARGETS", "_all_pytest_args", "pytest-diag"],
+            lacks=[
+                "FLEXT_PYTEST_WHAT_RAW",
+                "PYTEST_TARGETS",
+                "_all_pytest_args",
+                "pytest-diag",
+            ],
         )
         tm.that(reporter, has="{{ command_prefix }}set -eu; \\\n")
         tm.that(reporter, has='TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp" {{ runner }}')

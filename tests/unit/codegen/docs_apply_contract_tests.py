@@ -16,7 +16,7 @@ class TestsDocsApplyContract:
             / "src/flext_infra/templates/project/base/.github/workflows/docs.yml.j2"
         ).read_text(encoding="utf-8")
 
-        tm.that(workflow, has="make gen WHAT=check")
+        tm.that(workflow, has="make gen")
         tm.that(workflow, has="make docs WHAT=audit")
         tm.that(workflow, has="make docs WHAT=validate")
         tm.that(workflow, has="make docs WHAT=build")

@@ -159,7 +159,7 @@ class TestCodegenCiMatrix:
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
         tm.that(ci_step_runs, has="run: CI=Y make setup")
-        tm.that(workflow, has="run: CI=Y make gen WHAT=check")
+        tm.that(workflow, has="run: CI=Y make gen")
         tm.that(workflow, lacks="attest/gates/v1")
         tm.that(workflow, lacks="github verify-gates")
         tm.that(workflow, lacks="WHAT=apply")
@@ -167,7 +167,7 @@ class TestCodegenCiMatrix:
         step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
         tm.that(step_indices, eq=tuple(sorted(step_indices)))
         setup_index = workflow.index("run: CI=Y make setup")
-        gen_index = workflow.index("run: CI=Y make gen WHAT=check")
+        gen_index = workflow.index("run: CI=Y make gen")
         tm.that(setup_index < gen_index, eq=True)
         if "run: CI=Y make check" in ci_step_runs:
             tm.that(workflow, has="run: CI=N make check")

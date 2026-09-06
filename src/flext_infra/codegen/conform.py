@@ -236,11 +236,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root
         )
-        if (
-            c.Infra.CodegenConformSurface(request.what)
-            is c.Infra.CodegenConformSurface.ALL
-        ):
+        surface = c.Infra.CodegenConformSurface(request.what)
+        if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+            mise_owner = FlextInfraCodegenMiseArtifacts(
+                repository_root=request.root, apply_changes=True, check_only=False
+            )
+            transaction = FlextInfraCodegenTransaction(mise_owner)
+            return transaction.run_locked(
+                prepare=False, operation=lambda _scope_root: self._execute_plan(request)
+            )
         return self._execute_plan(request)
 
     def _execute_plan(
@@ -372,7 +378,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         profile = workspace.repository.role
         root = request.root.expanduser().resolve()
-        directories = {root}
+        directories = {root, root / c.Infra.MISE_LAUNCHER_DIRECTORY}
         for entry in config.Infra.codegen.templates.entries:
             if profile not in entry.profiles:
                 continue
@@ -386,7 +392,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             directories.add((root / relative).parent)
         created: list[m.Cli.AtomicDirectoryState] = []
-        for directory in sorted(directories, key=self._directory_depth):
+        for directory in sorted(directories, key=u.Infra.path_depth):
             planned = u.Cli.atomic_plan_directory_chain(directory)
             if planned.failure:
                 rollback = self._rollback_scaffold_directories(tuple(created))
@@ -411,11 +417,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             created.extend(materialized.value)
         return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(tuple(created))
-
-    @staticmethod
-    def _directory_depth(path: Path) -> int:
-        """Return a stable shallow-first directory-chain ordering key."""
-        return len(path.parts)
 
     @staticmethod
     def _rollback_scaffold_directories(

@@ -18,6 +18,7 @@ from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from importlib.machinery import ModuleSpec
 
     from flext_infra import p
 
@@ -31,6 +32,17 @@ class FlextInfraUtilitiesDiscovery(
     """Canonical discovery helpers for path, package, and Rope-backed scans."""
 
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
+
+    @staticmethod
+    def _package_spec(package_name: str) -> ModuleSpec | None:
+        """Resolve a dotted package without asking importlib for a missing parent."""
+        spec: ModuleSpec | None = None
+        parts = package_name.split(".")
+        for depth in range(1, len(parts) + 1):
+            spec = importlib_util.find_spec(".".join(parts[:depth]))
+            if spec is None:
+                return None
+        return spec
 
     @staticmethod
     def _workspace_project_roots(repository_root: str) -> tuple[Path, ...]:
@@ -191,7 +203,7 @@ class FlextInfraUtilitiesDiscovery(
         # Standalone consumers inherit aliases
         # from installed FLEXT artifacts; plain modules are never facade parents.
         try:
-            spec = importlib_util.find_spec(package_name)
+            spec = FlextInfraUtilitiesDiscovery._package_spec(package_name)
         except c.EXC_OS_TYPE_VALUE:
             return False
         else:
@@ -202,7 +214,7 @@ class FlextInfraUtilitiesDiscovery(
     def installed_package_exports(cls, package_name: str) -> frozenset[str]:
         """Return the explicit ABI published by one installed package root."""
         try:
-            spec = importlib_util.find_spec(package_name)
+            spec = cls._package_spec(package_name)
         except c.EXC_OS_TYPE_VALUE:
             return frozenset()
         if spec is None or spec.submodule_search_locations is None or not spec.origin:

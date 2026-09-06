@@ -139,6 +139,14 @@ class FlextInfraCodegenTransaction:
         transaction_directories = state.plan_transaction_directories(layout)
         if transaction_directories.failure:
             return result_type.from_failure(transaction_directories)
+        conform_directories = state.plan_directories(
+            layout,
+            phase="conform",
+            requested=u.Infra.codegen_required_directories(file_plans),
+            disposition="generated",
+        )
+        if conform_directories.failure:
+            return result_type.from_failure(conform_directories)
         plan = self._planner.snapshot(layout, config_plans)
         if plan.failure:
             return result_type.from_failure(plan)
@@ -184,8 +192,20 @@ class FlextInfraCodegenTransaction:
         )
         if staging_state.failure:
             return result_type.from_failure(staging_state)
+        with_conform_directories = journal_io.append_directories(
+            staging_journal.value, conform_directories.value
+        )
+        if with_conform_directories.failure:
+            return result_type.from_failure(with_conform_directories)
+        if with_conform_directories.value != staging_journal.value:
+            staging_state = journal_io.write(
+                layout, with_conform_directories.value, expected=staging_state.value
+            )
+            if staging_state.failure:
+                return result_type.from_failure(staging_state)
+        active_staging_journal = with_conform_directories.value
         materialized = self._materialize_directories(
-            layout, staging_journal.value, staging_state.value
+            layout, active_staging_journal, staging_state.value
         )
         if materialized.failure:
             return result_type.from_failure(materialized)
