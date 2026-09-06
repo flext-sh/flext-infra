@@ -93,7 +93,7 @@ override export FLEXT_PYTEST_TARGET_RAW := {{ make.testmon_cache.target_director
 PROJECT_STATE_ROOT := $(abspath $(PROJECT_ROOT)/../{{ state_directory_name }}/$(notdir $(PROJECT_ROOT)))
 PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/{{ scratch_namespace }}
 TESTMON_DATAFILE := $(PROJECT_STATE_ROOT)/{{ make.testmon_cache.namespace }}/{{ make.testmon_cache.database_filename }}
-override export TESTMON_DATAFILE
+export TESTMON_DATAFILE
 # === SECTION: WORKSPACE_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
 # Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
