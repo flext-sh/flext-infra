@@ -13,9 +13,7 @@ from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
 
 
-class FlextInfraUtilitiesDocsScopePolicyMixin(
-    FlextInfraUtilitiesDocsScopeStateMixin
-):
+class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateMixin):
     """Interpret the authenticated docs policy for one project or workspace."""
 
     @staticmethod
@@ -29,6 +27,11 @@ class FlextInfraUtilitiesDocsScopePolicyMixin(
     def load_config(workspace_root: Path) -> t.JsonMapping:
         """Load the minimal docs policy settings if present."""
         path = FlextInfraUtilitiesDocsScopePolicyMixin.config_path(workspace_root)
+        # An absent optional config has no parent identity to authenticate. A
+        # present parent is delegated to the atomic owner, which still rejects
+        # symlinks, unsafe identities, and every real read failure.
+        if not path.parent.exists():
+            return {}
         state = u.Cli.atomic_read_binary_file_state(path, required=False)
         if state.failure:
             raise ValueError(state.error or f"docs config is unsafe: {path}")

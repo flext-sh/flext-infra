@@ -121,3 +121,75 @@ class TestsFlextInfraModCliRoute:
         tm.that(updated, lacks="m.Infra.MiseToolchainPublication")
         tm.that(console, has="Would reformat")
         tm.that(console, has=str(actionable_path))
+
+    def test_scan_keeps_prefix_rule_ids_exact(self, mod_workspace: Path) -> None:
+        config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_FILENAME
+        rules_root = (
+            mod_workspace / c.Infra.CODEMOD_RESOURCE_DIRNAME / c.Cli.RULES_DIR_NAME
+        )
+        first_rule = rules_root / "rewire-first.yml"
+        second_rule = rules_root / "rewire-first-message.yml"
+
+        tm.ok(u.Cli.ensure_dir(rules_root))
+        tm.ok(u.Cli.atomic_write_text_file(config_path, "ruleDirs:\n  - rules\n"))
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                first_rule,
+                (
+                    "id: rewire-first\n"
+                    "language: Python\n"
+                    "rule:\n"
+                    "  pattern: |\n"
+                    "    value = dict(\n"
+                    "      $ARGS\n"
+                    "    )\n"
+                    "fix: |\n"
+                    "  value = {\n"
+                    "    $ARGS\n"
+                    "  }\n"
+                    "severity: warning\n"
+                ),
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                second_rule,
+                (
+                    "id: rewire-first-message\n"
+                    "language: Python\n"
+                    "rule:\n"
+                    "  pattern: |\n"
+                    "    value = dict(\n"
+                    "      $ARGS\n"
+                    "    )\n"
+                    "severity: warning\n"
+                ),
+            )
+        )
+        tm.ok(
+            u.Cli.atomic_write_text_file(
+                mod_workspace / "sample.py", "value = dict(\n    a=1,\n)\n"
+            )
+        )
+
+        exit_code = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
+        report_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(
+                mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True
+            )
+        )
+        report = m.Infra.ModScanEvidence.model_validate_json(
+            tm.not_none(report_state.content)
+        )
+
+        tm.that(exit_code, ne=0)
+        tm.that(report.findings, eq=2)
+        tm.that(report.actionable, eq=1)
+        tm.that(report.detection_only, eq=1)
+        tm.that(
+            {entry.rule_id: entry.rule_file for entry in report.entries},
+            eq={
+                "rewire-first": str(first_rule.resolve()),
+                "rewire-first-message": str(second_rule.resolve()),
+            },
+        )

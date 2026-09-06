@@ -1,4 +1,4 @@
-"""Directory-scoped Python file iteration mixin.
+"""Directory-scoped Python file iteration utility facet.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

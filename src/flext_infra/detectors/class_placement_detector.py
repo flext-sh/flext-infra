@@ -47,9 +47,7 @@ class FlextInfraClassPlacementDetector:
                 ctx.rope_project, res
             )
         )
-        single_governed_class = len(governed_classes) == 1
-
-        # 1. Misplaced governed classes → one_class_per_module action.
+        # 1. Misplaced governed classes → family relocation action.
         for ci, family in governed_classes:
             if FlextInfraClassPlacementDetector._in_canonical_location(
                 family, parts, file_path.name
@@ -135,8 +133,8 @@ class FlextInfraClassPlacementDetector:
         for ci in u.Infra.get_class_info(rope_project, resource):
             if ci.name.startswith("_"):
                 continue
-            family = FlextInfraClassPlacementDetector._family_for_class(ci)
-            if family is None:
+            family = u.Infra.class_family(ci)
+            if not family:
                 continue
             results.append((ci, family))
         return tuple(results)
@@ -166,25 +164,6 @@ class FlextInfraClassPlacementDetector:
             ),
             family=family,
         )
-
-    @staticmethod
-    def _family_for_class(ci: m.Infra.ClassInfo) -> str | None:
-        """Return the canonical family letter for a class, or None if not governed."""
-        terminal_bases = {
-            base_name.rsplit(".", maxsplit=1)[-1] for base_name in ci.bases
-        }
-        if terminal_bases & c.Infra.PLACEMENT_PYDANTIC_BASE_NAMES:
-            return "m"
-        if terminal_bases & c.Infra.PLACEMENT_PROTOCOL_BASE_NAMES:
-            return "p"
-        if terminal_bases & c.Infra.PLACEMENT_ENUM_BASE_NAMES:
-            return "c"
-        if any(
-            ci.name.endswith(suffix)
-            for suffix in c.Infra.PLACEMENT_UTILITY_NAME_SUFFIXES
-        ):
-            return "u"
-        return None
 
     @staticmethod
     def _in_canonical_location(

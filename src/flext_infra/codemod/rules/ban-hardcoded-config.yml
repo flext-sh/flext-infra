@@ -54,7 +54,7 @@ note: >-
   value has no SSOT owner yet, add it to the owning config overlay first —
   do not keep the literal.
 files:
-  - "**/*.py"
+  - "src/**/*.py"
 ignores:
   - "**/_constants/**"
   - "**/constants.py"

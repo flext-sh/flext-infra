@@ -15,6 +15,18 @@ class FlextInfraConstantsCheck:
     """Check infrastructure constants."""
 
     @unique
+    class SarifSchema(StrEnum):
+        """Supported SARIF schema identities."""
+
+        V2_1_0 = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json"
+
+    @unique
+    class SarifVersion(StrEnum):
+        """Supported SARIF format versions."""
+
+        V2_1_0 = "2.1.0"
+
+    @unique
     class GateSeverity(StrEnum):
         """Severity levels accepted by gate output parsers."""
 
@@ -22,13 +34,8 @@ class FlextInfraConstantsCheck:
         WARNING = "warning"
         NOTE = "note"
 
-    @unique
-    class GateMode(StrEnum):
-        """Gate enforcement posture — WARN reports without failing; STRICT fails."""
-
-        WARN = "warn"
-        STRICT = "strict"
-
+    AST_GREP_DOCS_URL: Final[str] = "https://ast-grep.github.io/"
+    "Canonical ast-grep documentation URL for gate metadata."
     SARIF_TOOL_INFO: Final[t.MappingKV[str, t.StrPair]] = MappingProxyType({
         "lint": ("Ruff Linter", "https://docs.astral.sh/ruff/"),
         "format": ("Ruff Formatter", "https://docs.astral.sh/ruff/formatter/"),
@@ -66,6 +73,7 @@ class FlextInfraConstantsCheck:
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
         ),
+        "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "direnv": (
             "Flext Direnv Environment Contract Gate",
             "internal://flext-infra/direnv",
@@ -173,17 +181,15 @@ class FlextInfraConstantsCheck:
         r"\bFlextCli[A-Z]\w*"
     )
 
-    # --- 1000-LOC SUPREME LAW (§3.1) gate SSOT ---
-    # Why (operator 2026-08-07): the 200-LOC ceiling made real modules
-    # unmanageable — enforcing it fragmented cohesive units into artificial
-    # splits. Raised fleet-wide to 1000. Consumers read this constant, never a
-    # literal, so the cap stays a single owned value.
-    LOC_CAP_MAX: Final[int] = 1000
-    "Per-module logical-LOC ceiling (AGENTS.md §3.1 SUPREME LAW)."
+    # --- 200-LOC module law gate SSOT ---
+    # The current operator contract supersedes the former 1000-LOC allowance.
+    # Consumers read this constant so decomposition converges on one value.
+    LOC_CAP_MAX: Final[int] = 200
+    "Per-module logical-LOC ceiling."
     SCC_BINARY: Final[str] = "scc"
     CLI_DIRENV: Final[str] = "direnv"
     SCC_PYTHON_LANG: Final[str] = "Python"
-    "scc language key the 1000-LOC cap enforces — §3.1 is a Python-module law; "
+    "scc language key the 200-LOC cap enforces; "
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
@@ -228,9 +234,16 @@ class FlextInfraConstantsCheck:
     "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"
     JSCPD_MIN_LINES: Final[int] = 8
+    JSCPD_MIN_TOKENS: Final[int] = 50
+    JSCPD_THRESHOLD_PERCENT: Final[int] = 0
+    JSCPD_SCOPE_DIRNAMES: Final[t.StrSequence] = ("src", "tests", "config", "templates")
     JSCPD_REPORT_DIRNAME: Final[str] = ".reports/jscpd"
     JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
+    JSCPD_FORMAT_EXTENSIONS: Final[t.MappingKV[str, t.StrSequence]] = MappingProxyType({
+        "django": ("j2",)
+    })
+    "Parse Jinja projections in place; never duplicate templates into a scan tree."
     JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
         "**/__snapshots__/**",
         "**/__init__.py",

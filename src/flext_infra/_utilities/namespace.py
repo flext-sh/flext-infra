@@ -6,7 +6,7 @@ import ast
 import operator
 from collections.abc import MutableMapping
 from pathlib import Path
-from typing import ClassVar, Final
+from typing import ClassVar
 
 from flext_cli import r, u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
@@ -23,34 +23,26 @@ from flext_infra.typings import t
 class FlextInfraUtilitiesCodegenNamespace:
     """Canonical namespace helpers for codegen discovery, parsing, and fixes."""
 
-    _governance_cache: ClassVar[
-        MutableMapping[str, m.Infra.ConstantsGovernanceConfig]
-    ] = {}
-    _governance_file: Final[Path] = (
-        Path(__file__).parent.parent / "rules" / "constants-governance.yml"
-    )
     # flext-perf.1 (agent: codex): cache __all__ AST extraction by path+mtime
     # so the 4-5 redundant _declared_exports calls per policy() hit memory
     # instead of re-reading + re-parsing the same file from disk each time.
     _declared_exports_cache: ClassVar[dict[str, tuple[int, t.StrSequence]]] = {}
 
-    @classmethod
-    def _is_rule_fixable(cls, rule_id: str, module: str) -> bool:
-        """Is rule fixable."""
-        cached = cls._governance_cache.get("settings")
-        if cached is None:
-            raw = u.Cli.yaml_load_mapping(cls._governance_file)
-            cached = m.Infra.ConstantsGovernanceConfig.model_validate(raw)
-            cls._governance_cache["settings"] = cached
-        for rule in cached.rules:
-            if rule.id != rule_id:
-                continue
-            if not rule.fixable:
+    @staticmethod
+    def _is_rule_fixable(rule_id: str, module: str) -> bool:
+        """Derive fix support from the implemented namespace-rule contract."""
+        match rule_id:
+            case "NS-000":
                 return False
-            if rule.fixable_exclusion is None:
+            case "NS-001" | "NS-003":
                 return True
-            return not module.endswith(rule.fixable_exclusion)
-        return False
+            case "NS-002":
+                typings_filename: str = c.Infra.TYPINGS_PY
+                return Path(module).name != typings_filename
+
+            case _:
+                msg = f"unsupported namespace rule: {rule_id}"
+                raise ValueError(msg)
 
     @classmethod
     def matches_root_namespace_file(cls, file_name: str) -> bool:

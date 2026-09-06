@@ -157,7 +157,7 @@ class TestsCodegenMiseArtifacts:
             "workspace_root": root,
             "check_only": True,
         })
-        tm.that(service.workspace_root, eq=root)
+        tm.that(service.repository_root, eq=root)
         tm.that((root / ".git").is_dir(), eq=True)
         identity = u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
         tm.ok(identity)

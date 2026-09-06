@@ -506,8 +506,9 @@ class FlextInfraWorkspaceDetector(
                 identity.error or "failed to resolve local Git identity"
             )
         beads_result = cls.load_beads_spec(resolved_root)
-        member_beads = resolved_root / c.Infra.BEADS_DIRNAME
-        if identity.value.is_submodule and member_beads.is_symlink():
+        member_root = identity.value.primary_root
+        member_beads = member_root / c.Infra.BEADS_DIRNAME
+        if identity.value.is_attached_submodule and member_beads.is_symlink():
             superproject_root = identity.value.superproject_root
             if superproject_root is None:
                 return r[m.Infra.WorkspaceSpec].fail(
@@ -520,10 +521,10 @@ class FlextInfraWorkspaceDetector(
                     or "workspace member ledger inheritance failed"
                 )
             try:
-                member_path = resolved_root.relative_to(superproject_root)
+                member_path = member_root.relative_to(superproject_root)
             except ValueError:
                 return r[m.Infra.WorkspaceSpec].fail(
-                    f"Git submodule escapes its superproject: {resolved_root}"
+                    f"Git submodule escapes its superproject: {member_root}"
                 )
             baseline = u.Infra.repository_baseline_branch(superproject_root)
             loaded_member = cls._load_subproject(
@@ -554,7 +555,7 @@ class FlextInfraWorkspaceDetector(
             resolved_root,
             checkout=(
                 c.Infra.CheckoutKind.SUBMODULE
-                if identity.value.is_submodule
+                if identity.value.is_attached_submodule
                 else c.Infra.CheckoutKind.ROOT
             ),
         )
@@ -657,6 +658,7 @@ class FlextInfraWorkspaceDetector(
                 beads=workspace.beads,
                 canonical_project_name=canonical_project_name,
                 baseline_branch=baseline_result.value,
+                baseline_reference=f"refs/remotes/origin/{baseline_result.value}",
                 ci_enabled=True,
                 external_dependency_paths=workspace.external_dependency_paths,
                 technical_branch_patterns=(
@@ -727,7 +729,7 @@ class FlextInfraWorkspaceDetector(
     @override
     def execute(self) -> p.Result[c.Infra.MakeProfile]:
         """Execute workspace detection for the configured root."""
-        return self.detect(self.workspace_root)
+        return self.detect(self.repository_root)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceDetector"]

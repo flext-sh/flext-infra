@@ -1,40 +1,19 @@
 # Enforce one public import boundary for every FLEXT consumer.
 #
-# Absolute imports of private implementation families couple a consumer to an
+# Absolute imports of private implementation modules couple a consumer to an
 # owner layout. Same-owner implementation modules use relative sibling imports;
-# every other consumer uses the public c/t/p/m/u/r/e/x/h/d/s facade. Generated
-# initializers are the projection owner and are excluded by construction.
+# every other consumer uses a public facade discovered from its live assignment
+# and inheritance graph.
 
 id: ban-private-import
 language: Python
 severity: error
 rule:
-  any:
-    - all:
-        - kind: import_from_statement
-        - regex: '^from\s+\w[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*\s+import\b'
-    - all:
-        - kind: import_statement
-        - regex: '^import\s+[\w.]*\._(constants|exceptions|models|typings|utilities)(\.[\w.]+)*(\s+as\s+\w+)?\s*$'
+  all:
+    - kind: import_from_statement
+    - regex: '^from\s+\w[\w.]*\._[A-Za-z]\w*(\.[\w.]+)*\s+import\b'
 message: >-
   Absolute private implementation import is forbidden. Use a relative sibling
-  import inside the owner or consume the public c/t/p/m/u/r/e/x/h/d/s facade.
+  import inside the owner or consume the public facade discovered from source.
 files:
   - "**/*.py"
-ignores:
-  # Private implementation families compose themselves through sibling modules.
-  # Their public facet roots are the sole explicit inheritance/composition surface.
-  - "**/_constants/**"
-  - "**/_models/**"
-  - "**/_typings/**"
-  - "**/_utilities/**"
-  - "**/transformers/**"
-  - "**/fixers/**"
-  - "**/gates/**"
-  - "**/__init__.py"
-  - "**/constants.py"
-  - "**/models.py"
-  - "**/typings.py"
-  - "**/utilities.py"
-  - "**/_config.py"
-  - "**/_settings.py"

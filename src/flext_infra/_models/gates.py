@@ -10,9 +10,10 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import u
 from flext_core import m
 from flext_infra import c, t
+from flext_infra._models.duplication import FlextInfraModelsDuplication
 
 
-class FlextInfraModelsGates:
+class FlextInfraModelsGates(FlextInfraModelsDuplication):
     """Quality gate execution domain models."""
 
     class GateContext(m.ContractModel):
@@ -33,12 +34,6 @@ class FlextInfraModelsGates:
             bool,
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
-        gate_mode: Annotated[
-            Literal["error", "warn"],
-            m.Field(
-                description="Gate failure mode: error fails the pipeline, warn reports only"
-            ),
-        ] = "error"
         ruff_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Ruff")
         ] = ()

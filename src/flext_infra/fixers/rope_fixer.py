@@ -8,11 +8,9 @@ from __future__ import annotations
 
 import ast
 import operator
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -974,89 +972,52 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
                         )
                     )
                     continue
-                detect_ctx = m.Infra.DetectorContext(
-                    file_path=file_path,
-                    rope_project=rope_project,
-                    project_name=project_dir.name,
-                    project_root=project_dir,
-                )
-                try:
-                    all_violations = FlextInfraClassPlacementDetector.detect_file(
-                        detect_ctx
+                class_infos = tuple(
+                    class_info
+                    for class_info in u.Infra.get_class_info(rope_project, resource)
+                    if not any(
+                        base_name.rsplit(".", maxsplit=1)[-1] == "Warning"
+                        for base_name in class_info.bases
                     )
-                except c.EXC_BROAD_RUNTIME as exc:
+                )
+                if len(class_infos) <= 1:
                     failed.append(
                         m.Infra.FailedFix(
                             rule_id=rule_id,
                             file_path=str(file_path),
-                            error=f"class placement detector failed: {exc}",
+                            error=(
+                                "ENFORCE-067 selected a module without more than one "
+                                "non-Warning top-level class"
+                            ),
                         )
                     )
                     continue
-                ocpm_violations = [
-                    v for v in all_violations if v.action == "one_class_per_module"
-                ]
-                if not ocpm_violations:
-                    skipped.append(
-                        m.Infra.SkippedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            reason="no one_class_per_module violations",
-                        )
-                    )
-                    continue
-                governed_classes = [
-                    ci
-                    for ci in u.Infra.get_class_info(rope_project, resource)
-                    if not ci.name.startswith("_")
-                    and any(v.name == ci.name for v in ocpm_violations)
-                ]
-                if len(governed_classes) <= 1:
-                    skipped.append(
-                        m.Infra.SkippedViolation(
-                            rule_id=rule_id,
-                            file_path=str(file_path),
-                            reason="only one governed class; no extras to move",
-                        )
-                    )
-                    continue
-                governed_classes.sort(key=operator.attrgetter("line"))
-                extras = governed_classes[1:]
                 moved_any = False
-                for extra_ci in extras:
-                    extra_violation = next(
-                        (v for v in ocpm_violations if v.name == extra_ci.name), None
-                    )
-                    family = extra_violation.family if extra_violation else ""
-                    target_file = self._target_file_for_extra_class(
+                ordered_classes = sorted(class_infos, key=operator.attrgetter("line"))
+                for extra_class in reversed(ordered_classes[1:]):
+                    target_file = u.Infra.class_target_file(
                         package_dir=package_dir,
-                        file_path=file_path,
-                        class_name=extra_ci.name,
-                        family=family,
-                    )
-                    move_result = self._move_class_to_module(
-                        rope_project=rope_project,
                         source_file=file_path,
-                        target_file=target_file,
-                        class_name=extra_ci.name,
-                        apply=ctx.apply,
+                        class_name=extra_class.name,
+                        family=u.Infra.class_family(extra_class),
                     )
-                    if move_result.failure:
-                        failed.append(
-                            m.Infra.FailedFix(
-                                rule_id=rule_id,
-                                file_path=str(file_path),
-                                error=move_result.error or "failed to move class",
-                            )
+                    u.Infra.move_class(
+                        m.Infra.ClassMoveRequest(
+                            rope_project=rope_project,
+                            source_file=file_path,
+                            target_file=target_file,
+                            class_name=extra_class.name,
+                            line=extra_class.line,
+                            apply=ctx.apply,
                         )
-                        continue
+                    )
                     moved_any = True
                     if ctx.apply:
                         files_modified.add(str(file_path))
                         files_modified.add(str(target_file))
                     message = (
                         f"{'would move' if not ctx.apply else 'moved'} "
-                        f"{extra_ci.name} -> "
+                        f"{extra_class.name} -> "
                         f"{target_file.relative_to(project_dir)}"
                     )
                     if ctx.apply:

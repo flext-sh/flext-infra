@@ -13,6 +13,18 @@ from tests import m
 if TYPE_CHECKING:
     from pathlib import Path
 
+_DUPLICATED_MODULE = """\
+def normalize_records(records: list[str]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for record in records:
+        candidate = record.strip().casefold()
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        normalized.append(candidate)
+    return tuple(sorted(normalized))
+"""
 
 def _ctx(root: Path) -> m.Infra.GateContext:
     return m.Infra.GateContext(workspace=root, reports_dir=root / "reports")

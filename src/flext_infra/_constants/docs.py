@@ -14,6 +14,15 @@ class FlextInfraConstantsDocs:
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
+    DOCS_INSECURE_WEB_SCHEME: Final[str] = "http"
+    DOCS_SECURE_WEB_SCHEME: Final[str] = "https"
+    DOCS_EXTERNAL_SCHEMES: Final[frozenset[str]] = frozenset({
+        DOCS_SECURE_WEB_SCHEME,
+        "mailto",
+        "tel",
+        "data",
+    })
+    DOCS_FRAGMENT_PREFIX: Final[str] = "#"
     PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[t.StrSequence] = (
         "D100",
         "D101",
@@ -34,6 +43,18 @@ class FlextInfraConstantsDocs:
         "PLC0415",
     )
     """Rules ignored for executable docs snippets that are not full modules/tests."""
+    MACHINE_PATH_RE: Final[t.RegexPattern] = re.compile(
+        r"(?<![\w./-])/(?:home|Users)/(?P<user>[A-Za-z0-9_.-]+)(?=/|\b)"
+    )
+    """Regex matching a per-user absolute root (``/home/<user>``, ``/Users/<user>``)."""
+    MACHINE_PATH_CONTAINER_USERS: Final[t.StrSequence] = (
+        "runner",
+        "vscode",
+        "agent",
+        "barman",
+        "scanner",
+    )
+    """Container/CI identities whose home is part of the image contract, not a machine."""
     PYTHON_FENCE_RE: Final[t.RegexPattern] = re.compile(
         r"^```python\s*\n(?P<body>.*?)^```\s*$", re.MULTILINE | re.DOTALL
     )

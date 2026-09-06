@@ -184,6 +184,16 @@ class FlextInfraProtocolsBase(Protocol):
             """Whether generated mutations are forbidden."""
             ...
 
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from cooldown for this repository."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package cooldown cutoffs for this repository."""
+            ...
+
     @runtime_checkable
     class ProjectSpec(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
@@ -685,16 +695,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Return whether a runtime identity is an exact Mise release."""
             ...
 
-        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
-            """Hydrate missing checksums in one staged lock."""
-            ...
-
-        def validate_artifacts(
-            self,
-            project_root: Path,
-            *,
-            config_sources: tuple[m.Cli.AtomicFileState, ...],
-        ) -> p.Result[bool]:
+        def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
             """Validate one complete project artifact set."""
             ...
 
@@ -723,24 +724,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class SafeTransformer(Protocol):
-        """Contract for transformers that run with copy-on-write protection."""
-
-        def transform(self, files: t.SequenceOf[Path]) -> p.Result[t.SequenceOf[Path]]:
-            """Apply transformation to files, return paths of modified files."""
-            ...
-
-    @runtime_checkable
-    class SafeValidator(Protocol):
-        """Contract for post-transform quality gate validators."""
-
-        def validate(
-            self, files: t.SequenceOf[Path], project_dir: Path
-        ) -> p.Result[m.Infra.GateResult]:
-            """Validate files pass quality gates after transformation."""
-            ...
-
-    @runtime_checkable
     class XmlElementLike(Protocol):
         """Typed subset of the safe XML element API returned by defusedxml."""
 
@@ -756,25 +739,6 @@ class FlextInfraProtocolsBase(Protocol):
         ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
             """Iterate over matching elements."""
             ...
-
-    @runtime_checkable
-    class RefactorCliArgs(Protocol):
-        """Structural protocol for the parsed refactor CLI argument bag.
-
-        Replaces the prior ``argparse.Namespace`` annotation: the orchestrator
-        and renderer consume only attribute access, so a structural protocol
-        captures the contract without binding to argparse.
-        """
-
-        project: Path | None
-        workspace: Path | None
-        file: Path | None
-        files: t.SequenceOf[Path] | None
-        pattern: str
-        dry_run: bool
-        show_diff: bool
-        analysis_output: Path | None
-        impact_map_output: Path | None
 
     @runtime_checkable
     class GithubCliHandlers(Protocol):

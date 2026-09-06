@@ -8,10 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+from flext_infra import u, m
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
@@ -28,14 +25,14 @@ class FlextInfraMiseWorkspacePlanner:
 
     def scope_identity(self) -> p.Result[m.Infra.GitIdentityReport]:
         """Resolve the physical Git identity that owns generation coordination."""
-        requested = self._owner.workspace_root.expanduser().absolute()
+        requested = self._owner.repository_root.expanduser().absolute()
         physical = self._physical_directory(requested)
         if physical.failure:
             return r[m.Infra.GitIdentityReport].from_failure(physical)
         identity = self._exact_git_identity(requested)
         if identity.failure:
             return identity
-        if not identity.value.is_submodule:
+        if not identity.value.is_attached_submodule:
             return identity
         superproject_root = identity.value.superproject_root
         if superproject_root is None:
@@ -74,7 +71,7 @@ class FlextInfraMiseWorkspacePlanner:
         self, scope_root: Path | None = None, *, transaction_id: str | None = None
     ) -> p.Result[m.Infra.MiseToolchainWorkspaceLayout]:
         """Resolve governed topology after the stable workspace lock is held."""
-        requested = self._owner.workspace_root.expanduser().absolute()
+        requested = self._owner.repository_root.expanduser().absolute()
         resolved_scope = (
             self.scope_root() if scope_root is None else r[Path].ok(scope_root)
         )
@@ -180,7 +177,7 @@ class FlextInfraMiseWorkspacePlanner:
                 if project.artifacts.config in planned_paths
             )
         else:
-            requested = self._owner.workspace_root.expanduser().absolute()
+            requested = self._owner.repository_root.expanduser().absolute()
             selected = (
                 layout.projects
                 if requested == layout.scope_root
@@ -285,11 +282,7 @@ class FlextInfraMiseWorkspacePlanner:
         if config_state.failure:
             return r[m.Infra.MiseToolchainProjectState].from_failure(config_state)
         if config_plan is None:
-            current_sources = (
-                FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
-                    layout.root
-                )
-            )
+            current_sources = u.Infra.snapshot_config_sources(layout.root)
             if current_sources.failure:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(
                     current_sources

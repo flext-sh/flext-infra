@@ -58,19 +58,13 @@ class FlextInfraMiseRecovery:
             recovering = journal_io.begin_recovery(journal, prepared.value)
             if recovering.failure:
                 return r[bool].from_failure(recovering)
-            manifests = verify.register_transaction_manifests(
-                layout, recovering.value
-            )
+            manifests = verify.register_transaction_manifests(layout, recovering.value)
             if manifests.failure:
                 return r[bool].from_failure(manifests)
-            recorded = journal_io.record_directories(
-                recovering.value, manifests.value
-            )
+            recorded = journal_io.record_directories(recovering.value, manifests.value)
             if recorded.failure:
                 return r[bool].from_failure(recorded)
-            persisted = journal_io.write(
-                layout, recorded.value, expected=journal_state
-            )
+            persisted = journal_io.write(layout, recorded.value, expected=journal_state)
             if persisted.failure:
                 return r[bool].from_failure(persisted)
             journal = recorded.value

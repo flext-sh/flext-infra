@@ -11,6 +11,7 @@ from flext_cli import m, u
 from flext_infra import c, p, t
 from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
+from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -843,6 +844,37 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 raise ValueError(msg)
             return self
 
+    class CodegenPhaseAnalysis(m.ArbitraryTypesModel):
+        """Immutable planner receipt reused for publication verification."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        phase: Annotated[
+            Literal["lazy-init"],
+            m.Field(description="Generation phase that produced this receipt"),
+        ]
+        files: Annotated[
+            tuple[FlextInfraConfigModels.CodegenFilePlan, ...],
+            m.Field(description="Ordered desired publication states"),
+        ]
+        inputs: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(description="Ordered complete authenticated planner inputs"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_unique_paths(self) -> Self:
+            """Reject ambiguous receipts with competing path authorities."""
+            file_paths = tuple(file.path for file in self.files)
+            if len(set(file_paths)) != len(file_paths):
+                msg = "codegen phase receipt destination paths must be unique"
+                raise ValueError(msg)
+            input_paths = tuple(state.path for state in self.inputs)
+            if len(set(input_paths)) != len(input_paths):
+                msg = "codegen phase receipt input paths must be unique"
+                raise ValueError(msg)
+            return self
+
     class CensusViolation(mm.RequiredNonNegativeLineMixin, m.ArbitraryTypesModel):
         """A single namespace violation detected by the census service."""
 
@@ -1172,106 +1204,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             t.NonEmptyStr, m.Field(description="File containing the reference")
         ]
         line: Annotated[t.PositiveInt, m.Field(description="Line number")]
-
-    class CanonicalValueRule(m.ArbitraryTypesModel):
-        """Canonical value rule."""
-
-        value: Annotated[t.Infra.CanonicalValue, m.Field(description="Canonical value")]
-        type: Annotated[
-            Literal["int", "str", "regex", "frozenset", "tuple"],
-            m.Field(description="Canonical type"),
-        ]
-        canonical_ref: str = m.Field(description="Canonical reference")
-        semantic_names: t.StrSequence = m.Field(
-            default_factory=tuple, description="semantic_names"
-        )
-
-        @u.model_validator(mode="after")
-        def validate_value_shape(self) -> Self:
-            """Keep canonical governance values aligned with their declared kind."""
-            if self.type == "int":
-                if not isinstance(self.value, int) or isinstance(self.value, bool):
-                    msg = "int canonical values must use an integer payload"
-                    raise TypeError(msg)
-                return self
-            if self.type in {"str", "regex"}:
-                if not isinstance(self.value, str):
-                    msg = "string canonical values must use a string payload"
-                    raise TypeError(msg)
-                return self
-            if isinstance(self.value, str):
-                msg = "sequence canonical values must use a string sequence payload"
-                raise TypeError(msg)
-            return self
-
-    class NsRule(m.ArbitraryTypesModel):
-        """Ns rule."""
-
-        id: str = m.Field(description="Rule ID")
-        description: str = m.Field(description="Rule description")
-        fixable: bool = m.Field(description="Whether the rule is fixable")
-        fixable_exclusion: Annotated[
-            str | None, m.Field(description="Fixable exclusion reason")
-        ] = None
-
-    class ConstantsGovernanceConfig(m.ArbitraryTypesModel):
-        """Constants governance config."""
-
-        version: str = m.Field(description="Config version")
-        rules: list[FlextInfraModelsCodegen.NsRule] = m.Field(
-            description="Governance rules"
-        )
-        canonical_values: list[FlextInfraModelsCodegen.CanonicalValueRule] = m.Field(
-            description="Canonical values settings"
-        )
-        constants_class_pattern: str = m.Field(
-            description="Constants class pattern regex"
-        )
-
-    class TestTreeRulesConfig(m.ArbitraryTypesModel):
-        """Config-driven parameters for the loose-test-function detector.
-
-        Loaded from ``rules/test-tree-rules.yml`` (business rule = config SSOT);
-        the detector is a pure engine over these values (never hardcoded).
-        """
-
-        model_config = m.ConfigDict(frozen=True, extra="forbid")
-
-        version: str = m.Field(description="Config version")
-        test_dir_globs: tuple[str, ...] = m.Field(
-            description="Globs (relative to project root) whose files are tests"
-        )
-        test_fn_prefix: str = m.Field(
-            description="Prefix marking a module-level function as a test"
-        )
-        required_class_prefix: str = m.Field(
-            description="Class prefix a test function must be nested under"
-        )
-
-    class TestImportDagRulesConfig(m.ArbitraryTypesModel):
-        """Validated policy for the strict package-test import DAG."""
-
-        model_config = m.ConfigDict(frozen=True, extra="forbid")
-
-        version: str = m.Field(description="Config version")
-        facet_order: tuple[str, ...] = m.Field(
-            description="Allowed directed order for canonical test facets"
-        )
-        facet_files: t.MappingKV[str, str] = m.Field(
-            description="Canonical test facet module filenames"
-        )
-        fixture_parts: tuple[str, ...] = m.Field(
-            description="Test infrastructure path or module parts"
-        )
-        test_module_prefix: str = m.Field(
-            description="Prefix identifying collected test modules"
-        )
-        shared_package: str = m.Field(
-            description="Package owning shared test infrastructure"
-        )
-        shared_allowed_imports: tuple[str, ...] = m.Field(
-            description="Packages shared test infrastructure may import"
-        )
 
     class FixContext(m.ArbitraryTypesModel):
         """Mutable accumulation context for fix operations.

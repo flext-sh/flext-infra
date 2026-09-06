@@ -325,7 +325,7 @@ class FlextInfraEnsurePyrightConfigPhase:
             and (workspace_root / c.Infra.GITMODULES).is_file()
         ):
             return u.Infra.analyzer_python_roots(
-                workspace_root,
+                repository_root,
                 generated_roots,
                 workspace_excluded_top_dirs=workspace_excluded_top_dirs,
             )

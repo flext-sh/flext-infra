@@ -174,16 +174,14 @@ def create_journaled_directory(
             return result_type.fail(
                 f"journaled directory parent has no durable identity: {entry.path}"
             )
-        observed = u.Cli.atomic_read_empty_directory_state(
-            target.value, required=False
-        )
+        observed = u.Cli.atomic_read_empty_directory_state(target.value, required=False)
         if observed.failure:
             return result_type.from_failure(observed)
         before = observed.value
-        if before.exists or (
-            before.parent_device,
-            before.parent_inode,
-        ) != (parent_entry.created.device, parent_entry.created.inode):
+        if before.exists or (before.parent_device, before.parent_inode) != (
+            parent_entry.created.device,
+            parent_entry.created.inode,
+        ):
             return result_type.fail(
                 f"journaled directory parent changed before creation: {entry.path}"
             )
@@ -192,8 +190,7 @@ def create_journaled_directory(
             f"journaled absent state belongs to another path: {entry.path}"
         )
     created = u.Cli.atomic_create_empty_directory_guarded(
-        before,
-        permission_mode=0o700 if entry.disposition == "temporary" else 0o755,
+        before, permission_mode=0o700 if entry.disposition == "temporary" else 0o755
     )
     if created.failure:
         return result_type.from_failure(created)
@@ -308,9 +305,7 @@ def cleanup_journaled_directories(
                     "manifest": observed.value,
                 })
             except c.ValidationError as exc:
-                return r[bool].fail_op(
-                    "validate recovery temporary-tree manifest", exc
-                )
+                return r[bool].fail_op("validate recovery temporary-tree manifest", exc)
             removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
         else:
             observed = verify.authorized_cleanup_manifest(layout, journal, entry)
@@ -371,7 +366,7 @@ def validate_transaction_roots(
         transaction = _validate_transaction_root(transaction_root)
         if transaction.failure:
             return r[bool].from_failure(transaction)
-        if transaction.value is None:
+        if transaction.value is False:
             continue
         relative = files.workspace_relative(layout.scope_root, transaction_root)
         if relative.failure:
@@ -382,7 +377,7 @@ def validate_transaction_roots(
         if (
             recorded is None
             or recorded.created is None
-            or (recorded.created.device, recorded.created.inode) != transaction.value
+            or (recorded.created.device, recorded.created.inode) != transaction_identity
         ):
             return r[bool].fail(
                 f"Mise transaction root identity is not journaled: {relative.value}"
@@ -390,9 +385,9 @@ def validate_transaction_roots(
     return r[bool].ok(True)
 
 
-def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | None]:
+def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | bool]:
     if not target.exists() and not target.is_symlink():
-        return r[tuple[int, int] | None].ok(None)
+        return r[tuple[int, int] | bool].ok(False)
     identifier = target.name.removeprefix(files.TRANSACTION_DIR_PREFIX)
     if (
         not target.name.startswith(files.TRANSACTION_DIR_PREFIX)
@@ -400,18 +395,18 @@ def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | None]
         or any(character not in "0123456789abcdef" for character in identifier)
         or target.is_symlink()
     ):
-        return r[tuple[int, int] | None].fail(
+        return r[tuple[int, int] | bool].fail(
             f"refusing invalid Mise transaction target: {target}"
         )
     try:
         state = target.lstat()
     except OSError as exc:
-        return r[tuple[int, int] | None].fail_op("inspect Mise transaction target", exc)
+        return r[tuple[int, int] | bool].fail_op("inspect Mise transaction target", exc)
     if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
-        return r[tuple[int, int] | None].fail(
+        return r[tuple[int, int] | bool].fail(
             f"Mise transaction target is not physical: {target}"
         )
-    return r[tuple[int, int] | None].ok((state.st_dev, state.st_ino))
+    return r[tuple[int, int] | bool].ok((state.st_dev, state.st_ino))
 
 
 def _path_order(path: Path) -> tuple[int, str]:

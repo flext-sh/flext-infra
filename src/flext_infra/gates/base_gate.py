@@ -90,6 +90,7 @@ class FlextInfraGate:
             project_dir,
             timeout=self._check_timeout(project_dir, ctx),
             env=self._check_env(project_dir, ctx),
+            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
@@ -112,31 +113,12 @@ class FlextInfraGate:
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution from parsed check output.
+        """Assemble a strict gate execution from parsed check output.
 
-        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
-        marked passed so advisory enforcement gates do not fail the check
-        pipeline. ``errors`` overrides the default issue-derived report
-        lines (fix paths report applied changes there).
+        ``errors`` overrides the default issue-derived report lines for fix
+        paths. Findings are never converted to warnings or successful results.
         """
-        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not passed:
-            warn_issues = [
-                issue.model_copy(update={"severity": "WARNING"})
-                if hasattr(issue, "model_copy")
-                else issue
-                for issue in issues
-            ]
-            return m.Infra.GateExecution(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=tuple(warn_issues),
-                raw_output=raw_output,
-            )
+        _ = ctx
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -249,6 +231,13 @@ class FlextInfraGate:
         _ = project_dir, ctx
         return None
 
+    def _check_remove_env_keys(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> t.StrSequence:
+        """Return inherited environment keys removed for this tool invocation."""
+        _ = project_dir, ctx
+        return ()
+
     # ------------------------------------------------------------------
     # Template method: fix
     # ------------------------------------------------------------------
@@ -324,10 +313,13 @@ class FlextInfraGate:
         cwd: Path,
         timeout: int = c.Infra.TIMEOUT_DEFAULT,
         env: t.StrMapping | None = None,
+        remove_env_keys: t.StrSequence = (),
     ) -> p.Cli.CommandOutput:
         """Run."""
         runner = self._runner or u.Cli
-        result = runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        result = runner.run_raw(
+            cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
+        )
         if result.failure:
             return m.Cli.CommandOutput(
                 stdout="",

@@ -88,7 +88,7 @@ class TestsCodegenMakeEnvironment:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                project_root / "Makefile", makefile.desired_text
+                project_root / "Makefile", test_u.Tests.codegen_file_text(makefile)
             )
         )
         return project_root, repository_root
@@ -130,16 +130,14 @@ class TestsCodegenMakeEnvironment:
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
         }
         process = tm.ok(
-            u.Cli.run_raw(
+            test_u.Tests.run_isolated_make(
                 [
-                    c.Infra.MAKE,
                     "--no-print-directory",
                     "status",
                     f"{config.Infra.codegen.make.selector}=probe",
                 ],
                 cwd=project_root,
                 env=active_env,
-                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
             )
         )
         tm.that(

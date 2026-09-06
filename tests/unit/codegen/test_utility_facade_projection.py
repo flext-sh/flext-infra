@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import m, u
+from flext_infra import u
 from flext_tests import tm
 
 
 class TestsFlextInfraUtilityFacadeProjection:
-    """Exercise semantic-owner projection only through ``u.Infra``."""
+    """Exercise consumer-driven owner projection only through ``u.Infra``."""
 
     @staticmethod
     def _write(path: Path, source: str) -> None:
@@ -25,7 +25,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         """Derive the required owner from the executable public consumer."""
         package = tmp_path / "src" / "flext_sample"
         self._write(
-            package / "codemod" / "semantic_apply.py",
+            package / "codemod" / "batch_apply.py",
             "from flext_sample import u\n\nu.Sample.plan_cutover()\n",
         )
         self._write(
@@ -47,21 +47,21 @@ class TestsFlextInfraUtilityFacadeProjection:
             "        pass\n\n"
             "u = FlextSampleUtilities\n",
         )
-        ctx = m.Infra.FixContext()
+        updated = u.Infra.render_utility_facade(package)
 
-        u.Infra.project_semantic_utility_owners(pkg_dir=package, ctx=ctx)
-        u.Infra.project_semantic_utility_owners(pkg_dir=package, ctx=ctx)
-
-        updated = facade.read_text()
+        tm.that(updated is not None, eq=True)
+        assert updated is not None
         tm.that(updated, has="from flext_sample._utilities.semantic_cutover import (")
         tm.that(updated.count("FlextSampleUtilitiesSemanticCutover"), eq=2)
-        tm.that(str(facade) in ctx.files_modified, eq=True)
+        tm.that(
+            "FlextSampleUtilitiesSemanticCutover" not in facade.read_text(), eq=True
+        )
 
     def test_rejects_ambiguous_method_ownership(self, tmp_path: Path) -> None:
         """Fail before projection when two local owners claim one method."""
         package = tmp_path / "src" / "flext_sample"
         self._write(
-            package / "codemod" / "semantic_apply.py",
+            package / "codemod" / "batch_apply.py",
             "from flext_sample import u\n\nu.Sample.plan_cutover()\n",
         )
         for module, class_name in (("first", "First"), ("second", "Second")):
@@ -82,34 +82,30 @@ class TestsFlextInfraUtilityFacadeProjection:
         self._write(facade, original)
 
         with pytest.raises(ValueError, match=r"ambiguous u\.Infra owner"):
-            u.Infra.project_semantic_utility_owners(
-                pkg_dir=package, ctx=m.Infra.FixContext()
-            )
+            u.Infra.render_utility_facade(package)
         tm.that(facade.read_text(), eq=original)
 
-    @pytest.mark.parametrize("present", ["semantic_apply.py", "utilities.py"])
-    def test_rejects_incomplete_semantic_artifact_pair(
+    @pytest.mark.parametrize("present", ["_utilities", "utilities.py"])
+    def test_rejects_incomplete_utility_artifact_pair(
         self, tmp_path: Path, present: str
     ) -> None:
         """Reject either half of the semantic-consumer/facade contract."""
         package = tmp_path / "src" / "flext_sample"
         path = (
-            package / "codemod" / present
-            if present == "semantic_apply.py"
+            package / present / "owner.py"
+            if present == "_utilities"
             else package / present
         )
-        self._write(path, "from flext_sample import u\n")
+        self._write(path, "class Owner:\n    pass\n")
 
-        with pytest.raises(ValueError, match="incomplete semantic utility artifacts"):
-            u.Infra.project_semantic_utility_owners(
-                pkg_dir=package, ctx=m.Infra.FixContext()
-            )
+        with pytest.raises(ValueError, match="incomplete utility facade artifacts"):
+            u.Infra.render_utility_facade(package)
 
     def test_rejects_unsupported_facade_base_expression(self, tmp_path: Path) -> None:
         """Reject dynamic bases instead of converting them to an empty owner."""
         package = tmp_path / "src" / "flext_sample"
         self._write(
-            package / "codemod" / "semantic_apply.py",
+            package / "codemod" / "batch_apply.py",
             "from flext_sample import u\n\nu.Sample.plan_cutover()\n",
         )
         self._write(
@@ -121,9 +117,7 @@ class TestsFlextInfraUtilityFacadeProjection:
         )
 
         with pytest.raises(ValueError, match="unsupported utility facade base"):
-            u.Infra.project_semantic_utility_owners(
-                pkg_dir=package, ctx=m.Infra.FixContext()
-            )
+            u.Infra.render_utility_facade(package)
 
 
 __all__: list[str] = ["TestsFlextInfraUtilityFacadeProjection"]

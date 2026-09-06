@@ -9,7 +9,7 @@ import pytest
 import flext_infra
 from flext_infra import c, m, u as infra_u
 from flext_tests import tm
-from tests import u
+from tests import u as test_u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -22,7 +22,7 @@ class TestsFlextInfraRefactorCensusPreview:
         self, tmp_path: Path
     ) -> None:
         """Plan one class removal without leaving excess blank lines."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = test_u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "service.py"
@@ -64,7 +64,7 @@ class TestsFlextInfraRefactorCensusPreview:
         self, tmp_path: Path
     ) -> None:
         """Plan removal of a base used by a multiline test facade."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = test_u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         base_path = package_root / "base.py"
@@ -128,7 +128,7 @@ class TestsFlextInfraRefactorCensusPreview:
         self, tmp_path: Path
     ) -> None:
         """Validate a public preview while preserving the source artifact."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = test_u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-demo", package_name="flext_demo"
         )
         module_path = package_root / "dispatcher.py"

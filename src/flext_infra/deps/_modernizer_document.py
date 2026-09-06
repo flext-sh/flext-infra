@@ -58,7 +58,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # default comes from the tomlsort SSOT. A property here would make the
         # field an incompatible override of a read-only descriptor.
         tomlsort_sort_first: t.StrSequence
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         def _reorder_document_inplace(
             self,
@@ -113,6 +112,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             path=path,
             toolchain_root=self.root,
             taplo_version=config.Infra.codegen.toolchain.taplo_version,
+            process_timeout_seconds=(
+                config.Infra.tooling.tools.tomlsort.process_timeout_seconds
+            ),
         )
 
     def _process_document_state(
@@ -126,6 +128,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
+        root_modules: t.StrSequence = (),
+        root_packages: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
@@ -144,7 +148,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         effective_project_dir = path.parent if project_root_exists else None
         effective_workspace_root = self.root if project_root_exists else None
         paths_manager = FlextInfraExtraPathsManager(
-            workspace_root=self.root,
+            repository_root=self.root,
             generated_python_roots=generated_python_roots,
             analysis_exclusions=analysis_exclusions or (),
         )
@@ -230,7 +234,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
-                payload, path=path, is_root=is_root
+                payload,
+                path=path,
+                root_modules=root_modules,
+                root_packages=root_packages,
             )
         )
         # Existing projects consume the same Vulture SSOT as scaffolds.

@@ -47,7 +47,7 @@ class FlextInfraUtilitiesPyproject:
         path: Path,
         toolchain_root: Path,
         taplo_version: str,
-        process_timeout_seconds: int,
+        process_timeout_seconds: int = c.Infra.TIMEOUT_DEFAULT,
     ) -> p.Result[str]:
         """Format TOML through the configured workspace Taplo toolchain."""
         config_path = toolchain_root / c.Infra.TAPLO_CONFIG_FILENAME
@@ -123,7 +123,10 @@ class FlextInfraUtilitiesPyproject:
             return r[Path].fail(
                 "Taplo executable is absent from the Make-provisioned PATH"
             )
-        binary = Path(resolved).resolve()
+        # Mise shims are executable symlinks whose basename selects the tool.
+        # Resolving the link turns ``taplo`` into the Mise binary and changes
+        # the invoked program, so preserve the absolute shim path.
+        binary = Path(resolved).absolute()
         identified = u.Cli.run_raw(
             (str(binary), "--version"),
             cwd=binary.parent,
@@ -133,10 +136,16 @@ class FlextInfraUtilitiesPyproject:
             return r[Path].fail(
                 identified.error or "resolved Taplo executable failed identity check"
             )
-        if taplo_version not in identified.value.stdout:
+        observed = identified.value.stdout.strip()
+        identity_matches = (
+            "taplo" in observed.lower()
+            if taplo_version == "latest"
+            else taplo_version in observed
+        )
+        if not identity_matches:
             return r[Path].fail(
                 "resolved Taplo executable version differs: "
-                f"expected={taplo_version} observed={identified.value.stdout.strip()}"
+                f"expected={taplo_version} observed={observed}"
             )
         return r[Path].ok(binary)
 

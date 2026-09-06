@@ -122,6 +122,32 @@ class TestExtendedRunnerExtras:
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())
+        tm.that(
+            runner.commands[0],
+            eq=(
+                sys.executable,
+                "-m",
+                c.Infra.BANDIT,
+                "-r",
+                c.Infra.DEFAULT_SRC_DIR,
+                "-f",
+                c.Infra.OUTPUT_JSON,
+                "--quiet",
+            ),
+        )
+
+    def test_bandit_rejects_empty_json_output(self, tmp_path: Path) -> None:
+        _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        runner = u.Tests.command_runner(stdout="", returncode=0)
+
+        result = u.Tests.run_gate_check(
+            FlextInfraBanditGate, tmp_path, project_dir, runner=runner
+        )
+
+        tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        tm.that(result.issues[0].code, eq="PARSE_ERROR")
+        tm.that(result.issues[0].message, contains="no JSON output")
 
     def test_bandit_handles_invalid_json(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
@@ -147,6 +173,23 @@ class TestExtendedRunnerExtras:
         tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].code, eq="TOOL_ERROR")
         tm.that(result.issues[0].message, contains="Failed to spawn: bandit")
+
+    def test_bandit_keeps_json_stdout_clean_for_large_scans(
+        self, tmp_path: Path
+    ) -> None:
+        _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
+        src_dir = project_dir / "src"
+        for index in range(51):
+            _ = (src_dir / f"module_{index}.py").write_text(
+                "def identity(value):\n    return value\n", encoding="utf-8"
+            )
+
+        result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+
+        tm.that(result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=0)
+        tm.that(result.raw_output.startswith("{"), eq=True)
+        tm.that(result.raw_output, lacks="Working...")
 
     def test_markdown_skips_without_markdown_files(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path)

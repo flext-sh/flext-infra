@@ -6,7 +6,8 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -17,7 +18,9 @@ from flext_infra.check.workspace_check_gates import (
 
 
 class FlextInfraWorkspaceChecker(
-    s[bool], FlextInfraWorkspaceCheckGatesMixin, FlextInfraWorkspaceCheckReportsMixin
+    FlextInfraServiceBase[bool],
+    FlextInfraWorkspaceCheckGatesMixin,
+    FlextInfraWorkspaceCheckReportsMixin,
 ):
     """Run workspace quality gates and generate reports."""
 

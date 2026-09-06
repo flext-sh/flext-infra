@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import shutil
 import time
 from pathlib import Path
@@ -16,14 +17,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraDuplicationGate(FlextInfraGate):
-    """Report jscpd clones per project from one process-cached workspace scan.
-
-    A single jscpd scan covers every discovered workspace project's ``src``
-    and ``tests`` trees so cross-project duplication clusters stay visible;
-    per-project results are filtered by absolute path prefix. The scan output
-    is cached per workspace root for the lifetime of the process (one scan
-    per ``check`` run), matching ``FlextInfraSmellsGate``'s strategy.
-    """
+    """Report every clone owned by one project from a fresh workspace scan."""
 
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
@@ -33,12 +27,15 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
+    _python_behavior_cache: ClassVar[
+        dict[tuple[str, int, int], tuple[tuple[int, int], ...]]
+    ] = {}
 
     @override
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """One cached full-workspace jscpd scan, filtered to ``project_dir``."""
+        """Run and validate jscpd, then expose every owned clone as an error."""
         _ = ctx
         started = time.monotonic()
         scan = self._workspace_scan()
@@ -52,25 +49,13 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output=scan.stderr,
+            raw_output="\n".join(part for part in (scan.stdout, scan.stderr) if part),
             started=started,
         )
 
-    def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Run the workspace jscpd scan once per process; a missing binary is VISIBLE."""
-        # Fix-forward: FlextInfraGate exposes `_repository_root`, never
-        # `_workspace_root` (see base_gate.py) — align with the base class.
-        key = str(self._repository_root)
-        cached = self._scan_cache.get(key)
-        if cached is not None:
-            return cached
-        output = self._execute_scan()
-        self._scan_cache[key] = output
-        return output
-
-    def _execute_scan(self) -> p.Cli.CommandOutput:
-        """Render config, invoke jscpd, and load its JSON report from disk."""
-        binary = self._resolve_binary()
+    def _scan_workspace(self) -> m.Infra.JscpdScan:
+        """Create one fresh report; tool, scope, and report failures escape."""
+        binary = shutil.which(c.Infra.JSCPD_BINARY)
         if binary is None:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -105,6 +90,14 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             )
         config_path = self._render_config()
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
+        report_path = report_dir / c.Infra.JSCPD_REPORT_FILENAME
+        if report_path.is_symlink() or (
+            report_path.exists() and not report_path.is_file()
+        ):
+            msg = f"jscpd report target is not a physical file: {report_path}"
+            raise ValueError(msg)
+        if report_path.is_file():
+            report_path.unlink()
         cmd = (
             binary,
             "--config",
@@ -135,6 +128,28 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 for candidate in self._existing_check_dirs(project.path)
             )
         )
+        if output.exit_code == 1 and report.statistics.total.clones == 0:
+            raise RuntimeError(raw_output or "jscpd failed without clone evidence")
+        return m.Infra.JscpdScan(
+            exit_code=output.exit_code,
+            report=report,
+            stderr=output.stderr,
+            stdout=output.stdout,
+        )
+
+    def _scope_paths(self) -> t.StrSequence:
+        """Resolve canonical source, test, config, and template roots once."""
+        projects = u.Infra.resolve_projects(self._repository_root, ()).unwrap()
+        scope = tuple(
+            str(path)
+            for project in projects
+            for dirname in c.Infra.JSCPD_SCOPE_DIRNAMES
+            if (path := project.path / dirname).is_dir()
+        )
+        if not scope:
+            msg = f"jscpd found no canonical scope under {self._repository_root}"
+            raise ValueError(msg)
+        return scope
 
     def _render_config(self) -> Path:
         """Materialize the jscpd config from this gate's typed SSOT.
@@ -143,23 +158,29 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         source; regenerating with unchanged constants produces byte-identical
         content (idempotent).
         """
-        ignore: list[t.JsonValue] = list(c.Infra.JSCPD_IGNORE_PATTERNS)
-        config: t.JsonMapping = {
-            "absolute": True,
-            "noTips": True,
-            "noColors": True,
-            "mode": c.Infra.JSCPD_MODE,
-            "ignore": ignore,
-            "reporters": ["json"],
-            "minLines": c.Infra.JSCPD_MIN_LINES,
-        }
+        config = m.Infra.JscpdConfig(
+            absolute=True,
+            formatsExts={
+                name: tuple(extensions)
+                for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
+            },
+            ignore=tuple(c.Infra.JSCPD_IGNORE_PATTERNS),
+            minLines=c.Infra.JSCPD_MIN_LINES,
+            minTokens=c.Infra.JSCPD_MIN_TOKENS,
+            mode=c.Infra.JSCPD_MODE,
+            noColors=True,
+            noTips=True,
+            reporters=(c.Infra.OUTPUT_JSON,),
+            threshold=c.Infra.JSCPD_THRESHOLD_PERCENT,
+        )
         config_path = (
             self._repository_root
             / c.Infra.JSCPD_REPORT_DIRNAME
             / c.Infra.JSCPD_CONFIG_FILENAME
         )
-        _ = u.Cli.ensure_dir(config_path.parent).unwrap()
-        _ = u.Cli.json_write(config_path, config).unwrap()
+        u.Cli.ensure_dir(config_path.parent).unwrap()
+        rendered = config.model_dump_json(by_alias=True)
+        u.Cli.atomic_write_text_file(config_path, rendered).unwrap()
         return config_path
 
     @staticmethod
@@ -226,13 +247,15 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
             first_name = u.Cli.json_pick_str(first, "name")
             second_name = u.Cli.json_pick_str(second, "name")
+            if not cls._is_semantic_clone(duplicate, first, second):
+                continue
             if first_name.startswith(prefix):
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, first, first_name, second_name, project_dir
                     )
                 )
-            if second_name.startswith(prefix) and second_name != first_name:
+            elif second_name.startswith(prefix) and second_name != first_name:
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, second, second_name, first_name, project_dir
@@ -241,26 +264,120 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
 
     @classmethod
-    def _issue_from_duplicate(
+    def _is_semantic_clone(
+        cls, duplicate: t.JsonMapping, first: t.JsonMapping, second: t.JsonMapping
+    ) -> bool:
+        """Require executable Python behavior on both sides of a clone.
+
+        jscpd is the candidate detector, not the semantic authority. Python
+        module licenses, docstrings, imports, ``TYPE_CHECKING`` blocks, class
+        shells, function signatures, and declaration-only assignments are
+        intentionally repeated language structure rather than competing
+        implementations. A candidate remains blocking when both source ranges
+        contain an executable statement. Unreadable or unparsable input stays
+        blocking because absence of semantic proof can never produce green.
+        Non-Python formats likewise remain blocking until their own semantic
+        classifier exists.
+        """
+        if u.Cli.json_pick_str(duplicate, "format") != "python":
+            return True
+        return cls._range_has_python_behavior(first) and cls._range_has_python_behavior(
+            second
+        )
+
+    @classmethod
+    def _range_has_python_behavior(cls, side: t.JsonMapping) -> bool:
+        """Return whether one jscpd source range encloses executable behavior."""
+        file_name = u.Cli.json_pick_str(side, "name")
+        path = Path(file_name)
+        try:
+            identity = path.stat()
+        except OSError:
+            return True
+        key = (file_name, identity.st_mtime_ns, identity.st_size)
+        ranges = cls._python_behavior_cache.get(key)
+        if ranges is None:
+            ranges = cls._python_behavior_ranges(path)
+            cls._python_behavior_cache[key] = ranges
+        start = u.Cli.json_nested_int(side, "startLoc", "line", default=1)
+        end = u.Cli.json_nested_int(side, "endLoc", "line", default=start)
+        return any(
+            start <= node_start and node_end <= end for node_start, node_end in ranges
+        )
+
+    @staticmethod
+    def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
+        """Parse one module into ranges for statements with runtime behavior."""
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (OSError, SyntaxError, UnicodeError):
+            return ((1, 2**31 - 1),)
+        parents = {
+            child: parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def inside_function(node: ast.AST) -> bool:
+            parent = parents.get(node)
+            while parent is not None:
+                if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    return True
+                parent = parents.get(parent)
+            return False
+
+        def is_declaration(node: ast.stmt) -> bool:
+            if isinstance(
+                node,
+                (
+                    ast.ClassDef,
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                    ast.Import,
+                    ast.ImportFrom,
+                    ast.Pass,
+                    ast.Global,
+                    ast.Nonlocal,
+                ),
+            ):
+                return True
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+                return True
+            if (
+                isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "TYPE_CHECKING"
+            ):
+                return True
+            return isinstance(
+                node, (ast.Assign, ast.AnnAssign)
+            ) and not inside_function(node)
+
+        return tuple(
+            (node.lineno, node.end_lineno)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.stmt)
+            and node.end_lineno is not None
+            and not is_declaration(node)
+        )
+
+    @classmethod
+    def _issue(
         cls,
-        duplicate: t.JsonMapping,
-        own_side: t.JsonMapping,
-        own_name: str,
-        other_name: str,
-        project_dir: Path,
+        duplicate: m.Infra.JscpdDuplicate,
+        own_side: m.Infra.JscpdFile,
+        other_side: m.Infra.JscpdFile,
+        root: Path,
     ) -> m.Infra.Issue:
-        """Map one clone side to an Issue naming its counterpart file/lines."""
-        lines = u.Cli.json_pick_int(duplicate, "lines")
-        tokens = u.Cli.json_pick_int(duplicate, "tokens")
-        start_line = u.Cli.json_nested_int(own_side, "startLoc", "line", default=1)
-        start_col = u.Cli.json_nested_int(own_side, "startLoc", "column")
+        """Map one validated clone side to a strict error."""
         return m.Infra.Issue(
-            file=own_name.removeprefix(f"{project_dir}/"),
-            line=start_line,
-            column=start_col,
+            file=str(Path(own_side.name).relative_to(root)),
+            line=own_side.start_location.line,
+            column=own_side.start_location.column,
             code=cls.gate_id,
             message=(
-                f"{lines}-line ({tokens}-token) clone of {other_name} "
+                f"{duplicate.lines}-line ({duplicate.tokens}-token) clone of "
+                f"{other_side.name} "
                 f"— extend one owner, rewire consumers, delete the duplicate"
             ),
             severity=str(c.Infra.GateSeverity.ERROR.value),

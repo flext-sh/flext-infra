@@ -7,14 +7,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, t, u
+from flext_infra import c, m, t, u
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-def prepare_isolation(scratch: Path) -> p.Result[bool]:
-    """Create fresh private config/cache/home paths with fallback auth disabled."""
+def prepare_isolation(
+    scratch: Path, contract: m.Infra.MiseBootstrapEnvironmentSpec
+) -> p.Result[bool]:
+    """Create only invocation-local policy, home, and receipt paths."""
 
     def directory_key(path: Path) -> tuple[int, str]:
         return len(path.parts), path.as_posix()
@@ -28,22 +30,15 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
     )
     transient_directories = {
         scratch / relative
-        for _name, relative in c.Infra.MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT
+        for _name, relative in contract.transient_environment
         if scratch / relative not in empty_files
-    }
-    persistent_root = scratch / "data"
-    persistent_directories = {
-        persistent_root / relative
-        for _name, relative in c.Infra.MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT
     }
     directories = sorted(
         {
             scratch / "seed" / "bin",
             scratch / "receipt" / "bin",
-            scratch / "runtime",
             *(path.parent for path in empty_files),
             *transient_directories,
-            *persistent_directories,
         },
         key=directory_key,
     )
@@ -63,30 +58,38 @@ def prepare_isolation(scratch: Path) -> p.Result[bool]:
     return r[bool].ok(True)
 
 
-def environment(scratch: Path) -> dict[str, str]:
-    """Build the complete child environment with every fallback disabled."""
-    isolated = dict(c.Infra.MISE_BOOTSTRAP_FIXED_ENVIRONMENT)
+def environment(
+    scratch: Path,
+    storage_root: Path,
+    release: str,
+    contract: m.Infra.MiseBootstrapEnvironmentSpec,
+) -> p.Result[dict[str, str]]:
+    """Build one isolated environment backed by release-addressed storage."""
+    install_path = u.Infra.mise_runtime_install_path(storage_root, release)
+    if install_path.failure:
+        return r[dict[str, str]].from_failure(install_path)
+    isolated = dict(contract.fixed_environment)
     isolated.update({
         name: str(scratch / relative)
-        for name, relative in c.Infra.MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT
+        for name, relative in contract.transient_environment
     })
-    persistent_root = scratch / "data"
     isolated.update({
-        name: str(persistent_root / relative)
-        for name, relative in c.Infra.MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT
+        name: str(storage_root if relative == "." else storage_root / relative)
+        for name, relative in contract.persistent_environment
     })
     isolated.update({
         "GIT_CEILING_DIRECTORIES": str(scratch.parent),
         "MISE_CEILING_PATHS": str(scratch.parent),
         "MISE_TRUSTED_CONFIG_PATHS": str(scratch),
-        "MISE_INSTALL_PATH": str(
-            scratch / "runtime" / ("mise.exe" if os.name == "nt" else "mise")
-        ),
+        "MISE_INSTALL_PATH": str(install_path.value),
     })
-    for name in c.Infra.MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT:
+    for name in contract.passthrough_environment:
         if value := os.environ.get(name):
             isolated[name] = value
-    return isolated
+    credential_command = os.environ.get("MISE_GITHUB_CREDENTIAL_COMMAND")
+    if credential_command:
+        isolated["MISE_GITHUB_CREDENTIAL_COMMAND"] = credential_command
+    return r[dict[str, str]].ok(isolated)
 
 
 def no_config_environment(environment_values: t.StrMapping) -> dict[str, str]:

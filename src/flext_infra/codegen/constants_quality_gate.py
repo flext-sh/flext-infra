@@ -37,11 +37,15 @@ class FlextInfraCodegenQualityGate(s[bool]):
     def build_report(self) -> p.Result[t.JsonMapping]:
         """Execute quality gate and return structured report payload."""
         lazy_plans = FlextInfraCodegenLazyInit(
-            workspace_root=self.workspace_root
+            workspace_root=self.repository_root
         ).plan_files()
         if lazy_plans.failure:
             return r[t.JsonMapping].from_failure(lazy_plans)
-        pending_lazy = tuple(plan for plan in lazy_plans.value if plan.requires_effect)
+        pending_lazy = tuple(
+            plan
+            for plan in lazy_plans.value.files
+            if u.Infra.codegen_file_requires_effect(plan)
+        )
         if pending_lazy:
             paths = ", ".join(str(plan.path) for plan in pending_lazy)
             return r[t.JsonMapping].fail(
@@ -49,11 +53,11 @@ class FlextInfraCodegenQualityGate(s[bool]):
             )
         census = FlextInfraRefactorCensus(
             include_local_scopes=False, kinds=("constant",)
-        ).model_copy(update={"workspace_root": self.workspace_root})
+        ).model_copy(update={"repository_root": self.repository_root})
         census_report = census.build_report()
-        modified_files = self.modified_python_files(self.workspace_root)
+        modified_files = self.modified_python_files(self.repository_root)
         pyrefly_check, ruff_check = self._run_static_checks(
-            self.workspace_root, modified_files
+            self.repository_root, modified_files
         )
         after_metrics = self.after_metrics(
             census_report=census_report, modified_files=modified_files
@@ -65,7 +69,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         )
         verdict = self.compute_verdict(checks)
         report_data = {
-            "workspace": str(self.workspace_root),
+            "workspace": str(self.repository_root),
             "generated_at": u.now().isoformat(),
             "verdict": verdict,
             "checks": [
@@ -82,7 +86,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         }
         report = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
         artifacts = self.write_artifacts(
-            workspace_root=self.workspace_root,
+            workspace_root=self.repository_root,
             report=report,
             render_text=self.render_text(report),
         )

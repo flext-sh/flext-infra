@@ -11,7 +11,7 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture
 
 
 # Conform materializes a full managed tree; the real Git scenarios therefore use
@@ -63,7 +63,9 @@ class TestCodegenLinkedWorktreeTopology:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         plan = tm.ok(
-            FlextInfraCodegenConform(workspace_root=lane, request=request).plan(request)
+            FlextInfraCodegenConform(repository_root=lane, request=request).plan(
+                request
+            )
         )
 
         (makefile_plan,) = plan.files

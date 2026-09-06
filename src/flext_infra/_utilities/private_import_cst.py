@@ -22,11 +22,13 @@ class FlextInfraUtilitiesPrivateImportCst:
         def __init__(
             self,
             *,
+            relative_imports: t.StrMapping,
             removals: t.MappingKV[str, frozenset[str]],
             obsolete_imports: t.MappingKV[str, frozenset[str]],
             replacements: t.StrMapping,
             public_imports: t.StrMapping,
         ) -> None:
+            self.relative_imports = relative_imports
             self.removals = removals
             self.obsolete_imports = obsolete_imports
             self.replacements = replacements
@@ -78,9 +80,19 @@ class FlextInfraUtilitiesPrivateImportCst:
         def leave_ImportFrom(
             self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
         ) -> cst.BaseSmallStatement | cst.RemovalSentinel:
-            """Remove migrated symbols from their exact private import."""
+            """Relativize same-owner imports or remove cross-owner bindings."""
             module = self.dotted_name(original_node.module)
             module_name = module or ""
+            relative_module = self.relative_imports.get(module_name)
+            if relative_module is not None:
+                relative_level = len(relative_module) - len(relative_module.lstrip("."))
+                relative_name = relative_module[relative_level:]
+                return updated_node.with_changes(
+                    relative=tuple(cst.Dot() for _ in range(relative_level)),
+                    module=(
+                        cst.parse_expression(relative_name) if relative_name else None
+                    ),
+                )
             removed = self.removals.get(
                 module_name, frozenset()
             ) | self.obsolete_imports.get(module_name, frozenset())
@@ -163,6 +175,7 @@ class FlextInfraUtilitiesPrivateImportCst:
         cls,
         source: str,
         *,
+        relative_imports: t.StrMapping,
         removals: t.MappingKV[str, frozenset[str]],
         obsolete_imports: t.MappingKV[str, frozenset[str]],
         replacements: t.StrMapping,
@@ -171,6 +184,7 @@ class FlextInfraUtilitiesPrivateImportCst:
     ) -> str:
         """Return a binding-proven rewrite with required public imports."""
         transformer = cls._Transformer(
+            relative_imports=relative_imports,
             removals=removals,
             obsolete_imports=obsolete_imports,
             replacements=replacements,

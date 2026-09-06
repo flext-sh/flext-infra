@@ -4,7 +4,6 @@
 - [Resumo](#resumo)
 - [Como usar](#como-usar)
 - [Findings](#findings)
-  - [1 · 🟠 HIGH · conf low · `python.lang.compatibility.python37.python37-compatibility-importlib2`](#1-high-conf-low-pythonlangcompatibilitypython37python37-compatibility-importlib2)
   - [2 · 🟠 HIGH · conf medium · `trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal`](#2-high-conf-medium-trailofbitspythontarfile-extractall-traversaltarfile-extractall-traversal)
   - [3 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#3-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
   - [4 · 🟡 MEDIUM · conf high · `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown`](#4-medium-conf-high-package_managersdependabotdependabot-missing-cooldowndependabot-missing-cooldown)
@@ -22,14 +21,13 @@ Bead: `flext-p57t.12`
 
 ## Resumo
 
-**10 findings** — high 2, medium 8, low 0
-Confiança: high 3, medium 1, low 6
+**9 findings** — high 1, medium 8, low 0
+Confiança: high 3, medium 1, low 5
 
 | regra | achados |
 |---|---|
 | `python.lang.security.audit.non-literal-import.non-literal-import` | 5 |
 | `package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown` | 3 |
-| `python.lang.compatibility.python37.python37-compatibility-importlib2` | 1 |
 | `trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal` | 1 |
 
 ## Como usar
@@ -38,24 +36,6 @@ Cada finding traz a **mensagem completa da regra** (o Semgrep descreve o problem
 **Decisão**: `corrigir` / `falso-positivo` (`nosemgrep` ou `.semgrepignore` com justificativa) / `risco-aceito`. Priorizar high com confidence=high.
 
 ## Findings
-
-### 1 · 🟠 HIGH · conf low · `python.lang.compatibility.python37.python37-compatibility-importlib2`
-**Classe**: - · **Local**: `src/flext_infra/codemod/discovery.py:5`
-
-> Found 'importlib.resources', which is a module only available on Python 3.7+. This does not work in lower versions, and therefore is not backwards compatible. Use importlib_resources instead for older Python versions.
-
-```python
-1  """Discover ast-grep rules from installed FLEXT packages in cascade order."""  # ruff:ignore[implicit-namespace-package]
-        2  
-        3  from __future__ import annotations
-        4  
->>>     5  from importlib.resources import files
-        6  from pathlib import Path
-        7  from typing import Final
-        8  
-        9  # Cascade order: last wins on rule ID conflict. The local project is appended
-```
-**Decisão**:
 
 ### 2 · 🟠 HIGH · conf medium · `trailofbits.python.tarfile-extractall-traversal.tarfile-extractall-traversal`
 **Classe**: Path Traversal · **Local**: `src/flext_infra/release/_release_artifact_source.py:211`

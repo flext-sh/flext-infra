@@ -18,6 +18,9 @@ class FlextInfraModelsGitIdentity:
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         repo_root: Annotated[Path, m.Field(description="Repository worktree root")]
+        primary_root: Annotated[
+            Path, m.Field(description="Canonical primary worktree root")
+        ]
         head_oid: Annotated[t.NonEmptyStr, m.Field(description="HEAD commit hex SHA")]
         porcelain: Annotated[
             str, m.Field(description="Raw git status --porcelain output")
@@ -38,6 +41,10 @@ class FlextInfraModelsGitIdentity:
         ]
         origin_remote: Annotated[
             t.NonEmptyStr | None, m.Field(default=None, description="Origin remote URL")
+        ]
+        upstream_remote: Annotated[
+            t.NonEmptyStr | None,
+            m.Field(default=None, description="Upstream remote URL"),
         ]
         superproject_root: Annotated[
             Path | None,
@@ -64,7 +71,16 @@ class FlextInfraModelsGitIdentity:
             bool,
             m.Field(
                 default=False,
-                description="Whether the checkout is a nested Git submodule",
+                description="Whether the primary repository is a Git submodule",
+            ),
+        ]
+        is_attached_submodule: Annotated[
+            bool,
+            m.Field(
+                default=False,
+                description=(
+                    "Whether this checkout is physically nested in its superproject"
+                ),
             ),
         ]
         has_submodules: Annotated[

@@ -6,11 +6,11 @@ import json
 from pathlib import Path
 
 import pytest
-from flext_infra import c, config, m
+
+from flext_infra import c, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture, u as test_u
 
 
 class TestsCodegenBeadsProjection:
@@ -55,7 +55,7 @@ class TestsCodegenBeadsProjection:
         return (
             None
             if match is None or match.desired_content is None
-            else match.desired_text
+            else test_u.Tests.codegen_file_text(match)
         )
 
     def test_local_identity_renders_only_declarative_beads_files(

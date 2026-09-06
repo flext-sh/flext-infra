@@ -197,6 +197,7 @@ class FlextInfraCodegenVscodeMixin:
             or artifacts_changed
             or changed.value
         )
+        return r[bool].ok(artifacts_changed or extensions_changed or changed.value)
 
     @classmethod
     def _apply_enforced_settings(
@@ -254,6 +255,24 @@ class FlextInfraCodegenVscodeMixin:
             if settings.get(key) == merged:
                 continue
             settings[key] = merged
+            changed = True
+        return changed
+
+    @staticmethod
+    def _apply_exact_map_settings(
+        settings: t.MutableJsonMapping,
+        exact_maps: Mapping[str, Mapping[str, str | bool]],
+    ) -> bool:
+        """Replace generated maps so removed SSOT entries leave no residue."""
+        changed = False
+        for key, canonical_map in exact_maps.items():
+            exact: dict[str, t.JsonValue] = {
+                name: u.normalize_to_json_value(value)
+                for name, value in canonical_map.items()
+            }
+            if settings.get(key) == exact:
+                continue
+            settings[key] = exact
             changed = True
         return changed
 

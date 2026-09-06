@@ -56,7 +56,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tv",
                 "u",
                 "x",
-            ),
+            )
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

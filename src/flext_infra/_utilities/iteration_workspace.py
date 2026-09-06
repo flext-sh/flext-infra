@@ -1,4 +1,4 @@
-"""Workspace-scoped Python file iteration mixin.
+"""Workspace-scoped Python file iteration utility facet.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

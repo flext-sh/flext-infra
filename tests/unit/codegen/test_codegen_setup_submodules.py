@@ -37,9 +37,7 @@ class TestsCodegenSetupSubmodules:
     @classmethod
     def _generated_project(cls, root: Path, template: Path) -> None:
         shutil.copytree(template, root)
-        cls._git(root, "init", "-q", "-b", "main")
-        cls._git(root, "config", "user.email", "tests@flext.local")
-        cls._git(root, "config", "user.name", "FLEXT Tests")
+        test_u.Tests.initialize_git_repo(root)
 
     @staticmethod
     def _fake_uv(

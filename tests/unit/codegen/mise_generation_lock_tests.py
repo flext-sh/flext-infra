@@ -28,7 +28,7 @@ class TestsMiseGenerationLock:
     @staticmethod
     def _owner(root: Path) -> FlextInfraCodegenMiseArtifacts:
         return FlextInfraCodegenMiseArtifacts(
-            workspace_root=root, apply_changes=False, check_only=True
+            repository_root=root, apply_changes=False, check_only=True
         )
 
     @staticmethod

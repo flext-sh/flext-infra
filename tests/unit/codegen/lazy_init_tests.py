@@ -130,7 +130,7 @@ class TestExcludedDirectories:
         scratch_init = _create_init_file(
             tmp_path / ".test-runtime" / "invocation" / "tests", _VALID_TESTS_INIT
         )
-        result = FlextInfraCodegenLazyInit(workspace_root=tmp_path).plan_files()
+        result = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
         tm.ok(result)
         tm.that({plan.path for plan in result.value}, lacks=scratch_init)
 

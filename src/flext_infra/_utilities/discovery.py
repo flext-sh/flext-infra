@@ -248,6 +248,24 @@ class FlextInfraUtilitiesDiscovery(
             )
         ]
 
+    @classmethod
+    def discover_python_targets(cls, project_dir: Path) -> t.StrSequence:
+        """Return every first-party Python target owned by one project root.
+
+        Directory discovery alone omits standalone modules stored directly at
+        the repository root. Analyzer and codemod gates must use the same
+        complete target inventory so semantic discovery cannot find a file
+        that their safety measurements silently exclude.
+        """
+        if not project_dir.is_dir():
+            return list[str]()
+        root_modules = [
+            path.name
+            for path in sorted(project_dir.iterdir())
+            if path.is_file() and path.suffix in {".py", ".pyi"}
+        ]
+        return [*cls.discover_python_dirs(project_dir), *root_modules]
+
     @staticmethod
     def _walk_python_files(
         directory: Path, skip_dirs: frozenset[str]

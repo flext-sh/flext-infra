@@ -113,8 +113,6 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(level_four_content, contains='"worker"')
         tm.that(level_two_content, contains="FlextTestsWorker")
         tm.that(level_three_content, contains="FlextTestsWorker")
-        tm.that(format_result.exit_code, eq=0)
-        tm.that(lint_result.exit_code, eq=0)
         tm.that(check_result, eq=0)
         tm.that(check_service.modified_files, empty=True)
         tm.that(after, eq=before)

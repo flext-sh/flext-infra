@@ -143,6 +143,4 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
         )
 
 
-__all__: list[str] = [
-    "FlextInfraUtilitiesDocsGeneratePlanMixin",
-]
+__all__: list[str] = ["FlextInfraUtilitiesDocsGeneratePlanMixin"]

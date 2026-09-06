@@ -6,46 +6,46 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import u
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
-    from flext_infra import m, t
+    from flext_infra import t
 
 
 class FlextInfraUtilitiesCodegenFacades:
     """Project utility owners required by real public-facade consumers."""
 
     @classmethod
-    def project_semantic_utility_owners(
-        cls, *, pkg_dir: Path, ctx: m.Infra.FixContext
-    ) -> None:
-        """Project uniquely discovered semantic owners without a registry.
+    def render_utility_facade(cls, pkg_dir: Path) -> str | None:
+        """Render uniquely discovered utility owners without a registry.
 
-        The executable ``codemod/semantic_apply.py`` consumer selects methods.
-        Definitions under ``_utilities`` select their unique owners. Existing
-        handwritten facade content remains unchanged except for missing imports
-        and bases.
+        Real ``u.<Namespace>.<method>()`` consumers select methods. Definitions
+        under ``_utilities`` select their unique owners. Existing handwritten
+        facade content remains unchanged except for missing imports and bases.
         """
-        semantic_path = pkg_dir / "codemod" / "semantic_apply.py"
         facade_path = pkg_dir / c.Infra.UTILITIES_PY
         owners_dir = pkg_dir / c.Infra.FAMILY_DIRECTORIES["u"]
-        semantic_exists, facade_exists = semantic_path.is_file(), facade_path.is_file()
-        if semantic_exists != facade_exists:
-            message = f"incomplete semantic utility artifacts in {pkg_dir}"
+        owners_exist, facade_exists = owners_dir.is_dir(), facade_path.is_file()
+        if owners_exist != facade_exists:
+            message = f"incomplete utility facade artifacts in {pkg_dir}"
             raise ValueError(message)
-        if not semantic_exists:
-            return
+        if not owners_exist:
+            return None
         owners, ancestors = cls._utility_owners(owners_dir)
         source = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)), facade_path
         )
+        nested_namespace = namespace is not facade
         reachable = cls._reachable_bases(
             tuple(cls._base_name(base) for base in namespace.bases), ancestors
         )
         additions: list[tuple[str, str]] = []
-        for method in sorted(cls._semantic_methods(semantic_path)):
+        for method in sorted(
+            cls._required_methods(
+                pkg_dir, facade_path, nested_namespace=nested_namespace
+            )
+        ):
             candidates = tuple(
                 (module, class_name)
                 for module, class_name, methods in owners
@@ -63,40 +63,42 @@ class FlextInfraUtilitiesCodegenFacades:
             additions.append((module, class_name))
             reachable.update(cls._reachable_bases((class_name,), ancestors))
         if not additions:
-            return
+            return source
         updated = cls._insert_imports(source, facade, additions)
         _, namespace = cls._facade_classes(
             ast.parse(updated, filename=str(facade_path)), facade_path
         )
         updated = cls._insert_bases(updated, namespace, additions)
-        written = u.Cli.atomic_write_text_file(facade_path, updated)
-        if written.failure:
-            message = written.error or f"writing utility facade {facade_path}"
-            raise OSError(message)
-        ctx.files_modified.add(str(facade_path))
-        for module, class_name in additions:
-            ctx.fix(
-                module=str(facade_path),
-                rule="UTILITY-FACADE",
-                line=facade.lineno,
-                message=f"projected {module}.{class_name} from semantic consumer",
-            )
+        return updated
 
     @staticmethod
-    def _semantic_methods(path: Path) -> frozenset[str]:
-        tree = ast.parse(
-            path.read_text(encoding=c.Cli.ENCODING_DEFAULT), filename=str(path)
-        )
-        return frozenset(
-            node.func.attr
-            for node in ast.walk(tree)
-            if isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and isinstance(node.func.value, ast.Attribute)
-            and isinstance(node.func.value.value, ast.Name)
-            and node.func.value.value.id == "u"
-            and node.func.value.attr == "Infra"
-        )
+    def _required_methods(
+        pkg_dir: Path, facade_path: Path, *, nested_namespace: bool
+    ) -> frozenset[str]:
+        methods: set[str] = set()
+        for path in sorted(pkg_dir.rglob(f"*{c.Infra.EXT_PYTHON}")):
+            if path == facade_path:
+                continue
+            tree = ast.parse(
+                path.read_text(encoding=c.Cli.ENCODING_DEFAULT), filename=str(path)
+            )
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not isinstance(
+                    node.func, ast.Attribute
+                ):
+                    continue
+                receiver = node.func.value
+                if nested_namespace:
+                    selected = (
+                        isinstance(receiver, ast.Attribute)
+                        and isinstance(receiver.value, ast.Name)
+                        and receiver.value.id == "u"
+                    )
+                else:
+                    selected = isinstance(receiver, ast.Name) and receiver.id == "u"
+                if selected:
+                    methods.add(node.func.attr)
+        return frozenset(method for method in methods if not method.startswith("_"))
 
     @staticmethod
     def _utility_owners(
@@ -140,10 +142,10 @@ class FlextInfraUtilitiesCodegenFacades:
         nested = tuple(
             node for node in facades[0].body if isinstance(node, ast.ClassDef)
         )
-        if len(nested) != 1:
-            message = f"expected one utility namespace class in {path}"
+        if len(nested) > 1:
+            message = f"expected at most one utility namespace class in {path}"
             raise ValueError(message)
-        return facades[0], nested[0]
+        return facades[0], nested[0] if nested else facades[0]
 
     @staticmethod
     def _base_name(base: ast.expr) -> str:

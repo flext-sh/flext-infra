@@ -80,11 +80,7 @@ class FlextInfraUtilitiesDeferredSelfReferenceRewrite:
         siblings = tuple(node for node in outer.body if isinstance(node, ast.ClassDef))
         owned_names = frozenset({
             *(node.name for node in outer.body if isinstance(node, ast.ClassDef)),
-            *(
-                node.name.id
-                for node in outer.body
-                if isinstance(node, ast.TypeAlias)
-            ),
+            *(node.name.id for node in outer.body if isinstance(node, ast.TypeAlias)),
         })
         offsets = cls._line_offsets(source)
         edits: dict[tuple[int, int], str] = {}

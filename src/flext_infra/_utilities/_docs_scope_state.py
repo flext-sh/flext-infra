@@ -15,9 +15,7 @@ from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
 
 
-class FlextInfraUtilitiesDocsScopeStateMixin(
-    FlextInfraUtilitiesDocsScopePathsMixin
-):
+class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMixin):
     """Load one authenticated pyproject state for every docs decision."""
 
     @staticmethod
@@ -63,7 +61,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(
             )
         )
         if not payload:
-            return mw.ProjectPyprojectState.model_construct(
+            return mw.ProjectPyprojectState(
                 project_root=root,
                 pyproject_path=pyproject_path,
                 payload=payload,
@@ -72,7 +70,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(
                 package_name="",
                 dependency_names=dependency_names,
             )
-        return mw.ProjectPyprojectState.model_construct(
+        return mw.ProjectPyprojectState(
             project_root=root,
             pyproject_path=pyproject_path,
             payload=payload,

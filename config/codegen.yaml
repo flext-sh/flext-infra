@@ -12,12 +12,20 @@ Infra:
       # resolved immutable versions and checksums; dependency floors remain in
       # pyproject and uv.lock alone owns their resolved Python distributions.
       python_version: "3.13"
+      state_directory_name: .flext-runtime
+      scratch_namespace: scratch
+      pycache_namespace: pycache
+      mise_namespace: mise-artifacts
       uv_link_mode: copy
       # Supported resolution environments for the generated lock. Windows is
       # not a supported deployment target: the win32 split resolves meltano's
       # structlog<26 cap against flext-core's structlog>=26.1 floor and is
       # unsatisfiable, so uv must skip that split instead of failing the lock.
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
+      # Supply-chain cooldown SSOT shared by uv and generated update policy.
+      dependency_cooldown_days: 7
+      dependency_cooldown_exclusions: [cryptography]
+      dependency_cooldown_overrides: {}
       # Moving selectors consumed by generated .mise.toml and CI. Freezing a
       # major, minor, or patch here would create a second lock owner and prevent
       # setup from converging the fleet on the newest published release.
@@ -31,7 +39,10 @@ Infra:
       gitleaks_version: latest
       scc_version: latest
       kubeconform_version: latest
-      qlty_version: latest
+      qlty_version: "0.642.0"
+      node_version: "26.8"
+      jscpd_version: "5.1.2"
+      waza_version: "0.38.7"
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -39,22 +50,6 @@ Infra:
         - linux-arm64-musl
         - macos-x64
         - macos-arm64
-        - windows-x64
-      mise_lock_platform_exclusions:
-        # Keyed by full mise selector (that is the key the lock validator
-        # resolves). gc does not build for Windows: its process control uses
-        # syscall.Kill/Flock (unix-only), so no windows-x64 artifact can exist.
-        github:marlon-costa-dc/gascity:
-          - windows-x64
-        # ast-grep publishes no distinct musl assets; every unsupported pair is
-        # explicit so the offline validator rejects any additional omission.
-        # scc (loc-cap gate; see .mise.toml.j2) carries no exclusion: pinned to
-        # the aqua backend, its evergreen catch-all release rule ships real
-        # per-platform assets for every target platform, so it never falls
-        # back to a source build.
-        ast-grep:
-          - linux-x64-musl
-          - linux-arm64-musl
       protected_mise_tools:
         - beads
         - gascity
@@ -114,15 +109,6 @@ Infra:
           - spec
           - convergence
           - step
-
-    # Why (ai-hub-qwoc): the ast-grep project contract for every governed
-    # repository. A provider manifest may declare sgconfig.yml as a required
-    # surface, so it is rendered from here instead of hand-written per repo.
-    sgconfig:
-      rule_dirs:
-        - ast-grep-rules
-      test_dirs:
-        - ast-grep-rule-tests
 
     # actions/checkout submodules mode for every generated workflow.
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
@@ -304,12 +290,16 @@ Infra:
         discovery_scope: none
 
     make:
-      selector: WHAT
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
       testmon_cache:
         schema_version: 1
+        namespace: testmon
+        invocation_namespace: pytest
+        database_filename: .testmondata
+        target_directory: tests
+        reports_directory: .reports/tests
         mode: bootstrap
         save_enabled: false
         max_bootstrap_generations: 3
@@ -365,10 +355,10 @@ Infra:
         - { verb: gen, apply: true, contexts: [local, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
+        - { verb: check, apply: true, contexts: [local, ci, pre_push, pre_commit] }
         # Review CI proves the complete native gate set. Draft PRs do not select
         # the job, while attestation reuse is selected externally by AI Hub.
-        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
+        - { verb: test, apply: true, contexts: [local, ci, pre_push] }
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -454,115 +444,80 @@ Infra:
             local_checkout: ~/invest
       verbs:
         - name: help
-          default_what: usage
-          whats: [usage]
-          apply_guarded: false
+          description: Show the complete selector-free public interface.
+          requires_apply: false
         - name: setup
-          default_what: environment
-          whats: [environment]
-          apply_guarded: false
+          description: Provision the declared environment and hooks.
+          requires_apply: false
         - name: deps
-          default_what: check
-          whats: [check, lock, upgrade]
-          # `lock` and `upgrade` rewrite the lockfile and call _require_apply,
-          # so declaring the verb unguarded made them unreachable: the dispatch
-          # rejected APPLY=Y while the recipe demanded it.
-          apply_guarded: true
-          apply_what: upgrade
+          description: Upgrade, lock, and conform every declared dependency.
+          requires_apply: true
         - name: build
-          default_what: artifacts
-          whats: [artifacts]
-          apply_guarded: false
+          description: Build the project distribution artifacts.
+          requires_apply: true
         - name: check
-          default_what: all
-          whats: [all]
-          apply_guarded: false
+          description: Run every configured non-test gate.
+          requires_apply: true
         - name: test
-          default_what: all
-          # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Coverage is on unless CI=Y (no separate cov verb).
-          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-          # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
-          apply_guarded: false
-          accepts_apply: true
-          apply_what: all
+          description: Run the complete suite through the persistent testmon cache.
+          requires_apply: true
         - name: fmt
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
+          description: Apply canonical formatting.
+          requires_apply: true
         - name: fix
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
-        - name: run
-          default_what: default
-          whats: [default]
-          apply_guarded: false
-          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-          # entering the serialized mutation set (daemon/mcp must not take the
-          # checkout lock). accepts_apply unlocks the APPLY token only.
-          accepts_apply: true
-          apply_what: default
+          description: Apply every configured safe correction.
+          requires_apply: true
+        - name: audit
+          description: Inspect ownership, dependency, and generated-state health.
+          requires_apply: false
         - name: status
-          default_what: diagnostics
-          whats: [diagnostics]
-          apply_guarded: false
+          description: Report the resolved runtime and repository state.
+          requires_apply: false
         - name: docs
-          # `validate` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          # `WHAT=all` remains the explicit full pipeline meta-selector.
-          default_what: validate
-          whats: [all, generate, fix, audit, build, validate]
-          # generate/fix materialize artifacts: the generated handler picks
-          # --apply or --check from APPLY, and the docs workflow calls
-          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
-          apply_guarded: true
-          apply_what: generate
+          description: Generate, repair, build, and validate documentation.
+          requires_apply: true
         - name: clean
-          default_what: status
-          whats: [status, generated]
-          # `clean generated` deletes generated output and calls _require_apply.
-          # `clean status` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          apply_guarded: true
-          apply_what: generated
-        # The release protocol: `plan` is the read-only decision (and guard),
-        # `version` opens the release pull request, `tag` marks the merged
-        # release commit, `build` produces the receipt, `publish` uploads what
-        # the receipt attests. Every mutation requires APPLY=Y.
-        - name: release
-          default_what: plan
-          whats: [plan, version, tag, build, publish]
-          apply_guarded: true
-          apply_what: version
+          description: Remove every declared disposable artifact.
+          requires_apply: true
+        - name: release-plan
+          description: Resolve the release decision through the public protocol.
+          requires_apply: true
+        - name: release-version
+          description: Materialize the planned version.
+          requires_apply: true
+        - name: release-tag
+          description: Tag the verified release commit.
+          requires_apply: true
+        - name: release-build
+          description: Build the release receipt and artifacts.
+          requires_apply: true
+        - name: publication
+          description: Publish only receipt-attested release artifacts.
+          requires_apply: true
         - name: gen
-          default_what: check
-          # `init` is the narrow package-initializer owner. It intentionally
-          # bypasses conform so regenerating lazy ``__init__.py`` files never
-          # discovers workspace topology or inspects external runtime state.
-          whats: [check, all, apply, init]
-          apply_guarded: true
-          apply_what: apply
+          description: Regenerate every managed projection atomically.
+          requires_apply: true
+        - name: conform
+          description: Prove generated projections are at their fixed point.
+          requires_apply: true
+        - name: initialize
+          description: Materialize the declared package initializer graph.
+          requires_apply: true
         - name: mod
-          default_what: check
-          whats: [check, all, apply]
-          # `mod` batch-applies the sgconfig ast-grep rules under the
-          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
-          # the read-only dry-run fixed-point after mutation.
-          apply_guarded: true
-          apply_what: apply
+          description: Apply the declared structural codemods.
+          requires_apply: true
+        - name: waza
+          description: Validate provider-neutral governance semantics with Waza.
+          requires_apply: true
+        - name: duplication
+          description: Run the canonical jscpd duplicate-code gate.
+          requires_apply: true
       custom_handler_policy:
         filename: custom.mk
-        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
-        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
-        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
-        # The validator must accept both shapes the runtime itself dispatches to, or
-        # every project that defines a custom WHAT handler fails `codegen conform`.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|work|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|work|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
+        # Custom behavior is one private whole-verb replacement or one lifecycle
+        # hook. Selector-specific handlers are prohibited because public verbs are
+        # already the complete operation and APPLY=Y is their sole mutation input.
+        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|_custom-[a-z][a-z0-9-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -592,8 +547,6 @@ Infra:
       # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
       # watch/source-scan projections (order-sensitive, after .claude).
       - { name: .direnv, source_scan_ignore: true }
-      - { name: .code-review-graph }
-      - { name: .codegraph }
       - { name: .dolt }
       - { name: .dolt_dropped_databases }
       - { name: .doltcfg }
@@ -723,9 +676,10 @@ Infra:
         }
 
     vscode:
-      # Canonical .vscode/settings.json content injected with merge semantics:
-      # scalar/list keys are enforced, map keys are union-merged (project entries
-      # are preserved). Recursive "**" venv search globs are forbidden: they make
+      # Canonical .vscode/settings.json content injected with owner semantics:
+      # scalar/list keys and artifact maps are exact; explicitly declared
+      # non-artifact maps retain project extensions. Recursive "**" venv search
+      # globs are forbidden: they make
       # the Python Environments locator (pet) walk entire repository trees and
       # hang interpreter discovery on large monorepos.
       scalar_settings:
@@ -780,7 +734,6 @@ Infra:
         - conftest.py
         - mkdocs.yml
         - uv.lock
-        - sgconfig.yml
       canonical_root_dotfiles:
         - .gitignore
         - .gitattributes
@@ -979,7 +932,6 @@ Infra:
             - schema.json
             - version.json
             - surface-catalog.json
-            - crg-watch.toml
             - env.example
             - bootstrap.ps1
           ignore_globs:
@@ -1157,11 +1109,6 @@ Infra:
       - path: .envrc
         owner: codegen
         policy: full
-      # Why (ai-hub-qwoc): codegen owns the ast-grep contract end to end, so the
-      # rendered file is fully managed and never hand-edited.
-      - path: sgconfig.yml
-        owner: codegen
-        policy: full
       - path: .gitignore
         owner: codegen
         policy: merge
@@ -1171,10 +1118,21 @@ Infra:
       - path: .mise.toml
         owner: codegen
         policy: full
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
+      - path: .markdownlintignore
+        owner: codegen
+        policy: full
       - path: .pre-commit-config.yaml
         owner: pre-commit
         policy: full
       - path: .python-version
+        owner: codegen
+        policy: full
+      # Qlty refuses to scan without a repository configuration. Keep the
+      # blocking smells posture fleet-wide and generated from this SSOT.
+      - path: .qlty/qlty.toml
         owner: codegen
         policy: full
       - path: .vscode/settings.json
@@ -1301,7 +1259,6 @@ Infra:
             - "!typings/"
             - "!libs/"
             - "!.vscode/"
-            - "!.code-review-graph/"
             - "!.claude/"
             - "!.claude-plugin/"
             # Provider surfaces are generated governance artifacts owned by the
@@ -1483,6 +1440,27 @@ Infra:
             - ".claude/skills/core.gc-*"
             - ".claude/skills/gascity.*"
             - ".claude/skills/gc.*"
+            - ".codex/skills/.gc-skill-ownership.json"
+            - ".codex/skills/core.gc-*"
+            - ".codex/skills/gascity.*"
+            - ".codex/skills/gc.*"
+        # Why (flext-uwhzz): a registered rig also receives the Gas City runtime
+        # directory (events, gate slots, scripts pinned to the city's absolute
+        # path, per-session settings) and hosts its lane checkouts under
+        # `<rig>/worktrees/<lane>`. Both are per-machine runtime state carrying
+        # machine-absolute paths; tracked copies broke every other checkout.
+        - name: "Gas City rig runtime and lane worktrees (runtime state, never source)"
+          patterns:
+            - ".gc/"
+            - "/worktrees/"
+        # Why (flext-uwhzz): ai-hub `gen` projects a project association and a
+        # project-scoped Cursor MCP document into every governed checkout; the
+        # MCP document carries the gateway socket path resolved on the machine
+        # that ran the generator. Both are projection outputs, never source.
+        - name: "AI Hub workspace projections (runtime state, never source)"
+          patterns:
+            - "/.aihub/"
+            - "/.cursor/mcp.json"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
@@ -1614,7 +1592,7 @@ Infra:
             - "**/.tmp/"
         - name: "Build and quality tool artifacts inside allowed directories"
           patterns:
-            - "**/.qlty/"
+            - "**/.qlty/*"
             - "**/.meltano/"
             - "**/.serena/"
         - name: "Backup files inside allowed directories"
@@ -1829,21 +1807,16 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
-        # required surface. Without a generator it was hand-written in one
-        # repository and absent in another, so provider discovery failed closed
-        # with "missing declared file: sgconfig.yml". Rendering it from the SSOT
-        # gives every governed repository the same ast-grep contract.
-        - source: base/sgconfig.yml.j2
-          destination: sgconfig.yml
-          profiles: [workspace, standalone]
-          delegate: render
-          overwrite: false
         - source: base/python-version.j2
           destination: .python-version
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
+        - source: base/qlty.toml.j2
+          destination: .qlty/qlty.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
         - source: base/env.example.j2
           destination: .env.example
           profiles: [workspace, standalone]
@@ -1854,6 +1827,16 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
         # Ledger routing config: rendered only for repositories that own a
         # ledger. The workspace root owns a shared ledger when a gitlink's
         # `.beads` path is a symlink; real member `.beads` directories keep an

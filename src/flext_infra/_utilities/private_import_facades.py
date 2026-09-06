@@ -16,111 +16,116 @@ class FlextInfraUtilitiesPrivateImportFacades:
     """Derive public paths from live facade inheritance, never a registry."""
 
     @staticmethod
-    def _facade_owner(
-        *,
-        sources: t.MappingKV[Path, str],
-        package: str,
-        facade_file: str,
-        facade_alias: str,
-    ) -> tuple[ast.Module, str] | None:
-        """Return the live facade syntax tree and its assigned root class."""
-        candidates = [
-            source
-            for path, source in sources.items()
-            if path.name == facade_file
-            and path.parent.name == package
-            and path.parent.parent.name == "src"
-        ]
-        if len(candidates) > 1:
-            msg = f"ambiguous public facade owner for {package}.{facade_file}"
-            raise ValueError(msg)
-        if not candidates:
-            return None
-        tree = ast.parse(candidates[0])
-        root_name = next(
+    def private_owner(module: str) -> str | None:
+        """Return the owner preceding the first private module segment."""
+        parts = module.split(".")
+        private_index = next(
             (
-                node.value.id
-                for node in tree.body
-                if isinstance(node, ast.Assign)
-                and len(node.targets) == 1
-                and isinstance(node.targets[0], ast.Name)
-                and node.targets[0].id == facade_alias
-                and isinstance(node.value, ast.Name)
+                index
+                for index, part in enumerate(parts)
+                if len(part) > 1 and part.startswith("_") and part[1].isalpha()
             ),
             None,
         )
-        if root_name is None:
+        if private_index in {None, 0}:
             return None
-        return tree, root_name
+        return ".".join(parts[:private_index])
 
     @staticmethod
-    def private_layer(module: str) -> tuple[str, str, str] | None:
-        """Derive package, facade filename, and alias from namespace law."""
-        parts = module.split(".")
-        for layer_name, layer_file in c.ENFORCEMENT_NAMESPACE_LAYER_MAP:
-            family = f"_{layer_file}"
-            if family not in parts:
-                continue
-            index = parts.index(family)
-            package = ".".join(parts[:index])
-            return package, f"{layer_file}.py", layer_name[0].lower()
-        return None
-
-    @classmethod
-    def public_reference(
-        cls,
-        *,
+    def discover(
         sources: t.MappingKV[Path, str],
+    ) -> t.MappingKV[str, tuple[tuple[ast.Module, str, str, str], ...]]:
+        """Discover facade aliases and roots from live source assignments."""
+        discovered: dict[str, list[tuple[ast.Module, str, str, str]]] = {}
+        for path, source in sorted(sources.items()):
+            source_index = next(
+                (
+                    index
+                    for index in range(len(path.parts) - 1, -1, -1)
+                    if path.parts[index] == c.Infra.DEFAULT_SRC_DIR
+                ),
+                None,
+            )
+            if source_index is None or path.name == c.Infra.INIT_PY:
+                continue
+            package = ".".join(path.parts[source_index + 1 : -1])
+            if not package:
+                continue
+            tree = ast.parse(source, filename=str(path))
+            class_names = {
+                node.name for node in tree.body if isinstance(node, ast.ClassDef)
+            }
+            owners: set[tuple[str, str]] = set()
+            for node in tree.body:
+                target: ast.expr | None = None
+                value: ast.expr | None = None
+                if isinstance(node, ast.Assign) and len(node.targets) == 1:
+                    target, value = node.targets[0], node.value
+                elif isinstance(node, ast.AnnAssign):
+                    target, value = node.target, node.value
+                if (
+                    isinstance(target, ast.Name)
+                    and len(target.id) == 1
+                    and target.id.islower()
+                    and isinstance(value, ast.Name)
+                    and value.id in class_names
+                ):
+                    owners.add((target.id, value.id))
+            for alias, root_name in sorted(owners):
+                discovered.setdefault(package, []).append((
+                    tree,
+                    alias,
+                    root_name,
+                    path.name,
+                ))
+        return {
+            package: tuple(owners) for package, owners in sorted(discovered.items())
+        }
+
+    @staticmethod
+    def public_reference(
+        *,
+        owners: t.SequenceOf[tuple[ast.Module, str, str, str]],
         package: str,
-        facade_file: str,
-        facade_alias: str,
         qualified: str,
     ) -> str | None:
         """Resolve one private class to exactly one inherited facade path."""
-        owner = cls._facade_owner(
-            sources=sources,
-            package=package,
-            facade_file=facade_file,
-            facade_alias=facade_alias,
-        )
-        if owner is None:
-            return None
-        tree, root_name = owner
-        imports: dict[str, str] = {}
-        for node in tree.body:
-            if not isinstance(node, ast.ImportFrom) or not node.module:
-                continue
-            if node.level > 1:
-                msg = f"ambiguous relative facade import in {package}.{facade_file}"
-                raise ValueError(msg)
-            module = f"{package}.{node.module}" if node.level else node.module
-            imports.update({
-                imported.asname or imported.name: f"{module}.{imported.name}"
-                for imported in node.names
-            })
-        root_class = next(
-            (
-                node
-                for node in tree.body
-                if isinstance(node, ast.ClassDef) and node.name == root_name
-            ),
-            None,
-        )
-        if root_class is None:
-            return None
         references: set[str] = set()
+        for tree, facade_alias, root_name, facade_file in owners:
+            imports: dict[str, str] = {}
+            for node in tree.body:
+                if not isinstance(node, ast.ImportFrom) or not node.module:
+                    continue
+                if node.level > 1:
+                    msg = f"ambiguous relative facade import in {package}.{facade_file}"
+                    raise ValueError(msg)
+                module = f"{package}.{node.module}" if node.level else node.module
+                imports.update({
+                    imported.asname or imported.name: f"{module}.{imported.name}"
+                    for imported in node.names
+                })
+            root_class = next(
+                (
+                    node
+                    for node in tree.body
+                    if isinstance(node, ast.ClassDef) and node.name == root_name
+                ),
+                None,
+            )
+            if root_class is None:
+                continue
 
-        def collect(node: ast.ClassDef, public_path: str) -> None:
-            if any(
-                isinstance(base, ast.Name) and imports.get(base.id) == qualified
-                for base in node.bases
-            ):
-                references.add(public_path)
-            for child in node.body:
-                if isinstance(child, ast.ClassDef):
-                    collect(child, f"{public_path}.{child.name}")
+            def collect(node: ast.ClassDef, public_path: str) -> None:
+                if any(
+                    isinstance(base, ast.Name) and imports.get(base.id) == qualified
+                    for base in node.bases
+                ):
+                    references.add(public_path)
+                for child in node.body:
+                    if isinstance(child, ast.ClassDef):
+                        collect(child, f"{public_path}.{child.name}")
 
-        collect(root_class, facade_alias)
+            collect(root_class, facade_alias)
         if not references:
             return None
         deepest = max(reference.count(".") for reference in references)
@@ -135,23 +140,20 @@ class FlextInfraUtilitiesPrivateImportFacades:
             raise ValueError(msg)
         return canonical.pop()
 
-    @classmethod
+    @staticmethod
     def public_root_name(
-        cls,
-        *,
-        sources: t.MappingKV[Path, str],
-        package: str,
-        facade_file: str,
-        facade_alias: str,
+        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], facade_alias: str
     ) -> str | None:
         """Return the public long name assigned to a canonical facade alias."""
-        owner = cls._facade_owner(
-            sources=sources,
-            package=package,
-            facade_file=facade_file,
-            facade_alias=facade_alias,
-        )
-        return owner[1] if owner is not None else None
+        roots = {
+            root_name
+            for _tree, alias, root_name, _facade_file in owners
+            if alias == facade_alias
+        }
+        if len(roots) > 1:
+            msg = f"ambiguous public facade root for alias {facade_alias}"
+            raise ValueError(msg)
+        return next(iter(roots), None)
 
     @staticmethod
     def require_unshadowed_alias(

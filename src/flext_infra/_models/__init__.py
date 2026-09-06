@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .check import FlextInfraModelsCheck
     from .codegen import FlextInfraModelsCodegen
     from .codegen_render import FlextInfraModelsCodegenRender
+    from .codemod import FlextInfraModelsCodemod
     from .config import FlextInfraConfigModels
     from .deps import FlextInfraModelsDeps
     from .deps_toml import FlextInfraModelsDepsToml
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
     from .docs import FlextInfraModelsDocs
+    from .docs_generation import FlextInfraModelsDocsGeneration
     from .enforcement import FlextInfraModelsEnforcement
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
@@ -43,6 +45,7 @@ if TYPE_CHECKING:
     from .refactor_violations import FlextInfraModelsRefactorViolations
     from .release import FlextInfraModelsRelease
     from .rope import FlextInfraModelsRope
+    from .rope_move import FlextInfraModelsRopeMove
     from .scan import FlextInfraModelsScan
     from .settings import FlextInfraSettingsModels
     from .testmon import FlextInfraModelsTestmon
@@ -57,6 +60,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsCheck",
     "FlextInfraModelsCodegen",
     "FlextInfraModelsCodegenRender",
+    "FlextInfraModelsCodemod",
     "FlextInfraModelsCore",
     "FlextInfraModelsDeps",
     "FlextInfraModelsDepsToml",
@@ -68,6 +72,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
+    "FlextInfraModelsDocsGeneration",
     "FlextInfraModelsEnforcement",
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
@@ -81,6 +86,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsRefactorViolations",
     "FlextInfraModelsRelease",
     "FlextInfraModelsRope",
+    "FlextInfraModelsRopeMove",
     "FlextInfraModelsScan",
     "FlextInfraModelsTestmon",
     "FlextInfraModelsTransformers",
@@ -100,6 +106,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".check": ("FlextInfraModelsCheck",),
             ".codegen": ("FlextInfraModelsCodegen",),
             ".codegen_render": ("FlextInfraModelsCodegenRender",),
+            ".codemod": ("FlextInfraModelsCodemod",),
             ".config": ("FlextInfraConfigModels",),
             ".deps": ("FlextInfraModelsDeps",),
             ".deps_toml": ("FlextInfraModelsDepsToml",),
@@ -115,6 +122,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraModelsDepsToolConfigTypeCheckers",
             ),
             ".docs": ("FlextInfraModelsDocs",),
+            ".docs_generation": ("FlextInfraModelsDocsGeneration",),
             ".enforcement": ("FlextInfraModelsEnforcement",),
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),
@@ -127,6 +135,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor_violations": ("FlextInfraModelsRefactorViolations",),
             ".release": ("FlextInfraModelsRelease",),
             ".rope": ("FlextInfraModelsRope",),
+            ".rope_move": ("FlextInfraModelsRopeMove",),
             ".scan": ("FlextInfraModelsScan",),
             ".settings": ("FlextInfraSettingsModels",),
             ".testmon": ("FlextInfraModelsTestmon",),

@@ -28,10 +28,6 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT
         )
 
-    @staticmethod
-    def _generated_exports(package_root: Path) -> str:
-        return TestsFlextInfraLazyInitHelpers._generated_init(package_root)
-
     def test_discover_package_from_standard_roots(self) -> None:
         """Resolve package names consistently for every supported source shape."""
         tm.that(
@@ -61,7 +57,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(init_content, has="build_lazy_import_map, install_lazy_exports")
         # _LAZY_IMPORTS is the canonical metadata binding flext_core reads.
@@ -343,7 +339,7 @@ class TestsFlextInfraLazyInitHelpers:
         first = self._generated_exports(package_root)
         tm.that(u.Tests.run_lazy_init(workspace_root, check_only=True), eq=0)
 
-        tm.that(self._generated_exports(package_root), eq=first)
+        tm.that(self._generated_init(package_root), eq=first)
         tm.that(first, lacks='"._constants"')
 
     def test_tests_root_facade_is_generated_lazily(self, tmp_path: Path) -> None:
@@ -387,8 +383,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(
             tuple(
                 plan
-                for plan in tm.ok(check_service.plan_files())
-                if plan.requires_effect
+                for plan in tm.ok(check_service.plan_files()).files
+                if u.Infra.codegen_file_requires_effect(plan)
             ),
             empty=True,
         )
@@ -451,7 +447,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(init_content, lacks="_LAZY_MODULES")
         tm.that(exports_content, has='"flext_cli": (')
@@ -493,7 +489,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
+        exports = self._generated_init(package_root)
         tm.that(exports, has='"flext_cli": (')
         tm.that(generated, has='    "r",')
         tm.that(generated, has='    "c",')
@@ -528,9 +524,9 @@ class TestsFlextInfraLazyInitHelpers:
         service = u.Tests.create_lazy_init_service(workspace_root).model_copy(
             update={"target_module": "flext_child"}
         )
-        planned = tm.ok(service.plan_files())
+        planned = tm.ok(service.plan_files()).files
         generated = next(
-            plan.desired_text
+            u.Tests.codegen_file_text(plan)
             for plan in planned
             if plan.path == package_root.joinpath(c.Infra.INIT_PY).resolve()
         )
@@ -628,7 +624,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
+        exports = self._generated_init(package_root)
 
         tm.that(generated, has='"FlextDemoGitService"')
         tm.that(generated, has='"FlextDemoWorkService"')
@@ -700,7 +696,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
 
-    def test_duplicate_public_export_resolved_by_canonical_scorer(
+    def test_duplicate_public_export_fails_before_generation(
         self, tmp_path: Path
     ) -> None:
         """Duplicate public exports are resolved deterministically (warn + generate)."""
@@ -718,6 +714,6 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
         tm.that(init_content.startswith(c.Infra.AUTOGEN_HEADER), eq=True)
         tm.that(exports_content, has="Shared")

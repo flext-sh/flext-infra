@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import m, u
 from flext_infra.codegen import _codegen_staging as generic_staging
 from flext_infra.codegen import _mise_artifacts_journal as journal_io
 from flext_infra.codegen import _mise_artifacts_publication as publication
@@ -75,6 +75,13 @@ class FlextInfraCodegenTransaction:
         if plan.failure:
             return r[bool].from_failure(plan)
         return verify.live(self._owner, plan.value)
+
+    @staticmethod
+    def validate_phase_analysis_locked(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[bool]:
+        """Validate a published phase from its immutable planning receipt."""
+        return verify.phase_analysis_live(analysis)
 
     def run_locked[T](
         self, *, prepare: bool, operation: Callable[[Path], p.Result[T]]
@@ -147,7 +154,8 @@ class FlextInfraCodegenTransaction:
         ordinary = tuple(
             file_plan
             for file_plan in file_plans
-            if file_plan.path not in config_paths and file_plan.requires_effect
+            if file_plan.path not in config_paths
+            and u.Infra.codegen_file_requires_effect(file_plan)
         )
         source_states = self._phase_sources("conform", file_plans)
         if source_states.failure:
@@ -290,7 +298,9 @@ class FlextInfraCodegenTransaction:
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Append, durably authorize, then publish one dependent generated phase."""
         result_type = r[m.Infra.CodegenTransactionSession]
-        changed = tuple(plan for plan in plans if plan.requires_effect)
+        changed = tuple(
+            plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
+        )
         if not changed:
             return result_type.ok(session)
         layout = session.plan.layout
@@ -354,8 +364,7 @@ class FlextInfraCodegenTransaction:
         if manifested.failure:
             return result_type.from_failure(
                 self._recover_failure(
-                    layout,
-                    manifested.error or f"cannot register {phase} staging tree",
+                    layout, manifested.error or f"cannot register {phase} staging tree"
                 )
             )
         persisted = journal_io.write(
@@ -533,13 +542,9 @@ class FlextInfraCodegenTransaction:
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
         journal_state: m.Cli.AtomicFileState,
-    ) -> p.Result[
-        tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
-    ]:
+    ) -> p.Result[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
         """Create and durably bind one directory identity at a time."""
-        result_type = r[
-            tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]
-        ]
+        result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
         current_journal = journal
         current_state = journal_state
         for intent in current_journal.directories:
@@ -568,9 +573,7 @@ class FlextInfraCodegenTransaction:
                     journal_write=False,
                 )
                 return result_type.from_failure(failed)
-            persisted = journal_io.write(
-                layout, recorded.value, expected=current_state
-            )
+            persisted = journal_io.write(layout, recorded.value, expected=current_state)
             if persisted.failure:
                 failed = self._compensate_directory_persistence(
                     layout,
@@ -595,8 +598,7 @@ class FlextInfraCodegenTransaction:
         compensated = state.compensate_created_directory(created)
         if compensated.failure:
             return r[bool].fail(
-                f"{failure}; created-directory compensation failed: "
-                f"{compensated.error}"
+                f"{failure}; created-directory compensation failed: {compensated.error}"
             )
         if journal_write:
             return self._handle_journal_write_failure(layout, failure)

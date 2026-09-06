@@ -207,7 +207,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: dict[str, Path] = {}
         gitignore_patterns: list[str] = []
-        fleet_platforms = frozenset(config.Infra.codegen.toolchain.mise_lock_platforms)
+
         for source_state in source_snapshot:
             source = source_state.path
             if source_state.content is None:
@@ -244,12 +244,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                         "duplicate project Mise selector "
                         f"{selector!r}: {previous} and {source}"
                     )
-                unknown = sorted(set(tool.platforms or ()) - fleet_platforms)
-                if unknown:
-                    return r[m.Infra.ProjectManagedArtifactsResolution].fail(
-                        f"project Mise selector {selector!r} in {source} declares "
-                        f"platforms outside the fleet lock platforms: {unknown}"
-                    )
+
                 mise_tools[selector] = tool
                 mise_sources[selector] = source
         artifacts = m.Infra.ProjectManagedArtifactsConfig(
@@ -312,37 +307,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 )
             tools[selector] = tool.version
         return r[str].ok(u.Cli.toml_dumps(doc))
-
-    @classmethod
-    def lock_platform_exclusions(
-        cls, project_dir: Path
-    ) -> p.Result[t.MappingKV[str, frozenset[str]]]:
-        """Snapshot YAML and derive lock exclusions from those exact bytes."""
-        source_snapshot = cls.snapshot_config_sources(project_dir)
-        if source_snapshot.failure:
-            return r[t.MappingKV[str, frozenset[str]]].from_failure(source_snapshot)
-        return cls.lock_platform_exclusions_from_snapshot(source_snapshot.value)
-
-    @classmethod
-    def lock_platform_exclusions_from_snapshot(
-        cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...]
-    ) -> p.Result[t.MappingKV[str, frozenset[str]]]:
-        """Derive lock exclusions from one caller-owned immutable YAML snapshot."""
-        resolved = cls.load_project_managed_artifacts_from_snapshot(source_snapshot)
-        if resolved.failure:
-            return r[t.MappingKV[str, frozenset[str]]].fail(
-                resolved.error or "project artifact load failed"
-            )
-        fleet_platforms = frozenset(config.Infra.codegen.toolchain.mise_lock_platforms)
-        # Absent platforms: the tool locks on every fleet platform. A declared
-        # tuple (possibly empty, for backends without per-platform assets)
-        # records exactly the platforms the lock may carry.
-        exclusions = {
-            selector: fleet_platforms - frozenset(tool.platforms)
-            for selector, tool in resolved.value.artifacts.Mise.tools.items()
-            if tool.platforms is not None
-        }
-        return r[t.MappingKV[str, frozenset[str]]].ok(exclusions)
 
 
 __all__: tuple[str, ...] = ("FlextInfraUtilitiesProjectManagedArtifacts",)

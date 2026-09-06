@@ -53,7 +53,7 @@ def test_generator_plans_root_and_selected_project(tmp_path: Path) -> None:
     )
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     prepared = generator.prepare_bundle()
     tm.ok(prepared)
@@ -81,7 +81,7 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
     ).execute()
     tm.fail(before)
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     prepared = generator.prepare_bundle()
     tm.ok(prepared)

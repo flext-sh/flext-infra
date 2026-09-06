@@ -70,11 +70,11 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         """Build a selected path scope when it is a local pyproject project."""
         relative = Path(name)
         if relative.is_absolute() or ".." in relative.parts:
-            msg = f"docs project selector escapes workspace: {name}"
+            msg = f"docs project selector escapes repository: {name}"
             raise ValueError(msg)
-        project_root = workspace_root / relative
+        project_root = repository_root / relative
         roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
-            workspace_root, (project_root,)
+            repository_root, (project_root,)
         )
         if roots.failure:
             raise ValueError(
