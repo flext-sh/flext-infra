@@ -337,7 +337,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             is not c.Infra.CodegenConformMode.APPLY
         ):
             return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
-        workspace = self.initial_workspace
+        scaffolding = self.initial_workspace
+        workspace = scaffolding
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
                 request.root.expanduser().resolve()
@@ -349,9 +350,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             workspace = workspace_result.value
         project = workspace.project
         if project is None:
-            return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
-                "scaffold workspace has no project metadata"
-            )
+            # Scaffolding a new project requires its declared metadata, and that
+            # path supplies the workspace explicitly. Conforming a repository
+            # that declares no project block has no scaffold chain to create —
+            # nothing to do is not invalid input, and treating it as an error
+            # made `make gen APPLY=Y` unusable in every repository without its
+            # own manifest.
+            if scaffolding is not None:
+                return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
+                    "scaffold workspace has no project metadata"
+                )
+            return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
         profile = workspace.repository.role
         root = request.root.expanduser().resolve()
         directories = {root}
