@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import tarfile
+from tempfile import TemporaryDirectory
 from collections.abc import Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from flext_cli import r, u
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
@@ -15,6 +17,109 @@ from flext_infra.typings import t
 
 class FlextInfraUtilitiesRelease:
     """Bump derivation, release notes, changelog, and publish-order utilities."""
+
+    @staticmethod
+    def archive_member_path(name: str) -> p.Result[Path]:
+        """Return one safe relative archive member path."""
+        relative = PurePosixPath(name)
+        if (
+            not name
+            or "\\" in name
+            or relative.is_absolute()
+            or any(part in {".", ".."} for part in relative.parts)
+        ):
+            return r[Path].fail(f"unsafe archive member path: {name}")
+        if not relative.parts:
+            return r[Path].fail(f"unsafe archive member path: {name}")
+        return r[Path].ok(Path(*relative.parts))
+
+    @staticmethod
+    def materialize_tar_tree(
+        archive: tarfile.TarFile, destination: Path
+    ) -> p.Result[bool]:
+        """Materialize one trusted tar tree without path traversal."""
+        try:
+            members = tuple(archive.getmembers())
+        except tarfile.TarError as exc:
+            return r[bool].fail_op("read release archive members", exc)
+        validated_members: list[tuple[tarfile.TarInfo, Path]] = []
+        for member in members:
+            path_result = FlextInfraUtilitiesRelease.archive_member_path(member.name)
+            if path_result.failure:
+                return r[bool].fail(path_result.error or "unsafe archive member path")
+            if member.issym() or member.islnk():
+                return r[bool].fail(
+                    f"release archive contains symbolic or hard link: {member.name}"
+                )
+            if not member.isdir() and not member.isfile():
+                return r[bool].fail(
+                    f"release archive contains unsupported member: {member.name}"
+                )
+            validated_members.append((member, path_result.value))
+        if destination.exists():
+            return r[bool].fail(
+                f"release stage directory already exists: {destination}"
+            )
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            return r[bool].fail_op(
+                f"create release stage parent {destination.parent}", exc
+            )
+        try:
+            with TemporaryDirectory(
+                dir=destination.parent, prefix=f".{destination.name}."
+            ) as staging_dir:
+                staging = Path(staging_dir)
+                written = FlextInfraUtilitiesRelease._write_validated_tar_tree(
+                    archive, staging, validated_members
+                )
+                if written.failure:
+                    return written
+                staging.rename(destination)
+        except OSError as exc:
+            return r[bool].fail_op(
+                f"materialize release archive into {destination}", exc
+            )
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _write_validated_tar_tree(
+        archive: tarfile.TarFile,
+        staging: Path,
+        validated_members: Sequence[tuple[tarfile.TarInfo, Path]],
+    ) -> p.Result[bool]:
+        """Write prevalidated tar members into a staging directory."""
+        for member, relative_path in validated_members:
+            member_path = staging / relative_path
+            if member.isdir():
+                try:
+                    member_path.mkdir(parents=True, exist_ok=True)
+                except OSError as exc:
+                    return r[bool].fail_op(
+                        f"create release archive directory {member_path}", exc
+                    )
+                continue
+            try:
+                member_path.parent.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                return r[bool].fail_op(
+                    f"create release archive parent {member_path.parent}", exc
+                )
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                return r[bool].fail(
+                    f"release archive could not open member: {member.name}"
+                )
+            try:
+                member_path.write_bytes(extracted.read())
+            except OSError as exc:
+                return r[bool].fail_op(
+                    f"write release archive member {member_path}", exc
+                )
+            finally:
+                extracted.close()
+        return r[bool].ok(True)
 
     @staticmethod
     def plan_bump(

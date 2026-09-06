@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra import c, r
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_tests import tm
@@ -20,9 +22,8 @@ if TYPE_CHECKING:
 
     from tests import t
 
-# Why (operator 2026-08-07, cap 200 -> 1000): these fixtures MUST be derived
-# from c.Infra.LOC_CAP_MAX, never hardcoded. A literal 250 silently became
-# "under cap" when the cap was raised, turning the over-cap test into a lie.
+# Fixtures are derived from the current cap so a future owner change cannot
+# silently invert these assertions.
 _OVER_CAP_LOC = c.Infra.LOC_CAP_MAX + 50
 _UNDER_CAP_LOC = 1
 _OVER_CAP = (
@@ -87,12 +88,10 @@ class TestLocCapGate:
         project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
         runner = u.Tests.SequenceRunner([r.fail("scc is unavailable")])
 
-        result = u.Tests.run_gate_check(
-            FlextInfraLocCapGate, tmp_path, project, runner=runner
-        )
-
-        tm.that(result.result.passed, eq=False)
-        tm.that(tuple(issue.code for issue in result.issues), has="LOC_CAP_EXEC")
+        with pytest.raises(RuntimeError, match="scc is unavailable"):
+            u.Tests.run_gate_check(
+                FlextInfraLocCapGate, tmp_path, project, runner=runner
+            )
 
 
 __all__: t.StrSequence = []

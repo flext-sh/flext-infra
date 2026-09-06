@@ -17,7 +17,7 @@
 # replacement depends on the requested operation, so no partial rewrite is
 # emitted and no manual companion step is created.
 id: git-public-argv-facade-call
-language: python
+language: Python
 severity: error
 files:
   - "**/*.py"

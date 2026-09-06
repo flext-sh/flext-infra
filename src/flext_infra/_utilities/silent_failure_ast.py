@@ -1,113 +1,43 @@
-"""AST-only silent-failure detection helpers.
-
-Copyright (c) 2025 FLEXT Team. All rights reserved.
-SPDX-License-Identifier: MIT
-"""
+"""Public utility facet for silent-failure AST enforcement."""
 
 from __future__ import annotations
 
 import ast
-from collections.abc import Mapping
-from typing import NamedTuple, override
+
+from flext_infra._utilities.silent_failure_ast_rules import (
+    FlextInfraUtilitiesSilentFailureAstRules,
+)
 
 
-class _SilentFailureFinding(NamedTuple):
-    line: int
-    column: int
-    kind: str
-    detail: str
-    fix_action: str
-    replacement: tuple[int, int, str] | None = None
+class FlextInfraUtilitiesSilentFailureAst:
+    """Expose detection and structural fixes through ``u.Infra``."""
 
+    @classmethod
+    def collect_silent_failure_findings(
+        cls, tree: ast.Module, source: str
+    ) -> tuple[FlextInfraUtilitiesSilentFailureAstRules.Finding, ...]:
+        """Collect all silent-failure findings in one module."""
+        return FlextInfraUtilitiesSilentFailureAstRules(source).analyze(tree)
 
-class _SilentFailureAstVisitor(ast.NodeVisitor):
-    """AST visitor collecting exception-silencing patterns.
-
-    Walks the rope-backed AST (``pymodule.get_ast()``).  No regex is used;
-    all findings are derived from structural AST nodes.
-    """
-
-    _SENTINEL_CONSTANTS: frozenset[object] = frozenset({False, None})
-    _BROAD_EXCEPTION_NAMES: frozenset[str] = frozenset({"Exception", "BaseException"})
-
-    def __init__(self, source: str) -> None:
-        self.source = source
-        self.lines = source.splitlines(keepends=True)
-        self.findings: list[_SilentFailureFinding] = []
-        self._import_aliases: dict[str, str] = {}
-        self._parents: dict[ast.AST, ast.AST] = {}
-
-    def analyze(self, tree: ast.Module) -> list[_SilentFailureFinding]:
-        """Build parent map and walk the rope-backed module AST."""
-        self._parents.clear()
-        for parent in ast.walk(tree):
-            for child in ast.iter_child_nodes(parent):
-                self._parents[child] = parent
-        self.visit(tree)
-        return self.findings
-
-    def _enclosing_function(
-        self, node: ast.AST
-    ) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
-        current: ast.AST | None = node
-        while current is not None:
-            if isinstance(current, ast.FunctionDef | ast.AsyncFunctionDef):
-                return current
-            current = self._parents.get(current)
-        return None
-
-    def _result_inner_type(
-        self, func: ast.FunctionDef | ast.AsyncFunctionDef
-    ) -> str | None:
-        returns = func.returns
-        if not isinstance(returns, ast.Subscript):
-            return None
-        value = returns.value
-        is_result_shape = (
-            isinstance(value, ast.Name) and value.id in {"r", "Result"}
-        ) or (isinstance(value, ast.Attribute) and value.attr == "Result")
-        if not is_result_shape:
-            return None
-        inner_type: str = ast.unparse(returns.slice)
-        return inner_type
-
-    def _line_offsets(self, lineno: int) -> tuple[int, int]:
-        start = sum(len(self.lines[i]) for i in range(lineno - 1))
-        end = start + len(self.lines[lineno - 1])
-        return start, end
-
-    def _indent_of(self, node: ast.Return) -> str:
-        line = self.lines[node.lineno - 1]
-        indent: str = line[: len(line) - len(line.lstrip())]
-        return indent
-
-    def _add_finding(
-        self,
+    @classmethod
+    def collect_silent_failure_fixes(
+        cls,
+        tree: ast.Module,
+        source: str,
         *,
-        line: int,
-        column: int,
-        kind: str,
-        detail: str,
-        fix_action: str = "manual",
-        replacement: tuple[int, int, str] | None = None,
-    ) -> None:
-        self.findings.append(
-            _SilentFailureFinding(
-                line=line,
-                column=column,
-                kind=kind,
-                detail=detail,
-                fix_action=fix_action,
-                replacement=replacement,
+        kinds: set[str] | frozenset[str] | None = None,
+    ) -> tuple[tuple[int, int, str], ...]:
+        """Return deterministic fixes for the selected finding kinds."""
+        allowed = kinds or frozenset()
+        return tuple(
+            finding.replacement
+            for finding in FlextInfraUtilitiesSilentFailureAstRules(source).analyze(
+                tree
             )
+            if finding.replacement is not None
+            and (not allowed or finding.kind in allowed)
         )
 
-    @override
-    def visit_Import(self, node: ast.Import) -> None:
-        for alias in node.names:
-            bound_name = alias.asname or alias.name.split(".", maxsplit=1)[0]
-            self._import_aliases[bound_name] = alias.name
-        self.generic_visit(node)
 
     @override
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:

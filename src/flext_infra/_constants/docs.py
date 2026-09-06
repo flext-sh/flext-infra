@@ -14,6 +14,15 @@ class FlextInfraConstantsDocs:
 
     DEFAULT_DOCS_OUTPUT_DIR: Final[str] = ".reports/docs"
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
+    DOCS_INSECURE_WEB_SCHEME: Final[str] = "http"
+    DOCS_SECURE_WEB_SCHEME: Final[str] = "https"
+    DOCS_EXTERNAL_SCHEMES: Final[frozenset[str]] = frozenset({
+        DOCS_SECURE_WEB_SCHEME,
+        "mailto",
+        "tel",
+        "data",
+    })
+    DOCS_FRAGMENT_PREFIX: Final[str] = "#"
     PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[t.StrSequence] = (
         "D100",
         "D101",

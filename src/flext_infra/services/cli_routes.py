@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import functools
-import importlib
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 from flext_infra import c
 
@@ -76,21 +75,33 @@ class CliRouteService:
     @functools.cache
     def route_table_for(cls, group: str) -> tuple[m.Cli.ResultCommandRoute, ...]:
         """Return the routes for one command group, importing only its owner."""
-        owner = _GROUP_OWNERS.get(group)
-        if owner is None:
-            return ()
-        module_path, class_name, attr_name = owner
-        module = importlib.import_module(module_path)
-        owner_class = getattr(module, class_name)
-        table: dict[str, tuple[m.Cli.ResultCommandRoute, ...]] = getattr(
-            owner_class, attr_name
-        )
-        return table[group]
+        if group in {
+            c.Infra.CLI_GROUP_CHECK,
+            c.Infra.CLI_GROUP_CODEGEN,
+            c.Infra.CLI_GROUP_DEPS,
+        }:
+            from flext_infra.services.cli_routes_codegen import CodegenRoutes
 
-    @classmethod
-    def known_groups(cls) -> tuple[str, ...]:
-        """Return every command group this service can resolve."""
-        return tuple(_GROUP_OWNERS)
+            return CodegenRoutes.codegen_routes[group]
+        if group in {
+            c.Infra.CLI_GROUP_DOCS,
+            c.Infra.CLI_GROUP_GITHUB,
+            c.Infra.CLI_GROUP_MAINTENANCE,
+            c.Infra.CLI_GROUP_VALIDATE,
+        }:
+            from flext_infra.services.cli_routes_validate import ValidationRoutes
+
+            return ValidationRoutes.validation_routes[group]
+        if group in {
+            c.Infra.CLI_GROUP_REFACTOR,
+            c.Infra.CLI_GROUP_RELEASE,
+            c.Infra.CLI_GROUP_WORKSPACE,
+        }:
+            from flext_infra.services.cli_routes_workspace import WorkspaceRoutes
+
+            return WorkspaceRoutes.workspace_routes[group]
+        msg = f"CLI group has no route owner: {group}"
+        raise ValueError(msg)
 
 
 __all__: list[str] = ["CliRouteService"]

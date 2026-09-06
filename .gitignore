@@ -170,7 +170,7 @@ fix-report.json
 **/.tmp/
 
 # Build and quality tool artifacts inside allowed directories
-**/.qlty/
+**/.qlty/*
 **/.meltano/
 **/.serena/
 

@@ -1254,13 +1254,18 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def run_isolated_make(
-            args: t.StrSequence, *, cwd: Path
+            args: t.StrSequence, *, cwd: Path, env: t.StrMapping | None = None
         ) -> p.Result[p.Cli.CommandOutput]:
-            """Run Make without selectors or recursion state inherited from pytest."""
+            """Run Make without undeclared state inherited from outer pytest."""
             return cli_facade.run_raw(
                 [c.Infra.MAKE, *args],
                 cwd=cwd,
-                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                env=env,
+                remove_env_keys=tuple(
+                    key
+                    for key in c.Tests.MAKE_ISOLATION_ENV_KEYS
+                    if env is None or key not in env
+                ),
             )
 
         @staticmethod

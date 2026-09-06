@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
-    from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
+    from ._sort_keys import FlextInfraUtilitiesSortKeys
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
@@ -104,7 +104,6 @@ if TYPE_CHECKING:
     from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
     from .qualified_names import FlextInfraUtilitiesQualifiedNames
     from .refactor import FlextInfraUtilitiesRefactor
-    from .refactor_discovery import FlextInfraUtilitiesRefactorDiscovery
     from .release import FlextInfraUtilitiesRelease
     from .repository import FlextInfraUtilitiesRepository
     from .resource_limits import FlextInfraUtilitiesResourceLimits
@@ -113,6 +112,7 @@ if TYPE_CHECKING:
         FlextInfraUtilitiesRopeAnalysisIntrospection,
     )
     from .rope_analysis_workspace import FlextInfraUtilitiesRopeAnalysisWorkspace
+    from .rope_class_move import FlextInfraUtilitiesRopeClassMove
     from .rope_core import FlextInfraUtilitiesRopeCore
     from .rope_helpers import FlextInfraUtilitiesRopeHelpers
     from .rope_imports import FlextInfraUtilitiesRopeImports
@@ -219,7 +219,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
-    "FlextInfraUtilitiesRefactorDiscovery",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceFlext",
@@ -231,13 +230,13 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeAnalysisIntrospection",
     "FlextInfraUtilitiesRopeAnalysisWorkspace",
     "FlextInfraUtilitiesRopeBracketBalanceMixin",
+    "FlextInfraUtilitiesRopeClassMove",
     "FlextInfraUtilitiesRopeCore",
     "FlextInfraUtilitiesRopeCorePyModuleMixin",
     "FlextInfraUtilitiesRopeCoreResourcesMixin",
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
-    "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
@@ -316,7 +315,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
-            "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
+            "._sort_keys": ("FlextInfraUtilitiesSortKeys",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
@@ -375,7 +374,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".pyproject_conform": ("FlextInfraUtilitiesPyprojectConform",),
             ".qualified_names": ("FlextInfraUtilitiesQualifiedNames",),
             ".refactor": ("FlextInfraUtilitiesRefactor",),
-            ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
             ".release": ("FlextInfraUtilitiesRelease",),
             ".repository": ("FlextInfraUtilitiesRepository",),
             ".resource_limits": ("FlextInfraUtilitiesResourceLimits",),
@@ -384,6 +382,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraUtilitiesRopeAnalysisIntrospection",
             ),
             ".rope_analysis_workspace": ("FlextInfraUtilitiesRopeAnalysisWorkspace",),
+            ".rope_class_move": ("FlextInfraUtilitiesRopeClassMove",),
             ".rope_core": ("FlextInfraUtilitiesRopeCore",),
             ".rope_helpers": ("FlextInfraUtilitiesRopeHelpers",),
             ".rope_imports": ("FlextInfraUtilitiesRopeImports",),

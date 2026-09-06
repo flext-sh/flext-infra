@@ -51,9 +51,11 @@ UV_LINK_MODE := copy
 # Source: template (canonical public knobs documented by base.mk)
 # Free: no — values are caller-supplied each invocation, not preserved in the file.
 APPLY ?= N
-# The seeded absent value means "not applying", so every guard compares against
-# APPLYING and a plain read-only run never trips the write-enable check.
-APPLYING := $(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY)))
+# Mutation is authorized only by this make invocation's command line. Recipe
+# subprocesses inherit command-line variables as environment state; treating
+# that inherited APPLY as fresh authority makes an unrelated nested read-only
+# make (for example `make help` inside `make test APPLY=Y`) fail or mutate.
+APPLYING := $(if $(filter command line override,$(origin APPLY)),$(if $(filter-out N,$(strip $(APPLY))),$(strip $(APPLY))))
 ARGS ?=
 CHECK_GATES ?=
 DEPENDENCY ?=
@@ -87,7 +89,7 @@ override PYTEST_REPORT_ARGS := -ra --durations=25 --durations-min=0.001 --tb=sho
 override PYTEST_DIAG_ARGS := -rA --durations=0 --tb=long --showlocals
 override PYTEST_PARALLEL_WORKERS := 2
 override PYTEST_PARALLEL_WORKER_MEMORY_GB := 2
-override PYTEST_PARALLEL_DISTRIBUTION := worksteal
+override PYTEST_PARALLEL_DISTRIBUTION := load
 override PYTEST_PROFILE_SORT := cumulative
 override PYTEST_PROFILE_LIMIT := 50
 override PROCESS_TIMEOUT_COMMAND := timeout
@@ -730,7 +732,7 @@ endef
 # environment exists. It is excluded from the require-environment fan-out and
 # runs directly so an old parsed dispatcher cannot continue into stale recipes.
 ifeq ($(filter gen,$(PUBLIC_VERBS)),gen)
-$(filter-out setup gen,$(PUBLIC_VERBS)): _builtin_require_environment
+$(filter-out setup gen help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
 
 # The hermetic bootstrap route for WHAT=init: run the init selector directly,
@@ -745,10 +747,10 @@ endif
 else
 $(filter-out setup help,$(PUBLIC_VERBS)): _builtin_require_environment
 	$(call _dispatch,$@)
+endif
 
 help:
 	$(call _dispatch,$@)
-endif
 
 # `setup` keeps its own recipe (it must not require the environment it is about
 # to build), but it still runs the pre-/post-setup lifecycle hooks so a project
@@ -1057,9 +1059,19 @@ _builtin_check_all: _builtin_require_environment
 			keep=0; \
 			if [ "$$gate" = "lint" ]; then keep=1; fi; \
 			if [ "$$gate" = "pyright" ]; then keep=1; fi; \
+			if [ "$$gate" = "silent-failure" ]; then keep=1; fi; \
+			if [ "$$gate" = "deferred-self-reference" ]; then keep=1; fi; \
 			if [ "$$gate" = "security" ]; then keep=1; fi; \
 			if [ "$$gate" = "markdown" ]; then keep=1; fi; \
+			if [ "$$gate" = "loc-cap" ]; then keep=1; fi; \
+			if [ "$$gate" = "boundary" ]; then keep=1; fi; \
+			if [ "$$gate" = "runtime-census" ]; then keep=1; fi; \
+			if [ "$$gate" = "namespace" ]; then keep=1; fi; \
+			if [ "$$gate" = "tier-whitelist" ]; then keep=1; fi; \
 			if [ "$$gate" = "smells" ]; then keep=1; fi; \
+			if [ "$$gate" = "layout" ]; then keep=1; fi; \
+			if [ "$$gate" = "canonical-alias" ]; then keep=1; fi; \
+			if [ "$$gate" = "codemod" ]; then keep=1; fi; \
 			if [ "$$gate" = "direnv" ]; then keep=1; fi; \
 			if [ "$$keep" -eq 1 ]; then \
 				if [ -n "$$filtered" ]; then filtered="$$filtered,$$gate"; else filtered="$$gate"; fi; \
@@ -1093,14 +1105,44 @@ _builtin_check_mypy: _builtin_require_environment
 _builtin_check_pyright: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=pyright
 
+_builtin_check_silent-failure: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=silent-failure
+
+_builtin_check_deferred-self-reference: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=deferred-self-reference
+
 _builtin_check_security: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=security
 
 _builtin_check_markdown: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=markdown
 
+_builtin_check_loc-cap: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=loc-cap
+
+_builtin_check_boundary: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=boundary
+
+_builtin_check_runtime-census: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=runtime-census
+
+_builtin_check_namespace: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=namespace
+
+_builtin_check_tier-whitelist: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=tier-whitelist
+
 _builtin_check_smells: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=smells
+
+_builtin_check_layout: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=layout
+
+_builtin_check_canonical-alias: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=canonical-alias
+
+_builtin_check_codemod: _builtin_require_environment
+	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=codemod
 
 _builtin_check_direnv: _builtin_require_environment
 	@$(SELF_MAKE) _builtin_check_all CHECK_GATES=direnv

@@ -289,7 +289,10 @@ class TestCodegenCiMatrix:
             dist="cosmos-main",
             make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
-            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
+            ci_trigger_branches=(
+                *config.Infra.codegen.branch_policy.ci_trigger_branches,
+                "develop",
+            ),
         ).model_copy(update={"private_submodules": private})
         rendered = u.Cli.template_render(tpl, spec)
         tm.ok(rendered)
@@ -440,7 +443,7 @@ class TestCodegenCiMatrix:
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        integrations = ("dev", "develop", "0.12.0-dev", "main")
+        integrations = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
         tm.that(integrations, has=branch)
         for integration in integrations:
             tm.that(blocking, has=f"      - {integration}")

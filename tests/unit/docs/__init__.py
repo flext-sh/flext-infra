@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from .fixer_internals_tests import (
         test_anchorize_and_build_toc_are_public_helpers,
         test_docs_maybe_fix_link_adds_md_suffix_when_target_exists,
+        test_docs_maybe_fix_link_rejects_http,
         test_fix_keeps_closing_fence_on_its_own_line,
         test_fix_updates_docs_readme_when_apply_is_enabled,
     )
@@ -100,6 +101,8 @@ if TYPE_CHECKING:
         test_generated_mkdocstrings_directive_preserves_indented_options,
         test_generated_prose_wraps_without_reformatting_directive_blocks,
         test_governed_api_survives_generation_and_curated_paths_are_unowned,
+        test_link_sanitizer_preserves_external_schemes_and_fragments,
+        test_link_sanitizer_rejects_http,
         test_root_generated_catalog_survives_project_pass_and_required_indexes_validate,
         test_stale_generated_file_drift_converges_after_apply,
     )
@@ -204,6 +207,7 @@ __all__: tuple[str, ...] = (
     "test_docs_has_adr_reference_detects_marker",
     "test_docs_load_required_skills_reads_architecture_config",
     "test_docs_maybe_fix_link_adds_md_suffix_when_target_exists",
+    "test_docs_maybe_fix_link_rejects_http",
     "test_docs_policy_declares_cross_project_relative_link_pattern",
     "test_docs_python_codeblock_issues_ignore_snippet_only_rules",
     "test_docs_python_codeblock_issues_report_invalid_python",
@@ -244,6 +248,8 @@ __all__: tuple[str, ...] = (
     "test_guides_index_omits_links_when_no_guide_exists",
     "test_json_write_accepts_pydantic_model",
     "test_json_write_round_trips_dict_payload",
+    "test_link_sanitizer_preserves_external_schemes_and_fragments",
+    "test_link_sanitizer_rejects_http",
     "test_manual_docs_report_live_symbol_mentions",
     "test_plan_files_returns_exact_read_only_docs_plans",
     "test_public_contract_resolves_imported_lazy_import_map",
@@ -321,6 +327,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".fixer_internals_tests": (
                 "test_anchorize_and_build_toc_are_public_helpers",
                 "test_docs_maybe_fix_link_adds_md_suffix_when_target_exists",
+                "test_docs_maybe_fix_link_rejects_http",
                 "test_fix_keeps_closing_fence_on_its_own_line",
                 "test_fix_updates_docs_readme_when_apply_is_enabled",
             ),
@@ -365,6 +372,8 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_generated_mkdocstrings_directive_preserves_indented_options",
                 "test_generated_prose_wraps_without_reformatting_directive_blocks",
                 "test_governed_api_survives_generation_and_curated_paths_are_unowned",
+                "test_link_sanitizer_preserves_external_schemes_and_fragments",
+                "test_link_sanitizer_rejects_http",
                 "test_root_generated_catalog_survives_project_pass_and_required_indexes_validate",
                 "test_stale_generated_file_drift_converges_after_apply",
             ),

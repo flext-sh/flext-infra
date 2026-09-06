@@ -285,11 +285,7 @@ class FlextInfraMiseWorkspacePlanner:
         if config_state.failure:
             return r[m.Infra.MiseToolchainProjectState].from_failure(config_state)
         if config_plan is None:
-            current_sources = (
-                FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
-                    layout.root
-                )
-            )
+            current_sources = u.Infra.snapshot_config_sources(layout.root)
             if current_sources.failure:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(
                     current_sources

@@ -26,7 +26,7 @@
   `CliRouteService`, `CodegenRoutes`, `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+211 more)
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+194 more)
 - Exported module shortcuts: `check`, `codegen`, `codemod`, `deps`, `detectors`,
   `docs`, `fixers`, `gates` (+7 more)
 - Generated module pages: `216`

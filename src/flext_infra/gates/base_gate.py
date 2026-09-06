@@ -113,31 +113,12 @@ class FlextInfraGate:
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution from parsed check output.
+        """Assemble a strict gate execution from parsed check output.
 
-        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
-        marked passed so advisory enforcement gates do not fail the check
-        pipeline. ``errors`` overrides the default issue-derived report
-        lines (fix paths report applied changes there).
+        ``errors`` overrides the default issue-derived report lines for fix
+        paths. Findings are never converted to warnings or successful results.
         """
-        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not passed:
-            warn_issues = [
-                issue.model_copy(update={"severity": "WARNING"})
-                if hasattr(issue, "model_copy")
-                else issue
-                for issue in issues
-            ]
-            return m.Infra.GateExecution(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=tuple(warn_issues),
-                raw_output=raw_output,
-            )
+        _ = ctx
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,

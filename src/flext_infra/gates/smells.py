@@ -13,7 +13,10 @@ from flext_infra.gates.base_gate import FlextInfraGate
 
 # flext-0ftd.3.5: the empty package initializer is not a compatibility export;
 # consume the declaration at its canonical owner after the lazy-init cutover.
-from flext_infra.transformers.smells.base import smell_fixer_for
+from flext_infra.transformers.smells.base import (
+    auto_fixable_smell_tags,
+    smell_fixer_for,
+)
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
 
 if TYPE_CHECKING:
@@ -21,12 +24,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraSmellsGate(FlextInfraGate):
-    """Report qlty smells per project from one process-cached workspace scan.
+    """Report qlty smells per project from one fresh workspace scan.
 
     A single ``qlty smells --all`` scan covers the whole workspace so
     cross-project duplication clusters stay visible; per-project results are
-    filtered by SARIF URI prefix. The scan output is cached per workspace
-    root for the lifetime of the process (one scan per ``check run``).
+    filtered by SARIF URI prefix.
     """
 
     gate_id: ClassVar[str] = "smells"
@@ -34,9 +36,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
     can_fix: ClassVar[bool] = True
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][1]
-
-    # flext-pulj: process results stay structural outside the Pydantic boundary.
-    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
@@ -86,15 +85,14 @@ class FlextInfraSmellsGate(FlextInfraGate):
             issues=remaining,
             raw_output="\n".join(changes) if changes else verified_scan.stderr,
             started=started,
-            errors=changes,
+            errors=[issue.formatted for issue in remaining] if remaining else (),
         )
 
     @staticmethod
     def _is_auto_fixable(issue: m.Infra.Issue) -> bool:
         """Return True when flext-core marks this smell tag as auto-fixable."""
         tag = c.Infra.SMELLS_RULE_TAGS.get(issue.code, "")
-        strategy = c.ENFORCEMENT_SMELL_FIX_STRATEGIES.get(tag)
-        return bool(strategy and strategy.get("auto"))
+        return tag in auto_fixable_smell_tags()
 
     @override
     def check(
@@ -114,7 +112,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output=scan.stderr,
+            raw_output=self._scan_output(scan),
             started=started,
         )
 
@@ -125,7 +123,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
         """Full-workspace scan command (check() bypasses per-project dirs)."""
         _ = project_dir, ctx, check_dirs
         binary = self._resolve_binary()
-        return [binary or c.Infra.QLTY_BINARY, *c.Infra.SMELLS_QLTY_ARGS]
+        if binary is None:
+            raise FileNotFoundError(c.Infra.QLTY_BINARY)
+        return [binary, *c.Infra.SMELLS_QLTY_ARGS]
 
     @override
     def _parse_check_output(
@@ -142,11 +142,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return not issues, issues
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Run the workspace scan once per process; a missing binary is VISIBLE."""
-        key = str(self._repository_root)
-        cached = self._scan_cache.get(key)
-        if cached is not None:
-            return cached
+        """Run one fresh workspace scan and preserve its exact process result."""
         binary = self._resolve_binary()
         if binary is None:
             output = m.Cli.CommandOutput(

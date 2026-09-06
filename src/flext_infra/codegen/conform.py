@@ -30,7 +30,6 @@ from flext_infra._utilities.project_managed_artifacts import (
 from flext_infra.models import m
 from flext_infra.services.codegen import FlextInfraCodegen
 from flext_infra.typings import t
-from flext_infra.utilities import u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 
@@ -1230,9 +1229,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             # The repository owns the ignore patterns the fleet scaffold cannot
             # know (local caches, generated runtime state); they are declared in
             # its own config/*.yaml and appended as one derived section.
-            resolved = FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
-                project_dir
-            )
+            resolved = u.Infra.load_project_managed_artifacts(project_dir)
             if resolved.failure:
                 return r[str].fail(
                     resolved.error or f"project artifact load failed: {project_dir}"
@@ -1629,9 +1626,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "PEP 621 project name does not match catalog distribution: "
                 f"{dist} != {repository.distribution}"
             )
-        managed_artifacts = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_project_managed_artifacts(
-            root
-        )
+        managed_artifacts = u.Infra.snapshot_project_managed_artifacts(root)
         if managed_artifacts.failure:
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                 managed_artifacts
@@ -2004,9 +1999,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         resolved_artifacts = managed_artifacts
         if resolved_artifacts is None:
-            snapshot = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_project_managed_artifacts(
-                repository_root
-            )
+            snapshot = u.Infra.snapshot_project_managed_artifacts(repository_root)
             if snapshot.failure:
                 return r[m.Infra.CodegenArtifactComposition].from_failure(snapshot)
             resolved_artifacts = snapshot.value
@@ -2153,6 +2146,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if destination in {".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
+
         if destination == c.Infra.BEADS_CONFIG_RELPATH:
             project_types = target.beads.custom_issue_types
             required_types = codegen.toolchain.beads.required_custom_types

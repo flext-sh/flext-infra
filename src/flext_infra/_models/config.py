@@ -3058,7 +3058,7 @@ class FlextInfraConfigModels:
         publish_url: Annotated[
             t.NonEmptyStr,
             m.Field(
-                default="https://upload.pypi.org/legacy/",
+                default=FlextInfraConstantsRelease.PYPI_UPLOAD_URL,
                 description="Package index upload endpoint for verified artifacts",
             ),
         ]

@@ -480,3 +480,29 @@ def test_generate_report_tracks_written_files() -> None:
 
     tm.that(report.generated, eq=2)
     tm.that(len(report.items), eq=2)
+
+
+def test_link_sanitizer_preserves_external_schemes_and_fragments() -> None:
+    secure = c.Infra.DOCS_SECURE_WEB_SCHEME
+    external = [
+        f"{secure}://example.invalid",
+        *[
+            f"{scheme}:payload"
+            for scheme in sorted(c.Infra.DOCS_EXTERNAL_SCHEMES)
+            if scheme != secure
+        ],
+        f"{c.Infra.DOCS_FRAGMENT_PREFIX}section",
+    ]
+    content = "\n".join(f"[link]({target})" for target in external)
+
+    sanitized = u.Infra.docs_sanitize_internal_anchor_links(content)
+
+    for target in external:
+        tm.that(sanitized, has=f"[link]({target})")
+
+
+def test_link_sanitizer_rejects_http() -> None:
+    target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
+
+    with pytest.raises(ValueError, match="use HTTPS"):
+        u.Infra.docs_sanitize_internal_anchor_links(f"[link]({target})")

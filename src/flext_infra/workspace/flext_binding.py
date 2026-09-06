@@ -21,12 +21,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, u
+from flext_infra import c, t, u
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
@@ -46,20 +45,13 @@ class FlextInfraFlextBindingService:
             return r[tuple[str, ...]].fail(
                 f"consumer has no {c.Infra.PYPROJECT_FILENAME}: {consumer_root}"
             )
-        payload = tomllib.loads(manifest.read_text(encoding="utf-8"))
-        project = payload.get("project")
-        declared = project.get("dependencies", []) if isinstance(project, dict) else []
-        names: list[str] = []
-        for entry in declared:
-            # A requirement is "<name>" or "<name> @ <url>" or "<name>>=<spec>";
-            # the distribution name is whatever precedes the first delimiter.
-            text = str(entry).strip()
-            name = text.split("@", 1)[0].split(";", 1)[0]
-            for delimiter in ("[", ">", "<", "=", "!", "~", " "):
-                name = name.split(delimiter, 1)[0]
-            if name:
-                names.append(name.strip())
-        return r[tuple[str, ...]].ok(tuple(names))
+        payload_result = u.Cli.toml_read_json(manifest)
+        payload: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(
+            payload_result.unwrap()
+        )
+        return r[tuple[str, ...]].ok(
+            tuple(u.Infra.project_dependency_names_from_payload(payload))
+        )
 
     @classmethod
     def plan_targets(

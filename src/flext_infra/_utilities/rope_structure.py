@@ -515,15 +515,15 @@ class FlextInfraUtilitiesRopeStructure:
     def _identifiers(source: str) -> t.Infra.StrSet:
         """Return identifier tokens from a source slice."""
         identifiers: t.Infra.StrSet = set()
-        token = ""
+        token: list[str] = []
         for char in source:
             if char.isalnum() or char == "_":
-                token += char
+                token.append(char)
             elif token:
-                identifiers.add(token)
-                token = ""
+                identifiers.add("".join(token))
+                token = []
         if token:
-            identifiers.add(token)
+            identifiers.add("".join(token))
         return identifiers
 
 

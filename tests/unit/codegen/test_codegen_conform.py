@@ -1270,6 +1270,7 @@ class TestCodegenConform:
             ["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS", "WHAT")
         )
         output = tm.ok(outcome)
+        tm.that(output.stderr, eq="")
         tm.that(output.exit_code, eq=0)
         tm.that(
             output.stdout,

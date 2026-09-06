@@ -19,7 +19,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.LINT
     gate_name: ClassVar[str] = "Ruff Lint"
-    can_fix: ClassVar[bool] = True
+    can_fix: ClassVar[bool] = False
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][1]
 

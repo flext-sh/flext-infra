@@ -155,7 +155,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["worksteal"],
+            Literal["load"],
             m.Field(
                 alias="parallel-distribution",
                 description="Pytest-xdist scheduler for full runs.",
