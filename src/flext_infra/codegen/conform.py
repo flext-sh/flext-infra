@@ -377,17 +377,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 for entry in config.Infra.codegen.templates.entries
                 if profile in entry.profiles
             )
-        beads_linked = self._member_beads_is_linked(root)
         directories = {root}
         for destination in destinations:
-            # Both render routes skip the inherited-ledger destinations, so the
-            # parent chain must honour the same ownership rule: a linked
-            # `.beads` route is a symlink, never a directory this cycle owns.
-            if beads_linked and destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            }:
-                continue
             relative = Path(destination)
             if relative.is_absolute() or ".." in relative.parts:
                 return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(

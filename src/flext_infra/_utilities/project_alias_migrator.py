@@ -365,4 +365,6 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         """Return whether ``file_path`` implements a project facade namespace."""
         family_dirs = frozenset(c.Infra.FAMILY_DIRECTORIES.values())
         return bool(family_dirs.intersection(file_path.parts))
+
+
 __all__: list[str] = ["FlextInfraRefactorProjectAliasMigrator"]

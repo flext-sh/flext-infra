@@ -72,7 +72,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
 
     @staticmethod
     def class_nesting_plan(
-        cls, rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
+        rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
     ) -> p.Result[tuple[m.Infra.ClassNestingViolation, ...]]:
         """Return top-level classes that must move under the declared module owner."""
         resolved_file = file_path.resolve()
@@ -133,7 +133,6 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                 if item.name != target_namespace and item.name not in bound
             )
         )
-
 
     @classmethod
     def plan_class_nesting_cutover(

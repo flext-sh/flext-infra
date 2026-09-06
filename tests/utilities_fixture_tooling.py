@@ -60,7 +60,7 @@ class TestsFlextInfraUtilitiesToolingFixtureMixin:
             # setup owner parses this declaration statically, never runs it.
             "mise_pinned_release() {\n"
             f'  local mise_version="${{MISE_VERSION:-{release}}}"\n'
-            '  printf \'%s\\n\' "$mise_version"\n'
+            "  printf '%s\\n' \"$mise_version\"\n"
             "}\n"
             'if [ "$1" = "--version" ]; then '
             f"printf '%s\\n' '{release}'; exit; fi\n"
