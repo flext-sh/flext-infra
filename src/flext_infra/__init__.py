@@ -3,42 +3,39 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
+
+from types import MappingProxyType
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-from .__version__ import (
-    __author__ as __author__,
-    __author_email__ as __author_email__,
-    __description__ as __description__,
-    __license__ as __license__,
-    __title__ as __title__,
-    __url__ as __url__,
-    __version__ as __version__,
-    __version_info__ as __version_info__,
-)
+from .__version__ import __author__ as __author__
+from .__version__ import __author_email__ as __author_email__
+from .__version__ import __description__ as __description__
+from .__version__ import __license__ as __license__
+from .__version__ import __title__ as __title__
+from .__version__ import __url__ as __url__
+from .__version__ import __version__ as __version__
+from .__version__ import __version_info__ as __version_info__
 
 if TYPE_CHECKING:
+    from . import check as check
+    from . import codegen as codegen
+    from . import codemod as codemod
+    from . import deps as deps
+    from . import detectors as detectors
+    from . import docs as docs
+    from . import fixers as fixers
+    from . import gates as gates
+    from . import maintenance as maintenance
+    from . import refactor as refactor
+    from . import release as release
+    from . import services as services
+    from . import transformers as transformers
+    from . import validate as validate
+    from . import workspace as workspace
     from flext_cli import d, e, h, r, x
 
-    from . import (
-        check as check,
-        codegen as codegen,
-        codemod as codemod,
-        deps as deps,
-        detectors as detectors,
-        docs as docs,
-        fixers as fixers,
-        gates as gates,
-        maintenance as maintenance,
-        refactor as refactor,
-        release as release,
-        services as services,
-        transformers as transformers,
-        validate as validate,
-        workspace as workspace,
-    )
     from ._config import config
     from ._settings import settings
     from .api import FlextInfra, infra
@@ -159,6 +156,7 @@ if TYPE_CHECKING:
     from .gates.smells import FlextInfraSmellsGate
     from .gates.tier_whitelist import FlextInfraTierWhitelistGate
     from .git import FlextInfraGitService
+    from .iteration import FlextInfraUtilitiesIteration
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
     from .models import FlextInfraModels, FlextInfraModels as m
@@ -178,6 +176,7 @@ if TYPE_CHECKING:
     from .refactor.namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
     )
+    from .refactor.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .refactor.project_classifier import FlextInfraProjectClassifier
     from .refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
@@ -192,7 +191,6 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
     from .services.codegen import FlextInfraCodegen
-    from .services.workspace import FlextInfraWorkspaceEnvironmentSync
     from .transformers.cast_remover import FlextInfraRefactorCastRemover
     from .transformers.census_visitors import (
         FlextInfraCensusImportDiscoveryVisitor,
@@ -407,6 +405,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
+    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorResultDiModernizer",
     "FlextInfraRefactorSignaturePropagator",
@@ -441,6 +440,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraUtilities",
+    "FlextInfraUtilitiesIteration",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
     "FlextInfraValidateLazyMapFreshness",
@@ -451,7 +451,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceEnvironmentProvenance",
-    "FlextInfraWorkspaceEnvironmentSync",
     "FlextInfraWorktreeService",
     "FlextInfraWrapperRootNamespaceRefactor",
     "GateContractInfraError",
@@ -646,6 +645,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.smells": ("FlextInfraSmellsGate",),
             ".gates.tier_whitelist": ("FlextInfraTierWhitelistGate",),
             ".git": ("FlextInfraGitService",),
+            ".iteration": ("FlextInfraUtilitiesIteration",),
             ".maintenance": ("maintenance",),
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
@@ -667,6 +667,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor.namespace_enforcer_phases": (
                 "FlextInfraNamespaceEnforcerPhasesMixin",
             ),
+            ".refactor.project_alias_migrator": (
+                "FlextInfraRefactorProjectAliasMigrator",
+            ),
             ".refactor.project_classifier": ("FlextInfraProjectClassifier",),
             ".refactor.violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),
             ".refactor.wrapper_root_namespace": (
@@ -685,7 +688,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_validate_commands": ("ValidationCommandRoutes",),
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
             ".services.codegen": ("FlextInfraCodegen",),
-            ".services.workspace": ("FlextInfraWorkspaceEnvironmentSync",),
             ".transformers": ("transformers",),
             ".transformers.cast_remover": ("FlextInfraRefactorCastRemover",),
             ".transformers.census_visitors": (

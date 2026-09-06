@@ -3,18 +3,15 @@
 
 from __future__ import annotations
 
-from types import MappingProxyType
 from typing import TYPE_CHECKING
+
+from types import MappingProxyType
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from flext_infra.iteration import FlextInfraUtilitiesIteration
-    from flext_infra.refactor.project_alias_migrator import (
-        FlextInfraRefactorProjectAliasMigrator,
-    )
-
-    from . import _git as _git, _rope as _rope
+    from . import _git as _git
+    from . import _rope as _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
     from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
@@ -60,6 +57,7 @@ if TYPE_CHECKING:
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
+    from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
@@ -156,7 +154,6 @@ if TYPE_CHECKING:
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRopeProject",
     "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
@@ -216,7 +213,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
-    "FlextInfraUtilitiesIteration",
     "FlextInfraUtilitiesIterationDirectory",
     "FlextInfraUtilitiesIterationMatching",
     "FlextInfraUtilitiesIterationProject",
@@ -263,6 +259,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
@@ -347,6 +344,7 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
+            "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
@@ -378,7 +376,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             ".git": ("FlextInfraUtilitiesGit",),
-            ".iteration": ("FlextInfraUtilitiesIteration",),
             ".iteration_directory": ("FlextInfraUtilitiesIterationDirectory",),
             ".iteration_matching": ("FlextInfraUtilitiesIterationMatching",),
             ".iteration_project": ("FlextInfraUtilitiesIterationProject",),
@@ -398,7 +395,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".private_imports": ("FlextInfraUtilitiesPrivateImports",),
             ".process": ("FlextInfraUtilitiesProcess",),
-            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",
