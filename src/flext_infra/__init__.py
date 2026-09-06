@@ -192,6 +192,7 @@ if TYPE_CHECKING:
     from .services.cli_routes_validate_commands import ValidationCommandRoutes
     from .services.cli_routes_workspace import WorkspaceRoutes
     from .services.codegen import FlextInfraCodegen
+    from .services.workspace import FlextInfraWorkspaceEnvironmentSync
     from .transformers.cast_remover import FlextInfraRefactorCastRemover
     from .transformers.census_visitors import (
         FlextInfraCensusImportDiscoveryVisitor,
@@ -450,6 +451,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraWorkspaceChecker",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceEnvironmentProvenance",
+    "FlextInfraWorkspaceEnvironmentSync",
     "FlextInfraWorktreeService",
     "FlextInfraWrapperRootNamespaceRefactor",
     "GateContractInfraError",
@@ -683,6 +685,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".services.cli_routes_validate_commands": ("ValidationCommandRoutes",),
             ".services.cli_routes_workspace": ("WorkspaceRoutes",),
             ".services.codegen": ("FlextInfraCodegen",),
+            ".services.workspace": ("FlextInfraWorkspaceEnvironmentSync",),
             ".transformers": ("transformers",),
             ".transformers.cast_remover": ("FlextInfraRefactorCastRemover",),
             ".transformers.census_visitors": (

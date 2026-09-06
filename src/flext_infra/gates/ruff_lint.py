@@ -19,7 +19,10 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.LINT
     gate_name: ClassVar[str] = "Ruff Lint"
-    can_fix: ClassVar[bool] = False
+    # Why: the gate implements _build_fix_command (ruff check --fix); declaring
+    # can_fix=False made workspace_check_gates skip it, so `make fix APPLY=Y`
+    # never applied a single lint fix and the command below was dead code.
+    can_fix: ClassVar[bool] = True
     tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][0]
     tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.LINT][1]
 
