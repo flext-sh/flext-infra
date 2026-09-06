@@ -216,7 +216,7 @@ class FlextInfraWorkspaceOrchestratorExecutionMixin:
             [c.Infra.MAKE, "-C", project, verb, *make_args],
             log_path,
             env=self._project_child_env(),
-            remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            remove_env_keys=u.Infra.make_hermetic_env_remove_keys(),
         )
         process_failure = (
             u.Infra.append_process_failure(

@@ -184,6 +184,15 @@ class FlextInfraConstantsMake:
         "PYTEST_ADDOPTS",
         "PYTHONPATH",
     )
+    # Host presentation signals (force-color.org, typer/click PY_COLORS, rich
+    # TTY_COMPATIBLE) that would style captured gate output; a gate child
+    # renders plain text and asserts on it.
+    PRESENTATION_FORCING_ENV_KEYS: Final[t.StrSequence] = (
+        "FORCE_COLOR",
+        "PY_COLORS",
+        "TTY_COMPATIBLE",
+        "CLICOLOR_FORCE",
+    )
     PROJECT_VARIABLE_DEFAULTS: Final[t.StrPairSequence] = (
         ("PYTEST_ARGS", ""),
         ("DEPENDENCY", ""),

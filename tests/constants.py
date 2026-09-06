@@ -51,33 +51,6 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         )
         """Repository-local variables Git exports to hooks and aliases."""
 
-        MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
-            "BASH_ENV",
-            "CHANGED_ONLY",
-            "CHECK_GATES",
-            "CHECK_ONLY",
-            "FAIL_FAST",
-            "FILE",
-            "FILES",
-            "FIX",
-            "FLEXT_INFRA_PYTHON",
-            "FLEXT_ROOT",
-            "FLEXT_STANDALONE",
-            "FLEXT_REPOSITORY_ROOT",
-            "MATCH",
-            "PROJECT",
-            "PROJECTS",
-            "PYRIGHT_ARGS",
-            "PYTEST_ARGS",
-            "RUFF_ARGS",
-            "UV",
-            "VALIDATE_GATES",
-            "WHAT",
-            "REPOSITORY_ROOT",
-            *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
-        )
-        """Environment inherited from an outer Make invocation to discard in tests."""
-
         RELEASE_PHASE_PLAN: Final[str] = c.Infra.ReleasePhase.PLAN
         RELEASE_PHASE_VERSION: Final[str] = c.Infra.ReleasePhase.VERSION
         RELEASE_PHASE_TAG: Final[str] = c.Infra.ReleasePhase.TAG

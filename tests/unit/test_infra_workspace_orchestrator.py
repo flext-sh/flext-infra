@@ -199,8 +199,12 @@ class TestsFlextInfraInfraWorkspaceOrchestrator:
         result = orchestrator.orchestrate(["flext-demo"], "test")
 
         tm.ok(result, len=1)
-        tm.that("MAKEFILES" in c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS, eq=True)
-        tm.that(observed_remove_keys, eq=[c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS])
+        hermetic = tuple(u.Infra.make_hermetic_env_remove_keys())
+        make = config.Infra.codegen.make
+        tm.that("MAKEFILES" in hermetic, eq=True)
+        tm.that(make.selector in hermetic, eq=True)
+        tm.that(make.apply_variable in hermetic, eq=True)
+        tm.that(observed_remove_keys, eq=[hermetic])
         tm.that(observed_envs[0][c.Infra.ORCHESTRATOR_ENV_NO_COLOR], eq="1")
         tm.that(
             observed_envs[0][c.Infra.ORCHESTRATOR_ENV_PATH],

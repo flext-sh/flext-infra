@@ -732,9 +732,8 @@ class TestCodegenConform:
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
-        selected = u.Cli.run_raw(
-            ["make", "-C", str(root), "--dry-run", "_builtin_status_diagnostics"],
-            remove_env_keys=("MAKEFLAGS",),
+        selected = u.Tests.run_isolated_make(
+            ["--dry-run", "_builtin_status_diagnostics"], cwd=root
         )
 
         selected_process = tm.ok(selected)
@@ -1343,9 +1342,17 @@ class TestCodegenConform:
 
     @pytest.mark.slow
     def test_scaffold_make_help_documents_and_lists_custom_hooks(
-        self, infra_git_repo: Path
+        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Scaffold help documents the hook contract and lists custom.mk hooks."""
+        """Scaffold help documents the hook contract and lists custom.mk hooks.
+
+        The outer ``make test APPLY=Y`` exports its selectors to pytest; the
+        isolated Make helper must shed them, or the read-only ``help`` verb
+        refuses the inherited APPLY.
+        """
+        make = config.Infra.codegen.make
+        monkeypatch.setenv(make.apply_variable, make.apply_value)
+        monkeypatch.setenv(make.selector, "probe")
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
@@ -1358,10 +1365,9 @@ class TestCodegenConform:
                 "_custom_check_myscan:\n\t@true\n",
             )
         )
-        outcome = u.Cli.run_raw(
-            ["make", "-C", str(root), "help"], remove_env_keys=("MAKEFLAGS", "WHAT")
-        )
+        outcome = u.Tests.run_isolated_make(["help"], cwd=root)
         output = tm.ok(outcome)
+        tm.that(output.stderr, eq="")
         tm.that(output.exit_code, eq=0)
         tm.that(
             output.stdout,
@@ -1396,7 +1402,7 @@ class TestCodegenConform:
         u.Tests.write_executable(
             root / ".venv" / "bin" / "python", "#!/bin/sh\nexit 0\n"
         )
-        outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
+        outcome = u.Tests.run_isolated_make(["check", "WHAT=probe"], cwd=root)
         output = tm.ok(outcome)
         tm.that(output.exit_code, eq=0)
         combined = output.stdout + output.stderr

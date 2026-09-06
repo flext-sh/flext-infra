@@ -1444,7 +1444,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return cli_facade.run_raw(
                 [c.Infra.MAKE, *args],
                 cwd=cwd,
-                remove_env_keys=c.Tests.MAKE_ISOLATION_ENV_KEYS,
+                remove_env_keys=u.Infra.make_hermetic_env_remove_keys(),
             )
 
         @staticmethod

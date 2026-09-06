@@ -99,9 +99,24 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
         tm.that(len(changes) > 0, eq=True)
         tm.that(wheel["packages"], eq=["src/app", "src/app_client"])
-        tm.that(wheel["force-include"], eq={"src/app_launch.py": "app_launch.py"})
+        # The declared root module plus every packaged data dir present at the
+        # project root (config/ holds the manifest written above).
+        present_data_dirs = tuple(
+            data_dir
+            for data_dir in tool_config_document.tools.hatch.packaged_data_dirs
+            if (tmp_path / data_dir).is_dir()
+        )
+        expected_force_include = {"src/app_launch.py": "app_launch.py"} | {
+            data_dir: f"app/{data_dir}" for data_dir in present_data_dirs
+        }
+        tm.that(wheel["force-include"], eq=expected_force_include)
+        # The sdist carries the same declared roots plus every packaged data dir
+        # present at the project root, in the phase's canonical order.
         tm.that(
-            sdist["only-include"], eq=["src/app", "src/app_client", "src/app_launch.py"]
+            sdist["only-include"],
+            eq=sorted(
+                ["src/app", "src/app_client", "src/app_launch.py", *present_data_dirs]
+            ),
         )
 
 
