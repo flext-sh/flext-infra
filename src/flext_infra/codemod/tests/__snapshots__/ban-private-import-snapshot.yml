@@ -1,5 +1,11 @@
 id: ban-private-import
 snapshots:
+  from flext_core._decorators.runtime import FlextDecoratorsRuntime:
+    labels:
+    - source: from flext_core._decorators.runtime import FlextDecoratorsRuntime
+      style: primary
+      start: 0
+      end: 65
   from flext_core._models import FlextModels:
     labels:
     - source: from flext_core._models import FlextModels
@@ -12,9 +18,3 @@ snapshots:
       style: primary
       start: 0
       end: 48
-  from flext_core._decorators.runtime import FlextDecoratorsRuntime:
-    labels:
-    - source: from flext_core._decorators.runtime import FlextDecoratorsRuntime
-      style: primary
-      start: 0
-      end: 65

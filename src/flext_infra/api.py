@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_core import r
 from flext_infra import m, t, u
 from flext_infra.base import s
-from flext_infra.services._workspace.environment_beads import (
-    FlextInfraWorkspaceBeadsEnvironmentMixin,
-)
+from flext_infra.services.workspace import FlextInfraWorkspaceEnvironmentSync
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
@@ -18,7 +16,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfra(FlextInfraWorkspaceBeadsEnvironmentMixin, s[t.JsonDict]):
+class FlextInfra(FlextInfraWorkspaceEnvironmentSync, s[t.JsonDict]):
     """Thin public FLEXT facade over infra services."""
 
     app_name: ClassVar[str] = "flext-infra"

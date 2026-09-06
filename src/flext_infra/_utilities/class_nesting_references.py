@@ -41,16 +41,11 @@ class FlextInfraUtilitiesClassNestingReferences:
                 name: f"{owner}.{name}" for name, owner in definitions.items()
             }
 
-        @staticmethod
-        def _dotted_name(node: cst.BaseExpression | None) -> str | None:
+        def _dotted_name(self, node: cst.BaseExpression | None) -> str | None:
             if isinstance(node, cst.Name):
                 return node.value
             if isinstance(node, cst.Attribute):
-                parent = (
-                    FlextInfraUtilitiesClassNestingReferences._Transformer._dotted_name(
-                        node.value
-                    )
-                )
+                parent = self._dotted_name(node.value)
                 return f"{parent}.{node.attr.value}" if parent else None
             return None
 
@@ -67,6 +62,7 @@ class FlextInfraUtilitiesClassNestingReferences:
             prefix = package_parts[: len(package_parts) - ascend]
             return ".".join((*prefix, suffix) if suffix else prefix)
 
+        @override
         def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
             bindings = self.bindings_by_module.get(self._import_module(node), {})
             if not bindings or isinstance(node.names, cst.ImportStar):
@@ -78,6 +74,21 @@ class FlextInfraUtilitiesClassNestingReferences:
                 local_name = imported.asname.name.value if imported.asname else name
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
+
+        @staticmethod
+        def _is_structural_position(
+            parent: cst.CSTNode, original_node: cst.Name
+        ) -> bool:
+            """Whether the name occupies a structural position, not a value use."""
+            if isinstance(parent, cst.ImportAlias):
+                return True
+            if isinstance(parent, cst.ClassDef):
+                return parent.name is original_node
+            if isinstance(parent, cst.Attribute):
+                return parent.attr is original_node
+            if isinstance(parent, cst.Arg):
+                return parent.keyword is original_node
+            return False
 
         @override
         def leave_Name(
@@ -96,15 +107,7 @@ class FlextInfraUtilitiesClassNestingReferences:
                 msg = f"ambiguous class-nesting binding: {sorted(replacements)}"
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if (
-                isinstance(parent, cst.ClassDef)
-                and parent.name is original_node
-                or isinstance(parent, cst.ImportAlias)
-                or isinstance(parent, cst.Attribute)
-                and parent.attr is original_node
-                or isinstance(parent, cst.Arg)
-                and parent.keyword is original_node
-            ):
+            if self._is_structural_position(parent, original_node):
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)
             if replacement is None:

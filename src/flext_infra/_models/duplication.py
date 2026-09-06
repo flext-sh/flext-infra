@@ -225,20 +225,5 @@ class FlextInfraModelsDuplication:
                         raise ValueError(msg)
             return self
 
-    class JscpdScan(m.ContractModel):
-        """Fresh command evidence plus its validated report."""
-
-        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
-
-        exit_code: Annotated[
-            t.NonNegativeInt, m.Field(le=255, description="Raw jscpd process exit code")
-        ]
-        report: Annotated[
-            FlextInfraModelsDuplication.JscpdReport,
-            m.Field(description="Validated report from this exact scan"),
-        ]
-        stderr: Annotated[str, m.Field(description="Raw jscpd standard error")]
-        stdout: Annotated[str, m.Field(description="Raw jscpd standard output")]
-
 
 __all__: list[str] = ["FlextInfraModelsDuplication"]

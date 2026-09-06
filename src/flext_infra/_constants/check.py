@@ -67,13 +67,12 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/tier-whitelist",
         ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
-        "codemod": ("ast-grep", "https://ast-grep.github.io/"),
+        "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
             "internal://flext-infra/canonical-alias",
         ),
-        "codemod": ("ast-grep", AST_GREP_DOCS_URL),
         "direnv": (
             "Flext Direnv Environment Contract Gate",
             "internal://flext-infra/direnv",

@@ -115,7 +115,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
             if root_class is None:
                 continue
 
-            def collect(node: ast.ClassDef, public_path: str) -> None:
+            def collect(
+                node: ast.ClassDef, public_path: str, imports: dict[str, str]
+            ) -> None:
                 if any(
                     isinstance(base, ast.Name) and imports.get(base.id) == qualified
                     for base in node.bases
@@ -123,9 +125,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     references.add(public_path)
                 for child in node.body:
                     if isinstance(child, ast.ClassDef):
-                        collect(child, f"{public_path}.{child.name}")
+                        collect(child, f"{public_path}.{child.name}", imports)
 
-            collect(root_class, facade_alias)
+            collect(root_class, facade_alias, imports)
         if not references:
             return None
         deepest = max(reference.count(".") for reference in references)

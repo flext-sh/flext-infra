@@ -1425,7 +1425,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
             """Materialize immutable lazy-init plans only inside test workspaces."""
-            service = FlextInfraCodegenLazyInit(repository_root=repository_root)
+            service = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
             planned = service.plan_files().unwrap()
             changed = tuple(
                 plan

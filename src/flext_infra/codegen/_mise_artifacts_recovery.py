@@ -113,10 +113,10 @@ class FlextInfraMiseRecovery:
                     )
                 operation = "noop"
             elif (
-                journal.state == "recovering" and identity == rollback
-            ) or identity == original:
-                operation = "noop"
-            elif identity != desired:
+                (journal.state == "recovering" and identity == rollback)
+                or identity == original
+                or identity != desired
+            ):
                 operation = "noop"
             elif entry.original_exists:
                 operation = "restore"

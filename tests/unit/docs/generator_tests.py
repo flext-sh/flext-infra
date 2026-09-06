@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_core import r
 from flext_infra import c, config
 from flext_infra.docs.generator import FlextInfraDocGenerator
