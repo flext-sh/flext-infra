@@ -1435,6 +1435,27 @@ Infra:
             - ".claude/skills/core.gc-*"
             - ".claude/skills/gascity.*"
             - ".claude/skills/gc.*"
+            - ".codex/skills/.gc-skill-ownership.json"
+            - ".codex/skills/core.gc-*"
+            - ".codex/skills/gascity.*"
+            - ".codex/skills/gc.*"
+        # Why (flext-uwhzz): a registered rig also receives the Gas City runtime
+        # directory (events, gate slots, scripts pinned to the city's absolute
+        # path, per-session settings) and hosts its lane checkouts under
+        # `<rig>/worktrees/<lane>`. Both are per-machine runtime state carrying
+        # machine-absolute paths; tracked copies broke every other checkout.
+        - name: "Gas City rig runtime and lane worktrees (runtime state, never source)"
+          patterns:
+            - ".gc/"
+            - "/worktrees/"
+        # Why (flext-uwhzz): ai-hub `gen` projects a project association and a
+        # project-scoped Cursor MCP document into every governed checkout; the
+        # MCP document carries the gateway socket path resolved on the machine
+        # that ran the generator. Both are projection outputs, never source.
+        - name: "AI Hub workspace projections (runtime state, never source)"
+          patterns:
+            - "/.aihub/"
+            - "/.cursor/mcp.json"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
