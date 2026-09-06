@@ -75,6 +75,7 @@ class FlextInfraUtilitiesCodemodRules:
     @staticmethod
     def _project(root: Path) -> p.Result[t.Pair[str, t.StrSequence]]:
         from flext_infra import u
+
         pyproject = root / c.Infra.PYPROJECT_FILENAME
         document = u.Cli.toml_read_document(pyproject)
         if document.failure:
@@ -250,6 +251,7 @@ class FlextInfraUtilitiesCodemodRules:
     @staticmethod
     def _config_scope(config: Path) -> p.Result[str]:
         from flext_infra import u
+
         parsed = u.Cli.yaml_parse(config.read_text(encoding=c.Cli.ENCODING_DEFAULT))
         if parsed.failure:
             return r[str].from_failure(parsed)
@@ -322,6 +324,7 @@ class FlextInfraUtilitiesCodemodRules:
         cls, provider: str, config: Path
     ) -> p.Result[t.SequenceOf[m.Infra.CodemodRule]]:
         from flext_infra import u
+
         parsed_config = u.Cli.yaml_parse(
             config.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         )

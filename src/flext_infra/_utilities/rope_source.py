@@ -78,7 +78,10 @@ class FlextInfraUtilitiesRopeSource:
                     position = statement.end_lineno or position
                     continue
                 break
-            if isinstance(statement, ast.ImportFrom) and statement.module == "__future__":
+            if (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module == "__future__"
+            ):
                 position = statement.end_lineno or position
                 continue
             if past_existing and isinstance(statement, ast.Import | ast.ImportFrom):

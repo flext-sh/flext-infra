@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import shutil
 from functools import cache, lru_cache
-from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -65,7 +64,7 @@ class FlextInfraUtilitiesPyproject:
             source,
             relative_path=relative_path,
             config_path=config_path.resolve() if config_content else None,
-            config_digest=sha256(config_content).hexdigest(),
+            config_digest=u.Cli.sha256_bytes(config_content),
             execution_root=execution_root,
             taplo_version=taplo_version,
             process_timeout_seconds=process_timeout_seconds,

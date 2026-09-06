@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -80,7 +79,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 f"command={command}\nexit_code=0\n"
                 f"stdout={output.stdout}\nstderr={output.stderr}"
             )
-            digest = hashlib.sha256(digest_input.encode("utf-8")).hexdigest()
+            digest = u.Cli.sha256_content(digest_input)
             evidence.append(
                 m.Infra.GateCommandEvidence(
                     gate=gate,
@@ -107,7 +106,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
                 continue
             tracked.append(f"{name}:{blob.hexsha}")
         content = "\n".join(tracked)
-        return f"sha256:{hashlib.sha256(content.encode('utf-8')).hexdigest()}"
+        return f"sha256:{u.Cli.sha256_content(content)}"
 
     @classmethod
     def git_create_gate_attestation(
