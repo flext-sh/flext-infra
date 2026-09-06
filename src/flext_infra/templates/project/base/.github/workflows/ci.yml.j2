@@ -48,36 +48,10 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
-      # Mise resolves GitHub credentials only through the declared command
-      # (never a token in the environment). The Mise transaction strips the
-      # inherited environment, so on a runner that command reads the job's own
-      # token from a 0600 file outside the checkout. The `runner` context is
-      # unavailable in job-level `env`, so the resolved command is exported to
-      # the following steps through GITHUB_ENV.
-      - name: Declare the Mise GitHub credential source
-        env:
-          GITHUB_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}
-        run: |
-          install -m 600 /dev/null "$RUNNER_TEMP/mise-github-token"
-          printf '%s' "$GITHUB_TOKEN" > "$RUNNER_TEMP/mise-github-token"
-          echo "MISE_GITHUB_CREDENTIAL_COMMAND=cat $RUNNER_TEMP/mise-github-token" >> "$GITHUB_ENV"
 
-      # make setup is the only toolchain installer. Its committed Mise seed
-      # resolves and executes the newest signed Mise release, then installs the
-      # exact tool versions recorded in mise.lock before any other Make verb.
-
-      # The direnv check gate runs a real `direnv exec` activation smoke. The
-      # preinstalled runner image has no direnv binary, so provision it here —
-      # the gate is intentional and its binary must exist wherever CI=Y make
-      # check runs. The smoke runs unattended, where no one can answer
-      # `direnv allow`, so allow the checkout's .envrc up front: `direnv allow
-      # <path>` computes and stores the same path-hash record an interactive
-      # allow writes. .envrc is tracked, so it exists right after checkout.
-      # This trusts only this repo's own generated file, on this runner only.
-      - name: Install direnv (check-gate dependency)
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq direnv
-          direnv allow "{% raw %}${{ github.workspace }}{% endraw %}/.envrc"
+      # make setup is the only toolchain installer. It bootstraps the newest
+      # released Mise, installs the committed fleet toolchain, publishes that
+      # environment through GITHUB_PATH, and prepares the project runtime.
 {%- if system_packages %}
 
       # Why: this repository's tests exercise a real external engine, and the

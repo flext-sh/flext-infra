@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
@@ -16,12 +15,10 @@ if TYPE_CHECKING:
     from .flext_binding import FlextInfraFlextBindingService
     from .orchestrator import FlextInfraOrchestratorService
     from .rope import FlextInfraRopeWorkspace
-    from .sandbox_orchestrator import FlextInfraSandboxOrchestrator
 __all__: tuple[str, ...] = (
     "FlextInfraFlextBindingService",
     "FlextInfraOrchestratorService",
     "FlextInfraRopeWorkspace",
-    "FlextInfraSandboxOrchestrator",
     "FlextInfraWorkspaceDetector",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "envrc_contract_violations",
@@ -36,7 +33,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".flext_binding": ("FlextInfraFlextBindingService",),
             ".orchestrator": ("FlextInfraOrchestratorService",),
             ".rope": ("FlextInfraRopeWorkspace",),
-            ".sandbox_orchestrator": ("FlextInfraSandboxOrchestrator",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

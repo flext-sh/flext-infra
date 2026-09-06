@@ -60,11 +60,84 @@ class FlextInfraConstantsCodegen(
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
     MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
     "Number of numeric components in a generated Mise release version."
-    MISE_PLATFORM_INDEPENDENT_BACKENDS: Final[frozenset[str]] = frozenset({"npm:"})
-    (
-        "Mise backend prefixes whose tools ship one artifact for every platform "
-        "(`mise lock` records no `platforms` table for them, e.g. `npm:jscpd`)."
+    MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
+    "Required caller-owned persistent root for generated Mise setup."
+    MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (
+        ("GIT_CONFIG_NOSYSTEM", "1"),
+        ("GIT_TERMINAL_PROMPT", "0"),
+        ("LANG", "C"),
+        ("LC_ALL", "C"),
+        ("MISE_SAFE", "1"),
+        ("MISE_PARANOID", "true"),
+        ("MISE_NO_ENV", "1"),
+        ("MISE_NO_HOOKS", "1"),
+        ("MISE_AUTO_ENV", "false"),
+        ("MISE_AUTO_INSTALL", "false"),
+        ("MISE_EXEC_AUTO_INSTALL", "false"),
+        ("MISE_TASK_RUN_AUTO_INSTALL", "false"),
+        ("MISE_AUTO_UPDATE", "false"),
+        ("MISE_HTTP_RETRIES", "0"),
+        ("MISE_NETRC", "false"),
+        ("MISE_NOT_FOUND_AUTO_INSTALL", "false"),
+        ("MISE_NOT_FOUND_SYSTEM_FALLBACK", "false"),
+        ("MISE_OVERRIDE_CONFIG_FILENAMES", ".mise.toml"),
+        ("MISE_OVERRIDE_TOOL_VERSIONS_FILENAMES", "none"),
+        ("MISE_GITHUB_GH_CLI_TOKENS", "false"),
+        ("MISE_GITHUB_USE_GIT_CREDENTIALS", "false"),
+        ("MISE_GITHUB_OAUTH_CLIENT_ID", ""),
+        ("MISE_GITHUB_OAUTH_EXPORT_ENV", ""),
+        ("MISE_GITHUB_OAUTH_OPEN_BROWSER", "false"),
     )
+    "Fixed fail-closed settings shared by every generated Mise invocation."
+    MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT: Final[t.StrPairSequence] = (
+        ("HOME", "home"),
+        ("USERPROFILE", "home"),
+        ("APPDATA", "appdata"),
+        ("LOCALAPPDATA", "appdata"),
+        ("XDG_CONFIG_HOME", "xdg-config"),
+        ("XDG_DATA_HOME", "xdg-data"),
+        ("XDG_CACHE_HOME", "xdg-cache"),
+        ("XDG_STATE_HOME", "xdg-state"),
+        ("NETRC", "netrc"),
+        ("GIT_CONFIG_GLOBAL", "gitconfig"),
+        ("MISE_NETRC_FILE", "netrc"),
+        ("MISE_GLOBAL_CONFIG_FILE", "global-config.toml"),
+        ("MISE_CONFIG_DIR", "config"),
+        ("MISE_TMP_DIR", "tmp"),
+        ("MISE_GLOBAL_CONFIG_ROOT", "."),
+        ("MISE_SYSTEM_CONFIG_DIR", "system-config"),
+        ("MISE_SYSTEM_CONFIG_FILE", "system-config/config.toml"),
+        ("MISE_SYSTEM_DATA_DIR", "system-data"),
+        ("MISE_SYSTEM_INSTALLS_DIR", "system-installs"),
+        ("MISE_SYSTEM_SHIMS_DIR", "system-shims"),
+        ("TMPDIR", "tmp"),
+        ("TMP", "tmp"),
+        ("TEMP", "tmp"),
+    )
+    "Environment paths rooted in one invocation-local private directory."
+    MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT: Final[t.StrPairSequence] = (
+        ("MISE_DATA_DIR", "."),
+        ("MISE_CACHE_DIR", "cache"),
+        ("MISE_STATE_DIR", "state"),
+        ("MISE_INSTALLS_DIR", "installs"),
+        ("MISE_SHIMS_DIR", "shims"),
+    )
+    "Mise paths rooted in the required caller-owned persistent directory."
+    MISE_BOOTSTRAP_EMPTY_FILES: Final[t.StrSequence] = (
+        "global-config.toml",
+        "system-config/config.toml",
+        "gitconfig",
+        "netrc",
+    )
+    "Private empty files that disable ambient configuration and netrc discovery."
+    MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT: Final[t.StrSequence] = (
+        "PATH",
+        "COMSPEC",
+        "PATHEXT",
+        "SYSTEMROOT",
+        "WINDIR",
+    )
+    "Only host environment keys eligible for explicit reinjection."
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique

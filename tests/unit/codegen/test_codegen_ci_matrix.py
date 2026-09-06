@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -87,15 +88,16 @@ class TestCodegenCiMatrix:
         root = self._render_project(tmp_path / "external")
         tm.that((root / ".github" / "workflows" / "ci-matrix.yml").is_file(), eq=True)
 
-    def test_latest_mise_uses_the_actions_native_default(self, tmp_path: Path) -> None:
-        """The action resolves an omitted version; literal latest becomes vlatest."""
+    def test_latest_mise_is_owned_only_by_make_setup(self, tmp_path: Path) -> None:
+        """Generated workflows never install Mise or uv beside make setup."""
         root = self._render_project(tmp_path / "external")
         workflows = root / ".github" / "workflows"
 
         for workflow in workflows.glob("*.yml"):
             content = workflow.read_text(encoding="utf-8")
-            if "jdx/mise-action" in content:
-                tm.that(content, lacks="version: latest")
+            tm.that(content, lacks="jdx/mise-action")
+            tm.that(content, lacks="astral-sh/setup-uv")
+            tm.that(content, lacks="Install direnv")
 
     def test_external_attestation_orchestration_is_not_generated_by_flext(
         self, tmp_path: Path
@@ -151,28 +153,29 @@ class TestCodegenCiMatrix:
         )
 
         ci_step_runs = tuple(
-            f"run: CI=Y make {step.verb}"
+            (f"run: CI=Y make {step.verb}" + (" APPLY=Y" if step.apply else ""))
             for step in config.Infra.codegen.make.workflow
             if "ci" in step.contexts
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
-        tm.that(ci_step_runs, has="run: CI=Y make setup")
-        tm.that(workflow, has="run: CI=Y make gen WHAT=check")
+        tm.that(ci_step_runs, has="run: CI=Y make setup APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make conform APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make audit")
         tm.that(workflow, lacks="attest/gates/v1")
         tm.that(workflow, lacks="github verify-gates")
-        tm.that(workflow, lacks="WHAT=apply")
-        tm.that(workflow, lacks="APPLY=Y")
+        tm.that(workflow, lacks="WHAT=")
         step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
         tm.that(step_indices, eq=tuple(sorted(step_indices)))
-        setup_index = workflow.index("run: CI=Y make setup")
-        gen_index = workflow.index("run: CI=Y make gen WHAT=check")
-        tm.that(setup_index < gen_index, eq=True)
-        if "run: CI=Y make check" in ci_step_runs:
-            tm.that(workflow, has="run: CI=N make check")
-            check_index = workflow.index("run: CI=Y make check")
-            check_complement_index = workflow.index("run: CI=N make check")
-            tm.that(gen_index < check_index < check_complement_index, eq=True)
+        setup_index = workflow.index("run: CI=Y make setup APPLY=Y")
+        conform_index = workflow.index("run: CI=Y make conform APPLY=Y")
+        audit_index = workflow.index("run: CI=Y make audit")
+        check_index = workflow.index("run: CI=Y make check APPLY=Y")
+        test_index = workflow.index("run: CI=Y make test APPLY=Y")
+        tm.that(
+            setup_index < conform_index < audit_index < check_index < test_index,
+            eq=True,
+        )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
@@ -309,10 +312,9 @@ class TestCodegenCiMatrix:
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
-    def test_dependabot_uses_uv_dependency_cooldown(self, tmp_path: Path) -> None:
-        """Dependabot never raises floors newer than uv will resolve."""
+    def test_dependabot_does_not_delay_available_updates(self, tmp_path: Path) -> None:
+        """Every declared ecosystem can select its newest available release."""
         root = self._render_project(tmp_path / "external")
-        cooldown = config.Infra.codegen.toolchain.dependency_cooldown_days
 
         document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
         updates = t.Cli.JSON_LIST_ADAPTER.validate_python(document["updates"])
@@ -323,11 +325,7 @@ class TestCodegenCiMatrix:
         tm.that(ecosystems, eq={"github-actions", "pip"})
         for item in updates:
             update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            cooldown_config = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
-                update["cooldown"]
-            )
-            tm.that(cooldown_config["default-days"], eq=cooldown)
-        tm.that(config.Infra.codegen.toolchain.uv_exclude_newer, eq=f"{cooldown} days")
+            tm.that(update, lacks="cooldown")
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""
@@ -563,7 +561,6 @@ class TestCodegenCiMatrix:
             "!bin/mise",
             "!bin/mise.cmd",
             "!.python-version",
-            "!.default-python-packages",
             "!config/",
             "!scripts/dispatch.py",
             "!tests/fixtures/ci/docker/",

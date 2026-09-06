@@ -134,7 +134,7 @@ class FlextInfraUtilitiesResourceLimits:
         validated_limit = limit or cls.mypy_resource_limit()
         combined = f"{output.stdout}\n{output.stderr}".lower()
         classification = FlextInfraUtilitiesProcess.process_exit_classification(
-            output.exit_code
+            output.outcome.raw_return_code
         )
         resource_failure = classification != "failure" or any(
             marker in combined for marker in cls._MEMORY_FAILURE_MARKERS
@@ -155,7 +155,10 @@ class FlextInfraUtilitiesResourceLimits:
             or "resource limit reached"
         )
         return cls._bounded_mypy_diagnostic(
-            validated_limit, detail=detail, exit_code=output.exit_code, signal=signal
+            validated_limit,
+            detail=detail,
+            exit_code=output.outcome.raw_return_code,
+            signal=signal,
         )
 
 

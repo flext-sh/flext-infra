@@ -175,7 +175,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                 )
                 if outcome.failure:
                     detail = outcome.error
-                elif outcome.value.exit_code == 0:
+                elif u.Cli.process_succeeded(outcome.value.outcome):
                     continue
                 else:
                     # flext-o6h5 (agent: kimi) — ruff reports parse errors on stderr
@@ -186,7 +186,7 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
                     detail = (
                         detail_lines[-1]
                         if detail_lines
-                        else f"ruff exit {outcome.value.exit_code}"
+                        else f"ruff exit {outcome.value.outcome.raw_return_code}"
                     )
                 issues.append(
                     m.Infra.AuditIssue(

@@ -1,4 +1,4 @@
-"""Isolated newest-Mise runtime and credential-source owner."""
+"""Isolated newest-Mise runtime and exact-receipt owner."""
 
 from __future__ import annotations
 
@@ -22,18 +22,12 @@ class FlextInfraMiseRuntime:
         self._owner = owner
 
     def latest_receipt(
-        self, root: m.Infra.MiseToolchainProjectState, *, credential_command: str
+        self, seed_state: m.Cli.AtomicFileState, *, scratch: Path
     ) -> p.Result[Path]:
         """Resolve latest with an isolated seed, then return an exact receipt."""
-        scratch = root.layout.transaction_root / "runtime"
         prepared = process.prepare_isolation(scratch)
         if prepared.failure:
             return r[Path].from_failure(prepared)
-        seed_state = (
-            root.artifacts.windows_launcher
-            if os.name == "nt"
-            else root.artifacts.unix_launcher
-        )
         if seed_state.content is None or seed_state.mode is None:
             return r[Path].fail(f"native Mise seed is absent: {seed_state.path}")
         seed = scratch / "seed" / "bin" / seed_state.path.name
@@ -45,30 +39,12 @@ class FlextInfraMiseRuntime:
             return r[Path].fail(
                 seed_validation.error or "captured Mise seed is invalid"
             )
-        environment = process.credential_environment(scratch, credential_command)
-        updated = process.run(
-            (str(seed), "self-update", "--yes", "--no-plugins"),
-            cwd=scratch,
-            env=environment,
-            operation="Mise latest release resolution",
+        environment = process.environment(scratch)
+        seed_environment = process.no_config_environment(environment)
+        seed_environment["MISE_INSTALL_PATH"] = str(
+            scratch / "runtime" / ("seed-mise.exe" if os.name == "nt" else "seed-mise")
         )
-        if updated.failure:
-            return r[Path].from_failure(updated)
-        resolved_runtime = process.run(
-            (str(seed), "--version"),
-            cwd=scratch,
-            env=environment,
-            operation="Mise resolved release identity",
-        )
-        if resolved_runtime.failure:
-            return r[Path].from_failure(resolved_runtime)
-        resolved_release = (
-            resolved_runtime.value.split(maxsplit=1)[0]
-            if resolved_runtime.value
-            else ""
-        )
-        if not self._owner.is_mise_release(resolved_release):
-            return r[Path].fail("Mise latest resolution returned an invalid release")
+        runtime_environment = process.no_config_environment(environment)
         receipt = scratch / "receipt"
         generated = process.run(
             (
@@ -80,12 +56,10 @@ class FlextInfraMiseRuntime:
                 "--write",
                 str(receipt / "bin" / "mise"),
                 "--windows",
-                "--version",
-                resolved_release,
             ),
             cwd=scratch,
-            env=environment,
-            operation="Mise exact latest launcher generation",
+            env=seed_environment,
+            operation="Mise latest launcher generation",
         )
         if generated.failure:
             return r[Path].from_failure(generated)
@@ -99,20 +73,26 @@ class FlextInfraMiseRuntime:
         runtime = process.run(
             (str(launcher), "--version"),
             cwd=scratch,
-            env=environment,
+            env=runtime_environment,
             operation="Mise newest runtime identity",
         )
         if runtime.failure:
             return r[Path].from_failure(runtime)
-        release = runtime.value.split(maxsplit=1)[0] if runtime.value else ""
+        runtime_parts = runtime.value.split()
+        match runtime_parts:
+            case ["mise", release, *_]:
+                pass
+            case [release, *_]:
+                pass
+            case []:
+                release = ""
         embedded = self._owner.launcher_release(receipt)
         if (
             not self._owner.is_mise_release(release)
             or embedded.failure
             or release != embedded.value
-            or release != resolved_release
         ):
-            return r[Path].fail("Mise newest runtime differs from its receipt")
+            return r[Path].fail("Mise latest runtime differs from its exact receipt")
         u.Cli.info(f"mise-toolchain: resolved latest runtime={release}")
         return r[Path].ok(receipt)
 
@@ -125,11 +105,7 @@ class FlextInfraMiseRuntime:
             if state.value.content is None or state.value.mode is None:
                 return r[bool].fail(f"generated Mise receipt is absent: {name}")
             normalized = u.Cli.atomic_write_binary_file_guarded(
-                state.value.path,
-                state.value.content,
-                expected_bytes=state.value.content,
-                expected_mode=state.value.mode,
-                permission_mode=mode,
+                state.value, state.value.content, permission_mode=mode
             )
             if normalized.failure:
                 return r[bool].fail(

@@ -256,11 +256,13 @@ class TestsCodegenSetupSubmodules:
             eq=configured_url,
         )
 
-    @pytest.mark.parametrize("member_branch", ["declared-dev", "feature/lane"])
+    @pytest.mark.parametrize(
+        "member_branch", ["declared-dev", "feature/lane", "local-work"]
+    )
     def test_accepted_branch_provisions_the_environment(
         self, tmp_path: Path, generated_project_template: Path, member_branch: str
     ) -> None:
-        """Declared branch and superproject lane branch are both accepted."""
+        """Any named lane containing the recorded gitlink is accepted."""
         project, environment = self._branch_scenario(
             tmp_path,
             generated_project_template,
@@ -278,25 +280,29 @@ class TestsCodegenSetupSubmodules:
         )
         tm.that((project / "uv.log").is_file(), eq=True)
 
-    def test_conflicting_branch_fails_before_environment(
+    def test_branch_without_recorded_gitlink_fails_before_environment(
         self, tmp_path: Path, generated_project_template: Path
     ) -> None:
-        """A branch that is neither the declared one nor the lane is still refused."""
+        """Commit ancestry, rather than a branch-name allowlist, is the boundary."""
         project, environment = self._branch_scenario(
             tmp_path,
             generated_project_template,
             superproject_branch="feature/lane",
-            member_branch="local-work",
+            member_branch="declared-dev",
         )
+        checkout = project / "vendor/source"
+        self._git(checkout, "switch", "-q", "--orphan", "divergent")
+        (checkout / "marker.txt").write_text("divergent", encoding="utf-8")
+        self._git(checkout, "add", "marker.txt")
+        self._git(checkout, "commit", "-q", "-m", "divergent")
 
         result = tm.ok(u.Cli.run_raw(["make", "setup"], cwd=project, env=environment))
 
         tm.that(result.exit_code, eq=2)
-        tm.that(result.stderr, has="conflicting branch")
-        tm.that(result.stderr, has="expected declared-dev or feature/lane")
+        tm.that(result.stderr, has="does not contain recorded gitlink")
         tm.that(
             self._git(project / "vendor/source", "branch", "--show-current"),
-            eq="local-work",
+            eq="divergent",
         )
         tm.that((project / "uv.log").exists(), eq=False)
 

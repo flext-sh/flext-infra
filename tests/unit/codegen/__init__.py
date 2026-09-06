@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .lazy_init_bootstrap_package_tests import (
         TestsFlextInfraLazyInitBootstrapPackage,
     )
+    from .lazy_init_file_plan_tests import TestsFlextInfraCodegenLazyInitFilePlans
     from .lazy_init_fixture_settings_tests import (
         TestsFlextInfraLazyInitFixtureSettingsCollision,
     )
@@ -55,11 +56,9 @@ if TYPE_CHECKING:
     from .test_managed_maintenance_headers import (
         TestsFlextInfraManagedMaintenanceHeaders,
     )
-    from .test_repository_root_setup_submodules import (
-        TestsRepositoryRootSetupSubmodules,
-    )
     from .test_review_mro_vw2w_template_contracts import TestsReviewTemplateContracts
     from .test_vscode_owner_merge import TestsVscodeOwnerMerge
+    from .test_workspace_root_setup_submodules import TestsWorkspaceRootSetupSubmodules
 __all__: tuple[str, ...] = (
     "CodegenSpec",
     "TestAllDirectoriesScanned",
@@ -76,6 +75,7 @@ __all__: tuple[str, ...] = (
     "TestsCodegenMakeEnvironment",
     "TestsFlextInfraCodegenConformProgress",
     "TestsFlextInfraCodegenGeneration",
+    "TestsFlextInfraCodegenLazyInitFilePlans",
     "TestsFlextInfraCodegenLazyInitService",
     "TestsFlextInfraCodegenManagedConflicts",
     "TestsFlextInfraCodegenPipelinePerformance",
@@ -89,9 +89,9 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLazyInitTransforms",
     "TestsFlextInfraManagedMaintenanceHeaders",
     "TestsMakeTestSelector",
-    "TestsRepositoryRootSetupSubmodules",
     "TestsReviewTemplateContracts",
     "TestsVscodeOwnerMerge",
+    "TestsWorkspaceRootSetupSubmodules",
     "c",
     "codegen",
     "d",
@@ -117,6 +117,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_bootstrap_package_tests": (
                 "TestsFlextInfraLazyInitBootstrapPackage",
             ),
+            ".lazy_init_file_plan_tests": ("TestsFlextInfraCodegenLazyInitFilePlans",),
             ".lazy_init_fixture_settings_tests": (
                 "TestsFlextInfraLazyInitFixtureSettingsCollision",
             ),
@@ -165,13 +166,13 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_managed_maintenance_headers": (
                 "TestsFlextInfraManagedMaintenanceHeaders",
             ),
-            ".test_repository_root_setup_submodules": (
-                "TestsRepositoryRootSetupSubmodules",
-            ),
             ".test_review_mro_vw2w_template_contracts": (
                 "TestsReviewTemplateContracts",
             ),
             ".test_vscode_owner_merge": ("TestsVscodeOwnerMerge",),
+            ".test_workspace_root_setup_submodules": (
+                "TestsWorkspaceRootSetupSubmodules",
+            ),
             "flext_tests": (
                 "c",
                 "d",

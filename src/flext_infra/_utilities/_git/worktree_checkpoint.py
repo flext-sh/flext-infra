@@ -35,9 +35,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         # pointers it never touched, and `gen` aborted before applying anything.
         submodules_result = cls.git_declared_submodule_paths(worktree_root)
         if submodules_result.failure:
-            return r[str].fail(
-                submodules_result.error or "failed to resolve declared submodules"
-            )
+            return r[str].from_failure(submodules_result)
         gitlink_exclusions = tuple(
             f":(exclude){path.as_posix()}" for path in submodules_result.value
         )
@@ -46,9 +44,9 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
                 worktree_root, gitlink_exclusions, excluded, message
             )
         except GitCommandError as exc:
-            return r[str].fail(str(exc))
+            return r[str].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[str].fail(f"failed to create checkpoint: {exc}")
+            return r[str].fail(f"failed to create checkpoint: {exc}", exception=exc)
         return r[str].ok(commit_sha)
 
     @classmethod
@@ -170,10 +168,10 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
                 *exclusions,
             ).encode(c.Cli.ENCODING_DEFAULT)
         except GitCommandError as exc:
-            return r[m.Infra.RepositoryDelta].fail(str(exc))
+            return r[m.Infra.RepositoryDelta].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.RepositoryDelta].fail(
-                f"failed to capture operation patch: {exc}"
+                f"failed to capture operation patch: {exc}", exception=exc
             )
         # git apply rejects a patch whose final line has no terminating newline
         # ("corrupt patch"). `git diff --binary` can emit exactly that when the

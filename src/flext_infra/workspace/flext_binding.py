@@ -83,9 +83,7 @@ class FlextInfraFlextBindingService:
         }
         declared = cls._declared_distributions(consumer_root)
         if declared.failure:
-            return r[tuple[str, ...]].fail(
-                declared.error or "cannot read consumer dependencies"
-            )
+            return r[tuple[str, ...]].from_failure(declared)
         return r[tuple[str, ...]].ok(
             tuple(sorted(name for name in declared.value if name in available))
         )
@@ -97,14 +95,14 @@ class FlextInfraFlextBindingService:
         """Rebind the consumer environment onto the worktree for this session."""
         planned = cls.plan_targets(consumer_root=consumer_root, flext_root=flext_root)
         if planned.failure:
-            return r[int].fail(planned.error or "failed to plan the flext binding")
+            return r[int].from_failure(planned)
         targets = planned.value
         if not targets:
             u.Cli.info("flext binding: consumer declares no flext packages")
             return r[int].ok(0)
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(flext_root)
         if workspace.failure:
-            return r[int].fail(workspace.error or "workspace topology unreadable")
+            return r[int].from_failure(workspace)
         paths = {
             declared_repository.distribution: (
                 flext_root / declared_repository.path
@@ -120,7 +118,7 @@ class FlextInfraFlextBindingService:
             cwd=consumer_root,
         )
         if installed.failure:
-            return r[int].fail(installed.error or "failed to bind the flext worktree")
+            return r[int].from_failure(installed)
         u.Cli.info(
             f"flext binding: {len(targets)} package(s) bound to {flext_root} "
             f"({', '.join(targets)})"

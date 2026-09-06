@@ -13,8 +13,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m
-from flext_infra.codemod.discovery import discover_rules
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -29,8 +28,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
     gate_id: ClassVar[str] = "codemod"
     gate_name: ClassVar[str] = "Codemod Enforcement"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = "ast-grep"
-    tool_url: ClassVar[str] = "https://ast-grep.github.io/"
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["codemod"][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["codemod"][1]
 
     @override
     def check(
@@ -39,7 +38,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         """Run ast-grep scan with cascaded codemod rules."""
         _ = ctx
         started = time.monotonic()
-        rules = discover_rules()
+        rules = self._rules(project_dir)
         if not rules:
             return self._build_check_gate_execution(
                 project_dir,
@@ -52,7 +51,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
         issues: list[m.Infra.Issue] = []
         for rule_path in rules:
             scan = self._run(
-                self._scan_command(rule_path, project_dir),
+                u.Infra.ast_grep_scan_command(rule_path),
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )
@@ -67,15 +66,20 @@ class FlextInfraCodemodGate(FlextInfraGate):
         )
 
     @staticmethod
-    def _scan_command(rule_path: Path, project_dir: Path) -> t.StrSequence:
-        """Canonical ast-grep invocation for a single packaged rule."""
-        return (c.Infra.SG, c.Infra.SCAN, "--rule", str(rule_path), str(project_dir))
+    def _rules(project_dir: Path) -> t.SequenceOf[Path]:
+        """Resolve inherited rules through the public dependency utility."""
+        return u.Infra.project_dependency_resource_files(
+            project_dir,
+            resource_parts=(c.Infra.CODEMOD_RESOURCE_DIRNAME, c.Cli.RULES_DIR_NAME),
+            distribution_prefix=c.Infra.PKG_PREFIX_HYPHEN,
+            suffix=c.Infra.CODEMOD_RULE_SUFFIX,
+        )
 
     def _issues_from_scan(
         self, scan: p.Cli.CommandOutput, rule_path: Path
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Turn one rule scan into issues; a scanner crash is never a silent pass."""
-        if scan.exit_code != 0 and not scan.stdout.strip():
+        if not u.Cli.process_succeeded(scan.outcome) and not scan.stdout.strip():
             return (
                 m.Infra.Issue(
                     file=c.Infra.PYPROJECT_FILENAME,
@@ -108,10 +112,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Per-rule scans are issued by check(); expose the first rule command."""
         _ = ctx, check_dirs
-        rules = discover_rules()
+        rules = self._rules(project_dir)
         if not rules:
-            return (c.Infra.SG, c.Infra.SCAN, str(project_dir))
-        return self._scan_command(rules[0], project_dir)
+            return (c.Infra.SG, c.Infra.SCAN, ".")
+        return u.Infra.ast_grep_scan_command(rules[0])
 
     @override
     def _parse_check_output(
@@ -119,7 +123,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse a single ast-grep scan result into issues."""
         _ = ctx
-        rules = discover_rules()
+        rules = self._rules(project_dir)
         rule_path = rules[0] if rules else project_dir
         issues = self._issues_from_scan(result, rule_path)
         return not issues, issues

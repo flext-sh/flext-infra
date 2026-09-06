@@ -192,7 +192,10 @@ class FlextInfraUtilitiesCodegenNamespace:
         cached = cls._declared_exports_cache.get(cache_key)
         if cached is not None and cached[0] == mtime_ns:
             return cached[1]
-        tree = ast.parse(file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+        tree = ast.parse(
+            file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT),
+            filename=str(file_path),
+        )
         result: t.StrSequence = ()
         for node in tree.body:
             match node:
@@ -487,9 +490,7 @@ class FlextInfraUtilitiesCodegenNamespace:
     ) -> p.Result[tuple[m.Infra.CensusViolation, ...]]:
         """Convert validator output into typed census violations."""
         if validation.failure:
-            return r[tuple[m.Infra.CensusViolation, ...]].fail(
-                validation.error or "namespace validation failed"
-            )
+            return r[tuple[m.Infra.CensusViolation, ...]].from_failure(validation)
         report = validation.unwrap()
         parsed: list[m.Infra.CensusViolation] = []
         for violation in report.violations:

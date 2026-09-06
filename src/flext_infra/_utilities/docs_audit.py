@@ -10,6 +10,9 @@ from flext_infra import c, config, m
 from flext_infra._utilities._docs_audit_detectors import (
     FlextInfraUtilitiesDocsAuditDetectorsMixin,
 )
+from flext_infra._utilities._docs_command_contract import (
+    FlextInfraUtilitiesDocsCommandContractMixin,
+)
 from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
 from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
@@ -19,7 +22,10 @@ if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesDocsAudit(FlextInfraUtilitiesDocsAuditDetectorsMixin):
+class FlextInfraUtilitiesDocsAudit(
+    FlextInfraUtilitiesDocsAuditDetectorsMixin,
+    FlextInfraUtilitiesDocsCommandContractMixin,
+):
     """Reusable audit helpers exposed through ``u.Infra``."""
 
     @staticmethod

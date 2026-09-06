@@ -39,6 +39,10 @@ class FlextInfraConstantsCheck:
             "Flext Silent Failure Detector",
             "internal://flext-infra/silent-failure",
         ),
+        "deferred-self-reference": (
+            "Flext Deferred Self Reference Detector",
+            "internal://flext-infra/deferred-self-reference",
+        ),
         "security": ("Bandit", "https://bandit.readthedocs.io/"),
         "markdown": ("rumdl", "https://rumdl.dev/"),
         "loc-cap": ("scc", "https://github.com/boyter/scc"),
@@ -56,6 +60,7 @@ class FlextInfraConstantsCheck:
             "internal://flext-infra/tier-whitelist",
         ),
         "smells": ("Flext Code Smell Detector", "internal://flext-infra/smells"),
+        "codemod": ("ast-grep", "https://ast-grep.github.io/"),
         "layout": ("Flext Project Layout Gate", "internal://flext-infra/layout"),
         "canonical-alias": (
             "Flext Canonical Alias Detector",
@@ -77,14 +82,13 @@ class FlextInfraConstantsCheck:
     )
     VALID_GATE_SEVERITIES: Final[frozenset[str]] = frozenset(GateSeverity)
     "Severity levels accepted by gate output parsers — derived from GateSeverity."
-    GATE_ERROR_OUTPUT_LIMIT: Final[int] = 20
-    "Maximum parsed gate diagnostics emitted inline before the canonical report."
-
     PYRIGHT_DIAGNOSTICS_KEY: Final[str] = "generalDiagnostics"
     PYRIGHT_PROJECT_ARG: Final[str] = "--project"
     PYRIGHT_PROJECT_CONFIG_TARGET: Final[str] = "."
     BANDIT_RESULTS_KEY: Final[str] = "results"
     PYREFLY_ERRORS_KEY: Final[str] = "errors"
+    PYREFLY_ZERO_ERRORS_RECEIPT: Final[str] = "INFO 0 errors"
+    "Exact successful stderr receipt emitted by Pyrefly's per-file check."
     # --- Abstraction-boundary gate (§2.7) detection SSOT ---
     BOUNDARY_SKIP_PROJECTS: Final[frozenset[str]] = frozenset({
         "flext-cli",
@@ -165,9 +169,6 @@ class FlextInfraConstantsCheck:
     BOUNDARY_TOML_RE: Final[t.RegexPattern] = re.compile(
         r"^\s*(import|from)\s+(tomllib|tomlkit)(\s|$|\.)", re.MULTILINE
     )
-    BOUNDARY_CONCRETE_IMPORT_RE: Final[t.RegexPattern] = re.compile(
-        r"^from\s+flext_cli\s+import\s+(?P<imports>.+?)$", re.MULTILINE
-    )
     BOUNDARY_FLEXT_CLI_CONCRETE_RE: Final[t.RegexPattern] = re.compile(
         r"\bFlextCli[A-Z]\w*"
     )
@@ -186,11 +187,17 @@ class FlextInfraConstantsCheck:
     "templates (.j2/.mk), schemas (.json), and config (.yml/.toml) are not modules."
 
     # --- qlty smells gate (code-smell architecture violations) SSOT ---
-    SMELLS_GATE_MODE: Final[GateMode] = GateMode.WARN
-    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
     QLTY_BINARY: Final[str] = "qlty"
-    QLTY_BINARY_FALLBACK_SUFFIX: Final[str] = ".qlty/bin/qlty"
-    "Joined to Path.home() when the binary is absent from PATH."
+    QLTY_CONFIG_DIRNAME: Final[str] = ".qlty"
+    QLTY_CONFIG_FILENAME: Final[str] = "qlty.toml"
+    QLTY_CONFIG_CONTENT: Final[str] = (
+        "# AUTO-GENERATED FILE — Materialized by the qlty smells gate at scan\n"
+        "# time from this typed constant; never hand-edit. Removal is safe: the\n"
+        "# next scan rewrites it.\n"
+        'config_version = "0"\n'
+    )
+    "Minimal repository-root config qlty requires before scanning; a generated\n"
+    "projection of the gate, never a hand-maintained file."
     SMELLS_QLTY_ARGS: Final[t.StrSequence] = (
         "smells",
         "--all",
@@ -217,8 +224,6 @@ class FlextInfraConstantsCheck:
     # --- jscpd duplication gate SSOT (operator 2026-09-04: flext-infra owns the
     # jscpd plugin behind one centralized `make check` verb; its config is
     # rendered from this typed SSOT at scan time, never a hand-maintained file).
-    DUPLICATION_GATE_MODE: Final[GateMode] = GateMode.WARN
-    "Report-only posture. FLIP-TO-FAIL = change this one line to GateMode.STRICT."
     JSCPD_BINARY: Final[str] = "jscpd"
     "Provisioned by mise from codegen.toolchain.jscpd_version; never a runner or a version here."
     JSCPD_MODE: Final[str] = "strict"
@@ -227,29 +232,10 @@ class FlextInfraConstantsCheck:
     JSCPD_CONFIG_FILENAME: Final[str] = ".jscpd.generated.json"
     JSCPD_REPORT_FILENAME: Final[str] = "jscpd-report.json"
     JSCPD_IGNORE_PATTERNS: Final[t.StrSequence] = (
-        "**/__pycache__/**",
-        "**/target/**",
-        "**/*.pyc",
-        "**/*.bak",
-        "**/*.tmp",
-        "**/*.orig",
-        "**/.venv/**",
-        "**/node_modules/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/.eggs/**",
         "**/__snapshots__/**",
         "**/__init__.py",
-        "**/.github/**",
-        "**/.claude/**",
-        "**/.agents/**",
-        "**/.cursor/**",
-        "**/.codex/**",
-        "**/skills/**",
-        "Makefile",
-        "LICENSE.md",
     )
-    "Same reviewed exclusion set the retired hand-maintained .jscpd.json carried."
+    "Generated Python surfaces excluded semantically; Git owns artifact visibility."
 
     # --- Manual-command blocker (AGENTS.md `Build & Test`) SSOT ---
     MANUAL_CMD_BLOCKED_TOOLS: Final[frozenset[str]] = frozenset({

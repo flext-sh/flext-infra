@@ -159,9 +159,7 @@ class FlextInfraUtilitiesRepository:
         if resolved_workspace is None:
             loaded = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
             if loaded.failure:
-                return r[m.Infra.RepositoryConformTarget].fail(
-                    loaded.error or "workspace topology load failed"
-                )
+                return r[m.Infra.RepositoryConformTarget].from_failure(loaded)
             resolved_workspace = loaded.value
         return FlextInfraWorkspaceDetector.conform_target(
             repository_root, resolved_workspace

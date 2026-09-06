@@ -116,6 +116,7 @@ class FlextInfraDocAuditorMixin:
                 "stale-symbols",
                 "scope-boundary",
                 "generated-ownership",
+                "command-contract",
                 "docstrings",
                 "python-codeblocks",
             }

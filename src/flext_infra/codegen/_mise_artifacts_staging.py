@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, m
+from flext_infra import config, m, u
 from flext_infra.codegen import _mise_artifacts_candidates as candidates
 from flext_infra.codegen import _mise_artifacts_files as files
 from flext_infra.codegen import _mise_artifacts_process as process
@@ -25,33 +25,35 @@ class FlextInfraMiseStaging:
         self._runtime = FlextInfraMiseRuntime(owner)
 
     def stage(
-        self, plan: m.Infra.MiseToolchainWorkspacePlan, *, credential_command: str
-    ) -> p.Result[tuple[m.Infra.MiseToolchainPublication, ...]]:
+        self, plan: m.Infra.MiseToolchainWorkspacePlan
+    ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
         """Generate, hydrate, and validate all destination-local candidates."""
-        receipt = self._runtime.latest_receipt(
-            plan.projects[0], credential_command=credential_command
-        )
-        if receipt.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(receipt)
-        runtime_scratch = plan.projects[0].layout.transaction_root / "runtime"
-        environment = process.credential_environment(
-            runtime_scratch, credential_command
-        )
-        launcher = receipt.value / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
-        credential = process.validate_credential_source(
-            launcher, cwd=runtime_scratch, env=environment
-        )
-        if credential.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                credential
+        coordinator = plan.projects[0]
+        if coordinator.layout.transaction_root is None:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
+                "Mise staging requires an explicit transaction coordinator"
             )
+        seed_name = "mise.cmd" if os.name == "nt" else "mise"
+        seed = files.read_state(
+            plan.layout.scope_root / "bin" / seed_name, required=True
+        )
+        if seed.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(seed)
+        runtime_scratch = coordinator.layout.transaction_root / "runtime"
+        receipt = self._runtime.latest_receipt(seed.value, scratch=runtime_scratch)
+        if receipt.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(receipt)
+        environment = process.environment(runtime_scratch)
+        launcher = receipt.value / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
         receipt_states = candidates.receipt_states(receipt.value)
         if receipt_states.failure:
-            return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                receipt_states
-            )
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(receipt_states)
         stages: list[Path] = []
         for project in plan.projects:
+            if project.layout.transaction_root is None:
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
+                    f"Mise transaction root is absent: {project.layout.selector}"
+                )
             stage_root = project.layout.transaction_root / "stage"
             staged = self._stage_project(
                 project,
@@ -61,30 +63,9 @@ class FlextInfraMiseStaging:
                 environment=environment,
             )
             if staged.failure:
-                return r[tuple[m.Infra.MiseToolchainPublication, ...]].from_failure(
-                    staged
-                )
+                return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(staged)
             stages.append(stage_root)
         return candidates.publication_plan(plan.projects, tuple(stages))
-
-    @staticmethod
-    def _lock_resolution_is_required(
-        project: m.Infra.MiseToolchainProjectState,
-    ) -> bool:
-        """Return whether this project's lock must be resolved from the network.
-
-        ``mise lock --bump`` re-resolves every declared selector against its
-        remote registry. That is required exactly when the declaration changed
-        or no lock exists yet. When the rendered configuration is byte-identical
-        to the published one and a lock is already present, the lock already
-        answers that declaration: re-resolving would make generation depend on
-        the network and on upstream release timing, so the same sources would
-        stop producing the same bytes.
-        """
-        return (
-            project.artifacts.lock.content is None
-            or project.config.before.content != project.config.replacement_content
-        )
 
     def _stage_project(
         self,
@@ -96,12 +77,18 @@ class FlextInfraMiseStaging:
         environment: dict[str, str],
     ) -> p.Result[bool]:
         """Build and validate one project without reading mutable source bytes."""
-        try:
-            (stage_root / "bin").mkdir(parents=True, exist_ok=False)
-        except OSError as exc:
-            return r[bool].fail_op(
-                f"create Mise stage for {project.layout.selector}", exc
+        stage_plan = u.Cli.atomic_plan_directory_chain(stage_root / "bin")
+        if stage_plan.failure:
+            return r[bool].from_failure(stage_plan)
+        if tuple(stage_plan.value.directories) != (stage_root, stage_root / "bin"):
+            return r[bool].fail(
+                f"Mise stage already exists for {project.layout.selector}"
             )
+        created = u.Cli.atomic_create_directory_chain_guarded(
+            stage_plan.value, permission_mode=0o700
+        )
+        if created.failure:
+            return r[bool].from_failure(created)
         config_write = process.write_new(
             stage_root / files.CONFIG_SPEC[0],
             project.config.replacement_content,
@@ -124,28 +111,27 @@ class FlextInfraMiseStaging:
             )
             if copied_lock.failure:
                 return copied_lock
-        if self._lock_resolution_is_required(project):
-            project_environment = dict(environment)
-            project_environment.update({
-                "MISE_CEILING_PATHS": str(stage_root.parent),
-                "MISE_TRUSTED_CONFIG_PATHS": str(stage_root),
-            })
-            locked = process.run(
-                (
-                    str(launcher),
-                    "-C",
-                    str(stage_root),
-                    "lock",
-                    "--bump",
-                    "--platform",
-                    ",".join(config.Infra.codegen.toolchain.mise_lock_platforms),
-                ),
-                cwd=stage_root,
-                env=project_environment,
-                operation=f"Mise lock generation for {project.layout.selector}",
-            )
-            if locked.failure:
-                return r[bool].from_failure(locked)
+        project_environment = dict(environment)
+        project_environment.update({
+            "MISE_CEILING_PATHS": str(stage_root.parent),
+            "MISE_TRUSTED_CONFIG_PATHS": str(stage_root),
+        })
+        locked = process.run(
+            (
+                str(launcher),
+                "-C",
+                str(stage_root),
+                "lock",
+                "--bump",
+                "--platform",
+                ",".join(config.Infra.codegen.toolchain.mise_lock_platforms),
+            ),
+            cwd=stage_root,
+            env=project_environment,
+            operation=f"Mise lock generation for {project.layout.selector}",
+        )
+        if locked.failure:
+            return r[bool].from_failure(locked)
         hydrated = self._owner.hydrate_lock_checksums_at(stage_root)
         if hydrated.failure:
             return r[bool].fail(

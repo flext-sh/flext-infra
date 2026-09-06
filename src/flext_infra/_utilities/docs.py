@@ -78,7 +78,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             )
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f"markdown write error: {exc}")
+            return r[bool].fail(f"markdown write error: {exc}", exception=exc)
 
     @staticmethod
     def anchorize(text: str) -> str:
@@ -108,9 +108,7 @@ class FlextInfraUtilitiesDocs(FlextInfraUtilitiesDocsScopeBuildMixin):
             repository_root=repository_root, projects=projects, output_dir=output_dir
         )
         if scopes_result.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope error"
-            )
+            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(scopes_result)
         return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok([
             handler(scope) for scope in scopes_result.value
         ])

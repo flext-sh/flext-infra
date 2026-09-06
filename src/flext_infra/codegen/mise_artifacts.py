@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, ClassVar, TypeIs, override
+from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_core import r
@@ -15,9 +14,7 @@ from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra.base import s
-from flext_infra.codegen._mise_artifacts_transaction import (
-    FlextInfraCodegenMiseArtifactTransaction,
-)
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -271,13 +268,30 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].fail(missing.error or "invalid mise.lock checksum metadata")
         if not missing.value:
             return r[bool].ok(True)
-        try:
-            with TemporaryDirectory(prefix=".mise-checksum.", dir=root) as raw_scratch:
-                hydrated = self._hydrate_source(
-                    source.value, missing.value, Path(raw_scratch)
-                )
-        except OSError as exc:
-            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}")
+        scratch = root / ".mise-checksum"
+        planned = u.Cli.atomic_plan_directory_chain(scratch)
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        if tuple(planned.value.directories) != (scratch,):
+            return r[bool].fail(f"Mise checksum scratch already exists: {scratch}")
+        created = u.Cli.atomic_create_directory_chain_guarded(
+            planned.value, permission_mode=0o700
+        )
+        if created.failure:
+            return r[bool].from_failure(created)
+        hydrated = self._hydrate_source(source.value, missing.value, scratch)
+        inventory = u.Cli.atomic_inventory_physical_tree(scratch)
+        if inventory.failure:
+            return r[bool].fail(
+                f"{hydrated.error or 'Mise checksum hydration completed'}; "
+                f"scratch inventory failed: {inventory.error}"
+            )
+        cleanup = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
+        if cleanup.failure:
+            return r[bool].fail(
+                f"{hydrated.error or 'Mise checksum hydration completed'}; "
+                f"scratch cleanup failed: {cleanup.error}"
+            )
         if hydrated.failure:
             return r[bool].fail(hydrated.error or "cannot hydrate mise.lock checksums")
         write = u.Cli.atomic_write_text_file(lock_path, hydrated.value)
@@ -314,7 +328,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return None
 
     @staticmethod
-    def is_mise_release(value: str | None) -> TypeIs[str]:
+    def is_mise_release(value: str | None) -> bool:
         """Return whether a runtime identity is an exact Mise release."""
         if value is None:
             return False
@@ -467,10 +481,6 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 toolchain.mise_lock_platform_exclusions.get(selector, ())
             ) | project_exclusions.get(selector, frozenset())
             expected_platforms = declared_platforms - excluded
-            if selector.startswith(tuple(c.Infra.MISE_PLATFORM_INDEPENDENT_BACKENDS)):
-                # A platform-independent backend (npm) installs one artifact on
-                # every platform, so `mise lock` records no platform metadata.
-                expected_platforms = frozenset()
             actual_platforms = frozenset(entry.platforms)
             if actual_platforms != expected_platforms:
                 return r[bool].fail(
@@ -483,7 +493,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Validate only; conform is the sole writable toolchain owner."""
-        transaction = FlextInfraCodegenMiseArtifactTransaction(self)
+        transaction = FlextInfraCodegenTransaction(self)
         if not self.effective_dry_run:
             return r[bool].fail("Mise artifact publication is owned by codegen conform")
         return transaction.validate()

@@ -10,8 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import config, t
-from flext_infra._iteration_directory import FlextInfraUtilitiesIterationDirectory
+from flext_infra import c, config, t
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -42,21 +41,40 @@ class FlextInfraUtilitiesIterationWorkspace:
                 f"python file iteration failed: project root is not a directory: {invalid_root}"
             )
         try:
-            # NOTE (multi-agent, flext-wkii.17.24 / agent: codex): the scanner
-            # consumes one exact request and the validated config singleton;
-            # it never discovers projects or enables alternate source trees.
             files = {
                 file_path
                 for project_root in request.project_roots
-                for directory_name in config.Infra.source_scan.roots
-                if (directory := project_root / directory_name).is_dir()
-                for file_path in FlextInfraUtilitiesIterationDirectory.iter_directory_python_files(
-                    directory
-                )
+                for file_path in cls._project_python_files(project_root)
             }
             return r[t.SequenceOf[Path]].ok(tuple(sorted(files)))
         except OSError as exc:
             return r[t.SequenceOf[Path]].fail_op("python file iteration", exc)
+
+    @classmethod
+    def _project_python_files(cls, project_root: Path) -> t.SequenceOf[Path]:
+        """Return configured Python sources with one Git inventory per project."""
+        source_roots = tuple(
+            path
+            for directory_name in config.Infra.source_scan.roots
+            if (path := (project_root / directory_name).resolve()).is_dir()
+        )
+        tracked_files = cls.git_tracked_scope_paths(project_root)
+        if tracked_files is None:
+            return tuple(
+                file_path
+                for source_root in source_roots
+                for file_path in cls.iter_directory_python_files(source_root)
+            )
+        ignored = frozenset(config.Infra.codegen.source_scan_ignored)
+        return tuple(
+            file_path
+            for file_path in tracked_files
+            if file_path.suffixes == [c.Infra.EXT_PYTHON]
+            and any(
+                file_path.is_relative_to(source_root) for source_root in source_roots
+            )
+            and not ignored.intersection(file_path.relative_to(project_root).parts)
+        )
 
 
 __all__: list[str] = ["FlextInfraUtilitiesIterationWorkspace"]

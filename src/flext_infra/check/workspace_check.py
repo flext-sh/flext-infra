@@ -6,7 +6,7 @@ import shlex
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, config, m, p, r, s, t, u
+from flext_infra import c, m, p, r, s, t, u
 from flext_infra.check._workspace_check_reports import (
     FlextInfraWorkspaceCheckReportsMixin,
 )
@@ -26,7 +26,11 @@ class FlextInfraWorkspaceChecker(
     _default_reports_dir: Path
 
     def __init__(
-        self, repository_root: Path | None = None, *, workspace: Path | None = None
+        self,
+        repository_root: Path | None = None,
+        *,
+        workspace: Path | None = None,
+        gate_runners: t.MappingKV[str, p.Cli.CommandRunner] | None = None,
     ) -> None:
         """Initialize workspace checker services and paths."""
         resolved_workspace = u.Infra.resolve_repository_root_or_cwd(
@@ -34,7 +38,7 @@ class FlextInfraWorkspaceChecker(
         )
         super().__init__(repository_root=resolved_workspace)
         self._repository_root = self.repository_root
-        self._registry = FlextInfraGateRegistry.default()
+        self._registry = FlextInfraGateRegistry(runners=gate_runners)
         report_dir = u.Cli.resolve_report_dir(
             self._repository_root, c.Infra.PROJECT, c.Infra.VERB_CHECK
         )
@@ -55,37 +59,17 @@ class FlextInfraWorkspaceChecker(
 
     @staticmethod
     def resolve_gates(gates: t.StrSequence) -> p.Result[list[str]]:
-        """Resolve, validate and deduplicate requested gate names."""
+        """Validate exact, unique requested gate names without normalization."""
         resolved: list[str] = []
         for gate in gates:
-            name = gate.strip()
-            if not name:
-                continue
-            if name not in c.Infra.ALLOWED_GATES:
+            if not gate or gate != gate.strip():
+                return r[list[str]].fail(f"ERROR: invalid gate name {gate!r}")
+            if gate not in c.Infra.ALLOWED_GATES:
                 return r[list[str]].fail(f"ERROR: unknown gate '{gate}'")
-            if name not in resolved:
-                resolved.append(name)
+            if gate in resolved:
+                return r[list[str]].fail(f"ERROR: duplicate gate '{gate}'")
+            resolved.append(gate)
         return r[list[str]].ok(list(resolved))
-
-    @staticmethod
-    def apply_ci_gate_rules(gates: t.StrSequence) -> list[str]:
-        """Scope *gates* to the CI ternary owner set (RULING 2)."""
-        ci = config.Infra.codegen.make.ci
-        raw = u.Cli.env_read(ci.variable).unwrap().strip()
-        owned: frozenset[str]
-        if raw == ci.value:
-            owned = frozenset(ci.check_gates)
-        elif raw == ci.local_value:
-            owned = frozenset(ci.local_check_gates)
-        else:
-            return [gate for gate in gates if gate]
-        scoped = [gate for gate in gates if gate and gate in owned]
-        FlextInfraWorkspaceChecker._gate_logger.info(
-            "ci_run_check_gates",
-            gates=scoped,
-            reason=f"{ci.variable}={raw} scopes check gates to its owner set",
-        )
-        return scoped
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -98,34 +82,11 @@ class FlextInfraWorkspaceChecker(
         checker = cls(repository_root=params.workspace_path)
         project_targets_result = cls._resolve_project_targets(params)
         if project_targets_result.failure:
-            return r[bool].fail(
-                project_targets_result.error or "project resolution failed"
-            )
+            return r[bool].from_failure(project_targets_result)
         project_targets = project_targets_result.value
-        requested_gates = [gate for gate in params.gates if gate]
-        gates = cls.apply_ci_gate_rules(params.gates)
+        gates = list(params.gates)
         if not gates:
-            if requested_gates:
-                # A caller that named its gates (``make fix APPLY=Y`` asks for
-                # the fixable set) and whose selection the CI token does not
-                # own ran them in the token's complementary stage instead:
-                # pre-commit (CI=Y) owns markdown/smells fixing, pre-push
-                # (CI=N) owns the whole-program type checkers. The verb is a
-                # documented no-op here, never a failure.
-                FlextInfraWorkspaceChecker._gate_logger.info(
-                    "ci_gate_noop",
-                    gates=requested_gates,
-                    reason=(
-                        "requested gates are owned by the complementary CI "
-                        "stage; nothing to run under this token"
-                    ),
-                )
-                return r[bool].ok(True)
-            return r[bool].fail(
-                "no check gates remain after CI token filtering "
-                f"({config.Infra.codegen.make.ci.variable}="
-                f"{config.Infra.codegen.make.ci.value})"
-            )
+            return r[bool].fail("check requires at least one registered gate")
         gate_ctx = m.Infra.GateContext(
             workspace=params.workspace_path,
             reports_dir=params.reports_dir_path,
@@ -142,7 +103,7 @@ class FlextInfraWorkspaceChecker(
             ctx=gate_ctx,
         )
         if run_result.failure:
-            return r[bool].fail(run_result.error or "check failed")
+            return r[bool].from_failure(run_result)
         failed_projects = [
             project for project in run_result.value if not project.passed
         ]
@@ -168,9 +129,7 @@ class FlextInfraWorkspaceChecker(
             )
         discovered = u.Infra.resolve_projects(params.workspace_path, ())
         if discovered.failure:
-            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].fail(
-                discovered.error or "project discovery failed"
-            )
+            return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(discovered)
         project_targets = tuple(
             m.Infra.CheckProjectTarget(name=project.name, path=project.path)
             for project in discovered.value
@@ -211,16 +170,14 @@ class FlextInfraWorkspaceChecker(
         """Run selected gates for multiple projects."""
         resolved_gates_result = self.resolve_gates(gates)
         if resolved_gates_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                resolved_gates_result.error or "invalid gates"
+            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(
+                resolved_gates_result
             )
         resolved_gates = resolved_gates_result.value
         report_base = reports_dir or self._default_reports_dir
         dir_ensure = u.Cli.ensure_dir(report_base)
         if dir_ensure.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                dir_ensure.error or "failed to create report directory"
-            )
+            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(dir_ensure)
         effective_ctx = ctx or m.Infra.GateContext(
             workspace=self._repository_root, reports_dir=report_base
         )

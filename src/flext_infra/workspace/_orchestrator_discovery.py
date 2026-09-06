@@ -19,9 +19,6 @@ if TYPE_CHECKING:
         @property
         def root(self) -> Path: ...
 
-        @property
-        def project_names(self) -> t.StrSequence | None: ...
-
 
 class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
     """Resolve workspace projects and materialize project-level artifacts."""
@@ -29,8 +26,8 @@ class FlextInfraWorkspaceOrchestratorDiscoveryMixin:
     def _resolved_projects(
         self: _WorkspaceOrchestratorProtocol,
     ) -> p.Result[t.SequenceOf[m.Infra.ProjectInfo]]:
-        """Resolve selected projects using workspace discovery."""
-        return u.Infra.resolve_projects(self.root, self.project_names or ())
+        """Resolve the complete declared project inventory."""
+        return u.Infra.resolve_projects(self.root, ())
 
     @staticmethod
     def _project_target(project: m.Infra.ProjectInfo, *, repository_root: Path) -> str:

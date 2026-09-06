@@ -32,17 +32,17 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         # flext-j47u: configure the inherited runtime once; no settings proxy/property.
         return m.RuntimeBootstrapOptions(settings_type=type(settings))
 
-    repository_root: Annotated[
+    workspace_root: Annotated[
         Path,
         m.BeforeValidator(
-            lambda v: ub.resolve_repository_root_or_cwd(
+            lambda v: ub.resolve_workspace_root_or_cwd(
                 v if isinstance(v, Path) else Path(v)
             )
         ),
     ] = m.Field(
-        default_factory=ub.resolve_repository_root_or_cwd,
+        default_factory=ub.resolve_workspace_root_or_cwd,
         alias="workspace",
-        description="Repository root",
+        description="Workspace root",
     )
     apply_changes: bool = m.Field(
         default=False,
@@ -102,7 +102,7 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     @m.field_validator("output_dir", mode="before")
     @classmethod
     def _normalize_output_dir(cls, value: str | Path | None) -> Path | None:
-        """Preserve relative output dirs so callers can scope them under repository roots."""
+        """Preserve relative output dirs so callers can scope them under workspace roots."""
         if value is None:
             return None
         path: Path = u.Cli.resolve_optional_path(value, default=Path())
@@ -111,8 +111,8 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     @m.computed_field
     @property
     def root(self) -> Path:
-        """Canonical normalized repository root."""
-        return self.repository_root
+        """Canonical normalized workspace root."""
+        return self.workspace_root
 
     @property
     def fail_fast(self) -> bool:

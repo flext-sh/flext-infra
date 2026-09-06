@@ -76,6 +76,15 @@ if TYPE_CHECKING:
         test_update_toc_preserves_single_blank_after_level_one_heading,
         test_update_toc_replaces_existing_block,
     )
+    from .generator_plan_tests import (
+        test_generate_rejects_direct_apply_without_effects,
+        test_plan_files_returns_exact_read_only_docs_plans,
+        test_required_directories_are_unique_parent_first_and_read_only,
+        test_required_directories_match_final_file_plan_targets,
+        test_required_directories_reject_duplicate_targets,
+        test_scope_failure_is_not_normalized_to_empty_aggregate,
+        test_stale_generated_markdown_becomes_delete_plan,
+    )
     from .generator_tests import (
         test_collocated_workspace_project_keeps_root_aggregate_as_single_owner,
         test_configured_api_modules_own_generated_module_pages,
@@ -101,12 +110,12 @@ if TYPE_CHECKING:
         test_fixer_execute_applies_link_and_toc_updates,
         test_fixer_execute_fails_on_unapplied_drift,
         test_generate_fix_cycle_is_byte_identical_on_second_run,
-        test_generator_execute_writes_reports_for_root_and_selected_project,
+        test_generator_plans_root_and_selected_project,
         test_validator_execute_fails_before_generation_and_succeeds_after,
     )
     from .main_entry_tests import TestsDocsCli
     from .main_tests import (
-        test_docs_cli_validate_apply_passes_after_generate_apply,
+        test_docs_cli_generate_apply_rejects_a_second_publication_owner,
         test_docs_cli_validate_fails_before_generation,
     )
     from .render_guides_index_tests import (
@@ -117,7 +126,7 @@ if TYPE_CHECKING:
     from .server_tests import TestsFlextInfraDocServer
     from .shared_iter_tests import TestIterMarkdownFiles
     from .shared_tests import (
-        test_build_scopes_preserves_declared_repository_root_and_projects,
+        test_build_scopes_preserves_declared_workspace_root_and_projects,
         test_build_scopes_preserves_disabled_root_policy,
         test_build_scopes_preserves_discovered_package_name,
         test_build_scopes_returns_root_and_selected_projects,
@@ -191,7 +200,7 @@ __all__: tuple[str, ...] = (
     "test_auditor_main_writes_reports_for_selected_project",
     "test_build_missing_settings_failure_has_empty_site_dir",
     "test_build_returns_root_and_selected_project_reports",
-    "test_build_scopes_preserves_declared_repository_root_and_projects",
+    "test_build_scopes_preserves_declared_workspace_root_and_projects",
     "test_build_scopes_preserves_disabled_root_policy",
     "test_build_scopes_preserves_discovered_package_name",
     "test_build_scopes_returns_root_and_selected_projects",
@@ -209,7 +218,7 @@ __all__: tuple[str, ...] = (
     "test_configured_api_modules_own_generated_module_pages",
     "test_doc_scope_creation",
     "test_doc_scope_requires_name",
-    "test_docs_cli_validate_apply_passes_after_generate_apply",
+    "test_docs_cli_generate_apply_rejects_a_second_publication_owner",
     "test_docs_cli_validate_fails_before_generation",
     "test_docs_has_adr_reference_detects_marker",
     "test_docs_load_required_skills_reads_architecture_config",
@@ -236,6 +245,7 @@ __all__: tuple[str, ...] = (
     "test_generate_dry_run_reports_real_drift",
     "test_generate_fix_cycle_is_byte_identical_on_second_run",
     "test_generate_preserves_declared_export_order_and_is_idempotent",
+    "test_generate_rejects_direct_apply_without_effects",
     "test_generate_report_tracks_written_files",
     "test_generate_returns_reports_for_root_and_selected_project",
     "test_generated_api_reference_accepts_live_public_symbol",
@@ -247,18 +257,24 @@ __all__: tuple[str, ...] = (
     "test_generated_mkdocstrings_directive_preserves_indented_options",
     "test_generated_non_markdown_preserves_exact_content",
     "test_generated_prose_wraps_without_reformatting_directive_blocks",
-    "test_generator_execute_writes_reports_for_root_and_selected_project",
+    "test_generator_plans_root_and_selected_project",
     "test_governed_api_survives_generation_and_curated_paths_are_unowned",
     "test_guides_index_links_only_guides_that_exist",
     "test_guides_index_omits_links_when_no_guide_exists",
     "test_json_write_accepts_pydantic_model",
     "test_json_write_round_trips_dict_payload",
     "test_manual_docs_report_live_symbol_mentions",
+    "test_plan_files_returns_exact_read_only_docs_plans",
     "test_public_contract_resolves_imported_lazy_import_map",
     "test_public_contract_resolves_imported_lazy_public_exports",
     "test_public_contract_resolves_local_tuple_public_exports",
+    "test_required_directories_are_unique_parent_first_and_read_only",
+    "test_required_directories_match_final_file_plan_targets",
+    "test_required_directories_reject_duplicate_targets",
     "test_root_generated_catalog_survives_project_pass_and_required_indexes_validate",
+    "test_scope_failure_is_not_normalized_to_empty_aggregate",
     "test_stale_generated_file_drift_converges_after_apply",
+    "test_stale_generated_markdown_becomes_delete_plan",
     "test_update_toc_preserves_single_blank_after_level_one_heading",
     "test_update_toc_replaces_existing_block",
     "test_validate_report_model_fields",
@@ -344,6 +360,15 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_update_toc_preserves_single_blank_after_level_one_heading",
                 "test_update_toc_replaces_existing_block",
             ),
+            ".generator_plan_tests": (
+                "test_generate_rejects_direct_apply_without_effects",
+                "test_plan_files_returns_exact_read_only_docs_plans",
+                "test_required_directories_are_unique_parent_first_and_read_only",
+                "test_required_directories_match_final_file_plan_targets",
+                "test_required_directories_reject_duplicate_targets",
+                "test_scope_failure_is_not_normalized_to_empty_aggregate",
+                "test_stale_generated_markdown_becomes_delete_plan",
+            ),
             ".generator_tests": (
                 "test_collocated_workspace_project_keeps_root_aggregate_as_single_owner",
                 "test_configured_api_modules_own_generated_module_pages",
@@ -369,12 +394,12 @@ _LAZY_IMPORTS = MappingProxyType(
                 "test_fixer_execute_applies_link_and_toc_updates",
                 "test_fixer_execute_fails_on_unapplied_drift",
                 "test_generate_fix_cycle_is_byte_identical_on_second_run",
-                "test_generator_execute_writes_reports_for_root_and_selected_project",
+                "test_generator_plans_root_and_selected_project",
                 "test_validator_execute_fails_before_generation_and_succeeds_after",
             ),
             ".main_entry_tests": ("TestsDocsCli",),
             ".main_tests": (
-                "test_docs_cli_validate_apply_passes_after_generate_apply",
+                "test_docs_cli_generate_apply_rejects_a_second_publication_owner",
                 "test_docs_cli_validate_fails_before_generation",
             ),
             ".render_guides_index_tests": (
@@ -385,7 +410,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".server_tests": ("TestsFlextInfraDocServer",),
             ".shared_iter_tests": ("TestIterMarkdownFiles",),
             ".shared_tests": (
-                "test_build_scopes_preserves_declared_repository_root_and_projects",
+                "test_build_scopes_preserves_declared_workspace_root_and_projects",
                 "test_build_scopes_preserves_disabled_root_policy",
                 "test_build_scopes_preserves_discovered_package_name",
                 "test_build_scopes_returns_root_and_selected_projects",

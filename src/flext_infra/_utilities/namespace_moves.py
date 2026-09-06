@@ -20,10 +20,6 @@ from flext_infra._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
 from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
 from flext_infra.models import m
-from flext_infra.transformers import _header
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
 from flext_infra.typings import t
 
 
@@ -281,7 +277,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         gates: t.StrSequence | None = None,
     ) -> None:
         """Rewrite compatibility alias violations."""
-        _ = parse_failures
         assignment_grouped: t.MappingKV[Path, t.MutableStrMapping] = defaultdict(dict)
         compat_import_grouped: t.MappingKV[
             Path, t.MutableSequenceOf[m.Infra.CompatibilityAliasViolation]
@@ -322,13 +317,15 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
         if repository_root is None:
             return
         with FlextInfraUtilitiesRopeCore.open_project(repository_root) as rope_project:
-            for file_path, file_violations in project_alias_grouped.items():
-                current_project = file_violations[0].module_name
-                FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_project_alias_imports_in_file(
-                    rope_project=rope_project,
-                    file_path=file_path,
-                    current_project=current_project,
-                )
+            FlextInfraUtilitiesRopeImports.rewrite_foreign_canonical_alias_violations(
+                rope_project,
+                tuple(
+                    violation
+                    for file_violations in project_alias_grouped.values()
+                    for violation in file_violations
+                ),
+                parse_failures,
+            )
             for file_path, file_violations in compat_import_grouped.items():
                 FlextInfraUtilitiesRefactorNamespaceMoves._rewrite_compat_import_aliases_in_file(
                     rope_project=rope_project,
@@ -364,35 +361,6 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
                     gates=gates,
                 ),
             )
-
-    @staticmethod
-    def _rewrite_project_alias_imports_in_file(
-        *, rope_project: t.Infra.RopeProject, file_path: Path, current_project: str
-    ) -> None:
-        """Rewrite ENFORCE-080 imports using the project alias migrator."""
-        resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            rope_project, file_path
-        )
-        if resource is None:
-            return
-        original_source = resource.read()
-        backup_path = file_path.with_suffix(
-            file_path.suffix + c.Infra.SAFE_EXECUTION_BAK_SUFFIX
-        )
-        if not backup_path.exists():
-            backup_path.write_text(original_source, encoding=c.Cli.ENCODING_DEFAULT)
-        transformer = FlextInfraRefactorProjectAliasMigrator(
-            current_project=current_project
-        )
-        updated, changes = transformer.transform(rope_project, resource)
-        if changes:
-            cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(
-                rope_project, file_paths=(file_path,)
-            )
-            if cleanup_result.failure:
-                msg = cleanup_result.error or "rope import cleanup failed"
-                raise RuntimeError(msg)
-        _ = updated
 
     @staticmethod
     def _rewrite_compat_import_aliases_in_file(
@@ -769,7 +737,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
                 names_part
             )
-            if not _header.alias_locally_bound(target_source, bound)
+            if not u.Infra.alias_locally_bound(target_source, bound)
         ]
         if not kept:
             return ""

@@ -41,11 +41,6 @@ _GROUP_OWNERS: Final[dict[str, tuple[str, str, str]]] = {
         "ValidationRoutes",
         "validation_routes",
     ),
-    c.Infra.CLI_GROUP_GITHUB: (
-        "flext_infra.services.cli_routes_validate",
-        "ValidationRoutes",
-        "validation_routes",
-    ),
     c.Infra.CLI_GROUP_MAINTENANCE: (
         "flext_infra.services.cli_routes_validate",
         "ValidationRoutes",

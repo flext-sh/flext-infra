@@ -30,7 +30,9 @@ class TestStubChain:
             repository_root=repository_root,
             selected_projects=projects,
             all_projects=all_projects,
-            runner=u.Tests.DeptryRunner(r.ok(u.Tests.stub_run(stdout=stdout))),
+            runner=u.Tests.DeptryRunner(
+                r.ok(u.Tests.create_command_output(stdout=stdout))
+            ),
         )
 
     @staticmethod

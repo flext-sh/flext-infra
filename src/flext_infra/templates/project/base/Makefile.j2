@@ -14,7 +14,7 @@
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
-{# GEN_INIT_ONLY gates the parse-time bypasses (custom.mk include, REPOSITORY_ROOT
+{# GEN_INIT_ONLY gates the parse-time bypasses (custom.mk include, WORKSPACE_ROOT
    git probe, runtime and topology discovery, uv resolution) that `gen WHAT=init`
    must skip while bootstrapping a repository. It is derived at the very top,
    before the first $(shell) probe: a recipe-level assignment runs far too late
@@ -39,15 +39,15 @@ endif
 endif
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
 PROJECT_NAME := {{ dist }}
 MAKE_PROFILE := {{ make_profile }}
-REPOSITORY_ROOT_REL := {{ repository_root_rel }}
-# === SECTION: workspace declared_repositories (managed) ===
-# Source: config:declared_repositories (list), config:workspace_repositories (list)
+WORKSPACE_ROOT_REL := {{ workspace_root_rel }}
+# === SECTION: workspace subprojects (managed) ===
+# Source: config:workspace_subprojects (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
-DECLARED_REPOSITORIES :={% for declared_repository in declared_repositories %} {{ declared_repository }}{% endfor %}
-MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(DECLARED_REPOSITORIES){% endif %}
+WORKSPACE_SUBPROJECTS :={% for subproject in workspace_subprojects %} {{ subproject }}{% endfor %}
+MANAGED_GITLINKS :={% if make_profile == "workspace" %}$(WORKSPACE_SUBPROJECTS){% endif %}
 WORKSPACE_EDITABLES := $(PROJECT_NAME):.{% for repository in workspace_repositories %} {{ repository.distribution }}:{{ repository.path }}{% endfor %}
 UV_LINK_MODE := {{ uv_link_mode }}
 # End SECTION: project identity
@@ -130,36 +130,24 @@ TRACKED_MISE := $(PROJECT_ROOT)/bin/mise
 endif
 override SETUP_MISE := $(TRACKED_MISE)
 override export FLEXT_PYTEST_TARGET_RAW := tests
-WORKSPACE ?= $(PROJECT_ROOT)
-# === SECTION: REPOSITORY_ROOT isolation (managed) ===
+# === SECTION: WORKSPACE_ROOT isolation (managed) ===
 # Source: computed (rule: derive from current checkout unless caller overrides)
-# Rule: REPOSITORY_ROOT is always derived from the current checkout unless the
+# Rule: WORKSPACE_ROOT is always derived from the current checkout unless the
 # caller passed it on the command line or via an override origin. An inherited
-# environment REPOSITORY_ROOT (e.g. a leaked .envrc export from a foreign checkout)
+# environment WORKSPACE_ROOT (e.g. a leaked .envrc export from a foreign checkout)
 # must never redirect verbs to another working tree. The git queries therefore
 # run inside MAKEFILE_ROOT: run from a foreign CWD they would report THAT
 # checkout's topology and redirect the verb to the wrong tree.
 # `gen WHAT=init` (GEN_INIT_ONLY) must probe NO external tool — the checkout may
 # have no git metadata yet.
 ifeq ($(GEN_INIT_ONLY),Y)
-REPOSITORY_ROOT := $(PROJECT_ROOT)
+WORKSPACE_ROOT := $(PROJECT_ROOT)
 else
-ifeq ($(filter command line override,$(origin REPOSITORY_ROOT)),)
-REPOSITORY_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
+ifeq ($(filter command line override,$(origin WORKSPACE_ROOT)),)
+WORKSPACE_ROOT := $(shell cd "$(MAKEFILE_ROOT)" && root=$$(git rev-parse --show-superproject-working-tree 2>/dev/null); if [ -n "$$root" ]; then printf '%s\n' "$$root"; else git rev-parse --show-toplevel 2>/dev/null || printf '%s\n' "$(MAKEFILE_ROOT)"; fi)
 endif
 endif
-# End SECTION: REPOSITORY_ROOT isolation
-# A verb may select a declared member through PROJECT; the member checkout is
-# resolved from the repository root so one Git worktree owns the complete
-# project matrix (lane lifecycle itself belongs to the city, never to make).
-ifeq ($(filter command line override,$(origin WORKSPACE)),)
-ifneq ($(strip $(PROJECT)),)
-ifneq ($(filter $(PROJECT),$(DECLARED_REPOSITORIES)),)
-override WORKSPACE := $(REPOSITORY_ROOT)/$(PROJECT)
-endif
-endif
-endif
-
+# End SECTION: WORKSPACE_ROOT isolation
 # === SECTION: verb dispatch (managed) ===
 # Source: config:make.verbs[*].whats, config:make.check_gates_allowed,
 #        config:make.check_gates_default
@@ -276,17 +264,17 @@ override VIRTUAL_ENV := $(RUNTIME_VENV)
 override PATH := $(RUNTIME_BIN):$(SANITIZED_CALLER_PATH)
 export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
-{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) _setup_lifecycle") }}
+{{ tool_bootstrap_recipe("_bootstrap_setup_tools", "$(PROJECT_ROOT)", "$(SETUP_MISE)", uv_version, "$(SELF_MAKE) _setup_lifecycle", mise_bootstrap) }}
 
 ifeq ($(MAKE_PROFILE),workspace)
 CODEGEN_SCOPE := all
-ALLOWED_PROJECTS := . $(DECLARED_REPOSITORIES)
+ALLOWED_PROJECTS := . $(WORKSPACE_SUBPROJECTS)
 else
 CODEGEN_SCOPE := self
 ALLOWED_PROJECTS := .
 endif
 
-# Repository-root gate verbs fan out across declared members through the generic
+# Workspace-root gate verbs fan out across declared members through the generic
 # `flext-infra workspace orchestrate` primitive (verb allowlist + CLI group come
 # from the constants SSOT, never hardcoded here). Members and standalone projects
 # run the gate locally. FAIL_FAST forwards the stop-on-first-failure policy.
@@ -306,7 +294,8 @@ SETUP_ENVIRONMENT_RECIPE = set -eu; \
 		fi; \
 		$(UV) sync --frozen --project "$(PROJECT_ROOT)" $(UV_SYNC_FLAGS) --link-mode "$(UV_LINK_MODE)"; \
 	fi; \
-	direnv allow "$(PROJECT_ROOT)"
+	XDG_DATA_HOME="$${SETUP_DIRENV_XDG_DATA_HOME:?missing persistent direnv data home}" \
+		"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow "$(PROJECT_ROOT)"
 
 # A delegated runtime lives in another checkout, so this project has no local
 # environment of its own. Generated tooling still addresses the environment by
@@ -320,12 +309,12 @@ BORROW_RUNTIME_VENV_RECIPE = set -eu; \
 
 WORKSPACE_ORCHESTRATE = $(UV_RUN) python -m flext_infra {{ workspace_cli_group }} orchestrate
 REQUESTED_PROJECTS := $(strip $(if $(PROJECT),$(PROJECT),$(PROJECTS)))
-# A repository root owns no local gate implementation: its verbs fan out to the
-# declared declared_repositories. Selecting the root (PROJECT=.) would make it orchestrate
-# itself forever; map `.` to DECLARED_REPOSITORIES instead of failing closed mid-CI.
-DEFAULT_PROJECTS := $(DECLARED_REPOSITORIES){% if make_profile != "workspace" %} .{% endif %}
+# A workspace root owns no local gate implementation: its verbs fan out to the
+# declared subprojects. Selecting the root (PROJECT=.) would make it orchestrate
+# itself forever; map `.` to WORKSPACE_SUBPROJECTS instead of failing closed mid-CI.
+DEFAULT_PROJECTS := $(WORKSPACE_SUBPROJECTS){% if make_profile != "workspace" %} .{% endif %}
 {% if make_profile == "workspace" %}
-SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(DECLARED_REPOSITORIES),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
+SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(if $(filter .,$(REQUESTED_PROJECTS)),$(WORKSPACE_SUBPROJECTS),$(REQUESTED_PROJECTS)),$(DEFAULT_PROJECTS))
 {% else %}
 SELECTED_PROJECTS := $(if $(strip $(REQUESTED_PROJECTS)),$(REQUESTED_PROJECTS),$(DEFAULT_PROJECTS))
 {% endif %}
@@ -351,7 +340,7 @@ PROJECT_FLEXT_INFRA := if [ ! -x "$(FLEXT_INFRA_PYTHON)" ]; then printf 'ERROR: 
 # surplus and uninstalls them, undoing the root's provisioning and leaving
 # `uv sync --check` permanently divergent. A standalone project owns its venv
 # alone and has no workspace packages to include.
-SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(DECLARED_REPOSITORIES)),1,))
+SHARED_RUNTIME := $(if $(filter-out $(PROJECT_ROOT),$(RUNTIME_ROOT)),1,$(if $(strip $(WORKSPACE_SUBPROJECTS)),1,))
 UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-groups
 
 ifneq ($(strip $(PROJECT)),)
@@ -524,7 +513,6 @@ _builtin_help_usage:
 {% endfor %}{% for verb in extra_verbs %}
 	@printf '  %-10s WHAT=%s{% if verb.apply_guarded or verb.accepts_apply %} APPLY=Y{% endif %}\n' '{{ verb.name }}' '{{ verb.default_what }}';
 {% endfor %}
-	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BEAD' 'tracker item bound to a checkpoint';
 	@printf '  %-10s %s\n' 'BASE' 'integration branch used by checkpoint';
 	@printf '  %-10s %s\n' 'DEPENDENCY' 'deps upgrade: one distribution name (default: every package)';
@@ -766,7 +754,6 @@ _builtin_run_default: _builtin_require_environment
 _builtin_status_diagnostics: _builtin_require_environment
 	@printf 'profile=%s\nproject=%s\nruntime=%s\n' \
 		'$(MAKE_PROFILE)' '$(PROJECT_ROOT)' '$(RUNTIME_ROOT)'
-	@env -u MISE_INSTALL_PATH -u MISE_VERSION "$(SETUP_MISE)" --version
 	@$(UV) --version
 	@$(UV) lock --project "$(PROJECT_ROOT)" --check
 	@if [ -x "$(RUNTIME_PYTHON)" ]; then \
@@ -837,19 +824,12 @@ _builtin_release_publish: _builtin_require_environment
 	$(call _require_apply)
 	@$(PROJECT_FLEXT_INFRA) release run --workspace "$(PROJECT_ROOT)" --phase publish --apply $(if $(filter Y,$(INDEX)),--index)
 
-# Generation has one toolchain owner. Conform acquires the stable lock before
-# planning and journals .mise.toml, both launchers, and mise.lock as one bundle.
-# It preserves the caller's scope and verifies the real consumers at fixed point.
-# Dependency upgrades remain a separate explicit verb because they rewrite lock
-# floors; gen must never run a second pyproject writer over conform's result.
-define _generated_docs
-	@$(PROJECT_FLEXT_INFRA) docs generate --workspace "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/{{ make.docs.reports_dir }}" $(1) $(DOCS_PROJECT_ARGS)
-endef
-
+# Generation has one transaction owner. Conform preserves the caller's scope and
+# journals ordinary, Mise, lazy-init, and documentation phases through one fixed
+# point. Dependency upgrades remain a separate explicit verb because they rewrite
+# lock floors; gen never runs another writer before or after conform's journal.
 _builtin_gen_check: _builtin_require_environment
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode check
-	@$(PROJECT_FLEXT_INFRA) codegen lazy-init --workspace "$(PROJECT_ROOT)" --check
-	$(call _generated_docs,--check)
 
 _builtin_gen_init:
 	$(call _require_apply)
@@ -858,9 +838,6 @@ _builtin_gen_init:
 
 _builtin_gen_all:
 	$(call _require_apply)
-	@: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
-	@$(PROJECT_FLEXT_INFRA) codegen lazy-init --workspace "$(PROJECT_ROOT)" --apply
-	$(call _generated_docs,--apply)
 
 _builtin_gen_apply: _builtin_gen_all

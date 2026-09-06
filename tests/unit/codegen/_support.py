@@ -29,7 +29,6 @@ class CodegenTestSupport:
                 ci_trigger_branches=ci_trigger_branches,
                 system_packages=system_packages,
                 python_version=codegen.toolchain.python_version,
-                dependency_cooldown_days=codegen.toolchain.dependency_cooldown_days,
                 github_actions=codegen.github_actions,
                 make=codegen.make,
                 workspace_repositories=(),

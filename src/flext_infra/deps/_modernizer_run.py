@@ -47,6 +47,8 @@ class FlextInfraPyprojectModernizerRunMixin:
             rewrite_constraints: bool = False,
             locked_versions: t.MappingKV[str, str] | None = None,
             internal_names: t.StrSequence = (),
+            root_modules: t.StrSequence = (),
+            root_packages: t.StrSequence = (),
             declared_python_dirs: t.StrSequence = (),
             analysis_exclusions: t.StrSequence | None = None,
         ) -> t.StrSequence: ...
@@ -200,7 +202,10 @@ class FlextInfraPyprojectModernizerRunMixin:
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
         total = 0
-        for file_path in files:
+        first_drift_reported = False
+        file_count = len(files)
+        for index, file_path in enumerate(files, start=1):
+            u.Cli.progress(index, file_count, str(file_path), c.Infra.VERB_DEPS)
             document_state_result = (
                 r[m.Infra.PyprojectDocumentState].ok(root_state)
                 if file_path.resolve() == root_state.pyproject_path.resolve()
@@ -221,6 +226,18 @@ class FlextInfraPyprojectModernizerRunMixin:
                     locked_versions=locked_versions,
                     internal_names=internal_names,
                 )
+                if changes and not first_drift_reported:
+                    diff_lines = u.Infra.unified_diff_lines(
+                        document_state.original_rendered,
+                        document_state.rendered,
+                        fromfile=f"{file_path}:before",
+                        tofile=f"{file_path}:after",
+                        max_lines=30,
+                    )
+                    u.Cli.info(
+                        "deps: first rendered drift\n" + "".join(diff_lines).rstrip()
+                    )
+                    first_drift_reported = True
             if not changes:
                 continue
             resolved_file_path = file_path.resolve()

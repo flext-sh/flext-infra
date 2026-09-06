@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Self
 
-from flext_core import m
-from flext_core import u
+from flext_core import m, u
 from flext_infra import t
 from flext_infra._constants.release import FlextInfraConstantsRelease as cr
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm

@@ -80,5 +80,61 @@ class FlextInfraConstantsDocs:
     )
     """Match quoted string literals, capturing the content."""
 
+    DOCS_MAKE_COMMAND_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?:\$\s*)?make\s+(?P<verb>[a-z][a-z0-9_-]*)(?P<args>.*)$", re.IGNORECASE
+    )
+    """Match an executable Make command and capture its verb and arguments."""
+    DOCS_SHELL_FENCE_LANGUAGES: Final[frozenset[str]] = frozenset({
+        "",
+        "bash",
+        "console",
+        "fish",
+        "sh",
+        "shell",
+        "zsh",
+    })
+    """Markdown fence languages whose lines are executable shell commands."""
+    DOCS_FORBIDDEN_MAKE_SELECTOR_RE: Final[t.RegexPattern] = re.compile(
+        r"\b(?:PROJECTS?|MATCH|WHAT|FILES?|FIX|CHANGED_ONLY|CHECK_GATES|"
+        r"DOCS_PHASE|VALIDATE_SCOPE)\s*=",
+        re.IGNORECASE,
+    )
+    """Match selectors outside the canonical root Make grammar."""
+    DOCS_APPLY_RE: Final[t.RegexPattern] = re.compile(r"\bAPPLY=Y\b")
+    """Match the sole canonical mutation flag in documented commands."""
+    DOCS_COMMAND_CONTRACT_DIRNAMES: Final[frozenset[str]] = frozenset({
+        "guides",
+        "standards",
+    })
+    """Live documentation trees governed by the command contract."""
+    DOCS_RAW_PYTEST_COMMAND_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
+        r"(?:(?:uv|poetry|pdm)\s+run\s+|"
+        r"python(?:3(?:\.\d+)?)?\s+-m\s+)?pytest(?:\s|$)",
+        re.IGNORECASE,
+    )
+    """Match direct pytest execution that bypasses the root Testmon verb."""
+    DOCS_RAW_TOOL_COMMAND_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*(?:\$\s*)?(?:(?:[A-Za-z_][A-Za-z0-9_]*=\S+)\s+)*"
+        r"(?:ruff|pyrefly|mypy|pyright|mkdocs|uv|poetry|pdm|tox|nox|pre-commit|"
+        r"python(?:3(?:\.\d+)?)?(?:\s+-m|\s+[^\s]+\.py\b))",
+        re.IGNORECASE,
+    )
+    """Match tool and script commands that bypass the root Make dispatcher."""
+    DOCS_TEST_DOUBLE_CODE_RE: Final[t.RegexPattern] = re.compile(
+        r"(?:from\s+unittest(?:\.mock)?\s+import|import\s+unittest\.mock|"
+        r"(?:^|\W)(?:MagicMock|Mock|patch)\s*\(|mock\.patch\s*\(|"
+        r"monkeypatch\.[A-Za-z_]|class\s+(?:Fake|Stub)[A-Za-z0-9_]*|"
+        r"(?:^|\W)(?:fake|stub)_[A-Za-z0-9_]+)",
+        re.IGNORECASE,
+    )
+    """Match test-double construction inside executable Python examples."""
+    DOCS_TEST_DOUBLE_HEADING_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*#{1,6}\s+.*\b(?:mock(?:ing|s)?|fake(?:s)?|stub(?:bing|s)?|"
+        r"patch(?:ing)?)\b",
+        re.IGNORECASE,
+    )
+    """Match headings that introduce test-double guidance."""
+
 
 __all__: list[str] = ["FlextInfraConstantsDocs"]

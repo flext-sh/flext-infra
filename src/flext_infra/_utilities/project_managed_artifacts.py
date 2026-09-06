@@ -76,13 +76,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def _config_directory_identity(cls, config_dir: Path) -> p.Result[tuple[int, ...]]:
-        """Return the directory's state key, or ``()`` when it does not exist.
-
-        A repository legitimately ships no ``config/`` directory, which is an
-        empty declaration set rather than a failure. The empty tuple is
-        unambiguous: a real key always carries the eight ``stat`` fields, and a
-        successful Result can never carry ``None``.
-        """
         try:
             state = config_dir.lstat()
         except FileNotFoundError:
@@ -96,6 +89,16 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 f"project config path is not a physical directory: {config_dir}"
             )
         return r[tuple[int, ...]].ok(cls._directory_state_key(state))
+
+    @staticmethod
+    def empty_snapshot() -> m.Infra.ProjectManagedArtifactsSnapshot:
+        """Return the explicit managed-artifact state for a future scaffold."""
+        return m.Infra.ProjectManagedArtifactsSnapshot(
+            sources=(),
+            resolution=m.Infra.ProjectManagedArtifactsResolution(
+                artifacts=m.Infra.ProjectManagedArtifactsConfig(), mise_tool_sources={}
+            ),
+        )
 
     @classmethod
     def _config_yaml_paths(
@@ -146,7 +149,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 ):
                     continue
                 if selector == tool.selector:
-                    break
+                    return r[bool].fail(
+                        "project Mise selector collides with fleet tool "
+                        f"{selector!r} in {source}; protected tool {owner!r} is "
+                        "owned exclusively by the fleet toolchain"
+                    )
                 return r[bool].fail(
                     "project Mise selector declares an alternate distribution "
                     f"for fleet identity {owner!r}: {selector!r} in "
@@ -192,11 +199,10 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
         cls, source_snapshot: tuple[m.Cli.AtomicFileState, ...]
     ) -> p.Result[m.Infra.ProjectManagedArtifactsResolution]:
         """Parse one caller-owned immutable project YAML snapshot."""
-        empty = m.Infra.ProjectManagedArtifactsResolution(
-            artifacts=m.Infra.ProjectManagedArtifactsConfig(), mise_tool_sources={}
-        )
         if not source_snapshot:
-            return r[m.Infra.ProjectManagedArtifactsResolution].ok(empty)
+            return r[m.Infra.ProjectManagedArtifactsResolution].ok(
+                cls.empty_snapshot().resolution
+            )
         ruff_ignores: dict[str, set[str]] = {}
         mise_tools: dict[str, m.Infra.ProjectMiseTool] = {}
         mise_sources: dict[str, Path] = {}

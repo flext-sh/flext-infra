@@ -16,8 +16,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -62,17 +60,15 @@ class FlextInfraLooseTestFunctionDetector:
         rules = cls._rules()
         if not cls._is_test_file(ctx, rules):
             return []
-        res = FlextInfraUtilitiesRopeCore.get_resource_from_path(
-            ctx.rope_project, ctx.file_path
-        )
+        res = u.Infra.get_resource_from_path(ctx.rope_project, ctx.file_path)
         if res is None:
             return []
         try:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(ctx.rope_project, res)
+            pymodule = u.Infra.get_pymodule(ctx.rope_project, res)
         except u.Infra.rope_runtime_errors():
             return []
         violations: list[m.Infra.LooseTestFunctionViolation] = []
-        for definition in FlextInfraUtilitiesRopeAnalysis.scope_definitions(pymodule):
+        for definition in u.Infra.scope_definitions(pymodule):
             if definition.kind != c.Infra.RopeScopeKind.FUNCTION:
                 continue
             if not definition.is_module_level:

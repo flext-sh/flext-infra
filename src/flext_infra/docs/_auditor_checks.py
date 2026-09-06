@@ -57,6 +57,7 @@ class FlextInfraDocAuditorChecksMixin:
             ("stale-symbols", u.Infra.docs_stale_symbol_issues),
             ("scope-boundary", u.Infra.docs_scope_boundary_issues),
             ("generated-ownership", u.Infra.docs_generated_ownership_issues),
+            ("command-contract", u.Infra.docs_command_contract_issues),
             ("docstrings", u.Infra.docs_public_docstring_issues),
             ("python-codeblocks", u.Infra.docs_python_codeblock_issues),
         )

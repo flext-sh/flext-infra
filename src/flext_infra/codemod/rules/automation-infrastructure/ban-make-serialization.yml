@@ -3,10 +3,6 @@ language: python
 severity: error
 files:
   - "**/*.py"
-ignores:
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/node_modules/**"
 message: >-
   Make serialization and lock lifecycle ownership is retired. Public Make verbs
   dispatch directly. Do not add serialization locks, serialized targets, Make

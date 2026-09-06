@@ -125,7 +125,7 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     message=match.group("msg"),
                 )
             )
-        if result.exit_code != 0 and not issues:
+        if not u.Cli.process_succeeded(result.outcome) and not issues:
             detail = (result.stderr or result.stdout).strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -133,11 +133,11 @@ class FlextInfraMarkdownGate(FlextInfraGate):
                     line=1,
                     column=1,
                     code="TOOL_ERROR",
-                    message=f"rumdl exited with code {result.exit_code}: {detail}",
+                    message=f"rumdl exited with code {result.outcome.raw_return_code}: {detail}",
                     severity="ERROR",
                 )
             )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraMarkdownGate"]

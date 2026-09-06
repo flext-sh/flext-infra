@@ -32,14 +32,14 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
         """Create a detached worktree at the source repository HEAD."""
         ensure_parent = u.Cli.ensure_dir(worktree_root.parent)
         if ensure_parent.failure:
-            return r[str].fail(
-                ensure_parent.error or "failed to create worktree parent"
-            )
+            return r[str].from_failure(ensure_parent)
         if worktree_root.exists():
             try:
                 worktree_root.rmdir()
             except OSError as exc:
-                return r[str].fail(f"worktree target is not empty: {exc}")
+                return r[str].fail(
+                    f"worktree target is not empty: {exc}", exception=exc
+                )
         head_result = cls._git_head_oid(source_root)
         if head_result.failure:
             return head_result
@@ -60,9 +60,9 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 head_result.value,
             ])
         except GitCommandError as exc:
-            return r[str].fail(str(exc))
+            return r[str].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[str].fail(f"failed to add detached worktree: {exc}")
+            return r[str].fail(f"failed to add detached worktree: {exc}", exception=exc)
         return head_result
 
     @staticmethod
@@ -79,9 +79,9 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
             repo = cls._repo(source_root)
             untracked = repo.git.ls_files("--others", "--exclude-standard", "-z")
         except GitCommandError as exc:
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"failed to list untracked files: {exc}")
+            return r[bool].fail(f"failed to list untracked files: {exc}", exception=exc)
         for raw_path in untracked.split("\0"):
             if not raw_path:
                 continue
@@ -94,9 +94,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
             destination_path = worktree_root / relative_path
             ensure_parent = u.Cli.ensure_dir(destination_path.parent)
             if ensure_parent.failure:
-                return r[bool].fail(
-                    ensure_parent.error or f"failed to create {destination_path.parent}"
-                )
+                return r[bool].from_failure(ensure_parent)
             if source_path.is_symlink():
                 try:
                     destination_path.symlink_to(source_path.readlink())
@@ -107,9 +105,7 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 continue
             copy_result = u.Cli.files_copy(source_path, destination_path)
             if copy_result.failure:
-                return r[bool].fail(
-                    copy_result.error or f"failed to copy untracked {relative_path}"
-                )
+                return r[bool].from_failure(copy_result)
         return r[bool].ok(True)
 
     @classmethod
@@ -128,9 +124,9 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 "--binary", c.Infra.GIT_HEAD, "--", ".", *pathspecs
             ).encode(c.Cli.ENCODING_DEFAULT)
         except GitCommandError as exc:
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[bool].fail(f"failed to capture dirty patch: {exc}")
+            return r[bool].fail(f"failed to capture dirty patch: {exc}", exception=exc)
         if patch_bytes:
             # git apply rejects a patch whose final line lacks the terminating
             # newline ("corrupt patch"); `git diff --binary` can emit exactly
@@ -142,9 +138,9 @@ class FlextInfraUtilitiesGitWorktreeMaterializationMixin(
                 with git_stdin(patch_bytes) as istream:
                     worktree_repo.git.apply("--binary", "-", istream=istream)
             except GitCommandError as exc:
-                return r[bool].fail(str(exc))
+                return r[bool].fail(str(exc), exception=exc)
             except (OSError, ValueError) as exc:
-                return r[bool].fail(f"dirty patch did not apply: {exc}")
+                return r[bool].fail(f"dirty patch did not apply: {exc}", exception=exc)
         return cls._git_copy_untracked(source_root, worktree_root, tuple(excluded))
 
 
