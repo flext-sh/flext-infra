@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,60 @@ if TYPE_CHECKING:
 
 class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
     """Plan class nesting from semantic module ownership instead of record lists."""
+
+    @staticmethod
+    def _inheritance_bound_to_owner(source: str, owner_name: str) -> frozenset[str]:
+        """Return top-level classes an owner cannot contain.
+
+        Nesting is a definition-time move, so it fails in both directions of an
+        inheritance edge. A class that inherits from the owner cannot live in
+        the owner's body, because a class body cannot reference the class being
+        defined around it. An owner that inherits from the class cannot contain
+        it either, because the owner's base list is evaluated before its body
+        exists. Either move produces a NameError at import, so both are excluded
+        from the plan and stay at module level.
+        """
+        module = ast.parse(source)
+        classes = {
+            node.name: node
+            for node in module.body
+            if isinstance(node, ast.ClassDef)
+        }
+
+        def base_names(node: ast.ClassDef) -> frozenset[str]:
+            names: set[str] = set()
+            for base in node.bases:
+                current: ast.expr = base
+                while isinstance(current, ast.Attribute):
+                    current = current.value
+                if isinstance(current, ast.Name):
+                    names.add(current.id)
+            return frozenset(names)
+
+        owner = classes.get(owner_name)
+        bound: set[str] = set()
+        if owner is not None:
+            pending = list(base_names(owner))
+            while pending:
+                name = pending.pop()
+                if name in bound or name not in classes:
+                    continue
+                bound.add(name)
+                pending.extend(base_names(classes[name]))
+        for name, node in classes.items():
+            ancestry = list(base_names(node))
+            seen: set[str] = set()
+            while ancestry:
+                candidate = ancestry.pop()
+                if candidate in seen:
+                    continue
+                seen.add(candidate)
+                if candidate == owner_name:
+                    bound.add(name)
+                    break
+                if candidate in classes:
+                    ancestry.extend(base_names(classes[candidate]))
+        return frozenset(bound)
 
     @staticmethod
     def class_nesting_plan(
@@ -57,6 +112,9 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                 f"for {convention.module_name}; discovered: {class_names}"
             )
 
+        bound = FlextInfraUtilitiesClassNesting._inheritance_bound_to_owner(
+            resolved_file.read_text(encoding=c.Cli.ENCODING_DEFAULT), target_namespace
+        )
         relative_file = resolved_file.relative_to(
             rope_workspace.repository_root.resolve()
         ).as_posix()
@@ -74,7 +132,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                     rewrite_scope=c.Infra.RK_FILE,
                 )
                 for item in top_level_classes
-                if item.name != target_namespace
+                if item.name != target_namespace and item.name not in bound
             )
         )
 

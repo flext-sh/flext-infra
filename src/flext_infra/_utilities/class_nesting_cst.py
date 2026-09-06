@@ -77,7 +77,7 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
                 and isinstance(existing[0].body[0], cst.Pass)
             ):
                 existing = ()
-            body = owner.body.with_changes(body=(*existing, *nested))
+            body = owner.body.with_changes(body=(*nested, *existing))
         elif isinstance(owner.body, cst.SimpleStatementSuite):
             # A simple suite can only hold small statements; narrow before
             # promoting the remaining ones into an IndentedBlock line.
@@ -89,7 +89,7 @@ class FlextInfraUtilitiesClassNestingCst(FlextInfraUtilitiesClassNestingReferenc
             existing_lines = (
                 (cst.SimpleStatementLine(body=statements),) if statements else ()
             )
-            body = cst.IndentedBlock(body=(*existing_lines, *nested))
+            body = cst.IndentedBlock(body=(*nested, *existing_lines))
         else:
             msg = (
                 f"unsupported class body for {owner_name}: {type(owner.body).__name__}"
