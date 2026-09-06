@@ -77,7 +77,7 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     @classmethod
     def _config_directory_identity(
         cls, config_dir: Path
-    ) -> p.Result[tuple[int, ...] | None]:
+    ) -> p.Result[tuple[int, ...]]:
         """Return the directory's state key, or ``()`` when it does not exist.
 
         A repository legitimately ships no ``config/`` directory, which is an
