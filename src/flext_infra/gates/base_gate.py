@@ -319,13 +319,16 @@ class FlextInfraGate:
             cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
         )
         if result.failure:
-            return m.Cli.CommandOutput(
-                stdout="",
-                stderr=result.error or "command execution failed",
-                outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=1, timed_out=False, forwarded_signal=None
-                ),
-            )
+            # A failed Result here means the tool never ran -- it could not be
+            # spawned, or the runner itself failed. Synthesizing a
+            # CommandOutput with an invented raw_return_code=1 made that
+            # indistinguishable from the tool running and reporting findings,
+            # so a missing binary was reported as a code violation against
+            # `<scc>` and an operator chased a finding in a file that was
+            # never scanned. A nonzero exit from a tool that did run still
+            # reaches the parser as a real outcome; this path did not run.
+            msg = result.error or "command execution failed"
+            raise RuntimeError(msg)
         return result.value
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:

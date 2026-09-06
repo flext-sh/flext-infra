@@ -122,6 +122,17 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return 0 if materialized.success else 1
 
     @staticmethod
+    def plan_lazy_init(workspace_root: Path) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Return the lazy-init planning receipt WITHOUT unwrapping it.
+
+        Refusing to plan is a first-class planning outcome — ambiguous export
+        ownership stops the phase before a single file plan is built. A helper
+        that unwraps turns that refusal into an exception and makes the
+        pre-effect contract unobservable through the public surface.
+        """
+        return FlextInfraCodegenLazyInit(repository_root=workspace_root).plan_files()
+
+    @staticmethod
     def materialize_lazy_init(service: FlextInfraCodegenLazyInit) -> p.Result[bool]:
         """Publish one service plan through canonical guarded file primitives."""
         planned = service.plan_files()

@@ -138,7 +138,10 @@ class FlextInfraRefactorTypingUnifier(
                     continue
                 annotations.append(node.annotation)
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-                annotations.append(node.returns)
+                returns = node.returns
+                if returns is not None and self._narrows_a_return(source, returns):
+                    continue
+                annotations.append(returns)
             for annotation in annotations:
                 if annotation is None:
                     continue
@@ -158,6 +161,32 @@ class FlextInfraRefactorTypingUnifier(
                 self._record_change(change)
             rewritten = f"{rewritten[:start]}{replacement}{rewritten[end:]}"
         return rewritten
+
+    def _narrows_a_return(self, source: str, returns: ast.expr) -> bool:
+        """Return whether rewriting this return type would narrow the contract.
+
+        Widening a parameter is free: a function that accepts Mapping accepts
+        strictly more callers than one that demands dict. A return type is the
+        opposite -- it is what the function promises, and handing back a
+        read-only view takes capability away from every existing caller, which
+        no mechanical fixer is entitled to decide. The tuple aliases are exact
+        synonyms and stay, so a return still gains Pair, Triple and
+        VariadicTuple; a return carrying a mutable container keeps it and its
+        namespace finding, which is the signal that a person should choose the
+        contract.
+        """
+        end_lineno = returns.end_lineno
+        end_col = returns.end_col_offset
+        if end_lineno is None or end_col is None:
+            return True
+        text = source[
+            self._offset(source, returns.lineno, returns.col_offset) : self._offset(
+                source, end_lineno, end_col
+            )
+        ]
+        return any(
+            prefix in text for prefix in ("dict[", "Dict[", "list[", "List[")
+        )
 
     @staticmethod
     def _mutated_names(module: ast.Module) -> frozenset[str]:
@@ -184,26 +213,49 @@ class FlextInfraRefactorTypingUnifier(
         for node in ast.walk(module):
             if isinstance(node, ast.Assign):
                 for target in node.targets:
-                    if isinstance(target, ast.Subscript) and isinstance(
-                        target.value, ast.Name
-                    ):
-                        names.add(target.value.id)
-            elif isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
-                names.add(node.target.id)
+                    if isinstance(target, ast.Subscript):
+                        names.update(
+                            FlextInfraRefactorTypingUnifier._mutated_root(target.value)
+                        )
+            elif isinstance(node, ast.AugAssign):
+                names.update(
+                    FlextInfraRefactorTypingUnifier._mutated_root(node.target)
+                )
             elif isinstance(node, ast.Delete):
                 for target in node.targets:
-                    if isinstance(target, ast.Subscript) and isinstance(
-                        target.value, ast.Name
-                    ):
-                        names.add(target.value.id)
+                    if isinstance(target, ast.Subscript):
+                        names.update(
+                            FlextInfraRefactorTypingUnifier._mutated_root(target.value)
+                        )
             elif (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
                 and node.func.attr in mutating_methods
-                and isinstance(node.func.value, ast.Name)
             ):
-                names.add(node.func.value.id)
+                names.update(
+                    FlextInfraRefactorTypingUnifier._mutated_root(node.func.value)
+                )
         return frozenset(names)
+
+    @staticmethod
+    def _mutated_root(node: ast.expr) -> frozenset[str]:
+        """Return the declared name a mutation target refers to, if any.
+
+        A mutated value is not always reached through a bare local name. A
+        class-level cache is written as ``Owner._CACHE[key] = value`` or
+        ``self._cache.append(item)``, whose target is an attribute rather than
+        a name. Matching only ``ast.Name`` left those declarations looking
+        read-only, so their ``dict`` annotations were generalized to the
+        immutable ``Mapping`` alias and every write site became a type error --
+        the exact regression this detector exists to prevent. The annotation
+        being considered is declared as a plain name inside its class body, so
+        the attribute's final segment is the name to match.
+        """
+        if isinstance(node, ast.Name):
+            return frozenset({node.id})
+        if isinstance(node, ast.Attribute):
+            return frozenset({node.attr})
+        return frozenset()
 
     @staticmethod
     def _offset(source: str, lineno: int, col: int) -> int:
