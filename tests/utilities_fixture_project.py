@@ -98,7 +98,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             ),
             homepage=homepage,
             documentation=homepage,
-            workspace_root_rel=".",
+            repository_root_rel=".",
             year=2026,
         )
 

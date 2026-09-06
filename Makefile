@@ -19,10 +19,10 @@ endif
 endif
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:repository_root_rel / config:uv_link_mode
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := standalone
-WORKSPACE_ROOT_REL := .
+REPOSITORY_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.

@@ -1969,7 +1969,7 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr, m.Field(description="Relative workspace root path")
         ]
         workspace_subprojects: Annotated[
@@ -2205,7 +2205,7 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Declared relative path to the workspace root"),
         ]
@@ -2289,7 +2289,7 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
             m.Field(description="Relative path to the declared workspace root"),
         ]

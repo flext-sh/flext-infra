@@ -1957,10 +1957,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return source.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")
 
     @staticmethod
-    def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
+    def _repository_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
         if workspace.project is not None:
-            project_root_rel: str = workspace.project.workspace_root_rel
+            project_root_rel: str = workspace.project.repository_root_rel
             return project_root_rel
         return "."
 
@@ -2208,7 +2208,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                    repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                         workspace
                     ),
                     workspace_subprojects=tuple(
@@ -2325,7 +2325,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ruff_per_file_ignores={},
                 make_profile=profile,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
+                repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
