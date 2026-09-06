@@ -33,7 +33,11 @@ class TestsFlextInfraFacadeEnvironmentSync:
     def test_sync_creates_environment_files_from_ssot_templates(
         self, tmp_path: Path
     ) -> None:
-        """A Python workspace gains canonical .envrc and .mise.toml."""
+        """A Python workspace gains the canonical .envrc this service owns.
+
+        ``.mise.toml`` is projected by ``codegen conform``, not by the workspace
+        environment service; its contract is covered at that owner.
+        """
         workspace = tmp_path / "workspace"
         _write_pyproject(workspace)
 
@@ -44,7 +48,6 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.ok(result)
         tm.that(result.value.changed, eq=True)
         envrc = (workspace / ".envrc").read_text(encoding="utf-8")
-        mise = (workspace / ".mise.toml").read_text(encoding="utf-8")
         tm.that("strict_env" in envrc, eq=True)
         tm.that("DIRENV_DIR" in envrc, eq=False)
         tm.that('PROJECT_ROOT="$(find_up pyproject.toml)"' in envrc, eq=True)
@@ -52,7 +55,6 @@ class TestsFlextInfraFacadeEnvironmentSync:
         tm.that('PROJECT_SCRATCH="${PROJECT_ROOT}/.test-tmp"' in envrc, eq=True)
         tm.that('export TMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
         tm.that('export GOTMPDIR="${PROJECT_SCRATCH}"' in envrc, eq=True)
-        tm.that('python = "3.13"' in mise, eq=True)
 
     def test_sync_preserves_custom_envrc_without_force(self, tmp_path: Path) -> None:
         """Custom (non-generated) .envrc content is never clobbered."""
@@ -92,114 +94,6 @@ class TestsFlextInfraFacadeEnvironmentSync:
                 marker in content for marker in c.Infra.WORKSPACE_ENV_GENERATED_MARKERS
             ),
             eq=True,
-        )
-
-    def test_sync_merges_custom_mise_tools_and_prunes_forbidden(
-        self, tmp_path: Path
-    ) -> None:
-        """Custom .mise.toml keeps user tools, gains pins, loses linters."""
-        workspace = tmp_path / "workspace"
-        _write_pyproject(workspace)
-        mise = workspace / ".mise.toml"
-        _ = mise.write_text(
-            '[tools]\nnode = "22"\npython = "3.12"\nmypy = "1.20.2"\nruff = "0.9.0"\n',
-            encoding="utf-8",
-        )
-
-        result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
-        )
-
-        tm.ok(result)
-        merged = mise.read_text(encoding="utf-8")
-        tm.that('node = "22"' in merged, eq=True)
-        tm.that('python = "3.13"' in merged, eq=True)
-        tm.that("mypy" in merged, eq=False)
-        tm.that("ruff" in merged, eq=False)
-
-    def test_sync_renders_mise_python_from_pyproject(self, tmp_path: Path) -> None:
-        """The workspace requires-python floor overrides the SSOT python pin."""
-        workspace = tmp_path / "workspace"
-        _write_pyproject(workspace, requires_python=">=3.14")
-
-        result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
-        )
-
-        tm.ok(result)
-        rendered = (workspace / ".mise.toml").read_text(encoding="utf-8")
-        tm.that('python = "3.14"' in rendered, eq=True)
-
-    def test_sync_composes_project_mise_tools_from_yaml(self, tmp_path: Path) -> None:
-        """A project extends the generated tool table from its own YAML."""
-        workspace = tmp_path / "workspace"
-        _write_pyproject(workspace)
-        config_dir = workspace / "config"
-        config_dir.mkdir()
-        (config_dir / "tooling.yaml").write_text(
-            "ManagedArtifacts:\n"
-            "  Mise:\n"
-            "    tools:\n"
-            "      node:\n"
-            '        version: "26"\n'
-            "      docker-compose:\n"
-            '        version: "5.5"\n',
-            encoding="utf-8",
-        )
-
-        result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
-        )
-
-        tm.ok(result)
-        tools = tomllib.loads((workspace / ".mise.toml").read_text(encoding="utf-8"))[
-            "tools"
-        ]
-        tm.that(tools["node"], eq="26")
-        tm.that(tools["docker-compose"], eq="5.5")
-
-    def test_sync_rejects_duplicate_project_mise_selectors(
-        self, tmp_path: Path
-    ) -> None:
-        """Two YAML owners cannot silently select the same local tool."""
-        workspace = tmp_path / "workspace"
-        _write_pyproject(workspace)
-        config_dir = workspace / "config"
-        config_dir.mkdir()
-        for filename, version in (("one.yaml", "20"), ("two.yaml", "22")):
-            (config_dir / filename).write_text(
-                f'ManagedArtifacts:\n  Mise:\n    tools:\n      node:\n        version: "{version}"\n',
-                encoding="utf-8",
-            )
-
-        result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
-        )
-
-        tm.that(result.failure, eq=True)
-        tm.that(result.error or "", has=["node", "one.yaml", "two.yaml"])
-
-    def test_sync_rejects_project_collision_with_fleet_mise_tool(
-        self, tmp_path: Path
-    ) -> None:
-        """A project tool may extend the fleet table but never override it."""
-        workspace = tmp_path / "workspace"
-        _write_pyproject(workspace)
-        config_dir = workspace / "config"
-        config_dir.mkdir()
-        (config_dir / "tooling.yaml").write_text(
-            'ManagedArtifacts:\n  Mise:\n    tools:\n      python:\n        version: "3.14"\n',
-            encoding="utf-8",
-        )
-
-        result = infra.sync_environment_files(
-            m.Infra.WorkspaceEnvironmentSyncRequest(workspace_root=workspace)
-        )
-
-        tm.that(result.failure, eq=True)
-        tm.that(
-            result.error or "",
-            has=["python", "global .mise.toml template", "tooling.yaml"],
         )
 
     def test_sync_removes_generated_files_without_pyproject(

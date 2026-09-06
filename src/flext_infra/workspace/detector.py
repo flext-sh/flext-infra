@@ -756,19 +756,11 @@ class FlextInfraWorkspaceDetector(
                 root=resolved_root,
                 beads=workspace_spec.beads,
                 make_profile=make_profile,
-                beads_enabled=(
-                    make_profile is c.Infra.MakeProfile.WORKSPACE
-                    or (
-                        make_profile is c.Infra.MakeProfile.STANDALONE
-                        and overlay.beads_enabled
-                    )
-                ),
                 canonical_project_name=canonical_project_name,
                 baseline_branch=u.Infra.resolve_integration_branch(
                     workspace_spec, provider
                 ),
                 ci_enabled=overlay.ci_enabled,
-                ci_matrix_auto_run=overlay.ci_matrix_auto_run,
                 external_dependency_paths=workspace_spec.external_dependency_paths,
                 technical_branch_patterns=(
                     config.Infra.codegen.branch_policy.technical_branch_patterns

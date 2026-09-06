@@ -19,7 +19,17 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
     def snapshot_config_sources(
         cls, project_dir: Path
     ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-        """Capture one stable, physical, direct ``config/*.yaml`` file set."""
+        """Capture one stable, physical, direct ``config/*.yaml`` file set.
+
+        A project root that does not exist yet declares no managed artifacts, so
+        it snapshots empty — the same answer ``_config_directory_identity``
+        already gives for an absent ``config/`` directory. ``codegen conform``
+        plans a brand-new project before materializing its tree, and that plan
+        must not fail on the absence it is about to fix. Every other inspection
+        failure (permission, non-directory, reparse point) still fails loud.
+        """
+        if not project_dir.exists():
+            return r[tuple[m.Cli.AtomicFileState, ...]].ok(())
         project_identity = cls._required_directory_identity(
             project_dir, purpose="project root"
         )
