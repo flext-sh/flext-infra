@@ -9,12 +9,13 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_cli import u
+from flext_cli import u as cli_u
 from flext_infra._utilities._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch
 from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.compatibility_aliases import (
     FlextInfraUtilitiesCompatibilityAliases,
 )
@@ -93,11 +94,7 @@ from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycl
 from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 
 
-from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-
-
-class FlextInfraUtilities(u):
+class FlextInfraUtilities(cli_u):
     """Utility namespace for flext-infra; extends FlextUtilities.
 
     Usage::

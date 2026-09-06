@@ -46,21 +46,24 @@ def _repository(
 
 
 def _workspace() -> m.Infra.WorkspaceSpec:
-    return m.Infra.WorkspaceSpec(beads=tu.Tests.beads_project("flext"),
-    name="workspace",
-    repository=_repository(
-        "workspace",
-        role=_ROLE.WORKSPACE,
-        path=".",
-        checkout=c.Infra.CheckoutKind.ROOT,
-    ), subprojects=(
-        _repository(
-            "flext-core",
-            role=_ROLE.STANDALONE,
-            path="flext-core",
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
+    return m.Infra.WorkspaceSpec(
+        beads=tu.Tests.beads_project("flext"),
+        name="workspace",
+        repository=_repository(
+            "workspace",
+            role=_ROLE.WORKSPACE,
+            path=".",
+            checkout=c.Infra.CheckoutKind.ROOT,
         ),
-    ))
+        subprojects=(
+            _repository(
+                "flext-core",
+                role=_ROLE.STANDALONE,
+                path="flext-core",
+                checkout=c.Infra.CheckoutKind.SUBMODULE,
+            ),
+        ),
+    )
 
 
 def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:

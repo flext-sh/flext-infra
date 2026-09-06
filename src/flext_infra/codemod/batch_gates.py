@@ -51,7 +51,11 @@ class FlextInfraModGateEngine:
                 prefix="mod-rule-fixtures-", dir=config_root.parent
             ) as temp_dir:
                 temp_root = Path(temp_dir) / config_root.name
-                shutil.copytree(config_root, temp_root)
+                shutil.copytree(
+                    config_root,
+                    temp_root,
+                    ignore=shutil.ignore_patterns(c.Infra.CODEMOD_EPHEMERAL_DIRNAME),
+                )
                 split_rules = cls._materialize_split_rule_files(
                     config_root=config_root,
                     temp_root=temp_root,
@@ -145,7 +149,9 @@ class FlextInfraModGateEngine:
             if not temp_path.is_file():
                 continue
             relative = temp_path.relative_to(temp_root)
-            if relative in split_temp_paths:
+            if relative in split_temp_paths or c.Infra.CODEMOD_EPHEMERAL_DIRNAME in (
+                relative.parts
+            ):
                 continue
             source_path = config_root / relative
             if source_path.is_file():

@@ -32,10 +32,7 @@ class FlextInfraUtilitiesDependencies:
 
     @staticmethod
     def update_mise_lock(
-        project_root: Path,
-        *,
-        platforms: t.StrSequence,
-        staging_parent: Path,
+        project_root: Path, *, platforms: t.StrSequence, staging_parent: Path
     ) -> p.Result[bool]:
         """Generate a fresh native Mise lock and publish it atomically."""
         launcher = project_root / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
@@ -235,7 +232,9 @@ class FlextInfraUtilitiesDependencies:
         return tuple(ordered)
 
     @staticmethod
-    def dependency_waves(edges: Mapping[str, t.StrSequence]) -> t.SequenceOf[t.StrSequence]:
+    def dependency_waves(
+        edges: Mapping[str, t.StrSequence],
+    ) -> t.SequenceOf[t.StrSequence]:
         """Split a closed named dependency graph into dependency-first waves.
 
         Wave ``n`` contains only names whose dependencies all live in earlier
@@ -243,13 +242,15 @@ class FlextInfraUtilitiesDependencies:
         waves stays strict. The graph is closed: every referenced name must be
         a key of ``edges``, and a cycle fails loudly.
         """
-        unknown = sorted(
-            {dependency for deps in edges.values() for dependency in deps if dependency not in edges}
-        )
+        unknown = sorted({
+            dependency
+            for deps in edges.values()
+            for dependency in deps
+            if dependency not in edges
+        })
         if unknown:
-            msg = (
-                "dependency graph references names outside the graph: "
-                + ", ".join(unknown)
+            msg = "dependency graph references names outside the graph: " + ", ".join(
+                unknown
             )
             raise ValueError(msg)
         pending = {name: set(deps) for name, deps in edges.items()}
@@ -261,7 +262,9 @@ class FlextInfraUtilitiesDependencies:
                 raise ValueError(msg)
             waves.append(tuple(sorted(ready)))
             pending = {
-                name: deps - ready for name, deps in pending.items() if name not in ready
+                name: deps - ready
+                for name, deps in pending.items()
+                if name not in ready
             }
         return tuple(waves)
 

@@ -11,7 +11,8 @@ from pathlib import Path
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
-from flext_infra import c, m, p, r, t, u
+from flext_cli import p, r, u
+from flext_infra import c, m, t
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 
 
@@ -192,7 +193,7 @@ class FlextInfraUtilitiesCodemodRules:
             for name in selected
         }
         try:
-            ordered = u.Infra.dependency_order(
+            ordered = FlextInfraUtilitiesDependencies.dependency_order(
                 tuple(selected), dependencies=lambda name: edges.get(name, ())
             )
         except ValueError as exc:

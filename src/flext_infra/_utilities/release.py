@@ -314,7 +314,9 @@ class FlextInfraUtilitiesRelease:
             waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
         except ValueError as exc:
             return r[t.SequenceOf[t.StrSequence]].fail(
-                str(exc).replace("cyclic dependency graph", "release dependency cycle", 1)
+                str(exc).replace(
+                    "cyclic dependency graph", "release dependency cycle", 1
+                )
             )
         return r[t.SequenceOf[t.StrSequence]].ok(waves)
 

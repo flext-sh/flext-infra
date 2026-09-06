@@ -64,10 +64,13 @@ class TestsCodegenMakeEnvironment:
             if local_infra
             else ()
         )
-        workspace = m.Infra.WorkspaceSpec(name="fixture-project",
-        beads=test_u.Tests.beads_project("fixture-project"),
-        repository=repository,
-        project=test_u.Tests.project_spec("fixture-project"), subprojects=local_subprojects)
+        workspace = m.Infra.WorkspaceSpec(
+            name="fixture-project",
+            beads=test_u.Tests.beads_project("fixture-project"),
+            repository=repository,
+            project=test_u.Tests.project_spec("fixture-project"),
+            subprojects=local_subprojects,
+        )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
             scope=c.Infra.CodegenConformScope.SELF,

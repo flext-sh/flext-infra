@@ -529,9 +529,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(with_docs)
         published = transaction.commit_locked(
             with_docs.value,
-            lambda: self._validate_managed_fixed_point(
-                request, with_docs.value, transaction, lazy_analysis.value
-            ),
+            lambda: self._validate_managed_fixed_point(request, with_docs.value),
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
@@ -616,8 +614,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
-        transaction: FlextInfraCodegenTransaction,
-        lazy_analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
         """Replan conform against live bytes before the journal can commit."""
         u.Cli.info("stage=verify-fixed-point")
