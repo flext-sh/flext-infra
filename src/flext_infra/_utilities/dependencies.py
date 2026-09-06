@@ -234,6 +234,37 @@ class FlextInfraUtilitiesDependencies:
             visit(root)
         return tuple(ordered)
 
+    @staticmethod
+    def dependency_waves(edges: Mapping[str, t.StrSequence]) -> t.SequenceOf[t.StrSequence]:
+        """Split a closed named dependency graph into dependency-first waves.
+
+        Wave ``n`` contains only names whose dependencies all live in earlier
+        waves, so each wave may proceed in parallel while the sequence between
+        waves stays strict. The graph is closed: every referenced name must be
+        a key of ``edges``, and a cycle fails loudly.
+        """
+        unknown = sorted(
+            {dependency for deps in edges.values() for dependency in deps if dependency not in edges}
+        )
+        if unknown:
+            msg = (
+                "dependency graph references names outside the graph: "
+                + ", ".join(unknown)
+            )
+            raise ValueError(msg)
+        pending = {name: set(deps) for name, deps in edges.items()}
+        waves: list[t.StrSequence] = []
+        while pending:
+            ready = frozenset(name for name, deps in pending.items() if not deps)
+            if not ready:
+                msg = "cyclic dependency graph: " + ", ".join(sorted(pending))
+                raise ValueError(msg)
+            waves.append(tuple(sorted(ready)))
+            pending = {
+                name: deps - ready for name, deps in pending.items() if name not in ready
+            }
+        return tuple(waves)
+
     @classmethod
     def project_dependency_resource_files(
         cls,

@@ -53,7 +53,7 @@ Infra:
       protected_mise_tools:
         - beads
         - gascity
-      go_version: latest
+      go_version: "1.26"
       gascity:
         # The fleet gc is the operator's fork carrying the native-store
         # compatibility correction required by every governed rig.
