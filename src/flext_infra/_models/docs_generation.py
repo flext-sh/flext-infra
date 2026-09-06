@@ -16,7 +16,7 @@ class FlextInfraModelsDocsGeneration:
     class DocScope(m.ArbitraryTypesModel):
         """Documentation scope targeting a project or workspace root."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 
@@ -50,7 +50,7 @@ class FlextInfraModelsDocsGeneration:
     class DocsRenderedArtifact(m.ArbitraryTypesModel):
         """One immutable desired docs artifact relative to its owning scope."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 
@@ -87,7 +87,7 @@ class FlextInfraModelsDocsGeneration:
     class DocsScopeArtifacts(m.ArbitraryTypesModel):
         """One scope paired with its complete rendered artifact inventory."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 
@@ -103,7 +103,7 @@ class FlextInfraModelsDocsGeneration:
     class DocsGenerationBundle(m.ArbitraryTypesModel):
         """Single render and source snapshot consumed through publication."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             arbitrary_types_allowed=True, extra="forbid", frozen=True
         )
 

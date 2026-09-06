@@ -59,7 +59,7 @@ class FlextInfraCProfileReport(s[bool]):
             stats.strip_dirs().sort_stats(self.sort).print_stats(self.limit)
             self.output.parent.mkdir(parents=True, exist_ok=True)
         except (OSError, ValueError, TypeError) as exc:
-            return r[bool].fail_op("render cProfile report", exc)
+            return r[bool].fail(f"render cProfile report failed: {exc}", exception=exc)
         written = u.Cli.atomic_write_text_file(self.output, stream.getvalue())
         if written.failure:
             return r[bool].from_failure(written)

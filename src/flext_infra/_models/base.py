@@ -12,8 +12,9 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import c, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models._defaults import ImmutableEmptyMapping
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsBase:

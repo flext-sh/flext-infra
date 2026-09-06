@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import tarfile
 import zipfile
 from email.parser import Parser
@@ -15,9 +14,8 @@ from packaging.version import InvalidVersion, Version
 
 from flext_core import r
 from flext_infra import c, t, u
-from flext_infra.release._release_artifact_archive import (
-    FlextInfraReleaseArtifactArchiveMixin,
-)
+
+from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -212,7 +210,9 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                     return r[str].fail(f"wheel must contain one METADATA file: {path}")
                 return r[str].ok(archive.read(names[0]).decode("utf-8"))
         except (OSError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
-            return r[str].fail_op(f"read wheel metadata {path}", exc)
+            return r[str].fail(
+                f"read wheel metadata {path} failed: {exc}", exception=exc
+            )
 
     @staticmethod
     def _sdist_metadata(path: Path) -> p.Result[str]:
@@ -231,7 +231,9 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                     return r[str].fail(f"cannot read PKG-INFO from {path}")
                 return r[str].ok(extracted.read().decode("utf-8"))
         except (OSError, tarfile.TarError, UnicodeDecodeError) as exc:
-            return r[str].fail_op(f"read sdist metadata {path}", exc)
+            return r[str].fail(
+                f"read sdist metadata {path} failed: {exc}", exception=exc
+            )
 
     @classmethod
     def _artifact_metadata(cls, path: Path) -> p.Result[str]:
@@ -332,7 +334,7 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
             ].from_failure(requirements_result)
         try:
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            digest = u.Cli.sha256_file(path)
         except OSError as exc:
             return r[
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]

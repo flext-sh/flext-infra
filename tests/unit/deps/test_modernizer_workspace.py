@@ -20,6 +20,25 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerWorkspace:
     """Validate helper behavior through public utilities and entrypoints."""
 
+    @staticmethod
+    def _reject_external_selector(
+        modernizer_workspace: Path,
+        selector: str,
+        external_pyproject: Path,
+        original: str,
+    ) -> None:
+        """Run the modernizer on an undeclared selector and prove no mutation."""
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=modernizer_workspace,
+            selected_projects=[selector],
+            apply_changes=True,
+            skip_check=True,
+            skip_comments=True,
+        )
+
+        tm.that(modernizer.run(), eq=2)
+        tm.that(external_pyproject.read_text(encoding="utf-8"), eq=original)
+
     def test_taplo_formats_toml_through_public_utility(self, tmp_path: Path) -> None:
         config_path = tmp_path / ".taplo.toml"
         config_path.write_text('include = ["**/*.toml"]\n', encoding="utf-8")
@@ -337,16 +356,9 @@ class TestsFlextInfraDepsModernizerWorkspace:
             encoding="utf-8",
         )
 
-        modernizer = FlextInfraPyprojectModernizer(
-            repository_root=modernizer_workspace,
-            selected_projects=[selector],
-            apply_changes=True,
-            skip_check=True,
-            skip_comments=True,
+        TestsFlextInfraDepsModernizerWorkspace._reject_external_selector(
+            modernizer_workspace, selector, external_pyproject, original
         )
-
-        tm.that(modernizer.run(), eq=2)
-        tm.that(external_pyproject.read_text(encoding="utf-8"), eq=original)
 
     @pytest.mark.parametrize("selector_kind", ["absolute", "parent-relative"])
     def test_modernizer_rejects_undeclared_project_paths(
@@ -362,13 +374,6 @@ class TestsFlextInfraDepsModernizerWorkspace:
             str(external_project) if selector_kind == "absolute" else "../external"
         )
 
-        modernizer = FlextInfraPyprojectModernizer(
-            repository_root=modernizer_workspace,
-            selected_projects=[selector],
-            apply_changes=True,
-            skip_check=True,
-            skip_comments=True,
+        TestsFlextInfraDepsModernizerWorkspace._reject_external_selector(
+            modernizer_workspace, selector, external_pyproject, original
         )
-
-        tm.that(modernizer.run(), eq=2)
-        tm.that(external_pyproject.read_text(encoding="utf-8"), eq=original)

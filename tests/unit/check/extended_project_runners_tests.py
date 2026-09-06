@@ -48,10 +48,7 @@ class TestsExtendedProjectRunners:
                 ["p1"], ["lint", "pyrefly"], reports_dir=tmp_path / "reports"
             )
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.ok(result)
         # 'format' is not a check gate: 73887691 gave each tool one owner and

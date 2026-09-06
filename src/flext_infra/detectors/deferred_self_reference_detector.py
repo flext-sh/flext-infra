@@ -29,8 +29,9 @@ class FlextInfraDeferredSelfReferenceDetector:
             display_path = file_path.relative_to(ctx.project_root)
         try:
             tree = ast.parse(source)
-        except SyntaxError:
-            return []
+        except SyntaxError as exc:
+            msg = f"deferred-self-reference detector could not parse {file_path}: {exc}"
+            raise RuntimeError(msg) from exc
         return tuple(
             m.Infra.Issue(
                 file=str(display_path),

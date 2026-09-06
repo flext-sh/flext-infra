@@ -81,14 +81,14 @@ class FlextInfraCodegenFixerResultsMixin:
                 line=0,
                 message=remaining_result.error or "namespace validation failed",
             )
-            return
-        fixed, skipped = u.Infra.classify_violation_outcomes(
-            project_path=project_path,
-            initial_violations=initial_violations,
-            remaining_violations=remaining_result.unwrap(),
-        )
-        ctx.violations_fixed.extend(fixed)
-        ctx.violations_skipped.extend(skipped)
+        else:
+            fixed, skipped = u.Infra.classify_violation_outcomes(
+                project_path=project_path,
+                initial_violations=initial_violations,
+                remaining_violations=remaining_result.unwrap(),
+            )
+            ctx.violations_fixed.extend(fixed)
+            ctx.violations_skipped.extend(skipped)
 
 
 __all__: list[str] = ["FlextInfraCodegenFixerResultsMixin"]

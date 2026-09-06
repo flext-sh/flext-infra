@@ -197,7 +197,6 @@ class FlextInfraCodegenVscodeMixin:
             or artifacts_changed
             or changed.value
         )
-        return r[bool].ok(artifacts_changed or extensions_changed or changed.value)
 
     @classmethod
     def _apply_enforced_settings(

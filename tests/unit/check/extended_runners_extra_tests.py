@@ -17,6 +17,19 @@ if TYPE_CHECKING:
 
 
 class TestExtendedRunnerExtras:
+    @staticmethod
+    def gate_check_with_issue(
+        gate_class: object, tmp_path: Path, project_dir: Path, runner: object = None
+    ) -> object:
+        """Run one gate with a runner and assert exactly one issue fails it."""
+        result = u.Tests.run_gate_check(
+            gate_class, tmp_path, project_dir, runner=runner
+        )
+
+        tm.that(not result.result.passed, eq=True)
+        tm.that(len(result.issues), eq=1)
+        return result
+
     """Declarative public-gate tests."""
 
     def test_pyright_skips_when_project_has_no_python_files(
@@ -37,12 +50,9 @@ class TestExtendedRunnerExtras:
             returncode=1,
         )
 
-        result = u.Tests.run_gate_check(
+        _ = TestExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraPyrightGate, tmp_path, project_dir, runner=runner
         )
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
 
     def test_pyright_uses_project_config_target_when_configured(
         self, tmp_path: Path
@@ -103,12 +113,9 @@ class TestExtendedRunnerExtras:
             returncode=1,
         )
 
-        result = u.Tests.run_gate_check(
+        _ = TestExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
 
     def test_bandit_uses_workspace_interpreter_with_sanitized_path(
         self, tmp_path: Path
@@ -117,8 +124,13 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
+        runner = u.Tests.SequenceRunner([
+            r.ok(u.Tests.create_command_output(stdout='{"results": []}'))
+        ])
         with tm.scope(env={"PATH": str(empty_path)}):
-            result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+            result = u.Tests.run_gate_check(
+                FlextInfraBanditGate, tmp_path, project_dir, runner=runner
+            )
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())
@@ -140,12 +152,9 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         runner = u.Tests.command_runner(stdout="", returncode=0)
 
-        result = u.Tests.run_gate_check(
+        result = TestExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].code, eq="PARSE_ERROR")
         tm.that(result.issues[0].message, contains="no JSON output")
 
@@ -153,24 +162,18 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         runner = u.Tests.command_runner(stdout="invalid json", returncode=1)
 
-        result = u.Tests.run_gate_check(
+        result = TestExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].code, eq="PARSE_ERROR")
 
     def test_bandit_reports_tool_failure_without_json(self, tmp_path: Path) -> None:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         runner = u.Tests.command_runner(stderr="Failed to spawn: bandit", returncode=1)
 
-        result = u.Tests.run_gate_check(
+        result = TestExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraBanditGate, tmp_path, project_dir, runner=runner
         )
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].code, eq="TOOL_ERROR")
         tm.that(result.issues[0].message, contains="Failed to spawn: bandit")
 
@@ -206,12 +209,9 @@ class TestExtendedRunnerExtras:
             stdout="README.md:1:1: [MD001] Heading level", returncode=1
         )
 
-        result = u.Tests.run_gate_check(
+        _ = TestExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraMarkdownGate, tmp_path, project_dir, runner=runner
         )
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
 
     def test_markdown_reports_tool_failure_without_diagnostics(
         self, tmp_path: Path
@@ -222,11 +222,8 @@ class TestExtendedRunnerExtras:
             stderr="execution error: missing rumdl", returncode=1
         )
 
-        result = u.Tests.run_gate_check(
+        result = TestExtendedRunnerExtras.gate_check_with_issue(
             FlextInfraMarkdownGate, tmp_path, project_dir, runner=runner
         )
-
-        tm.that(not result.result.passed, eq=True)
-        tm.that(len(result.issues), eq=1)
         tm.that(result.issues[0].code, eq="TOOL_ERROR")
         tm.that(result.issues[0].message, contains="missing rumdl")

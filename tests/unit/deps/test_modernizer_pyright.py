@@ -25,6 +25,23 @@ def _assert_runtime_owned_virtualenv(pyright: t.JsonMapping) -> None:
 class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
 
+    @staticmethod
+    def _pyright_tables(
+        doc: t.Cli.TomlDocument,
+    ) -> (
+        tuple[MutableMapping[str, t.JsonValue], MutableMapping[str, t.JsonValue]] | None
+    ):
+        """Unwrap and type-guard the tool and tool.pyright tables."""
+        tool = u.Cli.toml_unwrap_item(doc["tool"])
+        tm.that(tool, is_=MutableMapping)
+        if not isinstance(tool, MutableMapping):
+            return None
+        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
+        tm.that(pyright, is_=MutableMapping)
+        if not isinstance(pyright, MutableMapping):
+            return None
+        return tool, pyright
+
     def test_python_discovery_ignores_member_only_container(
         self, tmp_path: Path
     ) -> None:
@@ -62,7 +79,7 @@ class TestsFlextInfraDepsModernizerPyright:
         (excluded / "module.py").write_text("VALUE = 2\n", encoding="utf-8")
 
         discovered = infra_u.Infra.discover_python_dirs(
-            tmp_path, excluded_top_dirs=(excluded.name,)
+            tmp_path, workspace_excluded_top_dirs=frozenset((excluded.name,))
         )
 
         tm.that(discovered, eq=[included.name])
@@ -122,17 +139,13 @@ class TestsFlextInfraDepsModernizerPyright:
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
-            doc, is_root=True, repository_root=tmp_path
+            doc, is_root=True, workspace_root=tmp_path
         )
 
-        tool = u.Cli.toml_unwrap_item(doc["tool"])
-        tm.that(tool, is_=MutableMapping)
-        if not isinstance(tool, MutableMapping):
+        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        if tables is None:
             return
-        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
-        tm.that(pyright, is_=MutableMapping)
-        if not isinstance(pyright, MutableMapping):
-            return
+        _, pyright = tables
         _assert_runtime_owned_virtualenv(pyright)
         tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
@@ -176,14 +189,10 @@ class TestsFlextInfraDepsModernizerPyright:
             doc, is_root=False
         )
 
-        tool = u.Cli.toml_unwrap_item(doc["tool"])
-        tm.that(tool, is_=MutableMapping)
-        if not isinstance(tool, MutableMapping):
+        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        if tables is None:
             return
-        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
-        tm.that(pyright, is_=MutableMapping)
-        if not isinstance(pyright, MutableMapping):
-            return
+        _, pyright = tables
         _assert_runtime_owned_virtualenv(pyright)
         tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
@@ -247,14 +256,10 @@ class TestsFlextInfraDepsModernizerPyright:
             doc, is_root=False, project_dir=project_dir
         )
 
-        tool = u.Cli.toml_unwrap_item(doc["tool"])
-        tm.that(tool, is_=MutableMapping)
-        if not isinstance(tool, MutableMapping):
+        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        if tables is None:
             return
-        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
-        tm.that(pyright, is_=MutableMapping)
-        if not isinstance(pyright, MutableMapping):
-            return
+        _, pyright = tables
         expected_ignores = [
             *rules.project_typings_paths,
             *rules.ignored_diagnostic_globs,
@@ -355,14 +360,10 @@ class TestsFlextInfraDepsModernizerPyright:
             declared_python_dirs_are_complete=True,
         )
 
-        tool = u.Cli.toml_unwrap_item(doc["tool"])
-        tm.that(tool, is_=MutableMapping)
-        if not isinstance(tool, MutableMapping):
+        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        if tables is None:
             return
-        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
-        tm.that(pyright, is_=MutableMapping)
-        if not isinstance(pyright, MutableMapping):
-            return
+        _, pyright = tables
         tm.that(pyright, lacks="include")
         tm.that(u.Cli.toml_unwrap_item(pyright["executionEnvironments"]), eq=[])
 
@@ -392,11 +393,11 @@ class TestsFlextInfraDepsModernizerPyright:
         fleet_doc = u.Cli.toml_document()
         declared_doc = u.Cli.toml_document()
 
-        _ = phase.apply(fleet_doc, is_root=True, repository_root=tmp_path)
+        _ = phase.apply(fleet_doc, is_root=True, workspace_root=tmp_path)
         _ = phase.apply(
             declared_doc,
             is_root=True,
-            repository_root=tmp_path,
+            workspace_root=tmp_path,
             declared_python_dirs=(rules.source_dir,),
         )
 
@@ -452,14 +453,10 @@ class TestsFlextInfraDepsModernizerPyright:
             doc, is_root=False, project_dir=tmp_path
         )
 
-        tool = u.Cli.toml_unwrap_item(doc["tool"])
-        tm.that(tool, is_=MutableMapping)
-        if not isinstance(tool, MutableMapping):
+        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        if tables is None:
             return
-        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
-        tm.that(pyright, is_=MutableMapping)
-        if not isinstance(pyright, MutableMapping):
-            return
+        _, pyright = tables
         environments = u.Cli.toml_unwrap_item(pyright["executionEnvironments"])
         tm.that(environments, is_=Sequence)
         if not isinstance(environments, Sequence):

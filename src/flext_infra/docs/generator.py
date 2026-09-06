@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import u, c, m, t
-from flext_infra.docs._generator_bundle import FlextInfraDocGeneratorBundleMixin
+from flext_infra import c, m, t, u
 from flext_infra.docs.base import FlextInfraDocServiceBase
+
+from ._generator_bundle import FlextInfraDocGeneratorBundleMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -104,7 +105,7 @@ class FlextInfraDocGenerator(
             "generate",
             self.generate(
                 m.Infra.DocsGenerateRequest(
-                    workspace_root=self.repository_root,
+                    repository_root=self.repository_root,
                     projects=self.selected_projects,
                     output_dir=self.output_dir,
                     apply=self.apply_changes,
@@ -116,7 +117,7 @@ class FlextInfraDocGenerator(
     def _configured_request(self) -> m.Infra.DocsGenerateRequest:
         """Return the check-only request shared by both planner entry points."""
         return m.Infra.DocsGenerateRequest(
-            workspace_root=self.repository_root,
+            repository_root=self.repository_root,
             projects=self.selected_projects,
             output_dir=self.output_dir,
             apply=False,

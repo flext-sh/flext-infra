@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c
 from flext_tests import tm
-from tests import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorktreeRemoval(WorktreeFixture):
@@ -18,17 +18,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         """A registered child keeps its epic lane alive until the child is gone."""
         repository = self._repository(tmp_path)
         epic_branch = "feature/epic-beta"
-        epic = Path(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    repository_root=repository,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=epic_branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute()
-            )
-        )
+        epic = Path(self.add_worktree(repository, epic_branch))
         child_branch = "feature/child-two"
         child = Path(
             tm.ok(

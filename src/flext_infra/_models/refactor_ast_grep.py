@@ -7,7 +7,8 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
+
+from .._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsRefactorGrep:
@@ -35,7 +36,7 @@ class FlextInfraModelsRefactorGrep:
     class CodemodRule(m.ArbitraryTypesModel):
         """One validated ast-grep rule document from a composed provider."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         id: Annotated[t.NonEmptyStr, m.Field(description="Canonical ast-grep rule ID")]
         digest: Annotated[
@@ -54,7 +55,7 @@ class FlextInfraModelsRefactorGrep:
     class CodemodRuleset(m.ArbitraryTypesModel):
         """One provider config and its elected, conflict-free rule IDs."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         provider: Annotated[
             t.NonEmptyStr, m.Field(description="Distribution or local rule provider")
@@ -73,7 +74,7 @@ class FlextInfraModelsRefactorGrep:
     class CodemodRulePlan(m.ArbitraryTypesModel):
         """Topologically composed dependency rules followed by the local delta."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         provider_order: Annotated[
             t.StrSequence, m.Field(description="Dependency-first provider precedence")
@@ -90,7 +91,7 @@ class FlextInfraModelsRefactorGrep:
     class ModGateSnapshot(m.ArbitraryTypesModel):
         """Complete Ruff and Pyrefly evidence for one mod-circuit measurement."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         ruff_errors: Annotated[
             t.NonNegativeInt, m.Field(description="Ruff error count")

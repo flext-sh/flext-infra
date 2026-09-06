@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
-from flext_core import m
-from flext_core import m as core_m
+from flext_core import m, m as core_m
 from flext_infra import t
 
 if TYPE_CHECKING:

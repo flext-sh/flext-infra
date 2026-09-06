@@ -12,6 +12,7 @@ from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
 from flext_tests import tm
+from tests import TestsFlextInfraUtilities as test_u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,13 +24,6 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
     """Root-cause coverage for declarative detection strategies."""
 
     @staticmethod
-    def _rule(rule_id: str) -> m.EnforcementRuleSpec:
-        catalog = u.build_canonical_catalog()
-        rule: m.EnforcementRuleSpec = next(
-            rule for rule in catalog.enabled_rules() if rule.id == rule_id
-        )
-        return rule
-
     @staticmethod
     def _ctx(
         rope_project: t.Infra.RopeProject, file_path: Path
@@ -47,7 +41,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         stub.write_text("x: int\n", encoding="utf-8")
         with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-090"), self._ctx(rope_project, stub)
+                test_u.Tests.enforcement_rule("ENFORCE-090"),
+                self._ctx(rope_project, stub),
             )
         tm.that(len(probes), eq=1)
         tm.that(getattr(probes[0], "file_path", ""), eq=str(stub))
@@ -84,7 +79,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         )
         with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-097"), self._ctx(rope_project, source)
+                test_u.Tests.enforcement_rule("ENFORCE-097"),
+                self._ctx(rope_project, source),
             )
         tm.that(len(probes), eq=1)
         tm.that(getattr(probes[0], "line", 0), eq=4)
@@ -99,7 +95,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         )
         with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-097"), self._ctx(rope_project, source)
+                test_u.Tests.enforcement_rule("ENFORCE-097"),
+                self._ctx(rope_project, source),
             )
         tm.that(len(probes), eq=0)
 
@@ -112,7 +109,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         )
         with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-097"), self._ctx(rope_project, source)
+                test_u.Tests.enforcement_rule("ENFORCE-097"),
+                self._ctx(rope_project, source),
             )
         tm.that(len(probes), eq=0)
 
@@ -124,7 +122,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         )
         with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-097"), self._ctx(rope_project, source)
+                test_u.Tests.enforcement_rule("ENFORCE-097"),
+                self._ctx(rope_project, source),
             )
         tm.that(len(probes), eq=0)
 
@@ -139,7 +138,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         )
         with u.Infra.open_project(tmp_path) as rope_project:
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-079"), self._ctx(rope_project, source)
+                test_u.Tests.enforcement_rule("ENFORCE-079"),
+                self._ctx(rope_project, source),
             )
         tm.that(len(probes), eq=1)
         tm.that(getattr(probes[0], "object_name", ""), eq="GROUPS")
@@ -153,7 +153,8 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             pytest.raises(RuntimeError, match="unable to resolve rope resource"),
         ):
             FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-097"), self._ctx(rope_project, missing)
+                test_u.Tests.enforcement_rule("ENFORCE-097"),
+                self._ctx(rope_project, missing),
             )
 
     def test_foreign_canonical_alias_detection(self, tmp_path: Path) -> None:
@@ -174,7 +175,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
             ctx = self._ctx(rope_project, source)
             ctx.project_name = "flext_infra"
             probes = FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-080"), ctx
+                test_u.Tests.enforcement_rule("ENFORCE-080"), ctx
             )
         tm.that(len(probes), eq=1)
         tm.that(getattr(probes[0], "object_name", ""), eq="c")

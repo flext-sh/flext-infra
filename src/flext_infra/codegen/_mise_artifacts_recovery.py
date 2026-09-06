@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import m
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_journal as journal_io
-from flext_infra.codegen import _mise_artifacts_process as process
-from flext_infra.codegen import _mise_artifacts_state as state
-from flext_infra.codegen import _mise_artifacts_verification as verify
+from flext_infra.codegen import (
+    _mise_artifacts_files as files,
+    _mise_artifacts_journal as journal_io,
+    _mise_artifacts_process as process,
+    _mise_artifacts_state as state,
+    _mise_artifacts_verification as verify,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -78,7 +80,7 @@ class FlextInfraMiseRecovery:
         restored = self._restore(classified.value, candidates.value)
         if restored.failure:
             return restored
-        exact = self._verify_rollback(layout, journal)
+        exact = self._verify_rollback(layout, journal, classified.value)
         if exact.failure:
             return exact
         return journal_io.cleanup(layout, journal, journal_state)
@@ -111,13 +113,11 @@ class FlextInfraMiseRecovery:
                     )
                 operation = "noop"
             elif (
-                journal.state == "recovering" and identity == rollback
-            ) or identity == original:
+                (journal.state == "recovering" and identity == rollback)
+                or identity == original
+                or identity != desired
+            ):
                 operation = "noop"
-            elif identity != desired:
-                return result_type.fail(
-                    f"generated file has foreign state during recovery: {entry.path}"
-                )
             elif entry.original_exists:
                 operation = "restore"
             else:
@@ -188,9 +188,7 @@ class FlextInfraMiseRecovery:
                 candidate_path, backup.value.content, entry.original_mode
             )
             if created.failure:
-                return r[m.Infra.CodegenStagedFile].fail(
-                    created.error or f"cannot prepare generation restore: {entry.path}"
-                )
+                return r[m.Infra.CodegenStagedFile].from_failure(created)
             candidate = files.read_state(candidate_path, required=True)
             if candidate.failure:
                 return r[m.Infra.CodegenStagedFile].from_failure(candidate)
@@ -275,24 +273,20 @@ class FlextInfraMiseRecovery:
                     )
                 restored = files.write_publication(candidate)
                 if restored.failure:
-                    return r[bool].fail(
-                        restored.error
-                        or f"generation restore failed: {action.entry.path}"
-                    )
+                    return r[bool].from_failure(restored)
             elif action.operation == "delete":
                 removed = files.delete_state(action.current)
                 if removed.failure:
-                    return r[bool].fail(
-                        removed.error
-                        or f"generation rollback delete failed: {action.entry.path}"
-                    )
+                    return r[bool].from_failure(removed)
         return r[bool].ok(True)
 
     def _verify_rollback(
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
+        actions: tuple[m.Infra.CodegenRecoveryAction, ...],
     ) -> p.Result[bool]:
+        by_path = {action.entry.path: action for action in actions}
         for entry in journal.entries:
             target = files.resolve_relative(
                 layout.scope_root, entry.path, purpose="generated destination"
@@ -303,10 +297,18 @@ class FlextInfraMiseRecovery:
             if current.failure:
                 return r[bool].from_failure(current)
             identity = self._identity(current.value)
-            if identity not in {
+            expected = {
                 self._entry_identity(entry, "original"),
                 self._entry_identity(entry, "rollback"),
-            }:
+            }
+            action = by_path.get(entry.path)
+            if action is None:
+                return r[bool].fail(
+                    f"generation recovery action is absent: {entry.path}"
+                )
+            if action.operation == "noop":
+                expected.add(self._identity(action.current))
+            if identity not in expected:
                 return r[bool].fail(f"generated file was not restored: {entry.path}")
         return r[bool].ok(True)
 

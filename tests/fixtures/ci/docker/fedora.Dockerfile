@@ -45,7 +45,7 @@ ENV PATH="/home/runner/.local/share/mise/shims:${PATH}"
 # mentioned uv.lock/flext-core, which turned the proof into a bypass -- a
 # broken bootstrap still produced a green image.
 ENV CI=Y
-RUN make setup APPLY=Y
+RUN make setup
 # End SECTION: bootstrap proof
 
 ENTRYPOINT []

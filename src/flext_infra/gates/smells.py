@@ -34,8 +34,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
     gate_id: ClassVar[str] = "smells"
     gate_name: ClassVar[str] = "Code Smells"
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["smells"][1]
+
+    # flext-pulj: process results stay structural outside the Pydantic boundary.
+    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
 
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
@@ -112,7 +113,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output=self._scan_output(scan),
+            raw_output=self._raw_output(scan),
             started=started,
         )
 
@@ -142,7 +143,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return not issues, issues
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Run one fresh workspace scan and preserve its exact process result."""
+        """Scan the workspace once per root and preserve its exact process result."""
+        key = str(self._repository_root)
+        cached = self._scan_cache.get(key)
+        if cached is not None:
+            return cached
         binary = self._resolve_binary()
         if binary is None:
             output = m.Cli.CommandOutput(
@@ -155,7 +160,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 ),
             )
         else:
-            self._materialize_scan_config()
+            self._require_scan_config()
             output = self._run(
                 [binary, *c.Infra.SMELLS_QLTY_ARGS],
                 self._repository_root,
@@ -164,21 +169,28 @@ class FlextInfraSmellsGate(FlextInfraGate):
         self._scan_cache[key] = output
         return output
 
-    def _materialize_scan_config(self) -> None:
-        """Write the generated repository-root qlty config when absent or stale."""
+    def _require_scan_config(self) -> None:
+        """Prove the generated qlty config exists before scanning with it.
+
+        Codegen renders this file from its template; this gate used to rewrite
+        it from a constant at scan time. Two owners writing one path disagree
+        by construction: every scan replaced the rendered projection with the
+        constant, the next generation put the projection back, and the file
+        churned between them — it reached this branch as an unexplained `wip`
+        commit. The generator owns it; a missing file is a generation gap to
+        report, never one to paper over mid-scan.
+        """
         config_path = (
             self._repository_root
             / c.Infra.QLTY_CONFIG_DIRNAME
             / c.Infra.QLTY_CONFIG_FILENAME
         )
-        if config_path.is_file():
-            current = config_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            if current == c.Infra.QLTY_CONFIG_CONTENT:
-                return
-        _ = u.Cli.ensure_dir(config_path.parent).unwrap()
-        _ = u.Cli.atomic_write_text_file(
-            config_path, c.Infra.QLTY_CONFIG_CONTENT
-        ).unwrap()
+        if not config_path.is_file():
+            msg = (
+                f"generated qlty configuration is absent: {config_path}; "
+                "run make gen APPLY=Y"
+            )
+            raise FileNotFoundError(msg)
 
     @staticmethod
     def _resolve_binary() -> str | None:

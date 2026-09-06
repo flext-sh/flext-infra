@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import shutil
 from functools import cache, lru_cache
-from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
 from flext_infra import c, t
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
+
+from .._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -25,18 +25,14 @@ class FlextInfraUtilitiesPyproject:
     """Static helpers for reading and normalizing ``pyproject.toml`` payloads."""
 
     @staticmethod
-    def validate_infra_payload(payload: object) -> t.JsonMapping | None:
+    def validate_infra_payload(payload: object) -> t.JsonMapping:
         """Validate one plain mapping through the infra adapter.
 
-        Centralizes the repeated try/except so callers only decide what sentinel
-        to surface on failure.
+        Centralizes the adapter choice so every caller validates through the
+        same typed boundary; validation failures escape with the precise
+        pydantic error instead of a sentinel.
         """
-        try:
-            result: t.JsonMapping | None = (
-                t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
-            )
-        except (c.ValidationError, ValueError):
-            return None
+        result: t.JsonMapping = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(payload)
         return result
 
     @classmethod
@@ -68,7 +64,7 @@ class FlextInfraUtilitiesPyproject:
             source,
             relative_path=relative_path,
             config_path=config_path.resolve() if config_content else None,
-            config_digest=sha256(config_content).hexdigest(),
+            config_digest=u.Cli.sha256_bytes(config_content),
             execution_root=execution_root,
             taplo_version=taplo_version,
             process_timeout_seconds=process_timeout_seconds,
@@ -88,7 +84,7 @@ class FlextInfraUtilitiesPyproject:
     ) -> p.Result[str]:
         del config_digest
         taplo = FlextInfraUtilitiesPyproject._taplo_binary(
-            taplo_version, process_timeout_seconds
+            taplo_version, process_timeout_seconds, execution_root
         )
         if taplo.failure:
             return r[str].from_failure(taplo)
@@ -114,7 +110,7 @@ class FlextInfraUtilitiesPyproject:
     @staticmethod
     @cache
     def _taplo_binary(
-        taplo_version: str, process_timeout_seconds: int
+        taplo_version: str, process_timeout_seconds: int, execution_root: Path
     ) -> p.Result[Path]:
         """Resolve and authenticate Make's config-versioned Taplo executable."""
         u.Cli.info(f"pyproject-tooling: resolve taplo={taplo_version}")
@@ -127,9 +123,15 @@ class FlextInfraUtilitiesPyproject:
         # Resolving the link turns ``taplo`` into the Mise binary and changes
         # the invoked program, so preserve the absolute shim path.
         binary = Path(resolved).absolute()
+        # Probe where the tool will actually run. A version-managed shim
+        # resolves its tool from the working directory's declared toolchain, so
+        # probing in the shim's own directory asks for a version nothing there
+        # declares: on a runner that provisions taplo per project the probe
+        # exits non-zero and the identity check rejects a perfectly good
+        # binary. The format call below uses execution_root; so does this.
         identified = u.Cli.run_raw(
             (str(binary), "--version"),
-            cwd=binary.parent,
+            cwd=execution_root,
             timeout=process_timeout_seconds,
         )
         if identified.failure or not u.Cli.process_succeeded(identified.value.outcome):
@@ -163,11 +165,12 @@ class FlextInfraUtilitiesPyproject:
             return {}
         payload_result = u.Cli.toml_read_json(pyproject_path)
         if payload_result.failure:
-            return {}
-        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(
-            payload_result.value
-        )
-        return validated if validated is not None else {}
+            msg = (
+                f"failed to read pyproject payload at {pyproject_path}: "
+                f"{payload_result.error}"
+            )
+            raise RuntimeError(msg)
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload_result.value)
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:
@@ -175,8 +178,7 @@ class FlextInfraUtilitiesPyproject:
         payload = u.Cli.toml_as_mapping(document)
         if not payload:
             return {}
-        validated = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
-        return validated if validated is not None else {}
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
 
     @staticmethod
     def tool_flext_meta(project_root: Path) -> t.JsonMapping:

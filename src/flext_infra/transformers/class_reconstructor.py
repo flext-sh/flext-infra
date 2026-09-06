@@ -6,7 +6,8 @@ import operator
 from typing import override
 
 from flext_infra import c, m, t, u
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
@@ -46,8 +47,6 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         try:
             pymodule = u.Infra.parse_string_module(source)
         except c.EXC_OS_SYNTAX:
-            return source, list[str]()
-        if pymodule is None:
             return source, list[str]()
         lines = source.splitlines(keepends=True)
         edits: list[tuple[int, int, str]] = []

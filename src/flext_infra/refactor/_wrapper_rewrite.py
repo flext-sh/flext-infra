@@ -59,8 +59,6 @@ class FlextInfraWrapperRootNamespaceRewriteMixin:
             return
         source = u.Cli.files_read_text(file_path).unwrap()
         pymodule = u.Infra.parse_string_module(source)
-        if pymodule is None:
-            return
         module_ast = pymodule.get_ast()
         line_offsets = self._build_line_offsets(source)
         core_rewrites = self._collect_core_test_rewrites(
