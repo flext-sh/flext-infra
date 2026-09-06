@@ -109,10 +109,27 @@ class FlextInfraRefactorTypingUnifier(
             module = ast.parse(source)
         except SyntaxError:
             return source
+        # A function-local annotation is not a contract. Rewriting one to an
+        # abstract container broke every call that hands the value to a
+        # concretely typed parameter, including APIs owned by other packages
+        # that this repository cannot widen. The policy governs the interface:
+        # parameters, return types, and class or module level declarations.
+        local_declarations = {
+            declaration
+            for node in ast.walk(module)
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            for statement in node.body
+            for declaration in ast.walk(statement)
+            if isinstance(declaration, ast.AnnAssign)
+        }
         spans: t.MutableSequenceOf[t.Pair[int, int]] = []
         for node in ast.walk(module):
             annotations = []
-            if isinstance(node, ast.AnnAssign | ast.arg):
+            if isinstance(node, ast.AnnAssign):
+                if node in local_declarations:
+                    continue
+                annotations.append(node.annotation)
+            elif isinstance(node, ast.arg):
                 annotations.append(node.annotation)
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 annotations.append(node.returns)
