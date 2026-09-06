@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import os
+from hashlib import sha256
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r
-from flext_infra import c, m
+from flext_infra import c, m, u
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -20,12 +20,76 @@ ARTIFACT_SPECS: Final[tuple[tuple[str, int], ...]] = (
 CONFIG_SPEC: Final[tuple[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
 PUBLICATION_SPECS: Final[tuple[tuple[str, int], ...]] = (CONFIG_SPEC, *ARTIFACT_SPECS)
 ARTIFACT_NAMES: Final[tuple[str, ...]] = tuple(name for name, _mode in ARTIFACT_SPECS)
-JOURNAL_NAME: Final[str] = "journal.json"
+JOURNAL_NAME: Final[str] = "flext-infra-codegen-transaction-journal.json"
 JOURNAL_MODE: Final[int] = 0o600
-LOCK_NAME: Final[str] = "publication.lock"
-PROJECTS_DIR_NAME: Final[str] = "projects"
-ROOT_PROJECT_DIR_NAME: Final[str] = "root"
-TRANSACTION_DIR_NAME: Final[str] = "transaction"
+STATE_DIRECTORY: Final[Path] = Path(".state") / "mise-artifacts"
+TRANSACTION_DIR_PREFIX: Final[str] = "transaction-"
+TRANSACTION_ID_LENGTH: Final[int] = 32
+
+
+def digest(content: bytes) -> str:
+    """Return the exact lowercase SHA-256 identity for raw bytes."""
+    return sha256(content).hexdigest()
+
+
+def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]:
+    """Read exact state through the canonical descriptor-authenticated owner."""
+    return u.Cli.atomic_read_binary_file_state(path, required=required)
+
+
+def write_publication(publication: m.Infra.CodegenStagedFile) -> p.Result[bool]:
+    """Consume one staged create/replace/mode/delete through the CLI owner."""
+    before = publication.before
+    replacement = publication.replacement
+    if replacement is None:
+        return delete_state(before)
+    if replacement.content is None or replacement.mode is None:
+        return r[bool].fail(f"codegen staged replacement is absent: {replacement.path}")
+    published = u.Cli.atomic_publish_staged_binary_file_guarded(before, replacement)
+    if published.failure:
+        return r[bool].from_failure(published)
+    observed = published.value
+    observed_identity = (
+        observed.path,
+        observed.parent_device,
+        observed.parent_inode,
+        observed.content,
+        observed.mode,
+        observed.device,
+        observed.inode,
+        observed.link_count,
+        observed.file_attributes,
+        observed.reparse_tag,
+    )
+    replacement_identity = (
+        before.path,
+        before.parent_device,
+        before.parent_inode,
+        replacement.content,
+        replacement.mode,
+        replacement.device,
+        replacement.inode,
+        replacement.link_count,
+        replacement.file_attributes,
+        replacement.reparse_tag,
+    )
+    if observed_identity != replacement_identity:
+        return r[bool].fail(
+            f"published codegen file differs from staged identity: {before.path}"
+        )
+    return r[bool].ok(True)
+
+
+def delete_state(state: m.Cli.AtomicFileState) -> p.Result[bool]:
+    """Delete one exact existing state through the CLI owner."""
+    if (
+        state.content is None
+        or state.mode is None
+        or state.device is None
+        or state.inode is None
+    ):
+        return r[bool].fail(f"cannot delete absent codegen file state: {state.path}")
+    return u.Cli.atomic_delete_binary_file_guarded(state)
 
 
 def workspace_relative(root: Path, path: Path) -> p.Result[str]:
@@ -39,37 +103,6 @@ def workspace_relative(root: Path, path: Path) -> p.Result[str]:
     if not selector or selector == "." or ".." in relative.parts:
         return r[str].fail(f"invalid workspace artifact path: {path}")
     return r[str].ok(selector)
-
-
-def source_selector(root: Path, path: Path) -> p.Result[str]:
-    """Encode an authenticated source inside the scope or by canonical absolute path."""
-    absolute_root = root.absolute()
-    candidate = path.absolute()
-    if candidate.is_relative_to(absolute_root):
-        return workspace_relative(absolute_root, candidate)
-    if (
-        not path.is_absolute()
-        or not path.name
-        or ".." in path.parts
-        or Path(os.path.normpath(path)) != path
-    ):
-        return r[str].fail(f"invalid external codegen source path: {path}")
-    return r[str].ok(path.as_posix())
-
-
-def resolve_source(root: Path, selector: str) -> p.Result[Path]:
-    """Resolve one canonical journal source without widening write ownership."""
-    candidate = Path(selector)
-    if not candidate.is_absolute():
-        return resolve_relative(root, selector, purpose="Mise journal source")
-    if (
-        not candidate.name
-        or ".." in candidate.parts
-        or Path(os.path.normpath(candidate)) != candidate
-        or candidate.is_relative_to(root.absolute())
-    ):
-        return r[Path].fail(f"unsafe external Mise journal source path: {selector}")
-    return r[Path].ok(candidate)
 
 
 def resolve_relative(root: Path, selector: str, *, purpose: str) -> p.Result[Path]:
@@ -89,169 +122,19 @@ def resolve_relative(root: Path, selector: str, *, purpose: str) -> p.Result[Pat
     return r[Path].ok(candidate)
 
 
-def project_for_path(
-    layout: m.Infra.MiseToolchainWorkspaceLayout, path: Path
-) -> p.Result[m.Infra.MiseToolchainProjectLayout]:
-    """Resolve one destination to its most-specific selected project owner."""
-    candidate = path.absolute()
-    if candidate.is_relative_to(layout.state_root.absolute()):
-        return r[m.Infra.MiseToolchainProjectLayout].fail(
-            f"managed path enters codegen transaction state: {path}"
-        )
-    owners = tuple(
-        project
-        for project in layout.projects
-        if candidate.is_relative_to(project.root.absolute())
-    )
-    if not owners:
-        return r[m.Infra.MiseToolchainProjectLayout].fail(
-            f"managed path is outside selected project topology: {path}"
-        )
-    deepest = max(len(project.root.parts) for project in owners)
-    selected = tuple(
-        project for project in owners if len(project.root.parts) == deepest
-    )
-    if len(selected) != 1:
-        return r[m.Infra.MiseToolchainProjectLayout].fail(
-            f"managed path has ambiguous project ownership: {path}"
-        )
-    return r[m.Infra.MiseToolchainProjectLayout].ok(selected[0])
-
-
-def missing_parent_directories(
-    layout: m.Infra.MiseToolchainWorkspaceLayout, targets: tuple[Path, ...]
-) -> p.Result[tuple[Path, ...]]:
-    """Return the exact destination directories absent at preflight."""
-    result_type = r[tuple[Path, ...]]
-    missing: set[Path] = set()
-    for target in targets:
-        owner = project_for_path(layout, target)
-        if owner.failure:
-            return result_type.from_failure(owner)
-        root = owner.value.root.absolute()
-        if not root.is_dir() or root.is_symlink():
-            return result_type.fail(f"invalid codegen project root: {root}")
-        current = root
-        relative_parent = target.absolute().parent.relative_to(root)
-        ancestor_absent = False
-        for part in relative_parent.parts:
-            current /= part
-            if current.is_symlink():
-                return result_type.fail(
-                    f"codegen destination directory is a symlink: {current}"
-                )
-            if current.exists():
-                if ancestor_absent or not current.is_dir():
-                    return result_type.fail(
-                        f"invalid codegen destination directory: {current}"
-                    )
-                continue
-            ancestor_absent = True
-            missing.add(current)
-    return result_type.ok(
-        tuple(sorted(missing, key=lambda path: (len(path.parts), str(path))))
-    )
-
-
-def create_directories(
-    layout: m.Infra.MiseToolchainWorkspaceLayout, selectors: tuple[str, ...]
-) -> p.Result[bool]:
-    """Create only journal-authorized absent directories, parents first."""
-    for selector in selectors:
-        resolved = resolve_relative(
-            layout.scope_root, selector, purpose="codegen destination directory"
-        )
-        if resolved.failure:
-            return r[bool].from_failure(resolved)
-        target = resolved.value
-        if target.exists() or target.is_symlink():
-            return r[bool].fail(
-                f"codegen destination directory appeared after preflight: {target}"
-            )
-        if not target.parent.is_dir() or target.parent.is_symlink():
-            return r[bool].fail(
-                f"codegen destination directory parent is invalid: {target.parent}"
-            )
-        try:
-            target.mkdir(mode=0o755, exist_ok=False)
-        except OSError as exc:
-            return r[bool].fail_op(
-                f"create codegen destination directory {target}", exc
-            )
-    return r[bool].ok(True)
-
-
-def remove_created_directories(
-    layout: m.Infra.MiseToolchainWorkspaceLayout, selectors: tuple[str, ...]
-) -> p.Result[bool]:
-    """Remove only journal-authorized directories, children first."""
-    for selector in reversed(selectors):
-        resolved = resolve_relative(
-            layout.scope_root, selector, purpose="codegen destination directory"
-        )
-        if resolved.failure:
-            return r[bool].from_failure(resolved)
-        target = resolved.value
-        if not target.exists() and not target.is_symlink():
-            continue
-        if target.is_symlink() or not target.is_dir():
-            return r[bool].fail(
-                f"created codegen directory has foreign state: {target}"
-            )
-        try:
-            target.rmdir()
-        except OSError as exc:
-            return r[bool].fail_op(
-                f"remove created codegen destination directory {target}", exc
-            )
-    return r[bool].ok(True)
-
-
-def transaction_sources(
-    plan: m.Infra.MiseToolchainWorkspacePlan,
-    managed_plans: tuple[m.Infra.CodegenFilePlan, ...],
-) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-    """Return one deterministic immutable state for every transaction source."""
-    result_type = r[tuple[m.Cli.AtomicFileState, ...]]
-    by_path: dict[Path, m.Cli.AtomicFileState] = {}
-    candidates = (
-        *(source for project in plan.projects for source in project.config.sources),
-        *(source for item in managed_plans for source in item.source_states),
-    )
-    for source in candidates:
-        existing = by_path.get(source.path)
-        if existing is not None and existing != source:
-            return result_type.fail(
-                f"codegen source has conflicting snapshots: {source.path}"
-            )
-        by_path[source.path] = source
-    ordered: list[tuple[str, m.Cli.AtomicFileState]] = []
-    for source in by_path.values():
-        selector = source_selector(plan.layout.scope_root, source.path)
-        if selector.failure:
-            return result_type.from_failure(selector)
-        ordered.append((selector.value, source))
-    return result_type.ok(tuple(source for _, source in sorted(ordered)))
-
-
 __all__: list[str] = [
     "ARTIFACT_NAMES",
     "ARTIFACT_SPECS",
     "CONFIG_SPEC",
     "JOURNAL_MODE",
     "JOURNAL_NAME",
-    "LOCK_NAME",
-    "PROJECTS_DIR_NAME",
     "PUBLICATION_SPECS",
-    "ROOT_PROJECT_DIR_NAME",
-    "TRANSACTION_DIR_NAME",
-    "create_directories",
-    "missing_parent_directories",
-    "project_for_path",
-    "remove_created_directories",
+    "STATE_DIRECTORY",
+    "TRANSACTION_DIR_PREFIX",
+    "delete_state",
+    "digest",
+    "read_state",
     "resolve_relative",
-    "resolve_source",
-    "source_selector",
-    "transaction_sources",
     "workspace_relative",
+    "write_publication",
 ]

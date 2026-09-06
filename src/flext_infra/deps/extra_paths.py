@@ -13,14 +13,12 @@ per clone (flext-c6di).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class FlextInfraExtraPathsManager(
@@ -39,16 +37,12 @@ class FlextInfraExtraPathsManager(
         ),
     ] = ()
     analysis_exclusions: Annotated[
-        t.StrSequence | None,
+        t.StrSequence,
         m.Field(
-            default=None,
-            exclude=True,
-            description=(
-                "Caller-resolved analysis exclusions; None delegates discovery, "
-                "while an empty sequence proves there are no exclusions"
-            ),
+            default=(),
+            description="Workspace-relative paths excluded from analyzer discovery",
         ),
-    ] = None
+    ] = ()
 
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
@@ -56,13 +50,20 @@ class FlextInfraExtraPathsManager(
     def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
         """Initialize workspace metadata after validation."""
         self._workspace_project_names = set(
-            u.Infra.workspace_project_paths(self.repository_root)
+            u.Infra.workspace_project_paths(self.workspace_root)
         )
 
     @property
     def workspace_project_names(self) -> t.StrSequence:
         """Managed workspace project names backing dependency resolution."""
         return tuple(sorted(self._workspace_project_names))
+
+    @property
+    def analysis_excluded_top_dirs(self) -> frozenset[str]:
+        """First path segments from the caller's validated topology."""
+        return frozenset(
+            Path(path).parts[0] for path in self.analysis_exclusions if Path(path).parts
+        )
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -71,7 +72,7 @@ class FlextInfraExtraPathsManager(
             dry_run=self.effective_dry_run, project_dirs=self.project_dirs
         )
         if result.failure:
-            return r[bool].from_failure(result)
+            return r[bool].fail(result.error or "extra-path synchronization failed")
         return r[bool].ok(True)
 
     @override
@@ -188,16 +189,11 @@ class FlextInfraExtraPathsManager(
     ) -> t.StrSequence:
         """Build Pyrefly includes from configured productive directories."""
         rules = config.Infra.tooling.tools.pyrefly.path_rules
-        excluded_top_dirs = (
-            None
-            if self.analysis_exclusions is None
-            else u.Infra.analysis_excluded_top_dirs(self.analysis_exclusions)
-        )
         # flext-j47u (codex): never reread an on-disk Pyright table while its
         # in-memory payload is being conformed; include only real production roots.
         discovered_python_roots = set(
             u.Infra.discover_python_dirs(
-                project_dir, excluded_top_dirs=excluded_top_dirs
+                project_dir, workspace_excluded_top_dirs=self.analysis_excluded_top_dirs
             )
         )
         includes: t.Infra.StrSet = set(
@@ -213,11 +209,7 @@ class FlextInfraExtraPathsManager(
         if not is_root or (not rules.workspace_include_children):
             return sorted(includes)
         for child in sorted(project_dir.iterdir()):
-            if (
-                not child.is_dir()
-                or child.name in (excluded_top_dirs or ())
-                or not (child / c.Infra.PYPROJECT_FILENAME).exists()
-            ):
+            if not child.is_dir() or not (child / c.Infra.PYPROJECT_FILENAME).exists():
                 continue
             child_dirs = u.Infra.discover_python_dirs(child)
             includes.update(

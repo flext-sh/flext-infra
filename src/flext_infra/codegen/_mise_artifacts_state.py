@@ -3,339 +3,424 @@
 from __future__ import annotations
 
 import os
-import shutil
 import stat
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
+from flext_infra.codegen import _mise_artifacts_verification as verify
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
-def prepare_state_roots(layout: m.Infra.MiseToolchainWorkspaceLayout) -> p.Result[bool]:
-    """Create every configured persistent state root before transaction effects."""
-    common = _prepare_state_root(layout.scope_root.parent, layout.state_root)
-    if common.failure:
-        return common
+def _project_depth(item: m.Infra.MiseToolchainProjectLayout) -> int:
+    """Order the narrowest project owner before its ancestors."""
+    return -len(item.root.parts)
+
+
+def _directory_cleanup_order(item: m.Infra.CodegenJournalDirectory) -> tuple[int, str]:
+    """Order journaled directory cleanup from descendants to ancestors."""
+    return _relative_order(item.path)
+
+
+def plan_transaction_directories(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+) -> p.Result[tuple[m.Infra.CodegenJournalDirectory, ...]]:
+    """Prove every transaction path absent before journal publication."""
+    roots: list[Path] = []
     for project in layout.projects:
-        prepared = _prepare_state_root(
-            layout.state_root, project.transaction_root.parent
-        )
-        if prepared.failure:
-            return prepared
-        destination_parents = {
-            artifact.parent
-            for artifact in (
-                project.artifacts.config,
-                project.artifacts.unix_launcher,
-                project.artifacts.windows_launcher,
-                project.artifacts.lock,
+        transaction_root = project.transaction_root
+        if transaction_root is None:
+            return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail(
+                "Mise mutating layout has no transaction root"
             )
-        }
-        absent_parent = next(
-            (parent for parent in destination_parents if not parent.is_dir()), None
-        )
-        if absent_parent is not None:
-            return r[bool].fail(f"Mise destination parent is absent: {absent_parent}")
         try:
-            staging_device = project.transaction_root.parent.stat().st_dev
             destination_devices = {
-                parent.stat().st_dev for parent in destination_parents
+                artifact.parent.lstat().st_dev
+                for artifact in (
+                    project.artifacts.config,
+                    project.artifacts.unix_launcher,
+                    project.artifacts.windows_launcher,
+                    project.artifacts.lock,
+                )
             }
+            project_device = project.root.lstat().st_dev
         except OSError as exc:
-            return r[bool].fail_op("inspect Mise state filesystem", exc)
-        if destination_devices != {staging_device}:
-            return r[bool].fail(
+            return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail_op(
+                "inspect Mise staging filesystem", exc
+            )
+        if destination_devices != {project_device}:
+            return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail(
                 f"Mise state is not on destination filesystem: {project.selector}"
             )
-    return r[bool].ok(True)
-
-
-def prepare_common_state_root(scope_root: Path, state_root: Path) -> p.Result[bool]:
-    """Create only the umbrella coordination root before acquiring its lock."""
-    return _prepare_state_root(scope_root.parent, state_root)
-
-
-def validate_lock_path(state_root: Path, *, require_existing: bool) -> p.Result[Path]:
-    """Authenticate the persistent lock path before FileLock opens it."""
-    lock_path = state_root / files.LOCK_NAME
-    try:
-        parent = lock_path.parent.lstat()
-    except OSError as exc:
-        return r[Path].fail_op("inspect Mise lock parent", exc)
-    if not stat.S_ISDIR(parent.st_mode) or _is_reparse(parent):
-        return r[Path].fail(f"Mise lock parent is not physical: {lock_path.parent}")
-    if not lock_path.exists() and not lock_path.is_symlink():
-        if require_existing:
-            return r[Path].fail(f"Mise transaction lock is absent: {lock_path}")
-        return r[Path].ok(lock_path)
-    try:
-        state = lock_path.lstat()
-    except OSError as exc:
-        return r[Path].fail_op("inspect Mise transaction lock", exc)
-    if not stat.S_ISREG(state.st_mode) or state.st_nlink != 1 or _is_reparse(state):
-        return r[Path].fail(f"Mise transaction lock is not physical: {lock_path}")
-    return r[Path].ok(lock_path)
-
-
-def lock_holder(lock_path: Path) -> p.Result[str]:
-    """Resolve the exact Linux process holding one authenticated file lock."""
-    if os.name != "posix" or not Path("/proc/locks").is_file():
-        return r[str].fail("lock-holder diagnostics require Linux /proc/locks")
-    try:
-        lock_state = lock_path.stat()
-        identity = (
-            f"{os.major(lock_state.st_dev):02x}:"
-            f"{os.minor(lock_state.st_dev):02x}:{lock_state.st_ino}"
-        )
-        records = Path("/proc/locks").read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
-        return r[str].fail_op("inspect Mise lock holder", exc)
-    inode = str(lock_state.st_ino)
-    inode_records: list[str] = []
-    for record in records:
-        fields = record.split()
-        match fields:
-            case [_, _, _, _, pid, observed_identity, *_]:
-                pass
-            case _:
-                continue
-        if observed_identity.rsplit(":", 1)[-1] != inode:
-            continue
-        inode_records.append(record)
-        descriptors = _matching_lock_descriptors(lock_path, lock_state, pid)
-        if descriptors.failure:
-            return r[str].from_failure(descriptors)
-        descriptor_matches = descriptors.value
-        if observed_identity != identity and not descriptor_matches:
-            continue
-        process = _lock_process_details(pid)
-        if process.failure:
-            return r[str].from_failure(process)
-        command, cwd, elapsed_seconds = process.value
-        if not command:
-            return r[str].fail(f"Mise lock-holder process has no command: pid={pid}")
-        return r[str].ok(
-            f"pid={pid} elapsed={elapsed_seconds:.2f}s cwd={cwd} command={command} "
-            f"descriptors={descriptor_matches} "
-            f"observed_lock_identity={observed_identity} expected_lock_identity={identity}"
-        )
-    if inode_records:
-        return r[str].fail(
-            f"Mise lock has only foreign-device inode matches: path={lock_path} "
-            f"identity={identity} records={inode_records}"
-        )
-    return r[str].fail(
-        f"Mise lock has no observable holder: path={lock_path} identity={identity}"
+        roots.append(transaction_root)
+    return plan_directories(
+        layout, phase="transaction", requested=tuple(roots), disposition="temporary"
     )
 
 
-def _matching_lock_descriptors(
-    lock_path: Path, lock_state: os.stat_result, pid: str
-) -> p.Result[tuple[Path, ...]]:
-    """Return live descriptors that prove one process owns the exact lock path."""
-    try:
-        descriptors = tuple(Path(f"/proc/{pid}/fd").iterdir())
-    except OSError as exc:
-        return r[tuple[Path, ...]].fail_op(
-            f"inspect Mise lock-holder descriptors for process {pid}", exc
+def plan_directories(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    *,
+    phase: str,
+    requested: tuple[Path, ...],
+    disposition: Literal["temporary", "generated"],
+) -> p.Result[tuple[m.Infra.CodegenJournalDirectory, ...]]:
+    """Return unique missing paths after descriptor-authenticated preflight."""
+    result_type = r[tuple[m.Infra.CodegenJournalDirectory, ...]]
+    if len(set(requested)) != len(requested):
+        return result_type.fail(f"duplicate {phase} directory request")
+    projects = tuple(sorted(layout.projects, key=_project_depth))
+    planned: dict[Path, m.Infra.CodegenJournalDirectory] = {}
+    for target in requested:
+        path = target.expanduser().absolute()
+        project = next(
+            (item for item in projects if path.is_relative_to(item.root)), None
         )
-    matches: list[Path] = []
-    for descriptor in descriptors:
-        try:
-            descriptor_state = descriptor.stat()
-            descriptor_target = descriptor.readlink()
-        except FileNotFoundError:
-            continue
-        except OSError as exc:
-            return r[tuple[Path, ...]].fail_op(
-                f"inspect Mise lock-holder descriptor {descriptor}", exc
+        if project is None or path == project.root:
+            return result_type.fail(f"{phase} directory escapes its project: {path}")
+        chain = u.Cli.atomic_plan_directory_chain(path)
+        if chain.failure:
+            return result_type.from_failure(chain)
+        for directory in chain.value.directories:
+            owner = next(
+                (item for item in projects if directory.is_relative_to(item.root)), None
             )
+            if owner is None or directory == owner.root:
+                return result_type.fail(
+                    f"{phase} directory has no project owner: {directory}"
+                )
+            relative = files.workspace_relative(layout.scope_root, directory)
+            if relative.failure:
+                return result_type.from_failure(relative)
+            before: m.Cli.AtomicDirectoryState | None = None
+            if directory.parent == chain.value.anchor_path:
+                observed = u.Cli.atomic_read_empty_directory_state(
+                    directory, required=False
+                )
+                if observed.failure:
+                    return result_type.from_failure(observed)
+                if observed.value.exists or (
+                    observed.value.parent_device,
+                    observed.value.parent_inode,
+                ) != (chain.value.anchor_device, chain.value.anchor_inode):
+                    return result_type.fail(
+                        f"{phase} directory anchor changed during planning: {directory}"
+                    )
+                before = observed.value
+            entry = m.Infra.CodegenJournalDirectory(
+                phase=phase,
+                project=owner.selector,
+                path=relative.value,
+                disposition=disposition,
+                before=before,
+            )
+            previous = planned.get(directory)
+            if previous is not None and (
+                previous.phase,
+                previous.project,
+                previous.disposition,
+            ) != (entry.phase, entry.project, entry.disposition):
+                return result_type.fail(
+                    f"generation directory has conflicting owners: {directory}"
+                )
+            if previous is None or (previous.before is None and before is not None):
+                planned[directory] = entry
+    ordered = tuple(planned[path] for path in sorted(planned, key=_path_order))
+    return result_type.ok(ordered)
+
+
+def create_journaled_directory(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+    entry: m.Infra.CodegenJournalDirectory,
+) -> p.Result[m.Infra.CodegenJournalDirectory]:
+    """Create one durable intent and return its exact physical identity."""
+    result_type = r[m.Infra.CodegenJournalDirectory]
+    if entry.created is not None or entry not in directories:
+        return result_type.fail(f"invalid directory creation cursor: {entry.path}")
+    target = files.resolve_relative(
+        layout.scope_root, entry.path, purpose="journaled generation directory"
+    )
+    if target.failure:
+        return result_type.from_failure(target)
+    project = next(
+        (item for item in layout.projects if item.selector == entry.project), None
+    )
+    if project is None or not target.value.is_relative_to(project.root):
+        return result_type.fail(
+            f"journaled directory differs from its project: {entry.path}"
+        )
+    before = entry.before
+    if before is None:
+        parent_entry = next(
+            (
+                candidate
+                for candidate in directories
+                if (layout.scope_root / candidate.path).absolute()
+                == target.value.parent
+            ),
+            None,
+        )
         if (
-            descriptor_state.st_ino == lock_state.st_ino
-            and descriptor_target == lock_path
+            parent_entry is None
+            or parent_entry.created is None
+            or parent_entry.created.device is None
+            or parent_entry.created.inode is None
         ):
-            matches.append(descriptor)
-    return r[tuple[Path, ...]].ok(tuple(matches))
-
-
-def _lock_process_details(pid: str) -> p.Result[tuple[str, Path, float]]:
-    """Read observable command, cwd, and elapsed runtime for one process."""
+            return result_type.fail(
+                f"journaled directory parent has no durable identity: {entry.path}"
+            )
+        observed = u.Cli.atomic_read_empty_directory_state(
+            target.value, required=False
+        )
+        if observed.failure:
+            return result_type.from_failure(observed)
+        before = observed.value
+        if before.exists or (
+            before.parent_device,
+            before.parent_inode,
+        ) != (parent_entry.created.device, parent_entry.created.inode):
+            return result_type.fail(
+                f"journaled directory parent changed before creation: {entry.path}"
+            )
+    elif before.path != target.value:
+        return result_type.fail(
+            f"journaled absent state belongs to another path: {entry.path}"
+        )
+    created = u.Cli.atomic_create_empty_directory_guarded(
+        before,
+        permission_mode=0o700 if entry.disposition == "temporary" else 0o755,
+    )
+    if created.failure:
+        return result_type.from_failure(created)
     try:
-        command = (
-            Path(f"/proc/{pid}/cmdline")
-            .read_bytes()
-            .replace(b"\0", b" ")
-            .decode("utf-8")
-            .strip()
+        return result_type.ok(
+            m.Infra.CodegenJournalDirectory.model_validate({
+                **entry.model_dump(),
+                "before": before,
+                "created": created.value,
+            })
         )
-        cwd = Path(f"/proc/{pid}/cwd").readlink()
-        stat_fields = (
-            Path(f"/proc/{pid}/stat")
-            .read_text(encoding="utf-8")
-            .split(") ", maxsplit=1)[1]
-            .split()
-        )
-        start_seconds = int(stat_fields[19]) / int(os.sysconf("SC_CLK_TCK"))
-        uptime_seconds = float(
-            Path("/proc/uptime").read_text(encoding="utf-8").split(maxsplit=1)[0]
-        )
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
-        return r[tuple[str, Path, float]].fail_op(
-            f"inspect Mise lock-holder process {pid}", exc
-        )
-    return r[tuple[str, Path, float]].ok((command, cwd, uptime_seconds - start_seconds))
+    except c.ValidationError as exc:
+        rolled_back = u.Cli.atomic_delete_empty_directory_guarded(created.value)
+        if rolled_back.failure:
+            return result_type.fail(
+                f"validate created directory identity failed: {exc}; "
+                f"compensation failed: {rolled_back.error}"
+            )
+        return result_type.fail_op("validate created directory identity", exc)
+
+
+def compensate_created_directory(
+    entry: m.Infra.CodegenJournalDirectory,
+) -> p.Result[bool]:
+    """Remove only the exact empty directory returned by this invocation."""
+    if entry.created is None:
+        return r[bool].fail(f"directory has no created identity: {entry.path}")
+    return u.Cli.atomic_delete_empty_directory_guarded(entry.created)
 
 
 def journal_state(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[m.Cli.AtomicFileState]:
-    """Read the common journal without creating its parent in check mode."""
-    return journal_state_at(layout.state_root)
+) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    """Read the typed Git-owned journal without creating filesystem state."""
+    result_type = r[tuple[m.Cli.AtomicFileState, ...]]
+    snapshot = files.read_state(layout.journal_path, required=False)
+    if snapshot.failure:
+        return result_type.from_failure(snapshot)
+    return result_type.ok((snapshot.value,))
 
 
-def journal_state_at(state_root: Path) -> p.Result[m.Cli.AtomicFileState]:
-    """Read the common journal before mutable workspace topology is loaded."""
-    journal = state_root / files.JOURNAL_NAME
-    return u.Cli.atomic_read_binary_file_state(journal, required=False)
+def journal_snapshot(
+    states: tuple[m.Cli.AtomicFileState, ...],
+) -> m.Cli.AtomicFileState | None:
+    """Return the optional journal snapshot from its non-null result payload."""
+    return states[0] if states else None
 
 
 def transaction_residue(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
 ) -> tuple[Path, ...]:
-    """Return every existing or aliased per-project transaction root."""
-    return tuple(
-        project.transaction_root
-        for project in layout.projects
-        if project.transaction_root.exists() or project.transaction_root.is_symlink()
-    )
-
-
-def create_transaction_roots(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[bool]:
-    """Create one fresh private transaction root on each destination filesystem."""
-    residue = transaction_residue(layout)
-    if residue:
-        return r[bool].fail(f"Mise transaction staging already exists: {residue[0]}")
-    created: list[tuple[Path, tuple[int, int]]] = []
-    try:
-        for project in layout.projects:
-            project.transaction_root.mkdir(mode=0o700, exist_ok=False)
-            state = project.transaction_root.lstat()
-            created.append((project.transaction_root, (state.st_dev, state.st_ino)))
-    except OSError as exc:
-        cleanup = _remove_exact(tuple(created))
-        if cleanup.failure:
-            return r[bool].fail(
-                f"create Mise transaction roots failed ({exc}); "
-                f"cleanup failed ({cleanup.error})",
-                exception=exc,
-            )
-        return r[bool].fail_op("create Mise transaction roots", exc)
-    return r[bool].ok(True)
-
-
-def remove_transaction_roots(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[bool]:
-    """Remove only preflighted literal transaction roots owned by this plan."""
-    targets: list[tuple[Path, tuple[int, int]]] = []
+    """Return every transaction-prefixed child or unsafe state-root alias."""
+    residue: list[Path] = []
     for project in layout.projects:
-        valid = _validate_transaction_root(project.transaction_root)
-        if valid.failure:
-            return r[bool].from_failure(valid)
-        if valid.value:
-            targets.append((project.transaction_root, valid.value[0]))
-    return _remove_exact(tuple(targets))
+        state_root = project.root / files.STATE_DIRECTORY
+        if not state_root.exists() and not state_root.is_symlink():
+            continue
+        if state_root.is_symlink():
+            residue.append(state_root)
+            continue
+        try:
+            root_state = state_root.lstat()
+            if not stat.S_ISDIR(root_state.st_mode) or _is_reparse(root_state):
+                residue.append(state_root)
+                continue
+            children = tuple(state_root.iterdir())
+        except OSError:
+            residue.append(state_root)
+            continue
+        residue.extend(
+            child
+            for child in children
+            if child.name.startswith(files.TRANSACTION_DIR_PREFIX)
+        )
+    return tuple(sorted(set(residue)))
+
+
+def cleanup_journaled_directories(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
+    *,
+    include_generated: bool,
+) -> p.Result[bool]:
+    """Remove authenticated temporary trees and authorized empty directories."""
+    validated = validate_transaction_roots(layout, journal)
+    if validated.failure:
+        return validated
+    removed_temporary_roots: set[str] = set()
+    for project in layout.projects:
+        transaction_root = project.transaction_root
+        if transaction_root is None:
+            return r[bool].fail("Mise recovery layout has no transaction root")
+        if not transaction_root.exists() and not transaction_root.is_symlink():
+            continue
+        relative = files.workspace_relative(layout.scope_root, transaction_root)
+        if relative.failure:
+            return r[bool].from_failure(relative)
+        entry = next(
+            (item for item in journal.directories if item.path == relative.value), None
+        )
+        if entry is None or entry.created is None:
+            return r[bool].fail(
+                f"transaction root has no durable physical identity: {relative.value}"
+            )
+        if entry.manifest is None:
+            observed = u.Cli.atomic_inventory_physical_tree(transaction_root)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            try:
+                m.Infra.CodegenJournalDirectory.model_validate({
+                    **entry.model_dump(),
+                    "manifest": observed.value,
+                })
+            except c.ValidationError as exc:
+                return r[bool].fail_op(
+                    "validate recovery temporary-tree manifest", exc
+                )
+            removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
+        else:
+            observed = verify.authorized_cleanup_manifest(layout, journal, entry)
+            if observed.failure:
+                return r[bool].from_failure(observed)
+            removed = u.Cli.atomic_cleanup_physical_tree_guarded(observed.value)
+        if removed.failure:
+            return removed
+        removed_temporary_roots.add(entry.path)
+    removable = tuple(
+        directory
+        for directory in journal.directories
+        if (
+            directory.path not in removed_temporary_roots
+            and (directory.disposition == "temporary" or include_generated)
+        )
+    )
+    for entry in sorted(removable, key=_directory_cleanup_order, reverse=True):
+        target = files.resolve_relative(
+            layout.scope_root, entry.path, purpose="journaled cleanup directory"
+        )
+        if target.failure:
+            return r[bool].from_failure(target)
+        if not target.value.exists() and not target.value.is_symlink():
+            continue
+        if entry.created is None:
+            return r[bool].fail(
+                f"journaled directory exists without durable identity: {entry.path}"
+            )
+        removed = u.Cli.atomic_delete_empty_directory_guarded(entry.created)
+        if removed.failure:
+            return r[bool].fail(
+                removed.error
+                or f"journaled directory is not safely empty: {entry.path}"
+            )
+    return r[bool].ok(True)
 
 
 def validate_transaction_roots(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
 ) -> p.Result[bool]:
-    """Authenticate every existing staging and recovery root."""
+    """Authenticate the sole journal-derived staging root in every project."""
+    expected = {
+        project.transaction_root
+        for project in layout.projects
+        if project.transaction_root is not None
+    }
+    unexpected = sorted(set(transaction_residue(layout)) - expected)
+    if unexpected:
+        return r[bool].fail(
+            f"foreign generation transaction residue exists: {unexpected[0]}"
+        )
     for project in layout.projects:
-        transaction = _validate_transaction_root(project.transaction_root)
+        transaction_root = project.transaction_root
+        if transaction_root is None:
+            return r[bool].fail("Mise recovery layout has no transaction root")
+        transaction = _validate_transaction_root(transaction_root)
         if transaction.failure:
             return r[bool].from_failure(transaction)
-        if not transaction.value:
+        if transaction.value is None:
             continue
-        recovery_root = project.transaction_root / "recovery"
-        if not recovery_root.exists() and not recovery_root.is_symlink():
-            continue
-        try:
-            recovery_state = recovery_root.lstat()
-        except OSError as exc:
-            return r[bool].fail_op("inspect Mise recovery root", exc)
-        if not stat.S_ISDIR(recovery_state.st_mode) or _is_reparse(recovery_state):
-            return r[bool].fail(f"Mise recovery root is not physical: {recovery_root}")
+        relative = files.workspace_relative(layout.scope_root, transaction_root)
+        if relative.failure:
+            return r[bool].from_failure(relative)
+        recorded = next(
+            (item for item in journal.directories if item.path == relative.value), None
+        )
+        if (
+            recorded is None
+            or recorded.created is None
+            or (recorded.created.device, recorded.created.inode) != transaction.value
+        ):
+            return r[bool].fail(
+                f"Mise transaction root identity is not journaled: {relative.value}"
+            )
     return r[bool].ok(True)
 
 
-def _prepare_state_root(anchor: Path, target: Path) -> p.Result[bool]:
-    cursor = anchor.absolute()
-    relative = target.absolute().relative_to(cursor)
-    for part in relative.parts:
-        cursor /= part
-        prepared = _prepare_physical_state_directory(cursor)
-        if prepared.failure:
-            return prepared
-    return r[bool].ok(True)
-
-
-def _prepare_physical_state_directory(target: Path) -> p.Result[bool]:
-    """Create and authenticate one physical directory in a state path."""
-    try:
-        if not target.exists() and not target.is_symlink():
-            target.mkdir(mode=0o700, exist_ok=False)
-        state = target.lstat()
-    except OSError as exc:
-        return r[bool].fail_op("prepare persistent Mise state", exc)
-    if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
-        return r[bool].fail(f"Mise state path is not physical: {target}")
-    return r[bool].ok(True)
-
-
-def _validate_transaction_root(target: Path) -> p.Result[tuple[tuple[int, int], ...]]:
+def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | None]:
     if not target.exists() and not target.is_symlink():
-        return r[tuple[tuple[int, int], ...]].ok(())
-    if target.name != files.TRANSACTION_DIR_NAME or target.is_symlink():
-        return r[tuple[tuple[int, int], ...]].fail(
+        return r[tuple[int, int] | None].ok(None)
+    identifier = target.name.removeprefix(files.TRANSACTION_DIR_PREFIX)
+    if (
+        not target.name.startswith(files.TRANSACTION_DIR_PREFIX)
+        or len(identifier) != files.TRANSACTION_ID_LENGTH
+        or any(character not in "0123456789abcdef" for character in identifier)
+        or target.is_symlink()
+    ):
+        return r[tuple[int, int] | None].fail(
             f"refusing invalid Mise transaction target: {target}"
         )
     try:
         state = target.lstat()
     except OSError as exc:
-        return r[tuple[tuple[int, int], ...]].fail_op(
-            "inspect Mise transaction target", exc
-        )
+        return r[tuple[int, int] | None].fail_op("inspect Mise transaction target", exc)
     if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
-        return r[tuple[tuple[int, int], ...]].fail(
+        return r[tuple[int, int] | None].fail(
             f"Mise transaction target is not physical: {target}"
         )
-    return r[tuple[tuple[int, int], ...]].ok(((state.st_dev, state.st_ino),))
+    return r[tuple[int, int] | None].ok((state.st_dev, state.st_ino))
 
 
-def _remove_exact(targets: tuple[tuple[Path, tuple[int, int]], ...]) -> p.Result[bool]:
-    try:
-        for target, expected_identity in targets:
-            state = target.lstat()
-            if (
-                (state.st_dev, state.st_ino) != expected_identity
-                or not stat.S_ISDIR(state.st_mode)
-                or _is_reparse(state)
-            ):
-                return r[bool].fail(
-                    f"Mise transaction target changed before cleanup: {target}"
-                )
-            shutil.rmtree(target)
-    except OSError as exc:
-        return r[bool].fail_op("remove exact Mise transaction staging", exc)
-    return r[bool].ok(True)
+def _path_order(path: Path) -> tuple[int, str]:
+    return len(path.parts), path.as_posix()
+
+
+def _relative_order(path: str) -> tuple[int, str]:
+    relative = Path(path)
+    return len(relative.parts), path
 
 
 def _is_reparse(state: os.stat_result) -> bool:
@@ -345,13 +430,12 @@ def _is_reparse(state: os.stat_result) -> bool:
 
 
 __all__: list[str] = [
-    "create_transaction_roots",
+    "cleanup_journaled_directories",
+    "compensate_created_directory",
+    "create_journaled_directory",
     "journal_state",
-    "journal_state_at",
-    "prepare_common_state_root",
-    "prepare_state_roots",
-    "remove_transaction_roots",
+    "plan_directories",
+    "plan_transaction_directories",
     "transaction_residue",
-    "validate_lock_path",
     "validate_transaction_roots",
 ]

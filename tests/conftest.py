@@ -20,15 +20,10 @@ from tests import c, t, u
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
-@pytest.fixture(autouse=True)
-def isolate_process_control_environment() -> Iterator[None]:
-    """Keep host CI controls out of synthetic workspaces by default.
-
-    Tests that exercise trigger anchoring opt in after constructing a commit in
-    their own repository. CI-sensitive tests opt in through ``tm.scope``.
-    """
-    with tm.scope(remove_env_keys=(c.Infra.ENV_VAR_GITHUB_SHA, c.Infra.PYTEST_ENV_CI)):
-        yield
+@pytest.fixture
+def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove the outer checkout identity for explicit conform test consumers."""
+    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
 
 
 @pytest.fixture

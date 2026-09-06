@@ -1,231 +1,315 @@
-"""Topology, source, and live-state verification for Mise transactions."""
+"""Physical topology, source, destination, and real-consumer verification."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import stat
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import c, m, u
+from flext_infra._utilities.project_managed_artifacts import (
+    FlextInfraUtilitiesProjectManagedArtifacts,
+)
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import p
+
+type _JournalFileRole = Literal["desired", "backup", "rollback"]
+
+
+def register_transaction_manifests(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
+) -> p.Result[tuple[m.Infra.CodegenJournalDirectory, ...]]:
+    """Register exact transaction trees after validating any prior authority."""
+    result_type = r[tuple[m.Infra.CodegenJournalDirectory, ...]]
+    registered: list[m.Infra.CodegenJournalDirectory] = []
+    for directory in journal.directories:
+        project = next(
+            item for item in layout.projects if item.selector == directory.project
+        )
+        target = files.resolve_relative(
+            layout.scope_root, directory.path, purpose="temporary tree manifest"
+        )
+        if target.failure:
+            return result_type.from_failure(target)
+        if (
+            directory.disposition != "temporary"
+            or target.value != project.transaction_root
+        ):
+            registered.append(directory)
+            continue
+        if directory.created is None:
+            return result_type.fail(
+                f"temporary tree has no created identity: {directory.path}"
+            )
+        observed = u.Cli.atomic_inventory_physical_tree(target.value)
+        if observed.failure:
+            return result_type.from_failure(observed)
+        physical = _manifest_root_matches_created(directory, observed.value)
+        if physical.failure:
+            return result_type.from_failure(physical)
+        if any(entry.kind == "symlink" for entry in observed.value.entries):
+            return result_type.fail(
+                f"temporary tree contains an alias: {directory.path}"
+            )
+        if directory.manifest is not None:
+            transition = _validate_manifest_transition(
+                layout,
+                journal,
+                directory.manifest,
+                observed.value,
+                allow_registered_additions=True,
+            )
+            if transition.failure:
+                return result_type.from_failure(transition)
+        try:
+            registered.append(
+                m.Infra.CodegenJournalDirectory.model_validate({
+                    **directory.model_dump(),
+                    "manifest": observed.value,
+                })
+            )
+        except c.ValidationError as exc:
+            return result_type.fail_op("validate temporary-tree manifest", exc)
+    return result_type.ok(tuple(registered))
+
+
+def authorized_cleanup_manifest(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
+    directory: m.Infra.CodegenJournalDirectory,
+) -> p.Result[m.Cli.AtomicPhysicalTreeManifest]:
+    """Observe a tree, prove it is a journal-authorized projection, then return it."""
+    result_type = r[m.Cli.AtomicPhysicalTreeManifest]
+    if directory.manifest is None:
+        return result_type.fail(
+            f"temporary tree has no authorized manifest: {directory.path}"
+        )
+    observed = u.Cli.atomic_inventory_physical_tree(directory.manifest.root.path)
+    if observed.failure:
+        return result_type.from_failure(observed)
+    if any(entry.kind == "symlink" for entry in observed.value.entries):
+        return result_type.fail(
+            f"temporary tree contains an unregistered alias: {directory.path}"
+        )
+    transition = _validate_manifest_transition(
+        layout,
+        journal,
+        directory.manifest,
+        observed.value,
+        allow_registered_additions=False,
+    )
+    if transition.failure:
+        return result_type.from_failure(transition)
+    return result_type.ok(observed.value)
 
 
 def journal_topology(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-    journal: m.Infra.MiseToolchainJournal,
-    publications: tuple[m.Cli.AtomicFilePublication, ...] | None = None,
+    journal: m.Infra.CodegenTransactionJournal,
 ) -> p.Result[bool]:
-    """Bind every untrusted journal entry to the stable workspace layout."""
-    if journal.projects != tuple(project.selector for project in layout.projects):
-        return r[bool].fail("Mise journal project topology differs from layout")
-    source_topology = _journal_source_topology(layout, journal.sources)
-    if source_topology.failure:
-        return source_topology
-    directories = _journal_directory_topology(layout, journal, publications)
-    if directories.failure:
-        return directories
-    if journal.state == "staging":
-        return r[bool].ok(True)
-    observed_paths = tuple(entry.path for entry in journal.entries)
-    if len(set(observed_paths)) != len(observed_paths):
-        return r[bool].fail("codegen journal destination paths are not unique")
-    if publications is not None:
-        expected_entries: list[tuple[str, str | None, int | None]] = []
-        for item in publications:
-            selector = files.workspace_relative(layout.scope_root, item.before.path)
-            if selector.failure:
-                return r[bool].from_failure(selector)
-            expected_entries.append((
-                selector.value,
-                None
-                if item.replacement.content is None
-                else u.Cli.sha256_bytes(item.replacement.content),
-                item.replacement.mode,
-            ))
-        observed_entries = tuple(
-            (entry.path, entry.replacement_sha256, entry.replacement_mode)
-            for entry in journal.entries
-        )
-        if observed_entries != tuple(expected_entries):
-            return r[bool].fail(
-                "codegen journal entries differ from staged publications"
-            )
-    for index, entry in enumerate(journal.entries):
+    """Bind every journal selector and physical identity to the locked layout."""
+    if layout.transaction_id != journal.transaction_id:
+        return r[bool].fail("generation journal transaction id differs from layout")
+    scope = _directory_identity(layout.scope_root)
+    if scope.failure:
+        return r[bool].from_failure(scope)
+    if scope.value != (journal.scope_device, journal.scope_inode):
+        return r[bool].fail("generation journal scope identity differs from layout")
+    if tuple(project.selector for project in journal.projects) != tuple(
+        project.selector for project in layout.projects
+    ):
+        return r[bool].fail("generation journal project topology differs from layout")
+    by_selector = {project.selector: project for project in layout.projects}
+    directory_targets: dict[Path, m.Infra.CodegenJournalDirectory] = {}
+    for directory in journal.directories:
         target = files.resolve_relative(
-            layout.scope_root, entry.path, purpose="codegen journal destination"
+            layout.scope_root, directory.path, purpose="journaled generation directory"
         )
         if target.failure:
             return r[bool].from_failure(target)
-        project = files.project_for_path(layout, target.value)
-        if project.failure:
-            return r[bool].from_failure(project)
-        expected_backup: str | None = None
-        if entry.original_exists:
-            relative = files.workspace_relative(
-                layout.state_root,
-                project.value.transaction_root / "recovery" / f"{index:04d}.original",
-            )
-            if relative.failure:
-                return r[bool].from_failure(relative)
-            expected_backup = relative.value
-        if entry.original_backup != expected_backup:
+        directory_targets[target.value] = directory
+    for recorded in journal.projects:
+        project = by_selector[recorded.selector]
+        identity = _directory_identity(project.root)
+        if identity.failure:
+            return r[bool].from_failure(identity)
+        if identity.value != (recorded.device, recorded.inode):
             return r[bool].fail(
-                "Mise journal backup topology differs from runtime state"
+                f"generation project identity changed: {recorded.selector}"
             )
-    return r[bool].ok(True)
-
-
-def _journal_directory_topology(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-    journal: m.Infra.MiseToolchainJournal,
-    publications: tuple[m.Cli.AtomicFilePublication, ...] | None,
-) -> p.Result[bool]:
-    """Authenticate created-directory ownership, order, and preflight state."""
-    selectors = journal.created_directories
-    if len(set(selectors)) != len(selectors):
-        return r[bool].fail("codegen journal directory paths are not unique")
-    resolved_paths: list[Path] = []
-    for selector in selectors:
-        resolved = files.resolve_relative(
-            layout.scope_root, selector, purpose="codegen destination directory"
+    for directory in journal.directories:
+        project = by_selector[directory.project]
+        target = next(
+            path for path, candidate in directory_targets.items() if candidate == directory
         )
-        if resolved.failure:
-            return r[bool].from_failure(resolved)
-        owner = files.project_for_path(layout, resolved.value)
-        if owner.failure:
-            return r[bool].from_failure(owner)
-        if resolved.value == owner.value.root.absolute():
-            return r[bool].fail("codegen journal cannot create a project root")
-        resolved_paths.append(resolved.value)
-    canonical = tuple(
-        sorted(resolved_paths, key=lambda path: (len(path.parts), str(path)))
-    )
-    if tuple(resolved_paths) != canonical:
-        return r[bool].fail("codegen journal directory order differs from topology")
-    if publications is None:
-        return r[bool].ok(True)
-    targets = tuple(
-        item.before.path
-        for item in publications
-        if item.replacement.content is not None
-    )
-    for directory in resolved_paths:
-        if not directory.is_dir() or directory.is_symlink():
+        if target == project.root or not target.is_relative_to(project.root):
             return r[bool].fail(
-                f"journaled codegen destination directory is invalid: {directory}"
+                f"generation directory escapes its project: {directory.path}"
             )
-        if not any(directory in target.parents for target in targets):
+        if directory.before is not None and directory.before.path != target:
             return r[bool].fail(
-                f"journaled codegen directory owns no publication: {directory}"
+                f"generation directory preflight path differs: {directory.path}"
             )
-    if any(
-        not target.parent.is_dir() or target.parent.is_symlink() for target in targets
-    ):
-        return r[bool].fail("codegen publication has an invalid destination parent")
-    return r[bool].ok(True)
-
-
-def sources(
-    plan: m.Infra.MiseToolchainWorkspacePlan,
-    journal: m.Infra.MiseToolchainJournal | None = None,
-    source_plans: tuple[m.Infra.CodegenFilePlan, ...] = (),
-) -> p.Result[bool]:
-    """Prove source topology, bytes, and modes still equal one snapshot."""
-    for project in plan.projects:
-        config_sources = u.Infra.snapshot_config_sources(project.layout.root)
-        if config_sources.failure:
-            return r[bool].from_failure(config_sources)
-        expected = project.config.sources
-        current = config_sources.value
-        if current != expected:
-            return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
-    expected_states = files.transaction_sources(plan, source_plans)
-    if expected_states.failure:
-        return r[bool].from_failure(expected_states)
-    verified = u.Cli.atomic_verify_binary_file_states(expected_states.value)
-    if verified.failure:
-        return r[bool].fail(
-            "codegen source verification failed: "
-            f"{verified.error or 'physical state changed'}"
+        if directory.created is not None:
+            if directory.created.path != target:
+                return r[bool].fail(
+                    f"generation created directory path differs: {directory.path}"
+                )
+            parent = directory_targets.get(target.parent)
+            expected_parent = (
+                (
+                    directory.before.parent_device,
+                    directory.before.parent_inode,
+                )
+                if directory.before is not None
+                else (
+                    None
+                    if parent is None or parent.created is None
+                    else (parent.created.device, parent.created.inode)
+                )
+            )
+            if expected_parent is None or (
+                directory.created.parent_device,
+                directory.created.parent_inode,
+            ) != expected_parent:
+                return r[bool].fail(
+                    f"generation directory parent binding differs: {directory.path}"
+                )
+        if directory.disposition == "temporary":
+            transaction_root = project.transaction_root
+            if (
+                directory.phase != "transaction"
+                or transaction_root is None
+                or not transaction_root.is_relative_to(target)
+            ):
+                return r[bool].fail(
+                    f"temporary directory escapes transaction root: {directory.path}"
+                )
+    for entry in journal.entries:
+        project = by_selector[entry.project]
+        target = files.resolve_relative(
+            layout.scope_root, entry.path, purpose="generated destination"
         )
-    if journal is None:
-        return r[bool].ok(True)
-    topology = _journal_source_topology(plan.layout, journal.sources)
-    if topology.failure:
-        return topology
-    if len(journal.sources) != len(expected_states.value):
-        return r[bool].fail("codegen journal source count differs from snapshot")
-    for expected, recorded in zip(expected_states.value, journal.sources, strict=True):
-        selector = files.source_selector(plan.layout.scope_root, expected.path)
-        if selector.failure:
-            return r[bool].from_failure(selector)
-        if (
-            expected.content is None
-            or expected.mode is None
-            or recorded.path != selector.value
-            or u.Cli.sha256_bytes(expected.content) != recorded.sha256
-            or expected.mode != recorded.mode
-        ):
-            return r[bool].fail(f"Mise source differs from journal: {expected.path}")
+        if target.failure:
+            return r[bool].from_failure(target)
+        if not target.value.is_relative_to(project.root):
+            return r[bool].fail(f"generation entry escapes its project: {entry.path}")
+        staging_paths: list[tuple[str, str]] = []
+        if entry.original_backup is not None:
+            staging_paths.append(("backup", entry.original_backup))
+        if entry.desired_staging is not None:
+            staging_paths.append(("desired", entry.desired_staging))
+        if entry.rollback_staging is not None:
+            staging_paths.append(("rollback", entry.rollback_staging))
+        transaction_root = project.transaction_root
+        if staging_paths and transaction_root is None:
+            return r[bool].fail("generation recovery layout has no transaction root")
+        for role, selector in staging_paths:
+            staging = files.resolve_relative(
+                layout.scope_root, selector, purpose=f"generation {role} staging"
+            )
+            if staging.failure:
+                return r[bool].from_failure(staging)
+            if transaction_root is None or not staging.value.is_relative_to(
+                transaction_root
+            ):
+                return r[bool].fail(
+                    f"generation {role} staging escapes transaction root: {entry.path}"
+                )
+        if entry.original_backup is not None:
+            backup = files.resolve_relative(
+                layout.scope_root,
+                entry.original_backup,
+                purpose="generation recovery backup",
+            )
+            if backup.failure:
+                return r[bool].from_failure(backup)
+            if transaction_root is None or backup.value.parent != (
+                transaction_root / "recovery"
+            ):
+                return r[bool].fail(
+                    f"generation backup escapes its recovery root: {entry.path}"
+                )
     return r[bool].ok(True)
 
 
-def destinations(
-    plan: m.Infra.MiseToolchainWorkspacePlan,
-    publications: tuple[m.Cli.AtomicFilePublication, ...] = (),
-) -> p.Result[bool]:
-    """Prove every live destination still equals the locked preflight snapshot."""
-    expected_by_path: dict[Path, m.Cli.AtomicFileState] = {}
-    expected_states = (
-        *(
-            state
-            for project in plan.projects
-            for state in (
-                project.config.before,
-                project.artifacts.unix_launcher,
-                project.artifacts.windows_launcher,
-                project.artifacts.lock,
-            )
-        ),
-        *(publication.before for publication in publications),
-    )
-    for expected in expected_states:
-        prior = expected_by_path.get(expected.path)
-        if prior is not None and prior != expected:
-            return r[bool].fail(
-                f"codegen destination has conflicting snapshots: {expected.path}"
-            )
-        expected_by_path[expected.path] = expected
-    for expected in expected_by_path.values():
-        observed = u.Cli.atomic_read_binary_file_state(expected.path, required=False)
+def states_current(states: tuple[m.Cli.AtomicFileState, ...]) -> p.Result[bool]:
+    """Prove every full file state still equals its authenticated snapshot."""
+    for expected in states:
+        observed = files.read_state(
+            expected.path, required=expected.content is not None
+        )
         if observed.failure:
             return r[bool].from_failure(observed)
         if observed.value != expected:
-            return r[bool].fail(
-                f"codegen destination changed after preflight: {expected.path}"
-            )
+            return r[bool].fail(f"generation state changed: {expected.path}")
     return r[bool].ok(True)
 
 
-def published(publications: tuple[m.Cli.AtomicFilePublication, ...]) -> p.Result[bool]:
-    """Prove every live destination equals its staged replacement."""
-    for publication in publications:
-        expected = publication.replacement
-        observed = u.Cli.atomic_read_binary_file_state(
-            publication.before.path, required=expected.content is not None
+def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
+    """Prove every Mise config source still equals its full snapshot."""
+    for project in plan.projects:
+        current = FlextInfraUtilitiesProjectManagedArtifacts.snapshot_config_sources(
+            project.layout.root
         )
+        if current.failure:
+            return r[bool].from_failure(current)
+        if current.value != project.config.sources:
+            return r[bool].fail(f"Mise sources changed: {project.layout.selector}")
+    return r[bool].ok(True)
+
+
+def destinations(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
+    """Prove all Mise destinations still equal the locked preflight snapshot."""
+    for project in plan.projects:
+        expected_states = (
+            project.config.before,
+            project.artifacts.unix_launcher,
+            project.artifacts.windows_launcher,
+            project.artifacts.lock,
+        )
+        current = states_current(expected_states)
+        if current.failure:
+            return current
+    return r[bool].ok(True)
+
+
+def publications_live(
+    publications: tuple[m.Infra.CodegenStagedFile, ...],
+) -> p.Result[bool]:
+    """Prove live destinations have the exact staged inode or planned absence."""
+    for publication in publications:
+        observed = files.read_state(publication.before.path, required=False)
         if observed.failure:
             return r[bool].from_failure(observed)
-        if (observed.value.content, observed.value.mode) != (
-            expected.content,
-            expected.mode,
+        replacement = publication.replacement
+        if replacement is None:
+            if (
+                observed.value.content is not None
+                or observed.value.parent_device != publication.before.parent_device
+                or observed.value.parent_inode != publication.before.parent_inode
+            ):
+                return r[bool].fail(
+                    "deleted generation destination or its parent changed: "
+                    f"{publication.before.path}"
+                )
+            continue
+        current = observed.value
+        if _file_identity(
+            current,
+            parent_device=current.parent_device,
+            parent_inode=current.parent_inode,
+        ) != _file_identity(
+            replacement,
+            parent_device=publication.before.parent_device,
+            parent_inode=publication.before.parent_inode,
         ):
             return r[bool].fail(
-                f"published codegen destination differs: {publication.before.path}"
+                f"live generation destination differs from staged identity: {current.path}"
             )
     return r[bool].ok(True)
 
@@ -233,19 +317,20 @@ def published(publications: tuple[m.Cli.AtomicFilePublication, ...]) -> p.Result
 def live(
     owner: p.Infra.MiseArtifactsOwner,
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publications: tuple[m.Cli.AtomicFilePublication, ...] | None = None,
+    publications: tuple[m.Infra.CodegenStagedFile, ...] | None = None,
 ) -> p.Result[bool]:
-    """Exercise each real artifact consumer and compare exact bytes plus modes."""
+    """Exercise every real Mise consumer while guarding sources and live bytes."""
     source_before = sources(plan)
     if source_before.failure:
         return source_before
-    replacements = {
-        publication.before.path: (
-            publication.replacement.content,
-            publication.replacement.mode,
-        )
-        for publication in publications or ()
-    }
+    replacements: dict[Path, tuple[bytes, int | None]] = {}
+    for publication in publications or ():
+        replacement = publication.replacement
+        if replacement is None or replacement.content is None:
+            return r[bool].fail(
+                f"Mise replacement is absent: {publication.before.path}"
+            )
+        replacements[publication.before.path] = (replacement.content, replacement.mode)
     artifact_before = _artifact_snapshot(plan, replacements)
     if artifact_before.failure:
         return r[bool].from_failure(artifact_before)
@@ -254,7 +339,10 @@ def live(
             project.layout.root, config_sources=project.config.sources
         )
         if validated.failure:
-            return r[bool].from_failure(validated)
+            return r[bool].fail(
+                validated.error
+                or f"published Mise validation failed for {project.layout.selector}"
+            )
     artifact_after = _artifact_snapshot(plan, replacements)
     if artifact_after.failure:
         return r[bool].from_failure(artifact_after)
@@ -263,19 +351,226 @@ def live(
     source_after = sources(plan)
     if source_after.failure:
         return source_after
-    artifact_final = _artifact_snapshot(plan, replacements)
-    if artifact_final.failure:
-        return r[bool].from_failure(artifact_final)
-    if artifact_final.value != artifact_after.value:
-        return r[bool].fail("published Mise artifacts changed after validation")
+    return r[bool].ok(True)
+
+
+def _validate_manifest_transition(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
+    authorized: m.Cli.AtomicPhysicalTreeManifest,
+    observed: m.Cli.AtomicPhysicalTreeManifest,
+    *,
+    allow_registered_additions: bool,
+) -> p.Result[bool]:
+    """Accept only stable objects and explicitly journaled file transitions."""
+    if not _same_directory_identity(authorized.root, observed.root):
+        return r[bool].fail(
+            f"temporary tree root identity changed: {authorized.root.path}"
+        )
+    expected = {entry.path: entry for entry in authorized.entries}
+    current = {entry.path: entry for entry in observed.entries}
+    file_specs = _journal_file_specs(layout, journal)
+    if file_specs.failure:
+        return r[bool].from_failure(file_specs)
+    consumable = {
+        path
+        for path, (role, _entry) in file_specs.value.items()
+        if role in {"desired", "rollback"}
+    }
+    for path, entry in expected.items():
+        current_entry = current.get(path)
+        if current_entry is None:
+            if entry.kind == "file" and path in consumable:
+                continue
+            return r[bool].fail(
+                f"journaled temporary-tree entry is missing: {path}"
+            )
+        if entry.kind == "directory":
+            if not _same_directory_identity(entry, current_entry):
+                return r[bool].fail(
+                    f"temporary-tree directory identity changed: {path}"
+                )
+        elif current_entry != entry:
+            return r[bool].fail(f"temporary-tree file identity changed: {path}")
+    additions = tuple(
+        entry for path, entry in current.items() if path not in expected
+    )
+    if additions and not allow_registered_additions:
+        return r[bool].fail(
+            f"unregistered temporary-tree entry exists: {additions[0].path}"
+        )
+    authorized_files = set(file_specs.value)
+    for entry in additions:
+        if entry.kind == "directory":
+            if not any(entry.path in path.parents for path in authorized_files):
+                return r[bool].fail(
+                    f"unregistered temporary-tree directory exists: {entry.path}"
+                )
+            continue
+        spec = file_specs.value.get(entry.path)
+        if spec is None or not _matches_journal_file(entry, *spec):
+            return r[bool].fail(
+                f"unregistered temporary-tree file exists: {entry.path}"
+            )
+    return r[bool].ok(True)
+
+
+def _journal_file_specs(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
+) -> p.Result[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]:
+    result_type = r[
+        dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]
+    ]
+    specs: dict[
+        Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]
+    ] = {}
+    for entry in journal.entries:
+        selectors: tuple[tuple[_JournalFileRole, str | None], ...] = (
+            ("desired", entry.desired_staging),
+            ("backup", entry.original_backup),
+            ("rollback", entry.rollback_staging),
+        )
+        for role, selector in selectors:
+            if selector is None:
+                continue
+            resolved = files.resolve_relative(
+                layout.scope_root, selector, purpose=f"{role} staging file"
+            )
+            if resolved.failure:
+                return result_type.from_failure(resolved)
+            previous = specs.get(resolved.value)
+            if previous is not None and previous != (role, entry):
+                return result_type.fail(
+                    f"temporary file has multiple journal owners: {selector}"
+                )
+            specs[resolved.value] = (role, entry)
+    return result_type.ok(specs)
+
+
+def _matches_journal_file(
+    observed: m.Cli.AtomicPhysicalTreeEntry,
+    role: _JournalFileRole,
+    entry: m.Infra.CodegenJournalEntry,
+) -> bool:
+    if observed.kind != "file":
+        return False
+    if role == "desired":
+        expected = (
+            entry.desired_sha256,
+            entry.desired_mode,
+            entry.desired_device,
+            entry.desired_inode,
+            entry.desired_link_count,
+            entry.desired_file_attributes,
+            entry.desired_reparse_tag,
+        )
+    elif role == "rollback":
+        expected = (
+            entry.rollback_sha256,
+            entry.rollback_mode,
+            entry.rollback_device,
+            entry.rollback_inode,
+            entry.rollback_link_count,
+            entry.rollback_file_attributes,
+            entry.rollback_reparse_tag,
+        )
+    else:
+        expected = (
+            entry.original_sha256,
+            files.JOURNAL_MODE,
+            observed.device,
+            observed.inode,
+            1,
+            observed.file_attributes,
+            observed.reparse_tag,
+        )
+    actual = (
+        observed.sha256,
+        observed.mode,
+        observed.device,
+        observed.inode,
+        observed.link_count,
+        observed.file_attributes,
+        observed.reparse_tag,
+    )
+    return actual == expected
+
+
+def _same_directory_identity(
+    expected: m.Cli.AtomicPhysicalTreeEntry,
+    observed: m.Cli.AtomicPhysicalTreeEntry,
+) -> bool:
+    return (
+        expected.path,
+        expected.kind,
+        expected.parent_device,
+        expected.parent_inode,
+        expected.parent_mount_id,
+        expected.mode,
+        expected.device,
+        expected.inode,
+        expected.mount_id,
+        expected.uid,
+        expected.gid,
+        expected.file_attributes,
+        expected.reparse_tag,
+    ) == (
+        observed.path,
+        observed.kind,
+        observed.parent_device,
+        observed.parent_inode,
+        observed.parent_mount_id,
+        observed.mode,
+        observed.device,
+        observed.inode,
+        observed.mount_id,
+        observed.uid,
+        observed.gid,
+        observed.file_attributes,
+        observed.reparse_tag,
+    )
+
+
+def _manifest_root_matches_created(
+    directory: m.Infra.CodegenJournalDirectory,
+    manifest: m.Cli.AtomicPhysicalTreeManifest,
+) -> p.Result[bool]:
+    created = directory.created
+    if created is None:
+        return r[bool].fail(
+            f"temporary tree has no created identity: {directory.path}"
+        )
+    root = manifest.root
+    if (
+        root.path,
+        root.parent_device,
+        root.parent_inode,
+        root.mode,
+        root.device,
+        root.inode,
+        root.file_attributes,
+        root.reparse_tag,
+    ) != (
+        created.path,
+        created.parent_device,
+        created.parent_inode,
+        created.mode,
+        created.device,
+        created.inode,
+        created.file_attributes,
+        created.reparse_tag,
+    ):
+        return r[bool].fail(
+            f"temporary tree differs from created identity: {directory.path}"
+        )
     return r[bool].ok(True)
 
 
 def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    replacements: dict[Path, tuple[bytes | None, int | None]],
+    replacements: dict[Path, tuple[bytes, int | None]],
 ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-    """Capture and validate one complete ordered artifact-state barrier."""
     root_launchers: tuple[bytes, bytes] | None = None
     states: list[m.Cli.AtomicFileState] = []
     for project in plan.projects:
@@ -289,7 +584,7 @@ def _artifact_snapshot(
         for expected, (_name, required_mode) in zip(
             artifacts, files.PUBLICATION_SPECS, strict=True
         ):
-            current = u.Cli.atomic_read_binary_file_state(expected.path, required=True)
+            current = files.read_state(expected.path, required=True)
             if current.failure or current.value.content is None:
                 return r[tuple[m.Cli.AtomicFileState, ...]].fail(
                     current.error
@@ -318,32 +613,53 @@ def _artifact_snapshot(
     return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
 
 
-def _journal_source_topology(
-    layout: m.Infra.MiseToolchainWorkspaceLayout,
-    sources_to_validate: tuple[m.Infra.MiseToolchainJournalSource, ...],
-) -> p.Result[bool]:
-    seen: set[str] = set()
-    for source in sources_to_validate:
-        if source.path in seen:
-            return r[bool].fail(f"duplicate Mise journal source: {source.path}")
-        seen.add(source.path)
-        resolved = files.resolve_source(layout.scope_root, source.path)
-        if resolved.failure:
-            return r[bool].from_failure(resolved)
-        if resolved.value.is_relative_to(layout.state_root.absolute()):
-            return r[bool].fail(
-                f"Mise journal source enters transaction state: {source.path}"
-            )
-    observed_order = tuple(source.path for source in sources_to_validate)
-    if observed_order != tuple(sorted(observed_order)):
-        return r[bool].fail("codegen journal source order differs from workspace")
-    return r[bool].ok(True)
+def _file_identity(
+    value: m.Cli.AtomicFileState, *, parent_device: int, parent_inode: int
+) -> tuple[
+    int,
+    int,
+    bytes | None,
+    int | None,
+    int | None,
+    int | None,
+    int | None,
+    int | None,
+    int | None,
+]:
+    """Return every physical and byte field except the intentionally moved path."""
+    return (
+        parent_device,
+        parent_inode,
+        value.content,
+        value.mode,
+        value.device,
+        value.inode,
+        value.link_count,
+        value.file_attributes,
+        value.reparse_tag,
+    )
+
+
+def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
+    try:
+        observed = path.lstat()
+    except OSError as exc:
+        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
+    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
+        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+    )
+    if not stat.S_ISDIR(observed.st_mode) or reparse:
+        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
+    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
 
 
 __all__: list[str] = [
+    "authorized_cleanup_manifest",
     "destinations",
     "journal_topology",
     "live",
-    "published",
+    "publications_live",
+    "register_transaction_manifests",
     "sources",
+    "states_current",
 ]

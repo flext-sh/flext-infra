@@ -226,7 +226,7 @@ class TestGitHookConformance:
             root, c.Infra.MakeProfile.STANDALONE
         )
 
-        retired = {plan.path for plan in tm.ok(planned) if plan.absent}
+        retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
         tm.that(hook_config in retired, eq=False)
 
     def test_standalone_retires_workspace_only_generated_projection(
@@ -243,7 +243,7 @@ class TestGitHookConformance:
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
 
-        retired = {plan.path for plan in tm.ok(planned) if plan.absent}
+        retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
         tm.that(target in retired, eq=True)
 
 

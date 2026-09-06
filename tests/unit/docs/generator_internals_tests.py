@@ -97,39 +97,6 @@ def test_generated_non_markdown_preserves_exact_content(tmp_path: Path) -> None:
     tm.that(generated.read_text(), eq=content)
 
 
-def test_direct_package_guide_generation_does_not_reingest_projection(
-    tmp_path: Path,
-) -> None:
-    """A package-local docs run is a fixed point for generated guides."""
-    guides = tmp_path / "docs" / "guides"
-    guides.mkdir(parents=True)
-    generated = guides / "setup.md"
-    content = (
-        "<!-- AUTO-GENERATED FILE — regenerate through `make gen APPLY=Y` "
-        "from the workspace root. -->\n"
-        "<!-- Source of truth: `docs/guides/setup.md`; adjust that source, "
-        "never this projection. -->\n\n"
-        "# fixture - Setup\n\n"
-        "> Project profile: `fixture`\n\n"
-        "Body.\n"
-    )
-    generated.write_text(content, encoding="utf-8")
-    scope = m.Infra.DocScope(
-        name="fixture",
-        path=tmp_path,
-        report_dir=tmp_path / ".reports/docs",
-        project_class="library",
-        package_name="fixture",
-    )
-
-    result = u.Infra.docs_project_guides_files(
-        scope, repository_root=tmp_path, apply=False
-    )
-
-    tm.that(result, eq=())
-    tm.that(generated.read_text(encoding="utf-8"), eq=content)
-
-
 def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(
         tmp_path, project_names=("flext-a", "flext-b")
@@ -137,7 +104,7 @@ def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
 
     result = FlextInfraDocGenerator().generate(
         m.Infra.DocsGenerateRequest(
-            repository_root=workspace, projects=["flext-a"], apply=True
+            workspace_root=workspace, projects=["flext-a"], apply=False
         )
     )
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from flext_core import r
@@ -30,13 +29,10 @@ from flext_infra.deps.phases.inject_comments import FlextInfraInjectCommentsPhas
 from flext_infra.refactor.project_classifier import FlextInfraProjectClassifier
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from flext_infra import p
-
-
-class FlextInfraPyprojectModernizationError(RuntimeError):
-    """Raised when pyproject modernization invariants break."""
 
 
 class FlextInfraPyprojectModernizerDocumentMixin:
@@ -45,7 +41,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     if TYPE_CHECKING:
         # Members provided by the composed dependency modernizer.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         @property
         def root(self) -> Path: ...
@@ -63,6 +58,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # default comes from the tomlsort SSOT. A property here would make the
         # field an incompatible override of a read-only descriptor.
         tomlsort_sort_first: t.StrSequence
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         def _reorder_document_inplace(
             self,
@@ -78,23 +74,15 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         classifier = FlextInfraProjectClassifier(project_dir, pyproject_payload=payload)
         return r[str].ok(classifier.classify().project_kind)
 
-    @staticmethod
-    def _apply_timed_step(
-        changes: t.MutableSequence[str],
-        name: str,
-        operation: Callable[[], t.StrSequence],
-    ) -> None:
-        """Apply one named tooling phase to the shared change collection."""
-        _ = name
-        changes.extend(operation())
-
     def _read_document_state(
         self, path: Path
     ) -> p.Result[m.Infra.PyprojectDocumentState]:
         """Read one pyproject once and keep one validated plain payload state."""
         read = u.Cli.files_read_text(path)
         if read.failure:
-            return r[m.Infra.PyprojectDocumentState].from_failure(read)
+            return r[m.Infra.PyprojectDocumentState].fail(
+                read.error or f"failed to read {path}"
+            )
         original_rendered = read.value
         payload_source = u.Cli.toml_mapping_from_text(original_rendered)
         if payload_source is None:
@@ -125,9 +113,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             path=path,
             toolchain_root=self.root,
             taplo_version=config.Infra.codegen.toolchain.taplo_version,
-            process_timeout_seconds=(
-                config.Infra.tooling.tools.tomlsort.process_timeout_seconds
-            ),
         )
 
     def _process_document_state(
@@ -141,8 +126,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
-        root_modules: t.StrSequence = (),
-        root_packages: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
@@ -159,11 +142,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # disk discovery converges on the first post-write conformance pass.
         project_root_exists = path.is_file()
         effective_project_dir = path.parent if project_root_exists else None
-        effective_repository_root = self.root if project_root_exists else None
+        effective_workspace_root = self.root if project_root_exists else None
         paths_manager = FlextInfraExtraPathsManager(
-            repository_root=self.root,
+            workspace_root=self.root,
             generated_python_roots=generated_python_roots,
-            analysis_exclusions=analysis_exclusions,
+            analysis_exclusions=analysis_exclusions or (),
         )
         effective_paths_manager = paths_manager if project_root_exists else None
         resolved_project_kind: str = project_kind or "core"
@@ -181,140 +164,91 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             declared_python_dirs_are_complete or not project_root_exists
         )
         changes: t.MutableSequenceOf[str] = []
-        self._apply_timed_step(
-            changes, "build-system", lambda: self._ensure_build_system_payload(payload)
-        )
-        self._apply_timed_step(
-            changes,
-            "poetry-groups",
-            lambda: self._remove_empty_poetry_groups_payload(payload),
-        )
+        changes.extend(self._ensure_build_system_payload(payload))
+        changes.extend(self._remove_empty_poetry_groups_payload(payload))
         if rewrite_constraints:
-            self._apply_timed_step(
-                changes,
-                "dependency-constraints",
-                lambda: self._rewrite_dependency_constraints_payload(
+            changes.extend(
+                self._rewrite_dependency_constraints_payload(
                     payload,
                     locked_versions=locked_versions or {},
                     internal_names=internal_names,
-                ),
+                )
             )
-        self._apply_timed_step(
-            changes,
-            "dependency-groups",
-            lambda: FlextInfraConsolidateGroupsPhase().apply_payload(
-                payload, canonical_dev
-            ),
+        changes.extend(
+            FlextInfraConsolidateGroupsPhase().apply_payload(payload, canonical_dev)
         )
-        self._apply_timed_step(
-            changes,
-            "pytest",
-            lambda: FlextInfraEnsurePytestConfigPhase(
-                config.Infra.tooling
-            ).apply_payload(payload),
+        changes.extend(
+            FlextInfraEnsurePytestConfigPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
         )
         # Pyrefly derives its include globs from the canonical
         # Pyright roots, so resolve Pyright first and converge in one pass.
-        self._apply_timed_step(
-            changes,
-            "pyright",
-            lambda: FlextInfraEnsurePyrightConfigPhase(
-                config.Infra.tooling
-            ).apply_payload(
+        changes.extend(
+            FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                repository_root=effective_repository_root,
+                workspace_root=effective_workspace_root,
                 project_dir=effective_project_dir,
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
                 declared_python_dirs_are_complete=declared_python_dirs_are_complete,
                 analysis_exclusions=analysis_exclusions,
-            ),
+            )
         )
-        self._apply_timed_step(
-            changes,
-            "pyrefly",
-            lambda: FlextInfraEnsurePyreflyConfigPhase(
-                config.Infra.tooling
-            ).apply_payload(
+        changes.extend(
+            FlextInfraEnsurePyreflyConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
                 project_dir=effective_project_dir,
                 paths_manager=effective_paths_manager,
                 declared_python_dirs=declared_python_dirs,
                 declared_python_dirs_are_complete=declared_roots_are_usable,
-            ),
+            )
         )
-        self._apply_timed_step(
-            changes,
-            "mypy",
-            lambda: FlextInfraEnsureMypyConfigPhase(config.Infra.tooling).apply_payload(
+        changes.extend(
+            FlextInfraEnsureMypyConfigPhase(config.Infra.tooling).apply_payload(payload)
+        )
+        changes.extend(
+            FlextInfraEnsurePydanticMypyConfigPhase(config.Infra.tooling).apply_payload(
                 payload
-            ),
+            )
         )
-        self._apply_timed_step(
-            changes,
-            "pydantic-mypy",
-            lambda: FlextInfraEnsurePydanticMypyConfigPhase(
-                config.Infra.tooling
-            ).apply_payload(payload),
+        changes.extend(
+            FlextInfraEnsureFormattingToolingPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
         )
-        self._apply_timed_step(
-            changes,
-            "formatting",
-            lambda: FlextInfraEnsureFormattingToolingPhase(
-                config.Infra.tooling
-            ).apply_payload(payload),
+        changes.extend(
+            FlextInfraEnsureNamespaceToolingPhase().apply_payload(payload, path=path)
         )
-        self._apply_timed_step(
-            changes,
-            "namespace",
-            lambda: FlextInfraEnsureNamespaceToolingPhase().apply_payload(
-                payload, path=path
-            ),
-        )
-        self._apply_timed_step(
-            changes,
-            "ruff",
-            lambda: FlextInfraEnsureRuffConfigPhase(
+        changes.extend(
+            FlextInfraEnsureRuffConfigPhase(
                 config.Infra.tooling, self.managed_artifacts
-            ).apply_payload(
-                payload, path=path, analysis_exclusions=analysis_exclusions
-            ),
+            ).apply_payload(payload, path=path)
         )
-        self._apply_timed_step(
-            changes,
-            "packaging",
-            lambda: FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
-                payload,
-                path=path,
-                root_modules=root_modules,
-                root_packages=root_packages,
-            ),
+        changes.extend(
+            FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
+                payload, path=path, is_root=is_root
+            )
         )
         # Existing projects consume the same Vulture SSOT as scaffolds.
-        self._apply_timed_step(
-            changes,
-            "vulture",
-            lambda: FlextInfraEnsureVultureConfigPhase(
-                config.Infra.tooling
-            ).apply_payload(payload),
+        changes.extend(
+            FlextInfraEnsureVultureConfigPhase(config.Infra.tooling).apply_payload(
+                payload
+            )
         )
-        self._apply_timed_step(
-            changes,
-            "coverage",
-            lambda: FlextInfraEnsureCoverageConfigPhase(
-                config.Infra.tooling
-            ).apply_payload(payload, project_kind=resolved_project_kind),
+        changes.extend(
+            FlextInfraEnsureCoverageConfigPhase(config.Infra.tooling).apply_payload(
+                payload, project_kind=resolved_project_kind
+            )
         )
         if effective_paths_manager is not None:
-            self._apply_timed_step(
-                changes,
-                "analyzer-paths",
-                lambda: effective_paths_manager.sync_payload(
+            changes.extend(
+                effective_paths_manager.sync_payload(
                     payload, project_dir=path.parent, is_root=is_root
-                ),
+                )
             )
         doc: t.Cli.TomlDocument = u.Cli.toml_document_from_mapping(payload)
         self._reorder_document_inplace(doc, preferred_first=self.tomlsort_sort_first)
@@ -323,33 +257,19 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         if not skip_comments:
             rendered, comment_changes = FlextInfraInjectCommentsPhase().apply(rendered)
             changes.extend(comment_changes)
-        normalized_original = original_rendered.rstrip() + "\n"
-        normalized_rendered = rendered.rstrip() + "\n"
-        if normalized_rendered == normalized_original:
-            state.rendered = normalized_original
-            return ()
         if format_source:
             formatted_result = self._format_rendered_pyproject(path, rendered)
             if formatted_result.failure:
                 return [formatted_result.error or "taplo format failed"]
             rendered = formatted_result.value
+        normalized_original = original_rendered.rstrip() + "\n"
         normalized_rendered = rendered.rstrip() + "\n"
         state.rendered = normalized_rendered
         if normalized_rendered == normalized_original:
             return ()
         if not dry_run:
-            before = u.Cli.atomic_read_binary_file_state(path, required=True).unwrap()
-            expected_before = normalized_original.encode(c.Cli.ENCODING_DEFAULT)
-            if before.content != expected_before:
-                msg = f"pyproject changed during modernization: {path}"
-                raise FlextInfraPyprojectModernizationError(msg)
-            u.Cli.atomic_write_text_file_guarded(before, normalized_rendered).unwrap()
-            published = u.Cli.atomic_read_binary_file_state(
-                path, required=True
-            ).unwrap()
-            if published.content != normalized_rendered.encode(c.Cli.ENCODING_DEFAULT):
-                msg = f"pyproject publication differs after write: {path}"
-                raise FlextInfraPyprojectModernizationError(msg)
+            # Persist the same normalized value used for change detection.
+            u.write_file(path, normalized_rendered, encoding=c.Cli.ENCODING_DEFAULT)
         return changes
 
 

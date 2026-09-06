@@ -82,8 +82,10 @@ class TestsDocsCli:
         )
         tm.that((workspace / "docs/README.md").read_text(), has="guides/setup.md")
 
-    def test_generate_uses_public_route(self, tmp_path: Path) -> None:
-        """Run generate through its public command route."""
+    def test_generate_apply_rejects_publication_outside_conform(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject direct publication because conform owns the transaction."""
         workspace = self._workspace(tmp_path)
 
         tm.that(
@@ -96,11 +98,11 @@ class TestsDocsCli:
                 "--projects",
                 "flext-a",
             ]),
-            eq=0,
+            eq=1,
         )
-        tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=True)
+        tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=False)
         tm.that(
-            (workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True
+            (workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=False
         )
         tm.that(
             (workspace / "flext-b/.reports/docs/generate-report.md").exists(), eq=False

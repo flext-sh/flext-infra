@@ -34,10 +34,26 @@ export PYTHONUNBUFFERED=1
 # End SECTION: repository environment
 
 # === SECTION: mise activation (managed) ===
-# Source: template (optional installed mise runtime)
-if command -v mise >/dev/null 2>&1; then
-  eval "$(mise activate bash --shims)"
+# Source: typed generated Mise storage contract; setup owns installation.
+if [[ -v {{ mise_bootstrap.storage_root_variable }} ]] && [[ -n "${{ mise_bootstrap.storage_root_variable }}" ]]; then
+  MISE_STORAGE_ROOT="${{ mise_bootstrap.storage_root_variable }}"
+elif [[ -v XDG_DATA_HOME ]] && [[ -n "${XDG_DATA_HOME}" ]]; then
+  MISE_STORAGE_ROOT="${XDG_DATA_HOME}/mise"
+elif [[ -v HOME ]] && [[ -n "${HOME}" ]]; then
+  MISE_STORAGE_ROOT="${HOME}/.local/share/mise"
+else
+  log_error "{{ mise_bootstrap.storage_root_variable }}, XDG_DATA_HOME, or HOME must identify persistent Mise storage"
+  return 1
 fi
+case "${MISE_STORAGE_ROOT}" in
+  /*) ;;
+  *) log_error "{{ mise_bootstrap.storage_root_variable }} must be absolute"; return 1 ;;
+esac
+export {{ mise_bootstrap.storage_root_variable }}="${MISE_STORAGE_ROOT}"
+{% for name, relative in mise_bootstrap.persistent_environment if name == "MISE_SHIMS_DIR" -%}
+export {{ name }}="${MISE_STORAGE_ROOT}{% if relative != "." %}/{{ relative }}{% endif %}"
+PATH_add "${{ name }}"
+{% endfor -%}
 # End SECTION: mise activation
 
 # === SECTION: configured paths (managed) ===

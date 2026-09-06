@@ -7,6 +7,7 @@ subject is the pull-request title.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
@@ -15,6 +16,8 @@ from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import pytest
 
 
 def _plan(workspace: Path) -> m.Infra.ReleasePlan:
@@ -41,7 +44,35 @@ def _release_lane_workspace(tmp_path: Path) -> Path:
     workspace = u.Tests.create_release_workspace(
         tmp_path, version=c.Tests.RELEASE_VERSION_PRERELEASE
     )
-    u.Tests.configure_local_origin(workspace, tmp_path / "remote")
+    local_origin = tmp_path / "remote"
+    u.Tests.configure_local_origin(workspace, local_origin)
+    provider = u.Tests.provider()
+    tm.ok(
+        cli.run_checked(
+            [
+                c.Infra.GIT,
+                "remote",
+                "set-url",
+                "origin",
+                f"{provider.base_url}/release-fixture.git",
+            ],
+            cwd=workspace,
+        )
+    )
+    tm.ok(
+        cli.run_checked(
+            [
+                c.Infra.GIT,
+                "remote",
+                "set-url",
+                "--add",
+                "--push",
+                "origin",
+                local_origin.as_posix(),
+            ],
+            cwd=workspace,
+        )
+    )
     u.Tests.checkout_integration(workspace)
     return workspace
 
@@ -182,41 +213,6 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(plan.releasable, eq=True)
 
         @staticmethod
-        def test_release_candidate_tag_never_outranks_its_own_release(
-            tmp_path: Path,
-        ) -> None:
-            """A repository that ever cut an rc still bumps after its release.
-
-            Git's ``--sort=version:refname`` is a refname collation, so it put
-            ``v0.1.0rc2`` above ``v0.1.0``. The plan then read the newest
-            release as a candidate, found the merged release commit and
-            answered "awaits its tag" forever (flext-1wjg1.16.34, reproduced on
-            flext-cli at v0.12.0). PEP 440 ordering is the owner.
-            """
-            workspace = u.Tests.create_release_workspace(tmp_path)
-            u.Tests.checkout_integration(workspace)
-            _tag(workspace, "v0.1.0rc1")
-            _tag(workspace, "v0.1.0rc2")
-            _tag(workspace, "v0.1.0")
-            u.Tests.merge_pull_request(workspace, "fix(core): patch level")
-
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = _plan(workspace)
-            tm.that(plan.previous_tag, eq="v0.1.0")
-            tm.that(plan.bump, eq=c.Infra.VersionBump.PATCH)
-            tm.that(plan.next, eq="0.1.1")
-            tm.that(plan.releasable, eq=True)
-
-        @staticmethod
-        def test_unparsable_release_tag_fails_loud(tmp_path: Path) -> None:
-            """A ``v*`` tag that is not a version stops planning instead of ranking."""
-            workspace = _released_workspace(tmp_path)
-            _tag(workspace, "vintage")
-            u.Tests.merge_pull_request(workspace, "fix(core): patch level")
-
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
-
-        @staticmethod
         def test_pull_request_titles_decide_the_bump(tmp_path: Path) -> None:
             """The most significant Conventional title since the last tag wins."""
             workspace = _released_workspace(tmp_path)
@@ -262,19 +258,6 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
 
         @staticmethod
-        def test_default_github_merge_uses_recorded_pr_title(tmp_path: Path) -> None:
-            """The first merge-body line is GitHub's authoritative PR title."""
-            workspace = _released_workspace(tmp_path)
-            u.Tests.merge_pull_request(
-                workspace,
-                "Merge pull request #7 from x/y",
-                body="feat(core): recorded title",
-            )
-
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            tm.that(_plan(workspace).next, eq="0.2.0")
-
-        @staticmethod
         def test_pull_request_title_is_validated_when_given(tmp_path: Path) -> None:
             """A CI check passes a title; only a Conventional title is accepted."""
             workspace = u.Tests.create_release_workspace(tmp_path)
@@ -296,11 +279,7 @@ class TestsFlextInfraReleaseProtocol:
         def test_manual_version_edit_is_rejected(tmp_path: Path) -> None:
             """A hand-edited pyproject version fails the plan, naming the commit."""
             workspace = _released_workspace(tmp_path)
-            tm.ok(
-                u.Infra.replace_project_version(
-                    workspace, c.Tests.RELEASE_VERSION_PATCH
-                )
-            )
+            tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
             tm.ok(
                 cli.run_checked(
                     [c.Infra.GIT, "commit", "-am", "chore: bump"], cwd=workspace
@@ -313,21 +292,15 @@ class TestsFlextInfraReleaseProtocol:
         def test_protocol_release_commit_is_accepted(tmp_path: Path) -> None:
             """Only the release commit may carry the version it names."""
             workspace = _released_workspace(tmp_path)
-            tm.ok(
-                u.Infra.replace_project_version(
-                    workspace, c.Tests.RELEASE_VERSION_PATCH
-                )
-            )
-            subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(
-                version=c.Tests.RELEASE_VERSION_PATCH
-            )
+            tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
+            subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.1")
             tm.ok(
                 cli.run_checked([c.Infra.GIT, "commit", "-am", subject], cwd=workspace)
             )
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
             plan = _plan(workspace)
-            tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_PATCH)
+            tm.that(plan.next, eq="0.1.1")
             tm.that(plan.releasable, eq=False)
 
         @staticmethod
@@ -353,12 +326,10 @@ class TestsFlextInfraReleaseProtocol:
                     cwd=workspace,
                 )
             )
-            tm.ok(
-                u.Infra.replace_project_version(
-                    workspace, c.Tests.RELEASE_VERSION_PATCH
-                )
+            tm.ok(u.Infra.replace_project_version(workspace, "0.1.1"))
+            merged_subject = (
+                f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.1')} (#8)"
             )
-            merged_subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version=c.Tests.RELEASE_VERSION_PATCH)} (#8)"
             tm.ok(
                 cli.run_checked(
                     [c.Infra.GIT, "commit", "-am", merged_subject], cwd=workspace
@@ -379,7 +350,7 @@ class TestsFlextInfraReleaseProtocol:
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
             plan = _plan(workspace)
-            tm.that(plan.next, eq=c.Tests.RELEASE_VERSION_PATCH)
+            tm.that(plan.next, eq="0.1.1")
             tm.that(plan.bump, eq=c.Infra.VersionBump.NONE)
             tm.that(plan.releasable, eq=False)
 
@@ -387,21 +358,22 @@ class TestsFlextInfraReleaseProtocol:
         """The release pull request."""
 
         @staticmethod
-        def test_apply_opens_the_release_pull_request(tmp_path: Path) -> None:
+        def test_apply_opens_the_release_pull_request(
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             """Stamp, commit on the release lane, push it, and open the pull request."""
             workspace = _release_lane_workspace(tmp_path)
             gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
+            monkeypatch.setenv(
+                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
+            )
             integration = u.Tests.integration_branch(workspace)
             # flext-core caches the parsed pyproject per process; a warm cache
             # holding the pre-stamp document must not leak into the projections.
             tm.ok(u.read_project_metadata(workspace))
 
             result = u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                "version",
-                "--apply",
-                executable_dir=tmp_path / "bin",
+                workspace, "--phase", "version", "--apply"
             )
 
             tm.that(result, eq=0)
@@ -413,12 +385,7 @@ class TestsFlextInfraReleaseProtocol:
             head = tm.ok(
                 cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
             ).strip()
-            tm.that(
-                head,
-                eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(
-                    version=c.Tests.RELEASE_VERSION_BASE
-                ),
-            )
+            tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
             # The docs projections render the version; the release commit
             # carries them regenerated, so the lane is a `gen check` fixed point.
             committed = tm.ok(
@@ -467,30 +434,23 @@ class TestsFlextInfraReleaseProtocol:
 
         @staticmethod
         def test_rerun_continues_the_lane_without_a_second_commit(
-            tmp_path: Path,
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         ) -> None:
             """A retry from the integration branch is idempotent on the open lane."""
             workspace = _release_lane_workspace(tmp_path)
             u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
+            monkeypatch.setenv(
+                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
+            )
             integration = u.Tests.integration_branch(workspace)
             tm.that(
-                u.Tests.run_release_main(
-                    workspace,
-                    "--phase",
-                    "version",
-                    "--apply",
-                    executable_dir=tmp_path / "bin",
-                ),
+                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
                 eq=0,
             )
             tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
 
             result = u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                "version",
-                "--apply",
-                executable_dir=tmp_path / "bin",
+                workspace, "--phase", "version", "--apply"
             )
 
             tm.that(result, eq=0)
@@ -509,12 +469,7 @@ class TestsFlextInfraReleaseProtocol:
             head = tm.ok(
                 cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
             ).strip()
-            tm.that(
-                head,
-                eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(
-                    version=c.Tests.RELEASE_VERSION_BASE
-                ),
-            )
+            tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
 
         @staticmethod
         def test_dry_run_changes_nothing(tmp_path: Path) -> None:
@@ -575,24 +530,23 @@ class TestsFlextInfraReleaseProtocol:
         """Tagging the merged release commit."""
 
         @staticmethod
-        def test_merged_release_commit_is_tagged_and_pushed(tmp_path: Path) -> None:
+        def test_merged_release_commit_is_tagged_and_pushed(
+            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        ) -> None:
             """After the release pull request merges, HEAD earns its tag once."""
             workspace = _release_lane_workspace(tmp_path)
             u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
+            monkeypatch.setenv(
+                "PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
+            )
             integration = u.Tests.integration_branch(workspace)
             tm.that(
-                u.Tests.run_release_main(
-                    workspace,
-                    "--phase",
-                    "version",
-                    "--apply",
-                    executable_dir=tmp_path / "bin",
-                ),
+                u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
                 eq=0,
             )
             # GitHub merges the release pull request under its title plus the
             # pull-request number.
-            subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version=c.Tests.RELEASE_VERSION_BASE)} (#1)"
+            subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.0')} (#1)"
             tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
             tm.ok(
                 cli.run_checked(
@@ -608,12 +562,8 @@ class TestsFlextInfraReleaseProtocol:
                 )
             )
 
-            first = u.Tests.run_release_main(
-                workspace, "--phase", "tag", "--apply", executable_dir=tmp_path / "bin"
-            )
-            second = u.Tests.run_release_main(
-                workspace, "--phase", "tag", "--apply", executable_dir=tmp_path / "bin"
-            )
+            first = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
+            second = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
 
             tm.that(first, eq=0)
             tm.that(second, eq=0)

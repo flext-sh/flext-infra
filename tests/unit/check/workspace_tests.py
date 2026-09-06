@@ -8,9 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_cli import u as cli_u
 from flext_infra import c, main, r
-from flext_infra.check import FlextInfraWorkspaceChecker
+from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
 from flext_tests import tm
 from tests import u as test_u
 
@@ -21,13 +23,19 @@ if TYPE_CHECKING:
 class TestFlextInfraWorkspaceChecker:
     """Test suite for FlextInfraWorkspaceChecker."""
 
+    pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
+
+    @pytest.fixture
+    def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
+
     def test_init_creates_instance(self) -> None:
-        """Test that checker initializes with default repository root."""
+        """Test that checker initializes with default workspace root."""
         checker = FlextInfraWorkspaceChecker()
         tm.that(checker, none=False)
 
-    def test_init_with_custom_repository_root(self, tmp_path: Path) -> None:
-        """Test that checker accepts custom repository root."""
+    def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
+        """Test that checker accepts custom workspace root."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         tm.that(checker, none=False)
 
@@ -95,10 +103,11 @@ class TestFlextInfraWorkspaceChecker:
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
 
-    def test_resolve_gates_rejects_duplicates(self) -> None:
-        """Test that duplicate explicit gates fail before execution."""
-        result = FlextInfraWorkspaceChecker.resolve_gates([c.Infra.LINT, c.Infra.LINT])
-        tm.fail(result, has=f"duplicate gate '{c.Infra.LINT}'")
+    def test_resolve_gates_deduplicates(self) -> None:
+        """Test that resolve_gates removes duplicate gate names."""
+        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
+        tm.ok(result)
+        tm.that(result.value.count("lint"), eq=1)
 
     def test_resolve_gates_with_invalid_gate(self) -> None:
         """Test that resolve_gates fails on invalid gate name."""
