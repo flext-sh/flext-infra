@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import m
-from flext_infra.codegen import (
+
+from . import (
     _mise_artifacts_files as files,
     _mise_artifacts_journal as journal_io,
     _mise_artifacts_process as process,

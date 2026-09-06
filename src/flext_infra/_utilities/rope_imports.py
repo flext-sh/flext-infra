@@ -8,14 +8,10 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import c, m, p, r, t
-from flext_infra._utilities import (
-    FlextInfraUtilitiesRopeCore,
-    FlextInfraUtilitiesRopeRuntime,
-)
-from flext_infra._utilities.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+
+from . import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeRuntime
+from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 
 class FlextInfraUtilitiesRopeImports:

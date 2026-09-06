@@ -10,9 +10,10 @@ from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra.constants import c
+
+from .iteration import FlextInfraUtilitiesIteration
+from .rope_source import FlextInfraUtilitiesRopeSource
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

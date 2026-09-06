@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
-from flext_infra.fixers.base import FlextInfraFixerAdapter
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from pathlib import Path

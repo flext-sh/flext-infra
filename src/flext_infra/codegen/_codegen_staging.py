@@ -8,10 +8,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import (
-    _mise_artifacts_files as files,
-    _mise_artifacts_process as process,
-)
+
+from . import _mise_artifacts_files as files, _mise_artifacts_process as process
 
 if TYPE_CHECKING:
     from flext_infra import p

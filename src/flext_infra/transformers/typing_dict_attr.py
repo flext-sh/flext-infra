@@ -10,9 +10,8 @@ import re
 from typing import TYPE_CHECKING, override
 
 from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
-from flext_infra.transformers._canonical_t_import import (
-    FlextInfraEnsureCanonicalTImportMixin,
-)
+
+from ._canonical_t_import import FlextInfraEnsureCanonicalTImportMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

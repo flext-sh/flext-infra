@@ -10,11 +10,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+
+from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 
 
 class FlextInfraModGateEngine:

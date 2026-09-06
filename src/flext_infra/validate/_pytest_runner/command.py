@@ -6,7 +6,8 @@ import sys
 from pathlib import Path
 
 from flext_infra import config
-from flext_infra.validate._pytest_runner.base import FlextInfraPytestRunnerBase
+
+from .base import FlextInfraPytestRunnerBase
 
 
 class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):

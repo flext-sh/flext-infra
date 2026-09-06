@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from flext_infra.validate._pytest_runner.execution import (
-    FlextInfraPytestRunnerExecution,
-)
+from ._pytest_runner.execution import FlextInfraPytestRunnerExecution
 
 
 class FlextInfraPytestRunner(FlextInfraPytestRunnerExecution):

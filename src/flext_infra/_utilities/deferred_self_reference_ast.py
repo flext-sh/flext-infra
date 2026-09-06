@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from typing import ClassVar, NamedTuple
 
-from flext_infra._utilities.deferred_self_reference_rewrite import (
+from .deferred_self_reference_rewrite import (
     FlextInfraUtilitiesDeferredSelfReferenceRewrite,
 )
 

@@ -7,7 +7,7 @@ import os
 import pstats
 from pathlib import Path
 
-from flext_infra import config
+from . import config
 
 
 def main() -> int:

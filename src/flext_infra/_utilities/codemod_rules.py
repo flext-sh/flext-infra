@@ -13,7 +13,8 @@ from packaging.utils import canonicalize_name
 
 from flext_cli import p, r, u
 from flext_infra import c, m, t
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
+
+from .dependencies import FlextInfraUtilitiesDependencies
 
 
 class FlextInfraUtilitiesCodemodRules:

@@ -7,8 +7,9 @@ from pathlib import Path
 from typing import ClassVar, override
 
 from flext_infra import c, m
-from flext_infra.gates.base_gate import FlextInfraGate
 from flext_infra.validate.namespace_validator import FlextInfraNamespaceValidator
+
+from .base_gate import FlextInfraGate
 
 
 class FlextInfraNamespaceGate(FlextInfraGate):

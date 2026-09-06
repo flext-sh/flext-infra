@@ -6,14 +6,13 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.compatibility_alias_cst import (
-    FlextInfraUtilitiesCompatibilityAliasCst,
-)
-from flext_infra._utilities.compatibility_alias_validation import (
-    FlextInfraUtilitiesCompatibilityAliasValidation,
-)
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
+from .compatibility_alias_validation import (
+    FlextInfraUtilitiesCompatibilityAliasValidation,
+)
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

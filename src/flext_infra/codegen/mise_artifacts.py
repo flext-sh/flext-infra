@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_core import r
 from flext_infra import c, config, m, t, u
 from flext_infra.base import s
-from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+
+from .codegen_transaction import FlextInfraCodegenTransaction
 
 if TYPE_CHECKING:
     from flext_infra import p

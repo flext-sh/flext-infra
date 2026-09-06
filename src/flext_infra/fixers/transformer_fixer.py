@@ -13,7 +13,6 @@ from flext_infra import c, m, u
 from flext_infra._utilities.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
-from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
@@ -32,6 +31,8 @@ from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from flext_infra import p, t

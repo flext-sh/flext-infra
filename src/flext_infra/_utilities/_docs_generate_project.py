@@ -7,14 +7,15 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import config
-from flext_infra._utilities._docs_generate_plan import (
+from flext_infra.models import m
+
+from ._docs_generate_plan import (
     DocsRenderedArtifactTuple,
     FlextInfraUtilitiesDocsGeneratePlanMixin,
 )
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
-from flext_infra.models import m
+from .docs_api import FlextInfraUtilitiesDocsApi
+from .docs_contract import FlextInfraUtilitiesDocsContract
+from .docs_render import FlextInfraUtilitiesDocsRender
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

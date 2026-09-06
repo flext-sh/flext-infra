@@ -8,13 +8,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
-from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
-from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .namespace_config import FlextInfraUtilitiesNamespaceConfig
+from .project_discovery import FlextInfraUtilitiesProjectDiscovery
+from .pyproject import FlextInfraUtilitiesPyproject
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

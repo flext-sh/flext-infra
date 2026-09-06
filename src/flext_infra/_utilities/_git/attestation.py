@@ -12,11 +12,10 @@ from git import GitCommandError
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._utilities._git.remote import canonical_origin_remote
-from flext_infra._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-)
 from flext_infra.models import m
+
+from .remote import canonical_origin_remote
+from .semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t

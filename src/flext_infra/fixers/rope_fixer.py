@@ -22,10 +22,11 @@ from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportD
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable

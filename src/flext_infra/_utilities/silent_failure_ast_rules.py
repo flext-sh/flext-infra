@@ -5,9 +5,7 @@ from __future__ import annotations
 import ast
 from typing import override
 
-from flext_infra._utilities.silent_failure_ast_base import (
-    FlextInfraUtilitiesSilentFailureAstBase,
-)
+from .silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
 
 
 class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureAstBase):

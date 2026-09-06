@@ -12,8 +12,9 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_core import FlextSettings
-from flext_infra import m
-from flext_infra._models.settings import FlextInfraSettingsModels
+
+from . import m
+from ._models.settings import FlextInfraSettingsModels
 
 
 # NOTE (multi-agent): migrated base FlextCliSettings->FlextSettings to

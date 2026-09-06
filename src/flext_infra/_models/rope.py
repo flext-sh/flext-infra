@@ -11,9 +11,10 @@ from typing import Annotated
 
 from flext_core import m
 from flext_infra import c, p, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
-from flext_infra._models.codegen import FlextInfraModelsCodegen
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from ._defaults import ImmutableEmptyMapping
+from .codegen import FlextInfraModelsCodegen
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRope:

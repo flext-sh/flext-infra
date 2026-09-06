@@ -15,7 +15,8 @@ from typing import Annotated, Literal
 
 from flext_cli import m
 from flext_infra import t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class _LayoutContract(m.ContractModel):

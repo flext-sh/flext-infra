@@ -5,13 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m, t, u
-from flext_infra.codegen.census import FlextInfraCodegenCensus
-from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.fixer import FlextInfraCodegenFixer
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
-from flext_infra.codegen.py_typed import FlextInfraCodegenPyTyped
-from flext_infra.codegen.scaffolder import FlextInfraCodegenScaffolder
 from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
+
+from .census import FlextInfraCodegenCensus
+from .conform import FlextInfraCodegenConform
+from .fixer import FlextInfraCodegenFixer
+from .lazy_init import FlextInfraCodegenLazyInit
+from .py_typed import FlextInfraCodegenPyTyped
+from .scaffolder import FlextInfraCodegenScaffolder
 
 if TYPE_CHECKING:
     from collections.abc import Callable

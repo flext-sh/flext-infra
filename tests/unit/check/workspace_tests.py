@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import pytest
@@ -26,8 +27,9 @@ class TestFlextInfraWorkspaceChecker:
     pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
 
     @pytest.fixture
-    def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
+    def _clear_make_ci_token(self) -> Iterator[None]:
+        with test_u.Tests.env_vars_context(vars_to_clear=(c.Infra.PYTEST_ENV_CI,)):
+            yield
 
     def test_init_creates_instance(self) -> None:
         """Test that checker initializes with default workspace root."""

@@ -8,10 +8,9 @@ from typing import override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.check._workspace_check_reports import (
-    FlextInfraWorkspaceCheckReportsMixin,
-)
-from flext_infra.check.workspace_check_gates import (
+
+from ._workspace_check_reports import FlextInfraWorkspaceCheckReportsMixin
+from .workspace_check_gates import (
     FlextInfraGateRegistry,
     FlextInfraWorkspaceCheckGatesMixin,
 )

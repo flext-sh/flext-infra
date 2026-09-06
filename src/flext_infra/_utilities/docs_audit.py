@@ -6,16 +6,13 @@ import re
 from typing import TYPE_CHECKING
 
 from flext_infra import c, config, m
-from flext_infra._utilities._docs_audit_detectors import (
-    FlextInfraUtilitiesDocsAuditDetectorsMixin,
-)
-from flext_infra._utilities._docs_command_contract import (
-    FlextInfraUtilitiesDocsCommandContractMixin,
-)
-from flext_infra._utilities._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
-from flext_infra._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+
+from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
+from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
+from ._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
+from .docs import FlextInfraUtilitiesDocs
+from .docs_api import FlextInfraUtilitiesDocsApi
+from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra.codegen._lazy_init_generation_files import (
+
+from ._lazy_init_generation_files import (
     FlextInfraCodegenLazyInitGenerationFilePlanMixin,
 )
-from flext_infra.codegen._lazy_init_generation_registry import (
+from ._lazy_init_generation_registry import (
     FlextInfraCodegenLazyInitGenerationRegistryMixin,
 )
 

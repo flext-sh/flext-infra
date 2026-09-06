@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
-from flext_infra import m, t, u
-from flext_infra.base import s
-from flext_infra.services.workspace import FlextInfraWorkspaceEnvironmentSync
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
+
+from . import m, t, u
+from .base import s
+from .services.workspace import FlextInfraWorkspaceEnvironmentSync
+from .workspace.rope import FlextInfraRopeWorkspace
 
 if TYPE_CHECKING:
     from pathlib import Path

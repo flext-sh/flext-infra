@@ -18,9 +18,8 @@ from flext_infra.detectors.private_import_bypass_detector import (
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
-from flext_infra.refactor._census_rules_shared import (
-    FlextInfraRefactorCensusRulesSharedMixin,
-)
+
+from ._census_rules_shared import FlextInfraRefactorCensusRulesSharedMixin
 
 if TYPE_CHECKING:
     from pathlib import Path

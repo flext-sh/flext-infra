@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra.validate._namespace_rules.base import FlextInfraNamespaceRulesBase
+
+from .base import FlextInfraNamespaceRulesBase
 
 if TYPE_CHECKING:
     from pathlib import Path

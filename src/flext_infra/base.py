@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
 from flext_core import s
-from flext_infra import c, m, p, settings, t, u
-from flext_infra._base_payload import FlextInfraCommandPayloadMixin
+
+from . import c, m, p, settings, t, u
+from ._base_payload import FlextInfraCommandPayloadMixin
 
 
 class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](

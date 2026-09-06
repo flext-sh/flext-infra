@@ -12,12 +12,9 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra.release._orchestrator_publish import (
-    FlextInfraReleaseOrchestratorPublishMixin,
-)
-from flext_infra.release._release_artifact_build import (
-    FlextInfraReleaseArtifactBuildMixin,
-)
+
+from ._orchestrator_publish import FlextInfraReleaseOrchestratorPublishMixin
+from ._release_artifact_build import FlextInfraReleaseArtifactBuildMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

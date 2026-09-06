@@ -17,9 +17,10 @@ from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenPro
 from flext_infra._constants.make import FlextInfraConstantsMake
 from flext_infra._constants.release import FlextInfraConstantsRelease
 from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
-from flext_infra._models._defaults import immutable_empty_mapping
-from flext_infra._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from flext_infra._models.layout import FlextInfraModelsLayout
+
+from ._defaults import immutable_empty_mapping
+from .deps_tool_config import FlextInfraModelsDepsToolSettings
+from .layout import FlextInfraModelsLayout
 
 
 class _ConfigContract(m.ContractModel):

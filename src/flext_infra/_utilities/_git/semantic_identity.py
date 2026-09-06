@@ -14,12 +14,11 @@ from git import (
 )
 
 from flext_core import r
-from flext_infra._utilities._git.remote import redact_origin_remote
-from flext_infra._utilities._git.repo import FlextInfraUtilitiesGitRepo
-from flext_infra._utilities._git.semantic_worktree import (
-    FlextInfraUtilitiesGitSemanticWorktreeMixin,
-)
 from flext_infra.models import m
+
+from .remote import redact_origin_remote
+from .repo import FlextInfraUtilitiesGitRepo
+from .semantic_worktree import FlextInfraUtilitiesGitSemanticWorktreeMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

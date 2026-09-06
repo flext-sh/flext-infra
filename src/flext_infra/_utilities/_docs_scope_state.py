@@ -6,13 +6,12 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
-from flext_infra._utilities._docs_scope_paths import (
-    FlextInfraUtilitiesDocsScopePathsMixin,
-)
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
+
+from ._docs_scope_paths import FlextInfraUtilitiesDocsScopePathsMixin
+from .dependencies import FlextInfraUtilitiesDependencies
+from .pyproject import FlextInfraUtilitiesPyproject
 
 
 class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMixin):

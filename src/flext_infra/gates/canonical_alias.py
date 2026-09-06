@@ -19,7 +19,8 @@ from flext_infra.detectors import (
     FlextInfraCompatibilityAliasDetector,
     FlextInfraCyclicImportDetector,
 )
-from flext_infra.gates import FlextInfraGate
+
+from . import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p

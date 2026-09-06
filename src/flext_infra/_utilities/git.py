@@ -6,13 +6,9 @@ Private GitPython parts live under ``_utilities/_git/``. Consumers use
 
 from __future__ import annotations
 
-from flext_infra._utilities._git.attestation import (
-    FlextInfraUtilitiesGitAttestationMixin,
-)
-from flext_infra._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
-from flext_infra._utilities._git.semantic_submodule import (
-    FlextInfraUtilitiesGitSemanticSubmoduleMixin,
-)
+from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
+from ._git.scope import FlextInfraUtilitiesGitScopeMixin
+from ._git.semantic_submodule import FlextInfraUtilitiesGitSemanticSubmoduleMixin
 
 
 class FlextInfraUtilitiesGit(

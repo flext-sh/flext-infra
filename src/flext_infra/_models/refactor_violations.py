@@ -6,8 +6,9 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import t
-from flext_infra._models._defaults import immutable_empty_mapping
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from ._defaults import immutable_empty_mapping
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRefactorViolations:

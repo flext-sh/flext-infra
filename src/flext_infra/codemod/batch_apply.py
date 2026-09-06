@@ -8,8 +8,9 @@ from typing import override
 from flext_cli import cli
 from flext_infra import p, r, t, u
 from flext_infra.base import FlextInfraServiceBase
-from flext_infra.codemod.batch_gates import FlextInfraModGateEngine
-from flext_infra.codemod.semantic_apply import FlextInfraCodemodSemanticApply
+
+from .batch_gates import FlextInfraModGateEngine
+from .semantic_apply import FlextInfraCodemodSemanticApply
 
 
 class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):

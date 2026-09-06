@@ -7,7 +7,8 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import t
-from flext_infra._models._git.identity import FlextInfraModelsGitIdentity
+
+from ._git.identity import FlextInfraModelsGitIdentity
 
 
 class FlextInfraModelsGit(FlextInfraModelsGitIdentity):
