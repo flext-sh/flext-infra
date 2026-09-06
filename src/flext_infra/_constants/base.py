@@ -357,7 +357,6 @@ class FlextInfraConstantsBase(
     RK_TARGET_NAMESPACE: Final[str] = "target_namespace"
     RK_SOURCE_SYMBOL: Final[str] = "source_symbol"
     RK_LOOSE_NAME: Final[str] = "loose_name"
-    RK_REWRITE_SCOPE: Final[str] = "rewrite_scope"
     RK_CONFIDENCE: Final[str] = "confidence"
     RK_FIX_ACTION: Final[str] = "fix_action"
     RK_CURRENT_FILE: Final[str] = "current_file"
@@ -365,7 +364,6 @@ class FlextInfraConstantsBase(
     RK_SEVERITY: Final[str] = "severity"
     RK_VIOLATION_TYPE: Final[str] = "violation_type"
     RK_SUGGESTED_FIX: Final[str] = "suggested_fix"
-    RK_HELPER_CONSOLIDATION: Final[str] = "helper_consolidation"
     RK_POST_CHECKS: Final[str] = "post_checks"
 
     CLI_APPLY_OPTION_DECLS: Final[t.StrSequence] = ("--apply/--dry-run",)

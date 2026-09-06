@@ -25,37 +25,21 @@ class FlextInfraModelsRefactorViolations:
             t.NonEmptyStr, m.Field(description="Policy operation being validated")
         ]
 
-    class ClassNestingMapping(m.ArbitraryTypesModel):
-        """Unified mapping contract for class-nesting rewrite planning."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        loose_name: Annotated[str, m.Field(description="Original loose class name")] = (
-            ""
-        )
-        current_file: Annotated[str, m.Field(description="File containing class")] = ""
-        target_namespace: Annotated[
-            t.NonEmptyStr, m.Field(description="Target namespace class name")
-        ]
-        target_name: Annotated[str, m.Field(description="Target class name")] = ""
-        confidence: Annotated[t.NonEmptyStr, m.Field(description="Confidence level")]
-        reason: Annotated[str, m.Field(description="Optional mapping rationale")] = ""
-        rewrite_scope: Annotated[
-            str | None, m.Field(description="Rewrite scope (file/project/workspace)")
-        ] = None
-
     class ClassNestingViolation(
-        mm.ConfidenceLevelMixin,
-        mm.RewriteScopeMixin,
-        mm.FileLineViolationMixin,
-        m.ArbitraryTypesModel,
+        mm.ConfidenceLevelMixin, mm.FileLineViolationMixin, m.ArbitraryTypesModel
     ):
-        """Normalized class-nesting violation with rewrite metadata."""
+        """Loose top-level class and the facade its module policy derives for it."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
         class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         target_namespace: Annotated[
-            str, m.Field(description="Expected namespace class")
+            str,
+            m.Field(
+                description=(
+                    "Facade class derived from the module's namespace policy; "
+                    "empty when the module declares no family to nest under"
+                )
+            ),
         ] = ""
 
     class ClassNestingPolicy(m.ContractModel):
@@ -94,40 +78,6 @@ class FlextInfraModelsRefactorViolations:
         allow_existing_namespace_merge: Annotated[
             bool,
             m.Field(description="Allow merging nested classes into existing namespace"),
-        ] = True
-        enable_helper_consolidation: Annotated[
-            bool,
-            m.Field(description="Allow consolidating helper functions into namespaces"),
-        ] = True
-        allow_helper_call_rewrite: Annotated[
-            bool,
-            m.Field(
-                description="Allow rewriting helper call sites to namespaced calls"
-            ),
-        ] = True
-        require_signature_validation: Annotated[
-            bool,
-            m.Field(description="Require signature checks before helper migration"),
-        ] = False
-        required_parameters: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Parameters that must be present before rewriting.",
-        )
-        forbidden_parameters: t.StrSequence = m.Field(
-            default_factory=tuple,
-            description="Parameters that block rewriting when present.",
-        )
-        allow_vararg: Annotated[
-            bool, m.Field(description="Allow variadic positional parameter usage")
-        ] = True
-        allow_kwarg: Annotated[
-            bool, m.Field(description="Allow variadic keyword parameter usage")
-        ] = True
-        allow_positional_only_params: Annotated[
-            bool, m.Field(description="Allow positional-only parameters")
-        ] = True
-        allow_keyword_only_params: Annotated[
-            bool, m.Field(description="Allow keyword-only parameters")
         ] = True
         propagate_imports: Annotated[
             bool, m.Field(description="Allow propagating import rewrite rules")

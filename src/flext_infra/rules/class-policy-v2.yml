@@ -9,7 +9,6 @@ policy_matrix:
     facade_family: m
     allowed_operations:
       - class_nesting
-      - helper_consolidation
       - reorganize_composition_classes_under_models_facade
       - move_top_level_classes_to_flext_models_namespace
       - normalize_nested_class_path_within_models_facade
@@ -44,7 +43,6 @@ policy_matrix:
     facade_family: u
     allowed_operations:
       - class_nesting
-      - helper_consolidation
       - consolidate_helper_classes_under_utilities_facade
       - convert_safe_top_level_helpers_to_static_or_nested_helpers
       - deduplicate_equivalent_helper_implementations_within_u
@@ -178,7 +176,6 @@ policy_matrix:
     allowed_operations: []
     forbidden_operations:
       - class_nesting
-      - helper_consolidation
     forbidden_targets:
       - "*"
     validation_requirements:

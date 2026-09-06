@@ -216,11 +216,6 @@ class FlextInfraModelsMixins:
 
         confidence: Annotated[str, m.Field(description="Confidence level")] = "low"
 
-    class RewriteScopeMixin:
-        """Shared rewrite-scope field for refactor diagnostics."""
-
-        rewrite_scope: Annotated[str, m.Field(description="Rewrite scope")] = "file"
-
     # ═══════════════════ PROJECT NAME / PATH VARIANTS ═══════════════════
 
     class ProjectNameMixin:

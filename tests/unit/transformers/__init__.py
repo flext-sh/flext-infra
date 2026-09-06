@@ -33,9 +33,6 @@ if TYPE_CHECKING:
         TestsFlextInfraTransformersTypingDictImport,
         TestsFlextInfraTransformersTypingUnifier,
     )
-    from .test_infra_transformer_helper_consolidation import (
-        TestsFlextInfraTransformersInfraTransformerHelperConsolidation,
-    )
     from .test_infra_transformer_logging_modernizer import (
         TestsFlextInfraTransformersLoggingModernizer,
     )
@@ -60,7 +57,6 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraTransformersFutureImport",
     "TestsFlextInfraTransformersHardcodedVersion",
     "TestsFlextInfraTransformersInfraTransformerClassNesting",
-    "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
     "TestsFlextInfraTransformersInfraTransformerNestedClassPropagation",
     "TestsFlextInfraTransformersLoggingModernizer",
     "TestsFlextInfraTransformersOpenEncoding",
@@ -114,9 +110,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestsFlextInfraTransformersTypingDictAttr",
                 "TestsFlextInfraTransformersTypingDictImport",
                 "TestsFlextInfraTransformersTypingUnifier",
-            ),
-            ".test_infra_transformer_helper_consolidation": (
-                "TestsFlextInfraTransformersInfraTransformerHelperConsolidation",
             ),
             ".test_infra_transformer_logging_modernizer": (
                 "TestsFlextInfraTransformersLoggingModernizer",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -19,15 +19,9 @@ pytestmark = [pytest.mark.integration]
 
 
 class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
-        self._config_path = config_path
-        self._class_nesting_config = None
+    def __init__(self) -> None:
         self._class_nesting_policy_by_family = None
         self._class_nesting_gate = None
-
-    @override
-    def _load_class_nesting_config(self) -> t.JsonMapping:
-        return u.Cli.yaml_load_mapping(self._config_path)
 
     def apply_rule(
         self,
@@ -46,10 +40,22 @@ class _FileRuleHarness(FlextInfraRefactorFileExecutor):
         )
 
 
+def _write_project(tmp_path: Path, *, package: str, module: str, source: str) -> Path:
+    """Materialize a minimal project (pyproject.toml + src/<package>/<module>)."""
+    (tmp_path / "pyproject.toml").write_text(
+        f'[project]\nname = "{package}"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    package_dir = tmp_path / "src" / package
+    package_dir.mkdir(parents=True, exist_ok=True)
+    module_file = package_dir / module
+    module_file.write_text(source, encoding="utf-8")
+    return module_file
+
+
 def _apply_rule(
-    repository_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
+    repository_root: Path, file_path: Path, *, dry_run: bool
 ) -> m.Infra.Result:
-    rule = _FileRuleHarness(config_path)
+    rule = _FileRuleHarness()
     rope_project = u.Infra.init_rope_project(repository_root)
     try:
         resource = u.Infra.get_resource_from_path(rope_project, file_path)
@@ -66,46 +72,52 @@ class TestsFlextInfraIntegrationRefactorNestingFile:
     def test_class_nesting_refactor_single_file_end_to_end(
         self, tmp_path: Path
     ) -> None:
-        """Verify class nesting refactor handles unknown module families gracefully."""
-        fixture_file = (
-            Path(__file__).parent.parent
-            / "fixtures/namespace_validator/rule0_valid.pysrc"
+        """Verify a loose class is nested under its module facade and repointed."""
+        module_file = _write_project(
+            tmp_path,
+            package="pkg",
+            module="single_file_refactor_target.py",
+            source=(
+                '"""Fixture module exercising class-nesting derivation."""\n\n'
+                "from __future__ import annotations\n\n"
+                '__all__ = ["FlextUtilities"]\n\n\n'
+                "class FlextUtilities:\n"
+                '    """Module facade nesting target."""\n\n\n'
+                "class ResultHelpers:\n"
+                '    """Loose class expected to nest under the facade."""\n\n\n'
+                "def build(value: ResultHelpers) -> ResultHelpers:\n"
+                "    if isinstance(value, ResultHelpers):\n"
+                "        return ResultHelpers()\n"
+                "    return value\n"
+            ),
         )
-        source = fixture_file.read_text(encoding="utf-8")
-        target_dir = tmp_path / "nonstandard_dir"
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target_file = target_dir / "single_file_refactor_target.py"
-        target_file.write_text(
-            source
-            + "\n\n"
-            + "from pkg import ResultHelpers\n\n"
-            + "class ResultHelpers:\n"
-            + "    pass\n\n"
-            + "def build(value: ResultHelpers) -> ResultHelpers:\n"
-            + "    if isinstance(value, ResultHelpers):\n"
-            + "        return ResultHelpers()\n"
-            + "    return value\n",
-            encoding="utf-8",
-        )
-        config_path = tmp_path / "class-nesting-mappings.yml"
-        config_path.write_text(
-            "confidence_threshold: low\n"
-            "class_nesting:\n"
-            "  - loose_name: ResultHelpers\n"
-            f"    current_file: {target_file.as_posix()}\n"
-            "    target_namespace: FlextUtilities\n"
-            "    target_name: ResultHelpers\n"
-            "    confidence: high\n"
-            "helper_consolidation: []\n",
-            encoding="utf-8",
-        )
-        result = _apply_rule(tmp_path, target_file, config_path, dry_run=False)
-        # Module family policy treats unknown families as out-of-scope (no policy
-        # to enforce against), so the refactor proceeds gracefully and the loose
-        # ``ResultHelpers`` class is nested under ``FlextUtilities`` per the
-        # mapping config.
+        result = _apply_rule(tmp_path, module_file, dry_run=False)
+        # The module declares its own facade (FlextUtilities) via __all__, so the
+        # loose ResultHelpers class derives that facade as its nesting target and
+        # every reference to ResultHelpers is repointed to the nested location.
         tm.that(result.success, eq=True)
         tm.that(result.modified, eq=True)
         tm.that(result.refactored_code, none=False)
         tm.that(result.refactored_code, has="class FlextUtilities:")
         tm.that(result.refactored_code, has="class ResultHelpers:")
+        tm.that(result.refactored_code, has="FlextUtilities.ResultHelpers")
+
+    def test_class_nesting_refactor_without_facade_reports_no_target_namespace(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify a module with no derivable facade family fails the precheck."""
+        module_file = _write_project(
+            tmp_path,
+            package="pkg",
+            module="orphan.py",
+            source=(
+                '"""Fixture module with no declared facade family."""\n\n'
+                "from __future__ import annotations\n\n\n"
+                "class Orphan:\n"
+                '    """Loose class with nowhere to nest."""\n'
+            ),
+        )
+        result = _apply_rule(tmp_path, module_file, dry_run=False)
+        tm.that(result.success, eq=False)
+        tm.that(result.modified, eq=False)
+        tm.that("|".join(result.changes), has="no_target_namespace")

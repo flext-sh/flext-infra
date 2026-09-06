@@ -57,13 +57,3 @@ class TestsFlextInfraRefactorInfraRefactorPolicyFamilyRules:
         tm.that(not ok, eq=True)
         violation = tm.not_none(violation)
         tm.that(violation["violation_type"], eq="forbidden_target")
-
-    def test_helper_consolidation_is_prechecked(self) -> None:
-        ok, violation = u.Infra.validate_class_nesting_entry({
-            "helper_name": "ResultHelpers",
-            "current_file": "flext-core/src/flext_core/_utilities/result_helpers.py",
-            "target_namespace": "FlextModels",
-        })
-        tm.that(not ok, eq=True)
-        violation = tm.not_none(violation)
-        tm.that(violation["violation_type"], eq="forbidden_target")

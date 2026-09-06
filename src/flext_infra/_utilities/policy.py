@@ -179,8 +179,8 @@ class FlextInfraUtilitiesRefactorPolicy:
         policy_by_family: t.MappingKV[str, m.Infra.ClassNestingPolicy] | None = None,
         policy_path: Path | None = None,
     ) -> t.Pair[bool, t.StrMapping | None]:
-        """Validate one class/helper nesting entry against the family policy."""
-        symbol = entry.get(c.Infra.RK_LOOSE_NAME, "") or entry.get("helper_name", "")
+        """Validate one class-nesting entry against the family policy."""
+        symbol = entry.get(c.Infra.RK_LOOSE_NAME, "")
         target_namespace = entry.get(c.Infra.RK_TARGET_NAMESPACE, "")
         current_file = entry.get(c.Infra.RK_CURRENT_FILE, "")
         if not symbol or not target_namespace or not current_file:
@@ -195,16 +195,11 @@ class FlextInfraUtilitiesRefactorPolicy:
                 policy_path
             )
         )
-        operation = (
-            c.Infra.RK_HELPER_CONSOLIDATION
-            if bool(entry.get("helper_name", ""))
-            else c.Infra.RK_CLASS_NESTING
-        )
         request = m.Infra.ClassNestingViolationRequest(
             symbol=symbol,
             family=family,
             target_namespace=target_namespace,
-            operation=operation,
+            operation=c.Infra.RK_CLASS_NESTING,
         )
         violation = FlextInfraUtilitiesRefactorPolicy._class_nesting_violation(
             request=request, policy_by_family=policies

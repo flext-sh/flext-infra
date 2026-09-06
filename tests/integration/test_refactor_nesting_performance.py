@@ -6,7 +6,7 @@ import tempfile
 import time
 import tracemalloc
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
@@ -17,15 +17,9 @@ if TYPE_CHECKING:
 
 
 class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
-        self._config_path = config_path
-        self._class_nesting_config = None
+    def __init__(self) -> None:
         self._class_nesting_policy_by_family = None
         self._class_nesting_gate = None
-
-    @override
-    def _load_class_nesting_config(self) -> t.JsonMapping:
-        return dict(u.Cli.yaml_load_mapping(self._config_path))
 
     def apply_rule(
         self,
@@ -123,30 +117,26 @@ class TestsFlextInfraIntegrationRefactorNestingPerformance:
         """Benchmark rule application on single file."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            test_file = tmp_path / "test.py"
+            (tmp_path / "pyproject.toml").write_text(
+                '[project]\nname = "pkg"\nversion = "0.1.0"\n', encoding="utf-8"
+            )
+            package_dir = tmp_path / "src" / "pkg"
+            package_dir.mkdir(parents=True, exist_ok=True)
+            test_file = package_dir / "dispatcher.py"
             test_file.write_text(
-                "\nclass TimeoutEnforcer:\n"
+                "from __future__ import annotations\n\n"
+                '__all__ = ["FlextDispatcher"]\n\n\n'
+                "class FlextDispatcher:\n"
+                '    """Module facade."""\n\n\n'
+                "class TimeoutEnforcer:\n"
                 "    def enforce(self, timeout: int) -> bool:\n"
-                "        return True\n\n"
+                "        return True\n\n\n"
                 "class RateLimiter:\n"
                 "    def limit(self, rate: int) -> bool:\n"
-                "        return True\n"
+                "        return True\n",
+                encoding="utf-8",
             )
-            config_file = tmp_path / "mappings.yml"
-            config_file.write_text(
-                "\nclass_nesting:\n"
-                "  - loose_name: TimeoutEnforcer\n"
-                "    current_file: test.py\n"
-                "    target_namespace: FlextDispatcher\n"
-                "    target_name: TimeoutEnforcer\n"
-                "    confidence: high\n"
-                "  - loose_name: RateLimiter\n"
-                "    current_file: test.py\n"
-                "    target_namespace: FlextDispatcher\n"
-                "    target_name: RateLimiter\n"
-                "    confidence: high\n"
-            )
-            rule = _FileRuleHarness(config_file)
+            rule = _FileRuleHarness()
             rope_project = u.Infra.init_rope_project(tmp_path)
             resource = u.Infra.get_resource_from_path(rope_project, test_file)
             if resource is None:

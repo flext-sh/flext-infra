@@ -67,7 +67,7 @@ class FlextInfraRefactorLooseClassScanner:
                     )
                     for ci in class_info
                 ):
-                    viol = self._build_violation(rel_path, occ)
+                    viol = self._build_violation(file_path, rel_path, occ)
                     if viol is None:
                         continue
                     violations.append(viol)
@@ -104,13 +104,19 @@ class FlextInfraRefactorLooseClassScanner:
         return result
 
     def _build_violation(
-        self, rel_path: Path, occ: m.Infra.ClassOccurrence
+        self, file_path: Path, rel_path: Path, occ: m.Infra.ClassOccurrence
     ) -> m.Infra.LooseClassViolation | None:
-        """Build violation."""
+        """Report a top-level class that is not the module's own facade.
+
+        The facade a module may declare at top level is the family class its
+        namespace policy derives from the module's own ``__all__``; every other
+        top-level class belongs nested under that facade. The same derivation
+        names the nesting target, so discovery and target share one owner.
+        """
         if not occ.is_top_level:
             return None
-        prefix = self._expected_prefix_for_module(rel_path)
-        if prefix and occ.name.startswith(prefix):
+        family = u.Infra.policy(file_path, rel_path=rel_path).expected_family
+        if family is not None and occ.name == family:
             return None
         confidence = self._confidence_from_location(rel_path)
         score = c.Infra.CONFIDENCE_TO_SCORE[confidence]
@@ -118,7 +124,7 @@ class FlextInfraRefactorLooseClassScanner:
             file=rel_path.as_posix(),
             line=max(occ.line, 1),
             class_name=occ.name,
-            expected_prefix=prefix,
+            expected_prefix=family or "",
             rule=c.Infra.RK_CLASS_NESTING,
             reason="top_level_class_in_private_directory"
             if self._has_private_directory(rel_path)
@@ -134,24 +140,9 @@ class FlextInfraRefactorLooseClassScanner:
             return "high"
         return "medium" if parts else c.Infra.SeverityLevel.LOW
 
-    def _expected_prefix_for_module(self, rel_path: Path) -> str:
-        """Return the expected prefix for a module."""
-        parts = rel_path.parts
-        if len(parts) < c.Infra.MIN_PATH_DEPTH:
-            return ""
-        pc = self._pascal_case
-        proj = pc(parts[0].split("_", maxsplit=1)[0])
-        dirs = "".join(pc(p) for p in parts[1:-1])
-        return f"{proj}{dirs}{pc(rel_path.stem)}"
-
     def _has_private_directory(self, rel_path: Path) -> bool:
         """Has private directory."""
         return any(p.startswith("_") for p in rel_path.parent.parts[1:])
-
-    def _pascal_case(self, value: str) -> str:
-        """Pascal case."""
-        norm = c.Infra.CLASS_PATTERN.sub(" ", value.replace("_", " "))
-        return "".join(w.capitalize() for w in norm.split())
 
 
 __all__: list[str] = ["FlextInfraRefactorLooseClassScanner"]
