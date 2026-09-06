@@ -113,6 +113,13 @@ class FlextInfraConstantsCodegenProject:
     GIT_URL_SUFFIX: Final[str] = ".git"
     "Canonical clone-URL suffix every governed RepositoryRef URL carries."
     CUSTOM_MAKE_FILENAME: Final[str] = "custom.mk"
+    CUSTOM_CI_STEPS_FILENAME: Final[str] = ".github/ci-custom-steps.yml"
+    """Project-owned steps injected into generated CI, symmetric to custom.mk.
+
+    It sits beside the workflows rather than inside them: GitHub parses every
+    file under ``.github/workflows`` as a workflow, and a bare step list is not
+    one, so a file placed there would surface as a permanent syntax error.
+    """
     CUSTOM_HANDLER_PREFIX: Final[str] = "_custom_"
     TEMPLATE_MODULE_SKELETON: Final[str] = "module_skeleton.py.j2"
     "Scaffold module-skeleton template (replaces the legacy f-string)."

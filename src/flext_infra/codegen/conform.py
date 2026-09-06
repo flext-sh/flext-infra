@@ -1943,6 +1943,19 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
+    def _custom_ci_steps(repository_root: Path) -> str:
+        """Read the project-owned workflow steps, if the project declares any.
+
+        This is the CI counterpart of ``custom.mk``: the generator injects the
+        block verbatim and never interprets it, so a project extends its own
+        pipeline without the generator learning that project's concerns.
+        """
+        source = repository_root / c.Infra.CUSTOM_CI_STEPS_FILENAME
+        if not source.is_file():
+            return ""
+        return source.read_text(encoding=c.DEFAULT_ENCODING).rstrip("\n")
+
+    @staticmethod
     def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
         if workspace.project is not None:
@@ -2141,6 +2154,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     has_devcontainer=(repository_root / ".devcontainer").is_dir(),
                     checkout_submodules=codegen.checkout_submodules_overrides.get(
                         dist, codegen.checkout_submodules
+                    ),
+                    custom_steps=FlextInfraCodegenConform._custom_ci_steps(
+                        repository_root
                     ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
                     system_packages=tuple(codegen.ci_system_packages.get(dist, ())),
