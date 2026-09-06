@@ -81,8 +81,7 @@ def _commit_merge_subject(workspace: Path, subject: str) -> None:
     """Record one empty commit whose subject a merge left on the lane."""
     tm.ok(
         cli.run_checked(
-            [c.Infra.GIT, "commit", "--allow-empty", "-m", subject],
-            cwd=workspace,
+            [c.Infra.GIT, "commit", "--allow-empty", "-m", subject], cwd=workspace
         )
     )
 
@@ -93,7 +92,9 @@ def _planned_release(workspace: Path) -> m.Infra.ReleasePlan:
     return _plan(workspace)
 
 
-def _lane_with_shim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+def _lane_with_shim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Path, Path]:
     """Return the release-lane fixture with the recording ``gh`` shim on PATH."""
     workspace = _release_lane_workspace(tmp_path)
     gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
@@ -103,10 +104,7 @@ def _lane_with_shim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Pa
 
 def _apply_release_version(workspace: Path, integration: str) -> None:
     """Stamp the release version once and return to the integration branch."""
-    tm.that(
-        u.Tests.run_release_main(workspace, "--phase", "version", "--apply"),
-        eq=0,
-    )
+    tm.that(u.Tests.run_release_main(workspace, "--phase", "version", "--apply"), eq=0)
     tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
 
 

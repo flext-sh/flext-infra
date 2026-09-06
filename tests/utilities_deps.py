@@ -42,10 +42,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
 
         @override
         def discover_project_paths(
-            self,
-            repository_root: Path,
-            *,
-            projects_filter: t.StrSequence | None = None,
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[Sequence[Path]]:
             del repository_root, projects_filter
             return r[Sequence[Path]].ok([self._project])
@@ -62,9 +59,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
             self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
         ) -> TestsFlextInfraUtilitiesDepsMixin.DetectorReportStub:
             del project_name, deptry_issues
-            return TestsFlextInfraUtilitiesDepsMixin.DetectorReportStub(
-                self._raw_count
-            )
+            return TestsFlextInfraUtilitiesDepsMixin.DetectorReportStub(self._raw_count)
 
         @override
         def run_pip_check(
@@ -96,10 +91,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
 
         @override
         def discover_project_paths(
-            self,
-            repository_root: Path,
-            *,
-            projects_filter: t.StrSequence | None = None,
+            self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
         ) -> p.Result[Sequence[Path]]:
             del repository_root, projects_filter
             if self.discovery_failure is not None:
@@ -112,9 +104,7 @@ class TestsFlextInfraUtilitiesDepsMixin:
         ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
             del project_path, venv_bin
             if self.deptry_failure is not None:
-                return r[t.Pair[Sequence[t.JsonMapping], int]].fail(
-                    self.deptry_failure
-                )
+                return r[t.Pair[Sequence[t.JsonMapping], int]].fail(self.deptry_failure)
             return r[t.Pair[Sequence[t.JsonMapping], int]].ok(((), 0))
 
         @override

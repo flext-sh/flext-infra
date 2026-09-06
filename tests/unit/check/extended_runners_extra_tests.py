@@ -22,7 +22,9 @@ class TestExtendedRunnerExtras:
         gate_class: object, tmp_path: Path, project_dir: Path, runner: object = None
     ) -> object:
         """Run one gate with a runner and assert exactly one issue fails it."""
-        result = u.Tests.run_gate_check(gate_class, tmp_path, project_dir, runner=runner)
+        result = u.Tests.run_gate_check(
+            gate_class, tmp_path, project_dir, runner=runner
+        )
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=1)

@@ -12,7 +12,9 @@ if TYPE_CHECKING:
     from flext_infra.deps.detector import FlextInfraRuntimeDevDependencyDetector
 
 
-def _setup(tmp_path: Path, deps: u.Tests.DepsReportStub) -> FlextInfraRuntimeDevDependencyDetector:
+def _setup(
+    tmp_path: Path, deps: u.Tests.DepsReportStub
+) -> FlextInfraRuntimeDevDependencyDetector:
     detector: FlextInfraRuntimeDevDependencyDetector = u.Tests.setup_detector_runtime(
         tmp_path, deps
     )
@@ -29,14 +31,14 @@ class TestsFlextInfraDepsDetectorReportFlags:
 
     def test_run_with_no_fail_flag_with_issues(self, tmp_path: Path) -> None:
         """Verify run with no fail flag with issues."""
-        detector = _setup(tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 5, 1)).model_copy(
-            update={"no_fail": True}
-        )
+        detector = _setup(
+            tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 5, 1)
+        ).model_copy(update={"no_fail": True})
         tm.that(tm.ok(detector.execute()), eq=True)
 
     def test_run_with_json_stdout_flag(self, tmp_path: Path) -> None:
         """Verify run with json stdout flag."""
-        detector = _setup(tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 0, 0)).model_copy(
-            update={"output_format": "json", "no_pip_check": True}
-        )
+        detector = _setup(
+            tmp_path, u.Tests.DepsReportStub(tmp_path / "proj-a", 0, 0)
+        ).model_copy(update={"output_format": "json", "no_pip_check": True})
         tm.that(tm.ok(detector.execute()), eq=True)

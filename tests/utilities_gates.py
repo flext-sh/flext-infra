@@ -34,9 +34,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
             workspace=str(tmp_path), projects=("demo",), apply=apply
         )
         return adapter.fix_project(
-            project_dir,
-            ((rule, SimpleNamespace(file_path=str(file_path))),),
-            ctx,
+            project_dir, ((rule, SimpleNamespace(file_path=str(file_path))),), ctx
         )
 
     @staticmethod
@@ -110,8 +108,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def make_project(
-        name: str = "p",
-        gates: MutableMapping[str, m.Infra.GateExecution] | None = None,
+        name: str = "p", gates: MutableMapping[str, m.Infra.GateExecution] | None = None
     ) -> m.Infra.ProjectResult:
         """Create a typed project-result fixture."""
         resolved_gates: MutableMapping[str, m.Infra.GateExecution] = (

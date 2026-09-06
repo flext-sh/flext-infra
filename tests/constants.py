@@ -29,10 +29,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
     All base constants from FlextTestsConstants are available through inheritance.
     """
 
-    class Tests(
-        TestsFlextInfraConstantsScanMixin,
-        FlextTestsConstants.Tests,
-    ):
+    class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
         GIT_LOCAL_ENV_KEYS: Final[t.StrSequence] = (

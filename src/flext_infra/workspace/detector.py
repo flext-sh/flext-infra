@@ -36,9 +36,7 @@ class FlextInfraWorkspaceDetector(
 
     @classmethod
     def _composed_beads_identity_error(
-        cls,
-        subproject_root: Path,
-        workspace_beads: m.Infra.BeadsProjectSpec,
+        cls, subproject_root: Path, workspace_beads: m.Infra.BeadsProjectSpec
     ) -> str | None:
         member_beads = subproject_root / c.Infra.BEADS_DIRNAME
         member_identity = (
@@ -461,10 +459,7 @@ class FlextInfraWorkspaceDetector(
                 f"{route_error}"
             )
         repository = cls._local_repository_ref(
-            subproject_root,
-            path=path,
-            composed=True,
-            declared_url=declared_url,
+            subproject_root, path=path, composed=True, declared_url=declared_url
         )
         if repository.failure:
             return result_type.fail(repository.error)
@@ -528,8 +523,7 @@ class FlextInfraWorkspaceDetector(
             return r[m.Infra.WorkspaceSpec].fail(beads_result.error)
         beads = beads_result
         repository = cls._local_repository_ref(
-            resolved_root,
-            composed=identity.value.is_attached_submodule,
+            resolved_root, composed=identity.value.is_attached_submodule
         )
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)

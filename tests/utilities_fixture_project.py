@@ -27,10 +27,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
 
     @staticmethod
     def repository_ref(
-        name: str,
-        *,
-        role: c.Infra.MakeProfile | None = None,
-        path: Path | None = None,
+        name: str, *, role: c.Infra.MakeProfile | None = None, path: Path | None = None
     ) -> m.Infra.RepositoryRef:
         """Build a repository reference from the provider contract.
 
@@ -97,9 +94,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
             author_name="FLEXT Team",
             author_email="team@flext.dev",
             upstream=(
-                config.Infra.codegen.scaffold.project.dependency_profiles[
-                    0
-                ].upstream
+                config.Infra.codegen.scaffold.project.dependency_profiles[0].upstream
             ),
             homepage=homepage,
             documentation=homepage,
@@ -135,9 +130,7 @@ class TestsFlextInfraUtilitiesProjectFixtureMixin:
         return path
 
     @staticmethod
-    def declare_workspace_projects(
-        repository: Path, projects: t.StrSequence
-    ) -> Path:
+    def declare_workspace_projects(repository: Path, projects: t.StrSequence) -> Path:
         """Declare the exact governed projects in this root's ``.gitmodules``."""
         provider = config.Infra.codegen.providers[0]
         path = repository / c.Infra.GITMODULES

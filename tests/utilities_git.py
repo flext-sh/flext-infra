@@ -53,10 +53,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         tm.ok(run([c.Infra.GIT, "commit", "-m", f"work: {subject}"], cwd=repo_root))
         tm.ok(run([c.Infra.GIT, "switch", current], cwd=repo_root))
         tm.ok(
-            run(
-                [c.Infra.GIT, "merge", "--no-ff", "-m", subject, branch],
-                cwd=repo_root,
-            )
+            run([c.Infra.GIT, "merge", "--no-ff", "-m", subject, branch], cwd=repo_root)
         )
 
     @staticmethod
@@ -115,12 +112,9 @@ class TestsFlextInfraUtilitiesGitMixin:
         """Set deterministic repository-local identity for real Git fixtures."""
         bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
         bootstrap(
-            repository_root,
-            ("config", "--local", "user.email", "tests@flext.local"),
+            repository_root, ("config", "--local", "user.email", "tests@flext.local")
         )
-        bootstrap(
-            repository_root, ("config", "--local", "user.name", "Flext Tests")
-        )
+        bootstrap(repository_root, ("config", "--local", "user.name", "Flext Tests"))
 
     @staticmethod
     def isolated_git_keys() -> t.StrSequence:
@@ -132,11 +126,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         must never inherit them. The set is whatever the installed Git
         declares, never a hardcoded list.
         """
-        declared = cli_facade.capture([
-            c.Infra.GIT,
-            "rev-parse",
-            "--local-env-vars",
-        ])
+        declared = cli_facade.capture([c.Infra.GIT, "rev-parse", "--local-env-vars"])
         tm.ok(declared)
         return tuple(declared.value.split())
 
@@ -179,9 +169,7 @@ class TestsFlextInfraUtilitiesGitMixin:
         repository itself; fixtures that must be recognised as
         provider-governed pass their declared provider URL instead.
         """
-        baseline_branch = (
-            TestsFlextInfraUtilitiesProjectFixtureMixin.provider().branch
-        )
+        baseline_branch = TestsFlextInfraUtilitiesProjectFixtureMixin.provider().branch
         bootstrap = TestsFlextInfraUtilitiesGitMixin.git_bootstrap
         bootstrap(repo_root, ("init", "-b", c.Infra.GIT_MAIN))
         bootstrap(repo_root, ("config", "user.email", "tests@flext.local"))

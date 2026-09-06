@@ -22,17 +22,6 @@ from .._models._defaults import immutable_empty_mapping
 from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
 from .._models.layout import FlextInfraModelsLayout
 
-
-class _ConfigContract(m.ContractModel):
-    """Private declarative base for schema-loaded codegen records."""
-
-    # Rendered file payloads are
-    # byte contracts; Pydantic must never trim their final newline.
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
-
-
 __all__: list[str] = ["FlextInfraConfigModels"]
 
 
@@ -50,6 +39,15 @@ def _tool_version_field(description: str) -> object:
 
 
 class FlextInfraConfigModels:
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        # Rendered file payloads are
+        # byte contracts; Pydantic must never trim their final newline.
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
+
     """Field-only models for config loading and codegen plans."""
 
     # These models replace the former model-less workspace/make dictionaries.

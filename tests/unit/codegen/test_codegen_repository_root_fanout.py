@@ -67,7 +67,7 @@ class TestsCodegenRepositoryRootFanout:
 
 def _render_root_makefile(tmp_path: Path) -> Path:
     """Render base/Makefile.j2 from a typed workspace fixture."""
-    repository = test_u.Tests.repository_ref("workspace-fixture")
+    repository = u.Tests.repository_ref("workspace-fixture")
     workspace = m.Infra.WorkspaceSpec(
         name=repository.name,
         beads=m.Infra.BeadsProjectSpec(
@@ -77,7 +77,7 @@ def _render_root_makefile(tmp_path: Path) -> Path:
             issue_prefix=repository.name,
         ),
         repository=repository,
-        project=test_u.Tests.project_spec(repository.name),
+        project=u.Tests.project_spec(repository.name),
     )
     repository_root = tmp_path / "workspace"
     # The bootstrap projection refreshes the dispatcher of an existing checkout:
@@ -102,8 +102,7 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     tm.that(makefile_plans, len=1)
     makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
     makefile_path.write_text(
-        test_u.Tests.codegen_file_text(makefile_plans[0]),
-        encoding=c.Infra.ENCODING_DEFAULT,
+        u.Tests.codegen_file_text(makefile_plans[0]), encoding=c.Infra.ENCODING_DEFAULT
     )
     return repository_root
 

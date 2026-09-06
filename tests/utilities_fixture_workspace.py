@@ -107,9 +107,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
             project_dir, name
         )
-        workspace = tm.ok(
-            FlextInfraWorkspaceDetector.load_workspace_spec(project_dir)
-        )
+        workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(project_dir))
         return workspace.model_copy(
             update={
                 "project": TestsFlextInfraUtilitiesProjectFixtureMixin.project_spec(
@@ -119,9 +117,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         )
 
     @staticmethod
-    def required_beads(
-        workspace: m.Infra.WorkspaceSpec,
-    ) -> m.Infra.BeadsProjectSpec:
+    def required_beads(workspace: m.Infra.WorkspaceSpec) -> m.Infra.BeadsProjectSpec:
         """Return the ledger identity the observed loader must always resolve.
 
         Every observed load owns a Beads identity — the loader rejects a
@@ -164,9 +160,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         pkg = project / "src" / pkg_name
         pkg.mkdir(parents=True)
         (pkg / "__init__.py").touch()
-        pascal_name = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.to_pascal(
-            pkg_name
-        )
+        pascal_name = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.to_pascal(pkg_name)
         (pkg / "typings.py").write_text(
             "from __future__ import annotations\n\n"
             "from flext_core import FlextTypes\n\n"
@@ -197,10 +191,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         project.mkdir()
         (project / "Makefile").touch()
         (project / "pyproject.toml").write_text(
-            (
-                "[project]\nname='test-project'\n"
-                "dependencies=['flext-core>=0.1.0']\n"
-            ),
+            ("[project]\nname='test-project'\ndependencies=['flext-core>=0.1.0']\n"),
             encoding="utf-8",
         )
         (project / ".git").mkdir()

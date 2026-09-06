@@ -272,10 +272,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         rendered = TestsFlextInfraDepsModernizerMainExtra._ran_modernizer(
             modernizer_workspace
         )
-        tm.that(
-            rendered,
-            has='"requests>=2.32.4"',
-        )
+        tm.that(rendered, has='"requests>=2.32.4"')
 
     def test_run_scopes_default_audit_to_root_without_external_siblings(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]

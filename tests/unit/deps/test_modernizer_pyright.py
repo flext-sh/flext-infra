@@ -28,7 +28,9 @@ class TestsFlextInfraDepsModernizerPyright:
     @staticmethod
     def _pyright_tables(
         doc: t.Cli.TomlDocument,
-    ) -> tuple[MutableMapping[str, t.JsonValue], MutableMapping[str, t.JsonValue]] | None:
+    ) -> (
+        tuple[MutableMapping[str, t.JsonValue], MutableMapping[str, t.JsonValue]] | None
+    ):
         """Unwrap and type-guard the tool and tool.pyright tables."""
         tool = u.Cli.toml_unwrap_item(doc["tool"])
         tm.that(tool, is_=MutableMapping)

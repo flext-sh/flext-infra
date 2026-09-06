@@ -67,9 +67,15 @@ class TestsFlextInfraExtraPathsArePure:
         derived from sibling existence differ there, so `make gen` in the lane
         would rewrite what the primary just generated.
         """
-        with_siblings = ExtraPathsTestSupport.project(tmp_path / "workspace", "flext-ldap", "flext_ldap")
-        _ = ExtraPathsTestSupport.project(tmp_path / "workspace", "flext-core", "flext_core")
-        alone = ExtraPathsTestSupport.project(tmp_path / "lane", "flext-ldap", "flext_ldap")
+        with_siblings = ExtraPathsTestSupport.project(
+            tmp_path / "workspace", "flext-ldap", "flext_ldap"
+        )
+        _ = ExtraPathsTestSupport.project(
+            tmp_path / "workspace", "flext-core", "flext_core"
+        )
+        alone = ExtraPathsTestSupport.project(
+            tmp_path / "lane", "flext-ldap", "flext_ldap"
+        )
 
         workspace_manager = ExtraPathsTestSupport.manager(tmp_path / "workspace")
         lane_manager = ExtraPathsTestSupport.manager(tmp_path / "lane")

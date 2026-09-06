@@ -72,14 +72,13 @@ class TestsFlextInfraUtilitiesReleaseMixin:
             build_constraints=config.Infra.release.build_constraints
         )
         for policy_path in policy_paths:
-            policy_source = TestsFlextInfraUtilitiesReleaseMixin.release_policy_root() / (
-                f"{policy_path}.j2"
+            policy_source = (
+                TestsFlextInfraUtilitiesReleaseMixin.release_policy_root()
+                / (f"{policy_path}.j2")
             )
             rendered = u.Cli.template_render(policy_source, policy_context)
             if rendered.failure:
-                msg = (
-                    rendered.error or f"release policy render failed: {policy_path}"
-                )
+                msg = rendered.error or f"release policy render failed: {policy_path}"
                 raise RuntimeError(msg)
             policy_target = workspace / policy_path
             policy_target.parent.mkdir(parents=True, exist_ok=True)
@@ -145,20 +144,11 @@ class TestsFlextInfraUtilitiesReleaseMixin:
     @staticmethod
     def run_release_main(workspace_root: Path, *arguments: str) -> int:
         """Run the public release CLI against one real test workspace."""
-        return main([
-            "release",
-            "run",
-            "--workspace",
-            str(workspace_root),
-            *arguments,
-        ])
+        return main(["release", "run", "--workspace", str(workspace_root), *arguments])
 
     @staticmethod
     def run_release_build(
-        workspace_root: Path,
-        project_name: str,
-        *,
-        dry_run: bool = False,
+        workspace_root: Path, project_name: str, *, dry_run: bool = False
     ) -> int:
         """Run the release build phase for one project through the public CLI."""
         return TestsFlextInfraUtilitiesReleaseMixin.run_release_main(
@@ -172,10 +162,7 @@ class TestsFlextInfraUtilitiesReleaseMixin:
 
     @staticmethod
     def release_internal_workspace(
-        root: Path,
-        project_name: str,
-        *,
-        initialize_project_git: bool = True,
+        root: Path, project_name: str, *, initialize_project_git: bool = True
     ) -> Path:
         """Create a release workspace carrying one project and its internal deps."""
         return TestsFlextInfraUtilitiesReleaseMixin.create_release_workspace(

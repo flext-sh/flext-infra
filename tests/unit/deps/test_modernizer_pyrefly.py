@@ -23,7 +23,9 @@ class TestsFlextInfraModernizerPyrefly:
     """Tests pyrefly settings phase behavior."""
 
     @staticmethod
-    def _pyrefly_document() -> tuple[t.Cli.TomlDocument, MutableMapping[str, t.JsonValue]]:
+    def _pyrefly_document() -> tuple[
+        t.Cli.TomlDocument, MutableMapping[str, t.JsonValue]
+    ]:
         """Create one fresh TOML document carrying an empty tool.pyrefly table."""
         doc = u.Cli.toml_document()
         doc["tool"] = u.Cli.toml_table()
@@ -34,10 +36,10 @@ class TestsFlextInfraModernizerPyrefly:
 
     @staticmethod
     def _pyrefly_section() -> tuple[
-            t.Cli.TomlDocument,
-            MutableMapping[str, t.JsonValue],
-            MutableMapping[str, t.JsonValue],
-        ]:
+        t.Cli.TomlDocument,
+        MutableMapping[str, t.JsonValue],
+        MutableMapping[str, t.JsonValue],
+    ]:
         """Create the document plus its typed tool and tool.pyrefly tables."""
         doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
         pyrefly = tool["pyrefly"]

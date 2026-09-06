@@ -112,9 +112,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         service = FlextInfraCodegenLazyInit(repository_root=workspace_root)
         planned = service.plan_files().unwrap()
         changed = tuple(
-            plan
-            for plan in planned.files
-            if u.Infra.codegen_file_requires_effect(plan)
+            plan for plan in planned.files if u.Infra.codegen_file_requires_effect(plan)
         )
         if check_only:
             return len(changed)
@@ -141,9 +139,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         if planned.failure:
             return r[bool].from_failure(planned)
         changed = tuple(
-            plan
-            for plan in planned.value
-            if u.Infra.codegen_file_requires_effect(plan)
+            plan for plan in planned.value if u.Infra.codegen_file_requires_effect(plan)
         )
         for plan in changed:
             before = u.Infra.codegen_file_before_state(plan)

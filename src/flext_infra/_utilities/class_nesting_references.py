@@ -93,18 +93,30 @@ class FlextInfraUtilitiesClassNestingReferences:
                 owner_name = local_name if imported.asname else bindings[name]
                 self.local_expressions[local_name] = f"{owner_name}.{name}"
 
-        def _inside_owner(self, node: cst.CSTNode, owner_name: str) -> bool:
-            """Report whether ``node`` sits lexically inside the owner class body.
+        def _resolves_bare_after_nesting(self, node: cst.CSTNode) -> bool:
+            """Report whether a moved class stays reachable by its bare name here.
 
-            After nesting, a moved class is a sibling of everything already in
-            the owner, so inside that body the bare name is the reachable form.
-            Qualifying it as ``Owner.Name`` there is a NameError: the owner is
-            not bound until its own definition completes.
+            References are rewritten before the structural move, so the current
+            tree cannot answer this; the plan can. After nesting, the owner's
+            class body holds every moved class as a sibling, and a class body
+            reaches its siblings by bare name while it is executing. A method
+            body does not: the enclosing class scope is invisible from inside a
+            function, so there the qualified form is the only one that resolves.
+            Walking outward, a function boundary therefore means qualify, and a
+            class that is the owner or is itself being moved under the owner
+            means the reference will land in that shared class scope.
             """
-            current: cst.CSTNode | None = node
+            current: cst.CSTNode | None = self.get_metadata(
+                ParentNodeProvider, node, None
+            )
             while current is not None:
-                if isinstance(current, cst.ClassDef) and current.name.value == owner_name:
-                    return True
+                if isinstance(current, cst.FunctionDef):
+                    return False
+                if isinstance(current, cst.ClassDef):
+                    name = current.name.value
+                    return name in self.definitions or name in set(
+                        self.definitions.values()
+                    )
                 current = self.get_metadata(ParentNodeProvider, current, None)
             return False
 
@@ -133,8 +145,9 @@ class FlextInfraUtilitiesClassNestingReferences:
                 return updated_node
             if isinstance(parent, cst.Arg) and parent.keyword is original_node:
                 return updated_node
-            owner = self.definitions.get(original_node.value)
-            if owner is not None and self._inside_owner(original_node, owner):
+            if original_node.value in self.definitions and (
+                self._resolves_bare_after_nesting(original_node)
+            ):
                 return updated_node
             replacement = self.local_expressions.get(original_node.value)
             if replacement is None:

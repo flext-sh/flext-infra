@@ -140,11 +140,7 @@ class TestsFlextInfraUtilitiesReplayRunnerMixin:
             """Provide the typed test helper `capture`."""
             del input_data
             result = self.run(
-                cmd,
-                cwd=cwd,
-                timeout=timeout,
-                env=env,
-                remove_env_keys=remove_env_keys,
+                cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
             )
             if result.failure:
                 return r[str].from_failure(result)
@@ -165,11 +161,7 @@ class TestsFlextInfraUtilitiesReplayRunnerMixin:
             """Provide the typed test helper `run_checked`."""
             del input_data, capture
             result = self.run(
-                cmd,
-                cwd=cwd,
-                timeout=timeout,
-                env=env,
-                remove_env_keys=remove_env_keys,
+                cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
             )
             if result.failure:
                 return r[bool].from_failure(result)
@@ -217,11 +209,7 @@ class TestsFlextInfraUtilitiesReplayRunnerMixin:
             """Provide the typed test helper `run_to_file`."""
             del input_data, live, heartbeat_seconds, deadline
             result = self.run_raw(
-                cmd,
-                cwd=cwd,
-                timeout=timeout,
-                env=env,
-                remove_env_keys=remove_env_keys,
+                cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
             )
             if result.failure:
                 return r[p.Cli.ProcessOutcome].from_failure(result)

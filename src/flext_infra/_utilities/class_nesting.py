@@ -32,9 +32,7 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
         """
         module = ast.parse(source)
         classes = {
-            node.name: node
-            for node in module.body
-            if isinstance(node, ast.ClassDef)
+            node.name: node for node in module.body if isinstance(node, ast.ClassDef)
         }
 
         def base_names(node: ast.ClassDef) -> frozenset[str]:

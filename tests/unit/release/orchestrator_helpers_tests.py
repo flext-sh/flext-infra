@@ -69,9 +69,7 @@ class TestsFlextInfraReleaseHelpers:
             return notes_path
 
         @staticmethod
-        def update_changelog_at(
-            workspace: Path, notes_path: Path
-        ) -> p.Result[bool]:
+        def update_changelog_at(workspace: Path, notes_path: Path) -> p.Result[bool]:
             """Run the public changelog update at the canonical release targets."""
             return u.Infra.update_changelog(
                 workspace,
@@ -103,10 +101,8 @@ class TestsFlextInfraReleaseHelpers:
                 workspace
             )
 
-            result = (
-                TestsFlextInfraReleaseHelpers.TestsChangelog.update_changelog_at(
-                    workspace, notes_path
-                )
+            result = TestsFlextInfraReleaseHelpers.TestsChangelog.update_changelog_at(
+                workspace, notes_path
             )
 
             tm.ok(result)

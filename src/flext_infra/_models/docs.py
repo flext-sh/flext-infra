@@ -7,8 +7,9 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.config import FlextInfraConfigModels
-from flext_infra._models.docs_generation import FlextInfraModelsDocsGeneration
+
+from .config import FlextInfraConfigModels
+from .docs_generation import FlextInfraModelsDocsGeneration
 
 
 class _FlextInfraDocsContracts:

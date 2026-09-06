@@ -29,9 +29,7 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
             current = self._index
             self._index = current + 1
             if not self._results:
-                return r[m.Cli.CommandOutput].fail(
-                    "runner result sequence is empty"
-                )
+                return r[m.Cli.CommandOutput].fail("runner result sequence is empty")
             return (
                 self._results[current]
                 if current < len(self._results)
@@ -74,17 +72,11 @@ class TestsFlextInfraUtilitiesReplaySequenceMixin:
         *results: p.Result[m.Cli.CommandOutput],
     ) -> TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner:
         """Build one in-order command-result replaying runner."""
-        return TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner(
-            list(results)
-        )
+        return TestsFlextInfraUtilitiesReplaySequenceMixin.SequenceRunner(list(results))
 
     @staticmethod
     def create_command_output(
-        *,
-        stdout: str = "",
-        stderr: str = "",
-        exit_code: int = 0,
-        duration: float = 0.0,
+        *, stdout: str = "", stderr: str = "", exit_code: int = 0, duration: float = 0.0
     ) -> m.Cli.CommandOutput:
         """Provide the typed test helper `create_command_output`."""
         return m.Cli.CommandOutput(
