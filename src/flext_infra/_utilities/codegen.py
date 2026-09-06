@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
+from flext_infra import config
 from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
 from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from flext_infra.constants import c
@@ -40,6 +41,18 @@ class FlextInfraUtilitiesCodegen(
         )
 
     @staticmethod
+    def envrc_render_spec() -> m.Infra.EnvrcRenderSpec:
+        """Return the sole typed context every generated ``.envrc`` renders from."""
+        toolchain = config.Infra.codegen.toolchain
+        return m.Infra.EnvrcRenderSpec(
+            state_directory_name=toolchain.state_directory_name,
+            scratch_namespace=toolchain.scratch_namespace,
+            pycache_namespace=toolchain.pycache_namespace,
+            environment_path_prepends=toolchain.environment_path_prepends,
+            mise_bootstrap=FlextInfraUtilitiesCodegen.mise_bootstrap_environment(),
+        )
+
+    @staticmethod
     def prepare_mise_runtime_storage(
         project_root: Path,
         environment: t.StrMapping,
@@ -68,15 +81,19 @@ class FlextInfraUtilitiesCodegen(
             return r[Path].fail(f"Mise storage path must be absolute: {storage_root}")
         physical_project = project_root.resolve(strict=True)
         physical_tmp = Path(tempfile.gettempdir()).resolve(strict=True)
-        if storage_root == physical_tmp or storage_root.is_relative_to(physical_tmp):
-            return r[Path].fail(
-                f"persistent Mise storage must not live under /tmp: {storage_root}"
-            )
+        # Containment is decided before the temp-root rule: a checkout may itself
+        # sit under the temporary root, and reporting `/tmp` there names the
+        # sandbox instead of the actual defect, which is the storage living
+        # inside the checkout it is supposed to outlive.
         if storage_root == physical_project or storage_root.is_relative_to(
             physical_project
         ):
             return r[Path].fail(
                 f"persistent Mise storage must be outside the checkout: {storage_root}"
+            )
+        if storage_root == physical_tmp or storage_root.is_relative_to(physical_tmp):
+            return r[Path].fail(
+                f"persistent Mise storage must not live under /tmp: {storage_root}"
             )
         if physical_project.is_relative_to(storage_root):
             return r[Path].fail(

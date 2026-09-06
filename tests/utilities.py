@@ -1523,10 +1523,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Materialize immutable lazy-init plans only inside test workspaces."""
             # Why: parameter is workspace_root; restore reference dropped by #586 merge (flext-ct0mo)
             service = FlextInfraCodegenLazyInit(repository_root=workspace_root)
-            planned = service.plan_files().unwrap()
+            planned = service.plan_files()
+            if planned.failure:
+                # Preflight fails closed: a plan that refuses to touch
+                # unexpected content is a non-zero run, not a helper crash.
+                return 1
             changed = tuple(
                 plan
-                for plan in planned.files
+                for plan in planned.value.files
                 if u.Infra.codegen_file_requires_effect(plan)
             )
             if check_only:
@@ -1614,7 +1618,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> m.Infra.DetectCommand:
             """Create a validated dependency-detection command."""
             validated: m.Infra.DetectCommand = m.Infra.DetectCommand.model_validate({
-                "workspace": str(workspace_root),
+                "repository_root": str(workspace_root),
                 **overrides,
             })
             return validated
@@ -1766,7 +1770,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
         ) -> tuple[FlextInfraWorkspaceChecker, Path]:
             """Provide the typed test helper `create_checker_project`."""
-            checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+            checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
             project_dir = TestsFlextInfraUtilities.Tests.mk_project(
                 tmp_path, project_name
             )

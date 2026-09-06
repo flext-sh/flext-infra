@@ -22,7 +22,7 @@ class TestValidateCli:
             infra_main([
                 "validate",
                 "stub-validate",
-                "--workspace",
+                "--repository-root",
                 str(workspace),
                 "--all",
             ]),

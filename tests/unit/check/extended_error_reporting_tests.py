@@ -104,7 +104,7 @@ class TestGateErrorReportingPublicBehavior:
         runner = u.Tests.command_runner(stderr="rumdl execution failed", returncode=2)
 
         result = FlextInfraWorkspaceChecker(
-            workspace=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
+            repository_root=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
         ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")
 
         tm.ok(result)
@@ -121,7 +121,7 @@ class TestGateErrorReportingPublicBehavior:
         runner = u.Tests.command_runner(stdout=diagnostic, returncode=1)
 
         result = FlextInfraWorkspaceChecker(
-            workspace=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
+            repository_root=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
         ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")
 
         tm.ok(result)

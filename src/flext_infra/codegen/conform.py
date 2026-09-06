@@ -34,11 +34,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
     @staticmethod
-    def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
-        """Project the single generated Mise isolation contract into templates."""
-        return u.Infra.mise_bootstrap_environment()
-
-    @staticmethod
     def _link_mode(
         repository: m.Infra.RepositoryRef, toolchain: m.Infra.ToolchainSpec
     ) -> str:
@@ -1947,14 +1942,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
 
     @staticmethod
-    def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
-        """Return the environment root owned by the inferred target."""
-        if workspace.project is not None:
-            project_root_rel: str = workspace.project.repository_root_rel
-            return project_root_rel
-        return "."
-
-    @staticmethod
     def _repository_provider(
         repository: m.Infra.RepositoryRef, codegen: m.Infra.CodegenConfigSpec
     ) -> p.Result[m.Infra.ProviderSpec]:
@@ -2062,19 +2049,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 m.Infra.MarkdownLintRenderSpec(tooling=config.Infra.tooling)
             )
         if destination == ".envrc":
-            return r[p.Model].ok(
-                m.Infra.EnvrcRenderSpec(
-                    state_directory_name=codegen.toolchain.state_directory_name,
-                    scratch_namespace=codegen.toolchain.scratch_namespace,
-                    pycache_namespace=codegen.toolchain.pycache_namespace,
-                    environment_path_prepends=(
-                        codegen.toolchain.environment_path_prepends
-                    ),
-                    mise_bootstrap=(
-                        FlextInfraCodegenConform._mise_bootstrap_environment()
-                    ),
-                )
-            )
+            return r[p.Model].ok(u.Infra.envrc_render_spec())
         if destination in {".mise.toml", ".python-version"}:
             return r[p.Model].ok(codegen.toolchain)
 
@@ -2160,7 +2135,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     package_name=dist.replace("-", "_"),
                     python_version=codegen.toolchain.python_version,
                     make=codegen.make,
-                    mise_bootstrap=self._mise_bootstrap_environment(),
+                    mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                 )
             )
         if destination in {
@@ -2191,16 +2166,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[p.Model].ok(
                 m.Infra.MakefileRenderSpec(
                     pytest=config.Infra.tooling.tools.pytest,
-                    mise_bootstrap=self._mise_bootstrap_environment(),
+                    mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                     dist=dist,
                     state_directory_name=codegen.toolchain.state_directory_name,
                     scratch_namespace=codegen.toolchain.scratch_namespace,
                     infra_cli=config.Infra.name,
                     make_profile=profile,
                     makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                    workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
-                        workspace
-                    ),
                     workspace_subprojects=tuple(
                         item.path.as_posix() for item in workspace.subprojects
                     ),
@@ -2289,7 +2261,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[m.Infra.MakeRenderContext].ok(
             m.Infra.MakeRenderContext(
                 pytest=config.Infra.tooling.tools.pytest,
-                mise_bootstrap=(FlextInfraCodegenConform._mise_bootstrap_environment()),
+                mise_bootstrap=(u.Infra.mise_bootstrap_environment()),
                 make=codegen.make,
                 mypy_memory_limit_mb=c.Infra.MYPY_MEMORY_LIMIT_MB_DEFAULT,
                 mypy_timeout_seconds=c.Infra.MYPY_TIMEOUT_SECONDS_DEFAULT,
@@ -2315,9 +2287,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 ruff_per_file_ignores={},
                 make_profile=profile,
                 workspace_cli_group=c.Infra.CLI_GROUP_WORKSPACE,
-                workspace_root_rel=FlextInfraCodegenConform._workspace_root_rel(
-                    workspace
-                ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
                 workspace_subprojects=tuple(
                     item.path.as_posix() for item in workspace.subprojects
@@ -2426,7 +2395,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     exclude={"mise_bootstrap", "ruff_per_file_ignores"},
                     exclude_computed_fields=True,
                 ),
-                mise_bootstrap=FlextInfraCodegenConform._mise_bootstrap_environment(),
+                mise_bootstrap=u.Infra.mise_bootstrap_environment(),
                 scaffold=codegen.scaffold,
                 gitignore_sections=tuple(profile_gitignore_sections),
                 dependency_profile=dependency_profile,
@@ -2633,6 +2602,29 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         return r[bool].ok(True)
 
     @staticmethod
+    def _plan_before(
+        path: Path,
+    ) -> p.Result[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]:
+        """Capture what read-only planning can observe about one destination.
+
+        A leaf under an existing directory has a snapshot. A leaf whose parent
+        chain does not exist yet has none — snapshotting it would require the
+        directory to be created during planning — so the plan carries the exact
+        absent chain instead, and the transaction materializes it before
+        staging (``append_directories_locked``).
+        """
+        result_type = r[m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan]
+        if path.parent.is_dir():
+            snapshot = u.Cli.atomic_read_binary_file_state(path, required=False)
+            if snapshot.failure:
+                return result_type.from_failure(snapshot)
+            return result_type.ok(snapshot.value)
+        chain = u.Cli.atomic_plan_directory_chain(path.parent)
+        if chain.failure:
+            return result_type.from_failure(chain)
+        return result_type.ok(chain.value)
+
+    @staticmethod
     def _file_plan(
         root: Path,
         relative_path: str,
@@ -2644,7 +2636,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Snapshot one target and bind it to exact desired bytes and mode."""
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
-        before = u.Cli.atomic_read_binary_file_state(path, required=False)
+        before = FlextInfraCodegenConform._plan_before(path)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
         return r[m.Infra.CodegenFilePlan].ok(

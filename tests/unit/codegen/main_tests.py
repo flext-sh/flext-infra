@@ -101,7 +101,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -116,7 +116,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--check",
-            "--workspace",
+            "--repository-root",
             str(repository),
         ])
         tm.that(result, ne=0)
@@ -129,7 +129,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -144,7 +144,7 @@ class TestMainCommandDispatch:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -167,7 +167,7 @@ class TestMainCommandDispatch:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(custom_root)),
         ])
         tm.that(result, eq=0)
@@ -186,7 +186,7 @@ class TestMainEntryPoint:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(type(result).__name__, eq="int")

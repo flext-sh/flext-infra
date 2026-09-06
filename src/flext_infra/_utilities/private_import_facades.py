@@ -146,6 +146,28 @@ class FlextInfraUtilitiesPrivateImportFacades:
         return canonical.pop()
 
     @staticmethod
+    def facade_alias_binding(
+        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], alias: str | None
+    ) -> str | None:
+        """Return the alias when the owning package publishes it as a facade.
+
+        A private symbol imported under a name the owner already publishes is a
+        facade binding, not a class reference: the consumer writes ``m.X``
+        against the facade, so the cutover swaps the import statement and every
+        usage stays exactly as written.
+        """
+        if alias is None:
+            return None
+        return next(
+            (
+                facade_alias
+                for _tree, facade_alias, _root_name, _facade_file in owners
+                if facade_alias == alias
+            ),
+            None,
+        )
+
+    @staticmethod
     def public_root_name(
         *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], facade_alias: str
     ) -> str | None:

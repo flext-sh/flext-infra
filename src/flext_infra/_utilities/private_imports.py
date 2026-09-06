@@ -152,6 +152,12 @@ class FlextInfraUtilitiesPrivateImports:
                 target_reference = relative_module
                 if target_reference is None:
                     target_reference = (
+                        FlextInfraUtilitiesPrivateImportFacades.facade_alias_binding(
+                            owners=facades.get(package, ()), alias=imported.asname
+                        )
+                    )
+                if target_reference is None:
+                    target_reference = (
                         FlextInfraUtilitiesPrivateImportFacades.public_reference(
                             owners=facades.get(package, ()),
                             package=package,

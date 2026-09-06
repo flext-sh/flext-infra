@@ -28,19 +28,19 @@ class TestConfigFixerProcessFile:
 
     def test_process_file_missing_file(self, tmp_path: Path) -> None:
         """Return a typed failure when the pyproject is missing."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         tm.fail(fixer.process_file(tmp_path / "missing.toml"), has="not found")
 
     def test_process_file_invalid_toml(self, tmp_path: Path) -> None:
         """Return a typed failure for invalid TOML input."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("invalid [[[")
         tm.fail(fixer.process_file(pyproject), has="TOML parse failed")
 
     def test_process_file_no_pyrefly_section(self, tmp_path: Path) -> None:
         """Leave documents without a Pyrefly table unchanged."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[tool]\nother = true\n")
         result = fixer.process_file(pyproject)
@@ -49,7 +49,7 @@ class TestConfigFixerProcessFile:
 
     def test_process_file_dry_run_no_write(self, tmp_path: Path) -> None:
         """Keep the source file unchanged during dry-run."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         pyproject = tmp_path / "pyproject.toml"
         original = "[tool.pyrefly]\nsearch-path = []\n"
         pyproject.write_text(original)
@@ -65,7 +65,7 @@ class TestConfigFixerProcessFile:
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text("[tool.pyrefly]\nsearch-path = []\n", encoding="utf-8")
 
-        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+        result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(pyproject)
 
         tm.ok(result)
         tm.that(result.value, has="synchronized search-path from YAML rules")
@@ -100,7 +100,7 @@ class TestConfigFixerProcessFile:
             encoding="utf-8",
         )
 
-        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+        result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(pyproject)
 
         tm.ok(result)
         tm.that(result.value, lacks="synchronized project-includes from YAML rules")
@@ -138,7 +138,7 @@ class TestConfigFixerProcessFile:
             encoding="utf-8",
         )
 
-        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+        result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(pyproject)
 
         tm.ok(result)
         updated = pyproject.read_text(encoding="utf-8")
@@ -165,7 +165,7 @@ class TestConfigFixerProcessFile:
             encoding="utf-8",
         )
 
-        result = FlextInfraConfigFixer(workspace=tmp_path).process_file(pyproject)
+        result = FlextInfraConfigFixer(repository_root=tmp_path).process_file(pyproject)
 
         tm.ok(result)
         tm.that(result.value, has="removed ignore=true sub-settings for '*.py'")
@@ -183,7 +183,7 @@ class TestConfigFixerProcessFile:
             encoding="utf-8",
         )
 
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         result = fixer.process_file(pyproject)
 
         tm.ok(result)
@@ -200,14 +200,14 @@ class TestConfigFixerRun:
 
     def test_run_with_empty_projects(self, tmp_path: Path) -> None:
         """Accept an empty project selection."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         result = fixer.run([])
         tm.ok(result)
         tm.that(len(result.value), gte=0)
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
         """Fail closed when an explicit project selection is inaccessible."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         result = fixer.run(["nonexistent"])
 
         tm.fail(result)
@@ -215,12 +215,12 @@ class TestConfigFixerRun:
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
         """Execute the workspace runner in dry-run mode."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         tm.ok(fixer.run([], dry_run=True))
 
     def test_run_with_verbose_flag(self, tmp_path: Path) -> None:
         """Execute the workspace runner with verbose reporting."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         tm.ok(fixer.run([], verbose=True))
 
 
@@ -229,7 +229,7 @@ class TestConfigFixerExecute:
 
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
         """Require the typed command entry point for execution."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         tm.fail(fixer.execute(), has="Use execute_command() directly")
 
 

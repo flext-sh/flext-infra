@@ -22,14 +22,10 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
 
     _repository_root: Path
 
-    def __init__(
-        self, repository_root: Path | None = None, *, workspace: Path | None = None
-    ) -> None:
+    def __init__(self, repository_root: Path | None = None) -> None:
         """Initialize pyrefly settings fixer."""
-        resolved_workspace = u.Infra.resolve_repository_root_or_cwd(
-            repository_root or workspace
-        )
-        super().__init__(repository_root=resolved_workspace)
+        resolved_root = u.Infra.resolve_repository_root_or_cwd(repository_root)
+        super().__init__(repository_root=resolved_root)
         self._repository_root = self.repository_root
 
     @override

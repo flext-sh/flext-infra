@@ -50,7 +50,7 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             return r[bool].fail(current.error or "project version unresolved")
         ctx = m.Infra.ReleasePhaseDispatchConfig(
             phase=self.phase,
-            workspace_root=self.root,
+            repository_root=self.root,
             version=current.value,
             tag=c.Infra.TAG_FORMAT.format(version=current.value),
             project_names=self.project_names or (),

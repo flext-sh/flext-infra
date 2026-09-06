@@ -149,11 +149,11 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
                 ):
                     continue
                 if selector == tool.selector:
-                    return r[bool].fail(
-                        "project Mise selector collides with fleet tool "
-                        f"{selector!r} in {source}; protected tool {owner!r} is "
-                        "owned exclusively by the fleet toolchain"
-                    )
+                    # Identity validation owns only the distribution question:
+                    # the canonical selector IS the fleet identity. Whether a
+                    # project may redeclare a tool the fleet template already
+                    # publishes is the composition owner's rule.
+                    continue
                 return r[bool].fail(
                     "project Mise selector declares an alternate distribution "
                     f"for fleet identity {owner!r}: {selector!r} in "

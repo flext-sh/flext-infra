@@ -43,6 +43,9 @@ class TestsEnforcementFixerOrchestrator:
         project_dir = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
+        # Discovery only reaches declared members: an undeclared child directory
+        # is not a project of this root, so the selector would not resolve.
+        u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         source_file = project_dir / "src" / "demo" / "sample.py"
         source_file.parent.mkdir(parents=True)
         source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
@@ -66,6 +69,9 @@ class TestsEnforcementFixerOrchestrator:
         project_dir = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
+        # Discovery only reaches declared members: an undeclared child directory
+        # is not a project of this root, so the selector would not resolve.
+        u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         excluded_stub = project_dir / ".venv" / "ignored.pyi"
         stub_file.parent.mkdir(parents=True)
@@ -286,7 +292,7 @@ class TestsEnforcementFixerOrchestrator:
             exit_code = infra_main([
                 "check",
                 "fix-enforcement",
-                "--workspace",
+                "--repository-root",
                 str(project_dir),
                 "--rules",
                 "ENFORCE-079",

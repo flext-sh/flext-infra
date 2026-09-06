@@ -373,7 +373,11 @@ class TestsCodegenMiseArtifacts:
             "check_only": True,
         }).execute()
 
-        tm.fail(result, has="not safe")
+        # The typed lock contract is what validation reaches: a plaintext source
+        # cannot describe an artifact, so the URL rule rejects it before any
+        # download rule runs.
+        error = tm.fail(result, has="invalid mise.lock metadata")
+        tm.that(error, has="^https://")
 
     def test_missing_declared_platform_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project", platforms=("linux-x64",))

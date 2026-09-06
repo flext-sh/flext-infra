@@ -19,10 +19,9 @@ endif
 endif
 
 # === SECTION: project identity (managed) ===
-# Source: config:dist / config:make_profile / config:workspace_root_rel / config:uv_link_mode
+# Source: config:dist / config:make_profile / config:uv_link_mode
 PROJECT_NAME := flext-infra
 MAKE_PROFILE := standalone
-WORKSPACE_ROOT_REL := .
 # === SECTION: workspace subprojects (managed) ===
 # Source: config:workspace_subprojects (list), config:workspace_repositories (list)
 # Computed: MANAGED_GITLINKS mirrors the read-only local .gitmodules topology.
@@ -942,7 +941,7 @@ _builtin_docs_all:
 	@set -eu; \
 	for action in $(DOCS_ACTIONS); do \
 		case "$$action" in fix) mode=$(if $(filter Y,$(APPLY)),--apply,--check) ;; *) mode= ;; esac; \
-		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir "$(PROJECT_ROOT)/.reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
+		$(PROJECT_FLEXT_INFRA) docs "$$action" --repository-root "$(PROJECT_ROOT)" --output-dir ".reports/docs" $$mode $(DOCS_PROJECT_ARGS); \
 	done
 
 _builtin_clean_generated:
