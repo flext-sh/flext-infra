@@ -6,13 +6,13 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities.private_import_cst import (
+from flext_infra._utilities.private_imports.private_import_cst import (
     FlextInfraUtilitiesPrivateImportCst,
 )
-from flext_infra._utilities.private_import_facades import (
+from flext_infra._utilities.private_imports.private_import_facades import (
     FlextInfraUtilitiesPrivateImportFacades,
 )
-from flext_infra._utilities.private_import_validation import (
+from flext_infra._utilities.private_imports.private_import_validation import (
     FlextInfraUtilitiesPrivateImportValidation,
 )
 from flext_infra.constants import c
@@ -42,9 +42,10 @@ class FlextInfraUtilitiesPrivateImports:
         # Repo-rooted trees (tests) import from the checkout root, so the
         # package path itself anchors the module without a src segment.
         rooted_parts = path_parts[-(len(package_parts) + 1) :]
-        if len(rooted_parts) == len(package_parts) + 1 and tuple(
-            rooted_parts[:-1]
-        ) == package_parts:
+        if (
+            len(rooted_parts) == len(package_parts) + 1
+            and tuple(rooted_parts[:-1]) == package_parts
+        ):
             source_candidates.append(rooted_parts)
         for source_parts in source_candidates:
             if (

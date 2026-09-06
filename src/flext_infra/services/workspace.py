@@ -7,7 +7,7 @@ surface instead of importing scattered generators.
 
 from __future__ import annotations
 
-from flext_infra.services._workspace.environment_beads import (
+from flext_infra.services.workspace._workspace.environment_beads import (
     FlextInfraWorkspaceEnvironmentSync,
 )
 
