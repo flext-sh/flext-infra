@@ -256,6 +256,30 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
 
     @classmethod
+    def _issue_from_duplicate(
+        cls,
+        duplicate: t.JsonMapping,
+        own_side: t.JsonMapping,
+        own_name: str,
+        other_name: str,
+        root: Path,
+    ) -> m.Infra.Issue:
+        """Map one clone side inside ``root`` to a strict error."""
+        return m.Infra.Issue(
+            file=str(Path(own_name).relative_to(root)),
+            line=u.Cli.json_nested_int(own_side, "startLoc", "line", default=1),
+            column=u.Cli.json_nested_int(own_side, "startLoc", "column", default=0),
+            code=cls.gate_id,
+            message=(
+                f"{u.Cli.json_pick_int(duplicate, 'lines', default=0)}-line "
+                f"({u.Cli.json_pick_int(duplicate, 'tokens', default=0)}-token) "
+                f"clone of {other_name} "
+                f"— extend one owner, rewire consumers, delete the duplicate"
+            ),
+            severity=str(c.Infra.GateSeverity.ERROR.value),
+        )
+
+    @classmethod
     def _is_semantic_clone(
         cls, duplicate: t.JsonMapping, first: t.JsonMapping, second: t.JsonMapping
     ) -> bool:
@@ -351,28 +375,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             if isinstance(node, ast.stmt)
             and node.end_lineno is not None
             and not is_declaration(node)
-        )
-
-    @classmethod
-    def _issue(
-        cls,
-        duplicate: m.Infra.JscpdDuplicate,
-        own_side: m.Infra.JscpdFile,
-        other_side: m.Infra.JscpdFile,
-        root: Path,
-    ) -> m.Infra.Issue:
-        """Map one validated clone side to a strict error."""
-        return m.Infra.Issue(
-            file=str(Path(own_side.name).relative_to(root)),
-            line=own_side.start_location.line,
-            column=own_side.start_location.column,
-            code=cls.gate_id,
-            message=(
-                f"{duplicate.lines}-line ({duplicate.tokens}-token) clone of "
-                f"{other_side.name} "
-                f"— extend one owner, rewire consumers, delete the duplicate"
-            ),
-            severity=str(c.Infra.GateSeverity.ERROR.value),
         )
 
 

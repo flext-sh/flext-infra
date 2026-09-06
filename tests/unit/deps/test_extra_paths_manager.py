@@ -8,7 +8,8 @@ import pytest
 
 from flext_tests import tm
 from tests import u
-from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
+
+from ._extra_paths_support import ExtraPathsTestSupport
 
 if TYPE_CHECKING:
     from pathlib import Path

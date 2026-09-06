@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_tests import tm
-from tests.unit.deps._extra_paths_support import ExtraPathsTestSupport
+
+from ._extra_paths_support import ExtraPathsTestSupport
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -12,9 +12,10 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
+from flext_infra._utilities.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-
-from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 
 
 class FlextInfraUtilitiesRopeImports:
