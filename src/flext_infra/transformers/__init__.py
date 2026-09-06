@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from .open_encoding import FlextInfraRefactorOpenEncoding
     from .pattern import FlextInfraRefactorPatternTransformer
     from .pattern_modernizer import FlextInfraRefactorPatternModernizer
-    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .pydantic_modernizer import FlextInfraRefactorPydanticModernizer
     from .result_di_modernizer import FlextInfraRefactorResultDiModernizer
     from .signature_propagator import FlextInfraRefactorSignaturePropagator
@@ -65,7 +64,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorOpenEncoding",
     "FlextInfraRefactorPatternModernizer",
     "FlextInfraRefactorPatternTransformer",
-    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorResultDiModernizer",
     "FlextInfraRefactorSignaturePropagator",
@@ -104,7 +102,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".open_encoding": ("FlextInfraRefactorOpenEncoding",),
             ".pattern": ("FlextInfraRefactorPatternTransformer",),
             ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
-            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
             ".result_di_modernizer": ("FlextInfraRefactorResultDiModernizer",),
             ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
