@@ -6,6 +6,7 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from flext_cli import u as cli_u
@@ -140,7 +141,7 @@ class FlextInfraUtilitiesBase:
             c.Infra.SG_CONFIG_FLAG,
             str(config_path),
             c.Infra.SG_FILTER_FLAG,
-            "|".join(sorted(selected_rule_ids)),
+            rf"^(?:{'|'.join(re.escape(rule_id) for rule_id in sorted(selected_rule_ids))})$",
         ]
         if json_stream:
             command.append("--json=stream")

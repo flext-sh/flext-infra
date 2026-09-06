@@ -430,15 +430,18 @@ class FlextInfraModGateEngine:
         files: set[Path] = set()
         entries: list[m.Infra.ModScanFinding] = []
         known_rule_ids: set[str] = set()
+        rule_contracts: list[tuple[Path, frozenset[str], frozenset[str]]] = []
         targets = u.Infra.ast_grep_scan_targets(root)
         total = len(rules)
-        for index, rule in enumerate(rules, start=1):
+        for rule in rules:
             rule_ids, fixable_ids = u.Infra.ast_grep_rule_contract(rule)
             duplicate_ids = known_rule_ids.intersection(rule_ids)
             if duplicate_ids:
                 duplicates = ", ".join(sorted(duplicate_ids))
                 return r.fail(f"duplicate inherited ast-grep rule id(s): {duplicates}")
             known_rule_ids.update(rule_ids)
+            rule_contracts.append((rule, rule_ids, fixable_ids))
+        for index, (rule, rule_ids, fixable_ids) in enumerate(rule_contracts, start=1):
             sys.stderr.write(
                 f"mod: rule {index}/{total} {rule.name} {'apply' if fix else 'scan'}\n"
             )
