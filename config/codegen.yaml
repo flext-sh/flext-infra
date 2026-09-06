@@ -126,7 +126,7 @@ Infra:
       flext-cli:
         # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
         - libreoffice-calc
-    # Per-distribution private workspace member auth for CI. The default
+    # Per-distribution private composed-project auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
@@ -1839,8 +1839,8 @@ Infra:
           overwrite: true
         # Ledger routing config: rendered only for repositories that own a
         # ledger. The workspace root owns a shared ledger when a gitlink's
-        # `.beads` path is a symlink; real member `.beads` directories keep an
-        # independent ledger.
+        # Every repository renders its own `.beads` configuration; the shared
+        # ledger is reached by the declared city endpoint, never by a link.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace, standalone]

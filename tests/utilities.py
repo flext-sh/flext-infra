@@ -367,9 +367,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             from a registry. Only the provider contract (generic policy) is
             read from config, which keeps the fixture valid for any provider.
 
-            A non-empty path denotes the root's view of one subproject. The
-            subproject still classifies itself as standalone; only its checkout
-            relationship is ``submodule``.
+            A non-empty path denotes the root's view of one composed project.
+            That project still declares itself standalone: topology is only
+            ``role``, and being checked out inside a workspace is the Git fact
+            carried by ``editable``.
             """
             provider = TestsFlextInfraUtilities.Tests.provider()
             resolved_path = Path() if path is None else path
@@ -386,11 +387,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 path=resolved_path,
                 role=resolved_role,
                 provider=provider.name,
-                checkout=(
-                    c.Infra.CheckoutKind.SUBMODULE
-                    if is_subproject
-                    else c.Infra.CheckoutKind.ROOT
-                ),
+                kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
                 codegen=c.Infra.CodegenKind.CONFORM,
                 package=True,
                 editable=is_subproject,
@@ -642,6 +639,23 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return workspace.model_copy(
                 update={"project": TestsFlextInfraUtilities.Tests.project_spec(name)}
             )
+
+        @staticmethod
+        def copy_tracked_mise_seeds(root: Path) -> None:
+            """Copy this checkout's committed Mise launchers and lock into ``root``.
+
+            ``codegen conform`` validates the tracked, checksum-verified
+            ``bin/mise`` seeds instead of minting them, so a fixture tree that
+            conforms the full surface must carry them exactly as a governed
+            repository does. ``.mise.toml`` is deliberately not copied: it is a
+            planned projection the fixture expects conform to write.
+            """
+            source_root = Path(__file__).resolve().parents[1]
+            for relative in ("bin/mise", "bin/mise.cmd", "mise.lock"):
+                source = source_root / relative
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                _ = shutil.copy2(source, destination)
 
         @staticmethod
         def write_mise_stub(path: Path) -> Path:

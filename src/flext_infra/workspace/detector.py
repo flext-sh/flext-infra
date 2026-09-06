@@ -34,23 +34,19 @@ class FlextInfraWorkspaceDetector(
         return repository_root / c.CONFIG_DIR_NAME / c.Infra.WORKSPACE_MANIFEST_FILENAME
 
     @classmethod
-    def _submodule_beads_route_error(
+    def _composed_beads_identity_error(
         cls,
         subproject_root: Path,
-        workspace_root: Path,
         workspace_beads: m.Infra.BeadsProjectSpec,
     ) -> str | None:
         member_beads = subproject_root / c.Infra.BEADS_DIRNAME
         member_identity = (
             subproject_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
         )
-        workspace_route = workspace_root / c.Infra.BEADS_DIRNAME
-        if not member_beads.is_symlink():
-            return f"missing required workspace Beads ledger route: {member_beads}"
-        if member_beads.resolve() != workspace_route.resolve():
+        if member_beads.is_symlink():
             return (
-                "workspace Beads ledger route must resolve to "
-                f"{workspace_route}, got {member_beads.resolve()}"
+                "composed project reaches the workspace ledger through a "
+                f"cross-project symbolic link: {member_beads}"
             )
         if not member_identity.is_file():
             return f"missing required member Beads routing identity: {member_identity}"
@@ -201,13 +197,9 @@ class FlextInfraWorkspaceDetector(
         # CI observes root) and inside a workspace (the parent's conform
         # observes submodule). Only a manifest that claims to be a submodule
         # while Git shows a standalone checkout contradicts reality.
-        if (
-            declared.checkout is c.Infra.CheckoutKind.SUBMODULE
-            and observed.checkout is not c.Infra.CheckoutKind.SUBMODULE
-        ):
+        if declared.role is not observed.role:
             contradictions.append(
-                "checkout "
-                f"{declared.checkout.value!r} contradicts the observed topology"
+                f"role {declared.role.value!r} contradicts the observed topology"
             )
         return contradictions
 
@@ -276,11 +268,6 @@ class FlextInfraWorkspaceDetector(
                 f"({manifest_path}): {manifest.ledger_prefix!r} != "
                 f"{beads.issue_prefix!r}"
             )
-        if observed.checkout is c.Infra.CheckoutKind.SUBMODULE:
-            # Git owns the checkout relationship; the manifest owns policy.
-            return r[m.Infra.RepositoryRef].ok(
-                declared.model_copy(update={"checkout": observed.checkout})
-            )
         return r[m.Infra.RepositoryRef].ok(declared)
 
     @staticmethod
@@ -306,7 +293,7 @@ class FlextInfraWorkspaceDetector(
         repository_root: Path,
         *,
         path: Path = Path(),
-        checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.ROOT,
+        composed: bool = False,
         declared_url: str | None = None,
     ) -> p.Result[m.Infra.RepositoryRef]:
         """Build repository policy from local metadata and an immutable Git URL."""
@@ -342,10 +329,10 @@ class FlextInfraWorkspaceDetector(
             path=path,
             role=role,
             provider=provider.name,
-            checkout=checkout,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
-            editable=checkout is c.Infra.CheckoutKind.SUBMODULE,
+            editable=composed,
             read_only=False,
         )
         if not cls.repository_is_governed(repository, provider):
@@ -461,9 +448,7 @@ class FlextInfraWorkspaceDetector(
         if not (subproject_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return result_type.ok(path)
         route_error = (
-            cls._submodule_beads_route_error(
-                subproject_root, repository_root, workspace_beads
-            )
+            cls._composed_beads_identity_error(subproject_root, workspace_beads)
             if (subproject_root / c.Infra.BEADS_DIRNAME).is_symlink()
             else None
         )
@@ -476,13 +461,13 @@ class FlextInfraWorkspaceDetector(
                 return result_type.fail(beads.error)
         if route_error is not None:
             return result_type.fail(
-                "workspace member must inherit the workspace Beads ledger: "
+                "composed project must follow the workspace Beads ledger: "
                 f"{route_error}"
             )
         repository = cls._local_repository_ref(
             subproject_root,
             path=path,
-            checkout=c.Infra.CheckoutKind.SUBMODULE,
+            composed=True,
             declared_url=declared_url,
         )
         if repository.failure:
@@ -518,7 +503,7 @@ class FlextInfraWorkspaceDetector(
             if inherited_beads.failure:
                 return r[m.Infra.WorkspaceSpec].fail(
                     inherited_beads.error
-                    or "workspace member ledger inheritance failed"
+                    or "composed project ledger identity failed"
                 )
             try:
                 member_path = member_root.relative_to(superproject_root)
@@ -536,15 +521,15 @@ class FlextInfraWorkspaceDetector(
             if loaded_member.failure or isinstance(loaded_member.value, Path):
                 return r[m.Infra.WorkspaceSpec].fail(
                     loaded_member.error
-                    or "Git submodule is not declared as a governed workspace member: "
+                    or "Git submodule is not a declared governed project: "
                     f"{resolved_root}"
                 )
-            route_error = cls._submodule_beads_route_error(
-                resolved_root, superproject_root, inherited_beads.value
+            route_error = cls._composed_beads_identity_error(
+                resolved_root, inherited_beads.value
             )
             if route_error is not None:
                 return r[m.Infra.WorkspaceSpec].fail(
-                    "workspace member must inherit the workspace Beads ledger: "
+                    "composed project must follow the workspace Beads ledger: "
                     f"{route_error}"
                 )
             beads_result = r[m.Infra.BeadsProjectSpec].ok(inherited_beads.value)
@@ -553,11 +538,7 @@ class FlextInfraWorkspaceDetector(
         beads = beads_result
         repository = cls._local_repository_ref(
             resolved_root,
-            checkout=(
-                c.Infra.CheckoutKind.SUBMODULE
-                if identity.value.is_attached_submodule
-                else c.Infra.CheckoutKind.ROOT
-            ),
+            composed=identity.value.is_attached_submodule,
         )
         if repository.failure:
             return r[m.Infra.WorkspaceSpec].fail(repository.error)
@@ -694,7 +675,7 @@ class FlextInfraWorkspaceDetector(
         if not cls._beads_path(resolved_root).is_file():
             return r[tuple[Path, ...]].ok(())
         # External analysis exclusions are declared exclusively by this
-        # checkout's own .gitmodules. A workspace member may inherit its Beads
+        # checkout's own .gitmodules. A composed project may follow its Beads
         # ledger from the parent, but that does not make the parent's complete
         # repository graph part of the member's analyzer scope. Loading the
         # inherited workspace here revalidated every sibling once per tooling

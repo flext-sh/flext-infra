@@ -593,9 +593,6 @@ constraint-dependencies = ["structlog<26"]
 environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 exclude-newer = "7 days"
 link-mode = "copy"
-override-dependencies = [
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@e45e78dad77ac92d772d3bd149140d9b1900d2d1",
-]
 
 [[tool.uv.exclude-dependencies]]
 dependencies = ["flext-infra"]

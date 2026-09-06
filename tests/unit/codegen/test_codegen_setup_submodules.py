@@ -482,7 +482,7 @@ def generated_project_template(tmp_path_factory: pytest.TempPathFactory) -> Path
     tm.ok(
         FlextInfraCodegenProjectNew(
             name="flext-demo",
-            kind=c.Infra.ProjectKind.EXTERNAL,
+            kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
             beads_workspace="flext-demo",

@@ -69,7 +69,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
             fixed, fix_changes = fixer.fix(project_dir, issue)
             if fixed:
                 changes.extend(fix_changes)
-        self._scan_cache.pop(str(self._repository_root), None)
         verified_scan = self._workspace_scan()
         verified = self._issues_from_sarif(verified_scan.stdout, project_dir.name)
         remaining = self._drop_generated_projections(
@@ -112,7 +111,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output=self._scan_output(scan),
+            raw_output=self._raw_output(scan),
             started=started,
         )
 
@@ -161,7 +160,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 self._repository_root,
                 timeout=c.Infra.TIMEOUT_LONG,
             )
-        self._scan_cache[key] = output
         return output
 
     def _materialize_scan_config(self) -> None:

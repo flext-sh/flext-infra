@@ -64,12 +64,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             overrides[package] = cutoff
         return tuple(exclusions), overrides
 
-    @staticmethod
-    def _member_beads_is_linked(repository_root: Path) -> bool:
-        """Return whether this gitlink routes an inherited workspace ledger."""
-        route: Path = repository_root / c.Infra.BEADS_DIRNAME
-        return route.is_symlink()
-
     @classmethod
     def _surface_contract(
         cls, surface: c.Infra.CodegenConformSurface
@@ -530,7 +524,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         published = transaction.commit_locked(
             with_docs.value,
             lambda: self._validate_managed_fixed_point(
-                request, with_docs.value, transaction, lazy_analysis.value
+                request, with_docs.value, lazy_analysis.value
             ),
         )
         if published.failure:
@@ -548,7 +542,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _conform_workspace_beads_routes(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[bool]:
-        """Make every governed workspace member consume the workspace ledger."""
+        """Reject any composed project that reaches the ledger by symbolic link.
+
+        A composed project follows the workspace ledger through its own rendered
+        ``.beads`` configuration, which every checkout resolves identically. It
+        previously followed the ledger through ``.beads -> ../.beads``, a link
+        escaping into another repository: a second owner of a fact the
+        configuration already declares, resolvable only on one machine's exact
+        layout, and invisible to review because it reads as a directory. This
+        method used to create those links and delete the real directory first;
+        now it only proves none survive.
+        """
         root = request.root.expanduser().resolve()
         workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
         if workspace_result.failure:
@@ -566,57 +570,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
-        pending: list[Path] = []
         for repository in workspace.declared_repositories:
-            member = (root / repository.path).resolve()
-            route = member / c.Infra.BEADS_DIRNAME
+            route = (root / repository.path).resolve() / c.Infra.BEADS_DIRNAME
             if route.is_symlink():
-                if route.resolve() != owner.resolve():
-                    return r[bool].fail(
-                        f"workspace Beads ledger route has another owner: {route}"
-                    )
-                continue
-            if route.exists():
-                if not route.is_dir():
-                    return r[bool].fail(
-                        f"workspace Beads ledger route is not a directory: {route}"
-                    )
-                unexpected = sorted(
-                    entry.name
-                    for entry in route.iterdir()
-                    if entry.name not in allowed_entries
+                return r[bool].fail(
+                    "composed project reaches the workspace ledger through a "
+                    f"cross-project symbolic link: {route}"
                 )
-                if unexpected:
-                    return r[bool].fail(
-                        f"workspace member has unmerged Beads state at {route}: "
-                        + ", ".join(unexpected)
-                    )
-            pending.append(route)
-        if not pending:
-            return r[bool].ok(True)
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
-            return r[bool].fail(
-                "workspace members do not inherit the workspace Beads ledger: "
-                + ", ".join(str(path) for path in pending)
+            if not route.exists():
+                continue
+            if not route.is_dir():
+                return r[bool].fail(
+                    f"composed project Beads route is not a directory: {route}"
+                )
+            unexpected = sorted(
+                entry.name
+                for entry in route.iterdir()
+                if entry.name not in allowed_entries
             )
-        for route in pending:
-            if route.is_dir():
-                inventory = u.Cli.atomic_inventory_physical_tree(route)
-                if inventory.failure:
-                    return r[bool].from_failure(inventory)
-                removed = u.Cli.atomic_cleanup_physical_tree_guarded(inventory.value)
-                if removed.failure:
-                    return r[bool].from_failure(removed)
-            linked = u.Cli.ensure_symlink(route, owner)
-            if linked.failure:
-                return r[bool].from_failure(linked)
+            if unexpected:
+                return r[bool].fail(
+                    f"composed project has unmerged Beads state at {route}: "
+                    + ", ".join(unexpected)
+                )
         return r[bool].ok(True)
 
     def _validate_managed_fixed_point(
         self,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
-        transaction: FlextInfraCodegenTransaction,
         lazy_analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
         """Replan conform against live bytes before the journal can commit."""
@@ -810,8 +792,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
             u.Cli.info(
                 f"  stage=topology repository={repository.name} "
-                f"checkout={repository.checkout.value}"
+                f"role={repository.role.value} kind={repository.kind.value}"
             )
+            if repository.kind is not c.Infra.ProjectKind.INTERNAL_FLEXT:
+                u.Cli.info(
+                    f"  stage=skip repository={repository.name} "
+                    f"kind={repository.kind.value} is not rewritten by generation"
+                )
+                continue
             is_current_repository = repository.name == current_target.repository.name
             if is_current_repository:
                 repository_root = current_target.root
@@ -839,7 +827,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 target = current_target
                 local_workspace = workspace
             else:
-                if repository.checkout is c.Infra.CheckoutKind.SUBMODULE:
+                if repository.path != Path():
                     local_repository = repository.model_copy(update={"path": Path()})
                     local_workspace = m.Infra.WorkspaceSpec(
                         name=repository.name,
@@ -861,7 +849,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 if target_result.failure:
                     return r[m.Infra.CodegenPlan].from_failure(target_result)
                 target = target_result.value
-                if repository.checkout is c.Infra.CheckoutKind.SUBMODULE:
+                if repository.path != Path():
                     target = target.model_copy(update={"repository": repository})
             if (
                 self.initial_workspace is not None
@@ -985,11 +973,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok(tuple(completed))
         for relative, governed in governed_by_path.items():
             if relative in represented:
-                continue
-            if relative in {
-                Path(c.Infra.BEADS_CONFIG_RELPATH),
-                Path(c.Infra.BEADS_METADATA_RELPATH),
-            } and FlextInfraCodegenConform._member_beads_is_linked(root):
                 continue
             path = root / relative
             if path.exists() and not path.is_file():
@@ -1369,11 +1352,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             destination = entry.destination.format(
                 package_name=context.package_name, ns=context.ns
             )
-            if destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and self._member_beads_is_linked(root):
-                continue
             relative = Path(destination)
             if relative.is_absolute() or ".." in relative.parts:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1413,13 +1391,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if entry.delegate != "render":
                 continue
             if destination == c.Infra.PYPROJECT_FILENAME:
-                continue
-            if destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and self._member_beads_is_linked(root):
-                # A linked gitlink inherits the workspace ledger; planning a
-                # member-local projection would create a second identity.
                 continue
             if (
                 destination == c.Infra.BEADS_METADATA_RELPATH
@@ -1783,13 +1754,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                     f"managed destination escapes repository root: {entry.destination}"
                 )
-            if entry.destination in {
-                c.Infra.BEADS_CONFIG_RELPATH,
-                c.Infra.BEADS_METADATA_RELPATH,
-            } and self._member_beads_is_linked(root):
-                # Mirror the delegated-template path so both conform routes
-                # preserve the same inherited-ledger ownership rule.
-                continue
             path = (root / relative).resolve()
             if (
                 entry.destination == c.Infra.BEADS_METADATA_RELPATH
@@ -2018,14 +1982,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
     ) -> p.Result[p.Model]:
         """Resolve one governed artifact to its canonical typed render input."""
-        if destination in {
-            c.Infra.BEADS_CONFIG_RELPATH,
-            c.Infra.BEADS_METADATA_RELPATH,
-        } and self._member_beads_is_linked(repository_root):
-            return r[p.Model].fail(
-                "linked workspace member cannot own a Beads projection: "
-                f"{repository.name}; ledger is inherited from the workspace root"
-            )
         if destination == c.Infra.GITIGNORE:
             profile = target.make_profile
             sections = [

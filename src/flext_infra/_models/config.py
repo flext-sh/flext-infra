@@ -1701,9 +1701,14 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Provider key from the codegen configuration"),
         ]
-        checkout: Annotated[
-            FlextInfraConstantsCodegenProject.CheckoutKind,
-            m.Field(description="Physical checkout topology"),
+        kind: Annotated[
+            FlextInfraConstantsCodegenProject.ProjectKind,
+            m.Field(
+                description=(
+                    "Governance kind; only internal_flext repositories are "
+                    "rewritten by generation"
+                )
+            ),
         ]
         codegen: Annotated[
             FlextInfraConstantsCodegenProject.CodegenKind,
@@ -2549,10 +2554,10 @@ class FlextInfraConfigModels:
                 raise ValueError(msg)
             member_paths = tuple(item.path for item in self.members)
             if len(set(member_paths)) != len(member_paths):
-                msg = "workspace member paths must be unique"
+                msg = "composed project paths must be unique"
                 raise ValueError(msg)
             if set(member_paths).intersection(external_paths):
-                msg = "workspace members cannot also be external dependencies"
+                msg = "composed projects cannot also be external dependencies"
                 raise ValueError(msg)
             projects = tuple(item.project for item in self.repository_policy_overlays)
             if len(set(projects)) != len(projects):
