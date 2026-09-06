@@ -20,12 +20,43 @@ class FlextInfraUtilitiesPrivateImportValidation:
         source: str,
         *,
         file_path: Path,
+        relative_imports: t.StrMapping,
+        relative_symbols: t.MappingKV[str, set[str]],
         removals: t.MappingKV[str, set[str]],
         replacements: t.StrMapping,
         public_imports: t.StrMapping,
     ) -> None:
         """Require old imports/bindings gone and public imports present."""
         tree = ast.parse(source, filename=str(file_path))
+        for absolute_module, relative_module in relative_imports.items():
+            level = len(relative_module) - len(relative_module.lstrip("."))
+            module = relative_module[level:] or None
+            if any(
+                isinstance(node, ast.ImportFrom)
+                and node.level == 0
+                and node.module == absolute_module
+                for node in ast.walk(tree)
+            ):
+                msg = (
+                    f"absolute same-owner import residue from {absolute_module} "
+                    f"in {file_path}"
+                )
+                raise ValueError(msg)
+            imported_symbols = {
+                imported.name
+                for node in ast.walk(tree)
+                if isinstance(node, ast.ImportFrom)
+                and node.level == level
+                and node.module == module
+                for imported in node.names
+            }
+            missing = relative_symbols[absolute_module] - imported_symbols
+            if missing:
+                msg = (
+                    f"relative same-owner import {relative_module} missing "
+                    f"{sorted(missing)} in {file_path}"
+                )
+                raise ValueError(msg)
         for module, symbols in removals.items():
             if any(
                 isinstance(node, ast.ImportFrom)
