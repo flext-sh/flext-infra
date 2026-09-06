@@ -195,14 +195,11 @@ class FlextInfraUtilitiesRopeSource:
             }
             for item in raw_items
         ]
-        try:
-            typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
-            return [
-                m.Infra.ImportModernizerRuleConfig.model_validate(item)
-                for item in typed_items
-            ]
-        except c.ValidationError:
-            return []
+        typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(normalized)
+        return [
+            m.Infra.ImportModernizerRuleConfig.model_validate(item)
+            for item in typed_items
+        ]
 
     @staticmethod
     def collect_blocked_aliases(

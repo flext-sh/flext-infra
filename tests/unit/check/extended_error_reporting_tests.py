@@ -24,6 +24,15 @@ if TYPE_CHECKING:
 class TestGateErrorReportingPublicBehavior:
     """Verify gate issue parsing through the public ``check()`` contract."""
 
+    @staticmethod
+    def failing_markdown_run(tmp_path: Path, runner: object) -> object:
+        """Run the markdown gate once through the checker with one runner."""
+        project_dir = u.Tests.mk_project(tmp_path, "p1")
+        _ = (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
+        return FlextInfraWorkspaceChecker(
+            workspace=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
+        ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")
+
     def test_mypy_ignores_empty_lines_in_json_output(self, tmp_path: Path) -> None:
         proj_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (proj_dir / "src" / "main.py").write_text("# code\n", encoding="utf-8")
@@ -76,22 +85,15 @@ class TestGateErrorReportingPublicBehavior:
             ),
             encoding="utf-8",
         )
-        original_pythonpath = os.environ.get("PYTHONPATH")
-        fake_pythonpath = str(fake_pkg.parent)
-        os.environ["PYTHONPATH"] = (
-            f"{fake_pythonpath}:{original_pythonpath}"
-            if original_pythonpath
-            else fake_pythonpath
+        original_pythonpath = u.Tests.prepend_env_path(
+            "PYTHONPATH", str(fake_pkg.parent)
         )
         try:
             result = u.Tests.run_gate_check(
                 FlextInfraRuffFormatGate, tmp_path, proj_dir
             )
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.that(not result.result.passed, eq=True)
         tm.that(len(result.issues), eq=2)
@@ -99,13 +101,9 @@ class TestGateErrorReportingPublicBehavior:
     def test_workspace_checker_emits_gate_process_failure(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        project_dir = u.Tests.mk_project(tmp_path, "p1")
-        (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
         runner = u.Tests.command_runner(stderr="rumdl execution failed", returncode=2)
 
-        result = FlextInfraWorkspaceChecker(
-            workspace=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
-        ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")
+        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(tmp_path, runner)
 
         tm.ok(result)
         tm.that(result.value[0].passed, eq=False)
@@ -115,14 +113,10 @@ class TestGateErrorReportingPublicBehavior:
     def test_workspace_checker_emits_parsed_gate_issue(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        project_dir = u.Tests.mk_project(tmp_path, "p1")
-        (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
         diagnostic = "README.md:3:2: [MD057] Relative link 'missing.md' does not exist"
         runner = u.Tests.command_runner(stdout=diagnostic, returncode=1)
 
-        result = FlextInfraWorkspaceChecker(
-            workspace=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
-        ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")
+        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(tmp_path, runner)
 
         tm.ok(result)
         tm.that(result.value[0].passed, eq=False)

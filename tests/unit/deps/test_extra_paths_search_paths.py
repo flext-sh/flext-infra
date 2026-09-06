@@ -88,22 +88,8 @@ class TestsFlextInfraExtraPathsSearchPaths:
         self, tmp_path: Path
     ) -> None:
         """Ignore undeclared local roots for ordinary dependencies."""
-        (tmp_path / ".git").mkdir()
-        (tmp_path / "src").mkdir()
-        (tmp_path / "pyproject.toml").write_text(
-            ("[project]\nname = 'flext'\ndependencies = ['flext-core']\n"),
-            encoding="utf-8",
-        )
-        dep_root = tmp_path / "flext-core"
-        dep_root.mkdir()
-        (dep_root / ".git").mkdir()
-        (dep_root / "Makefile").write_text("", encoding="utf-8")
-        (dep_root / "pyproject.toml").write_text(
-            "[project]\nname = 'flext-core'\n", encoding="utf-8"
-        )
-        (dep_root / "src" / "flext_core").mkdir(parents=True)
-        (dep_root / "src" / "flext_core" / "__init__.py").write_text(
-            "", encoding="utf-8"
+        _ = ExtraPathsTestSupport.workspace_with_dependency(
+            tmp_path, uv_workspace=False
         )
 
         manager = ExtraPathsTestSupport.manager(tmp_path)
@@ -153,28 +139,7 @@ class TestsFlextInfraExtraPathsSearchPaths:
         self, tmp_path: Path
     ) -> None:
         """Exclude every dependency directory, environments included."""
-        (tmp_path / ".git").mkdir()
-        (tmp_path / "src").mkdir()
-        (tmp_path / "pyproject.toml").write_text(
-            (
-                "[project]\n"
-                "name = 'flext'\n"
-                "dependencies = ['flext-core']\n"
-                "[tool.uv.workspace]\n"
-                "members = ['flext-core']\n"
-            ),
-            encoding="utf-8",
-        )
-        dep_root = tmp_path / "flext-core"
-        dep_root.mkdir()
-        (dep_root / ".git").mkdir()
-        (dep_root / "Makefile").write_text("", encoding="utf-8")
-        (dep_root / "pyproject.toml").write_text(
-            "[project]\nname = 'flext-core'\n", encoding="utf-8"
-        )
-        dep_src = dep_root / "src" / "flext_core"
-        dep_src.mkdir(parents=True)
-        (dep_src / "__init__.py").write_text("", encoding="utf-8")
+        _, dep_root = ExtraPathsTestSupport.workspace_with_dependency(tmp_path)
         dep_venv = dep_root / "venv" / "bin"
         dep_venv.mkdir(parents=True)
         (dep_venv / "python").write_text("", encoding="utf-8")

@@ -41,10 +41,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
             return primitive
         scalar_types = t.PRIMITIVES_TYPES
         if isinstance(value, list):
-            try:
-                sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
-            except c.ValidationError:
-                return None
+            sequence = t.Cli.JSON_LIST_ADAPTER.validate_python(value)
             converted: t.MutableSequenceOf[t.Infra.InfraValue] = []
             for item in sequence:
                 if item is None:
@@ -55,10 +52,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
                     return None
                 converted.append(conv)
             return list(t.Cli.JSON_LIST_ADAPTER.validate_python(converted))
-        try:
-            mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except c.ValidationError:
-            return None
+        mapping_value = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
         converted_map: MutableMapping[str, t.Infra.InfraValue] = {}
         for key, map_item in mapping_value.items():
             if map_item is None:
@@ -82,9 +76,12 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
     def get_current_typings_from_pyproject(self, project_path: Path) -> t.StrSequence:
         """Extract currently declared typing packages from project pyproject.toml."""
         pyproject = project_path / c.Infra.PYPROJECT_FILENAME
+        if not pyproject.is_file():
+            return []
         read_result = self._read_plain(pyproject)
         if read_result.failure:
-            return []
+            msg = f"failed to read {pyproject}: {read_result.error}"
+            raise RuntimeError(msg)
         data = self._to_toml_config(read_result.value)
         if not data:
             return []
@@ -170,7 +167,8 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         )
         result = self._read_plain(path)
         if result.failure:
-            return {}
+            msg = f"failed to load dependency limits from {path}: {result.error}"
+            raise RuntimeError(msg)
         return result.value
 
     def module_to_types_package(

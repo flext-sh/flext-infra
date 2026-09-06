@@ -12,6 +12,7 @@ from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
 )
 from flext_tests import tm
+from tests import TestsFlextInfraUtilities as test_u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -24,11 +25,7 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
 
     @staticmethod
     def _rule(rule_id: str) -> m.EnforcementRuleSpec:
-        catalog = u.build_canonical_catalog()
-        rule: m.EnforcementRuleSpec = next(
-            rule for rule in catalog.enabled_rules() if rule.id == rule_id
-        )
-        return rule
+        return test_u.Tests.enforcement_rule(rule_id)
 
     @staticmethod
     def _ctx(

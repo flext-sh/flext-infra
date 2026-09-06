@@ -355,39 +355,34 @@ class FlextInfraUtilitiesDependencies:
         """
         result: t.MappingKV[str, str] = {}
         if lock_path.is_file():
-            try:
-                raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-            except OSError:
-                pass
-            else:
-                payload_source = u.Cli.toml_mapping_from_text(raw_text)
-                if payload_source is not None:
-                    payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
-                        payload_source
-                    )
-                    if payload is not None:
-                        raw_packages = payload.get("package")
-                        if isinstance(raw_packages, list):
-                            versions: dict[str, str] = {}
-                            for raw_package in raw_packages:
-                                if not isinstance(raw_package, Mapping):
-                                    continue
-                                raw_source = raw_package.get("source")
-                                if not isinstance(raw_source, Mapping) or not any(
-                                    kind in raw_source for kind in sources
-                                ):
-                                    continue
-                                raw_name = raw_package.get("name")
-                                raw_version = raw_package.get(c.Infra.VERSION)
-                                if not isinstance(raw_name, str) or not isinstance(
-                                    raw_version, str
-                                ):
-                                    continue
-                                dependency_name = cls.dep_name(raw_name)
-                                if dependency_name is None:
-                                    continue
-                                versions[dependency_name] = raw_version.strip()
-                            result = dict(versions)
+            raw_text = lock_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+            payload_source = u.Cli.toml_mapping_from_text(raw_text)
+            if payload_source is not None:
+                payload = FlextInfraUtilitiesPyproject.validate_infra_payload(
+                    payload_source
+                )
+                raw_packages = payload.get("package")
+                if isinstance(raw_packages, list):
+                    versions: dict[str, str] = {}
+                    for raw_package in raw_packages:
+                        if not isinstance(raw_package, Mapping):
+                            continue
+                        raw_source = raw_package.get("source")
+                        if not isinstance(raw_source, Mapping) or not any(
+                            kind in raw_source for kind in sources
+                        ):
+                            continue
+                        raw_name = raw_package.get("name")
+                        raw_version = raw_package.get(c.Infra.VERSION)
+                        if not isinstance(raw_name, str) or not isinstance(
+                            raw_version, str
+                        ):
+                            continue
+                        dependency_name = cls.dep_name(raw_name)
+                        if dependency_name is None:
+                            continue
+                        versions[dependency_name] = raw_version.strip()
+                    result = dict(versions)
         return result
 
     @classmethod
@@ -670,8 +665,6 @@ class FlextInfraUtilitiesDependencies:
         # flext-j47u (codex): FLEXT dependencies are first-party contracts even
         # when their uv source declaration is owned by an enclosing workspace.
         normalized = FlextInfraUtilitiesPyproject.validate_infra_payload(payload)
-        if normalized is None:
-            return ()
         return tuple(
             sorted(
                 name.replace("-", "_")

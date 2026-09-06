@@ -211,7 +211,9 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                     return r[str].fail(f"wheel must contain one METADATA file: {path}")
                 return r[str].ok(archive.read(names[0]).decode("utf-8"))
         except (OSError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
-            return r[str].fail_op(f"read wheel metadata {path}", exc)
+            return r[str].fail(
+                f"read wheel metadata {path} failed: {exc}", exception=exc
+            )
 
     @staticmethod
     def _sdist_metadata(path: Path) -> p.Result[str]:
@@ -230,7 +232,9 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                     return r[str].fail(f"cannot read PKG-INFO from {path}")
                 return r[str].ok(extracted.read().decode("utf-8"))
         except (OSError, tarfile.TarError, UnicodeDecodeError) as exc:
-            return r[str].fail_op(f"read sdist metadata {path}", exc)
+            return r[str].fail(
+                f"read sdist metadata {path} failed: {exc}", exception=exc
+            )
 
     @classmethod
     def _artifact_metadata(cls, path: Path) -> p.Result[str]:

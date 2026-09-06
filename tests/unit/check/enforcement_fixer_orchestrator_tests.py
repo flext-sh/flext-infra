@@ -12,7 +12,6 @@ from flext_cli import cli
 from flext_infra import m, main as infra_main, p, t, u
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
-from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_tests import tm
 from tests import c, u as test_u
 
@@ -22,11 +21,7 @@ class TestsEnforcementFixerOrchestrator:
 
     @staticmethod
     def _rule(rule_id: str) -> m.EnforcementRuleSpec:
-        catalog = u.build_canonical_catalog()
-        rule: m.EnforcementRuleSpec = next(
-            rule for rule in catalog.enabled_rules() if rule.id == rule_id
-        )
-        return rule
+        return test_u.Tests.enforcement_rule(rule_id)
 
     @staticmethod
     def _orchestrator(workspace: Path) -> FlextInfraEnforcementFixerOrchestrator:
@@ -89,15 +84,13 @@ class TestsEnforcementFixerOrchestrator:
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         stub_file.parent.mkdir(parents=True)
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
-        adapter = FlextInfraRopeFixerAdapter(tmp_path)
-        ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=False
-        )
 
-        result = adapter.fix_project(
+        result = test_u.Tests.run_rope_fixer(
+            tmp_path,
             project_dir,
-            ((self._rule("ENFORCE-090"), SimpleNamespace(file_path=str(stub_file))),),
-            ctx,
+            test_u.Tests.enforcement_rule("ENFORCE-090"),
+            stub_file,
+            apply=False,
         )
 
         tm.that(stub_file.exists(), eq=True)
@@ -111,15 +104,13 @@ class TestsEnforcementFixerOrchestrator:
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         stub_file.parent.mkdir(parents=True)
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
-        adapter = FlextInfraRopeFixerAdapter(tmp_path)
-        ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=True
-        )
 
-        result = adapter.fix_project(
+        result = test_u.Tests.run_rope_fixer(
+            tmp_path,
             project_dir,
-            ((self._rule("ENFORCE-090"), SimpleNamespace(file_path=str(stub_file))),),
-            ctx,
+            test_u.Tests.enforcement_rule("ENFORCE-090"),
+            stub_file,
+            apply=True,
         )
 
         tm.that(stub_file.exists(), eq=False)

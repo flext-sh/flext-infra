@@ -17,6 +17,19 @@ if TYPE_CHECKING:
 
 
 class TestGateRegistry:
+    @staticmethod
+    def _apply_alias_fix(tmp_path: Path, project_dir: Path) -> object:
+        """Write the canonical root manifest and apply the alias gate fix."""
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        return FlextInfraCanonicalAliasGate(tmp_path).fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            ),
+        )
+
     def test_every_allowed_gate_resolves_in_registry(self) -> None:
         registry = FlextInfraGateRegistry.default()
         for gate_id in c.Infra.ALLOWED_GATES:
@@ -76,16 +89,7 @@ class TestGateRegistry:
         )
         original = "from flext_core import c\n\nVALUE = c.VALUE\n"
         test_file.write_text(original, encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-        gate = FlextInfraCanonicalAliasGate(tmp_path)
-        result = gate.fix(
-            project_dir,
-            m.Infra.GateContext(
-                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
-            ),
-        )
+        result = TestGateRegistry._apply_alias_fix(tmp_path, project_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(result.raw_output, has="import cycle")
         tm.that(test_file.read_text(encoding="utf-8"), eq=original)
@@ -142,16 +146,7 @@ class TestGateRegistry:
         consumer.write_text(
             "from flext_core import c\n\nVALUE = c.VALUE\n", encoding="utf-8"
         )
-        (project_dir / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-        gate = FlextInfraCanonicalAliasGate(tmp_path)
-        result = gate.fix(
-            project_dir,
-            m.Infra.GateContext(
-                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
-            ),
-        )
+        result = TestGateRegistry._apply_alias_fix(tmp_path, project_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(
             consumer.read_text(encoding="utf-8"),
@@ -182,16 +177,7 @@ class TestGateRegistry:
             "from tests.unit.test_consumer import VALUE\n", encoding="utf-8"
         )
         (unit_dir / "__init__.py").write_text("", encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-
-        result = FlextInfraCanonicalAliasGate(tmp_path).fix(
-            project_dir,
-            m.Infra.GateContext(
-                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
-            ),
-        )
+        result = TestGateRegistry._apply_alias_fix(tmp_path, project_dir)
 
         tm.that(result.result.passed, eq=False)
         tm.that(result.raw_output, has="import cycle")

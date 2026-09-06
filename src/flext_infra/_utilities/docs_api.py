@@ -36,23 +36,18 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _string_values(value: t.Infra.InfraValue | None) -> t.StrSequence:
         """Normalize one infra sequence payload into strings."""
-        try:
-            items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
-        except c.ValidationError:
+        if value is None:
             return []
+        items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
         return [str(item) for item in items]
 
     @staticmethod
     def _string_mapping(value: t.Infra.InfraValue | None) -> t.StrMapping:
         """Normalize one infra mapping payload into string keys and values."""
-        try:
-            items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except c.ValidationError:
+        if value is None:
             return {}
-        normalized_items: dict[str, str] = {
-            key: str(entry) for key, entry in items.items()
-        }
-        return normalized_items
+        items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+        return {key: str(entry) for key, entry in items.items()}
 
     @staticmethod
     def _module_file(project_root: Path, module_name: str) -> Path:

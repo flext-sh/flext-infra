@@ -52,7 +52,9 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
         try:
             requirement = Requirement(tokens[0])
         except (IndexError, InvalidRequirement) as exc:
-            return r[str].fail_op("parse release build constraint", exc)
+            return r[str].fail(
+                f"parse release build constraint failed: {exc}", exception=exc
+            )
         specifiers = tuple(requirement.specifier)
         if (
             requirement.url is not None
@@ -201,8 +203,8 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
                 if extracted.failure:
                     return r[m.Infra.SourceSnapshot].from_failure(extracted)
         except (OSError, tarfile.TarError) as exc:
-            return r[m.Infra.SourceSnapshot].fail_op(
-                "extract committed release source", exc
+            return r[m.Infra.SourceSnapshot].fail(
+                f"extract committed release source failed: {exc}", exception=exc
             )
         try:
             snapshot = m.Infra.SourceSnapshot(

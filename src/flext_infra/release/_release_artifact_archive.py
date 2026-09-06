@@ -150,7 +150,9 @@ class FlextInfraReleaseArtifactArchiveMixin:
             with zipfile.ZipFile(path) as archive:
                 return cls._validate_open_wheel(archive, path, project, license_sha256)
         except (OSError, zipfile.BadZipFile) as exc:
-            return r[bool].fail_op(f"validate wheel archive {path}", exc)
+            return r[bool].fail(
+                f"validate wheel archive {path} failed: {exc}", exception=exc
+            )
 
     @classmethod
     def _validate_open_wheel(
@@ -196,7 +198,9 @@ class FlextInfraReleaseArtifactArchiveMixin:
             with tarfile.open(path, "r:gz") as archive:
                 return cls._validate_open_sdist(archive, path, project, license_sha256)
         except (OSError, tarfile.TarError) as exc:
-            return r[bool].fail_op(f"validate sdist archive {path}", exc)
+            return r[bool].fail(
+                f"validate sdist archive {path} failed: {exc}", exception=exc
+            )
 
     @classmethod
     def _validate_open_sdist(

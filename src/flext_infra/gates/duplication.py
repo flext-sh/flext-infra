@@ -299,10 +299,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     @staticmethod
     def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
         """Parse one module into ranges for statements with runtime behavior."""
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        except (OSError, SyntaxError, UnicodeError):
-            return ((1, 2**31 - 1),)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         parents = {
             child: parent
             for parent in ast.walk(tree)

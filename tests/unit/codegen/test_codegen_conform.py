@@ -22,15 +22,6 @@ from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import c, m, p, r, u
 
-
-def _generation_lock_path(root: Path) -> Path:
-    """Resolve the public Git identity used by the generation lock."""
-    identity: m.Infra.GitIdentityReport = tm.ok(
-        u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
-    )
-    return identity.git_dir / "HEAD"
-
-
 pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]
 
 
@@ -136,6 +127,37 @@ def _seed_infra_package_tree(root: Path) -> None:
     tests_init = root / "tests" / "__init__.py"
     tests_init.parent.mkdir(parents=True, exist_ok=True)
     tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+
+
+def _self_check_conform_service(
+    root: Path,
+) -> tuple[FlextInfraCodegenConform, m.Infra.CodegenConformRequest]:
+    """Materialize the standalone root fixture and its CHECK-mode conform service."""
+    repository = u.Tests.repository_ref("flext-infra").model_copy(
+        update={"path": Path()}
+    )
+    workspace = m.Infra.WorkspaceSpec(
+        name=repository.name,
+        beads=u.Tests.beads_project(repository.name),
+        repository=repository,
+        project=u.Tests.project_spec(repository.name),
+    )
+    (root / "pyproject.toml").write_text(
+        f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
+        encoding="utf-8",
+    )
+    package = root / "src" / repository.distribution.replace("-", "_")
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    request = m.Infra.CodegenConformRequest(
+        root=root,
+        scope=c.Infra.CodegenConformScope.SELF,
+        mode=c.Infra.CodegenConformMode.CHECK,
+    )
+    service = FlextInfraCodegenConform(
+        repository_root=root, request=request, initial_workspace=workspace
+    )
+    return service, request
 
 
 class TestCodegenConform:
@@ -312,30 +334,7 @@ class TestCodegenConform:
             )
         )
         tm.that(divergent_check.outcome.raw_return_code, eq=1)
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path()}
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=u.Tests.project_spec(repository.name),
-        )
-        (root / "pyproject.toml").write_text(
-            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
-            encoding="utf-8",
-        )
-        package = root / "src" / repository.distribution.replace("-", "_")
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        request = m.Infra.CodegenConformRequest(
-            root=root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        service = FlextInfraCodegenConform(
-            repository_root=root, request=request, initial_workspace=workspace
-        )
+        service, request = _self_check_conform_service(root)
 
         before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
         divergent_current = next(
@@ -434,30 +433,7 @@ class TestCodegenConform:
         )
         tm.that(live_tip_check.outcome.raw_return_code, eq=1)
 
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path()}
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=u.Tests.project_spec(repository.name),
-        )
-        (root / "pyproject.toml").write_text(
-            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
-            encoding="utf-8",
-        )
-        package = root / "src" / repository.distribution.replace("-", "_")
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        request = m.Infra.CodegenConformRequest(
-            root=root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        service = FlextInfraCodegenConform(
-            repository_root=root, request=request, initial_workspace=workspace
-        )
+        service, request = _self_check_conform_service(root)
 
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
         anchored = tm.ok(service.plan(request)).branch_ancestry[0]
@@ -510,30 +486,7 @@ class TestCodegenConform:
             eq=128,
         )
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, foreign_sha)
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path()}
-        )
-        workspace = m.Infra.WorkspaceSpec(
-            name=repository.name,
-            beads=u.Tests.beads_project(repository.name),
-            repository=repository,
-            project=u.Tests.project_spec(repository.name),
-        )
-        (root / "pyproject.toml").write_text(
-            f"[project]\nname = '{repository.distribution}'\nversion = '0.1.0'\n",
-            encoding="utf-8",
-        )
-        package = root / "src" / repository.distribution.replace("-", "_")
-        package.mkdir(parents=True)
-        (package / "__init__.py").write_text("", encoding="utf-8")
-        request = m.Infra.CodegenConformRequest(
-            root=root,
-            scope=c.Infra.CodegenConformScope.SELF,
-            mode=c.Infra.CodegenConformMode.CHECK,
-        )
-        service = FlextInfraCodegenConform(
-            repository_root=root, request=request, initial_workspace=workspace
-        )
+        service, request = _self_check_conform_service(root)
 
         anchored = tm.ok(service.plan(request)).branch_ancestry[0]
         tm.that(anchored.baseline_sha, eq=lane_point)

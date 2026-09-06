@@ -261,7 +261,7 @@ class TestsFlextInfraModCliRoute:
             eq=expected_rule_files,
         )
         tm.that(
-            {entry.payload["severity"] for entry in provider_entries.values()},
+            {str(entry.payload["severity"]) for entry in provider_entries.values()},
             eq={"warning", "hint"},
         )
 

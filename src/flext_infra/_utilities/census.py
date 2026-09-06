@@ -341,23 +341,15 @@ class FlextInfraUtilitiesRefactorCensus:
         resource = rope.resource(file_path)
         if resource is None:
             return ()
-        try:
-            attributes = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope.rope_project, resource
-            ).get_attributes()
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-            return ()
-        except (RecursionError, SyntaxError, ValueError, TypeError):
-            return ()
+        attributes = FlextInfraUtilitiesRopeCore.get_pymodule(
+            rope.rope_project, resource
+        ).get_attributes()
         target_pyname = attributes.get(target_name)
         if target_pyname is None or FlextInfraUtilitiesRopeRuntime.is_imported_name(
             target_pyname
         ):
             return ()
-        try:
-            target_object = target_pyname.get_object()
-        except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-            return ()
+        target_object = target_pyname.get_object()
         alias_names: set[str] = set()
         for name, pyname in attributes.items():
             if name == target_name or FlextInfraUtilitiesRopeRuntime.is_imported_name(
@@ -371,10 +363,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 line, removed_ranges=removed_ranges
             ):
                 continue
-            try:
-                alias_object = pyname.get_object()
-            except FlextInfraUtilitiesRopeRuntime.rope_runtime_errors():
-                continue
+            alias_object = pyname.get_object()
             if id(alias_object) == id(target_object):
                 alias_names.add(name)
         return tuple(sorted(alias_names))

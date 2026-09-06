@@ -86,6 +86,7 @@ class FlextInfraRefactorCensusCollectMixin(
             return
         module_objects: tuple[m.Infra.Census.Object, ...] | None = None
         objects: tuple[m.Infra.Census.Object, ...] = ()
+        inventory_failed = False
         if config.collect_object_inventory:
             try:
                 module_objects = tuple(
@@ -99,21 +100,24 @@ class FlextInfraRefactorCensusCollectMixin(
                 self._handle_rope_stage_failure(
                     file_path=module.file_path, stage="inventory", exc=exc
                 )
-                return
-            objects = tuple(
-                item
-                for item in module_objects
-                if self._include_object(
-                    item,
-                    kind_names=config.kind_names,
-                    selected_families=config.selected_families,
-                    selected_kinds=config.selected_kinds,
+                inventory_failed = True
+            else:
+                objects = tuple(
+                    item
+                    for item in module_objects
+                    if self._include_object(
+                        item,
+                        kind_names=config.kind_names,
+                        selected_families=config.selected_families,
+                        selected_kinds=config.selected_kinds,
+                    )
                 )
-            )
-            if objects:
-                project_objects[project].extend(objects)
+                if objects:
+                    project_objects[project].extend(objects)
         if objects:
             report_projects.add(project)
+        if inventory_failed:
+            return
         try:
             violations, fixes = self._module_rules(
                 rope,
@@ -131,12 +135,12 @@ class FlextInfraRefactorCensusCollectMixin(
             self._handle_rope_stage_failure(
                 file_path=module.file_path, stage="rules", exc=exc
             )
-            return
-        report_projects.add(project)
-        if not objects and not violations and not fixes:
-            return
-        project_violations[project].extend(violations)
-        project_fixes[project].extend(fixes)
+        else:
+            report_projects.add(project)
+            if not objects and not violations and not fixes:
+                return
+            project_violations[project].extend(violations)
+            project_fixes[project].extend(fixes)
 
     def _assemble_report(
         self,

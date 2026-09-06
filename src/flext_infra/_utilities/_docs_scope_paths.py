@@ -53,7 +53,9 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
                 workspace_root, extra_roots
             )
         except (OSError, TypeError, ValueError) as exc:
-            return r[tuple[Path, ...]].fail_op("docs workspace discovery", exc)
+            return r[tuple[Path, ...]].fail(
+                f"docs workspace discovery failed: {exc}", exception=exc
+            )
 
     @staticmethod
     def _docs_workspace_roots(

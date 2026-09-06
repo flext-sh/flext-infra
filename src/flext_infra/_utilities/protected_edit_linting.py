@@ -229,10 +229,7 @@ class FlextInfraUtilitiesProtectedEditLinting:
         py_file: Path, gate_key: t.StrSequence
     ) -> tuple[str, str, t.StrSequence] | None:
         """Lint snapshot cache key."""
-        try:
-            raw_bytes = py_file.read_bytes()
-        except OSError:
-            return None
+        raw_bytes = py_file.read_bytes()
         return (str(py_file.resolve()), hashlib.sha256(raw_bytes).hexdigest(), gate_key)
 
     @classmethod

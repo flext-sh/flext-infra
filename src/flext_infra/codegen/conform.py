@@ -1989,10 +1989,12 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return None
         source = u.Cli.files_read_text(identity)
         if source.failure:
-            return None
+            msg = f"failed to read beads identity at {identity}: {source.error}"
+            raise RuntimeError(msg)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
-            return None
+            msg = f"beads identity at {identity} is not valid TOML"
+            raise ValueError(msg)
         project = payload.get("project")
         if not isinstance(project, Mapping):
             return None

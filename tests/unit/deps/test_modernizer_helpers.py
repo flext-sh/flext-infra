@@ -9,6 +9,14 @@ import pytest
 from flext_tests import tm
 from tests import c, u
 
+_FULL_OPTIONAL_DEPS: dict[str, list[str]] = {
+    "dev": ["pytest"],
+    "docs": ["sphinx"],
+    "security": ["bandit"],
+    "test": ["coverage"],
+    "typings": ["mypy"],
+}
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -160,15 +168,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize(
         ("optional_deps", "expected_dev", "expected_docs"),
         [
-            (
-                {
-                    "dev": ["pytest"],
-                    "docs": ["sphinx"],
-                    "security": ["bandit"],
-                    "test": ["coverage"],
-                    "typings": ["mypy"],
-                },
-                ["pytest"],
+            (_FULL_OPTIONAL_DEPS, ["pytest"],
                 ["sphinx"],
             ),
             ({"dev": ["pytest"]}, ["pytest"], []),
@@ -195,15 +195,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize(
         ("optional_deps", "expected_length", "expect_pytest"),
         [
-            (
-                {
-                    "dev": ["pytest"],
-                    "docs": ["sphinx"],
-                    "security": ["bandit"],
-                    "test": ["coverage"],
-                    "typings": ["mypy"],
-                },
-                5,
+            (_FULL_OPTIONAL_DEPS, 5,
                 True,
             ),
             ({}, 0, False),

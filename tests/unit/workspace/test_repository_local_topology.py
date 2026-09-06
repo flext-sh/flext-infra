@@ -31,27 +31,17 @@ class TestsRepositoryLocalTopology:
             database=name.replace("-", "_"),
             issue_prefix=name,
         )
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        exclusion = f"{observed.repository.distribution}-excluded"
-        override = f"{observed.repository.distribution}-overridden"
+        exclusion = "fixture-manifest-policy-excluded"
+        override = "fixture-manifest-policy-overridden"
         cutoff = datetime.now(UTC).isoformat()
-        declared = observed.repository.model_copy(
-            update={
+        _ = WorktreeFixture.override_repository_manifest(
+            root,
+            {
                 "checkout": c.Infra.CheckoutKind.INDEPENDENT,
                 "uv_link_mode": "clone",
                 "dependency_cooldown_exclusions": (exclusion,),
                 "dependency_cooldown_overrides": {override: cutoff},
-            }
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+            },
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
@@ -76,19 +66,8 @@ class TestsRepositoryLocalTopology:
             database=name.replace("-", "_"),
             issue_prefix=name,
         )
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        declared = observed.repository.model_copy(
-            update={"distribution": "different-distribution"}
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+        _ = WorktreeFixture.override_repository_manifest(
+            root, {"distribution": "different-distribution"}
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
@@ -366,19 +345,8 @@ class TestsRepositoryLocalTopology:
     ) -> None:
         """A member manifest declares its own checkout; Git keeps the gitlink fact."""
         member = self._attached_member(tmp_path)
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
-        declared = observed.repository.model_copy(
-            update={"checkout": c.Infra.CheckoutKind.ROOT}
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                member / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": declared.name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+        _ = WorktreeFixture.override_repository_manifest(
+            member, {"checkout": c.Infra.CheckoutKind.ROOT}
         )
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
@@ -399,19 +367,8 @@ class TestsRepositoryLocalTopology:
             database=name.replace("-", "_"),
             issue_prefix=name,
         )
-        observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
-        declared = observed.repository.model_copy(
-            update={"checkout": c.Infra.CheckoutKind.SUBMODULE}
-        )
-        tm.ok(
-            u.Cli.yaml_dump(
-                root / "config" / c.Infra.WORKSPACE_MANIFEST_FILENAME,
-                {
-                    "version": 3,
-                    "name": name,
-                    "repository": declared.model_dump(mode="json"),
-                },
-            )
+        _ = WorktreeFixture.override_repository_manifest(
+            root, {"checkout": c.Infra.CheckoutKind.SUBMODULE}
         )
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
@@ -783,22 +740,7 @@ class TestsRepositoryLocalTopology:
                 cwd=root,
             )
         )
-        child = root / "fixture-child"
-        WorktreeFixture.initialize_governed_project(
-            child,
-            "fixture-child",
-            workspace="fixture-child",
-            database="fixture_child",
-            issue_prefix="fixture-child",
-            beads_owner=False,
-        )
-        WorktreeFixture.link_member_beads(
-            child,
-            root,
-            workspace_name="fixture-workspace",
-            database="fixture_workspace",
-            issue_prefix="fixture-workspace",
-        )
+        _ = WorktreeFixture.attach_member_child(root)
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'
             "\tpath = fixture-child\n"
@@ -824,22 +766,7 @@ class TestsRepositoryLocalTopology:
             database="fixture_workspace",
             issue_prefix="fixture-workspace",
         )
-        child = root / "fixture-child"
-        WorktreeFixture.initialize_governed_project(
-            child,
-            "fixture-child",
-            workspace="fixture-child",
-            database="fixture_child",
-            issue_prefix="fixture-child",
-            beads_owner=False,
-        )
-        WorktreeFixture.link_member_beads(
-            child,
-            root,
-            workspace_name="fixture-workspace",
-            database="fixture_workspace",
-            issue_prefix="fixture-workspace",
-        )
+        _ = WorktreeFixture.attach_member_child(root)
         provider = u.Tests.provider()
         (root / c.Infra.GITMODULES).write_text(
             '[submodule "fixture-child"]\n'

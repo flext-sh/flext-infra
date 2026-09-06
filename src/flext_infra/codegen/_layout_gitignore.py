@@ -24,7 +24,10 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         self, project_dir: Path, patterns: t.StrSequence
     ) -> p.Result[t.Infra.LayoutStatus]:
         """Ensure gitignore patterns via the canonical render or appending."""
-        profile = self._managed_profile(project_dir)
+        managed = self._managed_profile(project_dir)
+        if managed.failure:
+            return r[t.Infra.LayoutStatus].from_failure(managed)
+        profile = managed.value
         if profile is not None:
             return self._apply_gitignore_managed(project_dir, profile)
         return self._apply_gitignore_append(project_dir, patterns)
@@ -86,25 +89,30 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
 
-    @staticmethod
-    def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
-        """Make profile when the project is governed by a workspace."""
+    @classmethod
+    def _managed_profile(cls, project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:
+        """Make profile when the project is governed by a workspace.
+
+        ``ok(None)`` means the project sits outside any Git repository and is
+        therefore external by definition. Workspace or target resolution
+        failures are never mapped to "external"; they propagate.
+        """
         repository_root = u.Infra.git_show_toplevel(
             m.Infra.GitRepoRequest(repo_root=project_dir)
         )
         if repository_root.failure:
-            return None
+            return r[c.Infra.MakeProfile | None].ok(None)
         workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
             repository_root.value.repository_root
         )
         if workspace.failure:
-            return None
+            return r[c.Infra.MakeProfile | None].from_failure(workspace)
         target = FlextInfraWorkspaceDetector.conform_target(
             project_dir, workspace.value
         )
         if target.failure:
-            return None
-        return target.value.make_profile
+            return r[c.Infra.MakeProfile | None].from_failure(target)
+        return r[c.Infra.MakeProfile | None].ok(target.value.make_profile)
 
 
 __all__: list[str] = ["FlextInfraCodegenLayoutGitignoreMixin"]
