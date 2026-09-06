@@ -1,7 +1,7 @@
-"""Tests for gate registration of the new durissimas gates.
+"""Gate vocabulary contract: one SSOT, every gate reachable.
 
-`loc-cap`, `boundary`, and `canonical-alias` must be in the SSOT-derived
-ALLOWED_GATES and resolve through the registry.
+``c.Infra.SARIF_TOOL_INFO`` owns the gate ids; the registry classes and the
+`make check` vocabulary are derived from it and must never diverge.
 """
 
 from __future__ import annotations
@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates import FlextInfraCanonicalAliasGate
-
 from tests import c, m, t, tm
 
 if TYPE_CHECKING:
@@ -18,21 +17,35 @@ if TYPE_CHECKING:
 
 
 class TestGateRegistry:
-    def test_new_gates_in_allowed(self) -> None:
-        tm.that("loc-cap" in c.Infra.ALLOWED_GATES, eq=True)
-        tm.that("boundary" in c.Infra.ALLOWED_GATES, eq=True)
-        tm.that("canonical-alias" in c.Infra.ALLOWED_GATES, eq=True)
-
-    def test_registry_resolves_loc_cap(self) -> None:
-        tm.that(FlextInfraGateRegistry.default().get("loc-cap") is not None, eq=True)
-
-    def test_registry_resolves_boundary(self) -> None:
-        tm.that(FlextInfraGateRegistry.default().get("boundary") is not None, eq=True)
-
-    def test_registry_resolves_canonical_alias(self) -> None:
-        tm.that(
-            FlextInfraGateRegistry.default().get("canonical-alias") is not None, eq=True
+    @staticmethod
+    def _apply_alias_fix(tmp_path: Path, project_dir: Path) -> object:
+        """Write the canonical root manifest and apply the alias gate fix."""
+        (project_dir / "pyproject.toml").write_text(
+            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
         )
+        return FlextInfraCanonicalAliasGate(tmp_path).fix(
+            project_dir,
+            m.Infra.GateContext(
+                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
+            ),
+        )
+
+    def test_every_allowed_gate_resolves_in_registry(self) -> None:
+        registry = FlextInfraGateRegistry.default()
+        for gate_id in c.Infra.ALLOWED_GATES:
+            gate_cls = registry.get(gate_id)
+            tm.that(gate_cls is not None, eq=True)
+            tm.that(gate_cls is not None and gate_cls.gate_id == gate_id, eq=True)
+
+    def test_check_vocabulary_is_allowed_minus_mutating(self) -> None:
+        allowed = frozenset(c.Infra.CANONICAL_GATE_IDS)
+        tm.that(allowed, eq=c.Infra.ALLOWED_GATES - c.Infra.MUTATING_GATES)
+        tm.that(allowed & c.Infra.MUTATING_GATES, eq=frozenset())
+
+    def test_default_and_fixable_are_subsets_of_check_vocabulary(self) -> None:
+        allowed = frozenset(c.Infra.CANONICAL_GATE_IDS)
+        tm.that(frozenset(c.Infra.CANONICAL_DEFAULT_GATE_IDS) <= allowed, eq=True)
+        tm.that(frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS) <= allowed, eq=True)
 
     def test_canonical_alias_check_detects_root_tests_consumer(
         self, tmp_path: Path
@@ -76,16 +89,7 @@ class TestGateRegistry:
         )
         original = "from flext_core import c\n\nVALUE = c.VALUE\n"
         test_file.write_text(original, encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-        gate = FlextInfraCanonicalAliasGate(tmp_path)
-        result = gate.fix(
-            project_dir,
-            m.Infra.GateContext(
-                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
-            ),
-        )
+        result = TestGateRegistry._apply_alias_fix(tmp_path, project_dir)
         tm.that(result.result.passed, eq=False)
         tm.that(result.raw_output, has="import cycle")
         tm.that(test_file.read_text(encoding="utf-8"), eq=original)
@@ -142,16 +146,7 @@ class TestGateRegistry:
         consumer.write_text(
             "from flext_core import c\n\nVALUE = c.VALUE\n", encoding="utf-8"
         )
-        (project_dir / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-        gate = FlextInfraCanonicalAliasGate(tmp_path)
-        result = gate.fix(
-            project_dir,
-            m.Infra.GateContext(
-                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
-            ),
-        )
+        result = TestGateRegistry._apply_alias_fix(tmp_path, project_dir)
         tm.that(result.result.passed, eq=True)
         tm.that(
             consumer.read_text(encoding="utf-8"),
@@ -182,16 +177,7 @@ class TestGateRegistry:
             "from tests.unit.test_consumer import VALUE\n", encoding="utf-8"
         )
         (unit_dir / "__init__.py").write_text("", encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(
-            '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
-        )
-
-        result = FlextInfraCanonicalAliasGate(tmp_path).fix(
-            project_dir,
-            m.Infra.GateContext(
-                workspace=tmp_path, reports_dir=tmp_path / "reports", apply_fixes=True
-            ),
-        )
+        result = TestGateRegistry._apply_alias_fix(tmp_path, project_dir)
 
         tm.that(result.result.passed, eq=False)
         tm.that(result.raw_output, has="import cycle")
@@ -201,16 +187,15 @@ class TestGateRegistry:
 def test_every_allowed_gate_resolves_in_the_registry() -> None:
     """Every gate the Make surface accepts must be instantiable.
 
-    flext-38p39: `format` sat in PROJECT_CHECK_GATES_ALLOWED_VALUES and
+    flext-38p39: `format` once sat in the canonical check-gate vocabulary and
     FlextInfraRuffFormatGate declared gate_id="format" with can_fix=True, but the
-    class was never listed in the registry. So `make check CHECK_GATES=format`
-    named a gate that silently resolved to nothing, and the one gate that could
-    repair formatting was unreachable from every verb.
+    class was never listed in the registry. The generated check command could
+    therefore name a gate that silently resolved to nothing.
     """
     registry = FlextInfraGateRegistry.default()
     unresolved = [
         gate_id
-        for gate_id in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES
+        for gate_id in c.Infra.CANONICAL_GATE_IDS
         if registry.get(gate_id) is None
     ]
 
@@ -230,21 +215,16 @@ def test_fixable_gate_vocabulary_matches_the_registry() -> None:
     ALLOWED (check never mutates) and not in FIXABLE (fix never formats).
     """
     registry = FlextInfraGateRegistry.default()
-    for gate_id in c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES:
-        gate_cls = registry.get(gate_id)
-        tm.that(gate_cls is not None, eq=True)
-        tm.that(gate_cls is not None and gate_cls.can_fix, eq=True)
-    check_fixable = {
+    registered_fixable = {
         gate_id
-        for gate_id in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES
+        for gate_id in c.Infra.CANONICAL_GATE_IDS
         if (gate_cls := registry.get(gate_id)) is not None and gate_cls.can_fix
     }
-    check_fixable.difference_update({"format", "lint"})
-    tm.that(check_fixable <= set(c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES), eq=True)
+    tm.that(set(c.Infra.CANONICAL_FIXABLE_GATE_IDS), eq=registered_fixable)
     # `format` belongs to `make fmt` alone: absent from the read-only check
     # vocabulary AND from the fix vocabulary.
-    tm.that("format" not in c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES, eq=True)
-    tm.that("format" not in c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES, eq=True)
+    tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_FIXABLE_GATE_IDS, eq=True)
+    tm.that(c.Infra.FORMAT not in c.Infra.CANONICAL_GATE_IDS, eq=True)
 
 
 __all__: t.StrSequence = []

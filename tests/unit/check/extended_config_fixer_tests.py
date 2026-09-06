@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def _extra_paths_manager(workspace_root: Path) -> FlextInfraExtraPathsManager:
-    return FlextInfraExtraPathsManager(workspace_root=workspace_root)
+def _extra_paths_manager(repository_root: Path) -> FlextInfraExtraPathsManager:
+    return FlextInfraExtraPathsManager(repository_root=repository_root)
 
 
 class TestConfigFixerProcessFile:
@@ -81,6 +81,7 @@ class TestConfigFixerProcessFile:
         self, tmp_path: Path
     ) -> None:
         """Keep every existing tracked Python root in project includes."""
+        u.Tests.write_project_beads_config(tmp_path, "tmp")
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "package.py").write_text("VALUE = 1\n", encoding="utf-8")
         (tmp_path / "tests").mkdir()
@@ -206,11 +207,7 @@ class TestConfigFixerRun:
 
     def test_run_with_nonexistent_projects(self, tmp_path: Path) -> None:
         """Fail closed when an explicit project selection is inaccessible."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
-        result = fixer.run(["nonexistent"])
-
-        tm.fail(result)
-        tm.that(result.error, has="explicit project path is not accessible")
+        u.Tests.reject_inaccessible_config_project(tmp_path)
 
     def test_run_with_dry_run_flag(self, tmp_path: Path) -> None:
         """Execute the workspace runner in dry-run mode."""

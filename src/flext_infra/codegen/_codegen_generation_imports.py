@@ -6,9 +6,7 @@ import operator
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from flext_infra.codegen._codegen_generation_paths import (
-    FlextInfraCodegenGenerationPathsMixin,
-)
+from ._codegen_generation_paths import FlextInfraCodegenGenerationPathsMixin
 
 if TYPE_CHECKING:
     from flext_infra import t

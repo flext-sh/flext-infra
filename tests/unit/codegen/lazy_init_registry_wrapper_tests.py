@@ -48,16 +48,16 @@ class TestsFlextInfraLazyInitCleanup:
         )
         service = u.Tests.create_lazy_init_service(workspace_root)
 
-        result = service.generate_inits(check_only=True)
+        result = service.plan_files()
 
-        tm.that(result, eq=0)
+        tm.that(result.success, eq=True)
         tm.that(all(path.exists() for path in stale_paths), eq=True)
         tm.that(
             set(map(str, stale_paths)).issubset(set(service.modified_files)), eq=True
         )
 
     def test_apply_removes_closed_obsolete_root_support(self, tmp_path: Path) -> None:
-        """Apply removes only the retired root module/package names."""
+        """Apply removes every retired root support file."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
@@ -73,7 +73,8 @@ class TestsFlextInfraLazyInitCleanup:
 
         tm.that(result, eq=0)
         tm.that(obsolete_module.exists(), eq=False)
-        tm.that(obsolete_package.exists(), eq=False)
+        tm.that(obsolete_part.exists(), eq=False)
+        tm.that(tuple(obsolete_package.iterdir()), eq=())
 
     def test_check_reports_obsolete_root_support_without_removing(
         self, tmp_path: Path
@@ -87,9 +88,9 @@ class TestsFlextInfraLazyInitCleanup:
         obsolete_module.write_text("ROOT = ()\n", encoding=c.Cli.ENCODING_DEFAULT)
         service = u.Tests.create_lazy_init_service(workspace_root)
 
-        result = service.generate_inits(check_only=True)
+        result = service.plan_files()
 
-        tm.that(result, eq=0)
+        tm.that(result.success, eq=True)
         tm.that(obsolete_module.is_file(), eq=True)
         tm.that(str(obsolete_module) in service.modified_files, eq=True)
 

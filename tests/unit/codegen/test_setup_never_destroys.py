@@ -6,8 +6,8 @@ it the one verb allowed to *create* what is missing and forbidden to *destroy*
 what exists.
 
 ``git checkout`` and ``git reset`` are completely prohibited on the setup path.
-Absent checkouts are initialized with ``submodule update --init`` only; every
-present checkout is validation-only and remains byte-for-byte Git-state stable.
+Absent checkouts are initialized at the recorded gitlink. Present checkouts are
+verified in place without fetch, branch attachment, or any repair mutation.
 """
 
 from __future__ import annotations
@@ -22,8 +22,11 @@ _SUBMODULES = _TEMPLATES / "project" / "base" / "submodule_setup_recipe.j2"
 _DESTRUCTIVE_GIT = (
     r"git\b[^\n]*\bcheckout\b",
     r"git\b[^\n]*\bpull\b",
+    r"git\b[^\n]*\bfetch\b",
     r"git\b[^\n]*\breset\b",
     r"git\b[^\n]*\bclean\b",
+    r"git\b[^\n]*\bbranch\b[^\n]*\s-f(?:\s|$)",
+    r"git\b[^\n]*\bsymbolic-ref\b",
     r"git\b[^\n]*\bworktree\b[^\n]*\b(remove|prune)\b",
 )
 
@@ -62,20 +65,13 @@ def test_setup_never_clears_the_virtualenv() -> None:
     assert not offenders, f"setup clears the virtualenv: {offenders}"
 
 
-def test_setup_never_fetches_or_attaches_a_present_checkout() -> None:
-    """Initialization must not grow into branch, upstream, or remote mutation."""
-    recipe = _SUBMODULES.read_text(encoding="utf-8")
+def test_submodule_setup_initializes_absent_and_verifies_present() -> None:
+    """Setup creates an absent gitlink and only validates a present checkout."""
+    content = _SUBMODULES.read_text(encoding="utf-8")
 
-    assert all(
-        forbidden not in recipe
-        for forbidden in (
-            " fetch ",
-            "branch --quiet -f",
-            "--set-upstream-to",
-            "symbolic-ref HEAD",
-            "ls-remote",
-        )
-    )
+    assert 'submodule update --init -- "$$child_path"' in content
+    assert "branch --show-current" in content
+    assert 'merge-base --is-ancestor "$$gitlink" HEAD' in content
 
 
 __all__: tuple[str, ...] = ()

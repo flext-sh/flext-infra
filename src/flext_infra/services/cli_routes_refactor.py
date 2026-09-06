@@ -7,7 +7,6 @@ from typing import ClassVar
 
 from flext_infra import m
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
-from flext_infra.codemod.rules.refactor.apply_renames import FlextInfraApplyRenames
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
 )
@@ -38,28 +37,28 @@ class RefactorRoutes(CliRouteBase):
 
     refactor_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
         m.Cli.ResultCommandRoute(
-            name="apply-renames",
-            help_text="Check or apply an old,new CSV rename list",
-            model_cls=m.Infra.ApplyRenamesInput,
-            handler=FlextInfraApplyRenames.execute_command,
-        ),
-        m.Cli.ResultCommandRoute(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",
             model_cls=m.Infra.RefactorNamespaceEnforceInput,
-            handler=FlextInfraNamespaceEnforcer.execute_command,
+            handler=CliRouteBase.result_handler(
+                FlextInfraNamespaceEnforcer.execute_command
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="census",
             help_text="Run a Rope-only workspace census for Python objects",
             model_cls=FlextInfraRefactorCensus,
-            handler=FlextInfraRefactorCensus.execute_command,
+            handler=CliRouteBase.result_handler(
+                FlextInfraRefactorCensus.execute_command
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="accessor-migrate",
             help_text="Preview or apply automated get_/set_/is_ migration",
             model_cls=m.Infra.AccessorMigrationInput,
-            handler=FlextInfraAccessorMigrationOrchestrator.execute_payload,
+            handler=CliRouteBase.result_handler(
+                FlextInfraAccessorMigrationOrchestrator.execute_payload
+            ),
         ),
         m.Cli.ResultCommandRoute(
             name="wrapper-root-namespace",
@@ -131,7 +130,8 @@ class RefactorRoutes(CliRouteBase):
         m.Cli.ResultCommandRoute(
             name="mod",
             help_text=(
-                "Batch-apply all ast-grep rules under the ruff/pyrefly rollback circuit"
+                "Apply ast-grep rules, prove fixed point, then require Ruff, "
+                "Pyrefly, and real LSP diagnostics"
             ),
             model_cls=FlextInfraCodemodBatchApply,
             handler=FlextInfraCodemodBatchApply.execute_command,

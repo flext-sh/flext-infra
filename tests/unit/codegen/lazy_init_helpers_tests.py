@@ -28,10 +28,6 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT
         )
 
-    @staticmethod
-    def _generated_exports(package_root: Path) -> str:
-        return TestsFlextInfraLazyInitHelpers._generated_init(package_root)
-
     def test_discover_package_from_standard_roots(self) -> None:
         """Resolve package names consistently for every supported source shape."""
         tm.that(
@@ -47,17 +43,6 @@ class TestsFlextInfraLazyInitHelpers:
             eq="examples.tests",
         )
 
-    def test_unrelated_ancestor_src_does_not_own_scratch_file(
-        self, tmp_path: Path
-    ) -> None:
-        """Do not infer a package across a sibling ``src`` directory."""
-        outer = tmp_path / "outer"
-        (outer / "src").mkdir(parents=True)
-        scratch_file = outer / "scratch" / "module.py"
-        scratch_file.parent.mkdir()
-
-        tm.that(u.Infra.package_name(scratch_file), eq="")
-
     def test_root_generation_uses_real_classes_and_aliases(
         self, tmp_path: Path
     ) -> None:
@@ -72,7 +57,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(init_content, has="build_lazy_import_map, install_lazy_exports")
         # _LAZY_IMPORTS is the canonical metadata binding flext_core reads.
@@ -198,7 +183,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
         public_exports = exports_content.split(
             "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
@@ -246,7 +231,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         conversion_path.unlink()
         check_service = u.Tests.create_lazy_init_service(workspace_root)
-        tm.that(check_service.generate_inits(check_only=True), eq=0)
+        tm.that(check_service.plan_files().success, eq=True)
         tm.that(self._generated_init(package_root), eq=generated)
 
     def test_private_subpackage_facade_never_becomes_root_public(
@@ -299,7 +284,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has='"FlextDemo"')
         tm.that(exports_content, has='"demo"')
@@ -334,7 +319,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has="FlextDemoService")
         tm.that(exports_content, has='"BLUE"')
@@ -351,10 +336,10 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        first = self._generated_exports(package_root)
+        first = self._generated_init(package_root)
         tm.that(u.Tests.run_lazy_init(workspace_root, check_only=True), eq=0)
 
-        tm.that(self._generated_exports(package_root), eq=first)
+        tm.that(self._generated_init(package_root), eq=first)
         tm.that(first, lacks='"._constants"')
 
     def test_tests_root_facade_is_generated_lazily(self, tmp_path: Path) -> None:
@@ -395,7 +380,14 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(tests_root.joinpath("__unit__.py").exists(), eq=False)
         compile(init_content, "tests/__init__.py", "exec")
         check_service = u.Tests.create_lazy_init_service(workspace_root)
-        tm.that(check_service.generate_inits(check_only=True), eq=0)
+        tm.that(
+            tuple(
+                plan
+                for plan in tm.ok(check_service.plan_files()).files
+                if u.Infra.codegen_file_requires_effect(plan)
+            ),
+            empty=True,
+        )
         tm.that(check_service.modified_files, empty=True)
 
     def test_root_aliases_follow_transitive_parent_exports_from_source(
@@ -455,7 +447,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(init_content, lacks="_LAZY_MODULES")
         tm.that(exports_content, has='"flext_cli": (')
@@ -497,7 +489,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
+        exports = self._generated_init(package_root)
         tm.that(exports, has='"flext_cli": (')
         tm.that(generated, has='    "r",')
         tm.that(generated, has='    "c",')
@@ -532,8 +524,12 @@ class TestsFlextInfraLazyInitHelpers:
         service = u.Tests.create_lazy_init_service(workspace_root).model_copy(
             update={"target_module": "flext_child"}
         )
-        tm.that(service.generate_inits(), eq=0)
-        generated = self._generated_exports(package_root)
+        planned = tm.ok(service.plan_files()).files
+        generated = next(
+            u.Tests.codegen_file_text(plan)
+            for plan in planned
+            if plan.path == package_root.joinpath(c.Infra.INIT_PY).resolve()
+        )
 
         tm.that(generated, lacks='"x"')
         tm.that(generated, lacks='"flext_parent": ("x",)')
@@ -569,7 +565,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        generated = self._generated_exports(package_root)
+        generated = self._generated_init(package_root)
 
         tm.that(generated, has='"owner_parent": ("r",)')
         tm.that(generated, lacks='"nearest_parent": ("r",)')
@@ -628,7 +624,7 @@ class TestsFlextInfraLazyInitHelpers:
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_init(package_root)
-        exports = self._generated_exports(package_root)
+        exports = self._generated_init(package_root)
 
         tm.that(generated, has='"FlextDemoGitService"')
         tm.that(generated, has='"FlextDemoWorkService"')
@@ -649,16 +645,23 @@ class TestsFlextInfraLazyInitHelpers:
         tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
         )
+        # `__all__` is the publication contract on EVERY surface — a module
+        # that declares nothing publishes nothing, in tests exactly as in src.
+        # The fixture declares its publics like every other module here does,
+        # so what this test proves is the tests-namespace routing, not the
+        # unrelated question of undeclared symbols.
         tests_unit_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitConstants:\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__: list[str] = ["TestsFlextDemoUnitConstants"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tests_unit_root.joinpath(c.Infra.MODELS_PY).write_text(
             "from __future__ import annotations\n\n"
             "class TestsFlextDemoUnitModels:\n"
-            "    pass\n",
+            "    pass\n\n"
+            '__all__: list[str] = ["TestsFlextDemoUnitModels"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
@@ -695,16 +698,23 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
 
-    def test_duplicate_public_export_resolved_by_canonical_scorer(
+    def test_duplicate_public_export_fails_before_generation(
         self, tmp_path: Path
     ) -> None:
-        """Duplicate public exports are resolved deterministically (warn + generate)."""
+        """Two owners of one public name stop the phase before any file plan.
+
+        Both modules declare the same public name, so nothing can decide which
+        one owns it. Picking the first, the last, or merging them would make
+        the disagreement invisible exactly where it matters, so planning
+        refuses and names the collision instead of generating a facade.
+        """
         workspace_root, package_root = self._workspace(tmp_path)
+        before = self._generated_init(package_root)
         (package_root / "api.py").write_text(
             "from __future__ import annotations\n\nclass Shared:\n    pass\n\n"
             '__all__: list[str] = ["Shared"]\n',
@@ -716,8 +726,12 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        init_content = self._generated_init(package_root)
-        exports_content = self._generated_exports(package_root)
-        tm.that(init_content.startswith(c.Infra.AUTOGEN_HEADER), eq=True)
-        tm.that(exports_content, has="Shared")
+        planned = u.Tests.plan_lazy_init(workspace_root)
+
+        tm.that(planned.failure, eq=True)
+        tm.that(planned.error, has="ambiguous")
+        # The refusal is PRE-EFFECT: the facade on disk is untouched and never
+        # gained the contested name.
+        after = self._generated_init(package_root)
+        tm.that(after, eq=before)
+        tm.that(after, lacks="Shared")

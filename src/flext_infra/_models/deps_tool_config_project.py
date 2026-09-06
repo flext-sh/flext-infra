@@ -20,7 +20,8 @@ from typing import Annotated
 
 from flext_cli import m
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
+
+from ._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigProjectRuff:
@@ -42,17 +43,46 @@ class FlextInfraModelsDepsToolConfigProjectMise(
 ):
     """Project-local Mise tools that extend, but never replace, fleet tools."""
 
+    class ProjectMiseTool(m.ArbitraryTypesModel):
+        """One project-owned Mise tool with one exact version."""
+
+        version: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Exact version written to the generated .mise.toml."),
+        ]
+
     class ProjectMiseConfig(m.ArbitraryTypesModel):
-        """Exact project-owned Mise selector and version pairs."""
+        """Exact project-owned Mise selectors and their tool declarations."""
 
         tools: Annotated[
-            t.MappingKV[t.NonEmptyStr, t.NonEmptyStr],
+            t.MappingKV[
+                t.NonEmptyStr, FlextInfraModelsDepsToolConfigProjectMise.ProjectMiseTool
+            ],
             m.Field(description="Project-local Mise tools added to generated config."),
         ]
 
 
-class FlextInfraModelsDepsToolConfigProjectArtifacts(
+class FlextInfraModelsDepsToolConfigProjectGitignore(
     FlextInfraModelsDepsToolConfigProjectMise
+):
+    """Project-local ignore patterns appended to the generated ``.gitignore``."""
+
+    class ProjectGitignoreConfig(m.ArbitraryTypesModel):
+        """Repository-owned ignore patterns the fleet scaffold cannot know."""
+
+        patterns: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Ignore patterns appended, in declaration order, as one "
+                    "project-owned section of the generated .gitignore."
+                )
+            ),
+        ] = ()
+
+
+class FlextInfraModelsDepsToolConfigProjectArtifacts(
+    FlextInfraModelsDepsToolConfigProjectGitignore
 ):
     """Managed-artifact layer; ``ProjectRuffConfig`` is an inherited attribute."""
 
@@ -75,6 +105,14 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
                 )
             )
         )
+        Gitignore: Annotated[
+            FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignoreConfig,
+            m.Field(description="Ignore patterns owned by the current project."),
+        ] = m.Field(
+            default_factory=(
+                FlextInfraModelsDepsToolConfigProjectGitignore.ProjectGitignoreConfig
+            )
+        )
 
     class ProjectManagedArtifactsResolution(m.ArbitraryTypesModel):
         """Composed project configuration plus selector provenance."""
@@ -86,6 +124,18 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
         mise_tool_sources: Annotated[
             t.MappingKV[t.NonEmptyStr, Path],
             m.Field(description="Source YAML path for every local Mise selector."),
+        ]
+
+    class ProjectManagedArtifactsSnapshot(m.ArbitraryTypesModel):
+        """One immutable YAML snapshot and its single parsed resolution."""
+
+        sources: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(description="Ordered exact project configuration sources."),
+        ]
+        resolution: Annotated[
+            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsResolution,
+            m.Field(description="Managed artifacts parsed from those exact sources."),
         ]
 
 

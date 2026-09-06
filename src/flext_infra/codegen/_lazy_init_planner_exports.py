@@ -89,6 +89,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                         py_file,
                         convention.module_name,
                         export_options=m.Infra.ExportOptions(
+                            allow_main=True,
                             allow_assignments=True,
                             allow_functions=True,
                             require_explicit_all=True,
@@ -102,12 +103,11 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 continue
             # In public src packages, public submodules (without expected_alias) derive
             # from their explicit __all__; non-public/private subpackages auto-discover.
-            require_explicit_all = (
-                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
-                and not any(part.startswith("_") for part in context.pkg_dir.parts)
+            require_explicit_all = context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS or (
+                not any(part.startswith("_") for part in context.pkg_dir.parts)
                 and not py_file.stem.startswith("_")
                 and (
-                    u.Infra.is_public_python_module_file(py_file.name)
+                    u.Infra.matches_root_namespace_file(py_file.name)
                     or policy.expected_alias is not None
                     or "." in context.current_pkg
                 )
@@ -125,7 +125,7 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
             if (
                 policy.expected_alias
                 and u.Infra.matches_project_namespace_package(context.current_pkg)
-                and u.Infra.is_public_python_module_file(py_file.name)
+                and u.Infra.matches_root_namespace_file(py_file.name)
             ):
                 targets.setdefault(
                     policy.expected_alias,

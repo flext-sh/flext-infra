@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-
-from tests import c, m, p, t, u
+from tests import c, m, u
 
 
 class TestsRootArtifactOwnership:
@@ -120,6 +120,8 @@ class TestsRootArtifactOwnership:
                     'version = "0.1.0"\n'
                     'requires-python = ">=3.13,<3.14"\n'
                     "dependencies = []\n"
+                    "[project.urls]\n"
+                    'Repository = "https://github.com/flext-sh/flext-demo"\n'
                 ),
             )
         )
@@ -163,21 +165,11 @@ class TestsRootArtifactOwnership:
 
 
 class TestsAncestryNetworkBoundary:
-    """The ancestry plan must never block indefinitely on a remote."""
+    """The ancestry plan is a repository-local, offline inventory."""
 
-    def test_origin_fetch_is_time_boxed(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Refreshing the baseline from origin runs under a declared timeout.
-
-        The ancestry plan shells `git fetch origin` whenever a remote is
-        configured. Without a timeout, a slow or unreachable remote
-        therefore blocked conform for as long as git waited -- measured at 7.44s
-        cumulative in one unit test whose fixture pointed origin at a real
-        GitHub URL, the single largest cost in the suite. Every other bounded
-        subprocess in this codebase states c.Infra.TIMEOUT_SHORT; the network
-        call, the one most able to hang, stated nothing.
-        """
+    @pytest.mark.slow
+    def test_ancestry_plan_never_fetches_origin(self, infra_git_repo: Path) -> None:
+        """Planning consumes the existing origin ref without network access."""
         root = infra_git_repo
         dist = u.Tests.repository_ref(config.Infra.name).distribution
         u.Tests.write_project_beads_config(root, dist)
@@ -194,42 +186,35 @@ class TestsAncestryNetworkBoundary:
         tests_init = root / "tests" / "__init__.py"
         tests_init.parent.mkdir(parents=True, exist_ok=True)
         tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
+        for relative_parent in (
+            ".beads",
+            ".github/ci-template",
+            ".github/prompts",
+            ".github/scripts",
+            ".github/workflows",
+            "config",
+            "tests/fixtures/ci/docker",
+        ):
+            root.joinpath(relative_parent).mkdir(parents=True, exist_ok=True)
         u.Tests.commit_git_changes(root, "Seed manifest-less topology")
-
-        recorded: list[tuple[tuple[str, ...], int | None]] = []
-        original = u.Cli.run_raw
-
-        def _record(
-            cmd: t.StrSequence,
-            cwd: t.Cli.TextPath | None = None,
-            timeout: int | None = None,
-            env: t.StrMapping | None = None,
-            remove_env_keys: t.StrSequence = (),
-            input_data: str | bytes | None = None,
-            *,
-            capture: bool = True,
-        ) -> p.Result[p.Cli.CommandOutput]:
-            recorded.append((tuple(cmd), timeout))
-            return original(
-                cmd,
-                cwd=cwd,
-                timeout=timeout,
-                env=env,
-                remove_env_keys=remove_env_keys,
-                input_data=input_data,
-                capture=capture,
+        tm.ok(
+            u.Cli.run_checked(
+                [
+                    c.Infra.GIT,
+                    "remote",
+                    "set-url",
+                    "origin",
+                    str(root / "unreachable-origin.git"),
+                ],
+                cwd=root,
             )
-
-        monkeypatch.setattr(u.Cli, "run_raw", _record)
+        )
         request = m.Infra.CodegenConformRequest(root=root)
         tm.ok(
-            FlextInfraCodegenConform(workspace_root=root, request=request).plan(request)
+            FlextInfraCodegenConform(repository_root=root, request=request).plan(
+                request
+            )
         )
-
-        fetches = [entry for entry in recorded if "fetch" in entry[0]]
-        tm.that(bool(fetches), eq=True)
-        for _command, timeout in fetches:
-            tm.that(timeout, eq=c.Infra.TIMEOUT_SHORT)
 
 
 __all__: list[str] = []

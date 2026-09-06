@@ -81,7 +81,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return min(existing, target)
 
     def _add(self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair) -> None:
-        """Insert a name/target pair, resolving collisions via policy scoring."""
+        """Insert a name/target pair and record ambiguous ownership."""
         existing = index.get(name)
         if existing is None or existing == target:
             index[name] = target
@@ -92,9 +92,9 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             index[name] = winner
             return
         self._collision_count += 1
-        u.Cli.warning(
+        u.Cli.error(
             f"export collision for {name!r}: {existing} vs {target}; "
-            f"resolved by canonical policy scorer to {winner}"
+            f"candidate selected for complete inventory: {winner}"
         )
         index[name] = winner
 
@@ -108,11 +108,13 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
             return True
         if self._is_declared_public_reexport(a, b):
             return True
+        if self._is_package_root_reexport(a, b):
+            return True
         if self._is_test_collection_collision(a, b):
             return True
         for pub_mod, priv_mod in ((a[0], b[0]), (b[0], a[0])):
             pub_file = f"{pub_mod.rsplit('.', maxsplit=1)[-1]}.py"
-            if not u.Infra.is_public_python_module_file(pub_file):
+            if not u.Infra.matches_root_namespace_file(pub_file):
                 continue
             if "." in priv_mod and priv_mod.split(".")[-2].startswith("_"):
                 return True
@@ -126,6 +128,25 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return (
             a_owner == b or b_owner == a or (a_owner is not None and a_owner == b_owner)
         )
+
+    def _is_package_root_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
+        """Return whether a package root republishes its direct facade owner."""
+        if a[1] != b[1]:
+            return False
+        for root_target, child_target in ((a, b), (b, a)):
+            root_module, attr = root_target
+            child_module, _ = child_target
+            if child_module.rpartition(".")[0] != root_module:
+                continue
+            root_file = self._module_file(root_module)
+            if root_file is None or root_file.name != "__init__.py":
+                continue
+            declared_exports = self.rope_workspace.exports(
+                root_file, export_options=m.Infra.ExportOptions(allow_assignments=True)
+            )
+            if attr in declared_exports:
+                return True
+        return False
 
     def _declared_export_owner(self, target: t.StrPair) -> t.StrPair | None:
         module_path, attr = target
