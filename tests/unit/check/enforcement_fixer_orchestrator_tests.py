@@ -20,10 +20,6 @@ class TestsEnforcementFixerOrchestrator:
     """Root-cause guardrails for fixer collection and routing."""
 
     @staticmethod
-    def _rule(rule_id: str) -> m.EnforcementRuleSpec:
-        return test_u.Tests.enforcement_rule(rule_id)
-
-    @staticmethod
     def _orchestrator(workspace: Path) -> FlextInfraEnforcementFixerOrchestrator:
         return FlextInfraEnforcementFixerOrchestrator(
             repository_root=workspace, selected_projects=("demo",)
@@ -36,6 +32,7 @@ class TestsEnforcementFixerOrchestrator:
         project_dir = test_u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
+        test_u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         source_file = project_dir / "src" / "demo" / "sample.py"
         source_file.parent.mkdir(parents=True)
         source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
@@ -59,6 +56,7 @@ class TestsEnforcementFixerOrchestrator:
         project_dir = test_u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
+        test_u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         excluded_stub = project_dir / ".venv" / "ignored.pyi"
         stub_file.parent.mkdir(parents=True)
@@ -120,7 +118,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_manual_fix_dry_run_previews_without_mutation(self, tmp_path: Path) -> None:
         """Manual fix actions produce explicit previews in dry-run."""
-        rule = self._rule("ENFORCE-097")
+        rule = test_u.Tests.enforcement_rule("ENFORCE-097")
         fix_action = rule.fix_action
         if fix_action is None:
             pytest.fail("ENFORCE-097 must declare a manual fix action")
@@ -151,7 +149,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_manual_fix_apply_fails_loudly(self, tmp_path: Path) -> None:
         """Manual fix actions cannot be reported as applied automatically."""
-        rule = self._rule("ENFORCE-097")
+        rule = test_u.Tests.enforcement_rule("ENFORCE-097")
         adapter = FlextInfraManualFixerAdapter(tmp_path)
 
         result = adapter.fix_project(
