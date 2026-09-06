@@ -180,7 +180,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[m.Infra.CodegenResult].from_failure(committed)
             initialized_git = True
         service = cls(
-            repository_root=root, request=request, initial_workspace=initial_workspace
+            repository_root=root,
+            request=request,
+            initial_workspace=initial_workspace,
+            # A repository this invocation just created has no remote-tracking
+            # ref yet: `git init --initial-branch` makes `refs/heads/<branch>`
+            # and nothing has been pushed. The ancestry preflight therefore
+            # resolves its baseline to the local branch instead of
+            # `refs/remotes/origin/<branch>` -- which the field already
+            # expresses, and which nothing was setting, so every freshly
+            # scaffolded project failed its own preflight with "provider
+            # baseline ref is missing".
+            scaffolded_repository=initialized_git,
         )
         result = service.execute()
         if result.success:

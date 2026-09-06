@@ -18,6 +18,25 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
+def _hosting_device(path: Path) -> int:
+    """Return the filesystem device that will host ``path``.
+
+    The check below proves every destination shares one device with the
+    project root, because the transaction publishes by rename and a rename
+    cannot cross filesystems. A destination directory need not exist yet --
+    a freshly scaffolded project has no ``external/bin`` until this
+    transaction creates it -- and `lstat` on the absent directory raised
+    `FileNotFoundError`, failing generation for every new project. What will
+    host it is its nearest existing ancestor, which is what the rename
+    actually has to satisfy.
+    """
+    for candidate in (path, *path.parents):
+        if candidate.exists():
+            return candidate.lstat().st_dev
+    msg = f"no existing ancestor hosts the destination: {path}"
+    raise FileNotFoundError(msg)
+
+
 def _project_depth(item: m.Infra.MiseToolchainProjectLayout) -> int:
     """Order the narrowest project owner before its ancestors."""
     return -len(item.root.parts)
@@ -41,7 +60,7 @@ def plan_transaction_directories(
             )
         try:
             destination_devices = {
-                artifact.parent.lstat().st_dev
+                _hosting_device(artifact.parent)
                 for artifact in (
                     project.artifacts.config,
                     project.artifacts.unix_launcher,
@@ -49,7 +68,7 @@ def plan_transaction_directories(
                     project.artifacts.lock,
                 )
             }
-            project_device = project.root.lstat().st_dev
+            project_device = _hosting_device(project.root)
         except OSError as exc:
             return r[tuple[m.Infra.CodegenJournalDirectory, ...]].fail_op(
                 "inspect Mise staging filesystem", exc
