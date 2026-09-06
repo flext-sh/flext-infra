@@ -9,8 +9,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, override
 
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
-
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 from ._canonical_t_import import FlextInfraEnsureCanonicalTImportMixin
 
 if TYPE_CHECKING:

@@ -18,8 +18,7 @@ import ast
 import re
 from typing import TYPE_CHECKING, override
 
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
-
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 from ._rewrite import FlextInfraSourceRewrite, FlextInfraSourceRewriter
 
 if TYPE_CHECKING:

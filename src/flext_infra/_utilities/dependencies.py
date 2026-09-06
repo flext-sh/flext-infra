@@ -19,8 +19,9 @@ from packaging.utils import canonicalize_name
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
+
+from .._utilities.pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

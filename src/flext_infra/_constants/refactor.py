@@ -10,7 +10,8 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 from flext_core import c
-from flext_infra._constants.base import FlextInfraConstantsBase as cb
+
+from .._constants.base import FlextInfraConstantsBase as cb
 
 if TYPE_CHECKING:
     from flext_infra import t
