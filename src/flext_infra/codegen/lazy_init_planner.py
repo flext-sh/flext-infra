@@ -6,25 +6,14 @@ from pathlib import Path
 from typing import Annotated, override
 
 from flext_infra import c, m, p, t, u
-from flext_infra.codegen._lazy_init_planner_aliases import (
-    FlextInfraCodegenLazyInitPlannerAliasesMixin,
-)
-from flext_infra.codegen._lazy_init_planner_cache import (
-    FlextInfraCodegenLazyInitPlannerCacheMixin,
-)
-from flext_infra.codegen._lazy_init_planner_children import (
-    FlextInfraCodegenLazyInitPlannerChildrenMixin,
-)
-from flext_infra.codegen._lazy_init_planner_collision import (
-    FlextInfraCodegenLazyInitPlannerCollisionMixin,
-)
-from flext_infra.codegen._lazy_init_planner_exports import (
-    FlextInfraCodegenLazyInitPlannerExportsMixin,
-)
-from flext_infra.codegen._lazy_init_planner_parents import (
-    FlextInfraCodegenLazyInitPlannerParentsMixin,
-)
-from flext_infra.codegen._lazy_init_planner_public_root import (
+
+from ._lazy_init_planner_aliases import FlextInfraCodegenLazyInitPlannerAliasesMixin
+from ._lazy_init_planner_cache import FlextInfraCodegenLazyInitPlannerCacheMixin
+from ._lazy_init_planner_children import FlextInfraCodegenLazyInitPlannerChildrenMixin
+from ._lazy_init_planner_collision import FlextInfraCodegenLazyInitPlannerCollisionMixin
+from ._lazy_init_planner_exports import FlextInfraCodegenLazyInitPlannerExportsMixin
+from ._lazy_init_planner_parents import FlextInfraCodegenLazyInitPlannerParentsMixin
+from ._lazy_init_planner_public_root import (
     FlextInfraCodegenLazyInitPlannerPublicRootMixin,
 )
 
@@ -64,7 +53,7 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
 
     @property
     def collision_count(self) -> int:
-        """Number of export collisions resolved so far."""
+        """Number of unresolved export collisions found so far."""
         return self._collision_count
 
 
@@ -144,7 +133,9 @@ class FlextInfraCodegenLazyInitPlanner(
             lazy_map.pop(name, None)
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
-            return m.Infra.LazyInitPlan(context=context, action=empty_action)
+            return self._publish_plan(
+                m.Infra.LazyInitPlan(context=context, action=empty_action)
+            )
         excluded_lazy_names: t.StrSequence = ()
         is_public_project_root = (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR

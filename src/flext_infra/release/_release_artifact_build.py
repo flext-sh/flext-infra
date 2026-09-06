@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra.release._release_artifact_execution import (
-    FlextInfraReleaseArtifactExecutionMixin,
-)
+
+from ._release_artifact_execution import FlextInfraReleaseArtifactExecutionMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -37,23 +36,17 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         pyproject_path = stage_path / c.Infra.PYPROJECT_FILENAME
         source_result = u.Cli.files_read_text(pyproject_path)
         if source_result.failure:
-            return r[bool].fail(
-                source_result.error or f"read staged pyproject failed: {project}"
-            )
+            return r[bool].from_failure(source_result)
         render_result = self._release_pyproject(source_result.value, version, versions)
         if render_result.failure:
-            return r[bool].fail(
-                render_result.error or f"release metadata failed: {project}"
-            )
+            return r[bool].from_failure(render_result)
         for path in (
             pyproject_path,
             output_dir / "metadata" / f"{project}-pyproject.toml",
         ):
             write_result = self._write_release_text(path, render_result.value)
             if write_result.failure:
-                return r[bool].fail(
-                    write_result.error or f"write release metadata failed: {project}"
-                )
+                return r[bool].from_failure(write_result)
         return r[bool].ok(True)
 
     def _stage_release_source(
@@ -70,25 +63,16 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         """Stage and validate committed source, returning epoch and license digest."""
         archive_result = self._archive_project(project_path, stage_path)
         if archive_result.failure:
-            return r[t.Pair[m.Infra.SourceSnapshot, str]].fail(
-                archive_result.error or f"archive failed: {project}"
-            )
-        for result, fallback in (
-            (self._validate_staged_source(stage_path), "source path policy failed"),
-            (
-                self._scan_staged_source(stage_path, gitleaks_config_path),
-                "secret scan failed",
-            ),
+            return r[t.Pair[m.Infra.SourceSnapshot, str]].from_failure(archive_result)
+        for result in (
+            self._validate_staged_source(stage_path),
+            self._scan_staged_source(stage_path, gitleaks_config_path),
         ):
             if result.failure:
-                return r[t.Pair[m.Infra.SourceSnapshot, str]].fail(
-                    result.error or f"{fallback}: {project}"
-                )
+                return r[t.Pair[m.Infra.SourceSnapshot, str]].from_failure(result)
         license_result = self._source_license_digest(stage_path)
         if license_result.failure:
-            return r[t.Pair[m.Infra.SourceSnapshot, str]].fail(
-                license_result.error or f"source license invalid: {project}"
-            )
+            return r[t.Pair[m.Infra.SourceSnapshot, str]].from_failure(license_result)
         metadata_result = self._render_release_metadata(
             project=project,
             stage_path=stage_path,
@@ -97,9 +81,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             versions=versions,
         )
         if metadata_result.failure:
-            return r[t.Pair[m.Infra.SourceSnapshot, str]].fail(
-                metadata_result.error or f"metadata staging failed: {project}"
-            )
+            return r[t.Pair[m.Infra.SourceSnapshot, str]].from_failure(metadata_result)
         return r[t.Pair[m.Infra.SourceSnapshot, str]].ok((
             archive_result.value,
             license_result.value,
@@ -118,9 +100,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
         """Validate a complete artifact set and persist it atomically."""
         built_result = self._build_artifact_paths(temporary_dist)
         if built_result.failure:
-            return r[t.SequenceOf[m.Infra.BuildArtifact]].fail(
-                built_result.error or f"artifact output invalid: {project}"
-            )
+            return r[t.SequenceOf[m.Infra.BuildArtifact]].from_failure(built_result)
         validated: t.MutableSequenceOf[
             t.Triple[Path, t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
         ] = []
@@ -129,17 +109,15 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
                 source, project, version, license_sha256, versions
             )
             if validation.failure:
-                return r[t.SequenceOf[m.Infra.BuildArtifact]].fail(
-                    validation.error or "artifact validation failed"
-                )
+                return r[t.SequenceOf[m.Infra.BuildArtifact]].from_failure(validation)
             kind, digest = validation.value
             validated.append((source, kind, digest))
         persistence_result = self._persist_artifact_set(
             validated, output_dir / "artifacts" / project
         )
         if persistence_result.failure:
-            return r[t.SequenceOf[m.Infra.BuildArtifact]].fail(
-                persistence_result.error or "artifact persistence failed"
+            return r[t.SequenceOf[m.Infra.BuildArtifact]].from_failure(
+                persistence_result
             )
         return r[t.SequenceOf[m.Infra.BuildArtifact]].ok(
             tuple(
@@ -175,9 +153,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             license_sha256=license_sha256,
         )
         if artifacts_result.failure:
-            return r[m.Infra.BuildRecord].fail(
-                artifacts_result.error or f"artifact finalization failed: {project}"
-            )
+            return r[m.Infra.BuildRecord].from_failure(artifacts_result)
         return r[m.Infra.BuildRecord].ok(
             self._build_record(
                 project=project,
@@ -214,17 +190,15 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             log_path=log_path,
         )
         if build_result.failure:
-            return r[m.Infra.BuildRecord].fail(
-                build_result.error or f"uv build failed: {project}"
-            )
+            return r[m.Infra.BuildRecord].from_failure(build_result)
         command = build_result.value
-        if command.exit_code != 0:
+        if not u.Cli.process_succeeded(command.outcome):
             return r[m.Infra.BuildRecord].ok(
                 self._build_record(
                     project=project,
                     project_path=project_path,
                     log_path=log_path,
-                    exit_code=command.exit_code,
+                    exit_code=command.outcome.raw_return_code,
                     snapshot=snapshot,
                     source_license_sha256=license_sha256,
                 )
@@ -255,9 +229,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             log_path, f"release metadata staged and validated: {project}\n"
         )
         if write_result.failure:
-            return r[m.Infra.BuildRecord].fail(
-                write_result.error or f"write release log failed: {project}"
-            )
+            return r[m.Infra.BuildRecord].from_failure(write_result)
         return r[m.Infra.BuildRecord].ok(
             self._build_record(
                 project=project,
@@ -326,9 +298,7 @@ class FlextInfraReleaseArtifactBuildMixin(FlextInfraReleaseArtifactExecutionMixi
             versions=versions,
         )
         if stage_result.failure:
-            return r[m.Infra.BuildRecord].fail(
-                stage_result.error or f"source staging failed: {project}"
-            )
+            return r[m.Infra.BuildRecord].from_failure(stage_result)
         snapshot, license_sha256 = stage_result.value
         if dry_run:
             return self._dry_run_release_record(

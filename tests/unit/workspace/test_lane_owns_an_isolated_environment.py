@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from flext_infra import FlextInfraWorktreeService, c, config
 from flext_tests import tm
 from tests import u
+from tests.unit.workspace import WorktreeFixture
 
 _VENV_NAME = config.Infra.tooling.tools.pyright.path_rules.venv_name
 
@@ -70,32 +69,23 @@ def _declare_child(tmp_path: Path, repository: Path) -> None:
 
 
 def _lane(repository: Path, branch: str) -> Path:
-    return Path(
-        tm.ok(
-            FlextInfraWorktreeService(
-                repository_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
-    )
+    return Path(WorktreeFixture.add_worktree(repository, branch))
 
 
-def test_setup_runs_in_lane_and_creates_real_local_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_setup_runs_in_lane_and_creates_real_local_environment(tmp_path: Path) -> None:
     repository = _repository(tmp_path)
     primary_sentinel = repository / _VENV_NAME / "primary-sentinel"
     primary_sentinel.parent.mkdir()
     primary_sentinel.write_text("untouched\n", encoding="utf-8")
     lane = _lane(repository, "feature/isolated-environment")
-    monkeypatch.setenv("MAKEFILES", str(tmp_path / "hostile.mk"))
-    monkeypatch.setenv("GNUMAKEFLAGS", "--eval=hostile")
-    monkeypatch.setenv("PYTHONPATH", str(tmp_path / "hostile-pythonpath"))
-
-    tm.ok(FlextInfraWorktreeService.setup_lane(lane))
+    with tm.scope(
+        env={
+            "MAKEFILES": str(tmp_path / "hostile.mk"),
+            "GNUMAKEFLAGS": "--eval=hostile",
+            "PYTHONPATH": str(tmp_path / "hostile-pythonpath"),
+        }
+    ):
+        tm.ok(FlextInfraWorktreeService.setup_lane(lane))
 
     lane_venv = lane / _VENV_NAME
     assert lane_venv.is_dir()

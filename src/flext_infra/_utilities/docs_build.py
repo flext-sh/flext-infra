@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from flext_cli import u
-from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from .._utilities.docs import FlextInfraUtilitiesDocs
 
 if TYPE_CHECKING:
     from types import ModuleType
@@ -154,7 +155,7 @@ class FlextInfraUtilitiesDocsBuild:
                     passed=False,
                 )
             output = completed.value
-            if output.exit_code == 0:
+            if u.Cli.process_succeeded(output.outcome):
                 return m.Infra.DocsPhaseReport(
                     phase="build",
                     scope=scope.name,
@@ -171,7 +172,7 @@ class FlextInfraUtilitiesDocsBuild:
                 reason=(
                     reason_lines[-1]
                     if reason_lines
-                    else f"mkdocs exited {output.exit_code} ({settings.name})"
+                    else f"mkdocs exited {output.outcome.raw_return_code} ({settings.name})"
                 ),
                 site_dir=site_dir.as_posix(),
                 passed=False,

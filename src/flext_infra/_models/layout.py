@@ -15,22 +15,22 @@ from typing import Annotated, Literal
 
 from flext_cli import m
 from flext_infra import t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
-
-class _LayoutContract(m.ContractModel):
-    """Private declarative base for schema-loaded layout records.
-
-    Mirrors ``_ConfigContract`` from ``_models/config.py``; kept local because
-    ``config.py`` consumes this module (a reverse import would be a cycle).
-    """
-
-    model_config = m.ConfigDict(
-        strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
-    )
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsLayout:
+    class _LayoutContract(m.ContractModel):
+        """Private declarative base for schema-loaded layout records.
+
+        Mirrors ``_ConfigContract`` from ``_models/config.py``; kept local because
+        ``config.py`` consumes this module (a reverse import would be a cycle).
+        """
+
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
+
     """Field-only layout SSOT contracts and engine result models."""
 
     class LayoutMoveSpec(_LayoutContract):

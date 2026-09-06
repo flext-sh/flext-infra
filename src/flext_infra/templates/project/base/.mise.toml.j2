@@ -9,6 +9,7 @@
 [settings]
 # The lockfile is a generated, committed projection of immutable tool metadata.
 lockfile = true
+lockfile_platforms = {{ mise_lock_platforms | list | tojson }}
 
 [tool_config]
 locked = true
@@ -17,6 +18,7 @@ locked = true
 # Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
 #          gitleaks_version, scc_version, kubeconform_version, qlty_version,
+#          node_version, jscpd_version, waza_version,
 #          beads (selector/version/prerelease), gascity (selector/version/prerelease))
 [tools]
 python = "{{ python_version }}"
@@ -36,19 +38,25 @@ gitleaks = "{{ gitleaks_version }}"
 # which keeps the offline setup/gen/check/test path source-build-free.
 "aqua:boyter/scc" = "{{ scc_version }}"
 kubeconform = "{{ kubeconform_version }}"
-# qlty ships no mise registry alias; the github backend selector is the only
-# resolvable form (bare 'qlty' fails mise install: 'not found in registry').
-"github:qltysh/qlty" = "{{ qlty_version }}"
+node = "{{ node_version }}"
+"npm:jscpd" = "{{ jscpd_version }}"
+"github:microsoft/waza" = "{{ waza_version }}"
 # Go runtime for the Go projects in this workspace.
 go = "{{ go_version }}"
+# qlty ships no mise registry alias; the github backend selector is the only
+# resolvable form (bare 'qlty' fails mise install: 'not found in registry').
+# GitHub Artifact Attestations is an external-token capability and is not
+# selected by setup/gen; the lock still authenticates the downloaded bytes by
+# checksum without silently requiring a personal GitHub credential.
+[tools."github:qltysh/qlty"]
+version = "{{ qlty_version }}"
+github_attestations = false
 [tools."{{ beads.selector }}"]
 version = "{{ beads.version }}"
 prerelease = {{ "true" if beads.prerelease else "false" }}
-{% if beads.minimum_release_age %}minimum_release_age = "{{ beads.minimum_release_age }}"
-{% endif %}
+github_attestations = false
 [tools."{{ gascity.selector }}"]
 version = "{{ gascity.version }}"
 prerelease = {{ "true" if gascity.prerelease else "false" }}
-{% if gascity.minimum_release_age %}minimum_release_age = "{{ gascity.minimum_release_age }}"
-{% endif %}
+github_attestations = false
 # End SECTION: tools

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import m, p, r, t
+from flext_infra import p, r, t
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u
@@ -16,10 +16,6 @@ if TYPE_CHECKING:
 
 
 class TestsFlextInfraDepsDetectionPipCheck:
-    @staticmethod
-    def make_runner(result: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:
-        return u.Tests.DeptryRunner(result)
-
     @pytest.mark.parametrize(
         ("create_pip", "runner", "expected_lines", "expected_exit_code", "failed"),
         [

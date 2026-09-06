@@ -28,11 +28,12 @@ def _write_bootstrap_owner(package_root: Path, subpackage: str) -> Path:
     facet_dir = package_root / subpackage
     facet_dir.mkdir()
     (facet_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+    symbol_name = f"Flext{subpackage.removeprefix('_').title().replace('_', '')}Part"
     (facet_dir / "part.py").write_text(
         '"""Bootstrap implementation detail."""\n\n'
-        "class FlextLazyPart:\n"
+        f"class {symbol_name}:\n"
         '    """Bootstrap owner."""\n\n'
-        '__all__ = ["FlextLazyPart"]\n',
+        f'__all__ = ["{symbol_name}"]\n',
         encoding=c.Cli.ENCODING_DEFAULT,
     )
     return facet_dir

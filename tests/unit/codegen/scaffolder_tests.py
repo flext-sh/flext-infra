@@ -105,7 +105,7 @@ class TestScaffoldProjectFacadeOwnership:
         project = _create_test_project(tmp_path, with_all_modules=True)
         (project / "examples").mkdir()
         (project / "scripts").mkdir()
-        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        scaffolder = FlextInfraCodegenScaffolder(repository_root=tmp_path)
         [result] = scaffolder.run(projects=[_project_info(project)])
 
         tm.that(len(result.files_created), eq=10)

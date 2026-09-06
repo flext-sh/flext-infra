@@ -93,7 +93,7 @@ class TestsCodegenArtifactSsot:
     @pytest.mark.parametrize(
         "profile", [c.Infra.MakeProfile.WORKSPACE, c.Infra.MakeProfile.STANDALONE]
     )
-    def test_gitignore_tracks_agentsctl_project_projections(
+    def test_gitignore_tracks_governed_provider_projections(
         self, codegen: CodegenSpec, profile: c.Infra.MakeProfile
     ) -> None:
         """Version authorization and provider surfaces for every repository role."""

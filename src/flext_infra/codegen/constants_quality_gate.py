@@ -28,7 +28,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
         """Execute the quality gate and return its CLI success/failure status."""
         report_result = self.build_report()
         if report_result.failure:
-            return r[bool].fail(report_result.error or "quality gate build failed")
+            return r[bool].from_failure(report_result)
         verdict = u.Cli.json_pick_str(report_result.value, "verdict", "FAIL")
         if self.successful_verdict(verdict):
             return r[bool].ok(True)
@@ -36,12 +36,25 @@ class FlextInfraCodegenQualityGate(s[bool]):
 
     def build_report(self) -> p.Result[t.JsonMapping]:
         """Execute quality gate and return structured report payload."""
-        FlextInfraCodegenLazyInit(repository_root=self.repository_root).generate_inits()
-        census_report = FlextInfraRefactorCensus(
-            repository_root=self.repository_root,
-            include_local_scopes=False,
-            kinds=("constant",),
-        ).build_report()
+        lazy_plans = FlextInfraCodegenLazyInit(
+            repository_root=self.repository_root
+        ).plan_files()
+        if lazy_plans.failure:
+            return r[t.JsonMapping].from_failure(lazy_plans)
+        pending_lazy = tuple(
+            plan
+            for plan in lazy_plans.value.files
+            if u.Infra.codegen_file_requires_effect(plan)
+        )
+        if pending_lazy:
+            paths = ", ".join(str(plan.path) for plan in pending_lazy)
+            return r[t.JsonMapping].fail(
+                f"lazy-init artifacts require codegen conform: {paths}"
+            )
+        census = FlextInfraRefactorCensus(
+            include_local_scopes=False, kinds=("constant",)
+        ).model_copy(update={"repository_root": self.repository_root})
+        census_report = census.build_report()
         modified_files = self.modified_python_files(self.repository_root)
         pyrefly_check, ruff_check = self._run_static_checks(
             self.repository_root, modified_files
@@ -78,9 +91,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             render_text=self.render_text(report),
         )
         if artifacts.failure:
-            return r[t.JsonMapping].fail(
-                artifacts.error or "quality gate artifact write failed"
-            )
+            return r[t.JsonMapping].from_failure(artifacts)
         report_data["artifacts"] = artifacts.value
         return r[t.JsonMapping].ok(
             t.Infra.INFRA_MAPPING_ADAPTER.validate_python(report_data)
@@ -100,7 +111,7 @@ class FlextInfraCodegenQualityGate(s[bool]):
             "status",
             "--porcelain",
         ])
-        if result.failure or result.value.exit_code != 0:
+        if result.failure or not u.Cli.process_succeeded(result.value.outcome):
             return []
         for line in (
             entry.strip() for entry in result.value.stdout.splitlines() if entry.strip()
@@ -162,9 +173,9 @@ class FlextInfraCodegenQualityGate(s[bool]):
         output = (run.value.stderr or run.value.stdout or "").strip()
         lines = [line for line in output.splitlines() if line.strip()]
         return {
-            "passed": run.value.exit_code == 0,
+            "passed": u.Cli.process_succeeded(run.value.outcome),
             "detail": " | ".join(lines[:5]) if lines else "ok",
-            "exit_code": run.value.exit_code,
+            "exit_code": run.value.outcome.raw_return_code,
         }
 
     @classmethod
@@ -339,14 +350,10 @@ class FlextInfraCodegenQualityGate(s[bool]):
             ),
         )
         if json_write.failure:
-            return r[t.JsonMapping].fail(
-                json_write.error or f"cannot write {report_json}"
-            )
+            return r[t.JsonMapping].from_failure(json_write)
         txt_write = u.Cli.atomic_write_text_file(report_txt, render_text)
         if txt_write.failure:
-            return r[t.JsonMapping].fail(
-                txt_write.error or f"cannot write {report_txt}"
-            )
+            return r[t.JsonMapping].from_failure(txt_write)
         return r[t.JsonMapping].ok({
             "report_json": str(report_json),
             "report_text": str(report_txt),

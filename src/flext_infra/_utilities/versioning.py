@@ -94,7 +94,7 @@ class FlextInfraUtilitiesVersioning:
             return r[str].fail(f"invalid bump type: {bump_type}")
         result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if result.failure:
-            return r[str].fail(result.error or "parse failed")
+            return r[str].from_failure(result)
         if normalized_bump == c.Infra.VersionBump.NONE:
             return r[str].ok(version)
         major, minor, patch = result.value
@@ -116,7 +116,7 @@ class FlextInfraUtilitiesVersioning:
         """Return the base release of ``version`` (a final version is itself)."""
         result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if result.failure:
-            return r[str].fail(result.error or "parse failed")
+            return r[str].from_failure(result)
         major, minor, patch = result.value
         return r[str].ok(f"{major}.{minor}.{patch}")
 
@@ -183,14 +183,43 @@ class FlextInfraUtilitiesVersioning:
         try:
             return r[bool].ok(Version(candidate) > Version(reference))
         except InvalidVersion as exc:
-            return r[bool].fail(f"invalid version: {exc}")
+            return r[bool].fail(f"invalid version: {exc}", exception=exc)
+
+    @staticmethod
+    def latest_release_tag(tags: t.StrSequence) -> p.Result[str]:
+        """Return the highest release tag under PEP 440, or ``""`` when none exist.
+
+        Git's ``--sort=version:refname`` is a refname collation, not a PEP 440
+        ordering: it places ``v0.12.0rc2`` above ``v0.12.0`` because the longer
+        refname collates later. The release protocol then read the newest
+        release as a release candidate, decided the released version still
+        "awaits its tag", and never bumped again in any repository that had
+        ever cut an rc (flext-1wjg1.16.34). Order by the same PEP 440 owner
+        ``version_is_newer`` already uses, and fail loud on a ``v*`` tag that
+        is not a version rather than silently ranking it.
+        """
+        prefix = c.Infra.TAG_FORMAT.format(version="")
+        highest_version: Version | None = None
+        highest_tag = ""
+        for raw_tag in tags:
+            tag = raw_tag.strip()
+            if not tag:
+                continue
+            try:
+                parsed = Version(tag.removeprefix(prefix))
+            except InvalidVersion as exc:
+                return r[str].fail(f"invalid release tag {tag}: {exc}")
+            if highest_version is None or parsed > highest_version:
+                highest_version = parsed
+                highest_tag = tag
+        return r[str].ok(highest_tag)
 
     @staticmethod
     def render_project_version(content: str, version: str) -> p.Result[str]:
         """Render one canonical project-version update without writing it."""
         version_result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if version_result.failure:
-            return r[str].fail(version_result.error or "invalid version")
+            return r[str].from_failure(version_result)
         if not FlextInfraUtilitiesVersioning._has_project_table(content):
             return r[str].fail("missing [project] table")
         updated = FlextInfraUtilitiesVersioning._replace_project_version_in_text(

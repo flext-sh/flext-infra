@@ -6,11 +6,11 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
@@ -23,21 +23,21 @@ from flext_infra.transformers.hardcoded_version import (
 from flext_infra.transformers.import_modernizer import (
     FlextInfraRefactorImportModernizer,
 )
+from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
 from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
 from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
+from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
-    from flext_infra.transformers.base import FlextInfraRopeTransformer
+
+    from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 
 class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
@@ -54,12 +54,15 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         super().__init__(repository_root)
 
     # Canonical transformer registry. New deterministic transformers register here.
-    _TRANSFORMERS: ClassVar[dict[str, type[FlextInfraRopeTransformer]]] = {
+    _TRANSFORMERS: ClassVar[
+        t.MutableMappingKV[str, type[FlextInfraRopeTransformer]]
+    ] = {
         "cast_remover": FlextInfraRefactorCastRemover,
         "compatibility_alias": FlextInfraRefactorCompatibilityAlias,
         "future_import": FlextInfraRefactorFutureImport,
         "hardcoded_version": FlextInfraRefactorHardcodedVersion,
         "import_modernizer": FlextInfraRefactorImportModernizer,
+        "mro_remover": FlextInfraRefactorMroRemover,
         "open_encoding": FlextInfraRefactorOpenEncoding,
         "pattern": FlextInfraRefactorPatternTransformer,
         "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,
@@ -70,7 +73,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     }
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
 
@@ -78,16 +81,16 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[t.Pair[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply transformer fixes file-by-file for the given violations."""
         if not violations:
             return m.Infra.ProjectFixResult(project=project_dir.name)
-        fixed: list[m.Infra.FixedViolation] = []
-        previewed: list[m.Infra.PreviewedViolation] = []
-        skipped: list[m.Infra.SkippedViolation] = []
-        failed: list[m.Infra.FailedFix] = []
+        fixed: t.MutableSequenceOf[m.Infra.FixedViolation] = []
+        previewed: t.MutableSequenceOf[m.Infra.PreviewedViolation] = []
+        skipped: t.MutableSequenceOf[m.Infra.SkippedViolation] = []
+        failed: t.MutableSequenceOf[m.Infra.FailedFix] = []
         files_modified: set[str] = set()
         for target, target_violations in self._group_by_target(violations).items():
             transformer_cls = self._TRANSFORMERS.get(target)
@@ -137,18 +140,13 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                         error=normalize_result.error or "import normalization failed",
                     )
                 )
-        return m.Infra.ProjectFixResult(
-            project=project_dir.name,
-            fixed=tuple(fixed),
-            previewed=tuple(previewed),
-            skipped=tuple(skipped),
-            failed=tuple(failed),
-            files_modified=tuple(files_modified),
+        return self._build_project_fix_result(
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     @staticmethod
     def _is_owned_library_exempt(
-        project_dir: Path, fix_action: me.EnforcementFixAction | None, file_path: Path
+        project_dir: Path, fix_action: m.EnforcementFixAction | None, file_path: Path
     ) -> bool:
         """Skip import modernization inside the library's owning project.
 
@@ -179,7 +177,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         """
         paths = tuple(Path(path) for path in file_paths)
         with u.Infra.open_project(self._repository_root) as rope_project:
-            return FlextInfraUtilitiesRopeImports.normalize_imports(
+            return u.Infra.normalize_imports(
                 rope_project, file_paths=paths, preserve_canonical_aliases=True
             )
 
@@ -187,7 +185,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         self,
         file_path: Path,
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction | None,
+        fix_action: m.EnforcementFixAction | None,
         ctx: m.Infra.FixEnforcementCommand,
         *,
         rule_id: str = "",
@@ -217,6 +215,23 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 ),
             )
         source = read.value
+        # A generated projection is repaired at its template and regenerated,
+        # never edited in place. Fixing one here removed a re-export block from
+        # src/flext_infra/__init__.py while __all__ still declared the names,
+        # leaving the package broken until the next generation overwrote the
+        # edit anyway. private_imports, compatibility_aliases and semantic_apply
+        # already skip these files; this adapter did not.
+        if source.startswith(c.Infra.AUTOGEN_HEADER):
+            return m.Infra.ProjectFixResult(
+                project=file_path.parent.name,
+                skipped=(
+                    m.Infra.SkippedViolation(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        reason="generated projection; fix the template and regenerate",
+                    ),
+                ),
+            )
         transformer = self._build_transformer(
             transformer_cls=transformer_cls, fix_action=fix_action, file_path=file_path
         )
@@ -229,6 +244,27 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                         rule_id=rule_id,
                         file_path=str(file_path),
                         reason="no changes produced",
+                    ),
+                ),
+            )
+        # A fix that does not parse is not a fix. Writing it corrupts the file
+        # for every later rule in the run: the next transformer reads it back,
+        # fails inside its own parser, and reports a location that has nothing
+        # to do with the rule that caused the damage. Validating here keeps the
+        # failure attributable and leaves the tree intact.
+        try:
+            ast.parse(updated)
+        except SyntaxError as exc:
+            return m.Infra.ProjectFixResult(
+                project=file_path.parent.name,
+                failed=(
+                    m.Infra.FailedFix(
+                        rule_id=rule_id,
+                        file_path=str(file_path),
+                        error=(
+                            f"fix produced source that does not parse at line "
+                            f"{exc.lineno}: {exc.msg}"
+                        ),
                     ),
                 ),
             )
@@ -270,7 +306,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     @staticmethod
     def _build_transformer(
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction,
+        fix_action: m.EnforcementFixAction,
         file_path: Path,
     ) -> FlextInfraRopeTransformer:
         """Instantiate a transformer with params declared in the catalog."""
@@ -282,7 +318,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                 if isinstance(targets_value, (list, tuple))
                 else ()
             )
-            canonical_map: dict[frozenset[str], str] = {}
+            canonical_map: t.MutableMappingKV[frozenset[str], str] = {}
             if "dict" in targets:
                 canonical_map[frozenset({"dict[K, V]"})] = "t.MappingKV[K, V]"
                 canonical_map[frozenset({"dict[str, Any]"})] = (
@@ -343,4 +379,4 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         return transformer_cls()
 
 
-__all__: list[str] = ["FlextInfraTransformerFixerAdapter"]
+__all__: t.MutableSequenceOf[str] = ["FlextInfraTransformerFixerAdapter"]

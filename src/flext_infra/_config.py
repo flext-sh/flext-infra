@@ -9,7 +9,8 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_cli.config import FlextCliConfig
-from flext_infra._models.config import FlextInfraConfigModels
+
+from ._models.config import FlextInfraConfigModels
 
 
 class _FlextInfraConfig(FlextCliConfig):

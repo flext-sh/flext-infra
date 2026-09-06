@@ -19,8 +19,6 @@ class FlextInfraGate:
     gate_id: ClassVar[str] = ""
     gate_name: ClassVar[str] = ""
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = ""
-    tool_url: ClassVar[str] = ""
 
     def __init__(
         self, repository_root: Path, *, runner: p.Cli.CommandRunner | None = None
@@ -90,6 +88,7 @@ class FlextInfraGate:
             project_dir,
             timeout=self._check_timeout(project_dir, ctx),
             env=self._check_env(project_dir, ctx),
+            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
@@ -112,31 +111,12 @@ class FlextInfraGate:
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution from parsed check output.
+        """Assemble a strict gate execution from parsed check output.
 
-        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
-        marked passed so advisory enforcement gates do not fail the check
-        pipeline. ``errors`` overrides the default issue-derived report
-        lines (fix paths report applied changes there).
+        ``errors`` overrides the default issue-derived report lines for fix
+        paths. Findings are never converted to warnings or successful results.
         """
-        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not passed:
-            warn_issues = [
-                issue.model_copy(update={"severity": "WARNING"})
-                if hasattr(issue, "model_copy")
-                else issue
-                for issue in issues
-            ]
-            return m.Infra.GateExecution(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=tuple(warn_issues),
-                raw_output=raw_output,
-            )
+        _ = ctx
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -249,6 +229,13 @@ class FlextInfraGate:
         _ = project_dir, ctx
         return None
 
+    def _check_remove_env_keys(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> t.StrSequence:
+        """Return inherited environment keys removed for this tool invocation."""
+        _ = project_dir, ctx
+        return ()
+
     # ------------------------------------------------------------------
     # Template method: fix
     # ------------------------------------------------------------------
@@ -271,11 +258,12 @@ class FlextInfraGate:
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
+        passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
             project_dir,
-            passed=result.exit_code == 0,
-            issues=(),
-            raw_output=self._fix_raw_output(result),
+            passed=passed,
+            issues=issues,
+            raw_output=self._raw_output(result),
             started=started,
         )
 
@@ -323,22 +311,29 @@ class FlextInfraGate:
         cwd: Path,
         timeout: int = c.Infra.TIMEOUT_DEFAULT,
         env: t.StrMapping | None = None,
+        remove_env_keys: t.StrSequence = (),
     ) -> p.Cli.CommandOutput:
         """Run."""
         runner = self._runner or u.Cli
-        result = runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        result = runner.run_raw(
+            cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
+        )
         if result.failure:
-            return m.Cli.CommandOutput(
-                stdout="",
-                stderr=result.error or "command execution failed",
-                exit_code=1,
-            )
+            # A failed Result here means the tool never ran -- it could not be
+            # spawned, or the runner itself failed. Synthesizing a
+            # CommandOutput with an invented raw_return_code=1 made that
+            # indistinguishable from the tool running and reporting findings,
+            # so a missing binary was reported as a code violation against
+            # `<scc>` and an operator chased a finding in a file that was
+            # never scanned. A nonzero exit from a tool that did run still
+            # reaches the parser as a real outcome; this path did not run.
+            msg = result.error or "command execution failed"
+            raise RuntimeError(msg)
         return result.value
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        """Return direct project-owned source directories only."""
-        candidates = ("src", "tests")
-        return self._dirs_with_py(project_dir, candidates)
+        """Return every first-class project-owned Python directory."""
+        return self._dirs_with_py(project_dir, c.Infra.CHECK_DIRS_REPOSITORY)
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:

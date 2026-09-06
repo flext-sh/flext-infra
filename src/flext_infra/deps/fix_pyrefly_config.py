@@ -10,13 +10,15 @@ from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import override
 
-from flext_infra import c, m, p, r, s, t, u
-from flext_infra.deps._pyrefly_fix_steps import FlextInfraConfigFixerSteps
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
+
+from ._pyrefly_fix_steps import FlextInfraConfigFixerSteps
 
 logger = u.fetch_logger(__name__)
 
 
-class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
+class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bool]):
     """Fix pyrefly configuration across workspace projects."""
 
     _repository_root: Path
@@ -46,7 +48,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             verbose=params.verbose,
         )
         if fix_result.failure:
-            return r[bool].fail(fix_result.error or "pyrefly config fix failed")
+            return r[bool].from_failure(fix_result)
         return r[bool].ok(True)
 
     def process_file(
@@ -55,9 +57,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         """Process one pyproject.toml file and apply fixes."""
         document_result = u.Cli.toml_read_document(path)
         if document_result.failure:
-            return r[t.StrSequence].fail(
-                document_result.error or f"failed to read {path}"
-            )
+            return r[t.StrSequence].from_failure(document_result)
         doc = document_result.value
         doc_data = doc.unwrap()
         tool_data = doc_data.get(c.Infra.TOOL)
@@ -91,7 +91,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
         all_fixes.extend(includes_result.value)
         sub_result = self._strip_ignored_sub_configs(pyrefly)
         if sub_result.failure:
-            return r[t.StrSequence].fail(sub_result.error or "validate-sub-configs")
+            return r[t.StrSequence].from_failure(sub_result)
         sub_fixes, removed_ignore = sub_result.value
         all_fixes.extend(sub_fixes)
         if removed_ignore or is_root:
@@ -114,9 +114,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
                 pyrefly_table[key] = value
             write_result = u.Cli.toml_write_document(path, doc)
             if write_result.failure:
-                return r[t.StrSequence].fail(
-                    write_result.error or f"failed to write {path}"
-                )
+                return r[t.StrSequence].from_failure(write_result)
         return r[t.StrSequence].ok(all_fixes)
 
     def run(
@@ -136,18 +134,14 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, s[bool]):
             self._repository_root, project_paths=project_paths or None
         )
         if files_result.failure:
-            return r[t.StrSequence].fail(
-                files_result.error or "failed to find pyproject files"
-            )
+            return r[t.StrSequence].from_failure(files_result)
         messages: t.MutableSequenceOf[str] = []
         total_fixes = 0
         pyproject_files: t.SequenceOf[Path] = files_result.value
         for path in pyproject_files:
             fixes_result = self.process_file(path, dry_run=dry_run)
             if fixes_result.failure:
-                return r[t.StrSequence].fail(
-                    fixes_result.error or f"failed to process {path}"
-                )
+                return r[t.StrSequence].from_failure(fixes_result)
             fixes: t.StrSequence = fixes_result.value
             if not fixes:
                 continue

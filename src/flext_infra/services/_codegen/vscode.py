@@ -35,17 +35,17 @@ class FlextInfraCodegenVscodeMixin:
         )
         read_result = cls._read_existing_settings(settings_path)
         if read_result.failure:
-            return r[str].fail(read_result.error or "VS Code settings read failed")
+            return r[str].from_failure(read_result)
         settings: t.MutableJsonMapping = {
             key: u.normalize_to_json_value(value)
             for key, value in read_result.value.items()
         }
         applied = cls._apply_canonical_settings(settings, repository_root)
         if applied.failure:
-            return r[str].fail(applied.error or "VS Code settings merge failed")
+            return r[str].from_failure(applied)
         serialized = u.Cli.json_dumps(dict(settings), indent=2)
         if serialized.failure:
-            return r[str].fail(serialized.error or "VS Code settings serialize failed")
+            return r[str].from_failure(serialized)
         return r[str].ok(serialized.value + "\n")
 
     @classmethod
@@ -56,14 +56,10 @@ class FlextInfraCodegenVscodeMixin:
             return r[t.JsonMapping].ok(empty_settings)
         read_result = u.Cli.files_read_text(settings_path)
         if read_result.failure:
-            return r[t.JsonMapping].fail(
-                read_result.error or "VS Code settings read failed"
-            )
+            return r[t.JsonMapping].from_failure(read_result)
         parsed = u.Cli.json_parse(cls._normalize_jsonc(read_result.value))
         if parsed.failure:
-            return r[t.JsonMapping].fail(
-                parsed.error or "VS Code settings JSONC parse failed"
-            )
+            return r[t.JsonMapping].from_failure(parsed)
         if not isinstance(parsed.value, Mapping):
             return r[t.JsonMapping].fail("VS Code settings root must be an object")
         return r[t.JsonMapping].ok(
@@ -176,17 +172,30 @@ class FlextInfraCodegenVscodeMixin:
         )
         if changed.failure:
             return r[bool].fail(changed.error)
-        # The three exclude maps derive from the codegen artifact SSOT;
-        # map_union_settings keeps only the remaining non-artifact keys.
+        # The three exclude maps are complete projections of the artifact SSOT.
+        # Replacing them removes retired artifacts instead of preserving stale
+        # generated keys forever. Only explicitly declared non-artifact maps use
+        # merge semantics.
         codegen = config.Infra.codegen
-        map_union_settings: dict[str, Mapping[str, str | bool]] = {
+        artifact_maps: dict[str, Mapping[str, str | bool]] = {
             "files.exclude": dict(codegen.vscode_files_exclude_map),
             "files.watcherExclude": dict(codegen.vscode_watcher_exclude_map),
             "search.exclude": dict(codegen.vscode_search_exclude_map),
-            **spec.map_union_settings,
         }
+        artifacts_changed = False
+        for key, canonical_map in artifact_maps.items():
+            canonical = {
+                name: u.normalize_to_json_value(value)
+                for name, value in canonical_map.items()
+            }
+            if settings.get(key) == canonical:
+                continue
+            settings[key] = canonical
+            artifacts_changed = True
         return r[bool].ok(
-            cls._apply_union_settings(settings, map_union_settings) or changed.value
+            cls._apply_union_settings(settings, spec.map_union_settings)
+            or artifacts_changed
+            or changed.value
         )
 
     @classmethod
@@ -245,6 +254,24 @@ class FlextInfraCodegenVscodeMixin:
             if settings.get(key) == merged:
                 continue
             settings[key] = merged
+            changed = True
+        return changed
+
+    @staticmethod
+    def _apply_exact_map_settings(
+        settings: t.MutableJsonMapping,
+        exact_maps: Mapping[str, Mapping[str, str | bool]],
+    ) -> bool:
+        """Replace generated maps so removed SSOT entries leave no residue."""
+        changed = False
+        for key, canonical_map in exact_maps.items():
+            exact: dict[str, t.JsonValue] = {
+                name: u.normalize_to_json_value(value)
+                for name, value in canonical_map.items()
+            }
+            if settings.get(key) == exact:
+                continue
+            settings[key] = exact
             changed = True
         return changed
 

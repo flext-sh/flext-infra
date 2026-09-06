@@ -6,13 +6,17 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
+from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDocsContract:
@@ -123,7 +127,7 @@ class FlextInfraUtilitiesDocsContract:
     def docs_workspace_contract(repository_root: Path) -> t.JsonMapping:
         """Return the root docs contract using root ``pyproject.toml`` metadata."""
         payload = FlextInfraUtilitiesDocsScope.project_payload(repository_root)
-        docs_meta = FlextInfraUtilitiesDocsScope.project_docs_meta(repository_root)
+        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
         exclude_docs = FlextInfraUtilitiesDocsScope.docs_meta_list(
             repository_root, "exclude_docs"
         )
@@ -160,15 +164,110 @@ class FlextInfraUtilitiesDocsContract:
         return result
 
     @staticmethod
+    def docs_current_project_contract(
+        project_root: Path, rendered_contract: t.JsonMapping
+    ) -> t.JsonMapping:
+        """Bind rendered API analysis to the current authenticated pyproject bytes."""
+        payload = FlextInfraUtilitiesDocsScope.project_payload(project_root)
+        project_value = payload.get(c.Infra.PROJECT)
+        if not isinstance(project_value, Mapping):
+            msg = f"docs project metadata is missing: {project_root}"
+            raise TypeError(msg)
+        project = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(project_value)
+        urls_value = project.get("urls")
+        urls = (
+            t.Infra.INFRA_MAPPING_ADAPTER.validate_python(urls_value)
+            if isinstance(urls_value, Mapping)
+            else t.Infra.INFRA_MAPPING_ADAPTER.validate_python({})
+        )
+        docs_meta = FlextInfraUtilitiesDocsScope.docs_meta_from_payload(payload)
+        project_name = str(project.get("name", "")).strip()
+        classifiers_value = project.get("classifiers")
+        exclude_docs_value = docs_meta.get("exclude_docs")
+        updated = dict(rendered_contract)
+        updated.update({
+            "description": str(project.get("description", "")).strip(),
+            "version": str(project.get(c.Infra.VERSION, "")).strip(),
+            "classifiers": list(classifiers_value)
+            if isinstance(classifiers_value, list)
+            else [],
+            "site_title": str(docs_meta.get("site_title", "")).strip() or project_name,
+            "site_url": str(
+                urls.get("Documentation") or urls.get("Homepage") or ""
+            ).strip(),
+            "repo_url": str(
+                urls.get("Repository") or urls.get("Homepage") or ""
+            ).strip(),
+            "exclude_docs": list(exclude_docs_value)
+            if isinstance(exclude_docs_value, list)
+            else [],
+        })
+        validated = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(updated)
+        return dict(validated)
+
+    @staticmethod
+    def docs_snapshot_sources(
+        paths: t.SequenceOf[Path],
+    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+        """Capture descriptor-authenticated states for every planner source."""
+        states: list[m.Cli.AtomicFileState] = []
+        for path in sorted(set(paths)):
+            state = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if state.failure:
+                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
+            states.append(state.value)
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
+
+    @staticmethod
+    def docs_file_plan(
+        project: Path,
+        path: Path,
+        content: bytes | None,
+        *,
+        desired_mode: int | None,
+        source_states: t.SequenceOf[m.Cli.AtomicFileState],
+    ) -> p.Result[m.Infra.CodegenFilePlan]:
+        """Plan one exact docs artifact without publishing it."""
+        if (
+            not project.is_absolute()
+            or not path.is_absolute()
+            or ".." in project.parts
+            or ".." in path.parts
+            or not path.is_relative_to(project)
+        ):
+            return r[m.Infra.CodegenFilePlan].fail(
+                f"unsafe docs publication target: {path}"
+            )
+        if (content is None) != (desired_mode is None):
+            return r[m.Infra.CodegenFilePlan].fail(
+                f"docs desired bytes and mode differ: {path}"
+            )
+        target = path
+        before = u.Cli.atomic_read_binary_file_state(target, required=False)
+        if before.failure:
+            return r[m.Infra.CodegenFilePlan].from_failure(before)
+        return r[m.Infra.CodegenFilePlan].ok(
+            m.Infra.CodegenFilePlan(
+                project=project,
+                path=target,
+                before=before.value,
+                desired_content=content,
+                desired_mode=desired_mode,
+                source_states=tuple(source_states),
+                owner="docs",
+                policy="full",
+            )
+        )
+
+    @staticmethod
     def docs_write_if_needed(
         path: Path, content: str, *, apply: bool, overwrite: bool = True
     ) -> m.Infra.GeneratedFile:
         """Write generated content only when needed and allowed.
 
-        A file that does not exist cannot drift: creating it is the apply
-        run's job. Check mode flags only existing-but-stale content, so a
-        fresh clone passes without pre-seeding the ephemeral output
-        directory.
+        This imperative helper belongs to non-generation docs fixers. Generated
+        documentation uses :meth:`docs_file_plan` and is published only by the
+        enclosing codegen transaction.
         """
         exists = path.exists()
         if exists and not overwrite:

@@ -5,26 +5,19 @@ from __future__ import annotations
 from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, ClassVar, override
-from urllib.parse import urlsplit
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
 from flext_infra.base import s
-from flext_infra.codegen._mise_artifacts_transaction import (
-    FlextInfraCodegenMiseArtifactTransaction,
-)
+from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 
 if TYPE_CHECKING:
     from flext_infra import p
 
 
 class FlextInfraCodegenMiseArtifacts(s[bool]):
-    """Hydrate generated lock checksums or validate committed Mise artifacts."""
+    """Validate committed Mise artifacts entirely offline."""
 
     _PLATFORM_PREFIX: ClassVar[str] = "platforms."
 
@@ -32,7 +25,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[t.JsonMapping].fail(source.error or f"cannot read {path.name}")
+            return r[t.JsonMapping].from_failure(source)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
             return r[t.JsonMapping].fail(f"invalid TOML in {path.name}")
@@ -100,190 +93,13 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             for raw_entry in raw_entries:
                 normalized = cls._normalize_lock_entry(raw_selector, raw_entry)
                 if normalized.failure:
-                    return r[t.JsonMapping].fail(
-                        normalized.error
-                        or f"mise.lock contains an invalid entry for {raw_selector}"
-                    )
+                    return r[t.JsonMapping].from_failure(normalized)
                 normalized_entries.append(dict(normalized.value))
             normalized_tools[raw_selector] = normalized_entries
         return r[t.JsonMapping].ok({
             "lockfile_version": payload.get("lockfile_version"),
             "tools": normalized_tools,
         })
-
-    @classmethod
-    def _entry_missing_checksums(
-        cls, selector: str, raw_entry: t.JsonValue
-    ) -> p.Result[tuple[tuple[str, str, str], ...]]:
-        """Return missing checksum sources from one normalized lock entry."""
-        result_type = r[tuple[tuple[str, str, str], ...]]
-        normalized = cls._normalize_lock_entry(selector, raw_entry)
-        if normalized.failure:
-            return result_type.fail(normalized.error)
-        platforms = normalized.value.get("platforms")
-        if not isinstance(platforms, Mapping):
-            return result_type.fail(
-                f"mise.lock contains invalid platform metadata for {selector}"
-            )
-        missing: list[tuple[str, str, str]] = []
-        for platform, metadata in platforms.items():
-            if not platform or not isinstance(metadata, Mapping):
-                return result_type.fail(
-                    f"mise.lock contains invalid platform metadata for {selector}"
-                )
-            if metadata.get("checksum") is not None:
-                continue
-            raw_url = metadata.get("url")
-            if not isinstance(raw_url, str):
-                return result_type.fail(
-                    f"mise.lock checksum source missing for {selector}/{platform}"
-                )
-            parsed_url = urlsplit(raw_url)
-            if (
-                parsed_url.scheme != "https"
-                or parsed_url.hostname is None
-                or parsed_url.username is not None
-                or parsed_url.password is not None
-            ):
-                return result_type.fail(
-                    f"mise.lock checksum source is not safe for {selector}/{platform}"
-                )
-            missing.append((selector, platform, raw_url))
-        return result_type.ok(tuple(missing))
-
-    @classmethod
-    def _missing_checksums(
-        cls, payload: t.JsonMapping
-    ) -> p.Result[tuple[tuple[str, str, str], ...]]:
-        """Return typed selector/platform/URL triples lacking a checksum."""
-        result_type = r[tuple[tuple[str, str, str], ...]]
-        raw_tools = payload.get("tools")
-        if not isinstance(raw_tools, Mapping):
-            return result_type.fail("mise.lock must declare [tools]")
-        missing: list[tuple[str, str, str]] = []
-        for selector, raw_entries in raw_tools.items():
-            if not isinstance(raw_entries, list):
-                return result_type.fail("mise.lock contains an invalid tool entry")
-            for raw_entry in raw_entries:
-                entry = cls._entry_missing_checksums(selector, raw_entry)
-                if entry.failure:
-                    return result_type.fail(entry.error)
-                missing.extend(entry.value)
-        return result_type.ok(tuple(missing))
-
-    @staticmethod
-    def _platform_header(selector: str, platform: str) -> p.Result[str]:
-        """Render the exact platform header emitted by Mise."""
-        safe_characters = frozenset(
-            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:/.-"
-        )
-        if (
-            not selector
-            or any(character not in safe_characters for character in selector)
-            or not platform
-            or any(character not in safe_characters for character in platform)
-        ):
-            return r[str].fail("mise.lock contains an unsupported TOML key")
-        selector_key = (
-            selector
-            if all(character.isalnum() or character in "_-" for character in selector)
-            else f'"{selector}"'
-        )
-        return r[str].ok(f'[tools.{selector_key}."platforms.{platform}"]')
-
-    @classmethod
-    def _download_checksum(
-        cls, selector: str, platform: str, url: str, artifact: Path
-    ) -> p.Result[str]:
-        """Download and hash one validated HTTPS artifact."""
-        download = u.Cli.run_raw(
-            (
-                "curl",
-                "--fail",
-                "--location",
-                "--proto",
-                "=https",
-                "--proto-redir",
-                "=https",
-                "--silent",
-                "--show-error",
-                "--output",
-                str(artifact),
-                url,
-            ),
-            cwd=artifact.parent,
-        )
-        if download.failure:
-            return r[str].fail(
-                download.error or f"checksum download failed for {selector}/{platform}"
-            )
-        if download.value.exit_code != 0:
-            cause = download.value.stderr.strip() or "curl exited non-zero"
-            return r[str].fail(
-                f"checksum download failed for {selector}/{platform}: {cause}"
-            )
-        digest = u.Cli.sha256_file(artifact)
-        if not cls._is_sha256(digest):
-            return r[str].fail(f"invalid downloaded checksum for {selector}/{platform}")
-        return r[str].ok(digest)
-
-    def _hydrate_source(
-        self, source: str, missing: tuple[tuple[str, str, str], ...], scratch: Path
-    ) -> p.Result[str]:
-        """Download each unique URL and return lock text with complete checksums."""
-        hydrated = source
-        digests: dict[str, str] = {}
-        for index, (selector, platform, url) in enumerate(missing):
-            digest = digests.get(url)
-            if digest is None:
-                downloaded = self._download_checksum(
-                    selector, platform, url, scratch / f"artifact-{index}"
-                )
-                if downloaded.failure:
-                    return r[str].fail(downloaded.error)
-                digest = downloaded.value
-                digests[url] = digest
-            header = self._platform_header(selector, platform)
-            if header.failure:
-                return r[str].fail(header.error or "invalid mise.lock header")
-            marker = f"{header.value}\n"
-            if hydrated.count(marker) != 1:
-                return r[str].fail(
-                    "mise.lock platform section is not unique for "
-                    f"{selector}/{platform}"
-                )
-            hydrated = hydrated.replace(
-                marker, f'{marker}checksum = "sha256:{digest}"\n', 1
-            )
-        return r[str].ok(hydrated)
-
-    def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
-        """Download exact resolved artifacts and atomically add missing SHA-256 values."""
-        lock_path = root / "mise.lock"
-        source = u.Cli.files_read_text(lock_path)
-        if source.failure:
-            return r[bool].fail(source.error or "cannot read mise.lock")
-        payload = u.Cli.toml_mapping_from_text(source.value)
-        if payload is None:
-            return r[bool].fail("invalid TOML in mise.lock")
-        missing = self._missing_checksums(payload)
-        if missing.failure:
-            return r[bool].fail(missing.error or "invalid mise.lock checksum metadata")
-        if not missing.value:
-            return r[bool].ok(True)
-        try:
-            with TemporaryDirectory(prefix=".mise-checksum.", dir=root) as raw_scratch:
-                hydrated = self._hydrate_source(
-                    source.value, missing.value, Path(raw_scratch)
-                )
-        except OSError as exc:
-            return r[bool].fail(f"cannot hydrate mise.lock checksums: {exc}")
-        if hydrated.failure:
-            return r[bool].fail(hydrated.error or "cannot hydrate mise.lock checksums")
-        write = u.Cli.atomic_write_text_file(lock_path, hydrated.value)
-        if write.failure:
-            return r[bool].fail(write.error or "cannot publish hydrated mise.lock")
-        return r[bool].ok(True)
 
     @staticmethod
     def _assignment(content: str, name: str) -> str | None:
@@ -339,19 +155,21 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one native staged bootstrap seed without executing live bytes."""
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[str].fail(source.error or f"missing generated Mise seed: {path}")
+            return r[str].from_failure(source)
         windows = path.name == "mise.cmd"
         release = (
             cls._assignment(source.value, "pinned_version")
             if windows
             else cls._shell_launcher_version(source.value)
         )
-        if not cls.is_mise_release(release):
+        if release is None or not cls.is_mise_release(release):
             return r[str].fail(f"Mise seed has an invalid release: {path}")
         try:
             mode = path.stat().st_mode
         except OSError as exc:
-            return r[str].fail(f"cannot inspect generated Mise seed: {exc}")
+            return r[str].fail(
+                f"cannot inspect generated Mise seed: {exc}", exception=exc
+            )
         if not windows and not mode & 0o100:
             return r[str].fail("generated Unix Mise seed is not executable")
         checksums = (
@@ -395,44 +213,11 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].from_failure(release)
         return r[bool].ok(True)
 
-    def _member_project_root(self) -> p.Result[Path]:
-        """Resolve the one declared workspace member selected for propagation."""
-        if self.project_filter is None:
-            return r[Path].fail(
-                "--from-root propagation requires exactly one --project"
-            )
-        selectors = [
-            selector for selector in self.project_filter.split(",") if selector.strip()
-        ]
-        if len(selectors) != 1:
-            return r[Path].fail(
-                "--from-root propagation requires exactly one --project"
-            )
-        selector = selectors[0].strip()
-        if (
-            not selector
-            or selector.startswith(".")
-            or "/" in selector
-            or "\\" in selector
-        ):
-            return r[Path].fail(f"invalid Mise propagation project: {selector}")
-        project_root = (self.workspace_root / selector).resolve()
-        resolved_workspace = self.workspace_root.resolve()
-        if (
-            not project_root.is_dir()
-            or project_root == resolved_workspace
-            or not project_root.is_relative_to(resolved_workspace)
-        ):
-            return r[Path].fail(f"Mise propagation target is not a member: {selector}")
-        return r[Path].ok(project_root)
-
-    def validate_artifacts(
-        self, project_root: Path, *, config_sources: tuple[m.Cli.AtomicFileState, ...]
-    ) -> p.Result[bool]:
+    def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
         """Validate one project's committed Mise artifacts entirely offline."""
         config_result = self._read_toml(project_root / ".mise.toml")
         if config_result.failure:
-            return r[bool].fail(config_result.error or "invalid .mise.toml")
+            return r[bool].from_failure(config_result)
         raw_settings = config_result.value.get("settings")
         raw_tool_config = config_result.value.get("tool_config")
         if (
@@ -444,79 +229,26 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].fail(".mise.toml must enable lockfile and locked mode")
         tools_result = self._tool_specifiers(config_result.value)
         if tools_result.failure:
-            return r[bool].fail(tools_result.error or "invalid .mise.toml tools")
+            return r[bool].from_failure(tools_result)
         lock_result = self._read_toml(project_root / "mise.lock")
         if lock_result.failure:
-            return r[bool].fail(lock_result.error or "invalid mise.lock")
+            return r[bool].from_failure(lock_result)
         normalized_lock = self._normalize_lock_payload(lock_result.value)
         if normalized_lock.failure:
-            return r[bool].fail(normalized_lock.error or "invalid mise.lock")
+            return r[bool].from_failure(normalized_lock)
         try:
             lock = m.Infra.MiseLockSpec.model_validate(normalized_lock.value)
         except c.ValidationError as exc:
-            return r[bool].fail(f"invalid mise.lock metadata: {exc}")
+            return r[bool].fail(f"invalid mise.lock metadata: {exc}", exception=exc)
         launcher_result = self.validate_launchers(project_root)
         if launcher_result.failure:
             return launcher_result
-        exclusions = FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions_from_snapshot(
-            config_sources
-        )
-        if exclusions.failure:
-            return r[bool].fail(exclusions.error or "project Mise platforms invalid")
-        return self._validate_lock(
-            lock,
-            configured_tools=tools_result.value,
-            project_exclusions=exclusions.value,
-        )
 
-    def _propagate_root_lock(self) -> p.Result[bool]:
-        """Propagate one byte-identical member lock without invoking Mise."""
-        member_result = self._member_project_root()
-        if member_result.failure:
-            return r[bool].fail(member_result.error or "invalid Mise member")
-        member_root = member_result.value
-        root_config = u.Cli.files_read_text(self.workspace_root / ".mise.toml")
-        member_config = u.Cli.files_read_text(member_root / ".mise.toml")
-        if root_config.failure:
-            return r[bool].fail(root_config.error or "cannot read root .mise.toml")
-        if member_config.failure:
-            return r[bool].fail(member_config.error or "cannot read member .mise.toml")
-        root_identity = u.Cli.sha256_file(self.workspace_root / ".mise.toml")
-        member_identity = u.Cli.sha256_file(member_root / ".mise.toml")
-        if root_identity != member_identity:
-            return r[bool].fail(
-                "member .mise.toml is not identical to root: "
-                f"root_sha256={root_identity} member_sha256={member_identity}"
-            )
-        root_lock = u.Cli.files_read_text(self.workspace_root / "mise.lock")
-        if root_lock.failure:
-            return r[bool].fail(root_lock.error or "cannot read root mise.lock")
-        write = u.Cli.atomic_write_text_file(member_root / "mise.lock", root_lock.value)
-        if write.failure:
-            return r[bool].fail(write.error or "cannot propagate root mise.lock")
-        propagated_lock = u.Cli.files_read_text(member_root / "mise.lock")
-        propagated_config = u.Cli.files_read_text(member_root / ".mise.toml")
-        if propagated_lock.failure:
-            return r[bool].fail(
-                propagated_lock.error or "cannot verify propagated mise.lock"
-            )
-        if propagated_config.failure:
-            return r[bool].fail(
-                propagated_config.error
-                or "cannot verify propagated .mise.toml identity"
-            )
-        if propagated_lock.value != root_lock.value:
-            return r[bool].fail("member mise.lock diverged after atomic propagation")
-        if propagated_config.value != root_config.value:
-            return r[bool].fail("member .mise.toml diverged after atomic propagation")
-        return self._validate_artifacts(member_root)
+        return self._validate_lock(lock, configured_tools=tools_result.value)
 
     @staticmethod
     def _validate_lock(
-        lock: m.Infra.MiseLockSpec,
-        *,
-        configured_tools: t.StrMapping,
-        project_exclusions: t.MappingKV[str, frozenset[str]],
+        lock: m.Infra.MiseLockSpec, *, configured_tools: t.StrMapping
     ) -> p.Result[bool]:
         expected_tools = sorted(configured_tools)
         actual_tools = sorted(lock.tools)
@@ -536,15 +268,11 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[bool].fail(f"Mise lock specifier drift for {selector}")
             if selector.startswith("github:") and entry.backend != selector:
                 return r[bool].fail(f"Mise lock backend drift for {selector}")
-            excluded = frozenset(
-                toolchain.mise_lock_platform_exclusions.get(selector, ())
-            ) | project_exclusions.get(selector, frozenset())
-            expected_platforms = declared_platforms - excluded
             actual_platforms = frozenset(entry.platforms)
-            if actual_platforms != expected_platforms:
+            if not actual_platforms <= declared_platforms:
                 return r[bool].fail(
                     f"Mise lock platform metadata mismatch for {selector}: "
-                    f"expected={sorted(expected_platforms)} "
+                    f"declared={sorted(declared_platforms)} "
                     f"actual={sorted(actual_platforms)}"
                 )
         return r[bool].ok(True)
@@ -552,7 +280,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Validate only; conform is the sole writable toolchain owner."""
-        transaction = FlextInfraCodegenMiseArtifactTransaction(self)
+        transaction = FlextInfraCodegenTransaction(self)
         if not self.effective_dry_run:
             return r[bool].fail("Mise artifact publication is owned by codegen conform")
         return transaction.validate()

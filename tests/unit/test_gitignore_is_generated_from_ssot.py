@@ -21,7 +21,7 @@ from tests import u as test_u
 
 
 def _repository_root() -> Path:
-    """Return the repository root that owns this checkout."""
+    """Return the workspace root that owns this checkout."""
     return Path(flext_infra.__file__).resolve().parents[2]
 
 
@@ -48,7 +48,9 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             for item in config.Infra.codegen.managed_files
             if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
         )
-        rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+        rendered = (
+            "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
+        )
         blocked = tuple(
             item.path.as_posix()
             for item in committed

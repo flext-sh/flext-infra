@@ -6,7 +6,8 @@ from typing import Annotated, Self
 
 from flext_core import m
 from flext_infra import t
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsNamespaceEnforcer:

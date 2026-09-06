@@ -79,23 +79,23 @@ class TestFlextInfraNamespaceValidator:
 
         init_result = u.Cli.run_raw(["git", "init"], cwd=project_root)
         tm.ok(init_result)
-        tm.that(init_result.value.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(init_result.value.outcome), eq=True)
         email_result = u.Cli.run_raw(
             ["git", "config", "user.email", "test@example.com"], cwd=project_root
         )
         tm.ok(email_result)
-        tm.that(email_result.value.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(email_result.value.outcome), eq=True)
         name_result = u.Cli.run_raw(
             ["git", "config", "user.name", "Test User"], cwd=project_root
         )
         tm.ok(name_result)
-        tm.that(name_result.value.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(name_result.value.outcome), eq=True)
         add_result = u.Cli.run_raw(
             ["git", "add", "src/flext_test/models.py", "src/flext_test/__init__.py"],
             cwd=project_root,
         )
         tm.ok(add_result)
-        tm.that(add_result.value.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(add_result.value.outcome), eq=True)
 
         result = validator.validate_project(project_root)
 
@@ -114,7 +114,10 @@ class TestFlextInfraNamespaceValidator:
         tm.that(result.success, eq=True)
         tm.that(not result.value.passed, eq=True)
         tm.that(
-            any("Multiple outer classes found" in v for v in result.value.violations),
+            any(
+                "module must declare exactly one top-level class; found 2" in violation
+                for violation in result.value.violations
+            ),
             eq=True,
         )
 

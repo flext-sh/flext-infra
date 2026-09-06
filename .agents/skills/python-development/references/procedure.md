@@ -26,9 +26,16 @@ For tests, use the declared facade and complete owned selection. Zero collected 
 executed tests is failure; never retry through another runner, clear/replace a
 cache, reinstall tools, or turn warnings/skips into green.
 
-When the project pins pytest-testmon, keep impact selection enabled for ordinary,
-full, and CI runs; never add `--testmon-noselect` or disable Testmon to widen a
-run. To force an explicit `FILE`, nodeid, or `MATCH`, resolve its exact nodeids,
+When the project pins pytest-testmon, keep its project-owned database active for
+every ordinary, full, and CI run; never disable Testmon or replace/clear its
+database to widen a run. Its config-owned persistent path stays outside the
+checkout and is passed directly to Testmon, never projected back through a
+symlink. Ordinary and CI runs keep impact selection enabled. An
+explicitly requested full run uses `--testmon-noselect` with that same database,
+so every test executes in Testmon's failure-prioritized order and fresh dependency
+data is written. The full-mode flag is never an implicit retry or a substitute for
+an ordinary impacted run. To force an explicit `FILE`, nodeid, or `MATCH`, resolve
+its exact nodeids,
 reject an empty or owner-limit-exceeding set, invalidate only those rows in the
 existing database transactionally, and run their intersection through
 `--testmon-forceselect`. Never invalidate by broad pattern, guessed substring,

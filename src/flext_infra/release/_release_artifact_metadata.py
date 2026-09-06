@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import tarfile
 import zipfile
 from email.parser import Parser
@@ -15,9 +14,8 @@ from packaging.version import InvalidVersion, Version
 
 from flext_core import r
 from flext_infra import c, t, u
-from flext_infra.release._release_artifact_archive import (
-    FlextInfraReleaseArtifactArchiveMixin,
-)
+
+from ._release_artifact_archive import FlextInfraReleaseArtifactArchiveMixin
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -71,7 +69,7 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
             )
         specifier = cls._release_specifier(versions[name])
         if specifier.failure:
-            return r[str].fail(specifier.error or f"invalid version for {name}")
+            return r[str].from_failure(specifier)
         extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
         marker = f"; {parsed.marker}" if parsed.marker is not None else ""
         return r[str].ok(f"{parsed.name}{extras}{specifier.value}{marker}")
@@ -99,9 +97,7 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         for requirement in requirements:
             result = cls._release_requirement(requirement, versions)
             if result.failure:
-                return r[bool].fail(
-                    result.error or f"release requirement rewrite failed: {requirement}"
-                )
+                return r[bool].from_failure(result)
             rewritten.append(result.value)
         u.Cli.toml_sync_string_list(container, key, rewritten)
         return r[bool].ok(True)
@@ -122,7 +118,7 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
             project, c.Infra.DEPENDENCIES, versions=versions
         )
         if result.failure:
-            return r[str].fail(result.error or "runtime dependency rewrite failed")
+            return r[str].from_failure(result)
         for section_name in (c.Infra.OPTIONAL_DEPENDENCIES, c.Infra.DEPENDENCY_GROUPS):
             parent = (
                 project if section_name == c.Infra.OPTIONAL_DEPENDENCIES else document
@@ -135,17 +131,14 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                     section, str(group_name), versions=versions
                 )
                 if group_result.failure:
-                    return r[str].fail(
-                        group_result.error
-                        or f"dependency group rewrite failed: {group_name}"
-                    )
+                    return r[str].from_failure(group_result)
         tool = u.Cli.toml_table_child(document, c.Infra.TOOL)
         hatch = u.Cli.toml_table_child(tool, "hatch") if tool is not None else None
         if tool is not None:
             u.Cli.toml_remove_key_if_present(tool, "uv")
         boundary_result = cls._configure_sdist_boundary(hatch)
         if boundary_result.failure:
-            return r[str].fail(boundary_result.error or "release sdist boundary failed")
+            return r[str].from_failure(boundary_result)
         if tool is not None:
             metadata = (
                 u.Cli.toml_table_child(hatch, "metadata") if hatch is not None else None
@@ -217,7 +210,9 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                     return r[str].fail(f"wheel must contain one METADATA file: {path}")
                 return r[str].ok(archive.read(names[0]).decode("utf-8"))
         except (OSError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
-            return r[str].fail_op(f"read wheel metadata {path}", exc)
+            return r[str].fail(
+                f"read wheel metadata {path} failed: {exc}", exception=exc
+            )
 
     @staticmethod
     def _sdist_metadata(path: Path) -> p.Result[str]:
@@ -236,7 +231,9 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
                     return r[str].fail(f"cannot read PKG-INFO from {path}")
                 return r[str].ok(extracted.read().decode("utf-8"))
         except (OSError, tarfile.TarError, UnicodeDecodeError) as exc:
-            return r[str].fail_op(f"read sdist metadata {path}", exc)
+            return r[str].fail(
+                f"read sdist metadata {path} failed: {exc}", exception=exc
+            )
 
     @classmethod
     def _artifact_metadata(cls, path: Path) -> p.Result[str]:
@@ -316,32 +313,28 @@ class FlextInfraReleaseArtifactMetadataMixin(FlextInfraReleaseArtifactArchiveMix
         if archive_result.failure:
             return r[
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
-            ].fail(
-                archive_result.error or f"artifact archive validation failed: {path}"
-            )
+            ].from_failure(archive_result)
         metadata_result = cls._artifact_metadata(path)
         if metadata_result.failure:
             return r[
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
-            ].fail(metadata_result.error or f"artifact metadata unavailable: {path}")
+            ].from_failure(metadata_result)
         identity_result = cls._validate_artifact_identity(
             metadata_result.value, project, version
         )
         if identity_result.failure:
             return r[
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
-            ].fail(identity_result.error or "artifact identity validation failed")
+            ].from_failure(identity_result)
         requirements_result = cls._validate_artifact_requirements(
             metadata_result.value, versions
         )
         if requirements_result.failure:
             return r[
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
-            ].fail(
-                requirements_result.error or "artifact requirement validation failed"
-            )
+            ].from_failure(requirements_result)
         try:
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            digest = u.Cli.sha256_file(path)
         except OSError as exc:
             return r[
                 t.Pair[t.Infra.ReleaseArtifactKind, t.Infra.ReleaseArtifactSha256]
