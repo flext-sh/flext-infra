@@ -9,8 +9,7 @@ from typing import ClassVar
 
 from flext_cli import u
 from flext_infra import c, config, m, t
-
-from .._utilities.docs import FlextInfraUtilitiesDocs
+from flext_infra._utilities.docs import FlextInfraUtilitiesDocs
 
 
 class FlextInfraUtilitiesDocsRender:

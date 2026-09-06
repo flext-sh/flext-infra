@@ -6,9 +6,8 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.mixins import FlextInfraModelsMixins as mm
+from flext_infra._models._defaults import ImmutableEmptyMapping
+from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCensus:

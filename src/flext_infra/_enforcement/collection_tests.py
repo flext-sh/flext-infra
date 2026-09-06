@@ -7,8 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m
-
-from .._enforcement.collection_base import FlextInfraEnforcementCollectionBase
+from flext_infra._enforcement.collection_base import FlextInfraEnforcementCollectionBase
 
 if TYPE_CHECKING:
     from flext_infra import p

@@ -6,10 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from .._utilities.iteration_directory import FlextInfraUtilitiesIterationDirectory
-from .._utilities.iteration_matching import FlextInfraUtilitiesIterationMatching
-from .._utilities.iteration_project import FlextInfraUtilitiesIterationProject
-from .._utilities.iteration_workspace import FlextInfraUtilitiesIterationWorkspace
+from flext_infra._utilities.iteration_directory import (
+    FlextInfraUtilitiesIterationDirectory,
+)
+from flext_infra._utilities.iteration_matching import (
+    FlextInfraUtilitiesIterationMatching,
+)
+from flext_infra._utilities.iteration_project import FlextInfraUtilitiesIterationProject
+from flext_infra._utilities.iteration_workspace import (
+    FlextInfraUtilitiesIterationWorkspace,
+)
 
 
 class FlextInfraUtilitiesIteration(

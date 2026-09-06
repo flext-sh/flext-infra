@@ -9,13 +9,14 @@ from pathlib import Path
 from typing import ClassVar
 
 from flext_cli import u
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
+from flext_infra._utilities.silent_failure_ast import (
+    FlextInfraUtilitiesSilentFailureAst,
+)
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
 
 
 class FlextInfraUtilitiesRopeSource:
@@ -78,7 +79,10 @@ class FlextInfraUtilitiesRopeSource:
                     position = statement.end_lineno or position
                     continue
                 break
-            if isinstance(statement, ast.ImportFrom) and statement.module == "__future__":
+            if (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module == "__future__"
+            ):
                 position = statement.end_lineno or position
                 continue
             if past_existing and isinstance(statement, ast.Import | ast.ImportFrom):

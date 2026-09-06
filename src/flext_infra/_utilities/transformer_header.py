@@ -5,11 +5,10 @@ from __future__ import annotations
 import ast
 
 from flext_infra import t
-from flext_infra.constants import c
-
-from .._utilities.transformer_header_parser import (
+from flext_infra._utilities.transformer_header_parser import (
     FlextInfraUtilitiesTransformerHeaderParser,
 )
+from flext_infra.constants import c
 
 
 class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderParser):

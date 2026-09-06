@@ -8,14 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
+from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
+from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
+from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
-
-from .._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
-from .._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
-from .._utilities.pyproject import FlextInfraUtilitiesPyproject
-from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -420,7 +419,7 @@ class FlextInfraUtilitiesDiscovery(
         ownership_root = (
             project_root.resolve() if project_root is not None else resolved_root
         )
-        from .._utilities.git import FlextInfraUtilitiesGit
+        from flext_infra._utilities.git import FlextInfraUtilitiesGit
 
         for candidate in (execution_dir, *execution_dir.parents):
             if not (candidate / c.Infra.GITMODULES).is_file():

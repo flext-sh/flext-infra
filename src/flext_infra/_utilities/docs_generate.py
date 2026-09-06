@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from .._utilities._docs_generate_root import FlextInfraUtilitiesDocsGenerateRootMixin
+from flext_infra._utilities._docs_generate_root import (
+    FlextInfraUtilitiesDocsGenerateRootMixin,
+)
 
 
 class FlextInfraUtilitiesDocsGenerate(FlextInfraUtilitiesDocsGenerateRootMixin):
