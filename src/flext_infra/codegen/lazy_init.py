@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, config, m, u
-from flext_infra._utilities._sort_keys import path_depth
 from flext_infra.base import s
 from flext_infra.codegen._lazy_init_generation import (
     FlextInfraCodegenLazyInitGenerationMixin,
@@ -68,12 +67,14 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         """Return the complete read-only lazy-init publication plan."""
         self._modified_files.clear()
         self._duplicate_class_names = 0
-        if not self.workspace_root.is_dir():
+        if not self.repository_root.is_dir():
             return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
-                f"lazy-init workspace is not a directory: {self.workspace_root}"
+                f"lazy-init workspace is not a directory: {self.repository_root}"
             )
         started_at = perf_counter()
-        u.Cli.info(f"lazy-init: planning read-only artifacts for {self.workspace_root}")
+        u.Cli.info(
+            f"lazy-init: planning read-only artifacts for {self.repository_root}"
+        )
         planned = self._plan_in_workspace()
         if planned.failure:
             return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
@@ -90,7 +91,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         """Open Rope once and propagate every planner or filesystem failure."""
         try:
             with FlextInfraRopeWorkspace.open_workspace(
-                self.workspace_root, rope_workspace_root=self.workspace_root
+                self.repository_root, rope_workspace_root=self.repository_root
             ) as rope:
                 return self._plan_open_workspace(rope)
         except c.EXC_OS_VALUE as exc:
@@ -103,7 +104,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
         """Build immutable plans from one stable Rope workspace snapshot."""
         workspace_index = rope.workspace_index
-        resolved_workspace_root = self.workspace_root.resolve()
+        resolved_workspace_root = self.repository_root.resolve()
         indexed_package_dirs = tuple(
             sorted(
                 (
@@ -115,7 +116,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                     )
                     & c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
                 ),
-                key=path_depth,
+                key=u.Infra.path_depth,
                 reverse=True,
             )
         )

@@ -727,7 +727,7 @@ class FlextInfraWorkspaceDetector(
     @override
     def execute(self) -> p.Result[c.Infra.MakeProfile]:
         """Execute workspace detection for the configured root."""
-        return self.detect(self.workspace_root)
+        return self.detect(self.repository_root)
 
 
 __all__: list[str] = ["FlextInfraWorkspaceDetector"]

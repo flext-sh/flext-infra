@@ -64,7 +64,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         super().model_post_init(__context)
         self._rope_workspace_root = (
             self.rope_workspace_root_override
-            or u.Infra.rope_workspace_root(self.workspace_root)
+            or u.Infra.rope_workspace_root(self.repository_root)
         )
 
     @classmethod
@@ -130,7 +130,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def session_snapshot(self) -> m.Infra.RopeWorkspaceSession:
         """Return the current public Rope session state."""
         return m.Infra.RopeWorkspaceSession(
-            workspace_root=self.workspace_root,
+            workspace_root=self.repository_root,
             rope_workspace_root=self._rope_workspace_root,
             workspace_index=self.workspace_index,
         )
@@ -316,7 +316,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Return the canonical codegen project selection for this workspace."""
         if self._codegen_projects is None:
-            projects_result = u.Infra.projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.repository_root)
             if projects_result.failure:
                 self._codegen_projects = ()
             else:

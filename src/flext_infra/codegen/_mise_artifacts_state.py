@@ -371,7 +371,7 @@ def validate_transaction_roots(
         transaction = _validate_transaction_root(transaction_root)
         if transaction.failure:
             return r[bool].from_failure(transaction)
-        if transaction.value is None:
+        if transaction.value is False:
             continue
         relative = files.workspace_relative(layout.scope_root, transaction_root)
         if relative.failure:
@@ -390,9 +390,9 @@ def validate_transaction_roots(
     return r[bool].ok(True)
 
 
-def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | None]:
+def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | bool]:
     if not target.exists() and not target.is_symlink():
-        return r[tuple[int, int] | None].ok(None)
+        return r[tuple[int, int] | bool].ok(False)
     identifier = target.name.removeprefix(files.TRANSACTION_DIR_PREFIX)
     if (
         not target.name.startswith(files.TRANSACTION_DIR_PREFIX)
@@ -400,18 +400,20 @@ def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | None]
         or any(character not in "0123456789abcdef" for character in identifier)
         or target.is_symlink()
     ):
-        return r[tuple[int, int] | None].fail(
+        return r[tuple[int, int] | bool].fail(
             f"refusing invalid Mise transaction target: {target}"
         )
     try:
         state = target.lstat()
     except OSError as exc:
-        return r[tuple[int, int] | None].fail_op("inspect Mise transaction target", exc)
+        return r[tuple[int, int] | bool].fail_op(
+            "inspect Mise transaction target", exc
+        )
     if not stat.S_ISDIR(state.st_mode) or _is_reparse(state):
-        return r[tuple[int, int] | None].fail(
+        return r[tuple[int, int] | bool].fail(
             f"Mise transaction target is not physical: {target}"
         )
-    return r[tuple[int, int] | None].ok((state.st_dev, state.st_ino))
+    return r[tuple[int, int] | bool].ok((state.st_dev, state.st_ino))
 
 
 def _path_order(path: Path) -> tuple[int, str]:

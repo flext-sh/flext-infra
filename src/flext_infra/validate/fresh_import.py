@@ -18,10 +18,11 @@ from __future__ import annotations
 import sys
 from typing import Annotated, override
 
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
 
 
-class FlextInfraValidateFreshImport(s[bool]):
+class FlextInfraValidateFreshImport(FlextInfraServiceBase[bool]):
     """Validates that advertised packages import cleanly in fresh processes.
 
     Guard 7 of the circular-import defense-in-depth suite. Each package

@@ -32,16 +32,19 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
         # flext-j47u: configure the inherited runtime once; no settings proxy/property.
         return m.RuntimeBootstrapOptions(settings_type=type(settings))
 
-    workspace_root: Annotated[
+    repository_root: Annotated[
         Path,
         m.BeforeValidator(
-            lambda v: ub.resolve_workspace_root_or_cwd(
+            lambda v: ub.resolve_repository_root_or_cwd(
                 v if isinstance(v, Path) else Path(v)
             )
         ),
     ] = m.Field(
-        default_factory=ub.resolve_workspace_root_or_cwd,
-        alias="workspace",
+        default_factory=ub.resolve_repository_root_or_cwd,
+        validation_alias=t.AliasChoices(
+            "repository_root", "workspace_root", "workspace"
+        ),
+        serialization_alias="workspace",
         description="Workspace root",
     )
     apply_changes: bool = m.Field(
@@ -111,8 +114,8 @@ class FlextInfraServiceBase[TDomainResult: _InfraResultValue](
     @m.computed_field
     @property
     def root(self) -> Path:
-        """Canonical normalized workspace root."""
-        return self.workspace_root
+        """Canonical normalized repository root."""
+        return self.repository_root
 
     @property
     def fail_fast(self) -> bool:

@@ -286,6 +286,20 @@ class FlextInfraConfigModels:
                 description="Python major.minor line, e.g. '3.13'",
             ),
         ]
+        state_directory_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Runtime state directory beside the checkout"),
+        ]
+        scratch_namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="Scratch directory namespace")
+        ]
+        pycache_namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="Python bytecode cache namespace")
+        ]
+        mise_namespace: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Mise publication namespace under runtime state"),
+        ]
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Portable uv installation link mode")
         ]
@@ -326,7 +340,7 @@ class FlextInfraConfigModels:
             Literal["latest"], _tool_version_field("Moving uv release selector")
         ]
         qlty_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving qlty release selector")
+            t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
         ]
         taplo_version: Annotated[
             Literal["latest"], _tool_version_field("Moving Taplo release selector")
@@ -653,6 +667,10 @@ class FlextInfraConfigModels:
         python_version: Annotated[
             t.NonEmptyStr, m.Field(description="Python major.minor line")
         ]
+        state_directory_name: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="External runtime state directory name"),
+        ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
             m.Field(description="Immutable GitHub Action catalog"),
@@ -760,6 +778,16 @@ class FlextInfraConfigModels:
     class EnvrcRenderSpec(_ConfigContract):
         """Typed input consumed only by the generated project ``.envrc``."""
 
+        state_directory_name: Annotated[
+            t.NonEmptyStr, m.Field(description="External runtime state directory")
+        ]
+        scratch_namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="External scratch namespace")
+        ]
+        pycache_namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="External bytecode cache namespace")
+        ]
+
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(description="Project-relative executable paths"),
@@ -816,72 +844,20 @@ class FlextInfraConfigModels:
         ]
 
     class MakeVerbSpec(_ConfigContract):
-        """One public Make verb and its complete handler-selector contract."""
+        """One selector-free public Make operation."""
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Public Make verb")]
-        default_what: Annotated[
-            t.NonEmptyStr, m.Field(description="Default WHAT selector")
+        description: Annotated[
+            t.NonEmptyStr, m.Field(description="Operator-facing help text")
         ]
-        whats: Annotated[
-            tuple[t.NonEmptyStr, ...],
-            m.Field(min_length=1, description="Complete ordered handler selectors"),
-        ]
-        apply_guarded: Annotated[
-            bool, m.Field(description="Whether mutation requires APPLY=Y")
-        ] = False
-        accepts_apply: Annotated[
+        requires_apply: Annotated[
             bool,
             m.Field(
                 description=(
-                    "Whether APPLY=Y is legal for this verb without declaring it "
-                    "apply-guarded. Used by run handlers that sometimes mutate "
-                    "under explicit APPLY but must stay unguarded by default."
+                    "Whether the public boundary requires the one effect token APPLY=Y"
                 )
-            ),
-        ] = False
-        apply_what: Annotated[
-            t.NonEmptyStr,
-            m.Field(
-                default="all",
-                description=(
-                    "Selector an apply-guarded or accepts_apply verb resolves "
-                    "to when APPLY is set and no explicit WHAT is given. "
-                    "Without it, a mutating workflow step could silently "
-                    "retain its read-only default selector"
-                ),
             ),
         ]
-
-        @u.model_validator(mode="after")
-        def _validate_whats(self) -> Self:
-            """Require defaults and mutation selectors to name one owned handler."""
-            if len(set(self.whats)) != len(self.whats):
-                msg = f"make verb {self.name} handler selectors must be unique"
-                raise ValueError(msg)
-            required = {self.default_what}
-            if self.apply_guarded or self.accepts_apply:
-                required.add(self.apply_what)
-            if self.apply_guarded and self.accepts_apply:
-                msg = (
-                    f"make verb {self.name} cannot set both apply_guarded and "
-                    "accepts_apply"
-                )
-                raise ValueError(msg)
-            if self.apply_guarded and self.default_what == self.apply_what:
-                msg = (
-                    f"make verb {self.name} apply_guarded default_what must "
-                    "differ from apply_what so the fixed-point re-check "
-                    "runs without APPLY=Y"
-                )
-                raise ValueError(msg)
-            missing = required - set(self.whats)
-            if missing:
-                msg = (
-                    f"make verb {self.name} selectors have no handler: "
-                    f"{', '.join(sorted(missing))}"
-                )
-                raise ValueError(msg)
-            return self
 
     class MakeWorkflowStepSpec(_ConfigContract):
         """One canonical workflow step and its explicit mutation intent."""
@@ -898,17 +874,6 @@ class FlextInfraConfigModels:
                 description="Execution contexts consuming this single workflow row",
             ),
         ]
-        what: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(
-                default=None,
-                description=(
-                    "Explicit WHAT selector for this step. None lets the verb "
-                    "resolve its own default_what, so a row names a selector "
-                    "only when it deliberately departs from that default."
-                ),
-            ),
-        ] = None
         gates_skip: Annotated[
             tuple[t.NonEmptyStr, ...],
             m.Field(
@@ -930,7 +895,7 @@ class FlextInfraConfigModels:
             if "local" not in self.contexts:
                 msg = f"make workflow step {self.verb} must run locally"
                 raise ValueError(msg)
-            allowed = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+            allowed = set(FlextInfraConstantsMake.CANONICAL_GATE_IDS)
             unknown = sorted(set(self.gates_skip) - allowed)
             if unknown:
                 msg = (
@@ -965,12 +930,12 @@ class FlextInfraConfigModels:
                     "an unset token runs every allowed gate."
                 )
             ),
-        ] = FlextInfraConstantsMake.PROJECT_CHECK_GATES_LOCAL_VALUES
+        ]
 
         @u.model_validator(mode="after")
         def _validate_local_check_gates(self) -> Self:
             """Every locally owned gate must be in the allowed check vocabulary."""
-            allowed = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+            allowed = set(FlextInfraConstantsMake.CANONICAL_GATE_IDS)
             unknown = sorted(set(self.local_check_gates) - allowed)
             if unknown:
                 msg = (
@@ -1000,7 +965,7 @@ class FlextInfraConfigModels:
             local = frozenset(self.local_check_gates)
             return tuple(
                 gate
-                for gate in FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES
+                for gate in FlextInfraConstantsMake.CANONICAL_DEFAULT_GATE_IDS
                 if gate not in local
             )
 
@@ -1172,6 +1137,21 @@ class FlextInfraConfigModels:
         schema_version: Annotated[
             int, m.Field(ge=1, description="Cache key schema version")
         ]
+        namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="Persistent state namespace")
+        ]
+        invocation_namespace: Annotated[
+            t.NonEmptyStr, m.Field(description="Pytest invocation namespace")
+        ]
+        database_filename: Annotated[
+            t.NonEmptyStr, m.Field(description="pytest-testmon database filename")
+        ]
+        target_directory: Annotated[
+            Path, m.Field(description="Repository-relative pytest target")
+        ]
+        reports_directory: Annotated[
+            Path, m.Field(description="Repository-relative pytest reports root")
+        ]
         mode: Annotated[
             Literal["bootstrap", "stable"], m.Field(description="Cache renewal phase")
         ]
@@ -1257,9 +1237,6 @@ class FlextInfraConfigModels:
         work_in_progress: Annotated[
             FlextInfraConfigModels.MakeWorkInProgressSpec,
             m.Field(description="WIP branch and draft PR gate predicate"),
-        ]
-        selector: Annotated[
-            t.NonEmptyStr, m.Field(description="Single selector variable name")
         ]
         apply_variable: Annotated[
             t.NonEmptyStr, m.Field(description="Write-enable variable name")
@@ -1357,7 +1334,7 @@ class FlextInfraConfigModels:
             if len(set(self.project_check_gates)) != len(self.project_check_gates):
                 msg = "make project_check_gates must be unique"
                 raise ValueError(msg)
-            builtin = set(FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+            builtin = set(FlextInfraConstantsMake.CANONICAL_GATE_IDS)
             shadowed = sorted(set(self.project_check_gates) & builtin)
             if shadowed:
                 msg = (
@@ -1409,11 +1386,14 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(unknown_workflow))}"
                 )
                 raise ValueError(msg)
-            verb_specs = {verb.name: verb for verb in self.verbs}
             invalid_apply = [
                 step.verb
                 for step in self.workflow
-                if step.apply != verb_specs[step.verb].apply_guarded
+                if step.apply != next(
+                    verb.requires_apply
+                    for verb in self.verbs
+                    if verb.name == step.verb
+                )
             ]
             if invalid_apply:
                 msg = (
@@ -1421,14 +1401,8 @@ class FlextInfraConfigModels:
                     f"{', '.join(sorted(invalid_apply))}"
                 )
                 raise ValueError(msg)
-            docs_verb = next((verb for verb in self.verbs if verb.name == "docs"), None)
-            if docs_verb is None:
+            if "docs" not in declared:
                 msg = "make docs verb must be declared"
-                raise ValueError(msg)
-            docs_actions = set(docs_verb.whats)
-            invalid_mutable = set(self.docs.mutable_actions) - docs_actions
-            if invalid_mutable:
-                msg = "make docs mutable_actions must be declared in actions"
                 raise ValueError(msg)
             if (
                 self.docs.reports_dir.is_absolute()
@@ -1437,33 +1411,6 @@ class FlextInfraConfigModels:
                 msg = "make docs reports_dir must be repository-relative"
                 raise ValueError(msg)
             return self
-
-        @m.computed_field
-        @property
-        def handler_whats(self) -> Mapping[str, tuple[str, ...]]:
-            """Canonical public verb-to-handler matrix consumed by every renderer.
-
-            The check verb's what-selectors are augmented with the full gate
-            vocabulary (check_gates_allowed) so a consumer can address an
-            individual gate with `make check WHAT=<gate>`. The gates are
-            rendered into `_ALLOWED_WHATS_check` by Makefile.j2, and per-gate
-            `_builtin_check_<gate>` handlers are generated to back them.
-            """
-            whats: dict[str, tuple[str, ...]] = {
-                verb.name: verb.whats for verb in self.verbs
-            }
-            # Why (flext-7b5x9): a project declaring its own gates via
-            # project_check_gates (and every built-in gate) must be reachable
-            # through the dispatch validator. Without this augmentation the
-            # check verb's `whats` stays `[all]`, so `make check WHAT=lint`
-            # is rejected as "unsupported" even though CHECK_GATES_ALLOWED
-            # would accept the gate value itself -- the dispatch gate is
-            # strictly narrower than the runtime gate set it claims.
-            if "check" in whats:
-                whats["check"] = tuple(
-                    dict.fromkeys((*whats["check"], *self.check_gates_allowed))
-                )
-            return whats
 
         @m.computed_field
         @property
@@ -1477,7 +1424,7 @@ class FlextInfraConfigModels:
             kept working handlers unreachable from `make check`.
             """
             return (
-                *FlextInfraConstantsMake.PROJECT_CHECK_GATES_ALLOWED_VALUES,
+                *FlextInfraConstantsMake.CANONICAL_GATE_IDS,
                 *self.project_check_gates,
             )
 
@@ -1490,7 +1437,7 @@ class FlextInfraConfigModels:
             a gate that must be asked for by name is a gate nobody runs.
             """
             return (
-                *FlextInfraConstantsMake.PROJECT_CHECK_GATES_DEFAULT_VALUES,
+                *FlextInfraConstantsMake.CANONICAL_DEFAULT_GATE_IDS,
                 *self.project_check_gates,
             )
 
@@ -1503,7 +1450,7 @@ class FlextInfraConfigModels:
             a fix pass built from the ALLOWED vocabulary once timed out doing
             exactly that.
             """
-            return FlextInfraConstantsMake.PROJECT_CHECK_GATES_FIXABLE_VALUES
+            return FlextInfraConstantsMake.CANONICAL_FIXABLE_GATE_IDS
 
         @m.computed_field
         @property
@@ -1951,19 +1898,9 @@ class FlextInfraConfigModels:
             t.NonEmptyStr,
             m.Field(description="Generated custom Make policy include directive"),
         ]
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description="Workspace-root gate verbs routed through orchestration"
-            ),
-        ] = ()
         workspace_cli_group: Annotated[
             t.NonEmptyStr,
             m.Field(description="CLI group used for workspace orchestration"),
-        ]
-        project_selection_conflict_error: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mutually exclusive project selector error"),
         ]
         mypy_memory_limit_mb: Annotated[
             int, m.Field(gt=0, description="Generated Mypy address-space limit in MiB")
@@ -2049,32 +1986,6 @@ class FlextInfraConfigModels:
             m.Field(
                 min_length=1,
                 description="Canonical ignore sections applicable to one profile",
-            ),
-        ]
-
-    class SgconfigRenderSpec(_ConfigContract):
-        """Typed input for the generated ast-grep project config.
-
-        Why (ai-hub-qwoc): a provider manifest can declare ``sgconfig.yml`` as a
-        required surface, but no generator owned it, so the file was authored by
-        hand in one repository and simply absent in another -- provider discovery
-        then failed closed with ``missing declared file: sgconfig.yml``. The rule
-        and fixture directories are declared here so every repository renders the
-        same contract from the SSOT instead of a hand-written copy.
-        """
-
-        rule_dirs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                min_length=1,
-                description="Directories holding this project's ast-grep rules",
-            ),
-        ]
-        test_dirs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                default=(),
-                description="Directories holding rule fixtures and snapshots",
             ),
         ]
 
@@ -2233,15 +2144,6 @@ class FlextInfraConfigModels:
             FlextInfraConfigModels.ScriptDispatchSpec | None,
             m.Field(description="Opt-in script command-framework routing contract"),
         ] = None
-        orchestrated_verbs: Annotated[
-            tuple[str, ...],
-            m.Field(
-                description=(
-                    "Gate verbs a workspace Makefile fans out across subprojects "
-                    "through the generic workspace orchestrate primitive"
-                )
-            ),
-        ] = ()
         workspace_cli_group: Annotated[
             str,
             m.Field(
@@ -2250,10 +2152,6 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = ""
-        project_selection_conflict_error: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Mutually exclusive project selector error"),
-        ]
 
     class ProjectRenderContext(MakeRenderContext):
         """Complete typed input consumed by project scaffold templates."""
@@ -2364,7 +2262,7 @@ class FlextInfraConfigModels:
             Literal["latest"], _tool_version_field("Moving uv release selector")
         ]
         qlty_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving qlty release selector")
+            t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
         ]
         taplo_version: Annotated[
             Literal["latest"], _tool_version_field("Moving Taplo release selector")
@@ -2723,10 +2621,6 @@ class FlextInfraConfigModels:
                     "generated CI installs before the gates run"
                 ),
             ),
-        ]
-        sgconfig: Annotated[
-            FlextInfraConfigModels.SgconfigRenderSpec,
-            m.Field(description="Canonical ast-grep project contract for every repo"),
         ]
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],

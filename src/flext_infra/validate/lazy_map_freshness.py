@@ -68,8 +68,8 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Execute the freshness validation using ``self.workspace_root``."""
-        report_result = self.build_report(self.workspace_root)
+        """Execute the freshness validation using the repository owner."""
+        report_result = self.build_report(self.repository_root)
         if report_result.failure:
             return r[bool].fail(
                 report_result.error or "lazy-map freshness validation failed"
