@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from flext_infra import config
 from flext_tests import tm
 from tests import m, u
 
@@ -15,17 +16,13 @@ class TestsDocsCommandContract:
     """Prove canonical Make, Testmon, and public-test documentation policy."""
 
     @staticmethod
-    def test_accepts_canonical_root_commands() -> None:
-        content = """# Commands
-
-```bash
-make setup APPLY=Y
-make help
-make gen APPLY=Y
-make test APPLY=Y
-make check APPLY=Y
-```
-"""
+    def test_accepts_every_declared_verb_rendered_from_the_ssot() -> None:
+        """Each declared verb, written exactly as its own spec requires, passes."""
+        lines = "\n".join(
+            f"make {spec.name} APPLY=Y" if spec.requires_apply else f"make {spec.name}"
+            for spec in config.Infra.codegen.make.verbs
+        )
+        content = f"# Commands\n\n```bash\n{lines}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content, relative_path="docs/guides/testing.md"
@@ -63,10 +60,13 @@ make test PROJECT=flext-demo MATCH=unit
 
     @staticmethod
     def test_reads_apply_requirement_from_config_ssot() -> None:
-        content = """```bash
-make setup
-```
-"""
+        """A mutating verb documented without the apply token is rejected."""
+        mutating = next(
+            spec.name
+            for spec in config.Infra.codegen.make.verbs
+            if spec.requires_apply
+        )
+        content = f"```bash\nmake {mutating}\n```\n"
 
         issues = u.Infra.docs_command_contract_content_issues(
             content, relative_path="docs/guides/getting-started.md"
@@ -74,6 +74,23 @@ make setup
 
         tm.that(len(issues), eq=1)
         tm.that(issues[0].message, has="requires `APPLY=Y`")
+
+    @staticmethod
+    def test_rejects_apply_on_a_read_only_verb() -> None:
+        """A read-only verb documented with the apply token is rejected."""
+        read_only = next(
+            spec.name
+            for spec in config.Infra.codegen.make.verbs
+            if not spec.requires_apply
+        )
+        content = f"```bash\nmake {read_only} APPLY=Y\n```\n"
+
+        issues = u.Infra.docs_command_contract_content_issues(
+            content, relative_path="docs/guides/getting-started.md"
+        )
+
+        tm.that(len(issues), eq=1)
+        tm.that(issues[0].message, has="rejects `APPLY=Y`")
 
     @staticmethod
     def test_rejects_raw_pytest_execution() -> None:

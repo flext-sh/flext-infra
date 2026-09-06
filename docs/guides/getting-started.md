@@ -21,7 +21,7 @@ Work from the FLEXT workspace root. The root `AGENTS.md`, branch-matched
 Run the canonical bootstrap and discover the live command grammar:
 
 ```bash
-make setup APPLY=Y
+make setup
 make help
 ```
 

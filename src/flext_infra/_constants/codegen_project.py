@@ -33,7 +33,8 @@ class FlextInfraConstantsCodegenProject:
         """Repository selection accepted by ``codegen conform``."""
 
         SELF = "self"
-        DECLARED = "declared_repositories"
+        # Why: aligns with WorkspaceSpec.subprojects (repository_root cutover, fix/fleet-toolchain-gc-fc2)
+        SUBPROJECTS = "subprojects"
         ALL = "all"
 
     @unique

@@ -70,8 +70,7 @@ class FlextInfraUtilitiesDeferredSelfReference(
     @classmethod
     def _factory_keyword(cls, call: ast.Call) -> ast.keyword | None:
         return next(
-            (item for item in call.keywords if item.arg == cls._FACTORY_KEYWORD),
-            None,
+            (item for item in call.keywords if item.arg == cls._FACTORY_KEYWORD), None
         )
 
     @classmethod
@@ -114,10 +113,7 @@ class FlextInfraUtilitiesDeferredSelfReference(
 
     @classmethod
     def _visit(
-        cls,
-        node: ast.AST,
-        stack: list[ast.ClassDef],
-        findings: list[Finding],
+        cls, node: ast.AST, stack: list[ast.ClassDef], findings: list[Finding]
     ) -> None:
         if isinstance(node, ast.ClassDef):
             stack.append(node)

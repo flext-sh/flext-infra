@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
 
 # flext-0ftd.3.5: the empty package initializer is not a compatibility export;
 # consume the declaration at its canonical owner after the lazy-init cutover.
@@ -18,6 +17,8 @@ from flext_infra.transformers.smells.base import (
     smell_fixer_for,
 )
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
+
+from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -69,7 +70,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
             fixed, fix_changes = fixer.fix(project_dir, issue)
             if fixed:
                 changes.extend(fix_changes)
-        self._scan_cache.pop(str(self._repository_root), None)
         verified_scan = self._workspace_scan()
         verified = self._issues_from_sarif(verified_scan.stdout, project_dir.name)
         remaining = self._drop_generated_projections(
@@ -112,7 +112,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output=self._scan_output(scan),
+            raw_output=self._raw_output(scan),
             started=started,
         )
 
@@ -161,7 +161,6 @@ class FlextInfraSmellsGate(FlextInfraGate):
                 self._repository_root,
                 timeout=c.Infra.TIMEOUT_LONG,
             )
-        self._scan_cache[key] = output
         return output
 
     def _materialize_scan_config(self) -> None:

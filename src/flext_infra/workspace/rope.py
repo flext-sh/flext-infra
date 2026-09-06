@@ -64,27 +64,28 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         super().model_post_init(__context)
         self._rope_workspace_root = (
             self.rope_workspace_root_override
-            or u.Infra.rope_workspace_root(self.repository_root)
+            or u.Infra.rope_repository_root(self.repository_root)
         )
 
     @classmethod
     def open_workspace(
-        cls, workspace_root: Path, *, rope_workspace_root: Path | None = None
+        cls, workspace_root: Path, *, rope_repository_root: Path | None = None
     ) -> Self:
         """Create one ready-to-use Rope workspace session."""
         # NOTE (multi-agent, flext-wkii.17.24): scan policy is owned only by the
         # validated config singleton, never copied into a session.
-        resolved_rope_root = rope_workspace_root or u.Infra.rope_workspace_root(
+        resolved_rope_root = rope_repository_root or u.Infra.rope_repository_root(
             workspace_root
         )
         workspace = cls(
-            workspace=workspace_root, rope_workspace_root_override=resolved_rope_root
+            repository_root=workspace_root,
+            rope_workspace_root_override=resolved_rope_root,
         )
         _ = workspace.rope_project
         return workspace
 
     @property
-    def rope_workspace_root(self) -> Path:
+    def rope_repository_root(self) -> Path:
         """Canonical root used for the shared Rope project."""
         return self._rope_workspace_root
 
@@ -130,8 +131,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def session_snapshot(self) -> m.Infra.RopeWorkspaceSession:
         """Return the current public Rope session state."""
         return m.Infra.RopeWorkspaceSession(
-            workspace_root=self.repository_root,
-            rope_workspace_root=self._rope_workspace_root,
+            repository_root=self.repository_root,
+            rope_repository_root=self._rope_workspace_root,
             workspace_index=self.workspace_index,
         )
 

@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, ClassVar, override
 import libcst as cst
 
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.rope_source import FlextInfraUtilitiesRopeSource
 from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 from flext_infra.constants import c
 from flext_infra.models import m
@@ -333,8 +332,6 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
         *, file_path: Path | None, current_project: str
     ) -> m.Infra.AliasMigrationContext:
         """Resolve explicit or path-backed alias migration context."""
-        from flext_infra import u
-
         if current_project:
             return m.Infra.AliasMigrationContext(
                 policy_owner=current_project, import_root=current_project

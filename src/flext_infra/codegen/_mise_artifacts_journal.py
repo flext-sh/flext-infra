@@ -7,9 +7,11 @@ from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_process as process
-from flext_infra.codegen import _mise_artifacts_state as state
+from flext_infra.codegen import (
+    _mise_artifacts_files as files,
+    _mise_artifacts_process as process,
+    _mise_artifacts_state as state,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -312,7 +314,7 @@ def write(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     journal: m.Infra.CodegenTransactionJournal,
     *,
-    expected: tuple[m.Cli.AtomicFileState, ...],
+    expected: m.Cli.AtomicFileState,
 ) -> p.Result[m.Cli.AtomicFileState]:
     """Create or transition the common journal with full-state CAS."""
     content = journal.model_dump_json(indent=2).encode(c.Cli.ENCODING_DEFAULT)

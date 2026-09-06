@@ -7,10 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra import c, m
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import WorktreeFixture, u as test_u
+from tests import u as test_u
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 class TestsCodegenBeadsProjection:
@@ -36,7 +37,7 @@ class TestsCodegenBeadsProjection:
             (root / destination).parent.mkdir(parents=True, exist_ok=True)
         for managed in config.Infra.codegen.managed_files:
             (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
-        result = FlextInfraCodegenConform(workspace_root=root).plan(
+        result = FlextInfraCodegenConform(repository_root=root).plan(
             m.Infra.CodegenConformRequest(
                 root=root,
                 scope=c.Infra.CodegenConformScope.SELF,

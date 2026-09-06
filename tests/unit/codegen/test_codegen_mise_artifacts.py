@@ -9,7 +9,9 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 import pytest
-from flext_infra import config, m, r, u
+
+from flext_infra import c, config, m, r, u
+from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import u as test_u

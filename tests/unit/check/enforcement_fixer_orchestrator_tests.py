@@ -9,12 +9,14 @@ from types import SimpleNamespace
 import pytest
 
 from flext_cli import cli
-from flext_infra import m, main as infra_main, p, t, u
+from flext_infra import m, main as infra_main, p, t
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
 from flext_tests import tm
-from tests import c
+
+# Why: u must come from tests (adds the Tests namespace); flext_infra.u lacks it.
+from tests import c, u
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -91,7 +93,7 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=False
+            repository_root=str(tmp_path), projects=("demo",), apply=False
         )
 
         result = adapter.fix_project(
@@ -113,7 +115,7 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=True
+            repository_root=str(tmp_path), projects=("demo",), apply=True
         )
 
         result = adapter.fix_project(
@@ -148,7 +150,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=False
+                repository_root=str(tmp_path), projects=("demo",), apply=False
             ),
         )
 
@@ -176,7 +178,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=True
+                repository_root=str(tmp_path), projects=("demo",), apply=True
             ),
         )
 
@@ -253,7 +255,7 @@ class TestsEnforcementFixerOrchestrator:
 
         def run_git(args: t.StrSequence) -> None:
             output = cli.run_raw([c.Infra.GIT, *args], cwd=project_dir).value
-            tm.that(output.exit_code, eq=0)
+            tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
 
         run_git(("init",))
         run_git(("add", "--", "pyproject.toml", "src"))

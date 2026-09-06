@@ -32,7 +32,7 @@ class FlextInfraUtilitiesCodegenFacades:
         if not owners_exist:
             return None
         owners, ancestors = cls._utility_owners(owners_dir)
-        source = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
+        source: str = facade_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
         facade, namespace = cls._facade_classes(
             ast.parse(source, filename=str(facade_path)), facade_path
         )
@@ -68,8 +68,7 @@ class FlextInfraUtilitiesCodegenFacades:
         _, namespace = cls._facade_classes(
             ast.parse(updated, filename=str(facade_path)), facade_path
         )
-        updated = cls._insert_bases(updated, namespace, additions)
-        return updated
+        return cls._insert_bases(updated, namespace, additions)
 
     @staticmethod
     def _required_methods(

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import tarfile
-from tempfile import TemporaryDirectory
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 
 from flext_cli import r, u
 from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies

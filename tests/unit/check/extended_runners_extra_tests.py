@@ -117,8 +117,12 @@ class TestExtendedRunnerExtras:
         _, project_dir = u.Tests.create_checker_project(tmp_path, with_src=True)
         empty_path = tmp_path / "empty-path"
         empty_path.mkdir()
+        # Why: restore runner dropped by #586 merge conflict resolution (flext-ct0mo)
+        runner = u.Tests.command_runner(stdout='{"results": []}')
         with tm.scope(env={"PATH": str(empty_path)}):
-            result = u.Tests.run_gate_check(FlextInfraBanditGate, tmp_path, project_dir)
+            result = u.Tests.run_gate_check(
+                FlextInfraBanditGate, tmp_path, project_dir, runner=runner
+            )
 
         tm.that(result.result.passed, eq=True)
         tm.that(result.issues, eq=())

@@ -15,6 +15,7 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
+from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.compatibility_aliases import (
     FlextInfraUtilitiesCompatibilityAliases,
 )
@@ -34,6 +35,7 @@ from flext_infra._utilities.docs_render import FlextInfraUtilitiesDocsRender
 from flext_infra._utilities.docs_scope import FlextInfraUtilitiesDocsScope
 from flext_infra._utilities.docs_validate import FlextInfraUtilitiesDocsValidate
 from flext_infra._utilities.git import FlextInfraUtilitiesGit
+from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
 from flext_infra._utilities.log_parser import FlextInfraUtilitiesLogParser
 from flext_infra._utilities.managed_conflicts import FlextInfraUtilitiesManagedConflicts
 from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
@@ -49,14 +51,15 @@ from flext_infra._utilities.namespace_facades import (
 from flext_infra._utilities.namespace_moves import (
     FlextInfraUtilitiesRefactorNamespaceMoves,
 )
+from flext_infra._utilities.network import FlextInfraUtilitiesNetwork
 from flext_infra._utilities.private_imports import FlextInfraUtilitiesPrivateImports
 from flext_infra._utilities.process import FlextInfraUtilitiesProcess
 from flext_infra._utilities.project_managed_artifacts import (
     FlextInfraUtilitiesProjectManagedArtifacts,
 )
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
 from flext_infra._utilities.pyproject_conform import FlextInfraUtilitiesPyprojectConform
+from flext_infra._utilities.pyrefly import FlextInfraUtilitiesPyrefly
 from flext_infra._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
 from flext_infra._utilities.refactor import FlextInfraUtilitiesRefactor
 from flext_infra._utilities.release import FlextInfraUtilitiesRelease
@@ -85,12 +88,11 @@ from flext_infra._utilities.transformer_header import (
     FlextInfraUtilitiesTransformerHeader,
 )
 from flext_infra._utilities.versioning import FlextInfraUtilitiesVersioning
-from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
-from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 from flext_infra._utilities.workspace_fingerprint import (
     FlextInfraUtilitiesWorkspaceFingerprint,
 )
-from flext_infra._utilities.iteration import FlextInfraUtilitiesIteration
+from flext_infra._utilities.worktree_lifecycle import FlextInfraWorktreeLifecycle
+from flext_infra._utilities.worktree_provisioning import FlextInfraWorktreeProvisioning
 
 
 class FlextInfraUtilities(u):
@@ -165,6 +167,7 @@ class FlextInfraUtilities(u):
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
+        FlextInfraUtilitiesCodemodRules,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

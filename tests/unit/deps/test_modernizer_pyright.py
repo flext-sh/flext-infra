@@ -62,7 +62,7 @@ class TestsFlextInfraDepsModernizerPyright:
         (excluded / "module.py").write_text("VALUE = 2\n", encoding="utf-8")
 
         discovered = infra_u.Infra.discover_python_dirs(
-            tmp_path, excluded_top_dirs=(excluded.name,)
+            tmp_path, workspace_excluded_top_dirs=frozenset((excluded.name,))
         )
 
         tm.that(discovered, eq=[included.name])
@@ -122,7 +122,7 @@ class TestsFlextInfraDepsModernizerPyright:
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
-            doc, is_root=True, repository_root=tmp_path
+            doc, is_root=True, workspace_root=tmp_path
         )
 
         tool = u.Cli.toml_unwrap_item(doc["tool"])
@@ -392,11 +392,11 @@ class TestsFlextInfraDepsModernizerPyright:
         fleet_doc = u.Cli.toml_document()
         declared_doc = u.Cli.toml_document()
 
-        _ = phase.apply(fleet_doc, is_root=True, repository_root=tmp_path)
+        _ = phase.apply(fleet_doc, is_root=True, workspace_root=tmp_path)
         _ = phase.apply(
             declared_doc,
             is_root=True,
-            repository_root=tmp_path,
+            workspace_root=tmp_path,
             declared_python_dirs=(rules.source_dir,),
         )
 

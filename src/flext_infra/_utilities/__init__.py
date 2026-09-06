@@ -12,6 +12,10 @@ if TYPE_CHECKING:
     from . import _git as _git, _rope as _rope
     from ._docs_audit_detectors import FlextInfraUtilitiesDocsAuditDetectorsMixin
     from ._docs_command_contract import FlextInfraUtilitiesDocsCommandContractMixin
+    from ._docs_generate_plan import FlextInfraUtilitiesDocsGeneratePlanMixin
+    from ._docs_generate_project import FlextInfraUtilitiesDocsGenerateProjectMixin
+    from ._docs_generate_root import FlextInfraUtilitiesDocsGenerateRootMixin
+    from ._docs_generate_sources import FlextInfraUtilitiesDocsGenerateSourcesMixin
     from ._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
     from ._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
@@ -51,11 +55,14 @@ if TYPE_CHECKING:
     from ._rope_bracket_balance import FlextInfraUtilitiesRopeBracketBalanceMixin
     from ._rope_core_pymodule import FlextInfraUtilitiesRopeCorePyModuleMixin
     from ._rope_core_resources import FlextInfraUtilitiesRopeCoreResourcesMixin
+    from ._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMixin
     from .base import FlextInfraUtilitiesBase
     from .census import FlextInfraUtilitiesRefactorCensus
     from .class_nesting import FlextInfraUtilitiesClassNesting
     from .codegen import FlextInfraUtilitiesCodegen
     from .codegen_facades import FlextInfraUtilitiesCodegenFacades
+    from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+    from .codemod_rules import FlextInfraUtilitiesCodemodRules
     from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
     from .compatibility_alias_validation import (
         FlextInfraUtilitiesCompatibilityAliasValidation,
@@ -78,6 +85,11 @@ if TYPE_CHECKING:
     from .docs_scope import FlextInfraUtilitiesDocsScope
     from .docs_validate import FlextInfraUtilitiesDocsValidate
     from .git import FlextInfraUtilitiesGit
+    from .iteration import FlextInfraUtilitiesIteration
+    from .iteration_directory import FlextInfraUtilitiesIterationDirectory
+    from .iteration_matching import FlextInfraUtilitiesIterationMatching
+    from .iteration_project import FlextInfraUtilitiesIterationProject
+    from .iteration_workspace import FlextInfraUtilitiesIterationWorkspace
     from .log_parser import FlextInfraUtilitiesLogParser
     from .managed_conflicts import FlextInfraUtilitiesManagedConflicts
     from .namespace import FlextInfraUtilitiesCodegenNamespace
@@ -86,12 +98,12 @@ if TYPE_CHECKING:
     from .namespace_config import FlextInfraUtilitiesNamespaceConfig
     from .namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
     from .namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
+    from .network import FlextInfraUtilitiesNetwork
     from .private_import_cst import FlextInfraUtilitiesPrivateImportCst
     from .private_import_facades import FlextInfraUtilitiesPrivateImportFacades
     from .private_import_validation import FlextInfraUtilitiesPrivateImportValidation
     from .private_imports import FlextInfraUtilitiesPrivateImports
     from .process import FlextInfraUtilitiesProcess
-    from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .project_discovery import FlextInfraUtilitiesProjectDiscovery
     from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
     from .protected_edit import FlextInfraUtilitiesProtectedEdit
@@ -101,8 +113,10 @@ if TYPE_CHECKING:
     from .protected_edit_writes import FlextInfraUtilitiesProtectedEditWrites
     from .pyproject import FlextInfraUtilitiesPyproject
     from .pyproject_conform import FlextInfraUtilitiesPyprojectConform
+    from .pyrefly import FlextInfraUtilitiesPyrefly
     from .qualified_names import FlextInfraUtilitiesQualifiedNames
     from .refactor import FlextInfraUtilitiesRefactor
+    from .refactor_discovery import FlextInfraUtilitiesRefactorDiscovery
     from .release import FlextInfraUtilitiesRelease
     from .repository import FlextInfraUtilitiesRepository
     from .resource_limits import FlextInfraUtilitiesResourceLimits
@@ -126,6 +140,8 @@ if TYPE_CHECKING:
     from .rope_structure import FlextInfraUtilitiesRopeStructure
     from .safety import FlextInfraUtilitiesSafety
     from .silent_failure_ast import FlextInfraUtilitiesSilentFailureAst
+    from .silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
+    from .silent_failure_ast_rules import FlextInfraUtilitiesSilentFailureAstRules
     from .transformer_base import (
         FlextInfraChangeTrackingTransformer,
         FlextInfraRopeTransformer,
@@ -138,14 +154,15 @@ if TYPE_CHECKING:
     from .worktree_provisioning import FlextInfraWorktreeProvisioning
 __all__: tuple[str, ...] = (
     "FlextInfraChangeTrackingTransformer",
-    "FlextInfraRefactorProjectAliasMigrator",
     "FlextInfraRopeProject",
     "FlextInfraRopeTransformer",
     "FlextInfraUtilitiesBase",
     "FlextInfraUtilitiesClassNesting",
     "FlextInfraUtilitiesCodegen",
     "FlextInfraUtilitiesCodegenFacades",
+    "FlextInfraUtilitiesCodegenFilePlan",
     "FlextInfraUtilitiesCodegenNamespace",
+    "FlextInfraUtilitiesCodemodRules",
     "FlextInfraUtilitiesCompatibilityAliasCst",
     "FlextInfraUtilitiesCompatibilityAliasValidation",
     "FlextInfraUtilitiesCompatibilityAliases",
@@ -196,9 +213,15 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
+    "FlextInfraUtilitiesIteration",
+    "FlextInfraUtilitiesIterationDirectory",
+    "FlextInfraUtilitiesIterationMatching",
+    "FlextInfraUtilitiesIterationProject",
+    "FlextInfraUtilitiesIterationWorkspace",
     "FlextInfraUtilitiesLogParser",
     "FlextInfraUtilitiesManagedConflicts",
     "FlextInfraUtilitiesNamespaceConfig",
+    "FlextInfraUtilitiesNetwork",
     "FlextInfraUtilitiesPrivateImportCst",
     "FlextInfraUtilitiesPrivateImportFacades",
     "FlextInfraUtilitiesPrivateImportValidation",
@@ -215,9 +238,11 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesProtectedEditWrites",
     "FlextInfraUtilitiesPyproject",
     "FlextInfraUtilitiesPyprojectConform",
+    "FlextInfraUtilitiesPyrefly",
     "FlextInfraUtilitiesQualifiedNames",
     "FlextInfraUtilitiesRefactor",
     "FlextInfraUtilitiesRefactorCensus",
+    "FlextInfraUtilitiesRefactorDiscovery",
     "FlextInfraUtilitiesRefactorNamespaceCommon",
     "FlextInfraUtilitiesRefactorNamespaceFacades",
     "FlextInfraUtilitiesRefactorNamespaceFlext",
@@ -236,6 +261,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeHelpers",
     "FlextInfraUtilitiesRopeImports",
     "FlextInfraUtilitiesRopeInventory",
+    "FlextInfraUtilitiesRopeMethodOrderMixin",
     "FlextInfraUtilitiesRopeModulePatch",
     "FlextInfraUtilitiesRopePep695Patch",
     "FlextInfraUtilitiesRopeRuntime",
@@ -247,6 +273,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesRopeStructure",
     "FlextInfraUtilitiesSafety",
     "FlextInfraUtilitiesSilentFailureAst",
+    "FlextInfraUtilitiesSilentFailureAstBase",
+    "FlextInfraUtilitiesSilentFailureAstRules",
     "FlextInfraUtilitiesTransformerHeader",
     "FlextInfraUtilitiesTransformerHeaderParser",
     "FlextInfraUtilitiesVersioning",
@@ -265,6 +293,10 @@ _LAZY_IMPORTS = MappingProxyType(
         MappingProxyType({
             "._docs_audit_detectors": ("FlextInfraUtilitiesDocsAuditDetectorsMixin",),
             "._docs_command_contract": ("FlextInfraUtilitiesDocsCommandContractMixin",),
+            "._docs_generate_plan": ("FlextInfraUtilitiesDocsGeneratePlanMixin",),
+            "._docs_generate_project": ("FlextInfraUtilitiesDocsGenerateProjectMixin",),
+            "._docs_generate_root": ("FlextInfraUtilitiesDocsGenerateRootMixin",),
+            "._docs_generate_sources": ("FlextInfraUtilitiesDocsGenerateSourcesMixin",),
             "._docs_github_links": ("FlextInfraUtilitiesDocsGithubLinks",),
             "._docs_guides": ("FlextInfraUtilitiesDocsGuidesMixin",),
             "._docs_scope_build": ("FlextInfraUtilitiesDocsScopeBuildMixin",),
@@ -314,11 +346,14 @@ _LAZY_IMPORTS = MappingProxyType(
             "._rope_bracket_balance": ("FlextInfraUtilitiesRopeBracketBalanceMixin",),
             "._rope_core_pymodule": ("FlextInfraUtilitiesRopeCorePyModuleMixin",),
             "._rope_core_resources": ("FlextInfraUtilitiesRopeCoreResourcesMixin",),
+            "._rope_method_order": ("FlextInfraUtilitiesRopeMethodOrderMixin",),
             ".base": ("FlextInfraUtilitiesBase",),
             ".census": ("FlextInfraUtilitiesRefactorCensus",),
             ".class_nesting": ("FlextInfraUtilitiesClassNesting",),
             ".codegen": ("FlextInfraUtilitiesCodegen",),
             ".codegen_facades": ("FlextInfraUtilitiesCodegenFacades",),
+            ".codegen_file_plan": ("FlextInfraUtilitiesCodegenFilePlan",),
+            ".codemod_rules": ("FlextInfraUtilitiesCodemodRules",),
             ".compatibility_alias_cst": ("FlextInfraUtilitiesCompatibilityAliasCst",),
             ".compatibility_alias_validation": (
                 "FlextInfraUtilitiesCompatibilityAliasValidation",
@@ -343,6 +378,11 @@ _LAZY_IMPORTS = MappingProxyType(
             ".docs_scope": ("FlextInfraUtilitiesDocsScope",),
             ".docs_validate": ("FlextInfraUtilitiesDocsValidate",),
             ".git": ("FlextInfraUtilitiesGit",),
+            ".iteration": ("FlextInfraUtilitiesIteration",),
+            ".iteration_directory": ("FlextInfraUtilitiesIterationDirectory",),
+            ".iteration_matching": ("FlextInfraUtilitiesIterationMatching",),
+            ".iteration_project": ("FlextInfraUtilitiesIterationProject",),
+            ".iteration_workspace": ("FlextInfraUtilitiesIterationWorkspace",),
             ".log_parser": ("FlextInfraUtilitiesLogParser",),
             ".managed_conflicts": ("FlextInfraUtilitiesManagedConflicts",),
             ".namespace": ("FlextInfraUtilitiesCodegenNamespace",),
@@ -351,6 +391,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".namespace_config": ("FlextInfraUtilitiesNamespaceConfig",),
             ".namespace_facades": ("FlextInfraUtilitiesRefactorNamespaceFacades",),
             ".namespace_moves": ("FlextInfraUtilitiesRefactorNamespaceMoves",),
+            ".network": ("FlextInfraUtilitiesNetwork",),
             ".private_import_cst": ("FlextInfraUtilitiesPrivateImportCst",),
             ".private_import_facades": ("FlextInfraUtilitiesPrivateImportFacades",),
             ".private_import_validation": (
@@ -358,7 +399,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ),
             ".private_imports": ("FlextInfraUtilitiesPrivateImports",),
             ".process": ("FlextInfraUtilitiesProcess",),
-            ".project_alias_migrator": ("FlextInfraRefactorProjectAliasMigrator",),
             ".project_discovery": ("FlextInfraUtilitiesProjectDiscovery",),
             ".project_managed_artifacts": (
                 "FlextInfraUtilitiesProjectManagedArtifacts",
@@ -370,8 +410,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".protected_edit_writes": ("FlextInfraUtilitiesProtectedEditWrites",),
             ".pyproject": ("FlextInfraUtilitiesPyproject",),
             ".pyproject_conform": ("FlextInfraUtilitiesPyprojectConform",),
+            ".pyrefly": ("FlextInfraUtilitiesPyrefly",),
             ".qualified_names": ("FlextInfraUtilitiesQualifiedNames",),
             ".refactor": ("FlextInfraUtilitiesRefactor",),
+            ".refactor_discovery": ("FlextInfraUtilitiesRefactorDiscovery",),
             ".release": ("FlextInfraUtilitiesRelease",),
             ".repository": ("FlextInfraUtilitiesRepository",),
             ".resource_limits": ("FlextInfraUtilitiesResourceLimits",),
@@ -395,6 +437,8 @@ _LAZY_IMPORTS = MappingProxyType(
             ".rope_structure": ("FlextInfraUtilitiesRopeStructure",),
             ".safety": ("FlextInfraUtilitiesSafety",),
             ".silent_failure_ast": ("FlextInfraUtilitiesSilentFailureAst",),
+            ".silent_failure_ast_base": ("FlextInfraUtilitiesSilentFailureAstBase",),
+            ".silent_failure_ast_rules": ("FlextInfraUtilitiesSilentFailureAstRules",),
             ".transformer_base": (
                 "FlextInfraChangeTrackingTransformer",
                 "FlextInfraRopeTransformer",

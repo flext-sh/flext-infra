@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_core import r
 from flext_infra import c, config
 from flext_infra.docs.generator import FlextInfraDocGenerator
@@ -54,7 +56,7 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
     _ = _plan_docs(generator)
     result = generator.generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"], apply=False
         )
     )
 
@@ -67,7 +69,7 @@ def test_bundle_plans_root_and_selected_project_artifacts(tmp_path: Path) -> Non
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     plans = _plan_docs(generator)
 
@@ -88,10 +90,10 @@ def test_collocated_workspace_project_keeps_root_aggregate_as_single_owner(
         '"""Workspace fixture package."""\n', encoding="utf-8"
     )
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["."], apply=False
+        repository_root=workspace, projects=["."], apply=False
     )
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["."]
+        repository_root=workspace, selected_projects=["."]
     )
 
     _ = _publish_docs(generator)
@@ -113,10 +115,10 @@ def test_root_generated_catalog_survives_project_pass_and_required_indexes_valid
     """Preserve root output while leaving optional curated indexes unowned."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=False
+        repository_root=workspace, projects=["flext-a"], apply=False
     )
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
 
     _ = _publish_docs(generator)
@@ -145,7 +147,7 @@ def test_generated_collection_rules_pointer_stays_within_consumer_limit(
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     prepared = generator.prepare_bundle()
     tm.ok(prepared)
@@ -197,10 +199,10 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# Docs\n", encoding="utf-8")
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-infra-fixture"], apply=False
+        repository_root=workspace, projects=["flext-infra-fixture"], apply=False
     )
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-infra-fixture"]
+        repository_root=workspace, selected_projects=["flext-infra-fixture"]
     )
 
     scopes = u.Infra.build_scopes(workspace, None, c.Infra.DEFAULT_DOCS_OUTPUT_DIR)
@@ -257,7 +259,7 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
         encoding="utf-8",
     )
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
 
     _ = _publish_docs(generator)
@@ -300,7 +302,7 @@ def test_configured_api_modules_own_generated_module_pages(tmp_path: Path) -> No
     )
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=[project_name]
+        repository_root=workspace, selected_projects=[project_name]
     )
     _ = _publish_docs(generator)
 
@@ -318,7 +320,7 @@ def test_configured_api_modules_own_generated_module_pages(tmp_path: Path) -> No
 def test_generated_markdown_starts_with_level_one_heading(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
 
     _ = _publish_docs(generator)
@@ -349,7 +351,7 @@ def test_generated_mkdocstrings_directive_preserves_indented_options(
     """Keep Mkdocstrings directives structural across generated pages."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
 
     _ = _publish_docs(generator)
@@ -418,7 +420,10 @@ def test_file_plan_reports_real_drift_and_reaches_fixed_point(tmp_path: Path) ->
     tm.ok(published)
 
     fixed_point = _plan_docs(generator)
-    tm.that(any(plan.requires_effect for plan in fixed_point), eq=False)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in fixed_point),
+        eq=False,
+    )
 
 
 def test_stale_generated_file_drift_converges_through_file_plans(

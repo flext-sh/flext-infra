@@ -30,8 +30,7 @@ class FlextInfraOrchestratorService(
         Path,
         m.Field(
             default_factory=Path.cwd,
-            alias="workspace",
-            description="Workspace root containing every orchestrated project.",
+            description="Repository root containing every orchestrated project.",
         ),
     ]
     verb: Annotated[str, m.Field(description="Make verb to execute")]

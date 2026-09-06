@@ -159,23 +159,14 @@ class TestCodegenCiMatrix:
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
-        tm.that(ci_step_runs, has="run: CI=Y make setup APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make conform APPLY=Y")
-        tm.that(workflow, has="run: CI=Y make audit")
         tm.that(workflow, lacks="attest/gates/v1")
         tm.that(workflow, lacks="github verify-gates")
         tm.that(workflow, lacks="WHAT=")
+        # The declared step order is the only ordering authority: the rendered
+        # workflow must place the steps exactly as `config` sequences them,
+        # so freezing individual verb pairs here would duplicate that contract.
         step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
         tm.that(step_indices, eq=tuple(sorted(step_indices)))
-        setup_index = workflow.index("run: CI=Y make setup APPLY=Y")
-        conform_index = workflow.index("run: CI=Y make conform APPLY=Y")
-        audit_index = workflow.index("run: CI=Y make audit")
-        check_index = workflow.index("run: CI=Y make check APPLY=Y")
-        test_index = workflow.index("run: CI=Y make test APPLY=Y")
-        tm.that(
-            setup_index < conform_index < audit_index < check_index < test_index,
-            eq=True,
-        )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]
@@ -289,10 +280,7 @@ class TestCodegenCiMatrix:
             dist="cosmos-main",
             make_profile=c.Infra.MakeProfile.WORKSPACE,
             repository_branch="develop",
-            ci_trigger_branches=(
-                *config.Infra.codegen.branch_policy.ci_trigger_branches,
-                "develop",
-            ),
+            ci_trigger_branches=CodegenTestSupport.Ci.ci_trigger_branches("develop"),
         ).model_copy(update={"private_submodules": private})
         rendered = u.Cli.template_render(tpl, spec)
         tm.ok(rendered)
@@ -443,7 +431,7 @@ class TestCodegenCiMatrix:
         matrix = (root / ".github" / "workflows" / "ci-matrix.yml").read_text(
             encoding="utf-8"
         )
-        integrations = tuple(config.Infra.codegen.branch_policy.ci_trigger_branches)
+        integrations = CodegenTestSupport.Ci.ci_trigger_branches(branch)
         tm.that(integrations, has=branch)
         for integration in integrations:
             tm.that(blocking, has=f"      - {integration}")

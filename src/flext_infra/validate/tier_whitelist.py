@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c
+from flext_infra import c, u
 from flext_infra.validate._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
@@ -60,6 +60,10 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         configuration is ``class Foo(FlextSettings, BaseSettings)`` per
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
+
+        Ownership is resolved from the scanned project's own declared
+        ``[project].name`` (never the checkout's directory basename) so the
+        check stays correct under a renamed worktree checkout.
         """
         if any(
             part in c.Infra.TIER_WHITELIST_NON_RUNTIME_DIR_PARTS
@@ -73,9 +77,11 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         ):
             return True
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
-        if owner is None:
+        if owner is None or "/src/" not in _file_path.as_posix():
             return False
-        return f"/{owner}/src/" in _file_path.as_posix()
+        return owner == u.Infra.project_name_from_payload(
+            self.repository_root, u.Infra.project_payload(self.repository_root)
+        )
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:

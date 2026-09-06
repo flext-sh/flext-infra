@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import stat
 from hashlib import sha256
 from pathlib import Path
-import stat
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r
@@ -137,10 +137,38 @@ def resolve_relative(root: Path, selector: str, *, purpose: str) -> p.Result[Pat
     return r[Path].ok(candidate)
 
 
+def project_for_path(
+    layout: m.Infra.MiseToolchainWorkspaceLayout, path: Path
+) -> p.Result[m.Infra.MiseToolchainProjectLayout]:
+    """Resolve one destination to its most-specific selected project owner."""
+    candidate = path.absolute()
+    if candidate.is_relative_to(layout.state_root.absolute()):
+        return r[m.Infra.MiseToolchainProjectLayout].fail(
+            f"managed path enters codegen transaction state: {path}"
+        )
+    owners = tuple(
+        project
+        for project in layout.projects
+        if candidate.is_relative_to(project.root.absolute())
+    )
+    if not owners:
+        return r[m.Infra.MiseToolchainProjectLayout].fail(
+            f"managed path is outside selected project topology: {path}"
+        )
+    deepest = max(len(project.root.parts) for project in owners)
+    selected = tuple(
+        project for project in owners if len(project.root.parts) == deepest
+    )
+    if len(selected) != 1:
+        return r[m.Infra.MiseToolchainProjectLayout].fail(
+            f"managed path has ambiguous project ownership: {path}"
+        )
+    return r[m.Infra.MiseToolchainProjectLayout].ok(selected[0])
+
+
 __all__: list[str] = [
     "ARTIFACT_NAMES",
     "ARTIFACT_SPECS",
-    "BOOTSTRAP_DIR_NAME",
     "CONFIG_SPEC",
     "JOURNAL_MODE",
     "JOURNAL_NAME",
@@ -150,6 +178,7 @@ __all__: list[str] = [
     "delete_state",
     "digest",
     "physical_directory_identity",
+    "project_for_path",
     "read_state",
     "resolve_relative",
     "workspace_relative",

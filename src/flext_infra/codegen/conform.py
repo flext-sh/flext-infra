@@ -532,9 +532,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(with_docs)
         published = transaction.commit_locked(
             with_docs.value,
-            lambda: self._validate_managed_fixed_point(
-                request, with_docs.value, transaction, lazy_analysis.value
-            ),
+            lambda: self._validate_managed_fixed_point(request, with_docs.value),
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
@@ -557,7 +555,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if workspace_result.failure:
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
-        if not workspace.declared_repositories:
+        if not workspace.subprojects:
             return r[bool].ok(True)
         owner = root / c.Infra.BEADS_DIRNAME
         if not owner.is_dir() or owner.is_symlink():
@@ -570,7 +568,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
         pending: list[Path] = []
-        for repository in workspace.declared_repositories:
+        for repository in workspace.subprojects:
             member = (root / repository.path).resolve()
             route = member / c.Infra.BEADS_DIRNAME
             if route.is_symlink():
@@ -619,10 +617,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
-        transaction: FlextInfraCodegenTransaction,
-        lazy_analysis: m.Infra.CodegenPhaseAnalysis,
     ) -> p.Result[bool]:
-        """Replan conform against live bytes before the journal can commit."""
+        """Replan conform against live bytes before the journal can commit.
+
+        The lazy-init analysis is recomputed here on purpose: the caller's
+        pre-publication plan describes the tree before the write, so only a
+        fresh read proves the published bytes are a fixed point.
+        """
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
@@ -1949,7 +1950,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _workspace_root_rel(workspace: m.Infra.WorkspaceSpec) -> str:
         """Return the environment root owned by the inferred target."""
         if workspace.project is not None:
-            project_root_rel: str = workspace.project.workspace_root_rel
+            project_root_rel: str = workspace.project.repository_root_rel
             return project_root_rel
         return "."
 
@@ -2468,7 +2469,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 version=version_result.value,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
-                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
@@ -2989,7 +2989,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             current = u.Cli.files_read_text(path)
             if current.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(current)
-            if c.Infra.TEMPLATE_GENERATED_MARKER not in current.value:
+            if not any(
+                marker in current.value for marker in c.Infra.TEMPLATE_GENERATED_MARKERS
+            ):
                 continue
             absent_plan = cls._absent_file_plan(root, path)
             if absent_plan.failure:

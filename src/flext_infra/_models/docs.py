@@ -56,8 +56,8 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
         reuse the same validation rules and avoid ad-hoc multi-parameter calls.
         """
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Workspace root for docs generation")
+        repository_root: Annotated[
+            Path, m.Field(description="Repository root for docs generation")
         ]
         projects: Annotated[
             t.StrSequence | None, m.Field(description="Optional selected project names")

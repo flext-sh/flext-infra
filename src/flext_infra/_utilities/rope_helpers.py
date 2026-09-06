@@ -5,11 +5,16 @@ from __future__ import annotations
 from flext_infra._utilities._rope_bracket_balance import (
     FlextInfraUtilitiesRopeBracketBalanceMixin,
 )
+from flext_infra._utilities._rope_method_order import (
+    FlextInfraUtilitiesRopeMethodOrderMixin,
+)
 from flext_infra.constants import c
 from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesRopeHelpers(FlextInfraUtilitiesRopeBracketBalanceMixin):
+class FlextInfraUtilitiesRopeHelpers(
+    FlextInfraUtilitiesRopeBracketBalanceMixin, FlextInfraUtilitiesRopeMethodOrderMixin
+):
     """Generic text, import-placement, and method-order helpers."""
 
     @staticmethod

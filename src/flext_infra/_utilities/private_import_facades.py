@@ -115,7 +115,12 @@ class FlextInfraUtilitiesPrivateImportFacades:
             if root_class is None:
                 continue
 
-            def collect(node: ast.ClassDef, public_path: str) -> None:
+            def collect(
+                node: ast.ClassDef,
+                public_path: str,
+                *,
+                imports: dict[str, str] = imports,
+            ) -> None:
                 if any(
                     isinstance(base, ast.Name) and imports.get(base.id) == qualified
                     for base in node.bases
@@ -175,7 +180,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     and imported.asname is None
                 )
                 or (
-                    node.module in removals
+                    node.module is not None
+                    and node.module in removals
                     and imported.name in removals[node.module]
                     and (imported.asname or imported.name) == alias
                 )

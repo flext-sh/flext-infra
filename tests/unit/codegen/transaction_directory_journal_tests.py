@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import pytest
+
 from flext_infra import m
 from flext_infra.codegen import codegen_transaction as transaction
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts

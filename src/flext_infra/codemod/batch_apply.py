@@ -39,7 +39,7 @@ class FlextInfraCodemodBatchApply(FlextInfraServiceBase[t.Cli.ResultValue]):
                     f"{pending.detection_only} detection-only, across "
                     f"{len(rules)} rule file(s)"
                 )
-            FlextInfraModGateEngine.validate(self.repository_root, ()).unwrap()
+            FlextInfraModGateEngine.validate(self.repository_root).unwrap()
             cli.display_text("mod: no pending ast-grep fixes")
             return r.ok(True)
         return self._execute_apply(self.repository_root, rules)

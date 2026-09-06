@@ -212,6 +212,10 @@ class FlextInfraConstantsBase(
     "Reproducible-build timestamp environment variable."
     RELEASE_BUILD_CONSTRAINTS_PATH: Final[str] = "config/build-constraints.txt"
     "Workspace-relative hashed build-backend constraint file."
+    # Why: restored — deleted declaration with consumers left behind (worktree
+    # exclusions and mise-artifact transaction staging).
+    TRANSACTION_STATE_DIRNAME: Final[str] = ".state"
+    "Root of regenerable codegen transaction state; never repository content."
     RELEASE_BUILD_TOOLCHAIN_REQUIREMENTS: Final[frozenset[str]] = frozenset({
         "hatchling",
         "packaging",
@@ -280,9 +284,6 @@ class FlextInfraConstantsBase(
     FORMAT: Final[str] = "format"
     MARKDOWN: Final[str] = "markdown"
     SILENT_FAILURE: Final[str] = "silent-failure"
-    DEFAULT_CSV: Final[str] = (
-        "lint,format,pyrefly,mypy,pyright,silent-failure,security,markdown"
-    )
 
     @unique
     class TomlMergeMode(StrEnum):
@@ -366,7 +367,6 @@ class FlextInfraConstantsBase(
     RK_ID: Final[str] = "id"
     RK_URL: Final[str] = "url"
     RK_CLASS_NESTING: Final[str] = "class_nesting"
-    RK_REWRITE_SCOPE: Final[str] = "rewrite_scope"
     RK_CONFIDENCE: Final[str] = "confidence"
     RK_FIX_ACTION: Final[str] = "fix_action"
     RK_DESCRIPTION: Final[str] = "description"

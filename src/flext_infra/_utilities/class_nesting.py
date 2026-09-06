@@ -62,7 +62,6 @@ class FlextInfraUtilitiesClassNesting:
                 class_name=class_info.name,
                 target_namespace=namespace,
                 confidence=confidence,
-                rewrite_scope=c.Infra.RK_FILE,
             )
             for class_info in classes
             if class_info.name != owner.name
@@ -132,7 +131,9 @@ class FlextInfraUtilitiesClassNesting:
     ) -> str:
         """Use a real root-facade alias, otherwise the module owner itself."""
         if module_relative.parent.parts:
-            return owner.name
+            return FlextInfraUtilitiesClassNesting._validated_namespace(
+                owner.name, resource=resource
+            )
         tree = FlextInfraUtilitiesRopeCore.get_pymodule(
             rope_project, resource
         ).get_ast()
@@ -155,7 +156,15 @@ class FlextInfraUtilitiesClassNesting:
         if len(aliases) > 1:
             msg = f"ambiguous facade aliases for {resource.real_path}: {aliases}"
             raise ValueError(msg)
-        namespace = aliases[0] if aliases else owner.name
+        return FlextInfraUtilitiesClassNesting._validated_namespace(
+            aliases[0] if aliases else owner.name, resource=resource
+        )
+
+    @staticmethod
+    def _validated_namespace(
+        namespace: t.Infra.InfraValue, *, resource: t.Infra.RopeResource
+    ) -> str:
+        """Prove one facade namespace is a real string before it is published."""
         if not isinstance(namespace, str):
             msg = f"invalid facade namespace for {resource.real_path}: {namespace!r}"
             raise TypeError(msg)

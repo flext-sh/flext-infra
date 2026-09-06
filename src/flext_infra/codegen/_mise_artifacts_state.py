@@ -9,8 +9,10 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_verification as verify
+from flext_infra.codegen import (
+    _mise_artifacts_files as files,
+    _mise_artifacts_verification as verify,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -368,6 +370,7 @@ def validate_transaction_roots(
             return r[bool].from_failure(transaction)
         if transaction.value is False:
             continue
+        transaction_identity = transaction.value
         relative = files.workspace_relative(layout.scope_root, transaction_root)
         if relative.failure:
             return r[bool].from_failure(relative)

@@ -47,10 +47,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._result = result
 
             def resolve_projects(
-                self, workspace_root: Path, names: t.StrSequence
+                self, repository_root: Path, names: t.StrSequence
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
-                del workspace_root, names
+                del repository_root, names
                 return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
@@ -111,7 +111,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if result.failure:
                     return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
                 output = result.value
-                if output.exit_code != 0:
+                if not u.Cli.process_succeeded(output.outcome):
                     return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )
@@ -140,7 +140,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     m.Cli.CommandBytesOutput(
                         stdout=output.stdout.encode(),
                         stderr=output.stderr.encode(),
-                        exit_code=output.exit_code,
+                        outcome=output.outcome,
                         duration=output.duration,
                     )
                 )
@@ -229,10 +229,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 input_data: str | bytes | None = None,
                 *,
                 live: bool = False,
+                heartbeat_seconds: float | None = None,
                 deadline: p.Cli.ProcessDeadline | None = None,
-            ) -> p.Result[int]:
+            ) -> p.Result[p.Cli.ProcessOutcome]:
                 """Provide the typed test helper `run_to_file`."""
-                del input_data, live, deadline
+                del input_data, live, heartbeat_seconds, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -241,14 +242,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     remove_env_keys=remove_env_keys,
                 )
                 if result.failure:
-                    return r[int].fail(result.error or "Command failed")
+                    return r[p.Cli.ProcessOutcome].fail(
+                        result.error or "Command failed"
+                    )
                 output_path = (
                     output_file if isinstance(output_file, Path) else Path(output_file)
                 )
                 output_path.write_text(
                     f"{result.value.stdout}{result.value.stderr}", encoding="utf-8"
                 )
-                return r[int].ok(result.value.exit_code)
+                return r[p.Cli.ProcessOutcome].ok(result.value.outcome)
 
         class TomlReaderSequence(p.Infra.TomlReader):
             """Protocol-compatible TOML reader that replays typed results."""
@@ -435,7 +438,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 ),
                 homepage=homepage,
                 documentation=homepage,
-                workspace_root_rel=".",
+                repository_root_rel=".",
                 year=2026,
             )
 
@@ -555,7 +558,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def command_runner(
             *, stdout: str = "", stderr: str = "", returncode: int = 0
-        ) -> p.Cli.CommandRunner:
+        ) -> TestsFlextInfraUtilities.Tests.DeptryRunner:
             """Provide the typed test helper `command_runner`."""
             return TestsFlextInfraUtilities.Tests.DeptryRunner(
                 r.ok(
@@ -584,7 +587,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> m.Cli.CommandOutput:
             """Provide the typed test helper `stub_run`."""
             return m.Cli.CommandOutput(
-                stdout=stdout, stderr=stderr, exit_code=returncode
+                stdout=stdout,
+                stderr=stderr,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=returncode, timed_out=False, forwarded_signal=None
+                ),
             )
 
         @staticmethod
@@ -618,6 +625,45 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def write_standalone_workspace_manifest(
+            project_dir: Path,
+            name: str,
+            *,
+            upstream: str | None = None,
+            inherited_facets: t.StrSequence = (),
+        ) -> Path:
+            """Write the declared ``config/workspace.yaml`` of one standalone repository.
+
+            The Makefile projection reads declarations only, so this fixture is
+            the complete topology input for ``codegen conform --what makefile
+            --scope self``. Every value is derived from the same typed SSOT the
+            production loader validates against, never frozen by hand. Python
+            distribution roots are never declared here: ``codegen conform``
+            discovers them from the physical source tree.
+            """
+            repository = TestsFlextInfraUtilities.Tests.repository_ref(
+                name, role=c.Infra.MakeProfile.STANDALONE
+            ).model_copy(update={"checkout": c.Infra.CheckoutKind.INDEPENDENT})
+            project = TestsFlextInfraUtilities.Tests.project_spec(name)
+            if upstream is not None:
+                project = project.model_copy(update={"upstream": upstream})
+            if inherited_facets:
+                project = project.model_copy(
+                    update={"inherited_facets": tuple(inherited_facets)}
+                )
+            manifest = m.Infra.WorkspaceManifestSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=name,
+                repository=repository,
+                project=project,
+            )
+            config_dir = project_dir / c.CONFIG_DIR_NAME
+            config_dir.mkdir(parents=True, exist_ok=True)
+            manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
+            tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
+            return manifest_path
+
+        @staticmethod
         def standalone_workspace(
             project_dir: Path, name: str = "flext-demo"
         ) -> m.Infra.WorkspaceSpec:
@@ -642,6 +688,40 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return workspace.model_copy(
                 update={"project": TestsFlextInfraUtilities.Tests.project_spec(name)}
             )
+
+        @staticmethod
+        def required_beads(
+            workspace: m.Infra.WorkspaceSpec,
+        ) -> m.Infra.BeadsProjectSpec:
+            """Return the ledger identity the observed loader must always resolve.
+
+            Every observed load owns a Beads identity — the loader rejects a
+            spec without one — so a test asserting that identity states the
+            contract here instead of reaching into the spec at each call site.
+            """
+            return workspace.beads
+
+        @staticmethod
+        def copy_tracked_mise_seeds(root: Path) -> None:
+            """Copy this checkout's committed Mise toolchain seeds into ``root``.
+
+            ``codegen conform`` validates the tracked, checksum-verified
+            ``bin/mise`` seeds instead of minting them, so a fixture tree that
+            conforms the full surface must carry them exactly as a governed
+            repository does. The declared ``.mise.toml`` travels with its
+            ``mise.lock``: the lock answers that exact declaration, so a fixture
+            carrying one without the other reads as a changed toolchain and
+            makes conform resolve every selector against its remote registry —
+            a network call inside a unit test. Conform still renders and
+            publishes the configuration; it simply has nothing to re-resolve
+            when the rendered bytes match the seed.
+            """
+            source_root = Path(__file__).resolve().parents[1]
+            for relative in (".mise.toml", "bin/mise", "bin/mise.cmd", "mise.lock"):
+                source = source_root / relative
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                _ = shutil.copy2(source, destination)
 
         @staticmethod
         def write_mise_stub(path: Path) -> Path:
@@ -919,7 +999,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return main([
                 "release",
                 "run",
-                "--workspace",
+                "--repository-root",
                 str(workspace_root),
                 *arguments,
             ])
@@ -1257,7 +1337,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             args: t.StrSequence, *, cwd: Path, env: t.StrMapping | None = None
         ) -> p.Result[p.Cli.CommandOutput]:
             """Run Make without undeclared state inherited from outer pytest."""
-            return cli_facade.run_raw(
+            executed: p.Result[p.Cli.CommandOutput] = cli_facade.run_raw(
                 [c.Infra.MAKE, *args],
                 cwd=cwd,
                 env=env,
@@ -1267,6 +1347,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     if env is None or key not in env
                 ),
             )
+            return executed
 
         @staticmethod
         def create_project_info(
@@ -1304,7 +1385,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> m.Cli.CommandOutput:
             """Provide the typed test helper `create_command_output`."""
             return m.Cli.CommandOutput(
-                stdout=stdout, stderr=stderr, exit_code=exit_code, duration=duration
+                stdout=stdout,
+                stderr=stderr,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=exit_code, timed_out=False, forwarded_signal=None
+                ),
+                duration=duration,
             )
 
         @staticmethod
@@ -1389,6 +1475,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return (workspace_root, package_root)
 
         @staticmethod
+        def write_package_init(directory: Path, content: str) -> Path:
+            """Materialize one importable package initializer under a test root."""
+            directory.mkdir(parents=True, exist_ok=True)
+            init_file = directory / c.Infra.INIT_PY
+            init_file.write_text(content, encoding=c.Infra.ENCODING_DEFAULT)
+            return init_file
+
+        @staticmethod
         def write_lazy_init_namespace_module(
             module_path: Path,
             *,
@@ -1427,7 +1521,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
             """Materialize immutable lazy-init plans only inside test workspaces."""
-            service = FlextInfraCodegenLazyInit(repository_root=repository_root)
+            # Why: parameter is workspace_root; restore reference dropped by #586 merge (flext-ct0mo)
+            service = FlextInfraCodegenLazyInit(repository_root=workspace_root)
             planned = service.plan_files().unwrap()
             changed = tuple(
                 plan
@@ -1484,7 +1579,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:
             """Provide the typed test helper `create_lazy_init_service`."""
-            return FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+            return FlextInfraCodegenLazyInit(repository_root=workspace_root)
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
@@ -1508,7 +1603,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> p.Result[str]:
             """Provide the typed test helper `consolidate_codegen`."""
             service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
-                workspace_root=workspace_root, dry_run=dry_run, project_name=project
+                repository_root=workspace_root, dry_run=dry_run, project_name=project
             )
             result: p.Result[str] = service.execute()
             return result
@@ -1546,10 +1641,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 deptry_path.write_text("", encoding="utf-8")
             if runner is not None:
                 return FlextInfraRuntimeDevDependencyDetector(
-                    workspace_root=tmp_path, deps=deps, runner=runner
+                    repository_root=tmp_path, deps=deps, runner=runner
                 )
             return FlextInfraRuntimeDevDependencyDetector(
-                workspace_root=tmp_path, deps=deps
+                repository_root=tmp_path, deps=deps
             )
 
         @staticmethod
@@ -1664,7 +1759,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         ["git", "check-ignore", "-q", relative_path], cwd=probe_root
                     )
                 )
-            return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+            return probe.outcome.raw_return_code != int(c.Infra.ScriptExitCode.PASS)
 
         @staticmethod
         def create_checker_project(
@@ -1685,7 +1780,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> m.Infra.GateContext:
             """Provide the typed test helper `create_gate_context`."""
             return m.Infra.GateContext(
-                workspace=workspace_root, reports_dir=reports_dir or workspace_root
+                repository_root=workspace_root,
+                reports_dir=reports_dir or workspace_root,
             )
 
         @staticmethod
@@ -1732,11 +1828,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             @override
             def discover_project_paths(
                 self,
-                workspace_root: Path,
-                *,
+                repository_root: Path,
                 projects_filter: t.StrSequence | None = None,
             ) -> p.Result[Sequence[Path]]:
-                del workspace_root, projects_filter
+                del repository_root, projects_filter
                 if self.discovery_failure is not None:
                     return r[Sequence[Path]].fail(self.discovery_failure)
                 return r[Sequence[Path]].ok(self.project_paths)

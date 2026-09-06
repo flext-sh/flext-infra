@@ -28,7 +28,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
     """Plan ``__init__.py`` artifact sets per package directory."""
 
     if TYPE_CHECKING:
-        workspace_root: Path
+        repository_root: Path
 
     def _plan_all_inits(
         self,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from enum import StrEnum, unique
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -92,12 +93,22 @@ class FlextInfraConstantsRefactor:
     CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
     CODEMOD_RULE_SUFFIX: Final[str] = ".yml"
     CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
+    # Why: restored — deleted declaration with consumers left behind in codemod_rules.py
+    CODEMOD_CONFIG_RELPATH: Final[Path] = Path(CODEMOD_RESOURCE_DIRNAME) / (
+        CODEMOD_CONFIG_FILENAME
+    )
     CODEMOD_RULE_DIRS_KEY: Final[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: Final[str] = "utilDirs"
     CODEMOD_TEST_CONFIGS_KEY: Final[str] = "testConfigs"
     CODEMOD_TEST_DIR_KEY: Final[str] = "testDir"
+    CODEMOD_SCOPE_KEY: Final[str] = "scope"
+    CODEMOD_SCOPE_UNIVERSAL: Final[str] = "universal"
+    CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
     CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
     CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
+    CODEMOD_DOCUMENT_SEPARATOR_RE: Final[re.Pattern[str]] = re.compile(
+        r"^---\s*$", re.MULTILINE
+    )
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
         RK_FILE_EXTENSIONS,
@@ -427,6 +438,8 @@ class FlextInfraConstantsRefactor:
         "utility",
     )
     "Priority order for violation classification."
+    MIN_PATH_DEPTH: int = 2
+    "Minimum relative path depth for module prefix detection."
     NAMESPACE_CONSTANT_PATTERN: Final[t.RegexPattern] = re.compile(
         r"^_?[A-Z][A-Z0-9_]+$"
     )

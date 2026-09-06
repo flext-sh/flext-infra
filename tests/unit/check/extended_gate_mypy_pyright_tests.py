@@ -23,7 +23,7 @@ class TestTypeGates:
 
     @staticmethod
     def make_ctx(root: Path) -> m.Infra.GateContext:
-        return m.Infra.GateContext(workspace=root, reports_dir=root)
+        return m.Infra.GateContext(repository_root=root, reports_dir=root)
 
     @staticmethod
     def make_runner(*results: p.Result[m.Cli.CommandOutput]) -> p.Cli.CommandRunner:

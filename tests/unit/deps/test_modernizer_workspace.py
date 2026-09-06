@@ -192,7 +192,7 @@ class TestsFlextInfraDepsModernizerWorkspace:
             main([
                 "deps",
                 "modernize",
-                "--workspace",
+                "--repository-root",
                 str(modernizer_workspace_with_projects),
                 "--apply",
                 "--skip-check",

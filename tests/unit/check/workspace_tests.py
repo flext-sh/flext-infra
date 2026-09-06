@@ -103,11 +103,10 @@ class TestFlextInfraWorkspaceChecker:
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
 
-    def test_resolve_gates_deduplicates(self) -> None:
-        """Test that resolve_gates removes duplicate gate names."""
-        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
-        tm.ok(result)
-        tm.that(result.value.count("lint"), eq=1)
+    def test_resolve_gates_rejects_duplicate_request(self) -> None:
+        """A repeated gate is an ambiguous request, never silently collapsed."""
+        result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint"])
+        tm.fail(result)
 
     def test_resolve_gates_with_invalid_gate(self) -> None:
         """Test that resolve_gates fails on invalid gate name."""

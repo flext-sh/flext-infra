@@ -199,8 +199,8 @@ class FlextInfraProtocolsBase(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def workspace_root_rel(self) -> str:
-            """Declared relative path from the project to its workspace root."""
+        def repository_root_rel(self) -> str:
+            """Declared relative path from the project to its repository root."""
             ...
 
     @runtime_checkable
@@ -289,7 +289,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Read-only workspace environment validation request."""
 
         @property
-        def workspace_root(self) -> Path:
+        def repository_root(self) -> Path:
             """Workspace whose active interpreter provenance must be validated."""
             ...
 
@@ -402,6 +402,21 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def protected_mise_tools(self) -> t.StrSequence:
             """Toolchain field names protected from alternate distributions."""
+            ...
+
+        @property
+        def uv_exclude_newer(self) -> str:
+            """Shared dependency cooldown rendered in uv duration syntax."""
+            ...
+
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from the fleet dependency cooldown."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package RFC 3339 cooldown cutoffs."""
             ...
 
     @runtime_checkable
@@ -553,7 +568,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for dependency detection across projects."""
 
         def discover_project_paths(
-            self, workspace_root: Path, *, projects_filter: t.StrSequence | None = None
+            self, repository_root: Path, projects_filter: t.StrSequence | None = None
         ) -> p.Result[t.SequenceOf[Path]]:
             """Discover project paths in workspace root."""
             ...
@@ -661,7 +676,7 @@ class FlextInfraProtocolsBase(Protocol):
 
         def run(
             self,
-            workspace_root: Path | None = None,
+            repository_root: Path | None = None,
             *,
             output_format: str = "json",
             projects: t.SequenceOf[FlextInfraProtocolsBase.ProjectInfo] | None = None,
@@ -673,7 +688,7 @@ class FlextInfraProtocolsBase(Protocol):
     class MiseArtifactsOwner(Protocol):
         """Single public owner composed by private Mise transaction mechanics."""
 
-        workspace_root: Path
+        repository_root: Path
 
         @classmethod
         def validate_launchers(cls, root: Path) -> p.Result[bool]:
@@ -701,6 +716,13 @@ class FlextInfraProtocolsBase(Protocol):
 
         def resolution_mode(self) -> c.Infra.MiseResolutionMode:
             """Select online or offline toolchain resolution before any effect."""
+            ...
+
+        # Why: restores the checksum-hydration contract deleted by the
+        # consolidation merge (flext-1wjg1.16); the online staging path calls
+        # this unconditionally before validate_artifacts.
+        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
+            """Download exact resolved artifacts and fill missing SHA-256 values."""
             ...
 
     @runtime_checkable
@@ -744,18 +766,7 @@ class FlextInfraProtocolsBase(Protocol):
             """Iterate over matching elements."""
             ...
 
-    @runtime_checkable
-    class GithubCliHandlers(Protocol):
-        """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
-            ...
+    # Why: GithubCliHandlers (sync/lint_github_workflows) removed — dead
+    # residue from the GitHub sync/lint feature retired wholesale in
+    # 95bb47cb8 (constants/models/utilities/tests all deleted there; this
+    # protocol stub was the only piece left referencing the gone models).

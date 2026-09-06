@@ -13,8 +13,9 @@ from flext_infra._utilities import (
     FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-
-from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+from flext_infra.transformers.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 
 
 class FlextInfraUtilitiesRopeImports:

@@ -150,9 +150,10 @@ class FlextInfraModGateEngine:
                 continue
             source_path = config_root / relative
             if source_path.is_file():
-                if source_path.read_text(encoding="utf-8") == temp_path.read_text(
-                    encoding="utf-8"
-                ):
+                # Byte comparison, not text: the config root also carries
+                # non-UTF-8 files (compiled caches next to the rules), and
+                # deciding "unchanged" never requires decoding them.
+                if source_path.read_bytes() == temp_path.read_bytes():
                     continue
             else:
                 source_path.parent.mkdir(parents=True, exist_ok=True)
@@ -396,7 +397,7 @@ class FlextInfraModGateEngine:
             )
             sys.stderr.flush()
             context = m.Infra.GateContext(
-                workspace=owner,
+                repository_root=owner,
                 reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
                 check_only=True,
             )
@@ -454,10 +455,7 @@ class FlextInfraModGateEngine:
         if run.failure:
             return r[m.Infra.ModScanReport].from_failure(run)
         report = cls._parse_findings(
-            run.value.stdout,
-            root,
-            rule_files_by_id,
-            frozenset(fixable_ids),
+            run.value.stdout, root, rule_files_by_id, frozenset(fixable_ids)
         ).unwrap()
         if run.value.outcome.raw_return_code != 0:
             cls._validate_finding_receipt(run.value.stderr, report.findings).unwrap()

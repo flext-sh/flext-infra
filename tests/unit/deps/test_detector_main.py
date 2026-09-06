@@ -22,7 +22,7 @@ class _DepsStub(
 
     @override
     def discover_project_paths(
-        self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
+        self, repository_root: Path, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
         del repository_root, projects_filter
         return r[Sequence[Path]].ok([self._project])
@@ -67,9 +67,9 @@ class _DepsStub(
 
     @override
     def run_pip_check(
-        self, repository_root: Path, venv_bin: Path
+        self, workspace_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        del repository_root, venv_bin
+        del workspace_root, venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], 0))
 
 
@@ -159,7 +159,7 @@ class TestsFlextInfraDepsDetectorMain:
 
         tm.ok(
             runtime.run(
-                m.Infra.DetectCommand(workspace=str(tmp_path), no_pip_check=True)
+                m.Infra.DetectCommand(repository_root=str(tmp_path), no_pip_check=True)
             )
         )
         tm.that(deps.typings_calls, eq=0)
@@ -173,7 +173,7 @@ class TestsFlextInfraDepsDetectorMain:
             tmp_path, ["types-requests"], run_result
         )
         params = m.Infra.DetectCommand(
-            workspace=str(tmp_path),
+            repository_root=str(tmp_path),
             typings=True,
             apply_typings=True,
             apply=True,
@@ -193,7 +193,7 @@ class TestsFlextInfraDepsDetectorMain:
             run_result,
         )
         params = m.Infra.DetectCommand(
-            workspace=str(tmp_path),
+            repository_root=str(tmp_path),
             typings=True,
             apply_typings=True,
             apply=True,
@@ -209,7 +209,10 @@ class TestsFlextInfraDepsDetectorMain:
         )
         runtime, _ = _setup_typings_detector(tmp_path, ["types-requests"], run_result)
         params = m.Infra.DetectCommand(
-            workspace=str(tmp_path), typings=True, apply_typings=True, no_pip_check=True
+            repository_root=str(tmp_path),
+            typings=True,
+            apply_typings=True,
+            no_pip_check=True,
         )
         tm.ok(runtime.run(params))
 
@@ -223,7 +226,10 @@ class TestsFlextInfraDepsDetectorMain:
             r[p.Cli.CommandOutput].fail("poetry add failed"),
         )
         params = m.Infra.DetectCommand(
-            workspace=str(tmp_path), typings=True, apply_typings=True, no_pip_check=True
+            repository_root=str(tmp_path),
+            typings=True,
+            apply_typings=True,
+            no_pip_check=True,
         )
         tm.ok(runtime.run(params))
 
@@ -233,7 +239,7 @@ class TestsFlextInfraDepsDetectorMain:
             main([
                 "deps",
                 "detect",
-                "--workspace",
+                "--repository-root",
                 "/nonexistent/path",
                 "--no-pip-check",
             ]),

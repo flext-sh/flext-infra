@@ -40,7 +40,7 @@ class TestsCodegenRepositoryRootFanout:
                     remove_env_keys=("MAKEFLAGS",),
                 )
             )
-            tm.that(execution.exit_code, eq=0)
+            tm.that(test_u.Cli.process_succeeded(execution.outcome), eq=True)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
     def test_repository_root_deps_profiles_canonical_modernization(
@@ -57,7 +57,7 @@ class TestsCodegenRepositoryRootFanout:
             )
         )
 
-        tm.that(execution.exit_code, eq=0)
+        tm.that(test_u.Cli.process_succeeded(execution.outcome), eq=True)
         rendered = execution.stdout + execution.stderr
         tm.that(rendered, has="-m cProfile")
         tm.that(rendered, has="deps.pstats")
@@ -101,8 +101,10 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     )
     tm.that(makefile_plans, len=1)
     makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
+    rendered_content = tm.not_none(makefile_plans[0].desired_content)
     makefile_path.write_text(
-        makefile_plans[0].rendered, encoding=c.Infra.ENCODING_DEFAULT
+        rendered_content.decode(c.Infra.ENCODING_DEFAULT),
+        encoding=c.Infra.ENCODING_DEFAULT,
     )
     return repository_root
 

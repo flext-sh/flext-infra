@@ -373,7 +373,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         module_path = self._write_classvar_test_module(project_root)
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=False
+            repository_root=str(tmp_path), projects=("demo",), apply=False
         )
 
         result = adapter.fix_project(
@@ -397,7 +397,7 @@ class TestsFlextInfraRefactorInfraRefactorClassPlacement:
         (constants_root / "__init__.py").write_text("", encoding="utf-8")
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=False
+            repository_root=str(tmp_path), projects=("demo",), apply=False
         )
 
         result = adapter.fix_project(

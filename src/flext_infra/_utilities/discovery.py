@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -392,9 +392,9 @@ class FlextInfraUtilitiesDiscovery(
         return tuple(ordered)
 
     @classmethod
-    def rope_workspace_root(cls, workspace_root: Path) -> Path:
+    def rope_repository_root(cls, repository_root: Path) -> Path:
         """Return the execution-context root for one conditional Rope scan."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
@@ -569,7 +569,7 @@ class FlextInfraUtilitiesDiscovery(
         )
         if not parent_packages:
             return {}
-        workspace_root = cls.rope_workspace_root(project_root)
+        workspace_root = cls.rope_repository_root(project_root)
         for candidate in project_root.resolve().parents:
             if (candidate / c.Infra.GITMODULES).is_file():
                 workspace_root = candidate

@@ -16,13 +16,13 @@ from typing import TYPE_CHECKING
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from flext_cli import u
+from flext_cli import r, u
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
-from packaging.requirements import InvalidRequirement, Requirement
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
-    from flext_infra.typings import t
+    from flext_infra.protocols import p
 
 
 class FlextInfraUtilitiesDependencies:
@@ -138,6 +138,47 @@ class FlextInfraUtilitiesDependencies:
         for root in roots:
             visit(root)
         return tuple(ordered)
+
+    @staticmethod
+    def dependency_waves(
+        edges: Mapping[str, t.StrSequence],
+    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
+        """Split a closed named dependency graph into dependency-first waves.
+
+        Wave ``n`` contains only names whose dependencies all live in earlier
+        waves, so each wave may proceed in parallel while the sequence between
+        waves stays strict. The graph is closed: every referenced name must be
+        a key of ``edges``; an unknown reference or a cycle fails the result
+        instead of raising, so callers (release publish ordering, codemod
+        provider ordering) compose it through ``p.Result`` chaining.
+        """
+        unknown = sorted({
+            dependency
+            for deps in edges.values()
+            for dependency in deps
+            if dependency not in edges
+        })
+        if unknown:
+            return r[t.SequenceOf[t.StrSequence]].fail(
+                "dependency graph references names outside the graph: "
+                + ", ".join(unknown)
+            )
+        pending = {name: set(deps) for name, deps in edges.items()}
+        waves: list[t.StrSequence] = []
+        while pending:
+            ready = frozenset(name for name, deps in pending.items() if not deps)
+            if not ready:
+                return r[t.SequenceOf[t.StrSequence]].fail(
+                    "dependency cycle blocks topological order: "
+                    + ", ".join(sorted(pending))
+                )
+            waves.append(tuple(sorted(ready)))
+            pending = {
+                name: deps - ready
+                for name, deps in pending.items()
+                if name not in ready
+            }
+        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
     @classmethod
     def project_dependency_resource_files(

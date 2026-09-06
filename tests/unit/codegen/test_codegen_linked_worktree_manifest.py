@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, m
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
 from tests import u
-from tests import WorktreeFixture
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 # Conform materializes a full managed tree; the real Git scenarios therefore use
@@ -69,13 +69,17 @@ class TestCodegenLinkedWorktreeTopology:
         )
 
         (makefile_plan,) = plan.files
-        tm.that(makefile_plan.desired_text, has="MAKE_PROFILE := standalone")
+        desired_content = tm.not_none(makefile_plan.desired_content)
+        tm.that(
+            desired_content.decode(c.Infra.ENCODING_DEFAULT),
+            has="MAKE_PROFILE := standalone",
+        )
         tm.that(plan.workspace.beads.workspace, eq="lane-workspace")
         tm.that(plan.workspace.beads.database, eq="lane-database")
         tm.that(plan.workspace.beads.issue_prefix, eq="lane-prefix")
         tm.that(all(item.path.is_relative_to(lane) for item in plan.files), eq=True)
         tm.that(
-            tm.ok(FlextInfraWorkspaceDetector.resolve_workspace_root(lane)),
+            tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(lane)),
             eq=lane.resolve(),
         )
         tm.that(lane_beads.read_bytes(), eq=lane_beads_bytes)

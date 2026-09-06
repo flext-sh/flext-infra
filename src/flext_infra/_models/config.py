@@ -409,6 +409,38 @@ class FlextInfraConfigModels:
                 "is a declared tool"
             ),
         ]
+        mise_lock_platform_exclusions: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                tuple[
+                    Literal[
+                        "linux-x64",
+                        "linux-arm64",
+                        "linux-x64-musl",
+                        "linux-arm64-musl",
+                        "macos-x64",
+                        "macos-arm64",
+                    ],
+                    ...,
+                ],
+            ],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Platforms a backend cannot represent in mise.lock, declared "
+                    "per selector so the offline validator rejects any other omission"
+                ),
+            ),
+        ]
+        mise_release_probe: Annotated[
+            FlextInfraConfigModels.MiseReleaseProbeSpec,
+            m.Field(
+                description=(
+                    "Preflight probe that selects online or offline Mise "
+                    "toolchain resolution for an apply-mode generation"
+                )
+            ),
+        ]
         mise_lock_platforms: Annotated[
             tuple[
                 Literal[
@@ -686,6 +718,12 @@ class FlextInfraConfigModels:
         ]
         state_directory_name: Annotated[
             t.NonEmptyStr, m.Field(description="External runtime state directory name")
+        ]
+        dependency_cooldown_days: Annotated[
+            int,
+            m.Field(
+                ge=1, le=90, description="Shared uv and Dependabot dependency cooldown"
+            ),
         ]
         github_actions: Annotated[
             Mapping[str, FlextInfraConfigModels.GithubActionPinSpec],
@@ -2142,9 +2180,9 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Declared relative path to the workspace root"),
+            m.Field(description="Declared relative path to the repository root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
@@ -2742,6 +2780,15 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        retired_generated_paths: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description=(
+                    "Generated repository-relative projections removed during "
+                    "conformance after their consumers have been rewired"
+                )
+            ),
+        ] = ()
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
@@ -3258,7 +3305,7 @@ class FlextInfraConfigModels:
     class WorkspaceEnvironmentCliRequest(_ConfigContract):
         """CLI-safe request for one Python workspace environment sync."""
 
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path, m.Field(description="Workspace root receiving the sync")
         ]
         apply: Annotated[
@@ -3275,7 +3322,7 @@ class FlextInfraConfigModels:
     class WorkspaceEnvironmentSyncRequest(_ConfigContract):
         """Validated internal request for one workspace environment sync."""
 
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path, m.Field(description="Workspace root receiving the sync")
         ]
         apply: Annotated[

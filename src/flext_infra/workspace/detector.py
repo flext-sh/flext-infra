@@ -671,7 +671,7 @@ class FlextInfraWorkspaceDetector(
         )
 
     @staticmethod
-    def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
+    def resolve_repository_root(repository_root: Path) -> p.Result[Path]:
         """Return the requested checkout; parent and primary trees are irrelevant."""
         resolved_root = repository_root.expanduser().resolve()
         if not resolved_root.is_dir():

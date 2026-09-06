@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_process as process
+from flext_infra.codegen import (
+    _mise_artifacts_files as files,
+    _mise_artifacts_process as process,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -86,17 +88,17 @@ def stage_file_plans(
                 )
             phase_root = project.transaction_root / f"phase-{phase}"
             if phase_root not in phase_roots:
-                before = u.Cli.atomic_read_empty_directory_state(
+                phase_root_before = u.Cli.atomic_read_empty_directory_state(
                     phase_root, required=False
                 )
-                if before.failure:
-                    return result_type.from_failure(before)
-                if before.value.exists:
+                if phase_root_before.failure:
+                    return result_type.from_failure(phase_root_before)
+                if phase_root_before.value.exists:
                     return result_type.fail(
                         f"{phase} staging root already exists: {phase_root}"
                     )
                 created = u.Cli.atomic_create_empty_directory_guarded(
-                    before.value, permission_mode=0o700
+                    phase_root_before.value, permission_mode=0o700
                 )
                 if created.failure:
                     return result_type.from_failure(created)

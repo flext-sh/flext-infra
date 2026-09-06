@@ -38,11 +38,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         ),
     ] = m.Field(
         default_factory=u.Infra.resolve_repository_root_or_cwd,
-        validation_alias=t.AliasChoices(
-            "repository_root", "workspace_root", "workspace"
-        ),
-        serialization_alias="workspace",
-        description="Workspace root",
+        description="Repository root",
     )
     apply_changes: bool = m.Field(
         default=False,
@@ -66,7 +62,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         alias="module",
         description=(
             "Dotted module path to scope the verb to a single module "
-            "(e.g. flext_core.result). Composes with --workspace/--projects."
+            "(e.g. flext_core.result). Composes with --repository-root/--projects."
         ),
     )
     target_namespace: str | None = m.Field(

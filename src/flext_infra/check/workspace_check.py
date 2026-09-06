@@ -82,7 +82,7 @@ class FlextInfraWorkspaceChecker(
     @classmethod
     def execute_payload(cls, params: m.Infra.RunCommand) -> p.Result[bool]:
         """Execute quality gates from the canonical check command payload."""
-        checker = cls(repository_root=params.workspace_path)
+        checker = cls(repository_root=params.repository_root)
         project_targets_result = cls._resolve_project_targets(params)
         if project_targets_result.failure:
             return r[bool].from_failure(project_targets_result)
@@ -91,7 +91,7 @@ class FlextInfraWorkspaceChecker(
         if not gates:
             return r[bool].fail("check requires at least one registered gate")
         gate_ctx = m.Infra.GateContext(
-            workspace=params.workspace_path,
+            repository_root=params.repository_root,
             reports_dir=params.reports_dir_path,
             apply_fixes=params.fix,
             check_only=params.check_only,
@@ -125,12 +125,12 @@ class FlextInfraWorkspaceChecker(
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].ok(
                 tuple(
                     m.Infra.CheckProjectTarget.from_workspace_name(
-                        params.workspace_path, project_name
+                        params.repository_root, project_name
                     )
                     for project_name in requested
                 )
             )
-        discovered = u.Infra.resolve_projects(params.workspace_path, ())
+        discovered = u.Infra.resolve_projects(params.repository_root, ())
         if discovered.failure:
             return r[t.SequenceOf[m.Infra.CheckProjectTarget]].from_failure(discovered)
         project_targets = tuple(
@@ -182,7 +182,7 @@ class FlextInfraWorkspaceChecker(
         if dir_ensure.failure:
             return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(dir_ensure)
         effective_ctx = ctx or m.Infra.GateContext(
-            workspace=self._repository_root, reports_dir=report_base
+            repository_root=self._repository_root, reports_dir=report_base
         )
         outcome = self._run_project_loop(
             self._project_targets(projects),

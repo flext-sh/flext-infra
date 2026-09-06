@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
@@ -54,11 +54,18 @@ class FlextInfraCodegenFileStaging:
     ) -> p.Result[m.Cli.AtomicFilePublication]:
         """Authenticate one plan and materialize its destination-local candidate."""
         result_type = r[m.Cli.AtomicFilePublication]
-        if not plan.changed or plan.blocked:
+        if isinstance(plan.before, m.Cli.AtomicDirectoryChainPlan):
+            return result_type.fail(f"invalid changed codegen plan: {plan.path}")
+        if not u.Infra.codegen_file_requires_effect(plan):
             return result_type.fail(f"invalid changed codegen plan: {plan.path}")
         owner = files.project_for_path(layout, plan.path)
         if owner.failure:
             return result_type.from_failure(owner)
+        transaction_root = owner.value.transaction_root
+        if transaction_root is None:
+            return result_type.fail(
+                f"codegen project transaction root is absent: {owner.value.root}"
+            )
         target = plan.path.absolute()
         before = u.Cli.atomic_read_binary_file_state(target, required=False)
         if before.failure:
@@ -68,31 +75,29 @@ class FlextInfraCodegenFileStaging:
             if before.value.content is None
             else u.Cli.sha256_bytes(before.value.content)
         )
-        if current_digest != plan.current_sha256:
+        planned_digest = (
+            ""
+            if plan.before.content is None
+            else u.Cli.sha256_bytes(plan.before.content)
+        )
+        if current_digest != planned_digest:
             return result_type.fail(f"managed file changed after planning: {target}")
         relative = target.relative_to(owner.value.root.absolute())
-        staged_path = owner.value.transaction_root / "managed" / relative
+        staged_path = transaction_root / "managed" / relative
         try:
             staged_path.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
             return result_type.fail_op(
                 f"create managed codegen stage for {target}", exc
             )
-        if plan.absent:
+        if plan.desired_content is None:
             replacement = u.Cli.atomic_read_binary_file_state(
                 staged_path, required=False
             )
         else:
-            content = plan.rendered.encode(c.Cli.ENCODING_DEFAULT)
-            if u.Cli.sha256_bytes(content) != plan.expected_sha256:
-                return result_type.fail(
-                    f"managed file plan digest differs: {plan.path}"
-                )
-            mode = before.value.mode or 0o644
-            if plan.executable is not None:
-                mode = mode | 0o111 if plan.executable else mode & ~0o111
+            mode = plan.desired_mode or 0o644
             written = u.Cli.atomic_create_binary_file_guarded(
-                staged_path, content, permission_mode=mode
+                staged_path, plan.desired_content, permission_mode=mode
             )
             if written.failure:
                 return result_type.from_failure(written)

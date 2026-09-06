@@ -40,7 +40,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
     @classmethod
     def execute_payload(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
         """Execute pyrefly config repair from the canonical check command payload."""
-        fixer = cls(repository_root=params.workspace_path)
+        fixer = cls(repository_root=params.repository_root)
         fix_result = fixer.run(
             projects=params.project_names or [],
             dry_run=params.dry_run,

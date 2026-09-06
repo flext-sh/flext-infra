@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
-from flext_infra import u, c, m
+from flext_infra import c, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
@@ -143,7 +143,7 @@ def journal_topology(
             )
     for directory in journal.directories:
         project = by_selector[directory.project]
-        target = next(
+        resolved_target = next(
             path
             for path, candidate in directory_targets.items()
             if candidate == directory
@@ -291,9 +291,7 @@ def phase_analysis_live(analysis: m.Infra.CodegenPhaseAnalysis) -> p.Result[bool
 def sources(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
     """Prove every Mise config source still equals its full snapshot."""
     for project in plan.projects:
-        current = u.Infra.snapshot_config_sources(
-            project.layout.root
-        )
+        current = u.Infra.snapshot_config_sources(project.layout.root)
         if current.failure:
             return r[bool].from_failure(current)
         if current.value != project.config.sources:
@@ -361,7 +359,7 @@ def live(
     source_before = sources(plan)
     if source_before.failure:
         return source_before
-    replacements: dict[Path, tuple[bytes | None, int | None]] = {}
+    replacements: dict[Path, tuple[bytes, int | None]] = {}
     for publication in publications or ():
         replacement = publication.replacement
         if replacement is None or replacement.content is None:
@@ -663,19 +661,6 @@ def _file_identity(
         value.file_attributes,
         value.reparse_tag,
     )
-
-
-def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
-    try:
-        observed = path.lstat()
-    except OSError as exc:
-        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
-    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
-        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
-    )
-    if not stat.S_ISDIR(observed.st_mode) or reparse:
-        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
-    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
 
 
 __all__: list[str] = [
