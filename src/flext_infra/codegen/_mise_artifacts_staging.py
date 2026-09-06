@@ -14,7 +14,7 @@ from flext_infra.codegen import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraMiseStaging:
@@ -25,7 +25,7 @@ class FlextInfraMiseStaging:
 
     def stage(
         self, plan: m.Infra.MiseToolchainWorkspacePlan
-    ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
         """Stage and validate the committed lock selected before publication."""
         stages: list[Path] = []
         for project in plan.projects:

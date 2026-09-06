@@ -20,7 +20,7 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         updates: t.MappingKV[Path, str],
         workspace: Path,
         gates: t.StrSequence | None = None,
-    ) -> tuple[
+    ) -> t.Pair[
         MutableMapping[Path, str | None], MutableMapping[Path, t.Infra.LintSnapshot]
     ]:
         """Preview write baselines."""

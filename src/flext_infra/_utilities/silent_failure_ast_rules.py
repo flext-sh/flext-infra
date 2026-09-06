@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from typing import override
 
+from flext_infra import t
+
 from .._utilities.silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
 
 
@@ -123,7 +125,7 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
             return
         function = self._enclosing_function(node)
         inner = self._result_inner_type(function) if function is not None else None
-        replacement: tuple[int, int, str] | None = None
+        replacement: t.Triple[int, int, str] | None = None
         action = "manual"
         if inner is not None:
             label = result_name.removesuffix("_result").replace("_", " ").strip()
@@ -153,7 +155,7 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
             return
         function = self._enclosing_function(node)
         inner = self._result_inner_type(function) if function is not None else None
-        replacement: tuple[int, int, str] | None = None
+        replacement: t.Triple[int, int, str] | None = None
         action = "manual"
         if inner is not None and node.name is not None:
             start, end = self._line_offsets(returned.lineno)
@@ -176,4 +178,4 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesSilentFailureAstRules",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesSilentFailureAstRules",)

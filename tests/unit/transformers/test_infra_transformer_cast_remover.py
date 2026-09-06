@@ -45,8 +45,7 @@ def _rule() -> m.EnforcementRuleSpec:
     return next(
         rule
         for rule in catalog.enabled_rules()
-        if rule.fix_action is not None
-        and rule.fix_action.target == _DEACTIVATED_TARGET
+        if rule.fix_action is not None and rule.fix_action.target == _DEACTIVATED_TARGET
     )
 
 

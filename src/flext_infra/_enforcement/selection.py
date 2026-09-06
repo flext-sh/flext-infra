@@ -28,7 +28,7 @@ class FlextInfraEnforcementSelection:
         catalog: m.EnforcementCatalog | None = None,
         wanted: t.StrSequence = (),
         safe_only: bool = True,
-    ) -> tuple[m.EnforcementRuleSpec, ...]:
+    ) -> t.VariadicTuple[m.EnforcementRuleSpec]:
         """Return enabled fixable rules selected for fixer execution."""
         wanted_ids = frozenset(wanted)
         rule_catalog = catalog or cls.canonical_catalog()
@@ -50,7 +50,7 @@ class FlextInfraEnforcementSelection:
     @staticmethod
     def declarative_rules(
         rule_names: t.StrSequence | None = None,
-    ) -> tuple[m.EnforcementRuleSpec, ...]:
+    ) -> t.VariadicTuple[m.EnforcementRuleSpec]:
         """Return enabled catalog rules handled by the declarative detector."""
         selected = frozenset(rule_names) if rule_names else None
         return tuple(
@@ -77,7 +77,7 @@ class FlextInfraEnforcementSelection:
 
     @staticmethod
     def _validate_requested_rules(
-        candidates: tuple[m.EnforcementRuleSpec, ...],
+        candidates: t.VariadicTuple[m.EnforcementRuleSpec],
         *,
         wanted_ids: frozenset[str],
         safe_only: bool,

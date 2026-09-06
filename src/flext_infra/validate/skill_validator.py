@@ -120,7 +120,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
     @staticmethod
     def _scan_globs(
         scan_targets: t.MappingKV[str, t.Infra.InfraValue],
-    ) -> tuple[t.StrSequence, t.StrSequence]:
+    ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Return include and exclude glob lists from rules.yml scan targets."""
         include_globs = u.Infra.string_list(
             scan_targets.get("include", ["**/*.py"])
@@ -140,7 +140,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
 
     def _evaluate_rules(
         self, context: m.Infra.SkillRuleEvaluationContext
-    ) -> tuple[t.IntMapping, t.StrSequence]:
+    ) -> t.Pair[t.IntMapping, t.StrSequence]:
         """Evaluate skill validation rules and return counts plus violations."""
         counts: t.MutableIntMapping = {}
         violations: t.MutableSequenceOf[str] = []

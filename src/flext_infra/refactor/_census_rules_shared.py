@@ -59,7 +59,7 @@ class FlextInfraRefactorCensusRulesSharedMixin:
         ) -> m.Infra.Census.Violation: ...
         @staticmethod
         def _named_object(
-            objects: tuple[m.Infra.Census.Object, ...], name: str
+            objects: t.VariadicTuple[m.Infra.Census.Object], name: str
         ) -> m.Infra.Census.Object | None: ...
 
 

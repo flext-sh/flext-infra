@@ -70,7 +70,7 @@ def smell_fixer_for(code: str) -> FlextInfraSmellFixer | None:
     return None if fixer_class is None else fixer_class()
 
 
-def auto_fixable_smell_tags() -> tuple[str, ...]:
+def auto_fixable_smell_tags() -> t.VariadicTuple[str]:
     """Return tags of all registered smell fixers."""
     return tuple(_SMELL_FIXERS.keys())
 

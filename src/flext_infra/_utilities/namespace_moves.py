@@ -89,7 +89,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
     ) -> None:
         """Rewrite runtime aliases imported from a foreign FLEXT package source."""
         _ = parse_failures, gates
-        grouped: t.MappingKV[Path, t.MutableMappingKV[tuple[str, str], set[str]]] = (
+        grouped: t.MappingKV[Path, t.MutableMappingKV[t.Pair[str, str], set[str]]] = (
             defaultdict(lambda: defaultdict(set))
         )
         for violation in violations:

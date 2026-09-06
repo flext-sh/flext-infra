@@ -163,7 +163,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
 
     def _classify_missing_imports(
         self, missing_imports: t.StrSequence, project_name: str
-    ) -> tuple[t.StrSequence, t.StrSequence]:
+    ) -> t.Pair[t.StrSequence, t.StrSequence]:
         """Split missing imports into internal and unresolved external groups."""
         internal = tuple(
             module_name

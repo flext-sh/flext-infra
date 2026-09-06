@@ -186,7 +186,7 @@ class FlextInfraUtilitiesClassNestingReferences:
             if not bindings or isinstance(updated_node.names, cst.ImportStar):
                 return updated_node
             aliases: list[cst.ImportAlias] = []
-            seen: set[tuple[str, str]] = set()
+            seen: set[t.Pair[str, str]] = set()
             for imported in updated_node.names:
                 name = _dotted_name(imported.name) or ""
                 owner = bindings.get(name)

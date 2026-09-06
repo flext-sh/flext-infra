@@ -75,7 +75,7 @@ class FlextInfraModGateEngine:
         return r.ok(True)
 
     @staticmethod
-    def _rule_documents(rule: Path) -> tuple[str, ...]:
+    def _rule_documents(rule: Path) -> t.VariadicTuple[str]:
         """Return every non-empty YAML document in one rule file."""
         documents = tuple(rule.read_text(encoding="utf-8").split("\n---"))
         return tuple(

@@ -60,7 +60,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         return groups
 
     @staticmethod
-    def _import_item_sort_key(item: t.StrPair) -> tuple[str, bool]:
+    def _import_item_sort_key(item: t.StrPair) -> t.Pair[str, bool]:
         """Order an imported symbol by source name, then alias status."""
         export_name, imported_name = item
         return imported_name or export_name, export_name != imported_name

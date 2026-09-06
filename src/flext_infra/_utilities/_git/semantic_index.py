@@ -13,7 +13,7 @@ from flext_infra.models import m
 from ..._utilities._git.semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 _GITLINK_MODE = "160000"
 _STAGED_GITLINK_FIELDS = 2
@@ -64,7 +64,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         )
 
     @staticmethod
-    def _git_capture_fingerprint(repo: Repo) -> tuple[bytes, bytes, bytes]:
+    def _git_capture_fingerprint(repo: Repo) -> t.Triple[bytes, bytes, bytes]:
         """Capture (paths_z, index_z, head) bytes for fingerprinting."""
         paths_z = repo.git.ls_files(
             "-z", "--cached", "--others", "--exclude-standard"

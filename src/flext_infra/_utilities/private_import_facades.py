@@ -36,7 +36,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def discover(
         sources: t.MappingKV[Path, str],
-    ) -> t.MappingKV[str, tuple[tuple[ast.Module, str, str, str], ...]]:
+    ) -> t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]]:
         """Discover facade aliases and roots from live source assignments."""
         discovered: dict[str, list[tuple[ast.Module, str, str, str]]] = {}
         for path, source in sorted(sources.items()):
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             class_names = {
                 node.name for node in tree.body if isinstance(node, ast.ClassDef)
             }
-            owners: set[tuple[str, str]] = set()
+            owners: set[t.Pair[str, str]] = set()
             for node in tree.body:
                 target: ast.expr | None = None
                 value: ast.expr | None = None
@@ -98,7 +98,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def public_reference(
         *,
-        owners: t.SequenceOf[tuple[ast.Module, str, str, str]],
+        owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]],
         package: str,
         qualified: str,
     ) -> str | None:
@@ -157,7 +157,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
 
     @staticmethod
     def public_root_name(
-        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], facade_alias: str
+        *, owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]], facade_alias: str
     ) -> str | None:
         """Return the public long name assigned to a canonical facade alias."""
         roots = {

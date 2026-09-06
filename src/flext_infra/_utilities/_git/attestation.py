@@ -65,7 +65,7 @@ class FlextInfraUtilitiesGitAttestationMixin(
     @classmethod
     def _run_gate_evidence(
         cls, repo_root: Path, gates: t.StrSequence
-    ) -> p.Result[tuple[m.Infra.GateCommandEvidence, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.GateCommandEvidence]]:
         evidence: list[m.Infra.GateCommandEvidence] = []
         for gate in gates:
             command = f"make {gate} APPLY=Y"

@@ -207,7 +207,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         *,
         target_package_dir: Path | None,
         workspace_root: Path,
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Select the target's source/test scope and its production sibling."""
         if target_package_dir is None:
             return tuple(indexed_package_dirs)

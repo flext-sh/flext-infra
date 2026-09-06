@@ -164,14 +164,14 @@ class FlextInfraConstantsBase(
     PYTHON: Final[str] = "python"
     "Python settings subsection key (in limits)."
 
-    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
+    CANONICAL_DEV_DEPENDENCY_GROUPS: Final[t.VariadicTuple[DependencyGroup]] = (
         DEV,
         DOCS,
         SECURITY,
         TEST,
         TYPINGS,
     )
-    LEGACY_DEV_DEPENDENCY_GROUPS: Final[tuple[DependencyGroup, ...]] = (
+    LEGACY_DEV_DEPENDENCY_GROUPS: Final[t.VariadicTuple[DependencyGroup]] = (
         DOCS,
         SECURITY,
         TEST,

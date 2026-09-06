@@ -22,7 +22,7 @@ class FlextInfraDependencyDetectorRuntimeSteps:
 
     def _validate_environment(
         self, params: m.Infra.DetectCommand, root: Path, venv_bin: Path
-    ) -> p.Result[tuple[t.SequenceOf[Path], Path]]:
+    ) -> p.Result[t.Pair[t.SequenceOf[Path], Path]]:
         """Discover projects and verify deptry binary; return ``(projects, limits_path)``."""
         detector = self._detector
         projects_result = detector.deps.discover_project_paths(

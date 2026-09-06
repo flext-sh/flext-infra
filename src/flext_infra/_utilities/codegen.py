@@ -220,7 +220,7 @@ class FlextInfraUtilitiesCodegen(
         source_lines: t.SequenceOf[str],
     ) -> t.SequenceOf[tuple[str, str, str, str, int]]:
         """Parse ``NAME: Final[...] = VALUE`` definitions with class-path context."""
-        class_stack: t.MutableSequenceOf[tuple[str, int]] = []
+        class_stack: t.MutableSequenceOf[t.Pair[str, int]] = []
         parsed: t.MutableSequenceOf[tuple[str, str, str, str, int]] = []
         for line_number, line in enumerate(source_lines, 1):
             stripped = line.lstrip()

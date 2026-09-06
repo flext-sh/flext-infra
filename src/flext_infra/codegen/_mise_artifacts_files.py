@@ -10,16 +10,21 @@ from flext_core import r
 from flext_infra import c, m, u
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
-ARTIFACT_SPECS: Final[tuple[tuple[str, int], ...]] = (
+ARTIFACT_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (
     ("bin/mise", 0o755),
     ("bin/mise.cmd", 0o644),
     ("mise.lock", 0o644),
 )
-CONFIG_SPEC: Final[tuple[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
-PUBLICATION_SPECS: Final[tuple[tuple[str, int], ...]] = (CONFIG_SPEC, *ARTIFACT_SPECS)
-ARTIFACT_NAMES: Final[tuple[str, ...]] = tuple(name for name, _mode in ARTIFACT_SPECS)
+CONFIG_SPEC: Final[t.Pair[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
+PUBLICATION_SPECS: Final[t.VariadicTuple[t.Pair[str, int]]] = (
+    CONFIG_SPEC,
+    *ARTIFACT_SPECS,
+)
+ARTIFACT_NAMES: Final[t.VariadicTuple[str]] = tuple(
+    name for name, _mode in ARTIFACT_SPECS
+)
 JOURNAL_NAME: Final[str] = "flext-infra-codegen-transaction-journal.json"
 JOURNAL_MODE: Final[int] = 0o600
 STATE_DIRECTORY: Final[Path] = Path(".state") / "mise-artifacts"
@@ -37,7 +42,7 @@ def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]
     return u.Cli.atomic_read_binary_file_state(path, required=required)
 
 
-def physical_directory_identity(path: Path) -> p.Result[tuple[int, int]]:
+def physical_directory_identity(path: Path) -> p.Result[t.Pair[int, int]]:
     """Return the device/inode identity of one physical directory."""
     try:
         observed = path.lstat()

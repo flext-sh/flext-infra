@@ -18,7 +18,7 @@ def prepare_isolation(
 ) -> p.Result[bool]:
     """Create only invocation-local policy, home, and receipt paths."""
 
-    def directory_key(path: Path) -> tuple[int, str]:
+    def directory_key(path: Path) -> t.Pair[int, str]:
         return len(path.parts), path.as_posix()
 
     if not os.environ.get("PATH"):

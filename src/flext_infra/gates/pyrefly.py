@@ -64,7 +64,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
         issues: t.MutableSequenceOf[m.Infra.Issue] = []

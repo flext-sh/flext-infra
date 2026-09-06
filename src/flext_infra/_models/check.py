@@ -167,7 +167,7 @@ class FlextInfraModelsCheck:
         result: FlextInfraModelsCheck.GateResult = m.Field(
             description="Gate result model"
         )
-        issues: tuple[FlextInfraModelsCheck.Issue, ...] = m.Field(
+        issues: t.VariadicTuple[FlextInfraModelsCheck.Issue] = m.Field(
             default_factory=tuple, description="Detected issues"
         )
         raw_output: str = m.Field(
@@ -212,7 +212,7 @@ class FlextInfraModelsCheck:
         # Why: owned by m.Infra; ArbitraryTypesModel keeps protocol field writability.
 
         results: Annotated[
-            tuple[FlextInfraModelsCheck.ProjectResult, ...],
+            t.VariadicTuple[FlextInfraModelsCheck.ProjectResult],
             m.Field(description="Individual project execution results."),
         ]
         failed: Annotated[
@@ -305,10 +305,10 @@ class FlextInfraModelsCheck:
         information_uri: str = m.Field(
             "", description="Tool documentation URL", validate_default=True
         )
-        rules: tuple[FlextInfraModelsCheck.SarifRule, ...] = m.Field(
+        rules: t.VariadicTuple[FlextInfraModelsCheck.SarifRule] = m.Field(
             default_factory=tuple, description="Rule descriptors"
         )
-        results: tuple[FlextInfraModelsCheck.SarifResult, ...] = m.Field(
+        results: t.VariadicTuple[FlextInfraModelsCheck.SarifResult] = m.Field(
             default_factory=tuple, description="Run results"
         )
 
@@ -346,7 +346,7 @@ class FlextInfraModelsCheck:
             description="SARIF version",
             validate_default=True,
         )
-        runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
+        runs: t.VariadicTuple[FlextInfraModelsCheck.SarifRun] = m.Field(
             default_factory=tuple, description="SARIF runs"
         )
 

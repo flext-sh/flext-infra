@@ -10,12 +10,12 @@ from flext_infra import m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 def publish(
-    publications: tuple[m.Infra.CodegenStagedFile, ...],
-) -> p.Result[tuple[Path, ...]]:
+    publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
+) -> p.Result[t.VariadicTuple[Path]]:
     """Apply an already durable phase through full-state guarded primitives."""
     written: list[Path] = []
     total = len(publications)

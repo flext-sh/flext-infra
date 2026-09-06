@@ -208,7 +208,7 @@ class FlextInfraUtilitiesDocsContract:
     @staticmethod
     def docs_snapshot_sources(
         paths: t.SequenceOf[Path],
-    ) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
         """Capture descriptor-authenticated states for every planner source."""
         states: list[m.Cli.AtomicFileState] = []
         for path in sorted(set(paths)):

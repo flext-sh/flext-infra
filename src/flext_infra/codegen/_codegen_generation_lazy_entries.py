@@ -25,10 +25,10 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         exports: t.StrSequence,
         lazy_filtered: t.LazyAliasMap,
         context: _LazyEntryContext,
-    ) -> t.SequenceOf[tuple[str, str, str]]:
+    ) -> t.SequenceOf[t.Triple[str, str, str]]:
         """Build normalized lazy entries for template rendering."""
         current_pkg, child_aliases, include_module_exports = context
-        entries: t.MutableSequenceOf[tuple[str, str, str]] = []
+        entries: t.MutableSequenceOf[t.Triple[str, str, str]] = []
         for exp in exports:
             if exp not in lazy_filtered:
                 continue
@@ -55,8 +55,8 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
 
     @staticmethod
     def _group_lazy_entries(
-        lazy_entries: t.SequenceOf[tuple[str, str, str]],
-    ) -> tuple[t.SequenceOf[t.StrSequencePair], t.SequenceOf[t.StrPairSequencePair]]:
+        lazy_entries: t.SequenceOf[t.Triple[str, str, str]],
+    ) -> t.Pair[t.SequenceOf[t.StrSequencePair], t.SequenceOf[t.StrPairSequencePair]]:
         """Group lazy entries by module and alias group."""
         module_groups: dict[str, list[str]] = defaultdict(list)
         alias_groups: dict[str, list[t.StrPair]] = defaultdict(list)
@@ -92,7 +92,7 @@ class FlextInfraCodegenGenerationLazyEntriesMixin(
         )
 
     @staticmethod
-    def _public_export_order_key(export_name: str) -> tuple[int, str]:
+    def _public_export_order_key(export_name: str) -> t.Pair[int, str]:
         """Classify one export using Ruff's canonical ``RUF022`` order."""
         category = 0 if export_name.isupper() else 1 if export_name[:1].isupper() else 2
         # flext-wkii.17 (Codex): dependency order belongs to facade imports;

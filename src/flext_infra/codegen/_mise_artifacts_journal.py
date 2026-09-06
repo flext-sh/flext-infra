@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, cast
 
 from flext_core import r
 from flext_infra import c, m, u
@@ -14,7 +14,7 @@ from flext_infra.codegen import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 def begin(
@@ -66,7 +66,7 @@ def begin(
 def append_prepared(
     plan: m.Infra.MiseToolchainWorkspacePlan,
     journal: m.Infra.CodegenTransactionJournal,
-    publications: tuple[m.Infra.CodegenStagedFile, ...],
+    publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
     *,
     sources: tuple[tuple[str, m.Cli.AtomicFileState], ...] = (),
 ) -> p.Result[m.Infra.CodegenTransactionJournal]:
@@ -347,7 +347,7 @@ def write(
 
 def read(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
+) -> p.Result[t.Pair[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]:
     """Parse the typed v8 journal without deriving a second filesystem path."""
     snapshot = state.journal_state(layout)
     result_type = r[tuple[m.Infra.CodegenTransactionJournal, m.Cli.AtomicFileState]]
@@ -548,9 +548,9 @@ def _journal_source(
 
 
 def _merge_sources(
-    existing: tuple[m.Infra.CodegenJournalSource, ...],
+    existing: t.VariadicTuple[m.Infra.CodegenJournalSource],
     sources: tuple[tuple[str, m.Cli.AtomicFileState], ...],
-) -> p.Result[tuple[m.Infra.CodegenJournalSource, ...]]:
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalSource]]:
     result_type = r[tuple[m.Infra.CodegenJournalSource, ...]]
     by_key = {(source.phase, source.path): source for source in existing}
     order = [(source.phase, source.path) for source in existing]

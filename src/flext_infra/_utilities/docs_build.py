@@ -17,6 +17,7 @@ from .._utilities.docs import FlextInfraUtilitiesDocs
 if TYPE_CHECKING:
     from types import ModuleType
 
+    from flext_infra import t
     from flext_infra.protocols import p
 
 
@@ -33,7 +34,9 @@ class FlextInfraUtilitiesDocsBuild:
         raise OSError(msg)
 
     @staticmethod
-    def _mkdocs_exception_types(module: ModuleType) -> tuple[type[BaseException], ...]:
+    def _mkdocs_exception_types(
+        module: ModuleType,
+    ) -> t.VariadicTuple[type[BaseException]]:
         """Return MkDocs exception classes from a lazily loaded module."""
         names = (
             "Abort",
@@ -63,7 +66,7 @@ class FlextInfraUtilitiesDocsBuild:
         return config_raw
 
     @staticmethod
-    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> tuple[Path, ...]:
+    def docs_mkdocs_config_files(scope: m.Infra.DocScope) -> t.VariadicTuple[Path]:
         """Return primary mkdocs.yml then optional product mkdocs.yaml."""
         configs: list[Path] = []
         primary = scope.path / "mkdocs.yml"

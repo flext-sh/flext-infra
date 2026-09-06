@@ -36,7 +36,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
         recursive: bool,
         suffixes: frozenset[str],
         excluded_names: frozenset[str] = frozenset(),
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """List regular source files through one authenticated tree inventory."""
         planned = cli_u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     @staticmethod
     def docs_source_paths(
         workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Discover every physical source consumed by one docs render."""
         roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
             workspace_root, extra_roots

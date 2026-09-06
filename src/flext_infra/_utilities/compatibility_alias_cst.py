@@ -22,7 +22,7 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
             *,
             local_aliases: t.StrMapping,
             import_aliases: t.MappingKV[str, t.StrMapping],
-            attribute_aliases: t.MappingKV[tuple[str, str], str],
+            attribute_aliases: t.MappingKV[t.Pair[str, str], str],
             qualified_aliases: t.StrMapping,
             target_bindings: frozenset[str],
         ) -> None:
@@ -170,7 +170,7 @@ class FlextInfraUtilitiesCompatibilityAliasCst:
         *,
         local_aliases: t.StrMapping,
         import_aliases: t.MappingKV[str, t.StrMapping],
-        attribute_aliases: t.MappingKV[tuple[str, str], str],
+        attribute_aliases: t.MappingKV[t.Pair[str, str], str],
         qualified_aliases: t.StrMapping,
         target_bindings: frozenset[str],
     ) -> str:

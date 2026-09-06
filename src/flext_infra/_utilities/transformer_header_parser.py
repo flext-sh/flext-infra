@@ -123,14 +123,14 @@ class FlextInfraUtilitiesTransformerHeaderParser:
         return 0
 
     @classmethod
-    def _line_end_offset(cls, source: str, position: tuple[int, int]) -> int:
+    def _line_end_offset(cls, source: str, position: t.Pair[int, int]) -> int:
         """Return the offset after the line containing a token position."""
         offset = cls._position_offset(source, position)
         newline = source.find("\n", offset)
         return len(source) if newline == -1 else newline + 1
 
     @staticmethod
-    def _position_offset(source: str, position: tuple[int, int]) -> int:
+    def _position_offset(source: str, position: t.Pair[int, int]) -> int:
         """Convert a tokenizer line and column into a source offset."""
         line, column = position
         if line <= 1:

@@ -10,7 +10,7 @@ from flext_infra import c, m, u
 from flext_infra.codegen import _mise_artifacts_files as files
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 type _JournalFileRole = Literal["desired", "backup", "rollback"]
 
@@ -18,7 +18,7 @@ type _JournalFileRole = Literal["desired", "backup", "rollback"]
 def register_transaction_manifests(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     journal: m.Infra.CodegenTransactionJournal,
-) -> p.Result[tuple[m.Infra.CodegenJournalDirectory, ...]]:
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalDirectory]]:
     """Register exact transaction trees after validating any prior authority."""
     result_type = r[tuple[m.Infra.CodegenJournalDirectory, ...]]
     registered: list[m.Infra.CodegenJournalDirectory] = []
@@ -315,7 +315,7 @@ def destinations(plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
 
 
 def publications_live(
-    publications: tuple[m.Infra.CodegenStagedFile, ...],
+    publications: t.VariadicTuple[m.Infra.CodegenStagedFile],
 ) -> p.Result[bool]:
     """Prove live destinations have the exact staged inode or planned absence."""
     for publication in publications:
@@ -353,7 +353,7 @@ def publications_live(
 def live(
     owner: p.Infra.MiseArtifactsOwner,
     plan: m.Infra.MiseToolchainWorkspacePlan,
-    publications: tuple[m.Infra.CodegenStagedFile, ...] | None = None,
+    publications: t.VariadicTuple[m.Infra.CodegenStagedFile] | None = None,
 ) -> p.Result[bool]:
     """Exercise every real Mise consumer while guarding sources and live bytes."""
     source_before = sources(plan)
@@ -449,7 +449,7 @@ def _journal_file_specs(
     result_type = r[dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]]]
     specs: dict[Path, tuple[_JournalFileRole, m.Infra.CodegenJournalEntry]] = {}
     for entry in journal.entries:
-        selectors: tuple[tuple[_JournalFileRole, str | None], ...] = (
+        selectors: t.VariadicTuple[t.Pair[_JournalFileRole, str | None]] = (
             ("desired", entry.desired_staging),
             ("backup", entry.original_backup),
             ("rollback", entry.rollback_staging),
@@ -590,8 +590,8 @@ def _manifest_root_matches_created(
 def _artifact_snapshot(
     plan: m.Infra.MiseToolchainWorkspacePlan,
     replacements: dict[Path, tuple[bytes, int | None]],
-) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-    root_launchers: tuple[bytes, bytes] | None = None
+) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
+    root_launchers: t.Pair[bytes, bytes] | None = None
     states: list[m.Cli.AtomicFileState] = []
     for project in plan.projects:
         artifacts = (

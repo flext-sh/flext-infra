@@ -93,4 +93,4 @@ class FlextInfraUtilitiesManagedConflicts:
         return r[str].ok("".join(recovered))
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesManagedConflicts",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesManagedConflicts",)

@@ -79,7 +79,7 @@ class FlextInfraRefactorSymbolPropagator(FlextInfraRopeTransformer):
 
     def _rename_import_symbol(
         self, source: str, *, old_name: str, new_name: str
-    ) -> tuple[str, bool]:
+    ) -> t.Pair[str, bool]:
         """Rename symbol in import statement within target modules."""
         # Match the symbol in from-import lines for any target module
         for target_module in self._target_modules:

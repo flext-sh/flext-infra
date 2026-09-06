@@ -73,7 +73,7 @@ class FlextInfraUtilitiesRopeRuntimeRefactors(FlextInfraUtilitiesRopeRuntimeBase
         return finder
 
     @classmethod
-    def word_primary_range(cls, source: str, offset: int) -> tuple[int, int]:
+    def word_primary_range(cls, source: str, offset: int) -> t.Pair[int, int]:
         word_finder = cls._word_finder(source)
         primary_range = getattr(word_finder, "get_primary_range", None)
         if not callable(primary_range):

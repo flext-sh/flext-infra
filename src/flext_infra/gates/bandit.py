@@ -45,7 +45,7 @@ class FlextInfraBanditGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []

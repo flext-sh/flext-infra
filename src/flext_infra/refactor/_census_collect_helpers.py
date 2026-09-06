@@ -43,9 +43,11 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             module: m.Infra.RopeModuleIndexEntry,
             config: m.Infra.Census.ScanConfig,
             *,
-            project_objects: dict[str, list[m.Infra.Census.Object]],
-            project_violations: dict[str, list[m.Infra.Census.Violation]],
-            project_fixes: dict[str, list[m.Infra.Census.Fix]],
+            project_objects: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Object]],
+            project_violations: t.MappingKV[
+                str, t.SequenceOf[m.Infra.Census.Violation]
+            ],
+            project_fixes: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Fix]],
             report_projects: set[str],
         ) -> None:
             """Scan through the composed census collection mixin."""
@@ -55,9 +57,11 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
             self,
             rope: p.Infra.RopeWorkspaceDsl,
             *,
-            project_objects: dict[str, list[m.Infra.Census.Object]],
-            project_violations: dict[str, list[m.Infra.Census.Violation]],
-            project_fixes: dict[str, list[m.Infra.Census.Fix]],
+            project_objects: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Object]],
+            project_violations: t.MappingKV[
+                str, t.SequenceOf[m.Infra.Census.Violation]
+            ],
+            project_fixes: t.MappingKV[str, t.SequenceOf[m.Infra.Census.Fix]],
             report_projects: set[str],
             rule_names: t.StrSequence | None,
             selected_rules: frozenset[str] | None,
@@ -93,7 +97,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     @staticmethod
     def _declarative_rules_for_selection(
         rule_names: t.StrSequence | None,
-    ) -> tuple[m.EnforcementRuleSpec, ...]:
+    ) -> t.VariadicTuple[m.EnforcementRuleSpec]:
         """Return catalog declarative rules selected by the census request."""
         return FlextInfraEnforcementEngine.declarative_rules(rule_names)
 
@@ -133,7 +137,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         *,
         project_names: t.StrSequence | None,
         rule_names: t.StrSequence | None,
-    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
+    ) -> t.VariadicTuple[m.Infra.RopeModuleIndexEntry]:
         """Modules for rules."""
         modules = tuple(
             module
@@ -151,7 +155,7 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         rope: p.Infra.RopeWorkspaceDsl,
         modules: t.SequenceOf[m.Infra.RopeModuleIndexEntry],
         project_names: t.StrSequence | None,
-    ) -> tuple[m.Infra.RopeModuleIndexEntry, ...]:
+    ) -> t.VariadicTuple[m.Infra.RopeModuleIndexEntry]:
         """Return synthetic module entries for selected workspace ``.pyi`` files."""
         known_paths = frozenset(module.file_path.resolve() for module in modules)
         roots = tuple(

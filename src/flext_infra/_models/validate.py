@@ -165,7 +165,7 @@ class FlextInfraModelsCore:
         extension: Annotated[str, m.Field(description="File extension")]
         role: Annotated[str, m.Field(description="Script role")]
         violations: Annotated[
-            tuple[FlextInfraModelsCore.GateContractViolation, ...],
+            t.VariadicTuple[FlextInfraModelsCore.GateContractViolation],
             m.Field(description="Violations"),
         ] = ()
 

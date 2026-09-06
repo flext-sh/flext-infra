@@ -27,14 +27,14 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
     """Normalize rendered artifacts and bind them to exact destination states."""
 
     @staticmethod
-    def _directory_sort_key(path: Path) -> tuple[int, str]:
+    def _directory_sort_key(path: Path) -> t.Pair[int, str]:
         """Return the stable parent-first ordering key for a directory."""
         return len(path.parts), path.as_posix()
 
     @staticmethod
     def docs_normalize_artifacts(
         artifacts: t.SequenceOf[DocsRenderedArtifactTuple],
-    ) -> p.Result[tuple[DocsRenderedArtifactTuple, ...]]:
+    ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Validate one unique lexical owner and target without dereferencing."""
         normalized: list[DocsRenderedArtifactTuple] = []
         targets: set[Path] = set()
@@ -65,7 +65,7 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
     @staticmethod
     def docs_required_directories(
         bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Return unique target directories ordered parent before child."""
         required: set[Path] = set()
         for scoped in bundle.scopes:
@@ -88,7 +88,7 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
     @staticmethod
     def docs_file_plans(
         bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Snapshot targets from the canonical rendered artifact inventory."""
         workspace_root = bundle.scopes[0].scope.path
         scope_roots = tuple(scoped.scope.path for scoped in bundle.scopes)
@@ -119,8 +119,8 @@ class FlextInfraUtilitiesDocsGeneratePlanMixin(
 
     @staticmethod
     def _prune_generated_tree_artifacts(
-        project: Path, root: Path, rendered: t.SequenceOf[tuple[Path, str]]
-    ) -> p.Result[tuple[DocsRenderedArtifactTuple, ...]]:
+        project: Path, root: Path, rendered: t.SequenceOf[t.Pair[Path, str]]
+    ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Describe stale files owned by one generated tree as absent artifacts."""
         planned = cli_u.Cli.atomic_plan_directory_chain(root)
         if planned.failure:

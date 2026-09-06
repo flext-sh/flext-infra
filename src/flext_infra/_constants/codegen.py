@@ -152,7 +152,7 @@ class FlextInfraConstantsCodegen(
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: Final[tuple[PipelineStage, ...]] = (
+    PIPELINE_STAGE_ORDER: Final[t.VariadicTuple[PipelineStage]] = (
         PipelineStage.DISCOVER,
         PipelineStage.TOOLCHAIN,
         PipelineStage.PY_TYPED,

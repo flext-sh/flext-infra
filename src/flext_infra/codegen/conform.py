@@ -129,7 +129,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.CodegenResult]:
         """Execute one already validated public CLI request."""
         root = request.root.expanduser().resolve()
-        bootstrap: tuple[m.Cli.AtomicDirectoryState, ...] = ()
+        bootstrap: t.VariadicTuple[m.Cli.AtomicDirectoryState] = ()
         initialized_git = False
         if initial_workspace is not None and not root.is_dir():
             planned = u.Cli.atomic_plan_directory_chain(root)
@@ -268,7 +268,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].fail(
                 "Makefile bootstrap plan must own exactly the root dispatcher"
             )
-        written: tuple[Path, ...] = ()
+        written: t.VariadicTuple[Path] = ()
         if changed:
             (file,) = changed
             before = u.Infra.codegen_file_before_state(file)
@@ -341,7 +341,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
 
     def _prepare_scaffold_directories(
         self, request: m.Infra.CodegenConformRequest
-    ) -> p.Result[tuple[m.Cli.AtomicDirectoryState, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Cli.AtomicDirectoryState]]:
         """Create config-declared scaffold parent chains under the generation lock."""
         if (
             c.Infra.CodegenConformMode(request.mode)
@@ -716,7 +716,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @staticmethod
     def _mise_config_plans(
         plan: m.Infra.CodegenPlan,
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Select one planned Mise configuration for each selected repository."""
         expected = tuple(
             environment.project_root / c.Infra.MISE_TOML_FILENAME
@@ -1242,7 +1242,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request: m.Infra.CodegenConformRequest,
         workspace: m.Infra.WorkspaceSpec,
         current_repository: m.Infra.RepositoryRef,
-    ) -> p.Result[tuple[m.Infra.RepositoryRef, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.RepositoryRef]]:
         """Resolve self/subprojects/all from the local read-only topology."""
         scope = c.Infra.CodegenConformScope(request.scope)
         if scope is c.Infra.CodegenConformScope.SELF:
@@ -1988,7 +1988,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     @classmethod
     def _managed_gitlinks(
         cls, workspace: m.Infra.WorkspaceSpec, codegen: m.Infra.CodegenConfigSpec
-    ) -> p.Result[tuple[m.Infra.ManagedGitlinkSpec, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]]:
         """Resolve provider baselines only for mutable governed subprojects."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
         for repository in workspace.subprojects:
@@ -2664,7 +2664,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         rendered: str,
         *,
         mode: int = 0o644,
-        source_states: tuple[m.Cli.AtomicFileState, ...] = (),
+        source_states: t.VariadicTuple[m.Cli.AtomicFileState] = (),
     ) -> p.Result[m.Infra.CodegenFilePlan]:
         """Snapshot one target and bind it to exact desired bytes and mode."""
         project = root.expanduser().absolute()
@@ -2970,8 +2970,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         del workspace_root
         workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         environment_root = target.root
-        groups: tuple[str, ...] = ("dev", "codegen")
-        editable_repositories: tuple[m.Infra.RepositoryRef, ...] = ()
+        groups: t.VariadicTuple[str] = ("dev", "codegen")
+        editable_repositories: t.VariadicTuple[m.Infra.RepositoryRef] = ()
         if workspace_environment:
             groups = (*groups, "workspace")
             editable_repositories = tuple(

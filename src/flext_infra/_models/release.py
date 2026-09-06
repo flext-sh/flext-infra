@@ -131,7 +131,7 @@ class FlextInfraModelsRelease:
             m.Field(default=None, description="Latest release tag, if any"),
         ] = None
         merges: Annotated[
-            tuple[str, ...],
+            t.VariadicTuple[str],
             m.Field(default=(), description="Merged PR subjects since previous_tag"),
         ] = ()
         declared: Annotated[

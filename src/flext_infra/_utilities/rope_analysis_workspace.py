@@ -83,7 +83,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     @classmethod
     def _python_and_stub_file_paths(
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Return indexed sources, declared wrapper modules, and typing stubs."""
         python_paths = {
             path.resolve()

@@ -96,7 +96,7 @@ class FlextInfraModelsDocsGeneration:
             m.Field(description="Exact scope that owns every relative artifact"),
         ]
         artifacts: Annotated[
-            tuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact, ...],
+            t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsRenderedArtifact],
             m.Field(description="Complete ordered desired artifact inventory"),
         ]
 
@@ -108,11 +108,11 @@ class FlextInfraModelsDocsGeneration:
         )
 
         scopes: Annotated[
-            tuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts, ...],
+            t.VariadicTuple[FlextInfraModelsDocsGeneration.DocsScopeArtifacts],
             m.Field(min_length=1, description="Ordered selected scope inventories"),
         ]
         source_states: Annotated[
-            tuple[cli_m.Cli.AtomicFileState, ...],
+            t.VariadicTuple[cli_m.Cli.AtomicFileState],
             m.Field(min_length=1, description="Exact sources consumed by rendering"),
         ]
 

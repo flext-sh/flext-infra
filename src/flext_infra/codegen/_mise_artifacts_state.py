@@ -15,7 +15,7 @@ from flext_infra.codegen import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 def _hosting_device(path: Path) -> int:
@@ -42,14 +42,14 @@ def _project_depth(item: m.Infra.MiseToolchainProjectLayout) -> int:
     return -len(item.root.parts)
 
 
-def _directory_cleanup_order(item: m.Infra.CodegenJournalDirectory) -> tuple[int, str]:
+def _directory_cleanup_order(item: m.Infra.CodegenJournalDirectory) -> t.Pair[int, str]:
     """Order journaled directory cleanup from descendants to ancestors."""
     return _relative_order(item.path)
 
 
 def plan_transaction_directories(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[tuple[m.Infra.CodegenJournalDirectory, ...]]:
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalDirectory]]:
     """Prove every transaction path absent before journal publication."""
     roots: list[Path] = []
     for project in layout.projects:
@@ -87,9 +87,9 @@ def plan_directories(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     *,
     phase: str,
-    requested: tuple[Path, ...],
+    requested: t.VariadicTuple[Path],
     disposition: Literal["temporary", "generated"],
-) -> p.Result[tuple[m.Infra.CodegenJournalDirectory, ...]]:
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenJournalDirectory]]:
     """Return unique missing paths after descriptor-authenticated preflight."""
     result_type = r[tuple[m.Infra.CodegenJournalDirectory, ...]]
     if len(set(requested)) != len(requested):
@@ -156,7 +156,7 @@ def plan_directories(
 
 def create_journaled_directory(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-    directories: tuple[m.Infra.CodegenJournalDirectory, ...],
+    directories: t.VariadicTuple[m.Infra.CodegenJournalDirectory],
     entry: m.Infra.CodegenJournalDirectory,
 ) -> p.Result[m.Infra.CodegenJournalDirectory]:
     """Create one durable intent and return its exact physical identity."""
@@ -244,7 +244,7 @@ def compensate_created_directory(
 
 def journal_state(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+) -> p.Result[t.VariadicTuple[m.Cli.AtomicFileState]]:
     """Read the typed Git-owned journal without creating filesystem state."""
     result_type = r[tuple[m.Cli.AtomicFileState, ...]]
     snapshot = files.read_state(layout.journal_path, required=False)
@@ -254,7 +254,7 @@ def journal_state(
 
 
 def journal_snapshot(
-    states: tuple[m.Cli.AtomicFileState, ...],
+    states: t.VariadicTuple[m.Cli.AtomicFileState],
 ) -> m.Cli.AtomicFileState | None:
     """Return the optional journal snapshot from its non-null result payload."""
     return states[0] if states else None
@@ -262,7 +262,7 @@ def journal_snapshot(
 
 def transaction_residue(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
-) -> tuple[Path, ...]:
+) -> t.VariadicTuple[Path]:
     """Return every transaction-prefixed child or unsafe state-root alias."""
     residue: list[Path] = []
     for project in layout.projects:
@@ -403,7 +403,7 @@ def validate_transaction_roots(
     return r[bool].ok(True)
 
 
-def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | bool]:
+def _validate_transaction_root(target: Path) -> p.Result[t.Pair[int, int] | bool]:
     if not target.exists() and not target.is_symlink():
         return r[tuple[int, int] | bool].ok(False)
     identifier = target.name.removeprefix(files.TRANSACTION_DIR_PREFIX)
@@ -427,11 +427,11 @@ def _validate_transaction_root(target: Path) -> p.Result[tuple[int, int] | bool]
     return r[tuple[int, int] | bool].ok((state.st_dev, state.st_ino))
 
 
-def _path_order(path: Path) -> tuple[int, str]:
+def _path_order(path: Path) -> t.Pair[int, str]:
     return len(path.parts), path.as_posix()
 
 
-def _relative_order(path: str) -> tuple[int, str]:
+def _relative_order(path: str) -> t.Pair[int, str]:
     relative = Path(path)
     return len(relative.parts), path
 

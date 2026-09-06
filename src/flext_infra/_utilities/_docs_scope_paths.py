@@ -46,7 +46,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
     @staticmethod
     def docs_workspace_roots(
         workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Return existing physical roots from one stable workspace topology."""
         try:
             return FlextInfraUtilitiesDocsScopePathsMixin._docs_workspace_roots(
@@ -60,7 +60,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
     @staticmethod
     def _docs_workspace_roots(
         workspace_root: Path, extra_roots: t.SequenceOf[Path]
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Discover roots while the public boundary owns exception conversion."""
         root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(workspace_root)
         if not FlextInfraUtilitiesDocsScopePathsMixin.physical_directory_exists(root):

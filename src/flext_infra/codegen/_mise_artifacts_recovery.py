@@ -15,7 +15,7 @@ from flext_infra.codegen import (
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 type _FileIdentity = tuple[
     int | None,
@@ -89,7 +89,7 @@ class FlextInfraMiseRecovery:
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         journal: m.Infra.CodegenTransactionJournal,
-    ) -> p.Result[tuple[m.Infra.CodegenRecoveryAction, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenRecoveryAction]]:
         """Classify every live target before preparing any recovery effect."""
         result_type = r[tuple[m.Infra.CodegenRecoveryAction, ...]]
         actions: list[m.Infra.CodegenRecoveryAction] = []
@@ -133,7 +133,7 @@ class FlextInfraMiseRecovery:
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         actions: tuple[m.Infra.CodegenRecoveryAction, ...],
-    ) -> p.Result[tuple[m.Infra.CodegenStagedFile | None, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile | None]]:
         result_type = r[tuple[m.Infra.CodegenStagedFile | None, ...]]
         candidates: list[m.Infra.CodegenStagedFile | None] = []
         for action in actions:
@@ -215,7 +215,7 @@ class FlextInfraMiseRecovery:
         self,
         layout: m.Infra.MiseToolchainWorkspaceLayout,
         actions: tuple[m.Infra.CodegenRecoveryAction, ...],
-    ) -> p.Result[tuple[m.Infra.CodegenStagedFile | None, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile | None]]:
         result_type = r[tuple[m.Infra.CodegenStagedFile | None, ...]]
         candidates: list[m.Infra.CodegenStagedFile | None] = []
         for action in actions:

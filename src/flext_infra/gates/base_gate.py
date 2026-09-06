@@ -211,7 +211,7 @@ class FlextInfraGate:
 
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tool output into (passed, issues). Default: no-op (check overridden)."""
         _ = result, project_dir, ctx
         return True, ()

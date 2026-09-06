@@ -125,7 +125,7 @@ class FlextInfraWorkspaceEnvironmentSync(
         )
 
 
-__all__: tuple[str, ...] = (
+__all__: t.VariadicTuple[str] = (
     "FlextInfraWorkspaceBeadsEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentSync",
 )

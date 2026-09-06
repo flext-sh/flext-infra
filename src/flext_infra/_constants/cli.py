@@ -27,7 +27,7 @@ class FlextInfraConstantsCli:
     PROCESS_EXIT_ERROR_CODE: Final[str] = "EXTERNAL_PROCESS_EXIT"
     "Stable result error code for non-zero external process exits."
 
-    _SHARED_BOOL_FLAG_VALUES: Final[tuple[str, ...]] = (
+    _SHARED_BOOL_FLAG_VALUES: Final[t.VariadicTuple[str]] = (
         "--apply",
         "--check",
         "--check-only",
@@ -44,7 +44,7 @@ class FlextInfraConstantsCli:
         "--audit",
         "--rewrite-constraints",
     )
-    _SHARED_VALUE_FLAG_VALUES: Final[tuple[str, ...]] = (
+    _SHARED_VALUE_FLAG_VALUES: Final[t.VariadicTuple[str]] = (
         "--checks",
         "--docstring-min",
         "--workspace",
@@ -86,4 +86,4 @@ class FlextInfraConstantsCli:
     })
 
 
-__all__: tuple[str, ...] = ("FlextInfraConstantsCli",)
+__all__: t.VariadicTuple[str] = ("FlextInfraConstantsCli",)

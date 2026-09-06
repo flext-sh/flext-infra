@@ -76,13 +76,13 @@ class FlextInfraDocGenerator(
 
     def plan_files(
         self, bundle: m.Infra.DocsGenerationBundle
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.CodegenFilePlan]]:
         """Bind one prepared render bundle to exact live destination states."""
         return u.Infra.docs_file_plans(bundle)
 
     def required_directories(
         self, bundle: m.Infra.DocsGenerationBundle
-    ) -> p.Result[tuple[Path, ...]]:
+    ) -> p.Result[t.VariadicTuple[Path]]:
         """Derive target parent chains from the exact prepared render bundle."""
         repository_root = bundle.scopes[0].scope.path
         stable = u.Infra.docs_verify_sources(
@@ -126,7 +126,7 @@ class FlextInfraDocGenerator(
     @staticmethod
     def _plan_bundle(
         bundle: m.Infra.DocsGenerationBundle,
-    ) -> p.Result[tuple[_DocsScopePlan, ...]]:
+    ) -> p.Result[t.VariadicTuple[_DocsScopePlan]]:
         """Build every scope plan from one already prepared docs bundle."""
         planned = u.Infra.docs_file_plans(bundle)
         if planned.failure:

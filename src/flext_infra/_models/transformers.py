@@ -44,7 +44,7 @@ class FlextInfraModelsTransformers:
             str, m.Field(description="Prospective source bytes after migration")
         ]
         changes: Annotated[
-            tuple[str, ...], m.Field(description="Recorded migration operations")
+            t.VariadicTuple[str], m.Field(description="Recorded migration operations")
         ] = ()
 
     class Tier0ImportAnalysis(m.Value):

@@ -338,7 +338,7 @@ class FlextInfraUtilitiesRopeSource:
     def rewrite_source_at_offsets(
         rope_project: t.Infra.RopeProject,
         resource: t.Infra.RopeResource,
-        changes: t.SequenceOf[tuple[int, int, str]],
+        changes: t.SequenceOf[t.Triple[int, int, str]],
         *,
         apply: bool = True,
     ) -> str:

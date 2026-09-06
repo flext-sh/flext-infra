@@ -237,7 +237,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         project_dir: Path,
         rope_project: t.Infra.RopeProject,
         file_paths: t.SequenceOf[Path],
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Return only files containing project-owned ENFORCE-080 violations."""
         selected: list[Path] = []
         for file_path in file_paths:
@@ -261,7 +261,7 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
     @staticmethod
     def _plan_edits(
         file_paths: t.SequenceOf[Path],
-    ) -> p.Result[tuple[m.Infra.SemanticMigrationEdit, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.SemanticMigrationEdit]]:
         """Build immutable in-memory edits for detector-selected files."""
         edits: list[m.Infra.SemanticMigrationEdit] = []
         for file_path in file_paths:

@@ -28,7 +28,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
     # rename = one entry in flext-core's enforcement constant, never duplicated
     # here. Token-level rename is idempotent — once source_name has been
     # renamed, subsequent passes find zero matching tokens.
-    _AUTOMATED_RULES: ClassVar[tuple[m.Infra.AccessorMigrationRule, ...]] = tuple(
+    _AUTOMATED_RULES: ClassVar[t.VariadicTuple[m.Infra.AccessorMigrationRule]] = tuple(
         m.Infra.AccessorMigrationRule(
             source_name=src, replacement_name=repl, reason=reason, origin="flext_core"
         )
@@ -44,7 +44,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
 
     def _apply_automated_rewrites(
         self, rope_project: t.Infra.RopeProject, py_file: Path, source: str
-    ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+    ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
         """Apply automated rewrites."""
         resource = u.Infra.get_resource_from_path(rope_project, py_file)
         if resource is None:
@@ -74,10 +74,10 @@ class FlextInfraAccessorMigrationRewriteMixin:
         replacement_name: str,
         reason: str,
         file_path: Path,
-    ) -> tuple[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
+    ) -> t.Pair[str, t.SequenceOf[m.Infra.AccessorMigrationChange]]:
         """Rename symbol tokens."""
         token_lines: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
-        rewrite_ranges: t.MutableSequenceOf[tuple[int, int, str]] = []
+        rewrite_ranges: t.MutableSequenceOf[t.Triple[int, int, str]] = []
         for token in generate_tokens(io.StringIO(source).readline):
             if token.type != NAME or token.string != source_name:
                 continue
@@ -121,7 +121,7 @@ class FlextInfraAccessorMigrationRewriteMixin:
         """Collect manual warnings."""
         lines = source.splitlines()
         warnings: t.MutableSequenceOf[m.Infra.AccessorMigrationChange] = []
-        scope_stack: t.MutableSequenceOf[tuple[str, int]] = []
+        scope_stack: t.MutableSequenceOf[t.Pair[str, int]] = []
         for line_index, line_text in enumerate(lines, start=1):
             stripped = line_text.lstrip()
             if not stripped or stripped.startswith("#"):

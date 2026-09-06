@@ -48,7 +48,7 @@ class FlextInfraModelsBase:
             m.Field(description="Aggregate SHA-256 for HEAD, index, and worktree"),
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsBase.WorkspaceFingerprintEntry, ...],
+            t.VariadicTuple[FlextInfraModelsBase.WorkspaceFingerprintEntry],
             m.Field(description="Ordered per-path fingerprints"),
         ]
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import functools
 from typing import ClassVar
 
-from flext_infra import m
+from flext_infra import m, t
 from flext_infra.codemod.batch_apply import FlextInfraCodemodBatchApply
 from flext_infra.refactor.accessor_migration import (
     FlextInfraAccessorMigrationOrchestrator,
@@ -25,7 +25,7 @@ from flext_infra.transformers.pydantic_modernizer import (
 class RefactorRoutes(CliRouteBase):
     """Own the complete refactor command tuple."""
 
-    refactor_routes: ClassVar[tuple[m.Cli.ResultCommandRoute, ...]] = (
+    refactor_routes: ClassVar[t.VariadicTuple[m.Cli.ResultCommandRoute]] = (
         m.Cli.ResultCommandRoute(
             name="namespace-enforce",
             help_text="Scan workspace for namespace governance violations",

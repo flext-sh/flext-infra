@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING, ClassVar, override
 from flext_core import r
 from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
-
-# flext-0ftd.3.5: the empty package initializer is not a compatibility export;
-# consume the declaration at its canonical owner after the lazy-init cutover.
 from flext_infra.transformers.smells.base import (
     auto_fixable_smell_tags,
     smell_fixer_for,
 )
 from flext_infra.transformers.smells.boolean_logic import FlextInfraBooleanLogicFixer
+
+# flext-0ftd.3.5: the empty package initializer is not a compatibility export;
+# consume the declaration at its canonical owner after the lazy-init cutover.
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -131,7 +131,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse SARIF stdout into per-project issues (check_files path)."""
         _ = ctx
         parsed = self._issues_from_sarif(result.stdout, project_dir.name)
@@ -221,8 +221,8 @@ class FlextInfraSmellsGate(FlextInfraGate):
         )
 
     def _drop_generated_projections(
-        self, issues: tuple[m.Infra.Issue, ...]
-    ) -> tuple[m.Infra.Issue, ...]:
+        self, issues: t.VariadicTuple[m.Infra.Issue]
+    ) -> t.VariadicTuple[m.Infra.Issue]:
         """Drop findings in generated projections; their owner is the generator.
 
         A file whose first line carries the canonical AUTO-GENERATED header is a
@@ -246,7 +246,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     @classmethod
     def _issues_from_sarif(
         cls, sarif_json: str, project_name: str
-    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
+    ) -> p.Result[t.VariadicTuple[m.Infra.Issue]]:
         """Extract one Issue per smell finding inside ``project_name``.
 
         Pure function over a literal qlty SARIF payload (unit-testable, no

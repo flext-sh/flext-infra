@@ -80,8 +80,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             return []
 
         def method_sort_key(
-            item: tuple[m.Infra.MethodInfo, int, int, str],
-        ) -> tuple[int, int, str]:
+            item: t.Quad[m.Infra.MethodInfo, int, int, str],
+        ) -> t.Triple[int, int, str]:
             return u.Infra.build_method_sort_key(item[0], self._order_config)
 
         source = "".join(lines)
@@ -161,7 +161,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
     @staticmethod
     def _contiguous_method_blocks(
         *,
-        method_chunks: t.SequenceOf[tuple[m.Infra.MethodInfo, int, int, str]],
+        method_chunks: t.SequenceOf[t.Quad[m.Infra.MethodInfo, int, int, str]],
         source: str,
     ) -> list[list[tuple[m.Infra.MethodInfo, int, int, str]]]:
         """Split method chunks into reorderable blocks separated only by spacing/comments."""

@@ -270,7 +270,7 @@ class FlextInfraUtilitiesPyprojectConform:
         canonical = tuple(dict.fromkeys(normalized_items))
         if canonicalize_all:
 
-            def requirement_key(requirement: str) -> tuple[str, str]:
+            def requirement_key(requirement: str) -> t.Pair[str, str]:
                 name = FlextInfraUtilitiesDependencies.dep_name(requirement) or ""
                 return name, requirement
 

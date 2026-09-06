@@ -30,7 +30,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
     @staticmethod
     def docs_root_artifacts(
         workspace_root: Path, scopes: t.SequenceOf[m.Infra.DocScope]
-    ) -> p.Result[tuple[DocsRenderedArtifactTuple, ...]]:
+    ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Render aggregate root targets from the complete discovered project set."""
         workspace_contract = FlextInfraUtilitiesDocsContract.docs_workspace_contract(
             workspace_root
@@ -166,7 +166,7 @@ class FlextInfraUtilitiesDocsGenerateRootMixin(
         *,
         workspace_root: Path,
         aggregate_scopes: t.SequenceOf[m.Infra.DocScope],
-    ) -> p.Result[tuple[DocsRenderedArtifactTuple, ...]]:
+    ) -> p.Result[t.VariadicTuple[DocsRenderedArtifactTuple]]:
         """Return the rendered artifact inventory for one docs scope."""
         if scope.name == c.Infra.RK_ROOT:
             return FlextInfraUtilitiesDocsGenerateRootMixin.docs_root_artifacts(

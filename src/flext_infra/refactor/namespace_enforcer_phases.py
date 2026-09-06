@@ -55,7 +55,7 @@ class FlextInfraNamespaceEnforcerPhasesMixin:
     @staticmethod
     def _scan_facades(
         *,
-        project: tuple[Path, str],
+        project: t.Pair[Path, str],
         rope_project: t.Infra.RopeProject,
         apply: bool,
         repository_root: Path,
