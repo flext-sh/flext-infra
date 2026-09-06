@@ -87,11 +87,15 @@ class TestsFlextInfraDepsModernizerPackaging:
             payload, path=tmp_path / c.Infra.PYPROJECT_FILENAME, is_root=True
         )
 
-        wheel = u.Cli.toml_mapping_path(
-            payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+        wheel = tm.not_none(
+            u.Cli.toml_mapping_path(
+                payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+            )
         )
-        sdist = u.Cli.toml_mapping_path(
-            payload, (c.Infra.TOOL, "hatch", "build", "targets", "sdist")
+        sdist = tm.not_none(
+            u.Cli.toml_mapping_path(
+                payload, (c.Infra.TOOL, "hatch", "build", "targets", "sdist")
+            )
         )
         tm.that(len(changes) > 0, eq=True)
         tm.that(wheel["packages"], eq=["src/app", "src/app_client"])

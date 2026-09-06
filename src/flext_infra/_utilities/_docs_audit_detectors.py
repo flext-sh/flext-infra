@@ -51,6 +51,44 @@ class FlextInfraUtilitiesDocsAuditDetectorsMixin:
         return issues
 
     @staticmethod
+    def docs_machine_path_issues(
+        scope: m.Infra.DocScope, *, exempt_paths: t.StrSequence
+    ) -> t.SequenceOf[m.Infra.AuditIssue]:
+        """Collect per-user absolute paths (``/home/<user>``) frozen into markdown.
+
+        A path rooted at one operator's home binds the document to one machine;
+        container and CI identities declared in ``c.Infra.MACHINE_PATH_CONTAINER_USERS``
+        are image contracts and pass. ``exempt_paths`` are scope-relative prefixes
+        (frozen evidence such as dated plans) declared by the repository's docs
+        policy; they are skipped whole.
+        """
+        issues: t.MutableSequenceOf[m.Infra.AuditIssue] = []
+        exempt = tuple(exempt_paths)
+        for md_file in FlextInfraUtilitiesDocs.iter_scope_markdown_files(scope):
+            rel = md_file.relative_to(scope.path).as_posix()
+            if rel.startswith(exempt):
+                continue
+            text = md_file.read_text(
+                encoding=c.Cli.ENCODING_DEFAULT, errors=c.Infra.IGNORE
+            )
+            for line_number, line in enumerate(text.splitlines(), start=1):
+                for match in c.Infra.MACHINE_PATH_RE.finditer(line):
+                    if match.group("user") in c.Infra.MACHINE_PATH_CONTAINER_USERS:
+                        continue
+                    issues.append(
+                        m.Infra.AuditIssue(
+                            file=rel,
+                            issue_type="machine-path",
+                            severity="high",
+                            message=(
+                                f"line {line_number} embeds machine-local path "
+                                f"`{match.group(0)}`"
+                            ),
+                        )
+                    )
+        return issues
+
+    @staticmethod
     def docs_scope_boundary_issues(
         scope: m.Infra.DocScope,
     ) -> t.SequenceOf[m.Infra.AuditIssue]:

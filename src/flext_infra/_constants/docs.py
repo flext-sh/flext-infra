@@ -34,6 +34,18 @@ class FlextInfraConstantsDocs:
         "PLC0415",
     )
     """Rules ignored for executable docs snippets that are not full modules/tests."""
+    MACHINE_PATH_RE: Final[t.RegexPattern] = re.compile(
+        r"(?<![\w./-])/(?:home|Users)/(?P<user>[A-Za-z0-9_.-]+)(?=/|\b)"
+    )
+    """Regex matching a per-user absolute root (``/home/<user>``, ``/Users/<user>``)."""
+    MACHINE_PATH_CONTAINER_USERS: Final[t.StrSequence] = (
+        "runner",
+        "vscode",
+        "agent",
+        "barman",
+        "scanner",
+    )
+    """Container/CI identities whose home is part of the image contract, not a machine."""
     PYTHON_FENCE_RE: Final[t.RegexPattern] = re.compile(
         r"^```python\s*\n(?P<body>.*?)^```\s*$", re.MULTILINE | re.DOTALL
     )

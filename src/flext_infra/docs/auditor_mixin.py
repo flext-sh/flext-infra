@@ -113,6 +113,7 @@ class FlextInfraDocAuditorMixin:
                 "links",
                 "forbidden-terms",
                 "placeholders",
+                "machine-paths",
                 "stale-symbols",
                 "scope-boundary",
                 "generated-ownership",
