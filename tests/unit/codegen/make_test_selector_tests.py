@@ -126,7 +126,7 @@ class TestsMakeTestSelector:
                 "set -eu\n"
                 f'printf \'%s\\n\' "$*" >> "{uv_log}"\n'
                 'if [ "$1" = "--version" ]; then '
-                f"printf 'uv {config.Infra.codegen.toolchain.uv_version}\\n'; "
+                f"printf 'uv {config.Infra.codegen.toolchain.uv_version}.0\\n'; "
                 "exit 0; fi\n"
                 'if [ "$1" = "venv" ]; then\n'
                 '  mkdir -p "$2/bin"\n'
@@ -140,22 +140,7 @@ class TestsMakeTestSelector:
             ),
         )
         mise = engine_root / "bin" / "mise"
-        test_u.Tests.write_executable(
-            mise,
-            (
-                "#!/bin/sh\n"
-                f'__mise_bootstrap() {{ local mise_version="${{MISE_VERSION:-{test_u.Tests.mise_release()}}}"; }}\n'
-                'if [ "$1" = "--version" ]; then '
-                f"printf '{test_u.Tests.mise_release()}\\n'; exit 0; fi\n"
-                f"{test_u.Tests.mise_generate_install_script_branch()}"
-                'case "$*" in *"exec -- uv --version"*) '
-                f"printf 'uv {config.Infra.codegen.toolchain.uv_version}\\n'; "
-                "exit 0 ;; esac\n"
-                'while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do shift; done\n'
-                'if [ "$#" -gt 0 ]; then shift; exec "$@"; fi\n'
-                "exit 0\n"
-            ),
-        )
+        test_u.Tests.write_mise_stub(mise)
         (engine_root / "mise.lock").write_text("[tools]\n", encoding="utf-8")
         (engine_root / ".mise.toml").write_text("[tools]\n", encoding="utf-8")
 

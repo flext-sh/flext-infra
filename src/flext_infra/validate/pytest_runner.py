@@ -10,6 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Self, override
 
+from packaging.utils import canonicalize_name
+
 from flext_core import r
 
 from flext_infra import c, config, m, u
@@ -169,9 +171,30 @@ class FlextInfraPytestRunner(s[int]):
         return self._environment_flag(c.Infra.PYTEST_ENV_COV)
 
     def _testmon_db_path(self) -> Path:
-        """Return the repository-local pytest-testmon SQLite path."""
-        path: Path = Path(self.root) / ".testmondata"
-        return path
+        """Resolve one stable project identity outside every checkout."""
+        pytest = config.Infra.tooling.tools.pytest
+        state_home_raw = self._environment_value(pytest.testmon_state_home_variable)
+        if not state_home_raw:
+            msg = f"{pytest.testmon_state_home_variable} must identify persistent test state"
+            raise ValueError(msg)
+        state_home = Path(state_home_raw)
+        if not state_home.is_absolute():
+            msg = f"{pytest.testmon_state_home_variable} must be absolute"
+            raise ValueError(msg)
+        payload = u.Infra.pyproject_payload(self.root / c.Infra.PYPROJECT_FILENAME)
+        project = payload.get("project")
+        project_name = project.get("name") if isinstance(project, dict) else None
+        if not isinstance(project_name, str) or not project_name.strip():
+            msg = "project.name must provide a normalized testmon cache identity"
+            raise ValueError(msg)
+        identity = canonicalize_name(project_name)
+        cache_dir = (state_home / pytest.testmon_namespace / identity).resolve()
+        checkout = self.root.resolve()
+        if cache_dir.is_relative_to(checkout) or checkout.is_relative_to(cache_dir):
+            msg = f"testmon state must stay outside the checkout: {cache_dir}"
+            raise ValueError(msg)
+        u.Cli.ensure_dir(cache_dir).unwrap()
+        return cache_dir / pytest.testmon_database_filename
 
     def _is_cache_maintenance(self) -> bool:
         """True when WHAT selects a testmon DB maintenance handler."""
@@ -368,7 +391,16 @@ class FlextInfraPytestRunner(s[int]):
 
     @override
     def execute(self) -> p.Result[int]:
-        """Execute pytest, profile it, and preserve reports under one deadline."""
+        """Serialize every reader/writer of one persistent project database."""
+        pytest = config.Infra.tooling.tools.pytest
+        db_path = self._testmon_db_path()
+        with FlextInfraTestmonDbInspector.exclusive_writer(
+            db_path, pytest.testmon_lock_filename
+        ):
+            return self._execute_with_writer_lease()
+
+    def _execute_with_writer_lease(self) -> p.Result[int]:
+        """Execute pytest and inspect its DB while the project lease is held."""
         if self._is_cache_maintenance():
             return self._execute_cache_maintenance()
         pytest = config.Infra.tooling.tools.pytest
@@ -392,7 +424,10 @@ class FlextInfraPytestRunner(s[int]):
         project_src = str(self.root / c.Infra.DEFAULT_SRC_DIR)
         child_env = u.Cli.process_env(
             remove_keys=c.Infra.PYTEST_INHERITED_ENV_REMOVE_KEYS,
-            overrides={c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: project_src},
+            overrides={
+                c.Infra.ORCHESTRATOR_ENV_PYTHONPATH: project_src,
+                pytest.testmon_datafile_variable: str(self._testmon_db_path()),
+            },
         )
         run_result = u.Cli.run_to_file(
             command,

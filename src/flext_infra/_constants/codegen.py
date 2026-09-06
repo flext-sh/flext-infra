@@ -68,6 +68,10 @@ class FlextInfraConstantsCodegen(
     "Canonical Windows Mise launcher filename."
     MISE_LOCK_FILENAME: Final[str] = "mise.lock"
     "Canonical generated Mise lock filename."
+    CODEGEN_TRANSACTION_LOCK_FILENAME: Final[str] = "flext-infra-codegen.lock"
+    "Worktree-specific administrative lock for complete generation."
+    CODEGEN_TRANSACTION_LOCK_MODE: Final[int] = 0o600
+    "Owner-private mode required for the generation lock."
     MISE_BOOTSTRAP_SEED_DIRECTORY: Final[str] = "templates/bootstrap"
     "Package-local bootstrap seed directory for the authenticated launcher."
 

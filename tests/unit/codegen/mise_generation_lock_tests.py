@@ -1,4 +1,4 @@
-"""Physical Git-HEAD lock contracts for complete generation."""
+"""Per-worktree administrative lock contracts for complete generation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from flext_infra import m, p, r, u
+from flext_infra import c, m, p, r, u
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
@@ -17,7 +17,7 @@ from tests import u as test_u
 
 
 class TestsMiseGenerationLock:
-    """Coordinate generation through one existing worktree-specific Git file."""
+    """Coordinate generation through one worktree-specific Git lock file."""
 
     @staticmethod
     def _repository(root: Path) -> Path:
@@ -41,6 +41,12 @@ class TestsMiseGenerationLock:
     def _replace_head(head: Path, replacement: Path) -> None:
         replacement.write_bytes(head.read_bytes())
         replacement.replace(head)
+
+    @staticmethod
+    def _replace_lock(lock: Path, replacement: Path) -> None:
+        replacement.write_bytes(lock.read_bytes())
+        replacement.chmod(c.Infra.CODEGEN_TRANSACTION_LOCK_MODE)
+        replacement.replace(lock)
 
     @classmethod
     def _submodule(cls, tmp_path: Path) -> tuple[Path, Path]:
@@ -73,7 +79,7 @@ class TestsMiseGenerationLock:
         )
         return superproject, superproject / "member"
 
-    def test_clean_check_locks_existing_head_without_creating_state(
+    def test_clean_check_uses_git_administration_without_creating_state(
         self, tmp_path: Path
     ) -> None:
         """Reach the locked check operation while a clean checkout stays untouched."""
@@ -90,8 +96,14 @@ class TestsMiseGenerationLock:
         tm.ok(result, eq=True)
         tm.that(observed, eq=[root.resolve()])
         tm.that((root / ".state").exists(), eq=False)
+        tm.that(
+            (
+                self._identity(root).git_dir / c.Infra.CODEGEN_TRANSACTION_LOCK_FILENAME
+            ).is_file(),
+            eq=True,
+        )
 
-    def test_second_process_contends_on_same_scope_head(self, tmp_path: Path) -> None:
+    def test_second_process_contends_on_same_scope_lock(self, tmp_path: Path) -> None:
         """Make a distinct process lose one nonblocking attempt on the same inode."""
         root = self._repository(tmp_path / "contended")
         identity = self._identity(root)
@@ -159,7 +171,7 @@ except BlockingIOError:
     def test_submodule_uses_its_declared_superproject_scope(
         self, tmp_path: Path
     ) -> None:
-        """Bind a governed member to the superproject worktree HEAD."""
+        """Bind a governed member to the superproject worktree Git directory."""
         superproject, member = self._submodule(tmp_path)
         planner = FlextInfraMiseWorkspacePlanner(self._owner(member))
 
@@ -186,6 +198,21 @@ except BlockingIOError:
             FlextInfraMiseLock.lease(identity),
         ):
             self._replace_head(head, replacement)
+
+    def test_lock_replacement_is_rejected_while_lease_is_held(
+        self, tmp_path: Path
+    ) -> None:
+        """Reject pathname replacement that could create two lock owners."""
+        root = self._repository(tmp_path / "lock-swapped")
+        identity = self._identity(root)
+        lock = identity.git_dir / c.Infra.CODEGEN_TRANSACTION_LOCK_FILENAME
+        replacement = identity.git_dir / "replacement-codegen-lock"
+
+        with (
+            pytest.raises(OSError, match="pathname changed while held"),
+            FlextInfraMiseLock.lease(identity),
+        ):
+            self._replace_lock(lock, replacement)
 
     def test_head_hardlink_is_rejected(self, tmp_path: Path) -> None:
         """Reject an anchor inode that is no longer uniquely named."""

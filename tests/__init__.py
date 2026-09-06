@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from . import refactor as refactor
     from . import unit as unit
     from flext_tests import FlextTestsConstants, d, e, h, r, td, tf, tk, tm, tv, x
-    from typing import ClassVar, Final, TYPE_CHECKING
 
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
     from .constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
@@ -41,11 +40,7 @@ if TYPE_CHECKING:
     from .unit.workspace_factory import TestsFlextInfraWorkspaceFactory
     from .utilities import TestsFlextInfraUtilities, TestsFlextInfraUtilities as u
 __all__: tuple[str, ...] = (
-    "TYPE_CHECKING",
-    "ClassVar",
-    "Final",
     "FlextTestsConstants",
-    "MappingProxyType",
     "RealSubprocessRunner",
     "TestsFlextInfraConstants",
     "TestsFlextInfraModels",
@@ -132,8 +127,6 @@ _LAZY_IMPORTS = MappingProxyType(
                 "tv",
                 "x",
             ),
-            "types": ("MappingProxyType",),
-            "typing": ("ClassVar", "Final", "TYPE_CHECKING"),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

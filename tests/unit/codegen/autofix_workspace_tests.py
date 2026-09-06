@@ -81,7 +81,8 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
         files={
             "base.py": "from typing import Final\nMAX_RETRIES: Final = 3\n"
             "class TestProjBase:\n    pass\n\n"
-            '__all__: list[str] = ["MAX_RETRIES", "TestProjBase"]\n'
+            '__all__: list[str] = ["MAX_RETRIES", "TestProjBase"]\n',
+            "constants.py": "class TestProjConstants:\n    pass\n",
         },
     )
     fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
@@ -89,7 +90,7 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     modified_paths = tuple(Path(path) for path in result.files_modified)
     tm.that(modified_paths, length_gte=1)
     tm.that(all(path.is_file() for path in modified_paths), where=bool)
-    tm.that(any(path.name == "base.py" for path in modified_paths), where=bool)
+    tm.that(any(path.name == "constants.py" for path in modified_paths), where=bool)
     tm.that(any(path.name == "__init__.py" for path in modified_paths), eq=False)
 
 

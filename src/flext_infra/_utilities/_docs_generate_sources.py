@@ -21,6 +21,19 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
     """Freeze every physical source consumed by one documentation render."""
 
     @staticmethod
+    def _optional_source_file_exists(path: Path) -> p.Result[bool]:
+        """Report one physical optional source without requiring its parent."""
+        parent = cli_u.Cli.atomic_plan_directory_chain(path.parent)
+        if parent.failure:
+            return r[bool].from_failure(parent)
+        if parent.value.directories:
+            return r[bool].ok(False)
+        state = cli_u.Cli.atomic_read_binary_file_state(path, required=False)
+        if state.failure:
+            return r[bool].from_failure(state)
+        return r[bool].ok(state.value.content is not None)
+
+    @staticmethod
     def _source_directory_exists(path: Path) -> p.Result[bool]:
         """Return source-directory presence after physical path authentication."""
         planned = cli_u.Cli.atomic_plan_directory_chain(path)
@@ -73,12 +86,12 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
                 root / c.Infra.PYPROJECT_FILENAME,
                 root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,
             ):
-                state = cli_u.Cli.atomic_read_binary_file_state(
-                    fixed_path, required=False
+                source = FlextInfraUtilitiesDocsGenerateSourcesMixin._optional_source_file_exists(
+                    fixed_path
                 )
-                if state.failure:
-                    return r[tuple[Path, ...]].from_failure(state)
-                if state.value.content is not None:
+                if source.failure:
+                    return r[tuple[Path, ...]].from_failure(source)
+                if source.value:
                     paths.add(fixed_path)
             config_paths = (
                 FlextInfraUtilitiesDocsGenerateSourcesMixin._source_tree_files(

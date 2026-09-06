@@ -8,9 +8,6 @@ Popen pipelining (Step 3).
 
 from __future__ import annotations
 
-import cProfile
-import io
-import pstats
 import time
 import tracemalloc
 from pathlib import Path
@@ -85,36 +82,17 @@ class TestsFlextInfraCodegenPipelinePerformance:
             ),
         )
 
-    def test_cprofile_evidence_captures_optimized_paths(self, tmp_path: Path) -> None:
-        """Benchmark: cProfile confirms optimized code paths are exercised."""
+    def test_generated_initializers_are_directly_compilable(
+        self, tmp_path: Path
+    ) -> None:
+        """Every planned initializer is valid without a formatter subprocess."""
         repository_root = _build_synthetic_workspace(tmp_path)
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
-        profile = cProfile.Profile()
-        profile.enable()
         result = generator.plan_files()
-        profile.disable()
         tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
-        stream = io.StringIO()
-        stats = pstats.Stats(profile, stream=stream)
-        stats.print_stats()
-        profile_output = stream.getvalue()
-        # flext-perf.1: verify _declared_exports AST cache is exercised
-        tm.that(
-            "_declared_exports" in profile_output,
-            eq=True,
-            msg="_declared_exports not found in cProfile output",
-        )
-        # flext-perf.3: verify _render_model (ruff pipeline) is exercised
-        tm.that(
-            "_render_model" in profile_output,
-            eq=True,
-            msg="_render_model not found in cProfile output",
-        )
-        tm.that(
-            "subprocess" in profile_output or "Popen" in profile_output,
-            eq=True,
-            msg="subprocess/Popen not found in cProfile output",
-        )
+        for plan in result.value.files:
+            if plan.desired_content is not None:
+                compile(plan.desired_content, str(plan.path), "exec")
 
     def test_repeat_run_is_byte_idempotent(self, tmp_path: Path) -> None:
         """Benchmark: second gen run produces identical output (cache warm)."""

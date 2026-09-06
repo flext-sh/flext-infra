@@ -524,6 +524,11 @@ Infra:
           # scripts/legado/dispatch.py.
           project-shared-search-paths: []
       pytest:
+        testmon-state-home-variable: XDG_STATE_HOME
+        testmon-datafile-variable: TESTMON_DATAFILE
+        testmon-namespace: flext/testmon
+        testmon-database-filename: .testmondata
+        testmon-lock-filename: cache.lock
         # flext-j47u (codex): scaffold/modernizer consume one complete pytest model.
         # OPERATOR LAW flext-38p39 (2026-08-13), reaffirmed by flext-09686
         # measurement. 10s per case, 60s for an explicitly slow case, 120s for

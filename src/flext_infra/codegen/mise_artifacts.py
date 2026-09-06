@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
@@ -354,31 +353,37 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return r[str].ok(shell.value)
 
     @classmethod
-    def bootstrap_seed(cls) -> p.Result[m.Cli.AtomicFileState]:
-        """Return the packaged native bootstrap seed used to mint launchers."""
-        seed_name = (
-            c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
-            if os.name == "nt"
-            else c.Infra.MISE_UNIX_LAUNCHER_FILENAME
+    def bootstrap_launchers(cls) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+        """Return the complete checksum-validated packaged launcher receipt."""
+        root = (
+            Path(__file__).resolve().parents[1] / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
         )
-        seed_path = (
-            Path(__file__).resolve().parents[1]
-            / c.Infra.MISE_BOOTSTRAP_SEED_DIRECTORY
-            / seed_name
-        )
-        state = u.Cli.atomic_read_binary_file_state(seed_path, required=True)
-        if state.failure:
-            return r[m.Cli.AtomicFileState].from_failure(state)
-        validated = cls.validate_seed(seed_path)
-        if validated.failure:
-            return r[m.Cli.AtomicFileState].fail(
-                validated.error or f"invalid packaged Mise seed: {seed_path}"
+        states: list[m.Cli.AtomicFileState] = []
+        releases: set[str] = set()
+        for name, expected_mode in (
+            (c.Infra.MISE_UNIX_LAUNCHER_FILENAME, 0o755),
+            (c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME, 0o644),
+        ):
+            path = root / name
+            state = u.Cli.atomic_read_binary_file_state(path, required=True)
+            if state.failure:
+                return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
+            if state.value.content is None or state.value.mode != expected_mode:
+                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                    f"packaged Mise launcher mode differs: {path}"
+                )
+            validated = cls.validate_seed(path)
+            if validated.failure:
+                return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                    validated.error or f"invalid packaged Mise launcher: {path}"
+                )
+            states.append(state.value)
+            releases.add(validated.value)
+        if len(releases) != 1:
+            return r[tuple[m.Cli.AtomicFileState, ...]].fail(
+                "packaged Mise launcher version drift"
             )
-        if state.value.content is None or state.value.mode is None:
-            return r[m.Cli.AtomicFileState].fail(
-                f"packaged Mise seed is absent: {seed_path}"
-            )
-        return r[m.Cli.AtomicFileState].ok(state.value)
+        return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
 
     @classmethod
     def validate_seed(cls, path: Path) -> p.Result[str]:

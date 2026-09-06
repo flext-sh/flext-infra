@@ -204,9 +204,9 @@ class WorktreeFixture:
 
         Git metadata and the codegen transaction state root are excluded: both
         are regenerable runtime state, never repository content. The
-        transaction acquires its lock under ``.state/`` before it can plan
-        anything, so counting it would report "wrote something" for a run that
-        failed before its first managed write.
+        transaction lock lives in Git's administrative directory. Excluding
+        ``.state/`` here isolates recoverable transaction staging from managed
+        repository content.
         """
         excluded_roots = frozenset({c.Infra.GIT_DIR, c.Infra.TRANSACTION_STATE_DIRNAME})
         tree = tuple(

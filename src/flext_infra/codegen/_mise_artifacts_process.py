@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 def prepare_isolation(
     scratch: Path, contract: m.Infra.MiseBootstrapEnvironmentSpec
 ) -> p.Result[bool]:
-    """Create only invocation-local policy, home, and receipt paths."""
+    """Create only invocation-local policy and transient runtime paths."""
     if not os.environ.get("PATH"):
         return r[bool].fail("PATH is required for isolated Mise execution")
     if scratch.exists() or scratch.is_symlink():
@@ -28,12 +28,7 @@ def prepare_isolation(
         if scratch / relative not in empty_files
     }
     directories = sorted(
-        {
-            scratch / "seed" / c.Infra.MISE_LAUNCHER_DIRECTORY,
-            scratch / "receipt" / c.Infra.MISE_LAUNCHER_DIRECTORY,
-            *(path.parent for path in empty_files),
-            *transient_directories,
-        },
+        {scratch, *(path.parent for path in empty_files), *transient_directories},
         key=u.Infra.path_depth_then_text,
     )
     for directory in directories:

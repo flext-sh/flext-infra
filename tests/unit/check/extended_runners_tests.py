@@ -45,7 +45,11 @@ class TestRunnerPublicBehavior:
 
         result = u.Tests.run_gate_check(gate_class, tmp_path, project_dir)
 
-        tm.that(result.result.passed, eq=True)
+        tm.that(
+            result.result.passed,
+            eq=True,
+            msg="\n".join((*result.result.errors, result.raw_output)),
+        )
         tm.that(len(result.issues), eq=0)
 
     @pytest.mark.parametrize("gate_class", [FlextInfraPyreflyGate, FlextInfraMypyGate])

@@ -19,7 +19,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
     """Models for codegen census, scaffold, and auto-fix pipelines."""
 
     class MiseToolchainLockLease(m.ArbitraryTypesModel):
-        """Authenticated Git HEAD state plus its locked native descriptor."""
+        """Authenticated Git state plus its dedicated locked descriptor."""
 
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
@@ -32,7 +32,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 description="Caller-owned locked descriptor",
             ),
         ]
-        state: Annotated[
+        lock_state: Annotated[
+            m.Cli.AtomicFileState,
+            m.Field(description="Exact administrative lock identity"),
+        ]
+        head_state: Annotated[
             m.Cli.AtomicFileState,
             m.Field(description="Exact HEAD bytes, mode, leaf, and parent identity"),
         ]
@@ -780,11 +784,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
             if self.state == "staging" and self.entries:
                 msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
-            if self.state == "staging" and any(
-                directory.disposition != "temporary" for directory in self.directories
-            ):
-                msg = "staging codegen journal can authorize only temporary paths"
-                raise ValueError(msg)
             entry_paths = tuple(entry.path for entry in self.entries)
             if len(set(entry_paths)) != len(entry_paths):
                 msg = "codegen journal destination paths must be unique"
@@ -850,7 +849,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
 
         phase: Annotated[
-            Literal["lazy-init"],
+            Literal["docs", "lazy-init"],
             m.Field(description="Generation phase that produced this receipt"),
         ]
         files: Annotated[

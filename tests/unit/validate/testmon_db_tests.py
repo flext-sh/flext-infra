@@ -5,6 +5,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from flext_infra.validate.testmon_db import (
     FlextInfraTestmonCacheState,
     FlextInfraTestmonDbInspector,
@@ -14,6 +16,17 @@ from flext_tests import tm
 
 class TestsFlextInfraTestmonDbInspector:
     """Prove WAL checkpoint, integrity, and saveability decisions."""
+
+    def test_writer_lease_rejects_a_concurrent_database_writer(
+        self, tmp_path: Path
+    ) -> None:
+        db = tmp_path / ".testmondata"
+        with (
+            FlextInfraTestmonDbInspector.exclusive_writer(db, "cache.lock"),
+            pytest.raises(RuntimeError, match="already has an active writer"),
+            FlextInfraTestmonDbInspector.exclusive_writer(db, "cache.lock"),
+        ):
+            pass
 
     def test_missing_db_is_not_saveable(self, tmp_path: Path) -> None:
         state: FlextInfraTestmonCacheState = tm.ok(

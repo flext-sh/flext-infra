@@ -545,6 +545,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 with_directories.value, docs_plans.error or "docs planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
+        docs_analysis = m.Infra.CodegenPhaseAnalysis(
+            phase="docs", files=docs_plans.value, inputs=docs_bundle.value.source_states
+        )
         with_docs = transaction.append_phase_locked(
             with_directories.value, "docs", docs_plans.value
         )
@@ -553,7 +556,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         published = transaction.commit_locked(
             with_docs.value,
             lambda: self._validate_managed_fixed_point(
-                request, with_docs.value, transaction, lazy_analysis.value
+                request,
+                with_docs.value,
+                transaction,
+                lazy_analysis.value,
+                docs_analysis,
             ),
         )
         if published.failure:
@@ -561,11 +568,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         routes = self._conform_workspace_beads_routes(request)
         if routes.failure:
             return r[m.Infra.CodegenResult].from_failure(routes)
-        verified = self.plan(request)
-        if verified.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified)
+        verified = r[m.Infra.CodegenPlan].ok(published.value[1])
+        if routes.value:
+            verified = self.plan(request)
+            if verified.failure:
+                return r[m.Infra.CodegenResult].from_failure(verified)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
+            m.Infra.CodegenResult(plan=verified.value, written_files=published.value[0])
         )
 
     def _conform_workspace_beads_routes(
@@ -578,7 +587,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
         if not workspace.declared_repositories:
-            return r[bool].ok(True)
+            return r[bool].ok(False)
         owner = root / c.Infra.BEADS_DIRNAME
         if not owner.is_dir() or owner.is_symlink():
             return r[bool].fail(
@@ -616,7 +625,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
             pending.append(route)
         if not pending:
-            return r[bool].ok(True)
+            return r[bool].ok(False)
         if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return r[bool].fail(
                 "workspace members do not inherit the workspace Beads ledger: "
@@ -641,17 +650,18 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         session: m.Infra.CodegenTransactionSession,
         transaction: FlextInfraCodegenTransaction,
         lazy_analysis: m.Infra.CodegenPhaseAnalysis,
-    ) -> p.Result[bool]:
+        docs_analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.CodegenPlan]:
         """Replan conform against live bytes before the journal can commit."""
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[bool].fail(
+            return r[m.Infra.CodegenPlan].fail(
                 verified.error or "post-publication conform planning failed"
             )
         ancestry = self._validate_ancestry(verified.value)
         if ancestry.failure:
-            return ancestry
+            return r[m.Infra.CodegenPlan].from_failure(ancestry)
         residual = tuple(
             file
             for file in verified.value.files
@@ -659,43 +669,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
-            return r[bool].fail(
+            return r[m.Infra.CodegenPlan].fail(
                 f"codegen publication did not reach a fixed point: {paths}"
             )
         u.Cli.info("stage=verify-lazy-init-receipt")
         lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
         if lazy_fixed_point.failure:
-            return lazy_fixed_point
-        docs_generator = FlextInfraDocGenerator(
-            repository_root=request.root,
-            projects=tuple(
-                repository.name for repository in verified.value.repositories
-            ),
-        )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            return r[bool].from_failure(docs_bundle)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            return r[bool].from_failure(docs_plans)
-        docs_residual = tuple(
-            file
-            for file in docs_plans.value
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if docs_residual:
-            paths = ", ".join(str(file.path) for file in docs_residual)
-            return r[bool].fail(
-                f"docs publication did not reach a fixed point: {paths}"
-            )
+            return r[m.Infra.CodegenPlan].from_failure(lazy_fixed_point)
+        u.Cli.info("stage=verify-docs-receipt")
+        docs_fixed_point = transaction.validate_phase_analysis_locked(docs_analysis)
+        if docs_fixed_point.failure:
+            return r[m.Infra.CodegenPlan].from_failure(docs_fixed_point)
         mise = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root, apply_changes=False, check_only=True
         )
         for project in session.plan.projects:
             validated = mise.validate_artifacts(project.layout.root)
             if validated.failure:
-                return r[bool].from_failure(validated)
-        return r[bool].ok(True)
+                return r[m.Infra.CodegenPlan].from_failure(validated)
+        return r[m.Infra.CodegenPlan].ok(verified.value)
 
     @staticmethod
     def _mise_config_plans(

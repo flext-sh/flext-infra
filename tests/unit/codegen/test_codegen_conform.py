@@ -106,8 +106,8 @@ def _apply_conform_surface(
 def _project_tree(root: Path) -> tuple[tuple[str, bytes], ...]:
     """Return the versionable project tree independently of Git test fixtures.
 
-    Transaction runtime state (``.state/``, e.g. the Mise publication lock) is
-    not part of the versionable tree any more than ``.git`` is.
+    Recoverable transaction staging under ``.state/`` is not part of the
+    versionable tree any more than Git administrative state is.
     """
     return tuple(
         sorted(

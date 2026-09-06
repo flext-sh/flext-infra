@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
+from os import O_CLOEXEC, O_CREAT, O_NOFOLLOW, O_RDWR, close, open as os_open
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal, Self, override
+from collections.abc import Generator
+
+from filelock import lock_descriptor, unlock_descriptor
 
 from flext_core import r
 from flext_infra import m, u
@@ -45,6 +50,26 @@ class FlextInfraTestmonDbInspector(s[FlextInfraTestmonCacheState]):
         Literal["test"],
         m.Field(description="Runner mode; testmon-backed pytest runs only."),
     ]
+
+    @staticmethod
+    @contextmanager
+    def exclusive_writer(db_path: Path, lock_filename: str) -> Generator[None]:
+        """Hold one non-blocking writer lease for a project's persistent DB."""
+        lock_path = db_path.parent / lock_filename
+        descriptor = os_open(
+            lock_path, O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0o600
+        )
+        locked = False
+        try:
+            locked = lock_descriptor(descriptor, blocking=False)
+            if not locked:
+                msg = f"testmon database already has an active writer: {db_path}"
+                raise RuntimeError(msg)
+            yield
+        finally:
+            if locked:
+                unlock_descriptor(descriptor)
+            close(descriptor)
 
     @u.model_validator(mode="after")
     def _validate_absolute_db(self) -> Self:

@@ -104,8 +104,8 @@ class TestsFlextInfraDepsModernizerPackaging:
             eq={"src/app_launch.py": "app_launch.py", "config": "app/config"},
         )
         tm.that(
-            sdist["only-include"],
-            eq=["src/app", "src/app_client", "src/app_launch.py", "config"],
+            sorted(u.Cli.toml_as_string_list(sdist["only-include"])),
+            eq=["config", "src/app", "src/app_client", "src/app_launch.py"],
         )
 
 

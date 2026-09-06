@@ -399,8 +399,7 @@ class TestsCodegenMakeEnvironment:
                 [
                     c.Infra.MAKE,
                     "--no-print-directory",
-                    "deps",
-                    f"{config.Infra.codegen.make.selector}=upgrade",
+                    "deps-upgrade",
                     "DEPENDENCY=flext-cli",
                     "APPLY=Y",
                 ],

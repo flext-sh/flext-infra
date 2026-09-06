@@ -812,31 +812,6 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 _ = shutil.copy2(source, destination)
 
         @staticmethod
-        def mise_generate_install_script_branch() -> str:
-            """Return the stub branch that materializes a generated launcher.
-
-            ``make setup`` no longer downloads Mise: it asks the tracked
-            launcher to ``generate install-script --write <path>`` and then runs
-            the file that appears there. A stub that ignores the request leaves
-            nothing to run, so it delegates the generated launcher back to
-            itself.
-            """
-            return (
-                'case "$*" in *"generate install-script"*)\n'
-                '  target=""\n'
-                '  while [ "$#" -gt 0 ]; do\n'
-                '    if [ "$1" = "--write" ]; then target="$2"; fi\n'
-                "    shift\n"
-                "  done\n"
-                '  if [ -z "$target" ]; then exit 2; fi\n'
-                '  mkdir -p "${target%/*}"\n'
-                '  cp -- "$0" "$target"\n'
-                '  cp -- "$0" "$target.cmd"\n'
-                '  chmod +x "$target"\n'
-                "  exit 0 ;;\n"
-                "esac\n"
-            )
-
         @staticmethod
         def write_mise_stub(path: Path) -> Path:
             """Write the one hermetic Mise contract used by Make setup fixtures."""
@@ -854,9 +829,8 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 'if [ "$1" = "--version" ]; then '
                 f"printf '%s\\n' '{release}'; "
                 "exit; fi\n"
-                f"{TestsFlextInfraUtilities.Tests.mise_generate_install_script_branch()}"
                 f'case "$*" in *"exec -- uv --version"*) printf \'uv %s\\n\' '
-                f"'{config.Infra.codegen.toolchain.uv_version}'; exit ;; esac\n"
+                f"'{config.Infra.codegen.toolchain.uv_version}.0'; exit ;; esac\n"
                 'case "$*" in *" which direnv"*) '
                 "printf '%s\\n' \"${0%/*}/direnv\"; exit ;; esac\n"
                 'if [ "$1" = "trust" ]; then exit; fi\n'
@@ -1003,7 +977,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             initialize_root_git: bool = True,
             initialize_project_git: bool = False,
         ) -> Path:
-            """Create a release workflow workspace fixture.
+            """Create a complete generated-repository release fixture.
 
             ``version`` seeds the root ``pyproject.toml``, the version SSOT the
             release protocol reads and is the only writer of.
@@ -1094,6 +1068,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 TestsFlextInfraUtilities.Tests.declare_workspace_projects(
                     workspace, project_names
                 )
+            TestsFlextInfraUtilities.Tests.copy_tracked_mise_seeds(workspace)
             if initialize_root_git:
                 TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace)
             else:

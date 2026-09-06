@@ -242,14 +242,23 @@ class FlextInfraUtilitiesDocsContract:
                 f"docs desired bytes and mode differ: {path}"
             )
         target = path
-        before = u.Cli.atomic_read_binary_file_state(target, required=False)
-        if before.failure:
-            return r[m.Infra.CodegenFilePlan].from_failure(before)
+        parent = u.Cli.atomic_plan_directory_chain(target.parent)
+        if parent.failure:
+            return r[m.Infra.CodegenFilePlan].from_failure(parent)
+        if parent.value.directories:
+            before: m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan = (
+                parent.value
+            )
+        else:
+            observed = u.Cli.atomic_read_binary_file_state(target, required=False)
+            if observed.failure:
+                return r[m.Infra.CodegenFilePlan].from_failure(observed)
+            before = observed.value
         return r[m.Infra.CodegenFilePlan].ok(
             m.Infra.CodegenFilePlan(
                 project=project,
                 path=target,
-                before=before.value,
+                before=before,
                 desired_content=content,
                 desired_mode=desired_mode,
                 source_states=tuple(source_states),

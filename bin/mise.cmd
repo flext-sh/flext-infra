@@ -1,4 +1,5 @@
 @echo off
+rem Canonical packaged bootstrap seed; codegen publishes fresh runtime launchers.
 rem Delayed expansion stays OFF for the whole script. With it on, cmd runs a second expansion pass
 rem over every already-substituted line, so a `!` anywhere in a path -- the project directory this
 rem sits in, MISE_INSTALL_PATH, TEMP -- is silently eaten and the script reads and writes a

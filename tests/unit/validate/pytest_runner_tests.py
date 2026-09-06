@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import marshal
 import os
+import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from packaging.utils import canonicalize_name
 
 from flext_core import r
 from flext_infra import c, config, u
@@ -49,12 +51,30 @@ class TestsFlextInfraPytestRunner:
 
     pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
 
+    @staticmethod
+    def _testmon_db(root: Path) -> Path:
+        """Resolve the fixture database from the same typed policy inputs."""
+        policy = config.Infra.tooling.tools.pytest
+        return (
+            Path(os.environ[policy.testmon_state_home_variable])
+            / policy.testmon_namespace
+            / canonicalize_name(root.name)
+            / policy.testmon_database_filename
+        )
+
     @pytest.fixture
-    def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _clear_make_ci_token(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Local argv contracts assume opt-in tokens unset unless a test sets them."""
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
         monkeypatch.delenv(c.Infra.PYTEST_ENV_COV, raising=False)
         monkeypatch.delenv(c.Infra.PYTEST_ENV_PROFILE, raising=False)
+        policy = config.Infra.tooling.tools.pytest
+        monkeypatch.setenv(
+            policy.testmon_state_home_variable,
+            str(tmp_path.parent / f"{tmp_path.name}-test-state"),
+        )
 
     @staticmethod
     def _runner(
@@ -66,6 +86,9 @@ class TestsFlextInfraPytestRunner:
         started_at_monotonic: float = 100.0,
     ) -> FlextInfraPytestRunner:
         (root / "tests").mkdir(parents=True, exist_ok=True)
+        (root / c.Infra.PYPROJECT_FILENAME).write_text(
+            f'[project]\nname = "{root.name}"\n', encoding="utf-8"
+        )
         return FlextInfraPytestRunner(
             repository_root=root,
             started_at_monotonic=started_at_monotonic,
@@ -239,6 +262,7 @@ class TestsFlextInfraPytestRunner:
         captured: dict[str, p.Cli.ProcessDeadline] = {}
         observed_live: t.MutableSequenceOf[bool] = []
         observed_pythonpath: t.MutableSequenceOf[str] = []
+        observed_testmon_db: t.MutableSequenceOf[Path] = []
 
         def fake_run_to_file(
             cmd: t.StrSequence,
@@ -261,6 +285,13 @@ class TestsFlextInfraPytestRunner:
             observed_live.append(live)
             assert env is not None
             observed_pythonpath.append(env[c.Infra.ORCHESTRATOR_ENV_PYTHONPATH])
+            policy = config.Infra.tooling.tools.pytest
+            testmon_db = Path(env[policy.testmon_datafile_variable])
+            observed_testmon_db.append(testmon_db)
+            connection = sqlite3.connect(testmon_db)
+            connection.execute("CREATE TABLE testmon_state (value TEXT)")
+            connection.commit()
+            connection.close()
             log_path = Path(output_file)
             report_dir = log_path.parent
             log_path.write_text("1 passed in 0.01s\n", encoding="utf-8")
@@ -288,6 +319,9 @@ class TestsFlextInfraPytestRunner:
         tm.that(deadline.termination_grace_seconds, eq=policy.termination_grace_seconds)
         tm.that(observed_live, eq=[True])
         tm.that(observed_pythonpath, eq=[str(tmp_path / c.Infra.DEFAULT_SRC_DIR)])
+        tm.that(observed_testmon_db, len=1)
+        tm.that(observed_testmon_db[0].is_relative_to(tmp_path), eq=False)
+        tm.that((tmp_path / ".testmondata").exists(), eq=False)
         latest = tmp_path / ".reports" / "tests" / "latest.txt"
         tm.that(latest.is_file(), eq=True)
         tm.that(latest.is_symlink(), eq=False)
@@ -590,9 +624,10 @@ class TestsFlextInfraPytestRunner:
     def test_cache_status_skips_pytest(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        db = tmp_path / ".testmondata"
-        db.write_bytes(b"not-a-real-db-but-nonempty")
         runner = self._runner(tmp_path, what="cache-status")
+        db = self._testmon_db(tmp_path)
+        db.parent.mkdir(parents=True, exist_ok=True)
+        db.write_bytes(b"not-a-real-db-but-nonempty")
         called: list[bool] = []
 
         def fake_run_to_file(*args: object, **kwargs: object) -> p.Result[int]:
@@ -617,15 +652,16 @@ class TestsFlextInfraPytestRunner:
     def test_cache_clear_removes_db(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        db = tmp_path / ".testmondata"
-        wal = tmp_path / ".testmondata-wal"
+        runner = self._runner(tmp_path, what="cache-clear")
+        db = self._testmon_db(tmp_path)
+        wal = Path(f"{db}-wal")
+        db.parent.mkdir(parents=True, exist_ok=True)
         db.write_bytes(b"db")
         wal.write_bytes(b"wal")
         monkeypatch.setenv(
             config.Infra.codegen.make.apply_variable,
             config.Infra.codegen.make.apply_value,
         )
-        runner = self._runner(tmp_path, what="cache-clear")
         exit_code: int = tm.ok(runner.execute())
         tm.that(exit_code, eq=0)
         tm.that(db.exists(), eq=False)

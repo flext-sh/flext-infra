@@ -94,8 +94,7 @@ class TestConstantsQualityGateVerdict:
             "from typing import Final\n\n"
             "SHARED_TIMEOUT: Final[int] = 30\n"
         )
-        project_names = ("flext-cli", "flext-core")
-        for project_name in project_names:
+        for project_name in ("flext-cli", "flext-core"):
             u.Tests.create_codegen_project(
                 tmp_path=tmp_path,
                 name=project_name,
@@ -105,13 +104,6 @@ class TestConstantsQualityGateVerdict:
                     "typings.py": '"""Empty typing fixture."""\n',
                 },
             )
-        members = ", ".join(f'"{name}"' for name in project_names)
-        (tmp_path / "pyproject.toml").write_text(
-            '[project]\nname = "fixture-workspace"\nversion = "0.1.0"\n\n'
-            f"[tool.uv.workspace]\nmembers = [{members}]\n",
-            encoding="utf-8",
-        )
-
         gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)

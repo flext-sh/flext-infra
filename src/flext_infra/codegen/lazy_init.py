@@ -264,12 +264,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for obj in rope.objects(
-                entry.file_path, include_local_scopes=False, include_references=False
-            ):
-                if obj.kind != "class" or obj.scope_path:
-                    continue
-                name = obj.name
+            for class_info in rope.semantic(entry.file_path).class_infos:
+                name = class_info.name
                 if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
                     continue
                 scoped_modules[name, scope_key].add(entry.module_name)

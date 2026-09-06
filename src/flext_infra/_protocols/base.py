@@ -718,8 +718,8 @@ class FlextInfraProtocolsBase(Protocol):
         repository_root: Path
 
         @classmethod
-        def bootstrap_seed(cls) -> p.Result[m.Cli.AtomicFileState]:
-            """Return the packaged native bootstrap seed for launcher creation."""
+        def bootstrap_launchers(cls) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
+            """Return the complete validated packaged launcher receipt."""
             ...
 
         @classmethod
