@@ -25,10 +25,6 @@ from flext_infra.transformers.import_modernizer import (
 from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
-from flext_infra.transformers.typing_dict_import import (
-    FlextInfraRefactorTypingDictImport,
-)
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
 from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
@@ -65,8 +61,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         "pattern": FlextInfraRefactorPatternTransformer,
         "project_alias_migrator": FlextInfraRefactorProjectAliasMigrator,
         "rewrite_foreign_canonical_alias": FlextInfraRefactorProjectAliasMigrator,
-        "typing_dict_attr": FlextInfraRefactorTypingDictAttr,
-        "typing_dict_import": FlextInfraRefactorTypingDictImport,
         "typing_unifier": FlextInfraRefactorTypingUnifier,
     }
 
@@ -88,6 +82,26 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             "load-bearing (untyped third-party module lookups, Literal "
             "narrowing), so removing them raised the type-error count. The "
             "violation is still reported; only the automatic rewrite is off."
+        ),
+        "typing_dict_import": (
+            "fix deactivated: the Dict import transformer rewrote sources with a "
+            "raw regex over the whole file (\\bDict\\s*\\[), which is not an "
+            "approved rewriting surface — only ast-grep codemod rules (make mod) "
+            "and rope are. A regex cannot tell a type node from text, so it "
+            "rewrote docstrings documenting the pattern, comments and the string "
+            "literals of this package's own rewrite tables. The rewrite is "
+            "recomposed as the ast-grep rule typing-dict-to-mapping-kv, whose "
+            "import-unsafe cases are reported by typing-dict-missing-t-import. "
+            "The violation is still reported; only the automatic rewrite is off."
+        ),
+        "typing_dict_attr": (
+            "fix deactivated: the typing.Dict transformer rewrote sources with a "
+            "raw regex over the whole file (\\btyping\\s*\\.\\s*Dict\\s*\\[), "
+            "which is not an approved rewriting surface — only ast-grep codemod "
+            "rules (make mod) and rope are. The attribute form is matched "
+            "structurally by the ast-grep rule typing-dict-to-mapping-kv, whose "
+            "import-unsafe cases are reported by typing-dict-missing-t-import. "
+            "The violation is still reported; only the automatic rewrite is off."
         ),
     }
 
@@ -364,11 +378,6 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
             return FlextInfraRefactorTypingUnifier(
                 canonical_map=canonical_map, file_path=file_path
             )
-        if transformer_cls in {
-            FlextInfraRefactorTypingDictImport,
-            FlextInfraRefactorTypingDictAttr,
-        }:
-            return transformer_cls(file_path=file_path)
         if transformer_cls is FlextInfraRefactorProjectAliasMigrator:
             return FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
         if transformer_cls is FlextInfraRefactorImportModernizer:
