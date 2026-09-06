@@ -38,15 +38,15 @@ class FlextInfraWorkspaceDetector(
     def _composed_beads_identity_error(
         cls, subproject_root: Path, workspace_beads: m.Infra.BeadsProjectSpec
     ) -> str | None:
-        member_beads = subproject_root / c.Infra.BEADS_DIRNAME
         member_identity = (
             subproject_root / c.CONFIG_DIR_NAME / c.Infra.BEADS_CONFIG_FILENAME
         )
-        if member_beads.is_symlink():
-            return (
-                "composed project reaches the workspace ledger through a "
-                f"cross-project symbolic link: {member_beads}"
-            )
+        # Detection observes the topology; it does not enforce the ledger-route
+        # prohibition. Refusing to load a workspace because one composed project
+        # still carries the old cross-project symlink makes the migration
+        # impossible to perform — nothing can plan the fix for a repository it
+        # cannot describe. `codegen conform` owns the prohibition and rejects
+        # the link there, per repository and within the requested scope.
         if not member_identity.is_file():
             return f"missing required member Beads routing identity: {member_identity}"
         member_identity_result = cls.load_beads_spec(subproject_root)

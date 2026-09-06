@@ -564,6 +564,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if workspace_result.failure:
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
+        if c.Infra.CodegenConformScope(request.scope) is (
+            c.Infra.CodegenConformScope.SELF
+        ):
+            return FlextInfraCodegenConform._beads_route_state(root)
         if not workspace.subprojects:
             return r[bool].ok(True)
         owner = root / c.Infra.BEADS_DIRNAME
@@ -571,44 +575,53 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].fail(
                 f"workspace Beads ledger owner is not physical: {owner}"
             )
+        for repository in workspace.subprojects:
+            state = FlextInfraCodegenConform._beads_route_state(
+                (root / repository.path).resolve()
+            )
+            if state.failure:
+                return state
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _beads_route_state(root: Path) -> p.Result[bool]:
+        """Prove one repository reaches the ledger through its own directory.
+
+        The route used to be a symlink into the workspace, so the directory
+        always existed by the time anything rendered into it. Each repository
+        now owns a real ``.beads`` holding its own generated configuration, and
+        a generator owns the destination directory of the artifacts it
+        declares: without it the first render fails reading a before-state
+        whose parent is missing. The directory is created empty;
+        ``.beads/config.yaml`` and ``.beads/metadata.json`` are rendered into
+        it by generation, never copied and never linked.
+        """
         allowed_entries = frozenset({
             Path(c.Infra.BEADS_CONFIG_RELPATH).name,
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
-        for repository in workspace.subprojects:
-            route = (root / repository.path).resolve() / c.Infra.BEADS_DIRNAME
-            if route.is_symlink():
-                return r[bool].fail(
-                    "composed project reaches the workspace ledger through a "
-                    f"cross-project symbolic link: {route}"
-                )
-            if not route.exists():
-                # The route used to be a symlink into the workspace, so the
-                # directory always existed by the time anything rendered into
-                # it. Each repository now owns a real `.beads` holding its own
-                # generated configuration, and a generator owns the destination
-                # directory of the artifacts it declares: without it the first
-                # render fails reading a before-state whose parent is missing.
-                # The directory is created empty; `.beads/config.yaml` and
-                # `.beads/metadata.json` are rendered by generation, never
-                # copied and never linked.
-                route.mkdir(parents=True)
-                continue
-            if not route.is_dir():
-                return r[bool].fail(
-                    f"composed project Beads route is not a directory: {route}"
-                )
-            unexpected = sorted(
-                entry.name
-                for entry in route.iterdir()
-                if entry.name not in allowed_entries
+        route = root / c.Infra.BEADS_DIRNAME
+        if route.is_symlink():
+            return r[bool].fail(
+                "composed project reaches the workspace ledger through a "
+                f"cross-project symbolic link: {route}"
             )
-            if unexpected:
-                return r[bool].fail(
-                    f"composed project has unmerged Beads state at {route}: "
-                    + ", ".join(unexpected)
-                )
+        if not route.exists():
+            route.mkdir(parents=True)
+            return r[bool].ok(True)
+        if not route.is_dir():
+            return r[bool].fail(
+                f"composed project Beads route is not a directory: {route}"
+            )
+        unexpected = sorted(
+            entry.name for entry in route.iterdir() if entry.name not in allowed_entries
+        )
+        if unexpected:
+            return r[bool].fail(
+                f"composed project has unmerged Beads state at {route}: "
+                + ", ".join(unexpected)
+            )
         return r[bool].ok(True)
 
     def _validate_managed_fixed_point(

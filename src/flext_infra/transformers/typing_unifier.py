@@ -125,7 +125,7 @@ class FlextInfraRefactorTypingUnifier(
         mutated = self._mutated_names(module)
         spans: t.MutableSequenceOf[t.Pair[int, int]] = []
         for node in ast.walk(module):
-            annotations = []
+            annotations: list[ast.expr | None] = []
             if isinstance(node, ast.AnnAssign):
                 target = node.target
                 if node in local_declarations or (
