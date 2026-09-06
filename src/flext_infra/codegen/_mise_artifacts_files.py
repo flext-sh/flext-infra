@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import stat
 from hashlib import sha256
 from pathlib import Path
-import stat
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r

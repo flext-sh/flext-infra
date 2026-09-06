@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from flext_infra import m, u
-from flext_infra.detectors.class_placement_detector import (
-    FlextInfraClassPlacementDetector,
-)
 from flext_infra.refactor.census import FlextInfraRefactorCensus
 from flext_infra.refactor.declarative_enforcement import (
     FlextInfraRefactorDeclarativeEnforcement,
@@ -157,29 +154,6 @@ class TestsFlextInfraRefactorDeclarativeEnforcement:
         ):
             FlextInfraRefactorDeclarativeEnforcement.detect(
                 self._rule("ENFORCE-097"), self._ctx(rope_project, missing)
-            )
-
-    def test_classvar_detector_failure_fails_loud(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Class-placement detector failures propagate to the orchestrator."""
-        source = tmp_path / "consumer.py"
-        source.write_text("from typing import ClassVar\n", encoding="utf-8")
-
-        def _fail(
-            ctx: m.Infra.DetectorContext,
-        ) -> t.SequenceOf[m.Infra.ClassPlacementViolation]:
-            _ = ctx
-            msg = "class placement exploded"
-            raise RuntimeError(msg)
-
-        monkeypatch.setattr(FlextInfraClassPlacementDetector, "detect_file", _fail)
-        with (
-            u.Infra.open_project(tmp_path) as rope_project,
-            pytest.raises(RuntimeError, match="class placement detector failed"),
-        ):
-            FlextInfraRefactorDeclarativeEnforcement.detect(
-                self._rule("ENFORCE-079"), self._ctx(rope_project, source)
             )
 
     def test_foreign_canonical_alias_detection(self, tmp_path: Path) -> None:

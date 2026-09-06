@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import difflib
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
@@ -129,16 +128,10 @@ class FlextInfraAccessorMigrationReportMixin:
     @staticmethod
     def _diff(py_file: Path, before: str, after: str) -> str:
         """Diff."""
-        diff_lines = list(
-            difflib.unified_diff(
-                before.splitlines(keepends=True),
-                after.splitlines(keepends=True),
-                fromfile=f"a/{py_file}",
-                tofile=f"b/{py_file}",
-                n=3,
-            )
+        diff_lines = u.Infra.unified_diff_lines(
+            before, after, fromfile=f"a/{py_file}", tofile=f"b/{py_file}", max_lines=80
         )
-        return "".join(diff_lines[:80])
+        return "".join(diff_lines)
 
     @staticmethod
     def render_text(report: m.Infra.AccessorMigrationReport) -> str:

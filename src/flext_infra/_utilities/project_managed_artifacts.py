@@ -7,8 +7,8 @@ import stat
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-from flext_core import r
 from flext_cli import u
+from flext_core import r
 from flext_infra import c, config, m, p, t
 
 
@@ -76,13 +76,6 @@ class FlextInfraUtilitiesProjectManagedArtifacts:
 
     @classmethod
     def _config_directory_identity(cls, config_dir: Path) -> p.Result[tuple[int, ...]]:
-        """Return the directory's state key, or ``()`` when it does not exist.
-
-        A repository legitimately ships no ``config/`` directory, which is an
-        empty declaration set rather than a failure. The empty tuple is
-        unambiguous: a real key always carries the eight ``stat`` fields, and a
-        successful Result can never carry ``None``.
-        """
         try:
             state = config_dir.lstat()
         except FileNotFoundError:

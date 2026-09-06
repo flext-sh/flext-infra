@@ -3,22 +3,30 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .batch_apply import FlextInfraCodemodBatchApply
     from .batch_gates import FlextInfraModGateEngine
-__all__: tuple[str, ...] = ("FlextInfraCodemodBatchApply", "FlextInfraModGateEngine")
+    from .semantic_apply import FlextInfraCodemodSemanticApply
+    from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
+__all__: tuple[str, ...] = (
+    "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodSemanticApply",
+    "FlextInfraCodemodSnapshotReconciler",
+    "FlextInfraModGateEngine",
+)
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".batch_apply": ("FlextInfraCodemodBatchApply",),
             ".batch_gates": ("FlextInfraModGateEngine",),
+            ".semantic_apply": ("FlextInfraCodemodSemanticApply",),
+            ".snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,

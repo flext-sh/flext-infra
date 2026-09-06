@@ -119,7 +119,7 @@ def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> Non
 
 def test_generate_fix_cycle_is_byte_identical_on_second_run(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
-    generator = FlextInfraDocGenerator(repository_root=workspace, apply_changes=True)
+    generator = FlextInfraDocGenerator(repository_root=workspace)
     fixer = FlextInfraDocFixer(repository_root=workspace, apply_changes=True)
 
     first_bundle = generator.prepare_bundle()

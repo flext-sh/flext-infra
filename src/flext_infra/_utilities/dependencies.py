@@ -6,29 +6,44 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from importlib.metadata import requires
+from importlib.resources import files
+from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING
 
-from flext_cli import p, r, u
-from flext_infra import t
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
+
+from flext_cli import u
+from flext_core import r
+from flext_infra import p
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
-from packaging.requirements import InvalidRequirement, Requirement
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flext_infra.typings import t
 
 
 class FlextInfraUtilitiesDependencies:
     """Static helpers for inspecting dependency declarations in pyproject payloads."""
 
     @staticmethod
-    def dep_name(requirement: str) -> str | None:
-        """Extract normalized dependency name from one requirement spec."""
+    def dep_name(requirement: str, *, active_only: bool = False) -> str | None:
+        """Extract one normalized dependency name, optionally evaluating markers."""
         text = requirement.strip()
         if not text:
             return None
+        try:
+            parsed = Requirement(text)
+        except InvalidRequirement:
+            parsed = None
+        if parsed is not None:
+            if (
+                active_only
+                and parsed.marker is not None
+                and not parsed.marker.evaluate()
+            ):
+                return None
+            return canonicalize_name(parsed.name)
         if ";" in text:
             text = text.split(";", maxsplit=1)[0].strip()
         if " @ " in text:
@@ -40,6 +55,31 @@ class FlextInfraUtilitiesDependencies:
             text = text.rsplit("/", maxsplit=1)[-1].strip()
         normalized = text.lower()
         return normalized or None
+
+    @classmethod
+    def project_dependency_names_from_payload(
+        cls, payload: t.JsonMapping
+    ) -> t.StrSequence:
+        """Return strict names from the PEP 621 runtime dependency array."""
+        project = payload.get(c.Infra.PROJECT)
+        if not isinstance(project, Mapping):
+            msg = "pyproject payload must define a [project] mapping"
+            raise TypeError(msg)
+        raw_dependencies = project.get(c.Infra.DEPENDENCIES, [])
+        if not isinstance(raw_dependencies, list):
+            msg = "[project].dependencies must be an array of requirement strings"
+            raise TypeError(msg)
+        names: list[str] = []
+        for raw_requirement in raw_dependencies:
+            if not isinstance(raw_requirement, str):
+                msg = "[project].dependencies entries must be strings"
+                raise TypeError(msg)
+            dependency_name = cls.dep_name(raw_requirement)
+            if dependency_name is None:
+                msg = "[project].dependencies entries must not be blank"
+                raise ValueError(msg)
+            names.append(dependency_name)
+        return tuple(names)
 
     @staticmethod
     def dependency_waves(
@@ -63,6 +103,125 @@ class FlextInfraUtilitiesDependencies:
             for blockers in pending.values():
                 blockers.difference_update(ready)
         return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
+
+    @staticmethod
+    def dependency_order(
+        direct_names: t.StrSequence,
+        *,
+        dependencies: Callable[[str], t.StrSequence],
+        prefix: str = "",
+        normalize: Callable[[str], str] = canonicalize_name,
+    ) -> t.StrSequence:
+        """Return a dependency-first order for any named dependency graph."""
+        graph: dict[str, tuple[str, ...]] = {}
+
+        def collect(dependency_name: str) -> None:
+            normalized = normalize(dependency_name)
+            if normalized in graph:
+                return
+            children = tuple(
+                child
+                for raw_child in dependencies(normalized)
+                if (child := normalize(raw_child))
+                and (not prefix or child.startswith(prefix))
+            )
+            graph[normalized] = children
+            for dependency in children:
+                collect(dependency)
+
+        roots = tuple(
+            normalized
+            for name in direct_names
+            if (normalized := normalize(name))
+            and (not prefix or normalized.startswith(prefix))
+        )
+        for root in roots:
+            collect(root)
+        ordered: list[str] = []
+        visited: set[str] = set()
+        active: list[str] = []
+
+        def visit(distribution_name: str) -> None:
+            if distribution_name in visited:
+                return
+            if distribution_name in active:
+                cycle_start = active.index(distribution_name)
+                cycle = " -> ".join((*active[cycle_start:], distribution_name))
+                msg = f"cyclic dependency graph: {cycle}"
+                raise ValueError(msg)
+            active.append(distribution_name)
+            for dependency in graph[distribution_name]:
+                visit(dependency)
+            active.pop()
+            visited.add(distribution_name)
+            ordered.append(distribution_name)
+
+        for root in roots:
+            visit(root)
+        return tuple(ordered)
+
+    @classmethod
+    def project_dependency_resource_files(
+        cls,
+        project_root: Path,
+        *,
+        resource_parts: t.StrSequence,
+        distribution_prefix: str = "",
+        suffix: str = "",
+    ) -> t.SequenceOf[Path]:
+        """Resolve runtime, local, and test dependency resources in order."""
+        pyproject = project_root / c.Infra.PYPROJECT_FILENAME
+        payload = u.Cli.toml_read_json(pyproject).unwrap()
+        project_name = canonicalize_name(
+            FlextInfraUtilitiesPyproject.project_name_from_payload(
+                project_root, payload
+            )
+        )
+        declared_names = cls.declared_dependency_names_from_payload(payload)
+
+        def installed_dependencies(name: str) -> t.StrSequence:
+            return tuple(
+                dependency
+                for raw_requirement in requires(name) or ()
+                if (dependency := cls.dep_name(raw_requirement, active_only=True))
+                is not None
+            )
+
+        ordered = list(
+            cls.dependency_order(
+                declared_names,
+                dependencies=installed_dependencies,
+                prefix=distribution_prefix,
+            )
+        )
+        package_names: dict[str, str] = {
+            name: name.replace("-", "_") for name in ordered
+        }
+        if not distribution_prefix or project_name.startswith(distribution_prefix):
+            if project_name not in ordered:
+                ordered.append(project_name)
+            package_names[project_name] = (
+                FlextInfraUtilitiesPyproject.package_name_from_payload(
+                    project_root,
+                    payload,
+                    FlextInfraUtilitiesPyproject.docs_meta_from_payload(payload),
+                )
+            )
+        discovered: list[Path] = []
+        seen: set[Path] = set()
+        for distribution_name in ordered:
+            resource = files(package_names[distribution_name])
+            for part in resource_parts:
+                resource /= part
+            resource_root = Path(str(resource))
+            if not resource_root.is_dir():
+                continue
+            for candidate in sorted(resource_root.rglob(f"*{suffix}")):
+                resolved = candidate.resolve()
+                if resolved not in seen:
+                    seen.add(resolved)
+                    discovered.append(resolved)
+        return tuple(discovered)
 
     @staticmethod
     def constraint_specifier(version: str) -> str:

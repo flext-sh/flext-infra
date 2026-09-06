@@ -5,12 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from hashlib import sha256
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, TypeIs, override
+from typing import TYPE_CHECKING, ClassVar, override
 from urllib.parse import urlsplit
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-
 from flext_infra.base import s
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 
@@ -212,7 +211,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[str].fail(
                 download.error or f"checksum download failed for {selector}/{platform}"
             )
-        if download.value.exit_code != 0:
+        if download.value.outcome.raw_return_code != 0:
             cause = download.value.stderr.strip() or "curl exited non-zero"
             return r[str].fail(
                 f"checksum download failed for {selector}/{platform}: {cause}"
@@ -326,7 +325,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         return None
 
     @staticmethod
-    def is_mise_release(value: str | None) -> TypeIs[str]:
+    def is_mise_release(value: str | None) -> bool:
         """Return whether a runtime identity is an exact Mise release."""
         if value is None:
             return False
@@ -501,14 +500,14 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 return r[bool].fail(f"Mise lock specifier drift for {selector}")
             if selector.startswith("github:") and entry.backend != selector:
                 return r[bool].fail(f"Mise lock backend drift for {selector}")
-
-            expected_platforms = declared_platforms
-            if selector.startswith(tuple(c.Infra.MISE_PLATFORM_INDEPENDENT_BACKENDS)):
-                # A platform-independent backend (npm) installs one artifact on
-                # every platform, so `mise lock` records no platform metadata.
-                expected_platforms = frozenset()
+            excluded = frozenset(
+                toolchain.mise_lock_platform_exclusions.get(selector, ())
+            )
+            expected_platforms = declared_platforms - excluded
             actual_platforms = frozenset(entry.platforms)
-            if actual_platforms != expected_platforms:
+            # A lock entry without platform metadata is a platform-independent
+            # tool (npm backend); the declared platform policy cannot bind it.
+            if actual_platforms and actual_platforms != expected_platforms:
                 return r[bool].fail(
                     f"Mise lock platform metadata mismatch for {selector}: "
                     f"expected={sorted(expected_platforms)} "

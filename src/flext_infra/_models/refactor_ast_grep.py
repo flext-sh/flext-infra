@@ -16,7 +16,7 @@ class FlextInfraModelsRefactorGrep:
     class RefactorConfig(m.ContractModel):
         """Refactor file-selection config."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_scan_dirs: t.StrSequence = m.Field(
             default_factory=lambda: [
@@ -26,9 +26,6 @@ class FlextInfraModelsRefactorGrep:
                 c.Infra.DIR_EXAMPLES,
             ],
             description="Relative directories scanned for candidate files",
-        )
-        ignore_patterns: t.StrSequence = m.Field(
-            default_factory=tuple, description="Glob/file patterns ignored during scan"
         )
         file_extensions: t.StrSequence = m.Field(
             default_factory=tuple,
@@ -110,16 +107,6 @@ class FlextInfraModelsRefactorGrep:
             m.Field(description="Unsuppressed diagnostics from every red gate"),
         ]
 
-    class ModScanReport(m.ArbitraryTypesModel):
-        """Verified actionable rewrite report."""
-
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
-
-        nodes: Annotated[t.NonNegativeInt, m.Field(description="Actionable node count")]
-        files: Annotated[
-            frozenset[Path], m.Field(description="Files containing actionable nodes")
-        ]
-
     class MethodOrderRule(m.ContractModel):
         """A declarative method ordering rule for class reconstruction.
 
@@ -127,7 +114,7 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict()
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict()
 
         category: Annotated[str | None, m.Field(description="Method category")] = None
         visibility: Annotated[str | None, m.Field(description="Visibility filter")] = (
@@ -195,7 +182,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationRule(m.ContractModel):
         """Declarative symbol-rename rule for accessor migration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         source_name: Annotated[
             t.NonEmptyStr, m.Field(description="Canonical symbol name to replace")
@@ -215,7 +202,7 @@ class FlextInfraModelsRefactorGrep:
     class AccessorMigrationChange(m.ArbitraryTypesModel):
         """Single automated rename or manual warning emitted by accessor migration."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         line: Annotated[
@@ -243,7 +230,7 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         file: Annotated[t.NonEmptyStr, m.Field(description="Absolute file path")]
         lint_tools: t.VariadicTuple[str] = m.Field(
@@ -284,7 +271,7 @@ class FlextInfraModelsRefactorGrep:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         workspace: Annotated[t.NonEmptyStr, m.Field(description="Repository root path")]
         dry_run: Annotated[bool, m.Field(description="Dry-run indicator")]

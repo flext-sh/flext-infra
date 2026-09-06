@@ -7,8 +7,7 @@ from collections.abc import MutableMapping, MutableSequence, MutableSet
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
-from flext_core import u
+from flext_core import m, u
 from flext_infra import t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 from flext_infra._models.refactor_ast_grep import FlextInfraModelsRefactorGrep
@@ -16,7 +15,6 @@ from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus
 from flext_infra._models.refactor_namespace_enforcer import (
     FlextInfraModelsNamespaceEnforcer,
 )
-from flext_infra._models.refactor_renames import FlextInfraModelsRefactorRenames
 from flext_infra._models.refactor_violations import FlextInfraModelsRefactorViolations
 
 
@@ -24,7 +22,6 @@ class FlextInfraModelsRefactor(
     FlextInfraModelsRefactorGrep,
     FlextInfraModelsNamespaceEnforcer,
     FlextInfraModelsRefactorCensus,
-    FlextInfraModelsRefactorRenames,
     FlextInfraModelsRefactorViolations,
 ):
     """Models for refactor workflows and related tools.
@@ -131,7 +128,7 @@ class FlextInfraModelsRefactor(
     class ProjectClassification(m.ArbitraryTypesModel):
         """Result of classifying a project by kind and family chains."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         project_kind: Annotated[
             t.NonEmptyStr,
@@ -187,7 +184,7 @@ class FlextInfraModelsRefactor(
     class ClassvarConstantAutofixPlan(m.ArbitraryTypesModel):
         """Planned edits for one ENFORCE-079 ClassVar-constant autofix."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         class_module: Annotated[
             str, m.Field(description="Module that declares the owning class")
@@ -224,7 +221,7 @@ class FlextInfraModelsRefactor(
         populates ``constant_module``. ``touched_files`` is always present.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         touched_files: Annotated[
             t.StrSequence, m.Field(description="Files the autofix created or rewrote")
@@ -250,7 +247,7 @@ class FlextInfraModelsRefactor(
     class ParsedPythonModule(m.ArbitraryTypesModel):
         """Result of parsing a Python source file into AST."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         source: Annotated[str, m.Field(description="Raw source text")]
         tree: Annotated[

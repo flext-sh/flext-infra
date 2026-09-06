@@ -38,8 +38,8 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
                 return beads_result
             allow_result = cls._allow_direnv_if_requested(request, runner=runner)
             if allow_result.failure:
-                return r[m.Infra.WorkspaceEnvironmentSyncResult].fail(
-                    allow_result.error or "direnv allow failed"
+                return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(
+                    allow_result
                 )
             return beads_result
         result = super().sync_environment_files(request)
@@ -47,9 +47,7 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
             return result
         allow_result = cls._allow_direnv_if_requested(request, runner=runner)
         if allow_result.failure:
-            return r[m.Infra.WorkspaceEnvironmentSyncResult].fail(
-                allow_result.error or "direnv allow failed"
-            )
+            return r[m.Infra.WorkspaceEnvironmentSyncResult].from_failure(allow_result)
         return result
 
     @classmethod
@@ -65,23 +63,21 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
             cls._BEADS_ENVRC_TEMPLATE, context=beads
         )
         if rendered.failure:
-            return r[result_type].fail(
-                rendered.error or "beads-workspace template render failed"
-            )
+            return r[result_type].from_failure(rendered)
         violations = envrc_contract_violations(
-            rendered.value, root=request.repository_root, resolve_home=False
+            rendered.value, root=request.workspace_root, resolve_home=False
         )
         if violations:
             return r[result_type].fail(
                 "generated beads-workspace .envrc violates contracts: "
                 + "; ".join(violations)
             )
-        envrc = request.repository_root / c.Infra.ENVRC_FILENAME
+        envrc = request.workspace_root / c.Infra.ENVRC_FILENAME
         written = cls._write_generated_text(
             envrc, rendered.value, apply=request.apply, force=request.force
         )
         if written.failure:
-            return r[result_type].fail(written.error or ".envrc write failed")
+            return r[result_type].from_failure(written)
         changed = (envrc,) if written.value else ()
         return r[result_type].ok(result_type(changed_files=changed))
 
@@ -93,21 +89,21 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
         runner: p.Cli.CommandRunner | None = None,
     ) -> p.Result[bool]:
         """Run ``direnv allow`` for one applied sync that owns the envrc."""
-        envrc = request.repository_root / c.Infra.ENVRC_FILENAME
+        envrc = request.workspace_root / c.Infra.ENVRC_FILENAME
         if not request.apply or not request.allow_direnv or not envrc.is_file():
             return r[bool].ok(False)
         runner_service = runner or u.Cli
         result = runner_service.run_raw(
-            (c.Infra.CLI_DIRENV, "allow", str(request.repository_root)),
-            cwd=request.repository_root,
+            (c.Infra.CLI_DIRENV, "allow", str(request.workspace_root)),
+            cwd=request.workspace_root,
             timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         if result.failure:
-            return r[bool].fail(result.error or "direnv allow execution failed")
+            return r[bool].from_failure(result)
         output = result.value
-        if output.exit_code != 0:
+        if not u.Cli.process_succeeded(output.outcome):
             return r[bool].fail(
-                f"direnv allow failed for {request.repository_root}: "
+                f"direnv allow failed for {request.workspace_root}: "
                 f"{output.stderr.strip() or output.stdout.strip()}"
             )
         return r[bool].ok(True)
@@ -125,7 +121,7 @@ class FlextInfraWorkspaceEnvironmentSync(
         """Run one sync request through the composed mixin surface."""
         result = cls.sync_environment_files(request)
         if result.failure:
-            return r[t.Cli.ResultValue].fail(result.error or "environment sync failed")
+            return r[t.Cli.ResultValue].from_failure(result)
         return r[t.Cli.ResultValue].ok(
             tuple(str(path) for path in result.value.changed_files)
         )

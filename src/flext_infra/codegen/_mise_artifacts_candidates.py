@@ -25,21 +25,6 @@ def normalize_lock_mode(path: Path) -> p.Result[bool]:
     )
 
 
-def receipt_states(receipt: Path) -> p.Result[tuple[m.Cli.AtomicFileState, ...]]:
-    """Capture the two exact launcher states from one validated receipt."""
-    states: list[m.Cli.AtomicFileState] = []
-    for name, expected_mode in files.ARTIFACT_SPECS[:2]:
-        state = files.read_state(receipt / name, required=True)
-        if state.failure:
-            return r[tuple[m.Cli.AtomicFileState, ...]].from_failure(state)
-        if state.value.mode != expected_mode:
-            return r[tuple[m.Cli.AtomicFileState, ...]].fail(
-                f"Mise receipt mode differs after validation: {name}"
-            )
-        states.append(state.value)
-    return r[tuple[m.Cli.AtomicFileState, ...]].ok(tuple(states))
-
-
 def publication_plan(
     projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
 ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
@@ -81,4 +66,4 @@ def publication_plan(
     return r[tuple[m.Infra.CodegenStagedFile, ...]].ok(tuple(publications))
 
 
-__all__: list[str] = ["normalize_lock_mode", "publication_plan", "receipt_states"]
+__all__: list[str] = ["publication_plan"]

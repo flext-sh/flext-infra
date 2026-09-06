@@ -662,9 +662,7 @@ class FlextInfraUtilitiesRefactorCensus:
             )
         )
         if updates_result.failure:
-            return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
-            )
+            return r[bool].from_failure(updates_result)
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 
@@ -685,7 +683,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 object_name=candidate.object_name,
                 error=str(exc),
             )
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         finally:
             rope.refresh(preserve_indexes=True, validate_project=False)
         if applied:
@@ -723,9 +721,7 @@ class FlextInfraUtilitiesRefactorCensus:
             )
         )
         if updates_result.failure:
-            return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
-            )
+            return r[bool].from_failure(updates_result)
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 

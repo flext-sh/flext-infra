@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
-from git import Repo
 import pytest
+from git import Repo
 
 from flext_cli import u as cli_u
-from flext_infra import m, p, u
+from flext_infra import c, m, p, u
 from flext_tests import tm
+from tests import u as test_u
 
 
 def _signed_repository(root: Path, repositories: list[Repo]) -> tuple[Repo, Path]:
@@ -29,8 +30,7 @@ def _signed_repository(root: Path, repositories: list[Repo]) -> tuple[Repo, Path
             cwd=root,
         )
     )
-    with repo.config_writer() as config:
-        config.set_value("user", "signingkey", str(key_path))
+    test_u.Tests.git_bootstrap(root, ("config", "user.signingkey", str(key_path)))
     (root / "tracked.txt").write_text("attested\n", encoding="utf-8")
     (root / "Makefile").write_text(
         ".PHONY: gen check test\n"
@@ -42,14 +42,42 @@ def _signed_repository(root: Path, repositories: list[Repo]) -> tuple[Repo, Path
     (root / "pyproject.toml").write_text(
         "[project]\nname='fixture'\n", encoding="utf-8"
     )
-    repo.index.add(["Makefile", "pyproject.toml", "tracked.txt"])
-    repo.index.commit("test: create base revision")
+    tm.ok(
+        u.Infra.git_add_paths(
+            m.Infra.GitPathsRequest(
+                repo_root=root, paths=("Makefile", "pyproject.toml", "tracked.txt")
+            )
+        )
+    )
+    tm.ok(
+        u.Infra.git_commit(
+            m.Infra.GitCommitRequest(
+                repo_root=root, message="test: create base revision"
+            )
+        )
+    )
     allowed_signers = root / "allowed_signers"
     public_key = key_path.with_suffix(".pub").read_text(encoding="utf-8").strip()
     allowed_signers.write_text(
         f"attester@example.test {public_key}\n", encoding="utf-8"
     )
     return repo, allowed_signers
+
+
+def _head(root: Path) -> str:
+    oid: str = tm.ok(
+        u.Infra.git_repository_head(m.Infra.GitRepoRequest(repo_root=root))
+    ).oid
+    return oid
+
+
+def _rev_parse(root: Path, commitish: str) -> str:
+    oid: str = tm.ok(
+        u.Infra.git_rev_parse(
+            m.Infra.GitCommitishRequest(repo_root=root, commitish=commitish)
+        )
+    ).oid
+    return oid
 
 
 @pytest.fixture
@@ -89,15 +117,14 @@ def _verify(
 def test_signed_gate_attestation_round_trip_is_local(
     tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
 ) -> None:
-    repo, allowed_signers = signed_repository_factory(tmp_path)
+    _repo, allowed_signers = signed_repository_factory(tmp_path)
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
 
     tm.ok(created)
-    tm.that(created.unwrap().tag, eq=f"attest/gates/v1/{repo.head.commit.hexsha}")
-    tm.that(repo.tags[created.unwrap().tag].commit.hexsha, eq=repo.head.commit.hexsha)
-    verified = _verify(
-        tmp_path, allowed_signers, repo.head.commit.hexsha, "gen", "check", "test"
-    )
+    head = _head(tmp_path)
+    tm.that(created.unwrap().tag, eq=f"attest/gates/v1/{head}")
+    tm.that(_rev_parse(tmp_path, f"{created.unwrap().tag}^{{}}"), eq=head)
+    verified = _verify(tmp_path, allowed_signers, head, "gen", "check", "test")
     tm.ok(verified)
     tm.that(verified.unwrap().signer, eq="attester@example.test")
 
@@ -105,26 +132,33 @@ def test_signed_gate_attestation_round_trip_is_local(
 def test_gate_attestation_normalizes_network_remote_git_suffix(
     tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
 ) -> None:
-    repo, allowed_signers = signed_repository_factory(tmp_path)
+    _repo, allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
-    repo.remote("origin").set_url("https://github.example/flext/fixture")
-
-    tm.ok(
-        _verify(
-            tmp_path, allowed_signers, repo.head.commit.hexsha, "gen", "check", "test"
-        )
+    remote = tm.ok(
+        u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path))
+    ).text
+    test_u.Tests.git_bootstrap(
+        tmp_path, ("remote", "set-url", c.Infra.GIT_ORIGIN, remote.removesuffix(".git"))
     )
+
+    tm.ok(_verify(tmp_path, allowed_signers, _head(tmp_path), "gen", "check", "test"))
 
 
 def test_gate_attestation_verifies_selected_commit_with_equal_tree(
     tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
 ) -> None:
-    repo, allowed_signers = signed_repository_factory(tmp_path)
+    _repo, allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
-    selected_sha = repo.head.commit.hexsha
-    selected_tree = repo.head.commit.tree.hexsha
-    repo.index.commit("test: later equal-tree commit")
-    tm.that(repo.head.commit.tree.hexsha, eq=selected_tree)
+    selected_sha = _head(tmp_path)
+    selected_tree = _rev_parse(tmp_path, "HEAD^{tree}")
+    tm.ok(
+        u.Infra.git_commit(
+            m.Infra.GitCommitRequest(
+                repo_root=tmp_path, message="test: later equal-tree commit"
+            )
+        )
+    )
+    tm.that(_rev_parse(tmp_path, "HEAD^{tree}"), eq=selected_tree)
 
     verified = _verify(tmp_path, allowed_signers, selected_sha, "gen", "check", "test")
     tm.ok(verified)
@@ -134,10 +168,10 @@ def test_gate_attestation_verifies_selected_commit_with_equal_tree(
 def test_gate_attestation_rejects_incomplete_coverage(
     tmp_path: Path, signed_repository_factory: Callable[[Path], tuple[Repo, Path]]
 ) -> None:
-    repo, allowed_signers = signed_repository_factory(tmp_path)
+    _repo, allowed_signers = signed_repository_factory(tmp_path)
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
 
-    verified = _verify(tmp_path, allowed_signers, repo.head.commit.hexsha, "check")
+    verified = _verify(tmp_path, allowed_signers, _head(tmp_path), "check")
 
     tm.fail(verified)
     tm.that(verified.error or "", has="exactly match")

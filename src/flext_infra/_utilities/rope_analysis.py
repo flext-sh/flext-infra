@@ -491,6 +491,123 @@ class FlextInfraUtilitiesRopeAnalysis:
         return export_names
 
     @staticmethod
+    def module_export_names_source(
+        source: str, *, export_options: m.Infra.ExportOptions | None = None
+    ) -> t.StrSequence:
+        """Return module-local exports from one parsed source snapshot."""
+        resolved_options = export_options or m.Infra.ExportOptions()
+        module = ast.parse(source)
+        assignments: t.MutableSequenceOf[str] = []
+        definitions: t.MutableSequenceOf[tuple[str, bool]] = []
+        explicit_all = False
+
+        def bound_names(target: ast.expr) -> t.StrSequence:
+            if isinstance(target, ast.Name):
+                return (target.id,)
+            if isinstance(target, (ast.List, ast.Tuple)):
+                return tuple(
+                    name for element in target.elts for name in bound_names(element)
+                )
+            return ()
+
+        def collect(statements: t.SequenceOf[ast.stmt]) -> None:
+            nonlocal explicit_all
+            for statement in statements:
+                if isinstance(
+                    statement, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+                ):
+                    definitions.append((
+                        statement.name,
+                        isinstance(statement, ast.ClassDef),
+                    ))
+                    continue
+                if isinstance(statement, ast.Assign):
+                    names = tuple(
+                        name
+                        for target in statement.targets
+                        for name in bound_names(target)
+                    )
+                elif isinstance(statement, (ast.AnnAssign, ast.AugAssign)):
+                    names = bound_names(statement.target)
+                else:
+                    names = ()
+                if names:
+                    explicit_all = explicit_all or c.Infra.DUNDER_ALL in names
+                    assignments.extend(
+                        name for name in names if name != c.Infra.DUNDER_ALL
+                    )
+                    continue
+                if isinstance(statement, (ast.Import, ast.ImportFrom)):
+                    continue
+                if isinstance(statement, ast.If):
+                    sides = (
+                        (statement.test.left, statement.test.comparators[0])
+                        if isinstance(statement.test, ast.Compare)
+                        and len(statement.test.ops) == 1
+                        and isinstance(statement.test.ops[0], ast.Eq)
+                        and len(statement.test.comparators) == 1
+                        else ()
+                    )
+                    names_in_test = {
+                        side.id for side in sides if isinstance(side, ast.Name)
+                    }
+                    values_in_test = {
+                        side.value for side in sides if isinstance(side, ast.Constant)
+                    }
+                    if names_in_test == {"__name__"} and values_in_test == {"__main__"}:
+                        continue
+                    collect(statement.body)
+                    collect(statement.orelse)
+                    continue
+                if isinstance(statement, (ast.For, ast.AsyncFor, ast.While)):
+                    collect(statement.body)
+                    collect(statement.orelse)
+                    continue
+                if isinstance(statement, (ast.With, ast.AsyncWith)):
+                    collect(statement.body)
+                    continue
+                if isinstance(statement, (ast.Try, ast.TryStar)):
+                    collect(statement.body)
+                    for handler in statement.handlers:
+                        collect(handler.body)
+                    collect(statement.orelse)
+                    collect(statement.finalbody)
+                    continue
+                if isinstance(statement, ast.Match):
+                    for case in statement.cases:
+                        collect(case.body)
+
+        collect(module.body)
+        if resolved_options.include_dunder:
+            return tuple(
+                dict.fromkeys(
+                    name
+                    for name in assignments
+                    if name.startswith("__") and name.endswith("__")
+                )
+            )
+        if explicit_all:
+            return tuple(
+                dict.fromkeys(
+                    FlextInfraUtilitiesRopeAnalysis.module_assignment_strings_source(
+                        source, c.Infra.DUNDER_ALL
+                    )
+                )
+            )
+        if resolved_options.require_explicit_all:
+            return ()
+        implicit_names: t.MutableSequenceOf[str] = [
+            name
+            for name, is_class in definitions
+            if is_class
+            or resolved_options.allow_functions
+            or (resolved_options.allow_main and name == "main")
+        ]
+        if resolved_options.allow_assignments:
+            implicit_names.extend(assignments)
+        return tuple(dict.fromkeys(implicit_names))
+
+    @staticmethod
     def _module_export_names(
         *,
         export_options: m.Infra.ExportOptions,

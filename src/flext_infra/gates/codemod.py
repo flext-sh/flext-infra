@@ -28,8 +28,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
     gate_id: ClassVar[str] = "codemod"
     gate_name: ClassVar[str] = "Codemod Enforcement"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = "ast-grep"
-    tool_url: ClassVar[str] = "https://ast-grep.github.io/"
+    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["codemod"][0]
+    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["codemod"][1]
 
     @override
     def check(
@@ -93,11 +93,21 @@ class FlextInfraCodemodGate(FlextInfraGate):
             str(project_dir),
         )
 
+    @staticmethod
+    def _rules(project_dir: Path) -> t.SequenceOf[Path]:
+        """Resolve inherited rules through the public dependency utility."""
+        return u.Infra.project_dependency_resource_files(
+            project_dir,
+            resource_parts=(c.Infra.CODEMOD_RESOURCE_DIRNAME, c.Cli.RULES_DIR_NAME),
+            distribution_prefix=c.Infra.PKG_PREFIX_HYPHEN,
+            suffix=c.Infra.CODEMOD_RULE_SUFFIX,
+        )
+
     def _issues_from_scan(
         self, scan: p.Cli.CommandOutput, provider: str
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Turn one rule scan into issues; a scanner crash is never a silent pass."""
-        if scan.exit_code != 0 and not scan.stdout.strip():
+        if not u.Cli.process_succeeded(scan.outcome) and not scan.stdout.strip():
             return (
                 m.Infra.Issue(
                     file=c.Infra.PYPROJECT_FILENAME,
@@ -130,10 +140,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Per-rule scans are issued by check(); expose the first rule command."""
         _ = ctx, check_dirs
-        planned = u.Infra.codemod_rule_plan(project_dir)
-        if planned.failure:
-            raise ValueError(planned.error or "ast-grep rule discovery failed")
-        return self._scan_command(planned.value.rulesets[0], project_dir)
+        rules = self._rules(project_dir)
+        if not rules:
+            return (c.Infra.SG, c.Infra.SCAN, ".")
+        return u.Infra.ast_grep_scan_command(rules[0])
 
     @override
     def _parse_check_output(
@@ -141,8 +151,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse a single ast-grep scan result into issues."""
         _ = ctx
-        planned = u.Infra.codemod_rule_plan(project_dir)
-        if planned.failure:
-            raise ValueError(planned.error or "ast-grep rule discovery failed")
-        issues = self._issues_from_scan(result, planned.value.rulesets[0].provider)
+        rules = self._rules(project_dir)
+        rule_path = rules[0] if rules else project_dir
+        issues = self._issues_from_scan(result, rule_path.name)
         return not issues, issues

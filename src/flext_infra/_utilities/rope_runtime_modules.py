@@ -22,7 +22,9 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         ignored_resources: t.SequenceOf[str],
         source_folders: t.SequenceOf[str],
     ) -> t.Infra.RopeProject:
-        project_factory = cls._runtime_callable("rope.base.project", "Project")
+        project_factory = cls._runtime_callable(
+            "flext_infra._utilities._rope.project", "FlextInfraRopeProject"
+        )
         # flext-i6nq.10: FLEXT owns writes; disable Rope's leaking Git subprocess.
         fscommands_factory = cls._runtime_callable(
             "rope.base.fscommands", "FileSystemCommands"

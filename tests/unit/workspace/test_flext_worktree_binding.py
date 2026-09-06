@@ -18,8 +18,7 @@ from flext_core import p as core_p
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_tests import tm
 from tests import u
-
-from tests import WorktreeFixture
+from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
 def _consumer(tmp_path: Path) -> Path:

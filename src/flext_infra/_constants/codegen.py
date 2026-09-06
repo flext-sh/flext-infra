@@ -74,7 +74,6 @@ class FlextInfraConstantsCodegen(
     "Owner-private mode required for the generation lock."
     MISE_BOOTSTRAP_SEED_DIRECTORY: Final[str] = "templates/bootstrap"
     "Package-local bootstrap seed directory for the authenticated launcher."
-
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
     "Required caller-owned persistent root for generated Mise setup."
     MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (
@@ -153,11 +152,6 @@ class FlextInfraConstantsCodegen(
         "WINDIR",
     )
     "Only host environment keys eligible for explicit reinjection."
-    MISE_PLATFORM_INDEPENDENT_BACKENDS: Final[frozenset[str]] = frozenset({"npm:"})
-    (
-        "Mise backend prefixes whose tools ship one artifact for every platform "
-        "(`mise lock` records no `platforms` table for them, e.g. `npm:jscpd`)."
-    )
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique

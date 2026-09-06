@@ -1,39 +1,25 @@
-"""jscpd duplicate-code detector — real clone findings are blocking defects.
-
-Every clone cluster jscpd finds is reported once per project as a blocking
-issue. Findings and scanner failures fail the gate; there is no report-only
-mode, warning side channel, or baseline that can normalize duplicate code.
-
-The jscpd config is rendered from this module's typed constants at scan time
-and written under ``.reports/jscpd/`` — a runtime projection, never a second
-hand-maintained source (the former committed ``.jscpd.json``/
-``.jscpd-baseline.json`` pair is retired).
-"""
+"""Fail-closed jscpd duplicate-code detector."""
 
 from __future__ import annotations
 
 import ast
 import shutil
 import time
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m, r, u
+from flext_core import r
+from flext_infra import c, m, t, u
 from flext_infra.gates.base_gate import FlextInfraGate
+from flext_infra.workspace import FlextInfraWorkspaceDetector
 
 if TYPE_CHECKING:
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraDuplicationGate(FlextInfraGate):
-    """Report jscpd clones per project from one process-cached workspace scan.
-
-    A single jscpd scan covers every discovered workspace project's ``src``
-    and ``tests`` trees so cross-project duplication clusters stay visible;
-    per-project results are filtered by absolute path prefix. The scan output
-    is cached per workspace root for the lifetime of the process (one scan
-    per ``check`` run), matching ``FlextInfraSmellsGate``'s strategy.
-    """
+    """Report every clone owned by one project from a fresh workspace scan."""
 
     gate_id: ClassVar[str] = "duplication"
     gate_name: ClassVar[str] = "Code Duplication"
@@ -51,37 +37,27 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     def check(
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
-        """One cached full-workspace jscpd scan, filtered to ``project_dir``."""
+        """Run and validate jscpd, then expose every owned clone as an error."""
         _ = ctx
         started = time.monotonic()
         scan = self._workspace_scan()
-        issues = self._issues_from_report(scan, project_dir)
-        if not issues and scan.exit_code not in {0, 1}:
+        parsed = self._issues_from_report(scan, project_dir)
+        issues = (
+            parsed.value if parsed.success else (self._failure_issue(parsed.error),)
+        )
+        if not issues and scan.outcome.raw_return_code not in {0, 1}:
             issues = (self._tool_failure_issue(scan),)
-        passed = not issues
         return self._build_check_gate_execution(
             project_dir,
-            passed=passed,
+            passed=not issues,
             issues=issues,
-            raw_output=scan.stderr,
+            raw_output="\n".join(part for part in (scan.stdout, scan.stderr) if part),
             started=started,
         )
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Run the workspace jscpd scan once per process; a missing binary is VISIBLE."""
-        # Fix-forward: FlextInfraGate exposes `_repository_root`, never
-        # `_workspace_root` (see base_gate.py) — align with the base class.
-        key = str(self._repository_root)
-        cached = self._scan_cache.get(key)
-        if cached is not None:
-            return cached
-        output = self._execute_scan()
-        self._scan_cache[key] = output
-        return output
-
-    def _execute_scan(self) -> p.Cli.CommandOutput:
-        """Render config, invoke jscpd, and load its JSON report from disk."""
-        binary = self._resolve_binary()
+        """Create one fresh report; tool, scope, and report failures escape."""
+        binary = shutil.which(c.Infra.JSCPD_BINARY)
         if binary is None:
             return m.Cli.CommandOutput(
                 stdout="",
@@ -91,22 +67,41 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 ),
                 # jscpd itself exits 1 when it finds clones, so an absent binary
                 # must not borrow that code or the gate would read it as a scan.
-                exit_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=c.Infra.PROCESS_COMMAND_NOT_FOUND_EXIT_CODE,
+                    timed_out=False,
+                    forwarded_signal=None,
+                ),
             )
         scope = self._render_scope_dirs()
         if scope.failure:
             return m.Cli.CommandOutput(
-                stdout="", stderr=scope.error or "project discovery failed", exit_code=2
+                stdout="",
+                stderr=scope.error or "workspace scope resolution failed",
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1, timed_out=False, forwarded_signal=None
+                ),
             )
         if not scope.value:
             return m.Cli.CommandOutput(
-                stdout="", stderr="jscpd scan has no source directories", exit_code=2
+                stdout="",
+                stderr="jscpd scope resolved no source or test directories",
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1, timed_out=False, forwarded_signal=None
+                ),
             )
         config_path = self._render_config()
         report_dir = self._repository_root / c.Infra.JSCPD_REPORT_DIRNAME
+        report_path = report_dir / c.Infra.JSCPD_REPORT_FILENAME
+        if report_path.is_symlink() or (
+            report_path.exists() and not report_path.is_file()
+        ):
+            msg = f"jscpd report target is not a physical file: {report_path}"
+            raise ValueError(msg)
+        if report_path.is_file():
+            report_path.unlink()
         cmd = (
             binary,
-            "--no-gitignore",
             "--config",
             str(config_path),
             "--reporters",
@@ -127,17 +122,50 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """
         discovered = u.Infra.resolve_projects(self._repository_root, ())
         if discovered.failure:
-            return r.fail(
-                discovered.error or "project discovery failed",
-                exception=discovered.exception,
-            )
-        return r.ok(
+            return r[t.StrSequence].from_failure(discovered)
+        declared = self._declared_trees_by_path()
+        if declared.failure:
+            return r[t.StrSequence].from_failure(declared)
+        trees_by_path = declared.value
+        return r[t.StrSequence].ok(
             tuple(
-                str(project.path / candidate)
+                str(project.path / tree)
                 for project in discovered.value
-                for candidate in self._existing_check_dirs(project.path)
+                for tree in trees_by_path.get(
+                    project.path.resolve(), self._existing_check_dirs(project.path)
+                )
             )
         )
+
+    def _declared_trees_by_path(self) -> p.Result[Mapping[Path, t.StrSequence]]:
+        """Map declared repositories to their declared duplication scan trees."""
+        workspace = FlextInfraWorkspaceDetector.load_workspace_spec(
+            self._repository_root
+        )
+        if workspace.failure:
+            return r[Mapping[Path, t.StrSequence]].from_failure(workspace)
+        spec = workspace.value
+        declared: dict[Path, t.StrSequence] = {}
+        for repository in (spec.repository, *spec.subprojects):
+            if repository.duplication_trees:
+                declared[(self._repository_root / repository.path).resolve()] = (
+                    repository.duplication_trees
+                )
+        return r[Mapping[Path, t.StrSequence]].ok(declared)
+
+    def _scope_paths(self) -> t.StrSequence:
+        """Resolve canonical source, test, config, and template roots once."""
+        projects = u.Infra.resolve_projects(self._repository_root, ()).unwrap()
+        scope = tuple(
+            str(path)
+            for project in projects
+            for dirname in c.Infra.JSCPD_SCOPE_DIRNAMES
+            if (path := project.path / dirname).is_dir()
+        )
+        if not scope:
+            msg = f"jscpd found no canonical scope under {self._repository_root}"
+            raise ValueError(msg)
+        return scope
 
     def _render_config(self) -> Path:
         """Materialize the jscpd config from this gate's typed SSOT.
@@ -146,23 +174,29 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         source; regenerating with unchanged constants produces byte-identical
         content (idempotent).
         """
-        ignore: list[t.JsonValue] = list(c.Infra.JSCPD_IGNORE_PATTERNS)
-        config: t.JsonMapping = {
-            "absolute": True,
-            "noTips": True,
-            "noColors": True,
-            "mode": c.Infra.JSCPD_MODE,
-            "ignore": ignore,
-            "reporters": ["json"],
-            "minLines": c.Infra.JSCPD_MIN_LINES,
-        }
+        config = m.Infra.JscpdConfig(
+            absolute=True,
+            formatsExts={
+                name: tuple(extensions)
+                for name, extensions in c.Infra.JSCPD_FORMAT_EXTENSIONS.items()
+            },
+            ignore=tuple(c.Infra.JSCPD_IGNORE_PATTERNS),
+            minLines=c.Infra.JSCPD_MIN_LINES,
+            minTokens=c.Infra.JSCPD_MIN_TOKENS,
+            mode=c.Infra.JSCPD_MODE,
+            noColors=True,
+            noTips=True,
+            reporters=(c.Infra.OUTPUT_JSON,),
+            threshold=c.Infra.JSCPD_THRESHOLD_PERCENT,
+        )
         config_path = (
             self._repository_root
             / c.Infra.JSCPD_REPORT_DIRNAME
             / c.Infra.JSCPD_CONFIG_FILENAME
         )
-        _ = u.Cli.ensure_dir(config_path.parent).unwrap()
-        _ = u.Cli.json_write(config_path, config).unwrap()
+        u.Cli.ensure_dir(config_path.parent).unwrap()
+        rendered = config.model_dump_json(by_alias=True)
+        u.Cli.atomic_write_text_file(config_path, rendered).unwrap()
         return config_path
 
     @staticmethod
@@ -176,7 +210,11 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         return m.Cli.CommandOutput(
             stdout=report_path.read_text(encoding="utf-8"),
             stderr=result.stderr,
-            exit_code=result.exit_code,
+            outcome=m.Cli.ProcessOutcome(
+                raw_return_code=result.outcome.raw_return_code,
+                timed_out=result.outcome.timed_out,
+                forwarded_signal=result.outcome.forwarded_signal,
+            ),
         )
 
     @staticmethod
@@ -192,38 +230,32 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             column=0,
             code=self.gate_id,
             message=scan.stderr or "jscpd execution failed",
-            severity=self._severity(),
+            severity=str(c.Infra.GateSeverity.ERROR.value),
         )
 
     @staticmethod
-    def _severity() -> str:
-        """Return the blocking severity required for every clone."""
-        return str(c.Infra.GateSeverity.ERROR.value)
+    def _failure_issue(message: str | None) -> m.Infra.Issue:
+        """Represent malformed or absent jscpd output as a blocking issue."""
+        return m.Infra.Issue(
+            file=c.Infra.PYPROJECT_FILENAME,
+            line=1,
+            column=0,
+            code=FlextInfraDuplicationGate.gate_id,
+            message=message or "jscpd returned no parseable report",
+            severity=str(c.Infra.GateSeverity.ERROR.value),
+        )
 
     @classmethod
     def _issues_from_report(
         cls, scan: p.Cli.CommandOutput, project_dir: Path
-    ) -> tuple[m.Infra.Issue, ...]:
-        """Extract one Issue per clone cluster that touches ``project_dir``.
-
-        When both fragments belong to the same project, the jscpd record is one
-        defect and therefore produces one issue. A cross-project clone still
-        produces one issue in each affected project's check result.
-        """
-        parsed = u.Cli.json_parse(scan.stdout or "{}")
+    ) -> p.Result[tuple[m.Infra.Issue, ...]]:
+        """Extract one Issue per clone side that falls inside ``project_dir``."""
+        if not scan.stdout.strip():
+            return r[tuple[m.Infra.Issue, ...]].fail("jscpd returned empty JSON report")
+        parsed = u.Cli.json_parse(scan.stdout)
         if parsed.failure:
-            return (
-                m.Infra.Issue(
-                    file=c.Infra.PYPROJECT_FILENAME,
-                    line=1,
-                    column=0,
-                    code=cls.gate_id,
-                    message=parsed.error or "jscpd report is invalid JSON",
-                    severity=cls._severity(),
-                ),
-            )
-        empty_json: t.JsonValue = {}
-        data = u.Cli.json_as_mapping(parsed.unwrap() if parsed.success else empty_json)
+            return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)
+        data = u.Cli.json_as_mapping(parsed.value)
         prefix = str(project_dir)
         issues: list[m.Infra.Issue] = []
         for duplicate in u.Cli.json_deep_mapping_list(data, "duplicates"):
@@ -245,7 +277,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                         duplicate, second, second_name, first_name, project_dir
                     )
                 )
-        return tuple(issues)
+        return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
 
     @classmethod
     def _is_semantic_clone(
@@ -344,6 +376,33 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             and node.end_lineno is not None
             and not is_declaration(node)
         )
+
+    @classmethod
+    def _issue(
+        cls,
+        duplicate: m.Infra.JscpdDuplicate,
+        own_side: m.Infra.JscpdFile,
+        other_side: m.Infra.JscpdFile,
+        root: Path,
+    ) -> m.Infra.Issue:
+        """Map one validated clone side to a strict error."""
+        return m.Infra.Issue(
+            file=str(Path(own_side.name).relative_to(root)),
+            line=own_side.start_location.line,
+            column=own_side.start_location.column,
+            code=cls.gate_id,
+            message=(
+                f"{duplicate.lines}-line ({duplicate.tokens}-token) clone of "
+                f"{other_side.name} "
+                f"— extend one owner, rewire consumers, delete the duplicate"
+            ),
+            severity=str(c.Infra.GateSeverity.ERROR.value),
+        )
+
+    @staticmethod
+    def _severity() -> str:
+        """Return the blocking severity required for every clone."""
+        return str(c.Infra.GateSeverity.ERROR.value)
 
     @classmethod
     def _issue_from_duplicate(

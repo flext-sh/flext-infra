@@ -11,7 +11,8 @@ import pytest
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import WorktreeFixture, u as test_u
+from tests import u as test_u
+from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
 
@@ -112,8 +113,8 @@ class TestsCodegenMakeEnvironment:
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
         (project_root / "custom.mk").write_text(
-            ".PHONY: _custom_status_probe\n"
-            "_custom_status_probe:\n"
+            ".PHONY: _custom-status\n"
+            "_custom-status:\n"
             "\t@printf '%s\\n' "
             "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
@@ -129,20 +130,12 @@ class TestsCodegenMakeEnvironment:
             "PATH": f"{hostile_bin}:{os.environ['PATH']}",
         }
         process = tm.ok(
-            u.Cli.run_raw(
-                [
-                    c.Infra.MAKE,
-                    "--no-print-directory",
-                    "status",
-                    f"{config.Infra.codegen.make.selector}=probe",
-                ],
-                cwd=project_root,
-                env=active_env,
-                remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
+            test_u.Tests.run_isolated_make(
+                ["--no-print-directory", "status"], cwd=project_root, env=active_env
             )
         )
         tm.that(
-            process.exit_code,
+            process.outcome.raw_return_code,
             eq=0,
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
@@ -203,7 +196,9 @@ class TestsCodegenMakeEnvironment:
         )
 
         process = tm.ok(result)
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+        )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --frozen --project")
@@ -234,7 +229,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(process.outcome.raw_return_code, ne=0)
         tm.that(process.stdout + process.stderr, has="missing generated mise launcher")
         tm.that(mise.is_file(), eq=True)
         tm.that(mise_log.exists(), eq=False)
@@ -288,7 +283,9 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+        )
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
@@ -315,7 +312,25 @@ class TestsCodegenMakeEnvironment:
             in makefile,
             eq=True,
         )
-        tm.that('test_tmp_parent="$(PROJECT_ROOT)/.test-runtime"' in makefile, eq=True)
+        toolchain = config.Infra.codegen.toolchain
+        tm.that(
+            (
+                "PROJECT_STATE_ROOT := $(abspath $(dir $(REPOSITORY_ROOT))/"
+                f"{toolchain.state_directory_name}/$(notdir $(PROJECT_ROOT)))"
+            )
+            in makefile,
+            eq=True,
+        )
+        tm.that(
+            f"PROJECT_SCRATCH_ROOT := $(PROJECT_STATE_ROOT)/{toolchain.scratch_namespace}"
+            in makefile,
+            eq=True,
+        )
+        tm.that(
+            "override export PYTHONPYCACHEPREFIX := "
+            f"$(PROJECT_STATE_ROOT)/{toolchain.pycache_namespace}" in makefile,
+            eq=True,
+        )
         tm.that('TMPDIR="$$test_tmp" GOTMPDIR="$$test_tmp"' in makefile, eq=True)
         tm.that("CHECK_GATES_ALLOWED :=" in makefile, eq=True)
         tm.that("$(PROJECT_FLEXT_INFRA) check run" in makefile, eq=True)
@@ -344,10 +359,10 @@ class TestsCodegenMakeEnvironment:
             tm.that(makefile, has=f"{handler}: _builtin_require_environment")
             tm.that(phony_targets, has=handler)
 
-    def test_standalone_check_selector_executes_its_exact_gate(
+    def test_standalone_check_executes_the_canonical_gate_set(
         self, tmp_path: Path
     ) -> None:
-        """Translate public WHAT once and run the sole CHECK_GATES executor."""
+        """Run the sole canonical check executor with the declared default gates."""
         project_root, _workspace_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -365,7 +380,10 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "check",
-                    f"{config.Infra.codegen.make.selector}=lint",
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                    ),
                     f"UV={uv}",
                 ],
                 cwd=project_root,
@@ -373,10 +391,19 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+        )
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
-        tm.that(invocation, has="--gates lint --projects .")
+        tm.that(
+            invocation,
+            has=(
+                "--gates "
+                f"{','.join(config.Infra.codegen.make.check_gates_default)}"
+                " --projects ."
+            ),
+        )
 
     def test_dependency_upgrade_selects_only_one_distribution(
         self, tmp_path: Path
@@ -411,7 +438,9 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+        )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
@@ -448,7 +477,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(process.outcome.raw_return_code, ne=0)
         tm.that(
             process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
         )
@@ -470,7 +499,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(process.outcome.raw_return_code, ne=0)
         tm.that(
             process.stdout + process.stderr,
             has=["missing environment interpreter", "make setup creates it"],

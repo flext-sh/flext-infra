@@ -8,13 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_core import r
-from flext_infra.constants import c
-from flext_infra.models import m
-from flext_infra.typings import t
 from flext_infra._utilities.namespace_config import FlextInfraUtilitiesNamespaceConfig
 from flext_infra._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from flext_infra.constants import c
+from flext_infra.models import m
+from flext_infra.typings import t
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -45,9 +45,9 @@ class FlextInfraUtilitiesDiscovery(
         return spec
 
     @staticmethod
-    def _workspace_project_roots(repository_root: str) -> tuple[Path, ...]:
+    def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
         """Discover project roots once for a command-scoped workspace."""
-        resolved_root = Path(repository_root).resolve()
+        resolved_root = Path(workspace_root).resolve()
         nested_roots: set[Path] = set()
         for directory, child_names, file_names in resolved_root.walk(top_down=True):
             child_names[:] = [
@@ -260,6 +260,24 @@ class FlextInfraUtilitiesDiscovery(
             )
         ]
 
+    @classmethod
+    def discover_python_targets(cls, project_dir: Path) -> t.StrSequence:
+        """Return every first-party Python target owned by one project root.
+
+        Directory discovery alone omits standalone modules stored directly at
+        the repository root. Analyzer and codemod gates must use the same
+        complete target inventory so semantic discovery cannot find a file
+        that their safety measurements silently exclude.
+        """
+        if not project_dir.is_dir():
+            return list[str]()
+        root_modules = [
+            path.name
+            for path in sorted(project_dir.iterdir())
+            if path.is_file() and path.suffix in {".py", ".pyi"}
+        ]
+        return [*cls.discover_python_dirs(project_dir), *root_modules]
+
     @staticmethod
     def _walk_python_files(
         directory: Path, skip_dirs: frozenset[str]
@@ -315,7 +333,7 @@ class FlextInfraUtilitiesDiscovery(
         roots that actually exist, which is the only set an analyzer accepts.
 
         A directory owning a ``pyproject.toml`` is a project in its own right,
-        never a root of this one: workspace declared_repositories are Python directories
+        never a root of this one: workspace subprojects are Python directories
         too, and each is analyzed under its own local configuration.
         """
         discovered = cls.discover_python_dirs(
@@ -343,10 +361,10 @@ class FlextInfraUtilitiesDiscovery(
         return frozenset(path.parts[0] for path in excluded.value if path.parts)
 
     @staticmethod
-    def package_init_path(repository_root: Path, package_name: str) -> Path | None:
-        """Resolve a package in the selected repository or managed environment."""
+    def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
+        """Resolve a package in the selected workspace or managed environment."""
         package_parts = Path(*package_name.split("."))
-        resolved_root = repository_root.resolve()
+        resolved_root = workspace_root.resolve()
         project_roots = FlextInfraUtilitiesDiscovery._workspace_project_roots(
             str(resolved_root)
         )
@@ -437,13 +455,13 @@ class FlextInfraUtilitiesDiscovery(
     @classmethod
     def find_all_pyproject_files(
         cls,
-        repository_root: Path,
+        workspace_root: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
         project_paths: t.SequenceOf[Path] | None = None,
     ) -> p.Result[t.SequenceOf[Path]]:
-        """Find all managed ``pyproject.toml`` files for one repository root."""
-        if not repository_root.exists() or not repository_root.is_dir():
+        """Find all managed ``pyproject.toml`` files for one workspace root."""
+        if not workspace_root.exists() or not workspace_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
         # Explicit project paths are a hard write-scope boundary. Without one,
@@ -451,7 +469,7 @@ class FlextInfraUtilitiesDiscovery(
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
-            else [repository_root.resolve()]
+            else [workspace_root.resolve()]
         )
         all_files: list[Path] = []
         for scan_root in scan_roots:
@@ -521,7 +539,7 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def resolve_transitive_parent_packages(
-        cls, repository_root: Path, package_names: t.StrSequence
+        cls, workspace_root: Path, package_names: t.StrSequence
     ) -> t.StrSequence:
         """Resolve parent packages transitively with ancestors ordered before children."""
         resolved: list[str] = []
@@ -532,7 +550,7 @@ class FlextInfraUtilitiesDiscovery(
             if not package_name or package_name in visited:
                 return
             visited.add(package_name)
-            init_path = cls.package_init_path(repository_root, package_name)
+            init_path = cls.package_init_path(workspace_root, package_name)
             if init_path is not None:
                 for parent_package in cls.resolve_parent_constants_flext(
                     init_path.parent, return_module=True
@@ -563,13 +581,13 @@ class FlextInfraUtilitiesDiscovery(
         )
         if not parent_packages:
             return {}
-        repository_root = cls.rope_repository_root(project_root)
+        workspace_root = cls.rope_repository_root(project_root)
         for candidate in project_root.resolve().parents:
             if (candidate / c.Infra.GITMODULES).is_file():
-                repository_root = candidate
+                workspace_root = candidate
                 break
         transitive_parent_packages = cls.resolve_transitive_parent_packages(
-            repository_root, parent_packages
+            workspace_root, parent_packages
         )
         allowed_sources = frozenset(
             package.split(".", maxsplit=1)[0]

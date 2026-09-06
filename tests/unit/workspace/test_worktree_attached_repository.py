@@ -1,11 +1,13 @@
 """Attached-repository worktree topology behavior."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-from tests import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsAttachedRepositoryWorktree(WorktreeFixture):

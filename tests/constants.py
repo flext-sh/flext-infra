@@ -211,6 +211,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
 
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
+        RELEASE_VERSION_PATCH: Final[str] = "0.1.1"
         RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
         RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
         # Fixture members depend on these siblings, so a release build must see

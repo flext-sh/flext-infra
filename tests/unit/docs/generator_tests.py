@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_core import r
 from flext_infra import c, config
 from flext_infra.docs.generator import FlextInfraDocGenerator
@@ -43,7 +45,7 @@ def _publish_docs(
 
 
 def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) -> None:
-    """Return reports for the repository root and selected project."""
+    """Return reports for the workspace root and selected project."""
     workspace = u.Tests.create_docs_workspace(
         tmp_path, project_names=("flext-a", "flext-b")
     )
@@ -483,3 +485,10 @@ def test_generate_report_tracks_written_files() -> None:
 
     tm.that(report.generated, eq=2)
     tm.that(len(report.items), eq=2)
+
+
+def test_docs_url_scheme_rejects_http() -> None:
+    target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
+
+    with pytest.raises(ValueError, match="use HTTPS"):
+        u.Infra.docs_url_scheme(target)

@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -152,28 +153,29 @@ class TestCodegenCiMatrix:
         )
 
         ci_step_runs = tuple(
-            f"run: CI=Y make {step.verb}"
+            (f"run: CI=Y make {step.verb}" + (" APPLY=Y" if step.apply else ""))
             for step in config.Infra.codegen.make.workflow
             if "ci" in step.contexts
         )
         for run_line in ci_step_runs:
             tm.that(workflow, has=run_line)
-        tm.that(ci_step_runs, has="run: CI=Y make setup")
-        tm.that(workflow, has="run: CI=Y make gen")
+        tm.that(ci_step_runs, has="run: CI=Y make setup APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make conform APPLY=Y")
+        tm.that(workflow, has="run: CI=Y make audit")
         tm.that(workflow, lacks="attest/gates/v1")
         tm.that(workflow, lacks="github verify-gates")
-        tm.that(workflow, lacks="WHAT=apply")
-        tm.that(workflow, lacks="APPLY=Y")
+        tm.that(workflow, lacks="WHAT=")
         step_indices = tuple(workflow.index(run_line) for run_line in ci_step_runs)
         tm.that(step_indices, eq=tuple(sorted(step_indices)))
-        setup_index = workflow.index("run: CI=Y make setup")
-        gen_index = workflow.index("run: CI=Y make gen")
-        tm.that(setup_index < gen_index, eq=True)
-        if "run: CI=Y make check" in ci_step_runs:
-            tm.that(workflow, has="run: CI=N make check")
-            check_index = workflow.index("run: CI=Y make check")
-            check_complement_index = workflow.index("run: CI=N make check")
-            tm.that(gen_index < check_index < check_complement_index, eq=True)
+        setup_index = workflow.index("run: CI=Y make setup APPLY=Y")
+        conform_index = workflow.index("run: CI=Y make conform APPLY=Y")
+        audit_index = workflow.index("run: CI=Y make audit")
+        check_index = workflow.index("run: CI=Y make check APPLY=Y")
+        test_index = workflow.index("run: CI=Y make test APPLY=Y")
+        tm.that(
+            setup_index < conform_index < audit_index < check_index < test_index,
+            eq=True,
+        )
         header, jobs = workflow.split("\njobs:\n", maxsplit=1)
         tm.that(header, lacks="permissions:")
         ci_job = jobs.split("\n  merge-guard:", maxsplit=1)[0]

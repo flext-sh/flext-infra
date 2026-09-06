@@ -113,31 +113,12 @@ class FlextInfraGate:
         ctx: m.Infra.GateContext | None = None,
         errors: t.StrSequence | None = None,
     ) -> m.Infra.GateExecution:
-        """Assemble a gate execution from parsed check output.
+        """Assemble a strict gate execution from parsed check output.
 
-        When ``ctx.gate_mode == "warn"`` the gate reports issues but is
-        marked passed so advisory enforcement gates do not fail the check
-        pipeline. ``errors`` overrides the default issue-derived report
-        lines (fix paths report applied changes there).
+        ``errors`` overrides the default issue-derived report lines for fix
+        paths. Findings are never converted to warnings or successful results.
         """
-        if ctx is not None and getattr(ctx, "gate_mode", None) == "warn" and not passed:
-            warn_issues = [
-                issue.model_copy(update={"severity": "WARNING"})
-                if hasattr(issue, "model_copy")
-                else issue
-                for issue in issues
-            ]
-            return m.Infra.GateExecution(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=True,
-                    errors=[],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=tuple(warn_issues),
-                raw_output=raw_output,
-            )
+        _ = ctx
         return m.Infra.GateExecution(
             result=m.Infra.GateResult(
                 gate=self.gate_id,
@@ -279,11 +260,12 @@ class FlextInfraGate:
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
+        passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
             project_dir,
-            passed=result.exit_code == 0,
-            issues=(),
-            raw_output=self._fix_raw_output(result),
+            passed=passed,
+            issues=issues,
+            raw_output=self._raw_output(result),
             started=started,
         )
 
@@ -342,14 +324,15 @@ class FlextInfraGate:
             return m.Cli.CommandOutput(
                 stdout="",
                 stderr=result.error or "command execution failed",
-                exit_code=1,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=1, timed_out=False, forwarded_signal=None
+                ),
             )
         return result.value
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:
-        """Return direct project-owned source directories only."""
-        candidates = ("src", "tests")
-        return self._dirs_with_py(project_dir, candidates)
+        """Return every first-class project-owned Python directory."""
+        return self._dirs_with_py(project_dir, c.Infra.CHECK_DIRS_REPOSITORY)
 
     @staticmethod
     def _dirs_with_py(project_dir: Path, dirs: t.StrSequence) -> t.StrSequence:

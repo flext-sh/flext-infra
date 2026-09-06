@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -137,7 +136,7 @@ class FlextInfraDocGeneratorBundleMixin:
             )
             offset += size
         scope_roots = tuple(scoped.scope.path for scoped in normalized_scopes)
-        stable = FlextInfraUtilitiesDocsGenerate.docs_verify_sources(
+        stable = u.Infra.docs_verify_sources(
             workspace_root, sources.value, extra_roots=scope_roots
         )
         if stable.failure:

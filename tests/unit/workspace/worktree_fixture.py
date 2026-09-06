@@ -202,13 +202,10 @@ class WorktreeFixture:
     def repository_snapshot(root: Path) -> tuple[tuple[tuple[str, bytes], ...], str]:
         """Capture all repository bytes and porcelain status.
 
-        Git metadata and the codegen transaction state root are excluded: both
-        are regenerable runtime state, never repository content. The
-        transaction lock lives in Git's administrative directory. Excluding
-        ``.state/`` here isolates recoverable transaction staging from managed
-        repository content.
+        Git metadata is excluded; every runtime-state owner lives outside the
+        repository checkout by construction.
         """
-        excluded_roots = frozenset({c.Infra.GIT_DIR, c.Infra.TRANSACTION_STATE_DIRNAME})
+        excluded_roots = frozenset({c.Infra.GIT_DIR})
         tree = tuple(
             sorted(
                 (path.relative_to(root).as_posix(), path.read_bytes())
@@ -219,13 +216,7 @@ class WorktreeFixture:
         )
         status = tm.ok(
             u.Cli.capture(
-                [
-                    c.Infra.GIT,
-                    "status",
-                    "--porcelain=v1",
-                    "--untracked-files=all",
-                    ":!" + c.Infra.TRANSACTION_STATE_DIRNAME,
-                ],
+                [c.Infra.GIT, "status", "--porcelain=v1", "--untracked-files=all"],
                 cwd=root,
             )
         )

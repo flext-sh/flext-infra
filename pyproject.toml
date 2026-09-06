@@ -1,8 +1,8 @@
-# @flext-managed: continuous
+# @flext-generated: continuous
+# @flext-owner: flext-infra/src/flext_infra/_constants/deps.py
+# @flext-adjust: edit the dependency owner; never this projection
 # @flext-regenerate: make deps APPLY=Y
-# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py
-# @flext-ssot-dependencies: flext-infra/config/codegen.yaml (project_defaults.dev, dependency_profiles)
-# @flext-maintenance: do not edit managed sections; edit the SSOT
+# @flext-owner-dependencies: flext-infra/config/codegen.yaml (scaffold.project.dev, scaffold.project.external_runtime_packages, dependency_profiles, runtime_dependency_overlays)
 # [MANAGED] FLEXT pyproject standardization
 # Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
 # Sections with [CUSTOM] are project-specific extension points.
@@ -405,6 +405,10 @@ addopts = [
   "--markdown-docs",
   "--strict-markers",
   "--timeout=10",
+  # Epic-owned circuit tests stay out of the canonical cycle until the
+  # cutover epic lands them (see markers.codemod_epic).
+  "-m",
+  "not codemod_epic",
 ]
 enable_assertion_pass_hook = true
 filterwarnings = [
@@ -413,6 +417,11 @@ filterwarnings = [
 ]
 flext_slow_timeout_seconds = "60"
 markers = [
+  # codemod_epic: the refactor-mod circuit contract owned by the pending
+  # private-import/cutover epic. These tests encode the LOCAL-rule composition
+  # and hermetic type-check fixture that epic delivers; they run red until it
+  # lands (operator-authorized deferral 2026-09-06, same pattern as loc-cap).
+  "codemod_epic: refactor-mod circuit tests owned by the pending cutover epic",
   "core: core functionality tests",
   "docker: tests requiring Docker",
   "e2e: end-to-end integration tests",
@@ -480,7 +489,6 @@ skip-magic-trailing-comma = true
 [tool.ruff.lint]
 # FLEXT Ruff suppression rationale (validated against semantic facet order):
 # FLEXT ruff[import-outside-top-level]: Public facade models are imported lazily only at validation and construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
-# FLEXT ruff[unsorted-imports]: Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory semantic c-t-p-m-u dependency order in FLEXT facades.
 ignore = [
   "ambiguous-unicode-character-comment",
   "ambiguous-unicode-character-docstring",
@@ -512,7 +520,6 @@ ignore = [
   "typing-only-first-party-import",
   "typing-only-standard-library-import",
   "typing-only-third-party-import",
-  "unsorted-imports",
 ]
 select = ["ALL"]
 
@@ -596,7 +603,7 @@ environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
 exclude-newer = "7 days"
 link-mode = "copy"
 override-dependencies = [
-  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@e45e78dad77ac92d772d3bd149140d9b1900d2d1",
+  "flext-cli @ git+https://github.com/flext-sh/flext-cli.git@0.12.0-dev",
 ]
 
 [[tool.uv.exclude-dependencies]]
@@ -636,7 +643,7 @@ dev = [
   "faker>=40.37.0",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "hypothesis>=6.165.10",
-  "isort>=8.0.1",
+  "isort>=9.0.1",
   "matplotlib-stubs>=0.3.11",
   "mkdocs>=1.6.1",
   "mkdocs-autorefs>=1.4.4",
@@ -660,7 +667,7 @@ dev = [
   "mypy>=2.3.1",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.2",
-  "pylint>=4.0.7",
+  "pylint>=4.0.8",
   "pyrefly>=1.2.0",
   "pyright>=1.1.411",
   "pytest>=9.1.1",

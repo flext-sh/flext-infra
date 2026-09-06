@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from flext_infra.transformers import FlextInfraRefactorProjectAliasMigrator
+from flext_infra.refactor.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from tests import tm
 
 

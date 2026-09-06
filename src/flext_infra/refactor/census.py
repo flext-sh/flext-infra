@@ -192,9 +192,7 @@ class FlextInfraRefactorCensus(
                 self.impact_map_output_path,
             )
             if impact_result.failure:
-                return r[m.Infra.Census.WorkspaceReport].fail(
-                    impact_result.error or "impact map write failed"
-                )
+                return r[m.Infra.Census.WorkspaceReport].from_failure(impact_result)
             u.Cli.info(f"Impact map exported to: {self.impact_map_output_path}")
         return r[m.Infra.Census.WorkspaceReport].ok(report)
 

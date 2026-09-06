@@ -8,7 +8,6 @@ import pytest
 
 from flext_infra import main as infra_main
 from flext_infra.refactor.census import FlextInfraRefactorCensus
-from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 from flext_tests import tm
 from tests import t, u
 
@@ -21,10 +20,6 @@ def _parse_source_ast(source: str) -> object | None:
         return compile(source, "<refactor-test-source>", "exec")
     except SyntaxError:
         return None
-
-
-def _mapping(value: t.JsonValue | t.JsonMapping) -> t.JsonMapping:
-    return t.Cli.JSON_MAPPING_ADAPTER.validate_python(value)
 
 
 def _strings(value: t.JsonValue) -> t.StrSequence:
@@ -457,10 +452,9 @@ class TestsFlextInfraRefactorMainCli:
             ),
         ],
     )
-    def test_refactor_census_detector_only_rules_skip_inventory(
+    def test_refactor_census_detector_rules_report_public_violations(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
         builder_name: str,
         kinds: t.StrSequence,
         rules: t.StrSequence,
@@ -473,14 +467,6 @@ class TestsFlextInfraRefactorMainCli:
             if isinstance(built_workspace, tuple)
             else built_workspace
         )
-
-        def _explode(
-            _self: FlextInfraRopeWorkspace, *_args: object, **_kwargs: object
-        ) -> object:
-            msg = "detector-only rules should not trigger rope.objects inventory"
-            raise AssertionError(msg)
-
-        monkeypatch.setattr(FlextInfraRopeWorkspace, "objects", _explode)
 
         report_result = FlextInfraRefactorCensus(
             repository_root=workspace,
@@ -910,7 +896,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].object_name, eq=expected_object_name)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = u.Tests.toml_mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         tm.that(len(files), eq=0)
 
@@ -968,9 +954,9 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = u.Tests.toml_mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [u.Tests.toml_mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
@@ -1010,9 +996,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.ok(report_result)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = u.Tests.toml_mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [u.Tests.toml_mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
@@ -1046,9 +1032,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(result, eq=0)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = u.Tests.toml_mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [u.Tests.toml_mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
 
@@ -1074,8 +1060,8 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = _mapping(payload_result.unwrap())
+        payload = u.Tests.toml_mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [_mapping(item) for item in files]
+        entries = [u.Tests.toml_mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)

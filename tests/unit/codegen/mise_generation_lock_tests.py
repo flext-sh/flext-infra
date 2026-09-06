@@ -7,11 +7,12 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, m, p, r, u
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import u as test_u
 
@@ -129,7 +130,9 @@ except BlockingIOError:
             )
 
         tm.ok(contended)
-        tm.that(contended.value.exit_code, eq=0, msg=contended.value.stderr)
+        tm.that(
+            contended.value.outcome.raw_return_code, eq=0, msg=contended.value.stderr
+        )
 
     def test_nested_independent_repo_ignores_ancestor_journal(
         self, tmp_path: Path

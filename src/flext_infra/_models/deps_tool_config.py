@@ -133,6 +133,12 @@ class FlextInfraModelsDepsToolSettings(
                 description="Grace period reserved inside the invocation deadline.",
             ),
         ]
+        max_failures: Annotated[
+            Literal[1],
+            m.Field(
+                alias="max-failures", description="Fail-fast pytest failure ceiling."
+            ),
+        ]
         enforcement_plugin: Annotated[
             t.NonEmptyStr,
             m.Field(
@@ -186,7 +192,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         parallel_distribution: Annotated[
-            Literal["worksteal"],
+            Literal["load"],
             m.Field(
                 alias="parallel-distribution",
                 description="Pytest-xdist scheduler for full runs.",
@@ -363,6 +369,15 @@ class FlextInfraModelsDepsToolSettings(
 
         all: Annotated[bool, m.Field(description="Sort all TOML tables and entries.")]
         in_place: Annotated[bool, m.Field(description="Apply TOML sorting in place.")]
+        process_timeout_seconds: Annotated[
+            int,
+            m.Field(
+                alias="process-timeout-seconds",
+                gt=0,
+                le=60,
+                description="Maximum runtime for Taplo resolution or formatting.",
+            ),
+        ]
         sort_first: Annotated[
             t.StrSequence, m.Field(description="Top-level TOML sections ordered first.")
         ]

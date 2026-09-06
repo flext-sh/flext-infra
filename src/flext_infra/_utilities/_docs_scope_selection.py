@@ -17,7 +17,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _selected_project_scopes(
-        repository_root: Path,
+        workspace_root: Path,
         discovered: t.SequenceOf[m.Infra.ProjectInfo],
         selected_names: t.StrSequence,
         output_dir: Path | str,
@@ -29,7 +29,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         scopes: list[m.Infra.DocScope] = []
         for name in selected_names:
             scope = FlextInfraUtilitiesDocsScopeSelectionMixin._selected_scope(
-                repository_root, name, project_by_name, output_dir
+                workspace_root, name, project_by_name, output_dir
             )
             if scope is not None:
                 scopes.append(scope)
@@ -37,7 +37,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
 
     @staticmethod
     def _selected_scope(
-        repository_root: Path,
+        workspace_root: Path,
         name: str,
         project_by_name: dict[str, m.Infra.ProjectInfo],
         output_dir: Path | str,
@@ -49,7 +49,7 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
                 project=selected, output_dir=output_dir
             )
         return FlextInfraUtilitiesDocsScopeSelectionMixin._optional_path_scope(
-            repository_root, name, output_dir
+            workspace_root, name, output_dir
         )
 
     @staticmethod

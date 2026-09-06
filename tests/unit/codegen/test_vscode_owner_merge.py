@@ -58,3 +58,26 @@ class TestsVscodeOwnerMerge:
 
         tm.ok(second)
         tm.that(second.value, eq=first.value)
+
+    def test_merge_removes_keys_absent_from_artifact_authority(
+        self, tmp_path: Path
+    ) -> None:
+        """Artifact exclude maps are exact projections, not append-only unions."""
+        root = tmp_path / "project"
+        settings_path = root / ".vscode" / "settings.json"
+        settings_path.parent.mkdir(parents=True)
+        stale_key = "**/.retired-runtime"
+        _ = settings_path.write_text(
+            tm.ok(u.Cli.json_dumps({"files.exclude": {stale_key: True}})),
+            encoding="utf-8",
+        )
+
+        result = FlextInfraCodegen.render_vscode_settings(root)
+
+        tm.ok(result)
+        doc = t.Cli.JSON_MAPPING_ADAPTER.validate_python(
+            tm.ok(u.Cli.json_parse(result.value))
+        )
+        tm.that(
+            doc["files.exclude"], eq=dict(config.Infra.codegen.vscode_files_exclude_map)
+        )

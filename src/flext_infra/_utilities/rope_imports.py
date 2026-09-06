@@ -7,14 +7,15 @@ from collections import defaultdict
 from pathlib import Path
 
 from flext_cli import u
-
 from flext_infra import c, m, p, r, t
 from flext_infra._utilities import (
     FlextInfraUtilitiesRopeCore,
     FlextInfraUtilitiesRopeRuntime,
 )
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.transformers import FlextInfraRefactorProjectAliasMigrator
+from flext_infra.refactor.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 
 
 class FlextInfraUtilitiesRopeImports:
@@ -126,13 +127,13 @@ class FlextInfraUtilitiesRopeImports:
 
     @staticmethod
     def indexed_search_resources(
-        rope_workspace: p.AttributeProbe,
+        rope_workspace: p.Infra.RopeWorkspaceDsl,
         *,
         resource: t.Infra.RopeResource,
         name: str,
         definition_path: Path,
         dependent_import_targets: t.StrSequence = (),
-    ) -> tuple[t.Infra.RopeResource, ...] | None:
+    ) -> tuple[t.Infra.RopeResource, ...]:
         """Build the minimal Rope resource set for semantic occurrence searches.
 
         The workspace name index already narrows the candidate module set to
@@ -140,32 +141,16 @@ class FlextInfraUtilitiesRopeImports:
         index into concrete Rope resources so callers can still rely on Rope's
         semantic identity checks without scanning the full project.
         """
-        name_index_getter = getattr(rope_workspace, "name_index", None)
-        resource_getter = getattr(rope_workspace, "resource", None)
-        if name_index_getter is None or resource_getter is None:
-            return None
-        occurrences = name_index_getter().get(name, ())
+        occurrences = rope_workspace.name_index().get(name, ())
         resolved_definition = definition_path.resolve()
         dependent_paths: frozenset[str] | None = None
-        import_dependents_getter = getattr(rope_workspace, "import_dependents", None)
-        if dependent_import_targets and callable(import_dependents_getter):
+        if dependent_import_targets:
             dependent_candidates: set[Path] = {resolved_definition}
             for import_target in dependent_import_targets:
-                dependent_paths_raw = import_dependents_getter(import_target)
-                if not isinstance(dependent_paths_raw, tuple):
-                    msg = (
-                        "rope import_dependents returned non-tuple for "
-                        f"{import_target}: {type(dependent_paths_raw).__name__}"
-                    )
-                    raise TypeError(msg)
-                for path in dependent_paths_raw:
-                    if not isinstance(path, Path):
-                        msg = (
-                            "rope import_dependents returned invalid path for "
-                            f"{import_target}: {type(path).__name__}"
-                        )
-                        raise TypeError(msg)
-                    dependent_candidates.add(path.resolve())
+                dependent_candidates.update(
+                    path.resolve()
+                    for path in rope_workspace.import_dependents(import_target)
+                )
             dependent_paths = frozenset(str(path) for path in dependent_candidates)
         seen_paths = {str(resolved_definition)}
         resources: list[t.Infra.RopeResource] = [resource]
@@ -178,7 +163,7 @@ class FlextInfraUtilitiesRopeImports:
                 continue
             if cache_key in seen_paths:
                 continue
-            candidate_resource = resource_getter(resolved_path)
+            candidate_resource = rope_workspace.resource(resolved_path)
             if candidate_resource is None:
                 msg = (
                     "rope search resource unavailable for indexed path "
@@ -212,7 +197,7 @@ class FlextInfraUtilitiesRopeImports:
             *FlextInfraUtilitiesRopeRuntime.rope_runtime_errors(),
             TypeError,
         ) as exc:
-            return r[bool].fail(f"rope organize_imports raised: {exc!s}")
+            return r[bool].fail(f"rope organize_imports raised: {exc!s}", exception=exc)
         if changes is None:
             return r[bool].ok(False)
         change_list_raw = getattr(changes, "changes", None)
@@ -262,7 +247,7 @@ class FlextInfraUtilitiesRopeImports:
                     rope_project, existing_paths
                 )
             except ValueError as exc:
-                return r[bool].fail(str(exc))
+                return r[bool].fail(str(exc), exception=exc)
         rope_changed = False
         for file_path in existing_paths:
             resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
@@ -272,9 +257,7 @@ class FlextInfraUtilitiesRopeImports:
                 continue
             organize_result = cls.organize_imports(rope_project, resource, apply=True)
             if organize_result.failure:
-                return r[bool].fail(
-                    organize_result.error or "rope organize_imports failed"
-                )
+                return r[bool].from_failure(organize_result)
             rope_changed = rope_changed or organize_result.unwrap_or(False)
         normalized_paths = tuple(str(path) for path in existing_paths)
         check_result = u.Cli.run_raw(
@@ -282,21 +265,19 @@ class FlextInfraUtilitiesRopeImports:
             timeout=c.Infra.TIMEOUT_SHORT,
         )
         if check_result.failure:
-            return r[bool].fail(check_result.error or "ruff check --fix failed")
+            return r[bool].from_failure(check_result)
         if preserve_canonical_aliases:
             restore_result = cls._ensure_canonical_alias_imports(
                 rope_project, canonical_imports
             )
             if restore_result.failure:
-                return r[bool].fail(
-                    restore_result.error or "canonical alias restore failed"
-                )
+                return r[bool].from_failure(restore_result)
             rope_changed = rope_changed or restore_result.unwrap_or(False)
         format_result = u.Cli.run_raw(
             ["ruff", "format", *normalized_paths], timeout=c.Infra.TIMEOUT_SHORT
         )
         if format_result.failure:
-            return r[bool].fail(format_result.error or "ruff format failed")
+            return r[bool].from_failure(format_result)
         return r[bool].ok(rope_changed)
 
     @classmethod
@@ -368,7 +349,7 @@ class FlextInfraUtilitiesRopeImports:
             tree = ast.parse(source)
         except SyntaxError as exc:
             return r[frozenset[str]].fail(
-                f"source is not parseable after import cleanup: {exc!s}"
+                f"source is not parseable after import cleanup: {exc!s}", exception=exc
             )
         for node in ast.walk(tree):
             if isinstance(node, ast.Name) and node.id in alias_set:
@@ -405,9 +386,7 @@ class FlextInfraUtilitiesRopeImports:
                 tuple(alias for _module_name, aliases in entries for alias in aliases),
             )
             if referenced_aliases_result.failure:
-                return r[bool].fail(
-                    referenced_aliases_result.error or "alias reference scan failed"
-                )
+                return r[bool].from_failure(referenced_aliases_result)
             referenced_aliases = referenced_aliases_result.unwrap_or(frozenset())
             current: dict[str, set[str]] = defaultdict(set)
             for import_stmt in cls.import_statements(module_imports):

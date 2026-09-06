@@ -6,11 +6,12 @@ import tomllib
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
-from tests import WorktreeFixture, u as test_u
+from tests import u as test_u
+from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
 
@@ -65,17 +66,19 @@ class TestsCodegenCatalogExtensions:
     def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
         tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
-    def test_bootstrap_toolchain_pins_one_tracked_mise_release(self) -> None:
-        """The tracked launchers are the pinned Mise owner, not a config floor.
-
-        The toolchain SSOT declared ``mise_version`` until the Mise transaction
-        made ``bin/mise``/``bin/mise.cmd`` the committed, checksum-verified
-        owner. The live contract is therefore that both launchers embed exactly
-        one valid release, which is what this asserts.
-        """
-        release = test_u.Tests.mise_release()
-
-        tm.that(FlextInfraCodegenMiseArtifacts.is_mise_release(release), eq=True)
+    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
+        template = (
+            Path(__file__).parents[3]
+            / "src/flext_infra/templates/project/base/tool_bootstrap_recipe.j2"
+        ).read_text(encoding="utf-8")
+        tm.that(template, lacks="latest_release_url")
+        tm.that(template, lacks="curl ")
+        tm.that(template, lacks="--windows --version")
+        tm.that(template, has="generate install-script --write")
+        tm.that(template, has='mise_install_path="$$scratch/runtime/seed-mise')
+        tm.that(template, has='mise_install_path="$$scratch/runtime/mise')
+        tm.that(template, has="receipt_runtime")
+        tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -153,7 +156,7 @@ class TestsCodegenCatalogExtensions:
             beads=test_u.Tests.beads_project(root.name),
             repository=root,
             project=test_u.Tests.project_spec(root.name),
-            declared_repositories=(member,),
+            subprojects=(member,),
         )
         provider = test_u.Tests.provider()
         member_source = tmp_path / "member-source"
@@ -189,9 +192,9 @@ class TestsCodegenCatalogExtensions:
             ])
         )
 
-        repository_root = tmp_path / "workspace"
+        workspace_root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
-            repository_root,
+            workspace_root,
             root.distribution,
             workspace=root.name,
             database=root.name,
@@ -210,10 +213,10 @@ class TestsCodegenCatalogExtensions:
                     bare_repo.as_posix(),
                     member.name,
                 ],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
-        member_checkout = repository_root / member.name
+        member_checkout = workspace_root / member.name
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "remote", "set-url", "origin", member.url],
@@ -228,7 +231,7 @@ class TestsCodegenCatalogExtensions:
         )
         WorktreeFixture.link_member_beads(
             member_checkout,
-            repository_root,
+            workspace_root,
             workspace_name=root.name,
             database=root.name,
             issue_prefix=root.name,
@@ -244,21 +247,21 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        gitmodules = WorktreeFixture.write_gitmodules(repository_root, (member.name,))
+        gitmodules = WorktreeFixture.write_gitmodules(workspace_root, (member.name,))
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "add", c.Infra.GITMODULES, member.name],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "commit", "-q", "-m", "Attach governed member"],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
         root_head = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=repository_root)
+            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=workspace_root)
         )
         tm.ok(
             u.Cli.run_checked(
@@ -268,13 +271,13 @@ class TestsCodegenCatalogExtensions:
                     f"refs/remotes/origin/{provider.branch}",
                     root_head,
                 ],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
         declared_gitmodules = gitmodules.read_bytes()
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
-                root=repository_root,
+                root=workspace_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
@@ -288,7 +291,7 @@ class TestsCodegenCatalogExtensions:
         root_makefile = next(
             file
             for file in plan.files
-            if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
+            if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
             test_u.Tests.codegen_file_text(root_makefile),

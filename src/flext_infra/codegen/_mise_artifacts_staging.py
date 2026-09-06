@@ -8,9 +8,11 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, m, u
-from flext_infra.codegen import _mise_artifacts_candidates as candidates
-from flext_infra.codegen import _mise_artifacts_files as files
-from flext_infra.codegen import _mise_artifacts_process as process
+from flext_infra.codegen import (
+    _mise_artifacts_candidates as candidates,
+    _mise_artifacts_files as files,
+    _mise_artifacts_process as process,
+)
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -97,16 +99,7 @@ class FlextInfraMiseStaging:
     def _lock_resolution_is_required(
         project: m.Infra.MiseToolchainProjectState,
     ) -> bool:
-        """Return whether this project's lock must be resolved from the network.
-
-        ``mise lock --bump`` re-resolves every declared selector against its
-        remote registry. That is required exactly when the declaration changed
-        or no lock exists yet. When the rendered configuration is byte-identical
-        to the published one and a lock is already present, the lock already
-        answers that declaration: re-resolving would make generation depend on
-        the network and on upstream release timing, so the same sources would
-        stop producing the same bytes.
-        """
+        """Return whether this project's lock must be resolved from the network."""
         return (
             project.artifacts.lock.content is None
             or project.config.before.content != project.config.replacement_content

@@ -35,19 +35,17 @@ if TYPE_CHECKING:
 class FlextInfraValidateLazyMapFreshness(s[bool]):
     """Flags ``__init__.py`` files whose lazy maps are out of sync with siblings."""
 
-    def build_report(self, repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Run the lazy-init generator in check-only mode, collect stale inits.
 
         Args:
-            repository_root: Root directory under which to scan packages.
+            workspace_root: Root directory under which to scan packages.
 
         Returns:
             r with ValidationReport listing each stale ``__init__.py`` as a violation.
 
         """
-        planned = FlextInfraCodegenLazyInit(
-            repository_root=repository_root
-        ).plan_files()
+        planned = FlextInfraCodegenLazyInit(repository_root=workspace_root).plan_files()
         if planned.failure:
             return r[m.Infra.ValidationReport].from_failure(planned)
         modified = tuple(
@@ -72,7 +70,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Execute the freshness validation using ``self.repository_root``."""
+        """Execute the freshness validation using the repository owner."""
         report_result = self.build_report(self.repository_root)
         if report_result.failure:
             return r[bool].fail(

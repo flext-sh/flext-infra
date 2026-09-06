@@ -48,6 +48,25 @@ class TestsFlextInfraDepsModernizerPyright:
 
         tm.that(infra_u.Infra.discover_python_dirs(tmp_path), eq=["src"])
 
+    def test_python_discovery_uses_caller_resolved_exclusions(
+        self, tmp_path: Path
+    ) -> None:
+        """Honor the command-scoped topology projection without rediscovery."""
+        from flext_infra import u as infra_u
+
+        included = tmp_path / "included"
+        excluded = tmp_path / "excluded"
+        included.mkdir()
+        excluded.mkdir()
+        (included / "module.py").write_text("VALUE = 1\n", encoding="utf-8")
+        (excluded / "module.py").write_text("VALUE = 2\n", encoding="utf-8")
+
+        discovered = infra_u.Infra.discover_python_dirs(
+            tmp_path, workspace_excluded_top_dirs=frozenset({excluded.name})
+        )
+
+        tm.that(discovered, eq=[included.name])
+
     def test_root_config_sets_expected_execution_environments(
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:

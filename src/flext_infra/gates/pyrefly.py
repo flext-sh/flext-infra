@@ -31,14 +31,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Check only local Python roots to avoid scanning dependency trees."""
         _ = ctx
-        discovered_dirs = u.Infra.discover_python_dirs(project_dir)
-        if discovered_dirs:
-            return discovered_dirs
-        if any(project_dir.glob(c.Infra.EXT_PYTHON_GLOB)) or any(
-            project_dir.glob("*.pyi")
-        ):
-            return ["."]
-        return []
+        return u.Infra.discover_python_targets(project_dir)
 
     @override
     def _build_check_command(
@@ -46,9 +39,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Build check command."""
         json_file = ctx.reports_dir / f"{project_dir.name}-pyrefly.json"
-        target_args: t.StrSequence = (
-            () if self._has_project_includes_config(project_dir) else tuple(check_dirs)
-        )
+        target_args = u.Infra.pyrefly_target_args(project_dir, tuple(check_dirs))
         return self._python_module_command(
             c.Infra.PYREFLY,
             c.Infra.CHECK,
@@ -118,11 +109,11 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                         severity=c.Infra.ERROR,
                     )
                 )
-        if (not issues) and result.exit_code != 0:
+        if (not issues) and not u.Cli.process_succeeded(result.outcome):
             message = (result.stderr or result.stdout).strip()
             if not message:
                 message = (
-                    f"pyrefly exited with code {result.exit_code} "
+                    f"pyrefly exited with code {result.outcome.raw_return_code} "
                     "without JSON diagnostics"
                 )
             issues.append(
@@ -135,7 +126,7 @@ class FlextInfraPyreflyGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
     @staticmethod
     def _parse_error_issue(message: str) -> m.Infra.Issue:
@@ -211,24 +202,6 @@ class FlextInfraPyreflyGate(FlextInfraGate):
             for err in error_items
             if "/.venv/" not in u.Cli.json_pick_str(err, "path", "")
             and "/site-packages/" not in u.Cli.json_pick_str(err, "path", "")
-        )
-
-    @staticmethod
-    def _has_project_includes_config(project_dir: Path) -> bool:
-        """Return whether pyproject.toml declares pyrefly project-includes."""
-        doc = u.Cli.toml_read(project_dir / c.Infra.PYPROJECT_FILENAME)
-        if doc is None:
-            return False
-        tool_table = u.Cli.toml_table_child(doc, c.Infra.TOOL)
-        pyrefly_table = (
-            None
-            if tool_table is None
-            else u.Cli.toml_table_child(tool_table, c.Infra.PYREFLY)
-        )
-        return (
-            pyrefly_table is not None
-            and u.Cli.toml_item_child(pyrefly_table, c.Infra.PROJECT_INCLUDES)
-            is not None
         )
 
 

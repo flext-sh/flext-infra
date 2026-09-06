@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import collections.abc
 import time
 from collections.abc import MutableMapping
 from pathlib import Path
@@ -37,11 +38,14 @@ from flext_infra.gates.tier_whitelist import FlextInfraTierWhitelistGate
 class FlextInfraGateRegistry:
     """Explicit gate registry mapping gate IDs to gate classes."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, *, runners: t.MappingKV[str, p.Cli.CommandRunner] | None = None
+    ) -> None:
         """Build the gate-id to gate-class mapping used by check execution."""
         self._gates: dict[str, type[FlextInfraGate]] = {
             gate_cls.gate_id: gate_cls for gate_cls in self._gate_classes()
         }
+        self._runners = dict(runners or {})
 
     @staticmethod
     def _gate_classes() -> t.VariadicTuple[type[FlextInfraGate]]:
@@ -76,7 +80,11 @@ class FlextInfraGateRegistry:
     def create(self, gate_id: str, repository_root: Path) -> FlextInfraGate | None:
         """Instantiate one registered gate for ``repository_root`` when available."""
         gate_cls = self._gates.get(gate_id)
-        return gate_cls(repository_root) if gate_cls else None
+        return (
+            gate_cls(repository_root, runner=self._runners.get(gate_id))
+            if gate_cls
+            else None
+        )
 
     @classmethod
     def default(cls) -> FlextInfraGateRegistry:
@@ -240,7 +248,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
         project_dir: Path,
         ctx: m.Infra.GateContext,
         gates_sink: MutableMapping[str, m.Infra.GateExecution],
-    ) -> t.Cli.PipelineHandler:
+    ) -> collections.abc.Callable[
+        [m.Cli.PipelineStageContext], p.Result[m.Cli.PipelineStageResult]
+    ]:
         """Build a pipeline stage handler that executes a single gate.
 
         The handler writes GateExecution into *gates_sink* as a side-effect
@@ -261,9 +271,6 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 fail_fast=ctx.fail_fast,
                 ruff_args=ctx.ruff_args,
                 pyright_args=ctx.pyright_args,
-                gate_mode="warn"
-                if gate_id in c.Infra.ENFORCEMENT_ADVISORY_GATES
-                else "error",
             )
             execution = self._execute_gate(gate_instance, project_dir, gate_ctx)
             gates_sink[gate_id] = execution
@@ -280,17 +287,9 @@ class FlextInfraWorkspaceCheckGatesMixin:
                 elapsed=execution.result.duration,
             )
             if not execution.result.passed:
-                inline_errors = execution.result.errors[
-                    : c.Infra.GATE_ERROR_OUTPUT_LIMIT
-                ]
-                for error in inline_errors:
+                for error in execution.result.errors:
                     u.Cli.error(error)
-                remaining = len(execution.result.errors) - len(inline_errors)
-                if remaining > 0:
-                    u.Cli.error(
-                        f"... {remaining} additional diagnostics in the check report"
-                    )
-                if not inline_errors and execution.raw_output.strip():
+                if not execution.result.errors and execution.raw_output.strip():
                     u.Cli.error(execution.raw_output.strip())
             status: t.Cli.PipelineStageStatus = (
                 c.Cli.PipelineStageStatus.OK

@@ -31,6 +31,8 @@ class FlextInfraConstantsSharedInfra:
     EXEMPT_PREFIXES: Final[frozenset[str]] = frozenset({"test_", "_"})
     FACADE_MODULE_DEPTH: Final[int] = 3
     "Relative path part count for root facade modules (src/<pkg>/<file>.py)."
+    FACADE_MINIMUM_BASES: Final[int] = 2
+    "Minimum explicit bases required by a canonical nested project facade."
     ALIAS_NAMES: Final[frozenset[str]] = frozenset({
         "c",
         "t",
@@ -117,7 +119,7 @@ class FlextInfraConstantsSharedInfra:
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
     METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
         "flext-core/src/flext_core/_utilities/project_metadata.py",
-        "flext-infra/src/flext_infra/_utilities/iteration.py",
+        "flext-infra/src/flext_infra/iteration.py",
         "flext-infra/src/flext_infra/__version__.py",
     )
     METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (

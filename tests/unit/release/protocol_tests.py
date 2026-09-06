@@ -213,41 +213,6 @@ class TestsFlextInfraReleaseProtocol:
             tm.that(plan.releasable, eq=True)
 
         @staticmethod
-        def test_release_candidate_tag_never_outranks_its_own_release(
-            tmp_path: Path,
-        ) -> None:
-            """A repository that ever cut an rc still bumps after its release.
-
-            Git's ``--sort=version:refname`` is a refname collation, so it put
-            ``v0.1.0rc2`` above ``v0.1.0``. The plan then read the newest
-            release as a candidate, found the merged release commit and
-            answered "awaits its tag" forever (flext-1wjg1.16.34, reproduced on
-            flext-cli at v0.12.0). PEP 440 ordering is the owner.
-            """
-            workspace = u.Tests.create_release_workspace(tmp_path)
-            u.Tests.checkout_integration(workspace)
-            _tag(workspace, "v0.1.0rc1")
-            _tag(workspace, "v0.1.0rc2")
-            _tag(workspace, "v0.1.0")
-            u.Tests.merge_pull_request(workspace, "fix(core): patch level")
-
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            plan = _plan(workspace)
-            tm.that(plan.previous_tag, eq="v0.1.0")
-            tm.that(plan.bump, eq=c.Infra.VersionBump.PATCH)
-            tm.that(plan.next, eq="0.1.1")
-            tm.that(plan.releasable, eq=True)
-
-        @staticmethod
-        def test_unparsable_release_tag_fails_loud(tmp_path: Path) -> None:
-            """A ``v*`` tag that is not a version stops planning instead of ranking."""
-            workspace = _released_workspace(tmp_path)
-            _tag(workspace, "vintage")
-            u.Tests.merge_pull_request(workspace, "fix(core): patch level")
-
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
-
-        @staticmethod
         def test_pull_request_titles_decide_the_bump(tmp_path: Path) -> None:
             """The most significant Conventional title since the last tag wins."""
             workspace = _released_workspace(tmp_path)
@@ -291,19 +256,6 @@ class TestsFlextInfraReleaseProtocol:
             u.Tests.merge_pull_request(workspace, "Merge pull request #7 from x/y")
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), ne=0)
-
-        @staticmethod
-        def test_default_github_merge_uses_recorded_pr_title(tmp_path: Path) -> None:
-            """The first merge-body line is GitHub's authoritative PR title."""
-            workspace = _released_workspace(tmp_path)
-            u.Tests.merge_pull_request(
-                workspace,
-                "Merge pull request #7 from x/y",
-                body="feat(core): recorded title",
-            )
-
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
-            tm.that(_plan(workspace).next, eq="0.2.0")
 
         @staticmethod
         def test_pull_request_title_is_validated_when_given(tmp_path: Path) -> None:

@@ -7,15 +7,16 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
 from flext_cli import u
+from flext_core import r
+from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesCodegen:
+class FlextInfraUtilitiesCodegen(FlextInfraUtilitiesCodegenFacades):
     """Compose all codegen utility concerns for ``u.Infra``."""
 
     if TYPE_CHECKING:
@@ -190,6 +191,25 @@ class FlextInfraUtilitiesCodegen:
         return any(
             child.is_file() and child.suffix == ".py" for child in pkg_dir.iterdir()
         )
+
+    @staticmethod
+    def mise_toolchain_publication_required(
+        project: m.Infra.MiseToolchainProjectState,
+    ) -> bool:
+        """Return whether a changed declaration requires a new Mise publication.
+
+        A byte- and mode-identical generated configuration already owns its
+        committed launchers and lock. Re-resolving the remote ``latest`` release
+        for that unchanged declaration would make ``make gen`` nondeterministic
+        and needlessly network-bound; the caller still validates the complete
+        live bundle before accepting the fixed point.
+        """
+        config_state = project.config
+        before_content: bytes | None = config_state.before.content
+        before_mode: int | None = config_state.before.mode
+        replacement_content: bytes = config_state.replacement_content
+        replacement_mode: int = config_state.replacement_mode
+        return before_content != replacement_content or before_mode != replacement_mode
 
     @staticmethod
     def parse_final_constant_definitions(

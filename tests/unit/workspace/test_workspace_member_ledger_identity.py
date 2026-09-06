@@ -9,7 +9,7 @@ from flext_infra import c
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import u
-from tests import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorkspaceMemberLedgerIdentity:
@@ -87,8 +87,7 @@ class TestsWorkspaceMemberLedgerIdentity:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(parent))
 
         tm.that(
-            tuple(item.path for item in workspace.declared_repositories),
-            has=Path("apps/member"),
+            tuple(item.path for item in workspace.subprojects), has=Path("apps/member")
         )
 
     def test_submodule_self_load_accepts_an_independent_ledger(
@@ -108,8 +107,8 @@ class TestsWorkspaceMemberLedgerIdentity:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
-        tm.that(u.Tests.required_beads(workspace).workspace, eq="member-workspace")
-        tm.that(u.Tests.required_beads(workspace).database, eq="member-database")
+        tm.that(workspace.beads.workspace, eq="member-workspace")
+        tm.that(workspace.beads.database, eq="member-database")
 
     def test_submodule_self_load_accepts_config_only_ledger(
         self, tmp_path: Path
@@ -126,7 +125,7 @@ class TestsWorkspaceMemberLedgerIdentity:
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(member))
 
-        tm.that(u.Tests.required_beads(workspace).workspace, eq="member-workspace")
+        tm.that(workspace.beads.workspace, eq="member-workspace")
 
     def test_submodule_self_load_rejects_a_divergent_linked_identity(
         self, tmp_path: Path

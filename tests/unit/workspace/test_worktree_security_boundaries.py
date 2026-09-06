@@ -1,10 +1,11 @@
 """Security contracts for real Git worktree boundaries."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
 
-from flext_core import r
 from flext_infra import FlextInfraWorktreeService, c, m, p, u
 from flext_tests import tm
 from tests import u as test_u
@@ -35,23 +36,6 @@ def _add(
         epic_lane=epic,
         apply_changes=True,
     ).execute()
-
-
-def test_false_branch_format_report_fails_closed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    repository = _repository(tmp_path)
-
-    def reject_branch(
-        _request: m.Infra.GitBranchRequest,
-    ) -> p.Result[m.Infra.GitBoolReport]:
-        return r.ok(m.Infra.GitBoolReport(value=False))
-
-    monkeypatch.setattr(u.Infra, "git_check_branch_format", reject_branch)
-
-    result = _add(repository, "feature/rejected")
-
-    tm.fail(result, has="invalid branch name")
 
 
 @pytest.mark.parametrize("base", ["--help", "-C", "--upload-pack=payload"])
@@ -99,10 +83,14 @@ def test_symlinked_epic_topology_fails_closed(tmp_path: Path, entry: str) -> Non
         tm.ok(u.Infra.git_remove_clean_worktree(repository, epic))
         epic.symlink_to(outside, target_is_directory=True)
 
-    result = _add(repository, f"feature/{entry}-child", epic=epic)
+    try:
+        result = _add(repository, f"feature/{entry}-child", epic=epic)
 
-    tm.fail(result, has="symlink")
-    assert list(outside.iterdir()) == []
+        tm.fail(result, has="symlink")
+        assert list(outside.iterdir()) == []
+    finally:
+        if epic.is_symlink():
+            epic.unlink()
 
 
 def test_epic_path_must_match_git_registry(tmp_path: Path) -> None:

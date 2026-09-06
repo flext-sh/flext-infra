@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Never
 
 from filelock import lock_descriptor, unlock_descriptor
+
 from flext_infra import c, m, u
 
 _LEASE_FAILURES: tuple[type[BaseException], ...] = (

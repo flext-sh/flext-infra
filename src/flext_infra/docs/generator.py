@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra._utilities.docs_generate import FlextInfraUtilitiesDocsGenerate
 from flext_infra.docs._generator_bundle import FlextInfraDocGeneratorBundleMixin
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
@@ -85,7 +84,7 @@ class FlextInfraDocGenerator(
     ) -> p.Result[tuple[Path, ...]]:
         """Derive target parent chains from the exact prepared render bundle."""
         repository_root = bundle.scopes[0].scope.path
-        stable = FlextInfraUtilitiesDocsGenerate.docs_verify_sources(
+        stable = u.Infra.docs_verify_sources(
             repository_root,
             bundle.source_states,
             extra_roots=tuple(scoped.scope.path for scoped in bundle.scopes),

@@ -47,18 +47,14 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
                     constants_file
                 )
                 if value_map_result.failure:
-                    return r[str].fail(
-                        value_map_result.error or "constants file read failed"
-                    )
+                    return r[str].from_failure(value_map_result)
                 value_map = value_map_result.value
                 if not value_map:
                     continue
 
                 project_files = self._project_python_files(rope, project.path)
                 if project_files.failure:
-                    return r[str].fail(
-                        project_files.error or "project python file discovery failed"
-                    )
+                    return r[str].from_failure(project_files)
                 for python_file in project_files.value:
                     scanned = self._scan_file(rope.rope_project, python_file, value_map)
                     if scanned is None:
@@ -147,9 +143,7 @@ class FlextInfraCodegenConsolidator(s[str], FlextInfraCodegenConsolidatorStepsMi
         _ = rope_workspace
         discovered = u.Infra.projects(self.repository_root)
         if discovered.failure:
-            return r[t.SequenceOf[p.Infra.ProjectInfo]].fail(
-                discovered.error or "project discovery failed"
-            )
+            return r[t.SequenceOf[p.Infra.ProjectInfo]].from_failure(discovered)
         selected = tuple(
             project
             for project in discovered.unwrap()

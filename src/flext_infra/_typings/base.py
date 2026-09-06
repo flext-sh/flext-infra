@@ -10,8 +10,6 @@ from collections.abc import Callable, MutableMapping
 from pathlib import Path as _Path
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator
-
 from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
@@ -58,8 +56,6 @@ class FlextInfraTypesBase:
     "Facade family identifier for FLEXT chain resolution."
     type ExpectedBase = type | str
     "Expected FLEXT base: a class or its qualified name."
-    type PolicyContext = t.MappingKV[str, t.JsonMapping]
-    "Class-nesting policy matrix keyed by module family."
     type MetricValue = t.Scalar | _Path | None
     "Output metric value: scalar (str/int/float/bool/datetime), path, or null."
     type ChangeCallback = Callable[[str], None] | None
@@ -84,15 +80,12 @@ class FlextInfraTypesBase:
     "Read-only validated infra payload sequence."
     type RuleSelection[KindT] = tuple[KindT, t.JsonMapping]
     "One matched rule kind paired with its validated declarative payload."
-    type LoadedRuleSelections[RuleKindT, FileRuleKindT] = tuple[
-        t.SequenceOf[tuple[RuleKindT, t.JsonMapping]],
-        t.SequenceOf[tuple[FileRuleKindT, t.JsonMapping]],
-    ]
-    "Loaded text-rule + file-rule selections from one declarative rules directory."
     type DomainResult = m.BaseModel | InfraValue
     "Typed service result payload: model or validated JSON value."
     type DomainResultSequence = t.SequenceOf[DomainResult]
     "Read-only sequence of typed service result payloads."
+    type StubChainRuntimeState = dict[str, t.GuardInput | None]
+    "Canonical model-construction payload for the stub supply-chain service."
 
     # ── Transformer / edit result types ──────────────────────────────
 
@@ -108,7 +101,7 @@ class FlextInfraTypesBase:
     # ── Lint policy types ────────────────────────────────────────────
 
     type RuffRule = Annotated[
-        str, t.StringConstraints(min_length=1), AfterValidator(_reject_blanket_mask)
+        str, t.StringConstraints(min_length=1), m.AfterValidator(_reject_blanket_mask)
     ]
     """One named Ruff rule exempted for a path.
 
@@ -143,7 +136,6 @@ class FlextInfraTypesBase:
         str, t.StringConstraints(pattern=r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
     ]
     "Lowercase Git SHA-1 or SHA-256 commit object identifier."
-
     # ── Git type aliases ─────────────────────────────────────────────
 
     type GitOid = str

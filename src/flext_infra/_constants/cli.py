@@ -77,7 +77,6 @@ class FlextInfraConstantsCli:
         "validate": "Infrastructure validators and diagnostics",
         "deps": "Dependency detection and modernization",
         "docs": "Documentation audit, fix, build, generate, validate",
-        "github": "GitHub workflow synchronization and linting",
         "maintenance": "Python version enforcement",
         "refactor": "Declarative refactoring and modernization",
         "release": "Release orchestration",

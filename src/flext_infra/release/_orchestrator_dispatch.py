@@ -522,19 +522,20 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
 
     @staticmethod
     def _latest_tag(root: Path) -> p.Result[str]:
-        """Return the highest release tag, or an empty string before the first release.
-
-        The listing is deliberately unsorted: Git's version collation is not a
-        PEP 440 ordering and ranks ``v0.12.0rc2`` above ``v0.12.0``. The typed
-        versioning owner performs the ordering instead.
-        """
+        """Return the highest release tag, or an empty string before the first release."""
         tags = u.Cli.capture(
-            [c.Infra.GIT, "tag", "--list", c.Infra.TAG_FORMAT.format(version="*")],
+            [
+                c.Infra.GIT,
+                "tag",
+                "--list",
+                c.Infra.TAG_FORMAT.format(version="*"),
+                "--sort=-version:refname",
+            ],
             cwd=root,
         )
         if tags.failure:
             return r[str].fail(tags.error or "release tag listing failed")
-        return u.Infra.latest_release_tag(tags.value.splitlines())
+        return r[str].ok(next((line for line in tags.value.splitlines() if line), ""))
 
     @staticmethod
     def _subjects(
@@ -543,36 +544,23 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         """Return commit subjects reachable from HEAD since ``since`` (all when empty).
 
         Merge commits carry the pull-request titles the bump is derived from;
-        the full history is what the release commit is looked up in. GitHub's
-        default merge subject contains only the PR number and branch, so its
-        first body line is the authoritative PR title. Preserve the default
-        subject when that line is absent so release planning fails loud.
+        the full history is what the release commit is looked up in.
         """
         log = u.Cli.capture(
             [
                 c.Infra.GIT,
                 "log",
-                "--format=%s%x1f%b%x1e",
                 *(("--merges",) if merges_only else ()),
+                "--format=%s",
                 f"{since}..{c.Infra.GIT_HEAD}",
             ],
             cwd=root,
         )
         if log.failure:
             return r[t.StrSequence].fail(log.error or "merge log failed")
-        titles: list[str] = []
-        for record in log.value.split("\x1e"):
-            if not record.strip():
-                continue
-            subject, _, body = record.strip().partition("\x1f")
-            if merges_only and c.Infra.PULL_REQUEST_MERGE_SUBJECT_RE.match(subject):
-                title = next(
-                    (line.strip() for line in body.splitlines() if line.strip()), ""
-                )
-                titles.append(title or subject)
-            else:
-                titles.append(subject)
-        return r[t.StrSequence].ok(tuple(titles))
+        return r[t.StrSequence].ok(
+            tuple(line for line in log.value.splitlines() if line.strip())
+        )
 
 
 __all__: list[str] = ["FlextInfraReleaseOrchestratorDispatchMixin"]

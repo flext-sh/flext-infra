@@ -29,12 +29,12 @@ class FlextInfraWorkspaceEnvironmentMixin:
     ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
         """Sync one workspace's generated environment files."""
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
-        repository_root = request.repository_root
+        repository_root = request.workspace_root
         if not (repository_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return cls._remove_generated_environment_files(request)
         envrc_result = cls._sync_envrc(request)
         if envrc_result.failure:
-            return r[result_type].fail(envrc_result.error or ".envrc sync failed")
+            return r[result_type].from_failure(envrc_result)
         changed = (
             (repository_root / c.Infra.ENVRC_FILENAME,) if envrc_result.value else ()
         )
@@ -47,9 +47,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
         """Write canonical ``.envrc`` when absent, generated, or forced."""
         rendered = cls._render_environment_template(c.Infra.ENVRC_FILENAME)
         if rendered.failure:
-            return r[bool].fail(rendered.error or ".envrc template render failed")
+            return r[bool].from_failure(rendered)
         return cls._write_generated_text(
-            request.repository_root / c.Infra.ENVRC_FILENAME,
+            request.workspace_root / c.Infra.ENVRC_FILENAME,
             rendered.value,
             apply=request.apply,
             force=request.force,
@@ -76,6 +76,9 @@ class FlextInfraWorkspaceEnvironmentMixin:
             context
             if context is not None
             else m.Infra.EnvrcRenderSpec(
+                state_directory_name=config.Infra.codegen.toolchain.state_directory_name,
+                scratch_namespace=config.Infra.codegen.toolchain.scratch_namespace,
+                pycache_namespace=config.Infra.codegen.toolchain.pycache_namespace,
                 environment_path_prepends=(
                     config.Infra.codegen.toolchain.environment_path_prepends
                 ),
@@ -92,12 +95,12 @@ class FlextInfraWorkspaceEnvironmentMixin:
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
         removed: list[Path] = []
         for filename in c.Infra.WORKSPACE_ENV_FILES:
-            target_path = request.repository_root / filename
+            target_path = request.workspace_root / filename
             result = cls._remove_generated_environment_file(
                 target_path, apply=request.apply
             )
             if result.failure:
-                return r[result_type].fail(result.error or f"{filename} removal failed")
+                return r[result_type].from_failure(result)
             if result.value:
                 removed.append(target_path)
         return r[result_type].ok(result_type(changed_files=tuple(removed)))
@@ -111,16 +114,14 @@ class FlextInfraWorkspaceEnvironmentMixin:
             return r[bool].ok(False)
         read = u.Cli.files_read_text(target_path)
         if read.failure:
-            return r[bool].fail(read.error or f"{target_path.name} read failed")
+            return r[bool].from_failure(read)
         if not cls._is_generated_environment_text(read.value):
             return r[bool].ok(False)
         if not apply:
             return r[bool].ok(True)
         delete_result = u.Cli.files_delete(target_path)
         if delete_result.failure:
-            return r[bool].fail(
-                delete_result.error or f"{target_path.name} delete failed"
-            )
+            return r[bool].from_failure(delete_result)
         return r[bool].ok(True)
 
     @classmethod
@@ -131,7 +132,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if target_path.exists():
             read = u.Cli.files_read_text(target_path)
             if read.failure:
-                return r[bool].fail(read.error or f"{target_path.name} read failed")
+                return r[bool].from_failure(read)
             existing = read.value
             if u.Cli.sha256_content(existing) == u.Cli.sha256_content(content):
                 return r[bool].ok(False)
@@ -147,7 +148,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if target_path.is_file():
             read = u.Cli.files_read_text(target_path)
             if read.failure:
-                return r[bool].fail(read.error or f"{target_path.name} read failed")
+                return r[bool].from_failure(read)
             if read.value == content:
                 return r[bool].ok(False)
         if not apply:

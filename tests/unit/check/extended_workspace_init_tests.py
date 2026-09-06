@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra.check.workspace_check import FlextInfraWorkspaceChecker
+from flext_infra.check import FlextInfraWorkspaceChecker
 from flext_tests import tm
 from tests import c, u
 
@@ -35,15 +35,12 @@ class TestWorkspaceChecker:
         result = FlextInfraWorkspaceChecker(workspace=tmp_path).execute()
         tm.fail(result, has="Use execute_command() directly")
 
-    def test_resolve_gates_deduplicates_explicit_gates(self) -> None:
+    def test_resolve_gates_rejects_duplicate_explicit_gates(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates([
             c.Infra.PYREFLY,
             c.Infra.PYREFLY,
-            c.Infra.LINT,
-            c.Infra.LINT,
         ])
-        tm.ok(result)
-        tm.that(result.value, eq=[c.Infra.PYREFLY, c.Infra.LINT])
+        tm.fail(result, has=f"duplicate gate '{c.Infra.PYREFLY}'")
 
     def test_resolve_gates_rejects_unknown_gate(self) -> None:
         result = FlextInfraWorkspaceChecker.resolve_gates(["unknown"])

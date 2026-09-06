@@ -47,36 +47,36 @@ class TestScannerHelpers:
         """Canonical file selection prefers tracked files when Git is active."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(init_result.value.exit_code, eq=0)
+        tm.that(init_result.value.outcome.raw_return_code, eq=0)
         email_result = u.Cli.run_raw(
             ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
         )
         tm.ok(email_result)
-        tm.that(email_result.value.exit_code, eq=0)
+        tm.that(email_result.value.outcome.raw_return_code, eq=0)
         name_result = u.Cli.run_raw(
             ["git", "config", "user.name", "Test User"], cwd=tmp_path
         )
         tm.ok(name_result)
-        tm.that(name_result.value.exit_code, eq=0)
+        tm.that(name_result.value.outcome.raw_return_code, eq=0)
         tracked_file = tmp_path / "tracked.py"
         tracked_file.write_text("")
         untracked_file = tmp_path / "untracked.py"
         untracked_file.write_text("")
         add_result = u.Cli.run_raw(["git", "add", "tracked.py"], cwd=tmp_path)
         tm.ok(add_result)
-        tm.that(add_result.value.exit_code, eq=0)
+        tm.that(add_result.value.outcome.raw_return_code, eq=0)
 
         files = u.Infra.iter_matching_files(tmp_path, includes=["*.py"])
 
         tm.that(files, eq=[tracked_file, untracked_file])
 
-    def test_iter_matching_files_uses_explicit_scope_outside_git_identity(
+    def test_iter_matching_files_excludes_git_ignored_explicit_scope(
         self, tmp_path: Path
     ) -> None:
-        """An ignored nested fixture is not owned by its ancestor repository."""
+        """An ignored nested scope cannot bypass its ancestor repository policy."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(init_result.value.exit_code, eq=0)
+        tm.that(init_result.value.outcome.raw_return_code, eq=0)
         (tmp_path / ".gitignore").write_text("scratch/\n", encoding="utf-8")
         scope = tmp_path / "scratch" / "project"
         scope.mkdir(parents=True)
@@ -85,7 +85,7 @@ class TestScannerHelpers:
 
         files = u.Infra.iter_matching_files(scope, includes=["*.md"])
 
-        tm.that(files, eq=[explicit_file])
+        tm.that(files, eq=[])
 
     def test_tracked_scope_refreshes_dirty_files_between_scans(
         self, tmp_path: Path
@@ -93,7 +93,7 @@ class TestScannerHelpers:
         """A long-running pipeline observes files created after its first scan."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(init_result.value.exit_code, eq=0)
+        tm.that(init_result.value.outcome.raw_return_code, eq=0)
         source = tmp_path / "src"
         source.mkdir()
         first = source / "first.py"
@@ -117,7 +117,7 @@ class TestScannerHelpers:
 
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(init_result.value.exit_code, eq=0)
+        tm.that(init_result.value.outcome.raw_return_code, eq=0)
 
         tm.that(infra_u.Infra.git_tracked_scope_paths(source), eq=[unmanaged])
 
@@ -127,7 +127,7 @@ class TestScannerHelpers:
         """A valid empty Git scope stays distinct from an external scope."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
-        tm.that(init_result.value.exit_code, eq=0)
+        tm.that(init_result.value.outcome.raw_return_code, eq=0)
         scope = tmp_path / "empty"
         scope.mkdir()
 

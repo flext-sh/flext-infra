@@ -22,27 +22,31 @@ class _DepsStub(
 
     @override
     def discover_project_paths(
-        self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
+        self, repository_root: Path, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
         del repository_root, projects_filter
         return r[Sequence[Path]].ok([self._project])
 
     @override
     def run_deptry(
-        self, project_path: Path, venv_bin: Path
+        self,
+        project_path: Path,
+        venv_bin: Path,
+        *,
+        config_path: Path | None = None,
+        json_output_path: Path | None = None,
+        extend_exclude: t.StrSequence | None = None,
     ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
-        del project_path, venv_bin
+        del project_path, venv_bin, config_path, json_output_path, extend_exclude
         return r[t.Pair[Sequence[t.JsonMapping], int]].ok(([], 0))
 
     @override
     def build_project_report(
         self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
-    ) -> m.Infra.ProjectRuntimeReport:
+    ) -> m.Infra.ProjectDependencyReport:
         del project_name, deptry_issues
-        return m.Infra.ProjectRuntimeReport(
-            deptry=m.Infra.DeptryReport(
-                missing=[], unused=[], transitive=[], dev_in_runtime=[], raw_count=0
-            )
+        return m.Infra.ProjectDependencyReport(
+            project="fixture", deptry=m.Infra.DeptryReport(raw_count=0)
         )
 
     @override
@@ -67,9 +71,9 @@ class _DepsStub(
 
     @override
     def run_pip_check(
-        self, repository_root: Path, venv_bin: Path
+        self, workspace_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        del repository_root, venv_bin
+        del workspace_root, venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], 0))
 
 
@@ -147,7 +151,7 @@ class TestsFlextInfraDepsDetectorMain:
         ) -> p.Result[p.Cli.CommandOutput]:
             del cmd, cwd, timeout, env
             return r[p.Cli.CommandOutput].ok(
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+                u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
             )
 
         runtime = FlextInfraDependencyDetectorRuntime(
@@ -167,7 +171,7 @@ class TestsFlextInfraDepsDetectorMain:
     def test_run_with_apply_typings_success(self, tmp_path: Path) -> None:
         """Verify run with apply typings success."""
         run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+            u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
         )
         runtime, calls = _setup_typings_detector(
             tmp_path, ["types-requests"], run_result
@@ -185,7 +189,7 @@ class TestsFlextInfraDepsDetectorMain:
     def test_run_with_apply_typings_multiple_packages(self, tmp_path: Path) -> None:
         """Verify run with apply typings multiple packages."""
         run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
+            u.Tests.create_command_output(stdout="", stderr="", exit_code=0)
         )
         runtime, calls = _setup_typings_detector(
             tmp_path,
@@ -205,7 +209,7 @@ class TestsFlextInfraDepsDetectorMain:
     def test_run_with_apply_typings_poetry_add_failure(self, tmp_path: Path) -> None:
         """Verify run with apply typings poetry add failure."""
         run_result: p.Result[p.Cli.CommandOutput] = r[p.Cli.CommandOutput].ok(
-            m.Cli.CommandOutput(stdout="", stderr="", exit_code=1)
+            u.Tests.create_command_output(stdout="", stderr="", exit_code=1)
         )
         runtime, _ = _setup_typings_detector(tmp_path, ["types-requests"], run_result)
         params = m.Infra.DetectCommand(

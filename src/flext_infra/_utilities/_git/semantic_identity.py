@@ -56,10 +56,10 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
                 repo, primary_root=primary.value, requested_path=request.repo_root
             )
         except GitCommandError as exc:
-            return r[m.Infra.GitIdentityReport].fail(str(exc))
+            return r[m.Infra.GitIdentityReport].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
             return r[m.Infra.GitIdentityReport].fail(
-                f"failed to resolve Git identity: {exc}"
+                f"failed to resolve Git identity: {exc}", exception=exc
             )
         return r[m.Infra.GitIdentityReport].ok(report)
 
@@ -75,9 +75,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
         """
         refreshed = FlextInfraUtilitiesGitRepo.refresh_binary()
         if refreshed.failure:
-            return r[m.Infra.GitBoolReport].fail(
-                refreshed.error or "git binary unavailable"
-            )
+            return r[m.Infra.GitBoolReport].from_failure(refreshed)
         resolved = request.repo_root.expanduser().resolve()
         try:
             # Why (flext-infra-c3h): same nested-path contract as git_open_repo.
@@ -86,7 +84,7 @@ class FlextInfraUtilitiesGitSemanticIdentityMixin(
             return r[m.Infra.GitBoolReport].ok(m.Infra.GitBoolReport(value=False))
         except (GitCommandNotFound, OSError, ValueError) as exc:
             return r[m.Infra.GitBoolReport].fail(
-                f"failed to probe Git work tree: {exc}"
+                f"failed to probe Git work tree: {exc}", exception=exc
             )
         return r[m.Infra.GitBoolReport].ok(
             m.Infra.GitBoolReport(

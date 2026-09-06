@@ -154,9 +154,6 @@ Infra:
             - typing-only-standard-library-import
             - typing-only-third-party-import
           ignored-rule-rationales:
-            unsorted-imports:
-              Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
-              semantic c-t-p-m-u dependency order in FLEXT facades.
             import-outside-top-level:
               Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
@@ -553,6 +550,9 @@ Infra:
         # process wall adds one minute for orderly worker/report shutdown.
         run-timeout-seconds: 600
         termination-grace-seconds: 2
+        # The first failing test is the only actionable red. Continuing after
+        # it wastes runtime and obscures the causal failure.
+        max-failures: 1
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
@@ -566,9 +566,10 @@ Infra:
         # Reserve physical memory for each xdist worker and its child process
         # tree; this bound may reduce the tested ceiling on smaller hosts.
         parallel-worker-memory-gb: 2
-        # Work stealing drains uneven codegen/subprocess tails without the
-        # serialized 99% tail measured under loadscope.
-        parallel-distribution: worksteal
+        # Keep scheduling centralized so -x stops feeding workers after the
+        # first failure. Work stealing pre-allocated an entire worker queue and
+        # continued hundreds of cases for minutes after a decisive failure.
+        parallel-distribution: load
         profile-sort: cumulative
         profile-limit: 50
         min-version: "8.0"
@@ -622,6 +623,7 @@ Infra:
       tomlsort:
         all: true
         in_place: true
+        process-timeout-seconds: 60
         sort_first: [project, build-system, tool, dependency-groups]
       vulture:
         # NOTE (multi-agent, flext-j47u): Vulture 2.16 reports keyword-bearing

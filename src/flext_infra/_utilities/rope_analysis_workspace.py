@@ -22,13 +22,13 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return frozenset[str]((*c.Infra.ITERATION_EXCLUDED_PARTS, *ignored))
 
     @staticmethod
-    def _project_root_for_file(repository_root: Path, file_path: Path) -> Path | None:
+    def _project_root_for_file(workspace_root: Path, file_path: Path) -> Path | None:
         """Project root for file."""
         for parent in file_path.parents:
             if (parent / "pyproject.toml").is_file():
                 return parent.resolve()
-            if parent == repository_root:
-                return repository_root
+            if parent == workspace_root:
+                return workspace_root
         return None
 
     @classmethod
@@ -194,10 +194,10 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
 
     @classmethod
     def index_rope_workspace(
-        cls, rope_project: t.Infra.RopeProject, repository_root: Path
+        cls, rope_project: t.Infra.RopeProject, workspace_root: Path
     ) -> m.Infra.RopeWorkspaceIndex:
         """Build a generic Rope workspace index for package-oriented planning."""
-        resolved_root = repository_root.resolve()
+        resolved_root = workspace_root.resolve()
         (
             modules_by_path,
             modules_by_dir,

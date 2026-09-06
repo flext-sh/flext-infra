@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c
 from flext_tests import tm
-from tests import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorktreeRemoval(WorktreeFixture):

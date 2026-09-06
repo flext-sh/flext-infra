@@ -1,4 +1,4 @@
-"""Tests for the Rope-migrated symbol propagator."""
+"""Tests for rope-migrated transformers: symbol_propagator."""
 
 from __future__ import annotations
 

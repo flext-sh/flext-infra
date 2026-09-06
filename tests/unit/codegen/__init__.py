@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
@@ -19,6 +18,7 @@ if TYPE_CHECKING:
     from .lazy_init_runtime_tests import TestsFlextInfraLazyInitRuntime
     from .lazy_init_service_tests import TestsFlextInfraCodegenLazyInitService
     from .test_codegen_hook_conformance import TestGitHookConformance
+    from .test_utility_facade_projection import TestsFlextInfraUtilityFacadeProjection
 __all__: tuple[str, ...] = (
     "TestGitHookConformance",
     "TestsFlextInfraCodegenGeneration",
@@ -27,6 +27,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraLazyInitCleanup",
     "TestsFlextInfraLazyInitProcessing",
     "TestsFlextInfraLazyInitRuntime",
+    "TestsFlextInfraUtilityFacadeProjection",
     "c",
     "d",
     "e",
@@ -55,6 +56,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".lazy_init_runtime_tests": ("TestsFlextInfraLazyInitRuntime",),
             ".lazy_init_service_tests": ("TestsFlextInfraCodegenLazyInitService",),
             ".test_codegen_hook_conformance": ("TestGitHookConformance",),
+            ".test_utility_facade_projection": (
+                "TestsFlextInfraUtilityFacadeProjection",
+            ),
             "flext_tests": (
                 "c",
                 "d",

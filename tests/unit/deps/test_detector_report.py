@@ -6,18 +6,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import override
 
-from flext_infra import r
+from flext_infra import m, r
 from flext_infra.deps.detector_runtime import FlextInfraDependencyDetectorRuntime
 from flext_tests import tm
-from tests import TestsFlextInfraUtilities as u, m, p, t
-
-
-class _ReportStub:
-    def __init__(self, raw_count: int) -> None:
-        self._raw_count = raw_count
-
-    def model_dump(self) -> t.JsonMapping:
-        return {"deptry": {"raw_count": self._raw_count}}
+from tests import TestsFlextInfraUtilities as u, p, t
 
 
 class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
@@ -28,7 +20,7 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def discover_project_paths(
-        self, repository_root: Path, *, projects_filter: t.StrSequence | None = None
+        self, repository_root: Path, projects_filter: t.StrSequence | None = None
     ) -> p.Result[Sequence[Path]]:
         _ = repository_root
         _ = projects_filter
@@ -36,7 +28,13 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
 
     @override
     def run_deptry(
-        self, project_path: Path, venv_bin: Path
+        self,
+        project_path: Path,
+        venv_bin: Path,
+        *,
+        config_path: Path | None = None,
+        json_output_path: Path | None = None,
+        extend_exclude: t.StrSequence | None = None,
     ) -> p.Result[t.Pair[Sequence[t.JsonMapping], int]]:
         _ = project_path
         _ = venv_bin
@@ -45,16 +43,18 @@ class _DepsStub(p.Infra.DepsService, p.Infra.PipCheckDepsService):
     @override
     def build_project_report(
         self, project_name: str, deptry_issues: t.SequenceOf[t.JsonMapping]
-    ) -> _ReportStub:
+    ) -> m.Infra.ProjectDependencyReport:
         _ = project_name
         _ = deptry_issues
-        return _ReportStub(self._raw_count)
+        return m.Infra.ProjectDependencyReport(
+            project="fixture", deptry=m.Infra.DeptryReport(raw_count=self._raw_count)
+        )
 
     @override
     def run_pip_check(
-        self, repository_root: Path, venv_bin: Path
+        self, workspace_root: Path, venv_bin: Path
     ) -> p.Result[tuple[t.StrSequence, int]]:
-        _ = repository_root
+        _ = workspace_root
         _ = venv_bin
         return r[tuple[t.StrSequence, int]].ok(([], self._pip_exit))
 
