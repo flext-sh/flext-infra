@@ -113,7 +113,7 @@ class TestsFlextInfraDepsModernizerPackaging:
         )
         # The sdist ships the same data directories as source inputs.
         tm.that(
-            sorted(sdist["only-include"]),
+            sorted(t.Infra.STR_SEQ_ADAPTER.validate_python(sdist["only-include"])),
             eq=sorted([
                 "src/app",
                 "src/app_client",
