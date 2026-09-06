@@ -13,14 +13,15 @@ from difflib import unified_diff
 from pathlib import Path
 
 import pytest
+
 from flext_infra import config, main
 from flext_infra.codegen import FlextInfraCodegenConform, FlextInfraCodegenProjectNew
 from flext_infra.deps import FlextInfraPyprojectModernizer
 from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
 from tests import c, m, p, r, u
+
 
 def _generation_lock_path(root: Path) -> Path:
     """Resolve the public Git identity used by the generation lock."""
@@ -333,7 +334,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         )
 
         before_merge = tm.ok(service.plan(request)).branch_ancestry[0]
@@ -455,7 +456,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         )
 
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
@@ -531,7 +532,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         )
 
         anchored = tm.ok(service.plan(request)).branch_ancestry[0]
@@ -620,7 +621,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            workspace_root=checkout, request=request, initial_workspace=workspace
+            repository_root=checkout, request=request, initial_workspace=workspace
         )
 
         plan = tm.ok(service.plan(request))
@@ -880,7 +881,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.APPLY,
         )
         initial_plan = tm.ok(
-            FlextInfraCodegenConform(workspace_root=root).plan(request)
+            FlextInfraCodegenConform(repository_root=root).plan(request)
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -935,7 +936,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         planned = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         ).plan(request)
         tm.ok(planned)
         environment = planned.value.uv_environments[0]
@@ -977,7 +978,7 @@ class TestCodegenConform:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         service = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         )
 
         first = tm.ok(service.plan(request))
@@ -1032,7 +1033,7 @@ class TestCodegenConform:
 
         plan = tm.ok(
             FlextInfraCodegenConform(
-                workspace_root=root, request=request, initial_workspace=workspace
+                repository_root=root, request=request, initial_workspace=workspace
             ).plan(request)
         )
         package_root = next(
@@ -1047,7 +1048,7 @@ class TestCodegenConform:
         )
         declared_plan = tm.ok(
             FlextInfraCodegenConform(
-                workspace_root=root,
+                repository_root=root,
                 request=request,
                 initial_workspace=declared_workspace,
             ).plan(request)
@@ -1077,7 +1078,7 @@ class TestCodegenConform:
         )
         tooling_runtime = tm.ok(
             FlextInfraPyprojectModernizer(
-                workspace_root=tmp_path, skip_check=True
+                repository_root=tmp_path, skip_check=True
             ).resolve_tooling_context(
                 project_name=repository.distribution,
                 package_name=repository.distribution.replace("-", "_"),
@@ -1148,7 +1149,7 @@ class TestCodegenConform:
             scope=c.Infra.CodegenConformScope.SELF,
             mode=c.Infra.CodegenConformMode.CHECK,
         )
-        planned = FlextInfraCodegenConform(workspace_root=root, request=request).plan(
+        planned = FlextInfraCodegenConform(repository_root=root, request=request).plan(
             request
         )
         tm.ok(planned)
@@ -1410,7 +1411,7 @@ class TestScriptDispatchMakefile:
             mode=c.Infra.CodegenConformMode.CHECK,
         )
         planned = FlextInfraCodegenConform(
-            workspace_root=root, request=request, initial_workspace=workspace
+            repository_root=root, request=request, initial_workspace=workspace
         ).plan(request)
         plan = tm.ok(planned)
         makefile = next(

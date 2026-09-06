@@ -3,19 +3,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
-    from . import integration as integration
-    from . import refactor as refactor
-    from . import unit as unit
-    from flext_tests import FlextTestsConstants, d, e, h, r, td, tf, tk, tm, tv, x
-    from typing import ClassVar, Final, TYPE_CHECKING
+    from typing import TYPE_CHECKING, ClassVar, Final
 
+    from flext_tests import FlextTestsConstants, d, e, h, r, td, tf, tk, tm, tv, x
+
+    from . import integration as integration, refactor as refactor, unit as unit
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
     from .constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
     from .models import TestsFlextInfraModels, TestsFlextInfraModels as m

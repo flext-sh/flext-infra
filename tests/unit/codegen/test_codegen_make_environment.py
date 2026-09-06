@@ -141,7 +141,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
         tm.that(
-            process.exit_code,
+            process.outcome.raw_return_code,
             eq=0,
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
@@ -202,7 +202,7 @@ class TestsCodegenMakeEnvironment:
         )
 
         process = tm.ok(result)
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
         tm.that(commands[1], has="sync --frozen --project")
@@ -233,7 +233,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(process.outcome.raw_return_code, ne=0)
         tm.that(process.stdout + process.stderr, has="missing generated mise launcher")
         tm.that(mise.is_file(), eq=True)
         tm.that(mise_log.exists(), eq=False)
@@ -287,7 +287,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             tools, eq=[str(provisioned_bin / "uv"), str(provisioned_bin / fixture_tool)]
@@ -390,7 +390,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
         tm.that(invocation, has="--gates lint --projects .")
@@ -429,7 +429,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, eq=0, msg=process.stdout + process.stderr)
+        tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(
             commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
@@ -467,7 +467,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(process.outcome.raw_return_code, ne=0)
         tm.that(
             process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
         )
@@ -489,7 +489,7 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
-        tm.that(process.exit_code, ne=0)
+        tm.that(process.outcome.raw_return_code, ne=0)
         tm.that(
             process.stdout + process.stderr,
             has=["missing environment interpreter", "make setup creates it"],

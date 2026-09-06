@@ -20,8 +20,6 @@ class FlextInfraRuffLintGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.LINT
     gate_name: ClassVar[str] = "Ruff Lint"
     can_fix: ClassVar[bool] = False
-    
-    
 
     @override
     def _get_check_dirs(

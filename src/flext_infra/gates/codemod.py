@@ -38,8 +38,8 @@ class FlextInfraCodemodGate(FlextInfraGate):
         """Run ast-grep scan with cascaded codemod rules."""
         _ = ctx
         started = time.monotonic()
-        rules = self._rules(project_dir)
-        if not rules:
+        planned = u.Infra.codemod_rule_plan(project_dir)
+        if planned.failure:
             return self._build_check_gate_execution(
                 project_dir,
                 passed=False,
@@ -60,7 +60,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
         issues: list[m.Infra.Issue] = []
         for ruleset in planned.value.rulesets:
             scan = self._run(
-                u.Infra.ast_grep_scan_command(rule_path),
+                u.Infra.ast_grep_scan_command(
+                    ruleset.config, rule_ids=ruleset.rule_ids
+                ),
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )

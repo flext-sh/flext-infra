@@ -554,7 +554,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if workspace_result.failure:
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
-        if not workspace.declared_repositories:
+        if not workspace.subprojects:
             return r[bool].ok(True)
         owner = root / c.Infra.BEADS_DIRNAME
         if not owner.is_dir() or owner.is_symlink():

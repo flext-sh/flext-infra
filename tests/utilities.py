@@ -111,7 +111,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 if result.failure:
                     return r[p.Cli.CommandOutput].fail(result.error or "Command failed")
                 output = result.value
-                if output.exit_code != 0:
+                if output.outcome.raw_return_code != 0:
                     return r[p.Cli.CommandOutput].fail(
                         output.stderr or output.stdout or "Command failed"
                     )
@@ -140,7 +140,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     m.Cli.CommandBytesOutput(
                         stdout=output.stdout.encode(),
                         stderr=output.stderr.encode(),
-                        exit_code=output.exit_code,
+                        outcome=output.outcome,
                         duration=output.duration,
                     )
                 )
@@ -248,7 +248,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 output_path.write_text(
                     f"{result.value.stdout}{result.value.stderr}", encoding="utf-8"
                 )
-                return r[int].ok(result.value.exit_code)
+                return r[int].ok(result.value.outcome.raw_return_code)
 
         class TomlReaderSequence(p.Infra.TomlReader):
             """Protocol-compatible TOML reader that replays typed results."""
@@ -584,7 +584,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> m.Cli.CommandOutput:
             """Provide the typed test helper `stub_run`."""
             return m.Cli.CommandOutput(
-                stdout=stdout, stderr=stderr, exit_code=returncode
+                stdout=stdout,
+                stderr=stderr,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=returncode, timed_out=False, forwarded_signal=None
+                ),
             )
 
         @staticmethod
@@ -1304,7 +1308,12 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> m.Cli.CommandOutput:
             """Provide the typed test helper `create_command_output`."""
             return m.Cli.CommandOutput(
-                stdout=stdout, stderr=stderr, exit_code=exit_code, duration=duration
+                stdout=stdout,
+                stderr=stderr,
+                outcome=m.Cli.ProcessOutcome(
+                    raw_return_code=exit_code, timed_out=False, forwarded_signal=None
+                ),
+                duration=duration,
             )
 
         @staticmethod
@@ -1427,7 +1436,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
             """Materialize immutable lazy-init plans only inside test workspaces."""
-            service = FlextInfraCodegenLazyInit(repository_root=repository_root)
+            service = FlextInfraCodegenLazyInit(repository_root=workspace_root)
             planned = service.plan_files().unwrap()
             changed = tuple(
                 plan
@@ -1484,7 +1493,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:
             """Provide the typed test helper `create_lazy_init_service`."""
-            return FlextInfraCodegenLazyInit(workspace_root=workspace_root)
+            return FlextInfraCodegenLazyInit(repository_root=workspace_root)
 
         @staticmethod
         def extract_lazy_init_exports(source: str) -> tuple[bool, t.StrSequence]:
@@ -1508,7 +1517,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         ) -> p.Result[str]:
             """Provide the typed test helper `consolidate_codegen`."""
             service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
-                workspace_root=workspace_root, dry_run=dry_run, project_name=project
+                repository_root=workspace_root, dry_run=dry_run, project_name=project
             )
             result: p.Result[str] = service.execute()
             return result
@@ -1546,10 +1555,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 deptry_path.write_text("", encoding="utf-8")
             if runner is not None:
                 return FlextInfraRuntimeDevDependencyDetector(
-                    workspace_root=tmp_path, deps=deps, runner=runner
+                    repository_root=tmp_path, deps=deps, runner=runner
                 )
             return FlextInfraRuntimeDevDependencyDetector(
-                workspace_root=tmp_path, deps=deps
+                repository_root=tmp_path, deps=deps
             )
 
         @staticmethod
@@ -1664,7 +1673,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                         ["git", "check-ignore", "-q", relative_path], cwd=probe_root
                     )
                 )
-            return probe.exit_code != int(c.Infra.ScriptExitCode.PASS)
+            return probe.outcome.raw_return_code != int(c.Infra.ScriptExitCode.PASS)
 
         @staticmethod
         def create_checker_project(

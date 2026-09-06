@@ -38,7 +38,7 @@ class TestsFlextInfraUtilitiesResourceLimits:
             command[5], eq=f"--as={limit.memory_limit_bytes}:{limit.memory_limit_bytes}"
         )
         tm.ok(result)
-        tm.that(result.value.exit_code, eq=0)
+        tm.that(result.value.outcome.raw_return_code, eq=0)
         tm.that(result.value.stdout, has="bounded-process")
 
     def test_mypy_resource_contract_rejects_non_positive_limits(self) -> None:

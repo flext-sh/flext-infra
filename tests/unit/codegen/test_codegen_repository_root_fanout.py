@@ -40,7 +40,7 @@ class TestsCodegenRepositoryRootFanout:
                     remove_env_keys=("MAKEFLAGS",),
                 )
             )
-            tm.that(execution.exit_code, eq=0)
+            tm.that(execution.outcome.raw_return_code, eq=0)
             tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
 
     def test_repository_root_deps_profiles_canonical_modernization(
@@ -57,7 +57,7 @@ class TestsCodegenRepositoryRootFanout:
             )
         )
 
-        tm.that(execution.exit_code, eq=0)
+        tm.that(execution.outcome.raw_return_code, eq=0)
         rendered = execution.stdout + execution.stderr
         tm.that(rendered, has="-m cProfile")
         tm.that(rendered, has="deps.pstats")

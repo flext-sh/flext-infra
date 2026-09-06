@@ -36,7 +36,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
         """Run and validate jscpd, then expose every owned clone as an error."""
         _ = ctx
         started = time.monotonic()
-        scan = self._workspace_scan()
+        scan = self._scan_workspace()
         parsed = self._issues_from_report(scan, project_dir)
         issues = (
             parsed.value if parsed.success else (self._failure_issue(parsed.error),)
@@ -51,7 +51,7 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             started=started,
         )
 
-    def _scan_workspace(self) -> m.Infra.JscpdScan:
+    def _scan_workspace(self) -> p.Cli.CommandOutput:
         """Create one fresh report; tool, scope, and report failures escape."""
         binary = shutil.which(c.Infra.JSCPD_BINARY)
         if binary is None:
@@ -125,14 +125,6 @@ class FlextInfraDuplicationGate(FlextInfraGate):
                 for project in discovered.value
                 for candidate in self._existing_check_dirs(project.path)
             )
-        )
-        if output.exit_code == 1 and report.statistics.total.clones == 0:
-            raise RuntimeError(raw_output or "jscpd failed without clone evidence")
-        return m.Infra.JscpdScan(
-            exit_code=output.exit_code,
-            report=report,
-            stderr=output.stderr,
-            stdout=output.stdout,
         )
 
     def _scope_paths(self) -> t.StrSequence:

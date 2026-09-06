@@ -14,7 +14,6 @@ from jinja2.environment import (
     Environment as _JinjaEnvironment,
     Template as _JinjaTemplate,
 )
-from pydantic import AfterValidator
 
 from flext_core import m, t
 

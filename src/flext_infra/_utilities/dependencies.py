@@ -19,7 +19,6 @@ from packaging.utils import canonicalize_name
 from flext_cli import u
 from flext_infra._utilities.pyproject import FlextInfraUtilitiesPyproject
 from flext_infra.constants import c
-from packaging.requirements import InvalidRequirement, Requirement
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

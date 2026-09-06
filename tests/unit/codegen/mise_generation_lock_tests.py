@@ -7,11 +7,12 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from flext_infra import m, p, r, u
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
+from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
-from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import u as test_u
 

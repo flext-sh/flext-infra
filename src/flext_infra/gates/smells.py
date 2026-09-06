@@ -35,6 +35,9 @@ class FlextInfraSmellsGate(FlextInfraGate):
     gate_name: ClassVar[str] = "Code Smells"
     can_fix: ClassVar[bool] = True
 
+    # flext-pulj: process results stay structural outside the Pydantic boundary.
+    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
+
     @override
     def fix(self, project_dir: Path, ctx: m.Infra.GateContext) -> m.Infra.GateExecution:
         """Apply AST-based fixers for auto-fixable smell findings.
@@ -140,7 +143,11 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return not issues, issues
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Run one fresh workspace scan and preserve its exact process result."""
+        """Scan the workspace once per root and preserve its exact process result."""
+        key = str(self._repository_root)
+        cached = self._scan_cache.get(key)
+        if cached is not None:
+            return cached
         binary = self._resolve_binary()
         if binary is None:
             output = m.Cli.CommandOutput(

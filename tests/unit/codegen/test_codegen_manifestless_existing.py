@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from flext_infra import config
 from flext_infra.codegen import FlextInfraCodegenConform
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
 from tests import c, m, u
 
 
@@ -68,7 +68,7 @@ class TestCodegenManifestlessExisting:
             update={"what": c.Infra.CodegenConformSurface.ALL}
         )
         initial_plan = tm.ok(
-            FlextInfraCodegenConform(workspace_root=root).plan(artifact_request)
+            FlextInfraCodegenConform(repository_root=root).plan(artifact_request)
         )
         plans = {
             file.path.relative_to(root).as_posix(): file for file in initial_plan.files
@@ -95,7 +95,7 @@ class TestCodegenManifestlessExisting:
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that((root / required).is_file(), eq=True)
-        fixed_point = FlextInfraCodegenConform(workspace_root=root).plan(
+        fixed_point = FlextInfraCodegenConform(repository_root=root).plan(
             artifact_request.model_copy(
                 update={"mode": c.Infra.CodegenConformMode.CHECK}
             )
@@ -122,7 +122,7 @@ class TestCodegenManifestlessExisting:
         u.Tests.write_project_beads_config(root, config.Infra.name)
         (root / ".env.example").mkdir()
 
-        planned = FlextInfraCodegenConform(workspace_root=root).plan(
+        planned = FlextInfraCodegenConform(repository_root=root).plan(
             m.Infra.CodegenConformRequest(root=root)
         )
 

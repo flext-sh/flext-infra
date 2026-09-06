@@ -270,7 +270,7 @@ class TestsEnforcementFixerOrchestrator:
 
         def run_git(args: t.StrSequence) -> None:
             output = cli.run_raw([c.Infra.GIT, *args], cwd=project_dir).value
-            tm.that(output.exit_code, eq=0)
+            tm.that(output.outcome.raw_return_code, eq=0)
 
         run_git(("init",))
         run_git(("add", "--", "pyproject.toml", "src"))

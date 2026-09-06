@@ -56,8 +56,8 @@ class FlextInfraPytestRunnerCommand(FlextInfraPytestRunnerBase):
             tuple(selected_node_ids) if selected_node_ids else (str(self.target),)
         )
         # Nothing selected means nothing to distribute across workers.
-        workers = "0" if selected_node_ids == () else str(
-            self.parallel_worker_budget(pytest)
+        workers = (
+            "0" if selected_node_ids == () else str(self.parallel_worker_budget(pytest))
         )
         return (
             sys.executable,

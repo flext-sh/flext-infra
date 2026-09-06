@@ -7,8 +7,8 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_core import r
 from flext_cli import u
+from flext_core import r
 from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
 from flext_infra.constants import c
 from flext_infra.models import m

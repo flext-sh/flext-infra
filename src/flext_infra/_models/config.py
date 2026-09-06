@@ -141,12 +141,19 @@ class FlextInfraConfigModels:
         """Immutable download metadata for one tool platform."""
 
         checksum: Annotated[
-            t.NonEmptyStr,
+            t.NonEmptyStr | None,
             m.Field(
                 pattern=r"^sha256:[0-9a-f]{64}$",
-                description="SHA-256 digest emitted by Mise",
+                description=(
+                    "SHA-256 digest emitted by Mise, when the upstream release "
+                    "publishes one. mise.lock is an external artifact this "
+                    "project reads: it records platforms whose asset carries no "
+                    "digest (observed on taplo windows-x64), and requiring one "
+                    "here rejected the whole lock over a platform the declared "
+                    "environments never install."
+                ),
             ),
-        ]
+        ] = None
         url: Annotated[
             t.NonEmptyStr,
             m.Field(

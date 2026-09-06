@@ -454,10 +454,7 @@ class FlextInfraModGateEngine:
         if run.failure:
             return r[m.Infra.ModScanReport].from_failure(run)
         report = cls._parse_findings(
-            run.value.stdout,
-            root,
-            rule_files_by_id,
-            frozenset(fixable_ids),
+            run.value.stdout, root, rule_files_by_id, frozenset(fixable_ids)
         ).unwrap()
         if run.value.outcome.raw_return_code != 0:
             cls._validate_finding_receipt(run.value.stderr, report.findings).unwrap()

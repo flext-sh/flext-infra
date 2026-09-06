@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import u, c, m, t
+from flext_infra import c, m, t, u
 from flext_infra.docs._generator_bundle import FlextInfraDocGeneratorBundleMixin
 from flext_infra.docs.base import FlextInfraDocServiceBase
 

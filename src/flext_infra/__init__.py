@@ -3,39 +3,42 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
-from .__version__ import __author__ as __author__
-from .__version__ import __author_email__ as __author_email__
-from .__version__ import __description__ as __description__
-from .__version__ import __license__ as __license__
-from .__version__ import __title__ as __title__
-from .__version__ import __url__ as __url__
-from .__version__ import __version__ as __version__
-from .__version__ import __version_info__ as __version_info__
+from .__version__ import (
+    __author__ as __author__,
+    __author_email__ as __author_email__,
+    __description__ as __description__,
+    __license__ as __license__,
+    __title__ as __title__,
+    __url__ as __url__,
+    __version__ as __version__,
+    __version_info__ as __version_info__,
+)
 
 if TYPE_CHECKING:
-    from . import check as check
-    from . import codegen as codegen
-    from . import codemod as codemod
-    from . import deps as deps
-    from . import detectors as detectors
-    from . import docs as docs
-    from . import fixers as fixers
-    from . import gates as gates
-    from . import maintenance as maintenance
-    from . import refactor as refactor
-    from . import release as release
-    from . import services as services
-    from . import transformers as transformers
-    from . import validate as validate
-    from . import workspace as workspace
     from flext_cli import d, e, h, r, x
 
+    from . import (
+        check as check,
+        codegen as codegen,
+        codemod as codemod,
+        deps as deps,
+        detectors as detectors,
+        docs as docs,
+        fixers as fixers,
+        gates as gates,
+        maintenance as maintenance,
+        refactor as refactor,
+        release as release,
+        services as services,
+        transformers as transformers,
+        validate as validate,
+        workspace as workspace,
+    )
     from ._config import config
     from ._settings import settings
     from .api import FlextInfra, infra

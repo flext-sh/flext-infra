@@ -72,9 +72,9 @@ class FlextInfraUtilitiesDocsScopeSelectionMixin:
         if relative.is_absolute() or ".." in relative.parts:
             msg = f"docs project selector escapes repository: {name}"
             raise ValueError(msg)
-        project_root = repository_root / relative
+        project_root = workspace_root / relative
         roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
-            repository_root, (project_root,)
+            workspace_root, (project_root,)
         )
         if roots.failure:
             raise ValueError(
