@@ -17,31 +17,10 @@ if TYPE_CHECKING:
     from typing import ClassVar, Final, TYPE_CHECKING
 
     from .base import TestsFlextInfraServiceBase, TestsFlextInfraServiceBase as s
-    from .conftest import (
-        infra_git,
-        infra_git_repo,
-        infra_io,
-        infra_path,
-        infra_patterns,
-        infra_public_root,
-        infra_reporting,
-        infra_safe_command_output,
-        infra_selection,
-        infra_subprocess,
-        infra_test_workspace,
-        infra_toml,
-        isolate_github_trigger_sha,
-        pytest_ignore_collect,
-        pytest_plugins,
-        rope_project,
-    )
     from .constants import TestsFlextInfraConstants, TestsFlextInfraConstants as c
     from .models import TestsFlextInfraModels, TestsFlextInfraModels as m
     from .protocols import TestsFlextInfraProtocols, TestsFlextInfraProtocols as p
     from .typings import TestsFlextInfraTypes, TestsFlextInfraTypes as t
-    from .unit.check.tests_workspace_check import (
-        test_workspace_check_main_returns_error_without_projects,
-    )
     from .unit.fixtures import (
         deptry_report_payload,
         models_resource,
@@ -81,27 +60,12 @@ __all__: tuple[str, ...] = (
     "deptry_report_payload",
     "e",
     "h",
-    "infra_git",
-    "infra_git_repo",
-    "infra_io",
-    "infra_path",
-    "infra_patterns",
-    "infra_public_root",
-    "infra_reporting",
-    "infra_safe_command_output",
-    "infra_selection",
-    "infra_subprocess",
-    "infra_test_workspace",
-    "infra_toml",
     "integration",
-    "isolate_github_trigger_sha",
     "m",
     "models_resource",
     "modernizer_workspace",
     "modernizer_workspace_with_projects",
     "p",
-    "pytest_ignore_collect",
-    "pytest_plugins",
     "r",
     "real_docs_project",
     "real_git_repo",
@@ -110,13 +74,11 @@ __all__: tuple[str, ...] = (
     "real_toml_project",
     "real_workspace",
     "refactor",
-    "rope_project",
     "rope_workspace",
     "s",
     "services_resource",
     "t",
     "td",
-    "test_workspace_check_main_returns_error_without_projects",
     "tf",
     "tk",
     "tm",
@@ -131,24 +93,6 @@ _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".base": ("TestsFlextInfraServiceBase", "s"),
-            ".conftest": (
-                "infra_git",
-                "infra_git_repo",
-                "infra_io",
-                "infra_path",
-                "infra_patterns",
-                "infra_public_root",
-                "infra_reporting",
-                "infra_safe_command_output",
-                "infra_selection",
-                "infra_subprocess",
-                "infra_test_workspace",
-                "infra_toml",
-                "isolate_github_trigger_sha",
-                "pytest_ignore_collect",
-                "pytest_plugins",
-                "rope_project",
-            ),
             ".constants": ("TestsFlextInfraConstants", "c"),
             ".integration": ("integration",),
             ".models": ("TestsFlextInfraModels", "m"),
@@ -156,9 +100,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor": ("refactor",),
             ".typings": ("TestsFlextInfraTypes", "t"),
             ".unit": ("unit",),
-            ".unit.check.tests_workspace_check": (
-                "test_workspace_check_main_returns_error_without_projects",
-            ),
             ".unit.fixtures": (
                 "deptry_report_payload",
                 "models_resource",

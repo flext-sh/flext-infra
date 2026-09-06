@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
+
 from flext_tests import tm
 from tests import c, u
 
@@ -32,25 +33,22 @@ class TestsFlextInfraLazyInitRuntime:
         return repository_root, package_root
 
     def test_generated_root_preserves_lazy_runtime_contract(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         repository_root, package_root = self._generate_package(tmp_path)
-        monkeypatch.syspath_prepend(str(repository_root / c.Infra.DEFAULT_SRC_DIR))
+        with tm.scope(python_paths=(str(repository_root / c.Infra.DEFAULT_SRC_DIR),)):
+            package = importlib.import_module("flext_runtime")
 
-        package = importlib.import_module("flext_runtime")
+            tm.that("flext_runtime.api" in sys.modules, eq=False)
+            tm.that(package.__all__, eq=("FlextDemo", "primary", "runtime"))
+            tm.that(dir(package), eq=list(package.__all__))
+            first = package.FlextDemo
+            second = package.FlextDemo
+            tm.that(first is second, eq=True)
+            tm.that(package.primary is first, eq=True)
+            tm.that(package_root.joinpath("imports.txt").read_text(), eq="x")
 
-        tm.that("flext_runtime.api" in sys.modules, eq=False)
-        tm.that(package.__all__, eq=("FlextDemo", "primary", "runtime"))
-        tm.that(dir(package), eq=list(package.__all__))
-        first = package.FlextDemo
-        second = package.FlextDemo
-        tm.that(first is second, eq=True)
-        tm.that(package.primary is first, eq=True)
-        tm.that(package_root.joinpath("imports.txt").read_text(), eq="x")
-
-    def test_generated_root_preserves_import_failures(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_generated_root_preserves_import_failures(self, tmp_path: Path) -> None:
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path, project_name="flext-failure", package_name="flext_failure"
         )
@@ -61,11 +59,11 @@ class TestsFlextInfraLazyInitRuntime:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
-        monkeypatch.syspath_prepend(str(repository_root / c.Infra.DEFAULT_SRC_DIR))
-        package = importlib.import_module("flext_failure")
+        with tm.scope(python_paths=(str(repository_root / c.Infra.DEFAULT_SRC_DIR),)):
+            package = importlib.import_module("flext_failure")
 
-        with pytest.raises(ModuleNotFoundError, match="missing runtime dependency"):
-            _ = package.FlextDemo
+            with pytest.raises(ModuleNotFoundError, match="missing runtime dependency"):
+                _ = package.FlextDemo
 
 
 __all__: list[str] = ["TestsFlextInfraLazyInitRuntime"]

@@ -70,10 +70,10 @@ class TestScannerHelpers:
 
         tm.that(files, eq=[tracked_file, untracked_file])
 
-    def test_iter_matching_files_uses_explicit_scope_outside_git_identity(
+    def test_iter_matching_files_excludes_git_ignored_explicit_scope(
         self, tmp_path: Path
     ) -> None:
-        """An ignored nested fixture is not owned by its ancestor repository."""
+        """An ignored nested scope cannot bypass its ancestor repository policy."""
         init_result = u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         tm.ok(init_result)
         tm.that(init_result.value.exit_code, eq=0)
@@ -85,7 +85,7 @@ class TestScannerHelpers:
 
         files = u.Infra.iter_matching_files(scope, includes=["*.md"])
 
-        tm.that(files, eq=[explicit_file])
+        tm.that(files, eq=[])
 
     def test_tracked_scope_refreshes_dirty_files_between_scans(
         self, tmp_path: Path

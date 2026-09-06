@@ -1,0 +1,25 @@
+id: private-enforcement-model-import-to-facade
+language: Python
+severity: error
+rule:
+  pattern: from flext_core._models.enforcement import FlextModelsEnforcement as me
+fix: from flext_core import m as core_m
+message: Use the public flext-core model facade.
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+---
+id: private-enforcement-model-reference-to-facade
+language: Python
+severity: error
+rule:
+  pattern: me.$TYPE
+fix: core_m.$TYPE
+message: Use the public flext-core model facade.
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"

@@ -38,7 +38,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         """Publish the receipt's artifacts as a GitHub release and, on request, to the index."""
         receipt = self._verified_receipt(ctx)
         if receipt.failure:
-            return r[bool].fail(receipt.error or "release receipt invalid")
+            return r[bool].from_failure(receipt)
         report = receipt.value
         if ctx.dry_run:
             logger.info("release_phase_publish", tag=ctx.tag, dry_run=True)
@@ -60,9 +60,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
         report_path = self._release_output_dir(ctx) / c.Infra.RELEASE_REPORT_FILENAME
         content = u.Cli.files_read_text(report_path)
         if content.failure:
-            return r[m.Infra.BuildReport].fail(
-                content.error or f"release receipt missing: {report_path}"
-            )
+            return r[m.Infra.BuildReport].from_failure(content)
         try:
             report = m.Infra.BuildReport.model_validate_json(content.value)
         except c.ValidationError as exc:
@@ -135,7 +133,7 @@ class FlextInfraReleaseOrchestratorPublishMixin:
             tuple((record.project, Path(record.path)) for record in report.records)
         )
         if waves.failure:
-            return r[bool].fail(waves.error or "publish order failed")
+            return r[bool].from_failure(waves)
         for wave in waves.value:
             paths = [path for project in wave for path in artifacts[project]]
             uploaded = u.Cli.run_checked(

@@ -16,11 +16,6 @@ from flext_core import r
 from flext_infra import c, m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
-type _StubChainInitValue = (
-    t.GuardInput | p.Settings | p.Context | t.SettingsClass | None
-)
-type _StubChainRuntimeState = dict[str, _StubChainInitValue]
-
 
 class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
     """Validate typed dependency supply chain for workspace projects.
@@ -56,7 +51,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         initial_context: p.Context | None = None,
     ) -> None:
         """Initialize with an internal command runner dependency."""
-        model_data: _StubChainRuntimeState = {
+        model_data: t.Infra.StubChainRuntimeState = {
             "repository_root": repository_root or Path.cwd(),
             "apply_changes": apply_changes,
             "check_only": check_only,
@@ -140,7 +135,8 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             return self._analyze_project(project_dir, repository_root)
         except c.EXC_OS_TYPE_VALUE as exc:
             return r[m.Infra.StubAnalysisReport].fail(
-                f"typed dependency analysis failed for {project_dir.name}: {exc}"
+                f"typed dependency analysis failed for {project_dir.name}: {exc}",
+                exception=exc,
             )
 
     def build_report(
@@ -192,15 +188,11 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
         proj = project_dir.resolve()
         mypy_result = self._run_mypy_hints(proj)
         if mypy_result.failure:
-            return r[m.Infra.StubAnalysisReport].fail(
-                mypy_result.error or "bounded Mypy analysis failed"
-            )
+            return r[m.Infra.StubAnalysisReport].from_failure(mypy_result)
         mypy_hints = mypy_result.value
         pyrefly_result = self._run_pyrefly_missing(proj)
         if pyrefly_result.failure:
-            return r[m.Infra.StubAnalysisReport].fail(
-                pyrefly_result.error or "Pyrefly analysis failed"
-            )
+            return r[m.Infra.StubAnalysisReport].from_failure(pyrefly_result)
         missing_imports = pyrefly_result.value
         internal, unresolved = self._classify_missing_imports(
             missing_imports, proj.name
@@ -275,9 +267,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             self.repository_root, project_dirs=self.project_dirs
         )
         if report_result.failure:
-            return r[bool].fail(
-                report_result.error or "typed dependency validation failed"
-            )
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 
@@ -330,9 +320,7 @@ class FlextInfraStubSupplyChain(FlextInfraProjectSelectionServiceBase[bool]):
             cwd=project_dir,
         )
         if result.failure:
-            return r[t.StrSequence].fail(
-                result.error or f"Pyrefly process launch failed for {project_dir.name}"
-            )
+            return r[t.StrSequence].from_failure(result)
         cmd_output: p.Cli.CommandOutput = result.value
         output = cmd_output.stdout
         seen: t.Infra.StrSet = set()

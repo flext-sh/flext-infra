@@ -59,6 +59,11 @@ def _ssot_per_file_ignores() -> frozenset[str]:
 
 
 class TestsFlextInfraPyprojectConformPreservesLintScope:
+    def test_ssot_requires_sorted_imports_globally(self) -> None:
+        rationales = config.Infra.tooling.tools.ruff.lint.ignored_rule_rationales
+
+        tm.that(rationales, lacks="unsorted-imports")
+
     def test_ssot_preserves_narrow_init_module_lint_policy(self) -> None:
         rules = config.Infra.tooling.tools.ruff.lint.per_file_ignores["**/__init__.py"]
 

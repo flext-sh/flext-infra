@@ -6,9 +6,6 @@ import ast
 from typing import TYPE_CHECKING
 
 from flext_infra import m, u
-from flext_infra._utilities.deferred_self_reference_ast import (
-    collect_deferred_self_reference_findings,
-)
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -42,7 +39,7 @@ class FlextInfraDeferredSelfReferenceDetector:
                 code=finding.kind,
                 message=finding.detail,
             )
-            for finding in collect_deferred_self_reference_findings(tree)
+            for finding in u.Infra.collect_deferred_self_reference_findings(tree)
         )
 
 

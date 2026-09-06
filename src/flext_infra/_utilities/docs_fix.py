@@ -24,10 +24,13 @@ class FlextInfraUtilitiesDocsFix:
     @staticmethod
     def docs_maybe_fix_link(md_file: Path, raw_link: str) -> str | None:
         """Return a corrected link target when a simple fix is possible."""
-        if raw_link.startswith(("http://", "https://")):
+        if FlextInfraUtilitiesDocs.docs_is_secure_web_url(raw_link):
             return FlextInfraUtilitiesDocsGithubLinks.docs_rewrite_github_url(raw_link)
         result: str | None = None
-        if not raw_link.startswith(("mailto:", "tel:", "#")):
+        if not (
+            FlextInfraUtilitiesDocs.docs_is_external(raw_link)
+            or raw_link.startswith(c.Infra.DOCS_FRAGMENT_PREFIX)
+        ):
             base = raw_link.split("#", maxsplit=1)[0]
             if (
                 base

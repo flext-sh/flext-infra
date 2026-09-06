@@ -160,12 +160,15 @@ class FlextInfraModernizeOrchestrator:
             return r[t.Infra.TransformResult].ok(transformer.apply_to_source(source))
         except SyntaxError as exc:
             return r[t.Infra.TransformResult].fail(
-                f"Syntax error: {exc}", error_code="MODERNIZE_SYNTAX_ERROR"
+                f"Syntax error: {exc}",
+                error_code="MODERNIZE_SYNTAX_ERROR",
+                exception=exc,
             )
         except c.EXC_OS_RUNTIME_TYPE as exc:
             return r[t.Infra.TransformResult].fail(
                 f"Runtime error during transform: {exc}",
                 error_code="MODERNIZE_TRANSFORM_FAILED",
+                exception=exc,
             )
 
     @staticmethod

@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated, ClassVar
 
 from flext_core import m
-from flext_core._models.enforcement import FlextModelsEnforcement as me
+from flext_core import m as core_m
 from flext_infra import t
 
 if TYPE_CHECKING:
@@ -74,10 +74,10 @@ class FlextInfraModelsEnforcement:
     class EnforcementEvaluation(m.ArbitraryTypesModel):
         """Collected rule probes and collection failures for one project."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         violations: Annotated[
-            tuple[tuple[me.EnforcementRuleSpec, p.AttributeProbe], ...],
+            tuple[tuple[core_m.EnforcementRuleSpec, p.AttributeProbe], ...],
             m.Field(description="Rule/probe pairs collected for the project"),
         ]
         failures: Annotated[
@@ -93,7 +93,7 @@ class FlextInfraModelsEnforcement:
         inspect via ``getattr``.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True, extra="allow")
 
         file_path: Annotated[str, m.Field(description="Target file path")]
         line: Annotated[int, m.Field(description="Line number of the violation")] = 0

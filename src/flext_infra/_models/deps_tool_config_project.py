@@ -43,24 +43,12 @@ class FlextInfraModelsDepsToolConfigProjectMise(
     """Project-local Mise tools that extend, but never replace, fleet tools."""
 
     class ProjectMiseTool(m.ArbitraryTypesModel):
-        """One project-owned Mise tool: exact version plus the platforms it ships."""
+        """One project-owned Mise tool with one exact version."""
 
         version: Annotated[
             t.NonEmptyStr,
             m.Field(description="Exact version written to the generated .mise.toml."),
         ]
-        platforms: Annotated[
-            tuple[t.NonEmptyStr, ...] | None,
-            m.Field(
-                description=(
-                    "Fleet lock platforms this tool publishes assets for. Absent "
-                    "means every fleet platform; a subset records, in the project "
-                    "that owns the tool, the platforms its backend cannot lock; an "
-                    "explicit empty list declares a backend with no per-platform "
-                    "assets (npm, pipx, cargo), so the lock carries none."
-                )
-            ),
-        ] = None
 
     class ProjectMiseConfig(m.ArbitraryTypesModel):
         """Exact project-owned Mise selectors and their tool declarations."""

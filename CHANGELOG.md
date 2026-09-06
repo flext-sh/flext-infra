@@ -4,7 +4,7 @@
 - No sections found
 <!-- TOC END -->
 
-This file is managed by `make docs WHAT=generate APPLY=Y`.
+This file is managed by `make docs APPLY=Y`.
 
 ## Unreleased
 

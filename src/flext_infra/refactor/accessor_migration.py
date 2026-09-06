@@ -49,18 +49,14 @@ class FlextInfraAccessorMigrationOrchestrator(
         )
         resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
-            return r[m.Infra.AccessorMigrationReport].fail(
-                resolved.error or "project resolution failed"
-            )
+            return r[m.Infra.AccessorMigrationReport].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
                 project_roots=tuple(project.path for project in resolved.value)
             )
         )
         if iter_result.failure:
-            return r[m.Infra.AccessorMigrationReport].fail(
-                iter_result.error or "python file iteration failed"
-            )
+            return r[m.Infra.AccessorMigrationReport].from_failure(iter_result)
         previews: t.MutableSequenceOf[m.Infra.AccessorMigrationFile] = []
         files_with_changes = 0
         automated_change_count = 0
@@ -72,9 +68,7 @@ class FlextInfraAccessorMigrationOrchestrator(
             for py_file in iter_result.value:
                 read = u.Cli.files_read_text(py_file)
                 if read.failure:
-                    return r[m.Infra.AccessorMigrationReport].fail(
-                        read.error or f"failed to read {py_file}"
-                    )
+                    return r[m.Infra.AccessorMigrationReport].from_failure(read)
                 source = read.value
                 updated_source, automated_changes = self._apply_automated_rewrites(
                     rope_project, py_file, source
@@ -135,9 +129,7 @@ class FlextInfraAccessorMigrationOrchestrator(
             gates=",".join(params.gates),
         ).execute()
         if result.failure:
-            return r[m.Infra.AccessorMigrationReport].fail(
-                result.error or "accessor migration execution failed"
-            )
+            return r[m.Infra.AccessorMigrationReport].from_failure(result)
         cli.display_text(cls.render_text(result.value))
         return r[m.Infra.AccessorMigrationReport].ok(result.value)
 

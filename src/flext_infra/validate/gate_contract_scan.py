@@ -21,22 +21,19 @@ class FlextInfraGateContractScanMixin:
         if not scripts_root.exists() or not scripts_root.is_dir():
             return ()
 
-        result = u.Cli.run_raw(
-            [
-                "/usr/bin/env",
-                "git",
-                "ls-files",
-                "scripts/*.sh",
-                "scripts/*.py",
-                "scripts/**/*.sh",
-                "scripts/**/*.py",
-            ],
-            cwd=root,
+        scripts = u.Infra.git_tracked_scope_paths(scripts_root)
+        if scripts is None:
+            msg = f"tracked script discovery requires a Git worktree: {root}"
+            raise GateContractInfraError(msg)
+        return tuple(
+            path.relative_to(root)
+            for path in scripts
+            if path.name != "__init__.py" and path.suffix in {".py", ".sh"}
         )
         if result.failure:
             raise GateContractInfraError(result.error or "git ls-files failed")
         output = result.value
-        if output.exit_code != 0:
+        if not u.Cli.process_succeeded(output.outcome):
             stderr = (output.stderr or "").strip()
             raise GateContractInfraError(stderr or "git ls-files failed")
 
