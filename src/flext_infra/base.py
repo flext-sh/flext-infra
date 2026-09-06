@@ -68,7 +68,7 @@ class FlextInfraServiceBase[TDomainResult: t.Cli.ResultValue](
         alias="module",
         description=(
             "Dotted module path to scope the verb to a single module "
-            "(e.g. flext_core.result). Composes with the verb's root scope and --projects."
+            "(e.g. flext_core.result). Composes with --workspace/--projects."
         ),
     )
     target_namespace: str | None = m.Field(

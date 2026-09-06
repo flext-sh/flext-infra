@@ -584,6 +584,16 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     f"cross-project symbolic link: {route}"
                 )
             if not route.exists():
+                # The route used to be a symlink into the workspace, so the
+                # directory always existed by the time anything rendered into
+                # it. Each repository now owns a real `.beads` holding its own
+                # generated configuration, and a generator owns the destination
+                # directory of the artifacts it declares: without it the first
+                # render fails reading a before-state whose parent is missing.
+                # The directory is created empty; `.beads/config.yaml` and
+                # `.beads/metadata.json` are rendered by generation, never
+                # copied and never linked.
+                route.mkdir(parents=True)
                 continue
             if not route.is_dir():
                 return r[bool].fail(
