@@ -1,0 +1,11 @@
+{
+  "aihub-governance": {
+    "PreInvocation": [
+      {
+        "command": "python3 /home/marlonsc/workspaces/agents-skill-sync/flext/flext-infra/.agents/aihub-hooks/antigravity-preinvocation.py",
+        "timeout": 10,
+        "type": "command"
+      }
+    ]
+  }
+}
