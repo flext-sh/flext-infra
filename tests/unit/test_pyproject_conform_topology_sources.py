@@ -55,7 +55,7 @@ def _workspace() -> m.Infra.WorkspaceSpec:
             path=".",
             checkout=c.Infra.CheckoutKind.ROOT,
         ),
-        declared_repositories=(
+        subprojects=(
             _repository(
                 "flext-core",
                 role=_ROLE.STANDALONE,
@@ -75,7 +75,7 @@ def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
         checkout=c.Infra.CheckoutKind.SUBMODULE,
     )
     return workspace.model_copy(
-        update={"declared_repositories": (*workspace.subprojects, consumer)}
+        update={"subprojects": (*workspace.subprojects, consumer)}
     )
 
 
@@ -167,7 +167,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
         )
 
     def test_publishable_project_pins_unmapped_provider_source_to_branch(self) -> None:
-        """Derive the declared branch for a provider absent from declared_repositories."""
+        """Derive the declared branch for a provider absent from subprojects."""
         workspace = _workspace_with_consumer()
         consumer = workspace.subprojects[1]
         result = u.Infra.pyproject_dependencies_conform(

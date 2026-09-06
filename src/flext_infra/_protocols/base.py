@@ -673,7 +673,7 @@ class FlextInfraProtocolsBase(Protocol):
     class MiseArtifactsOwner(Protocol):
         """Single public owner composed by private Mise transaction mechanics."""
 
-        workspace_root: Path
+        repository_root: Path
 
         @classmethod
         def validate_launchers(cls, root: Path) -> p.Result[bool]:
@@ -738,20 +738,4 @@ class FlextInfraProtocolsBase(Protocol):
             self, tag: str | None = None
         ) -> Iterator[FlextInfraProtocolsBase.XmlElementLike]:
             """Iterate over matching elements."""
-            ...
-
-    @runtime_checkable
-    class GithubCliHandlers(Protocol):
-        """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
             ...

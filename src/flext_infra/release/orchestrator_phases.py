@@ -100,7 +100,7 @@ class FlextInfraReleaseOrchestratorPhases(
             gitleaks_config_path=Path(policy.gitleaks_policy_path),
             version=(
                 ctx.version
-                if path.resolve() == ctx.workspace_root.resolve()
+                if path.resolve() == ctx.repository_root.resolve()
                 else versions[name]
             ),
             versions=versions,
@@ -128,7 +128,7 @@ class FlextInfraReleaseOrchestratorPhases(
         output_dir: Path,
     ) -> p.Result[t.SequenceOf[m.Infra.BuildRecord]]:
         """Build every selected project and retain its strict report record."""
-        versions = self._internal_versions(ctx.workspace_root)
+        versions = self._internal_versions(ctx.repository_root)
         if versions.failure:
             return r[t.SequenceOf[m.Infra.BuildRecord]].from_failure(versions)
         records: t.MutableSequenceOf[m.Infra.BuildRecord] = []
@@ -245,12 +245,12 @@ class FlextInfraReleaseOrchestratorPhases(
             output_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
             return r[bool].fail_op("report dir creation", exc)
-        targets_result = self._build_targets(ctx.workspace_root, ctx.project_names)
+        targets_result = self._build_targets(ctx.repository_root, ctx.project_names)
         if targets_result.failure:
             return r[bool].from_failure(targets_result)
         if not targets_result.value:
             return r[bool].fail("release build selected no publishable projects")
-        policy_result = self._snapshot_build_policy(ctx.workspace_root, output_dir)
+        policy_result = self._snapshot_build_policy(ctx.repository_root, output_dir)
         if policy_result.failure:
             return r[bool].from_failure(policy_result)
         records_result = self._build_records(

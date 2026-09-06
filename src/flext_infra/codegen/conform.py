@@ -567,7 +567,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
         pending: list[Path] = []
-        for repository in workspace.declared_repositories:
+        for repository in workspace.subprojects:
             member = (root / repository.path).resolve()
             route = member / c.Infra.BEADS_DIRNAME
             if route.is_symlink():

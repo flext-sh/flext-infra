@@ -9,6 +9,9 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.transformer_header import (
+    FlextInfraUtilitiesTransformerHeader,
+)
 from flext_infra._utilities.namespace_common import (
     FlextInfraUtilitiesRefactorNamespaceCommon,
 )
@@ -737,7 +740,7 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
                 names_part
             )
-            if not u.Infra.alias_locally_bound(target_source, bound)
+            if not FlextInfraUtilitiesTransformerHeader.alias_locally_bound(target_source, bound)
         ]
         if not kept:
             return ""

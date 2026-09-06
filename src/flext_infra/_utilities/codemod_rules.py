@@ -193,7 +193,7 @@ class FlextInfraUtilitiesCodemodRules:
             for name in selected
         }
         try:
-            ordered = u.Infra.dependency_order(
+            ordered = FlextInfraUtilitiesDependencies.dependency_order(
                 tuple(selected), dependencies=lambda name: edges.get(name, ())
             )
         except ValueError as exc:

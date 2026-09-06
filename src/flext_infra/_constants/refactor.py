@@ -92,6 +92,9 @@ class FlextInfraConstantsRefactor:
     RK_ALLOW_TARGET_SUFFIXES: Final[str] = "allow_target_suffixes"
     CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
     CODEMOD_RULE_SUFFIX: Final[str] = ".yml"
+    CODEMOD_DOCUMENT_SEPARATOR_RE: Final[t.RegexPattern] = re.compile(
+        r"^---\s*$", re.MULTILINE
+    )
     CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
     CODEMOD_CONFIG_RELPATH: Final[Path] = Path(CODEMOD_RESOURCE_DIRNAME) / (
         CODEMOD_CONFIG_FILENAME

@@ -3274,8 +3274,8 @@ class FlextInfraConfigModels:
     class WorkspaceEnvironmentCliRequest(_ConfigContract):
         """CLI-safe request for one Python workspace environment sync."""
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+        repository_root: Annotated[
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
@@ -3291,8 +3291,8 @@ class FlextInfraConfigModels:
     class WorkspaceEnvironmentSyncRequest(_ConfigContract):
         """Validated internal request for one workspace environment sync."""
 
-        workspace_root: Annotated[
-            Path, m.Field(description="Workspace root receiving the sync")
+        repository_root: Annotated[
+            Path, m.Field(description="Repository root receiving the sync")
         ]
         apply: Annotated[
             bool, m.Field(description="Write changes instead of reporting them")
