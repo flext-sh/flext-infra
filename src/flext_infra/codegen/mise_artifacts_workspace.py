@@ -35,7 +35,7 @@ class FlextInfraMiseWorkspacePlanner:
         identity = self._exact_git_identity(requested)
         if identity.failure:
             return identity
-        if not identity.value.is_submodule:
+        if not identity.value.is_attached_submodule:
             return identity
         superproject_root = identity.value.superproject_root
         if superproject_root is None:

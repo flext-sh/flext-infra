@@ -1,4 +1,4 @@
-"""Class-nesting analysis for refactor violation reporting."""
+"""Class-nesting analysis derived from the public Rope workspace."""
 
 from __future__ import annotations
 
@@ -13,18 +13,11 @@ if TYPE_CHECKING:
 
 
 class FlextInfraRefactorClassNestingAnalyzer:
-    """Detect class nesting violations and report FLEXT hierarchy issues."""
+    """Report automatic class-nesting plans across project workspaces."""
 
     @classmethod
     def analyze_files(cls, files: t.SequenceOf[Path]) -> m.Infra.ClassNestingReport:
         """Analyze files and return aggregated class-nesting violations."""
-        if not files:
-            return m.Infra.ClassNestingReport(
-                violations_count=0,
-                confidence_counts={},
-                violations=(),
-                per_file_counts={},
-            )
         grouped_targets = cls._group_targets_by_project_root(files)
         if not grouped_targets:
             return m.Infra.ClassNestingReport(
@@ -58,14 +51,15 @@ class FlextInfraRefactorClassNestingAnalyzer:
             per_file_counts=dict(per_file_counts),
         )
 
-    @classmethod
+    @staticmethod
     def _group_targets_by_project_root(
-        cls, files: t.SequenceOf[Path]
-    ) -> t.MappingKV[Path, t.Infra.StrSet]:
-        """Group targets by project root."""
-        grouped: MutableMapping[Path, t.Infra.StrSet] = {}
+        files: t.SequenceOf[Path],
+    ) -> t.MappingKV[Path, tuple[Path, ...]]:
+        """Group resolved targets by their canonical project root."""
+        grouped: MutableMapping[Path, list[Path]] = {}
         for file_path in files:
-            project_root = u.Infra.resolve_project_root(file_path)
+            resolved_file = file_path.resolve()
+            project_root = u.Infra.resolve_project_root(resolved_file)
             if project_root is None:
                 msg = f"class-nesting target has no project root: {file_path}"
                 raise ValueError(msg)

@@ -22,6 +22,14 @@ from flext_tests import tm
 
 from tests import c, m, p, r, u
 
+def _generation_lock_path(root: Path) -> Path:
+    """Resolve the public Git identity used by the generation lock."""
+    identity: m.Infra.GitIdentityReport = tm.ok(
+        u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
+    )
+    return identity.git_dir / "HEAD"
+
+
 pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]
 
 
@@ -39,6 +47,7 @@ def _conform_target(
         beads=u.Tests.beads_project(repository.name),
         canonical_project_name=repository.distribution,
         baseline_branch=provider.branch,
+        baseline_reference=f"refs/remotes/origin/{provider.branch}",
         ci_enabled=True,
         technical_branch_patterns=(
             config.Infra.codegen.branch_policy.technical_branch_patterns
@@ -659,7 +668,9 @@ class TestCodegenConform:
         tm.that(bool(first_result.written_files), eq=True)
         tm.that(
             tuple(
-                file.path for file in first_result.plan.files if file.requires_effect
+                file.path
+                for file in first_result.plan.files
+                if u.Infra.codegen_file_requires_effect(file)
             ),
             eq=(),
         )
@@ -669,7 +680,7 @@ class TestCodegenConform:
             if item.path.name == c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
-            makefile_plan.desired_text,
+            u.Tests.codegen_file_text(makefile_plan),
             has=f"MAKE_PROFILE := {c.Infra.MakeProfile.STANDALONE.value}",
         )
         tm.that(first_result.plan.request.root, eq=root.resolve())
@@ -749,13 +760,7 @@ class TestCodegenConform:
                 existing_root / "Makefile", "# committed managed drift\n"
             )
         )
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=existing_root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "--no-verify", "-m", "Seed committed drift"],
-                cwd=existing_root,
-            )
-        )
+        u.Tests.commit_git_changes(existing_root, "Seed committed drift")
         migrated = FlextInfraCodegenConform.execute_request(
             m.Infra.CodegenConformRequest(
                 root=existing_root,
@@ -863,13 +868,7 @@ class TestCodegenConform:
         _seed_infra_package_tree(root)
         for relative, content in create_only.items():
             tm.ok(u.Cli.atomic_write_text_file(root / relative, content))
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "--no-verify", "-m", "Seed manifest-less tree"],
-                cwd=root,
-            )
-        )
+        u.Tests.commit_git_changes(root, "Seed manifest-less tree")
 
         derived = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(derived.repository, eq=local_repository)
@@ -889,8 +888,8 @@ class TestCodegenConform:
         env_plan = plans[".env.example"]
         tm.that(env_plan.owner, eq="codegen")
         tm.that(env_plan.policy, eq="create-only")
-        tm.that(env_plan.requires_effect, eq=False)
-        tm.that(env_plan.before.content, eq=None)
+        tm.that(u.Infra.codegen_file_requires_effect(env_plan), eq=False)
+        tm.that(tm.ok(u.Infra.codegen_file_before_state(env_plan)).content, eq=None)
         tm.that((root / ".env.example").exists(), eq=False)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that(plans[required].requires_effect, eq=True)
@@ -991,12 +990,17 @@ class TestCodegenConform:
             for item in second.files
             if item.path.name == c.Infra.PYPROJECT_FILENAME
         )
-        rendered_tooling = tomllib.loads(first_pyproject.desired_text)["tool"]
+        rendered_tooling = tomllib.loads(u.Tests.codegen_file_text(first_pyproject))[
+            "tool"
+        ]
         report = rendered_tooling["coverage"]["report"]
         addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
         pytest_policy = config.Infra.tooling.tools.pytest
 
-        tm.that(second_pyproject.desired_text, eq=first_pyproject.desired_text)
+        tm.that(
+            u.Tests.codegen_file_text(second_pyproject),
+            eq=u.Tests.codegen_file_text(first_pyproject),
+        )
         tm.that(addopts, has=f"--timeout={pytest_policy.case_timeout_seconds}")
         tm.that(addopts, lacks="--session-timeout")
         tm.that(addopts >= set(pytest_policy.standard_addopts), eq=True)
@@ -1036,7 +1040,7 @@ class TestCodegenConform:
             for item in plan.files
             if item.path == root / "src/consumer/__init__.py"
         )
-        tm.that(package_root.desired_text, lacks='"r"')
+        tm.that(u.Tests.codegen_file_text(package_root), lacks='"r"')
 
         declared_workspace = workspace.model_copy(
             update={"project": project.model_copy(update={"inherited_facets": ("r",)})}
@@ -1053,8 +1057,10 @@ class TestCodegenConform:
             for item in declared_plan.files
             if item.path == root / "src/consumer/__init__.py"
         )
-        tm.that(declared_root.desired_text, has='"r"')
-        tm.that(declared_root.desired_text, has="from flext_cli import r as r")
+        tm.that(u.Tests.codegen_file_text(declared_root), has='"r"')
+        tm.that(
+            u.Tests.codegen_file_text(declared_root), has="from flext_cli import r as r"
+        )
 
     def test_make_context_accepts_manifest_without_project_metadata(
         self, tmp_path: Path
@@ -1102,13 +1108,7 @@ class TestCodegenConform:
         root = infra_git_repo
         workspace = _standalone_workspace(root)
         _apply_conform_surface(root, workspace, c.Infra.CodegenConformSurface.MAKEFILE)
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "--no-verify", "-m", "Seed generated project"],
-                cwd=root,
-            )
-        )
+        u.Tests.commit_git_changes(root, "Seed generated project")
         route = next(
             route
             for route in CodegenRoutes.codegen_routes[c.Infra.CLI_GROUP_CODEGEN]
@@ -1141,13 +1141,7 @@ class TestCodegenConform:
                 root / "custom.mk", ".PHONY: public-handler\npublic-handler:\n\t@true\n"
             )
         )
-        tm.ok(u.Cli.run_checked(["git", "add", "-A"], cwd=root))
-        tm.ok(
-            u.Cli.run_checked(
-                ["git", "commit", "-q", "--no-verify", "-m", "Seed generated project"],
-                cwd=root,
-            )
-        )
+        u.Tests.commit_git_changes(root, "Seed generated project")
         request = m.Infra.CodegenConformRequest(
             root=root,
             what=c.Infra.CodegenConformSurface.DEPENDENCIES,
@@ -1163,7 +1157,11 @@ class TestCodegenConform:
             eq=("pyproject.toml",),
         )
         tm.that(
-            tuple(file.requires_effect for file in planned.value.files), eq=(False,)
+            tuple(
+                u.Infra.codegen_file_requires_effect(file)
+                for file in planned.value.files
+            ),
+            eq=(False,),
         )
         exit_code = main([
             "codegen",
@@ -1417,7 +1415,7 @@ class TestScriptDispatchMakefile:
         makefile = next(
             file for file in plan.files if file.path.name == c.Infra.MAKEFILE_FILENAME
         )
-        rendered: str = makefile.desired_text
+        rendered: str = u.Tests.codegen_file_text(makefile)
         return rendered
 
     def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
@@ -1583,7 +1581,7 @@ class TestScriptDispatchMakefile:
         tm.that(gen_init_body.count("codegen init"), eq=2)
         tm.that(gen_init_body, lacks=["codegen conform", "WORKSPACE_ROOT", "bd"])
         # The regeneration contract published on every projection speaks gen.
-        tm.that("# @flext-regenerate: make gen WHAT=apply APPLY=Y" in rendered, eq=True)
+        tm.that("# @flext-regenerate: make gen APPLY=Y" in rendered, eq=True)
         # The custom-surface policy names gen (not codegen) for hooks/handlers.
         handler_policies: dict[str, m.Infra.CustomHandlerPolicy] = dict(
             config.Infra.codegen.make.custom_handler_policies

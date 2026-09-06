@@ -34,6 +34,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
             fscommands=fscommands_factory(),
             ropefolder=ropefolder,
             save_objectdb=save_objectdb,
+            save_history=False,
             ignored_resources=list(ignored_resources),
             source_folders=list(source_folders),
         )

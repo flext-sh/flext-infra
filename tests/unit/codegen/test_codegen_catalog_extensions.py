@@ -270,18 +270,6 @@ class TestsCodegenCatalogExtensions:
             )
         )
         declared_gitmodules = gitmodules.read_bytes()
-        project = workspace.project
-        assert project is not None
-        for entry in config.Infra.codegen.templates.entries:
-            if root.role not in entry.profiles:
-                continue
-            destination = entry.destination.format(
-                package_name=project.package_name, ns=project.namespace_attribute
-            )
-            (workspace_root / destination).parent.mkdir(parents=True, exist_ok=True)
-        for managed in config.Infra.codegen.managed_files:
-            (workspace_root / managed.path).parent.mkdir(parents=True, exist_ok=True)
-
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=workspace_root,
@@ -301,13 +289,14 @@ class TestsCodegenCatalogExtensions:
             if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
-            root_makefile.desired_text, has=f"WORKSPACE_SUBPROJECTS := {member.name}"
+            test_u.Tests.codegen_file_text(root_makefile),
+            has=f"DECLARED_REPOSITORIES := {member.name}",
         )
         gitmodules_plan = next(
             file for file in plan.files if file.path == gitmodules.resolve()
         )
         tm.that(gitmodules_plan.policy, eq="manual")
-        tm.that(gitmodules_plan.requires_effect, eq=False)
+        tm.that(u.Infra.codegen_file_requires_effect(gitmodules_plan), eq=False)
         tm.that(gitmodules_plan.desired_content, eq=declared_gitmodules)
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 

@@ -11,7 +11,7 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
-from flext_cli import c, m, u
+from flext_cli import m, u
 from flext_infra import t
 from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
 from flext_infra._constants.make import FlextInfraConstantsMake
@@ -269,14 +269,10 @@ class FlextInfraConfigModels:
     class ToolchainSpec(_ConfigContract):
         """Language-runtime and native-tool versions shared by generated projects.
 
-        Only the Python minor line ``python_version`` (e.g. ``3.13``) is
-        declared for the language runtime. The environment resolves its newest
-        compatible patch. The PEP 440 family requirement is derived, so a
-        version-line bump touches exactly one value. Python linters/type-checkers
-        are NOT here: their floors live in pyproject and uv.lock owns the resolved
-        versions. Native executables required by canonical Make gates use the
-        moving ``latest`` selector here; mise.lock alone records their immutable
-        releases and checksums.
+        Language runtimes and native tools are declared as compatible release
+        lines or exact versions. The generated Mise lock records the immutable
+        release and checksums selected inside those constraints. Python
+        linters/type-checkers remain owned by pyproject and uv.lock.
         """
 
         python_version: Annotated[
@@ -313,16 +309,16 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         kubectl_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving kubectl release selector")
+            t.NonEmptyStr, _tool_version_field("Exact kubectl version, e.g. '1.32.0'")
         ]
         helm_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving Helm release selector")
+            t.NonEmptyStr, _tool_version_field("Exact Helm version, e.g. '3.19.4'")
         ]
         kind_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving kind release selector")
+            t.NonEmptyStr, _tool_version_field("Exact kind version, e.g. '0.31.0'")
         ]
         direnv_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving direnv release selector")
+            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
         ]
         environment_path_prepends: Annotated[
             tuple[t.NonEmptyStr, ...],
@@ -337,31 +333,32 @@ class FlextInfraConfigModels:
             ),
         ] = ()
         uv_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving uv release selector")
+            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
         ]
         taplo_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving Taplo release selector")
+            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving ast-grep release selector")
+            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving Gitleaks release selector")
+            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
         ]
         scc_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving scc release selector")
+            t.NonEmptyStr, _tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            Literal["latest"],
-            _tool_version_field("Moving kubeconform release selector"),
+            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
         ]
         go_version: Annotated[
-            Literal["latest"],
+            t.NonEmptyStr,
             _tool_version_field(
-                "Moving Go release selector used by declared go: backends"
+                "Exact Go runtime version; mise resolves go: backend "
+                "selectors through it, so beads only installs when Go "
+                "is a declared tool"
             ),
         ]
         mise_lock_platforms: Annotated[
@@ -373,7 +370,6 @@ class FlextInfraConfigModels:
                     "linux-arm64-musl",
                     "macos-x64",
                     "macos-arm64",
-                    "windows-x64",
                 ],
                 ...,
             ],
@@ -382,29 +378,7 @@ class FlextInfraConfigModels:
                 description="Platforms materialized into the project mise lockfile",
             ),
         ]
-        mise_lock_platform_exclusions: Annotated[
-            Mapping[
-                t.NonEmptyStr,
-                tuple[
-                    Literal[
-                        "linux-x64",
-                        "linux-arm64",
-                        "linux-x64-musl",
-                        "linux-arm64-musl",
-                        "macos-x64",
-                        "macos-arm64",
-                        "windows-x64",
-                    ],
-                    ...,
-                ],
-            ],
-            m.Field(
-                default_factory=immutable_empty_mapping,
-                description=(
-                    "Explicit platforms a backend cannot represent in mise.lock"
-                ),
-            ),
-        ]
+
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -442,18 +416,7 @@ class FlextInfraConfigModels:
             if len(set(self.mise_lock_platforms)) != len(self.mise_lock_platforms):
                 msg = "mise_lock_platforms must be unique"
                 raise ValueError(msg)
-            declared = set(self.mise_lock_platforms)
-            for selector, exclusions in self.mise_lock_platform_exclusions.items():
-                if len(set(exclusions)) != len(exclusions):
-                    msg = f"mise lock platform exclusions must be unique: {selector}"
-                    raise ValueError(msg)
-                unknown = set(exclusions) - declared
-                if unknown:
-                    msg = (
-                        "mise lock platform exclusions must be declared targets: "
-                        f"{selector}"
-                    )
-                    raise ValueError(msg)
+
             return self
 
         @m.computed_field
@@ -469,6 +432,12 @@ class FlextInfraConfigModels:
         def python_selector(self) -> str:
             """Mise/pyenv-style selector for the configured Python minor line."""
             return self.python_version
+
+        @m.computed_field
+        @property
+        def uv_exclude_newer(self) -> str:
+            """Render the shared dependency cooldown in uv duration syntax."""
+            return f"{self.dependency_cooldown_days} days"
 
     class ProviderSpec(_ConfigContract):
         """One GitHub organization and its mandatory branch policy."""
@@ -754,6 +723,14 @@ class FlextInfraConfigModels:
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
             m.Field(description="Canonical workflow command contract"),
+        ]
+
+    class ToolingRenderSpec(_ConfigContract):
+        """Typed input for project-independent generated tooling surfaces."""
+
+        tooling: Annotated[
+            FlextInfraModelsDepsToolSettings.ToolConfigDocument,
+            m.Field(description="Canonical validated tooling policy"),
         ]
 
     class DistroDockerRenderSpec(_ConfigContract):
@@ -1722,6 +1699,25 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                description=(
+                    "Repository-scoped packages explicitly exempted from the "
+                    "fleet dependency cooldown"
+                )
+            ),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Repository-scoped package cutoffs projected to uv "
+                    "exclude-newer-package"
+                ),
+            ),
+        ]
         extra_verbs: Annotated[
             tuple[FlextInfraConfigModels.MakeVerbSpec, ...],
             m.Field(
@@ -1740,6 +1736,32 @@ class FlextInfraConfigModels:
                 )
             ),
         ] = None
+
+        @u.model_validator(mode="after")
+        def _validate_dependency_cooldown_policy(self) -> Self:
+            """Reject duplicate or contradictory repository cooldown entries."""
+            if len(set(self.dependency_cooldown_exclusions)) != len(
+                self.dependency_cooldown_exclusions
+            ):
+                msg = "repository dependency cooldown exclusions must be unique"
+                raise ValueError(msg)
+            overlap = set(self.dependency_cooldown_exclusions).intersection(
+                self.dependency_cooldown_overrides
+            )
+            if overlap:
+                msg = (
+                    "repository dependency cooldown package cannot be both excluded "
+                    f"and overridden: {', '.join(sorted(overlap))}"
+                )
+                raise ValueError(msg)
+            return self
+
+        @u.field_serializer("dependency_cooldown_overrides", when_used="json")
+        def _serialize_dependency_cooldown_overrides(
+            self, value: t.StrMapping
+        ) -> dict[str, str]:
+            """Project the immutable mapping through JSON/template boundaries."""
+            return dict(value)
 
     class BeadsProjectSpec(_ConfigContract):
         """Repository-local Beads identity from ``config/beads.yaml``."""
@@ -1798,6 +1820,12 @@ class FlextInfraConfigModels:
         baseline_branch: Annotated[
             t.NonEmptyStr,
             m.Field(description="Provider-owned integration ancestry baseline"),
+        ]
+        baseline_reference: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                description="Exact local or remote Git ref used as ancestry baseline"
+            ),
         ]
         ci_enabled: Annotated[
             bool, m.Field(description="Whether conform owns the CI projection")
@@ -1876,8 +1904,23 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
         uv_version: Annotated[
-            Literal["latest"],
-            m.Field(description="mise-owned moving uv release selector"),
+            t.NonEmptyStr,
+            m.Field(description="mise-owned uv version used by bootstrap validation"),
+        ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Packages exempted from uv dependency cooldown"),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
+            ),
         ]
         make: Annotated[
             FlextInfraConfigModels.MakeSpec,
@@ -2098,6 +2141,21 @@ class FlextInfraConfigModels:
         uv_link_mode: Annotated[
             t.NonEmptyStr, m.Field(description="Configured uv installation link mode")
         ]
+        uv_exclude_newer: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="uv exclude-newer cooldown window for [tool.uv]"),
+        ]
+        dependency_cooldown_exclusions: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(description="Packages exempted from uv dependency cooldown"),
+        ] = ()
+        dependency_cooldown_overrides: Annotated[
+            t.StrMapping,
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-package cooldown cutoffs as RFC 3339 timestamps",
+            ),
+        ]
         ruff_per_file_ignores: Annotated[
             t.MappingKV[str, t.StrSequence],
             m.Field(
@@ -2245,41 +2303,40 @@ class FlextInfraConfigModels:
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
         ]
         kubectl_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving kubectl release selector")
+            t.NonEmptyStr, _tool_version_field("Exact kubectl toolchain version")
         ]
         helm_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving Helm release selector")
+            t.NonEmptyStr, _tool_version_field("Exact Helm toolchain version")
         ]
         kind_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving kind release selector")
+            t.NonEmptyStr, _tool_version_field("Exact kind toolchain version")
         ]
         direnv_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving direnv release selector")
+            t.NonEmptyStr, _tool_version_field("Compatible direnv major.minor line")
         ]
         uv_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving uv release selector")
+            t.NonEmptyStr, _tool_version_field("Compatible uv major.minor line")
         ]
         qlty_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact attested qlty release")
         ]
         taplo_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving Taplo release selector")
+            t.NonEmptyStr, _tool_version_field("Exact Taplo formatter version")
         ]
         ast_grep_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving ast-grep release selector")
+            t.NonEmptyStr, _tool_version_field("Exact ast-grep analyzer version")
         ]
         gitleaks_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving Gitleaks release selector")
+            t.NonEmptyStr, _tool_version_field("Exact Gitleaks scanner version")
         ]
         scc_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving scc release selector")
+            t.NonEmptyStr, _tool_version_field("Exact scc code-counter version")
         ]
         kubeconform_version: Annotated[
-            Literal["latest"],
-            _tool_version_field("Moving kubeconform release selector"),
+            t.NonEmptyStr, _tool_version_field("Compatible kubeconform minor line")
         ]
         go_version: Annotated[
-            Literal["latest"], _tool_version_field("Moving Go release selector")
+            t.NonEmptyStr, _tool_version_field("Exact Go runtime version")
         ]
         author_name: Annotated[
             t.NonEmptyStr, m.Field(description="Author display name")
@@ -3294,8 +3351,13 @@ class FlextInfraConfigModels:
         project: Annotated[Path, m.Field(description="Physical owning project root")]
         path: Annotated[Path, m.Field(description="Absolute managed file path")]
         before: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Descriptor-authenticated state captured by planning"),
+            m.Cli.AtomicFileState | m.Cli.AtomicDirectoryChainPlan,
+            m.Field(
+                description=(
+                    "Descriptor-authenticated file state, or the exact absent "
+                    "parent chain captured by read-only planning"
+                )
+            ),
         ]
         desired_content: Annotated[
             bytes | None,
@@ -3335,8 +3397,16 @@ class FlextInfraConfigModels:
             if not self.project.is_absolute() or not self.path.is_absolute():
                 msg = "codegen project and path must be absolute"
                 raise ValueError(msg)
-            if self.before.path != self.path:
-                msg = "codegen before state belongs to another path"
+            if isinstance(self.before, m.Cli.AtomicFileState):
+                if self.before.path != self.path:
+                    msg = "codegen before state belongs to another path"
+                    raise ValueError(msg)
+            elif (
+                self.before.target != self.path.parent
+                or not self.before.directories
+                or self.desired_content is None
+            ):
+                msg = "codegen absent parent plan is inconsistent with its destination"
                 raise ValueError(msg)
             try:
                 self.path.relative_to(self.project)
@@ -3352,32 +3422,6 @@ class FlextInfraConfigModels:
                 )
                 raise ValueError(msg)
             return self
-
-        @property
-        def operation(self) -> Literal["noop", "create", "replace", "mode", "delete"]:
-            """Derive the only authorized effect from before and desired states."""
-            if self.desired_content is None:
-                return "delete" if self.before.content is not None else "noop"
-            if self.before.content is None:
-                return "create"
-            if self.before.content != self.desired_content:
-                return "replace"
-            if self.before.mode != self.desired_mode:
-                return "mode"
-            return "noop"
-
-        @property
-        def requires_effect(self) -> bool:
-            """Whether publication must change the destination."""
-            return self.operation != "noop"
-
-        @property
-        def desired_text(self) -> str:
-            """Decode one present text artifact through the canonical encoding."""
-            if self.desired_content is None:
-                msg = f"absent codegen plan has no text payload: {self.path}"
-                raise ValueError(msg)
-            return self.desired_content.decode(c.Cli.ENCODING_DEFAULT)
 
     class CodegenPlan(_ConfigContract):
         """Fully validated plan produced before any managed-file write."""

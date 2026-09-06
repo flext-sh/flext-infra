@@ -156,6 +156,8 @@ class FlextInfraConstantsSharedInfra:
     FOLLOW_SUPERPROJECT_BRANCH: Final[str] = "."
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
+    MARKDOWNLINT_CONFIG_FILENAME: Final[str] = ".markdownlint.json"
+    MARKDOWNLINT_IGNORE_FILENAME: Final[str] = ".markdownlintignore"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"

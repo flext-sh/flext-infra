@@ -15,7 +15,11 @@ if TYPE_CHECKING:
     from ._docs_github_links import FlextInfraUtilitiesDocsGithubLinks
     from ._docs_guides import FlextInfraUtilitiesDocsGuidesMixin
     from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
+    from ._docs_scope_paths import FlextInfraUtilitiesDocsScopePathsMixin
+    from ._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
+    from ._docs_scope_projects import FlextInfraUtilitiesDocsScopeProjectsMixin
     from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
+    from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
     from ._git.attestation import FlextInfraUtilitiesGitAttestationMixin
     from ._git.remote import canonical_origin_remote, redact_origin_remote
     from ._git.repo import FlextInfraUtilitiesGitRepo
@@ -159,12 +163,20 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesDocsContract",
     "FlextInfraUtilitiesDocsFix",
     "FlextInfraUtilitiesDocsGenerate",
+    "FlextInfraUtilitiesDocsGeneratePlanMixin",
+    "FlextInfraUtilitiesDocsGenerateProjectMixin",
+    "FlextInfraUtilitiesDocsGenerateRootMixin",
+    "FlextInfraUtilitiesDocsGenerateSourcesMixin",
     "FlextInfraUtilitiesDocsGithubLinks",
     "FlextInfraUtilitiesDocsGuidesMixin",
     "FlextInfraUtilitiesDocsRender",
     "FlextInfraUtilitiesDocsScope",
     "FlextInfraUtilitiesDocsScopeBuildMixin",
+    "FlextInfraUtilitiesDocsScopePathsMixin",
+    "FlextInfraUtilitiesDocsScopePolicyMixin",
+    "FlextInfraUtilitiesDocsScopeProjectsMixin",
     "FlextInfraUtilitiesDocsScopeSelectionMixin",
+    "FlextInfraUtilitiesDocsScopeStateMixin",
     "FlextInfraUtilitiesDocsValidate",
     "FlextInfraUtilitiesGit",
     "FlextInfraUtilitiesGitAttestationMixin",
@@ -258,7 +270,11 @@ _LAZY_IMPORTS = MappingProxyType(
             "._docs_github_links": ("FlextInfraUtilitiesDocsGithubLinks",),
             "._docs_guides": ("FlextInfraUtilitiesDocsGuidesMixin",),
             "._docs_scope_build": ("FlextInfraUtilitiesDocsScopeBuildMixin",),
+            "._docs_scope_paths": ("FlextInfraUtilitiesDocsScopePathsMixin",),
+            "._docs_scope_policy": ("FlextInfraUtilitiesDocsScopePolicyMixin",),
+            "._docs_scope_projects": ("FlextInfraUtilitiesDocsScopeProjectsMixin",),
             "._docs_scope_selection": ("FlextInfraUtilitiesDocsScopeSelectionMixin",),
+            "._docs_scope_state": ("FlextInfraUtilitiesDocsScopeStateMixin",),
             "._git": ("_git",),
             "._git.attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
             "._git.remote": ("canonical_origin_remote", "redact_origin_remote"),

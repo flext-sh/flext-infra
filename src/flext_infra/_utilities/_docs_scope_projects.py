@@ -118,7 +118,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             )
             else c.Infra.MakeProfile.STANDALONE
         )
-        return mw.ProjectInfo.model_construct(
+        return mw.ProjectInfo(
             path=entry,
             name=project_state.project_name,
             stack="python/flext",

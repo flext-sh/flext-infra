@@ -77,14 +77,14 @@ class TestCodegenManifestlessExisting:
             sum(file.path == root / "pyproject.toml" for file in initial_plan.files),
             eq=1,
         )
-        tm.that(plans["pyproject.toml"].requires_effect, eq=False)
+        tm.that(u.Infra.codegen_file_requires_effect(plans["pyproject.toml"]), eq=False)
 
         missing_create_only = plans[".env.example"]
         tm.that(missing_create_only.policy, eq="create-only")
-        tm.that(missing_create_only.requires_effect, eq=False)
+        tm.that(u.Infra.codegen_file_requires_effect(missing_create_only), eq=False)
         tm.that((root / ".env.example").exists(), eq=False)
         for relative, content in preserved.items():
-            tm.that(plans[relative].requires_effect, eq=False)
+            tm.that(u.Infra.codegen_file_requires_effect(plans[relative]), eq=False)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
             tm.that(plans[required].requires_effect, eq=True)
@@ -102,7 +102,12 @@ class TestCodegenManifestlessExisting:
         )
         verified = tm.ok(fixed_point)
         tm.that(
-            tuple(file.path for file in verified.files if file.requires_effect), eq=()
+            tuple(
+                file.path
+                for file in verified.files
+                if u.Infra.codegen_file_requires_effect(file)
+            ),
+            eq=(),
         )
 
     def test_existing_root_rejects_non_regular_create_only_destination(

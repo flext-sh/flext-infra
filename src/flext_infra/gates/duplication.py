@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import shutil
 import time
 from pathlib import Path
@@ -33,6 +34,9 @@ class FlextInfraDuplicationGate(FlextInfraGate):
 
     # flext-pulj: process results stay structural outside the Pydantic boundary.
     _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
+    _python_behavior_cache: ClassVar[
+        dict[tuple[str, int, int], tuple[tuple[int, int], ...]]
+    ] = {}
 
     @override
     def check(
@@ -226,19 +230,119 @@ class FlextInfraDuplicationGate(FlextInfraGate):
             second = u.Cli.json_deep_mapping(duplicate, "secondFile")
             first_name = u.Cli.json_pick_str(first, "name")
             second_name = u.Cli.json_pick_str(second, "name")
+            if not cls._is_semantic_clone(duplicate, first, second):
+                continue
             if first_name.startswith(prefix):
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, first, first_name, second_name, project_dir
                     )
                 )
-            if second_name.startswith(prefix) and second_name != first_name:
+            elif second_name.startswith(prefix) and second_name != first_name:
                 issues.append(
                     cls._issue_from_duplicate(
                         duplicate, second, second_name, first_name, project_dir
                     )
                 )
         return r[tuple[m.Infra.Issue, ...]].ok(tuple(issues))
+
+    @classmethod
+    def _is_semantic_clone(
+        cls, duplicate: t.JsonMapping, first: t.JsonMapping, second: t.JsonMapping
+    ) -> bool:
+        """Require executable Python behavior on both sides of a clone.
+
+        jscpd is the candidate detector, not the semantic authority. Python
+        module licenses, docstrings, imports, ``TYPE_CHECKING`` blocks, class
+        shells, function signatures, and declaration-only assignments are
+        intentionally repeated language structure rather than competing
+        implementations. A candidate remains blocking when both source ranges
+        contain an executable statement. Unreadable or unparsable input stays
+        blocking because absence of semantic proof can never produce green.
+        Non-Python formats likewise remain blocking until their own semantic
+        classifier exists.
+        """
+        if u.Cli.json_pick_str(duplicate, "format") != "python":
+            return True
+        return cls._range_has_python_behavior(first) and cls._range_has_python_behavior(
+            second
+        )
+
+    @classmethod
+    def _range_has_python_behavior(cls, side: t.JsonMapping) -> bool:
+        """Return whether one jscpd source range encloses executable behavior."""
+        file_name = u.Cli.json_pick_str(side, "name")
+        path = Path(file_name)
+        try:
+            identity = path.stat()
+        except OSError:
+            return True
+        key = (file_name, identity.st_mtime_ns, identity.st_size)
+        ranges = cls._python_behavior_cache.get(key)
+        if ranges is None:
+            ranges = cls._python_behavior_ranges(path)
+            cls._python_behavior_cache[key] = ranges
+        start = u.Cli.json_nested_int(side, "startLoc", "line", default=1)
+        end = u.Cli.json_nested_int(side, "endLoc", "line", default=start)
+        return any(
+            start <= node_start and node_end <= end for node_start, node_end in ranges
+        )
+
+    @staticmethod
+    def _python_behavior_ranges(path: Path) -> tuple[tuple[int, int], ...]:
+        """Parse one module into ranges for statements with runtime behavior."""
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        except (OSError, SyntaxError, UnicodeError):
+            return ((1, 2**31 - 1),)
+        parents = {
+            child: parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
+
+        def inside_function(node: ast.AST) -> bool:
+            parent = parents.get(node)
+            while parent is not None:
+                if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    return True
+                parent = parents.get(parent)
+            return False
+
+        def is_declaration(node: ast.stmt) -> bool:
+            if isinstance(
+                node,
+                (
+                    ast.ClassDef,
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                    ast.Import,
+                    ast.ImportFrom,
+                    ast.Pass,
+                    ast.Global,
+                    ast.Nonlocal,
+                ),
+            ):
+                return True
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+                return True
+            if (
+                isinstance(node, ast.If)
+                and isinstance(node.test, ast.Name)
+                and node.test.id == "TYPE_CHECKING"
+            ):
+                return True
+            return isinstance(
+                node, (ast.Assign, ast.AnnAssign)
+            ) and not inside_function(node)
+
+        return tuple(
+            (node.lineno, node.end_lineno)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.stmt)
+            and node.end_lineno is not None
+            and not is_declaration(node)
+        )
 
     @classmethod
     def _issue_from_duplicate(

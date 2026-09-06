@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import m, u
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
@@ -49,7 +49,9 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         if planned.failure:
             return r[m.Infra.ValidationReport].from_failure(planned)
         modified = tuple(
-            str(plan.path) for plan in planned.value if plan.requires_effect
+            str(plan.path)
+            for plan in planned.value.files
+            if u.Infra.codegen_file_requires_effect(plan)
         )
         violations: t.MutableSequenceOf[str] = [
             f"stale lazy map: {path}" for path in modified

@@ -286,6 +286,37 @@ class TestsFlextInfraInfraRopeService:
                 eq=True,
             )
 
+    @pytest.mark.parametrize(
+        ("family_alias", "module_name"), tuple(c.Infra.FAMILY_PUBLIC_MODULES.items())
+    )
+    def test_class_nesting_plan_uses_declared_family_owner(
+        self, tmp_path: Path, family_alias: str, module_name: str
+    ) -> None:
+        """Plan every facade family from semantic objects and its declared owner."""
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        owner_name = (
+            f"{u.derive_class_stem(repository_root.name)}"
+            f"{c.Infra.FAMILY_SUFFIXES[family_alias]}"
+        )
+        extra_class_name = f"{owner_name}Member"
+        module_path = package_root / f"{module_name}.py"
+        u.Tests.write_lazy_init_namespace_module(
+            module_path,
+            class_name=owner_name,
+            alias=family_alias,
+            extra_class_names=(extra_class_name,),
+        )
+
+        with flext_infra.infra.rope_workspace(repository_root) as rope:
+            convention = rope.convention(module_path)
+            violations = tm.ok(u.Infra.class_nesting_plan(rope, module_path))
+
+        tm.that(len(violations), eq=1)
+        violation = violations[0]
+        tm.that(violation.class_name, eq=extra_class_name)
+        tm.that(violation.target_namespace, eq=convention.module_policy.expected_family)
+        tm.that(violation.file, eq=module_path.relative_to(repository_root).as_posix())
+
     def test_open_workspace_indexes_every_project_from_any_internal_call(
         self, tmp_path: Path
     ) -> None:

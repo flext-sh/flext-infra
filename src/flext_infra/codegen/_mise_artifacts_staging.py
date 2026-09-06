@@ -39,8 +39,19 @@ class FlextInfraMiseStaging:
         )
         if seed.failure:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(seed)
+        bootstrap = u.Infra.mise_bootstrap_environment()
+        storage = u.Infra.prepare_mise_runtime_storage(
+            plan.layout.scope_root, os.environ, bootstrap
+        )
+        if storage.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(storage)
         runtime_scratch = coordinator.layout.transaction_root / "runtime"
-        receipt = self._runtime.latest_receipt(seed.value, scratch=runtime_scratch)
+        receipt = self._runtime.latest_receipt(
+            seed.value,
+            scratch=runtime_scratch,
+            storage_root=storage.value,
+            contract=bootstrap,
+        )
         if receipt.failure:
             return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(receipt)
         environment = process.environment(runtime_scratch)
@@ -60,11 +71,23 @@ class FlextInfraMiseStaging:
                 stage_root=stage_root,
                 launcher=launcher,
                 receipt_states=receipt_states.value,
-                environment=environment,
+                environment=environment.value,
             )
             if staged.failure:
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(staged)
             stages.append(stage_root)
+        runtime_inventory = u.Cli.atomic_inventory_physical_tree(runtime_scratch)
+        if runtime_inventory.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(
+                runtime_inventory
+            )
+        runtime_cleanup = u.Cli.atomic_cleanup_physical_tree_guarded(
+            runtime_inventory.value
+        )
+        if runtime_cleanup.failure:
+            return r[tuple[m.Infra.CodegenStagedFile, ...]].from_failure(
+                runtime_cleanup
+            )
         return candidates.publication_plan(plan.projects, tuple(stages))
 
     def _stage_project(
@@ -141,9 +164,7 @@ class FlextInfraMiseStaging:
         normalized = candidates.normalize_lock_mode(stage_root / "mise.lock")
         if normalized.failure:
             return normalized
-        validated = self._owner.validate_artifacts(
-            stage_root, config_sources=project.config.sources
-        )
+        validated = self._owner.validate_artifacts(stage_root)
         if validated.failure:
             return r[bool].fail(
                 validated.error

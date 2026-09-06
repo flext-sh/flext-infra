@@ -29,7 +29,9 @@ helm = "3.19"
 kind = "0.31"
 direnv = "2.37"
 taplo = "0.10"
-ast-grep = "0.45"
+# The npm owner publishes the sg/ast-grep executables for GNU and musl Linux
+# without pretending one libc artifact is another platform.
+"npm:@ast-grep/cli" = "0.45"
 gitleaks = "8.30"
 # scc (the loc-cap gate's code counter) ships no bare mise registry alias, so
 # pin the aqua backend explicitly (matching the qlty selector below). Its
@@ -40,7 +42,6 @@ gitleaks = "8.30"
 kubeconform = "0.8"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
-"github:qltysh/qlty" = "0.642"
 # jscpd (the `duplication` check gate) ships no bare registry alias; mise's npm
 # backend installs it on the pinned Node runtime, so the gate finds `jscpd` on
 # PATH without resolving a runner or a version of its own.
@@ -49,13 +50,19 @@ node = "26.8"
 # Waza ships as a GitHub release and is invoked only by the public Make verb.
 "github:microsoft/waza" = "0.38.7"
 # Go runtime for the Go projects in this workspace.
-go = "1.26"
+go = "latest"
+# GitHub Artifact Attestations is an external-token capability and is not
+# selected by setup/gen; the lock still authenticates the downloaded bytes by
+# checksum without silently requiring a personal GitHub credential.
+[tools."github:qltysh/qlty"]
+version = "0.642"
+github_attestations = false
 [tools."github:marlon-costa-dc/beads"]
 version = "latest"
 prerelease = true
-
+github_attestations = false
 [tools."github:marlon-costa-dc/gascity"]
 version = "latest"
 prerelease = true
-
+github_attestations = false
 # End SECTION: tools

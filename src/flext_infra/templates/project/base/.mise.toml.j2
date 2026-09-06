@@ -14,7 +14,7 @@ lockfile = true
 locked = true
 
 # === SECTION: tools (managed) ===
-# Source: config:python_version plus latest native tool selectors
+# Source: config:python_version, config:codegen.scaffold.project.dev native toolchain floors
 #         (kubectl_version, helm_version, kind_version, taplo_version, ast_grep_version,
 #          gitleaks_version, scc_version, kubeconform_version, qlty_version,
 #          beads (selector/version/prerelease), gascity (selector/version/prerelease))
@@ -27,7 +27,9 @@ helm = "{{ helm_version }}"
 kind = "{{ kind_version }}"
 direnv = "{{ direnv_version }}"
 taplo = "{{ taplo_version }}"
-ast-grep = "{{ ast_grep_version }}"
+# The npm owner publishes the sg/ast-grep executables for GNU and musl Linux
+# without pretending one libc artifact is another platform.
+"npm:@ast-grep/cli" = "{{ ast_grep_version }}"
 gitleaks = "{{ gitleaks_version }}"
 # scc (the loc-cap gate's code counter) ships no bare mise registry alias, so
 # pin the aqua backend explicitly (matching the qlty selector below). Its

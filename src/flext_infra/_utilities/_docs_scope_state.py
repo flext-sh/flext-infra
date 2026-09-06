@@ -61,7 +61,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
             )
         )
         if not payload:
-            return mw.ProjectPyprojectState.model_construct(
+            return mw.ProjectPyprojectState(
                 project_root=root,
                 pyproject_path=pyproject_path,
                 payload=payload,
@@ -70,7 +70,7 @@ class FlextInfraUtilitiesDocsScopeStateMixin(FlextInfraUtilitiesDocsScopePathsMi
                 package_name="",
                 dependency_names=dependency_names,
             )
-        return mw.ProjectPyprojectState.model_construct(
+        return mw.ProjectPyprojectState(
             project_root=root,
             pyproject_path=pyproject_path,
             payload=payload,

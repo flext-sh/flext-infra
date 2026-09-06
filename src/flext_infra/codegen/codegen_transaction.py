@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import m, u
 from flext_infra.codegen import _codegen_staging as generic_staging
 from flext_infra.codegen import _mise_artifacts_journal as journal_io
 from flext_infra.codegen import _mise_artifacts_publication as publication
@@ -75,6 +75,13 @@ class FlextInfraCodegenTransaction:
         if plan.failure:
             return r[bool].from_failure(plan)
         return verify.live(self._owner, plan.value)
+
+    @staticmethod
+    def validate_phase_analysis_locked(
+        analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[bool]:
+        """Validate a published phase from its immutable planning receipt."""
+        return verify.phase_analysis_live(analysis)
 
     def run_locked[T](
         self, *, prepare: bool, operation: Callable[[Path], p.Result[T]]
@@ -147,7 +154,8 @@ class FlextInfraCodegenTransaction:
         ordinary = tuple(
             file_plan
             for file_plan in file_plans
-            if file_plan.path not in config_paths and file_plan.requires_effect
+            if file_plan.path not in config_paths
+            and u.Infra.codegen_file_requires_effect(file_plan)
         )
         source_states = self._phase_sources("conform", file_plans)
         if source_states.failure:
@@ -290,7 +298,9 @@ class FlextInfraCodegenTransaction:
     ) -> p.Result[m.Infra.CodegenTransactionSession]:
         """Append, durably authorize, then publish one dependent generated phase."""
         result_type = r[m.Infra.CodegenTransactionSession]
-        changed = tuple(plan for plan in plans if plan.requires_effect)
+        changed = tuple(
+            plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
+        )
         if not changed:
             return result_type.ok(session)
         layout = session.plan.layout

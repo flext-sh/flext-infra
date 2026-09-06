@@ -88,7 +88,7 @@ class TestsCodegenMakeEnvironment:
         )
         tm.ok(
             u.Cli.atomic_write_text_file(
-                project_root / "Makefile", makefile.desired_text
+                project_root / "Makefile", test_u.Tests.codegen_file_text(makefile)
             )
         )
         return project_root, repository_root

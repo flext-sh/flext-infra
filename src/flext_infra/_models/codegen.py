@@ -11,6 +11,7 @@ from flext_cli import m, u
 from flext_infra import c, p, t
 from flext_infra._models._defaults import ImmutableEmptyMapping
 from flext_infra._models.codegen_render import FlextInfraModelsCodegenRender
+from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
 
@@ -840,6 +841,37 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 raise ValueError(msg)
             if self.plan.layout.transaction_id != self.journal.transaction_id:
                 msg = "codegen session layout and journal transaction ids differ"
+                raise ValueError(msg)
+            return self
+
+    class CodegenPhaseAnalysis(m.ArbitraryTypesModel):
+        """Immutable planner receipt reused for publication verification."""
+
+        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True, extra="forbid")
+
+        phase: Annotated[
+            Literal["lazy-init"],
+            m.Field(description="Generation phase that produced this receipt"),
+        ]
+        files: Annotated[
+            tuple[FlextInfraConfigModels.CodegenFilePlan, ...],
+            m.Field(description="Ordered desired publication states"),
+        ]
+        inputs: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(description="Ordered complete authenticated planner inputs"),
+        ]
+
+        @u.model_validator(mode="after")
+        def _validate_unique_paths(self) -> Self:
+            """Reject ambiguous receipts with competing path authorities."""
+            file_paths = tuple(file.path for file in self.files)
+            if len(set(file_paths)) != len(file_paths):
+                msg = "codegen phase receipt destination paths must be unique"
+                raise ValueError(msg)
+            input_paths = tuple(state.path for state in self.inputs)
+            if len(set(input_paths)) != len(input_paths):
+                msg = "codegen phase receipt input paths must be unique"
                 raise ValueError(msg)
             return self
 

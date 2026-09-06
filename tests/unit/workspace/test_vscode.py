@@ -21,17 +21,17 @@ def _write_settings(project_root: Path, content: str) -> Path:
 class TestsFlextInfraCodegenVscode:
     """Behavior contract for the config-driven VS Code settings codegen owner."""
 
-    def test_applies_canonical_settings_and_preserves_custom_keys(
+    def test_applies_canonical_settings_and_removes_retired_artifacts(
         self, tmp_path: Path
     ) -> None:
-        """Enforce canonical keys while preserving project-specific entries."""
+        """Enforce canonical keys while deleting stale generated map entries."""
         project_root = tmp_path / "project"
         project_root.mkdir()
         _write_settings(
             project_root,
             json.dumps({
                 "python.languageServer": "None",
-                "files.exclude": {"**/dbt_packages": True},
+                "files.exclude": {"**/.retired-cache": True},
                 "python.analysis.diagnosticSeverityOverrides": {
                     "reportUnknownMemberType": "none"
                 },
@@ -57,7 +57,7 @@ class TestsFlextInfraCodegenVscode:
             ),
         )
         tm.that("./apps/*/.venv" in search_paths, eq=False)
-        tm.that(doc["files.exclude"]["**/dbt_packages"], eq=True)
+        tm.that("**/.retired-cache" in doc["files.exclude"], eq=False)
         tm.that(doc["files.exclude"]["**/.mypy_cache"], eq=True)
         overrides = doc["python.analysis.diagnosticSeverityOverrides"]
         tm.that(overrides["reportUnknownMemberType"], eq="none")

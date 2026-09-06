@@ -1,5 +1,5 @@
 # @flext-managed: continuous
-# @flext-regenerate: make gen WHAT=apply APPLY=Y
+# @flext-regenerate: make gen APPLY=Y
 # @flext-ssot: flext-infra/config/codegen.yaml + flext-infra/src/flext_infra/templates/project/base/Makefile.j2
 # @flext-maintenance: do not edit generated projections; edit the SSOT and regenerate
 # flext-infra — generated project interface.
@@ -11,6 +11,9 @@
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
+ifneq ($(filter command line override,$(origin WHAT)),)
+$(error WHAT selectors are retired; invoke the canonical verb and use APPLY=Y as the sole mutation flag)
+endif
 
 ifeq ($(filter command line override,$(origin GEN_INIT_ONLY)),)
 ifeq ($(filter gen,$(MAKECMDGOALS)),gen)
@@ -239,6 +242,7 @@ _DEFAULT_gen := check
 _DEFAULT_mod := check
 
 _APPLY_WHAT_deps := upgrade
+_APPLY_WHAT_check := all
 _APPLY_WHAT_test := all
 _APPLY_WHAT_fmt := apply
 _APPLY_WHAT_fix := apply
@@ -312,13 +316,13 @@ export FLEXT_INFRA_PYTHON UV UV_PROJECT UV_PROJECT_ENVIRONMENT VIRTUAL_ENV PATH
 
 _bootstrap_setup_tools:
 	@set -eu; \
-	uv_required="0.12"; \
+	uv_selector="0.12"; \
 	if [ ! -f "$(SETUP_MISE)" ]; then \
-		printf 'ERROR: missing generated mise launcher: %s; run make gen WHAT=apply APPLY=Y\n' "$(SETUP_MISE)" >&2; \
+		printf 'ERROR: missing generated mise launcher: %s; run make gen APPLY=Y\n' "$(SETUP_MISE)" >&2; \
 		exit 2; \
 	fi; \
 	if [ ! -f "$(PROJECT_ROOT)/mise.lock" ]; then \
-		printf 'ERROR: missing generated mise.lock; run make gen WHAT=apply APPLY=Y and commit it\n' >&2; \
+		printf 'ERROR: missing generated mise.lock; run make gen APPLY=Y and commit it\n' >&2; \
 		exit 2; \
 	fi; \
 	project_root="$(PROJECT_ROOT)"; \
@@ -330,7 +334,6 @@ _bootstrap_setup_tools:
 		caller_xdg_data_home="$$caller_home/.local/share"; \
 	fi; \
 	caller_path="$$PATH"; \
-	mise_credential_command="$${MISE_GITHUB_CREDENTIAL_COMMAND:-}"; \
 caller_comspec="$(COMSPEC)"; \
 caller_pathext="$(PATHEXT)"; \
 caller_systemroot="$(SYSTEMROOT)"; \
@@ -396,7 +399,7 @@ if [ -z "$$mise_storage_root" ]; then \
 	mkdir -p "$$scratch_parent"; \
 	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
 	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/receipt/bin" "$$scratch/runtime" "$$scratch/home" "$$scratch/home" "$$scratch/appdata" "$$scratch/appdata" "$$scratch/xdg-config" "$$scratch/xdg-data" "$$scratch/xdg-cache" "$$scratch/xdg-state" "$$scratch/gh-config" "$$scratch/config" "$$scratch/tmp" "$$scratch/." "$$scratch/system-config" "$$scratch/system-data" "$$scratch/system-installs" "$$scratch/system-shims" "$$scratch/tmp" "$$scratch/tmp" "$$scratch/tmp"; \
+	mkdir -p "$$scratch/receipt/bin" "$$scratch/home" "$$scratch/home" "$$scratch/appdata" "$$scratch/appdata" "$$scratch/xdg-config" "$$scratch/xdg-data" "$$scratch/xdg-cache" "$$scratch/xdg-state" "$$scratch/config" "$$scratch/tmp" "$$scratch/." "$$scratch/system-config" "$$scratch/system-data" "$$scratch/system-installs" "$$scratch/system-shims" "$$scratch/tmp" "$$scratch/tmp" "$$scratch/tmp"; \
 : > "$$scratch/global-config.toml"; chmod 600 "$$scratch/global-config.toml"; \
 : > "$$scratch/system-config/config.toml"; chmod 600 "$$scratch/system-config/config.toml"; \
 : > "$$scratch/gitconfig"; chmod 600 "$$scratch/gitconfig"; \
@@ -408,10 +411,6 @@ mise_exec() { \
 			project) mise_config_argument= ;; \
 			*) printf 'ERROR: invalid Mise config mode: %s\n' "$$mise_config_mode" >&2; return 2 ;; \
 		esac; \
-		mise_credential_argument=; \
-		if [ -n "$$mise_credential_command" ]; then \
-			mise_credential_argument="MISE_GITHUB_CREDENTIAL_COMMAND=$$mise_credential_command"; \
-		fi; \
 		env -i \
 'GIT_CONFIG_NOSYSTEM=1' \
 'GIT_TERMINAL_PROMPT=0' \
@@ -445,7 +444,6 @@ mise_exec() { \
 "XDG_DATA_HOME=$$scratch/xdg-data" \
 "XDG_CACHE_HOME=$$scratch/xdg-cache" \
 "XDG_STATE_HOME=$$scratch/xdg-state" \
-"GH_CONFIG_DIR=$$scratch/gh-config" \
 "NETRC=$$scratch/netrc" \
 "GIT_CONFIG_GLOBAL=$$scratch/gitconfig" \
 "MISE_NETRC_FILE=$$scratch/netrc" \
@@ -476,7 +474,6 @@ mise_exec() { \
 "SYSTEMROOT=$$caller_systemroot" \
 "WINDIR=$$caller_windir" \
 $${mise_config_argument:+"$$mise_config_argument"} \
-			$${mise_credential_argument:+"$$mise_credential_argument"} \
 			"$$@"; \
 	}; \
 	mise_checked() { \
@@ -488,33 +485,57 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
 		fi; \
 	}; \
+	mise_checked_stdout() { \
+		mise_stdout_log="$$1"; mise_stderr_log="$$2"; shift 2; \
+		if "$$@" >"$$mise_stdout_log" 2>"$$mise_stderr_log"; then :; \
+		else mise_status=$$?; cat "$$mise_stderr_log" >&2; cat "$$mise_stdout_log"; return "$$mise_status"; fi; \
+		cat "$$mise_stderr_log" >&2; cat "$$mise_stdout_log"; \
+		if grep -Fq 'mise WARN' "$$mise_stderr_log" || grep -Fq 'mise WARN' "$$mise_stdout_log"; then \
+			printf 'ERROR: Mise emitted a warning\n' >&2; return 2; \
+		fi; \
+	}; \
+	mise_release_from_launcher() { \
+		launcher_path="$$1"; \
+		launcher_release=$$(sed -n 's/^[[:space:]]*local mise_version="$${MISE_VERSION:-\([0-9][0-9.]*\)}"$$/\1/p' "$$launcher_path"); \
+		if [ -z "$$launcher_release" ]; then \
+			launcher_release=$$(sed -n 's/^[[:space:]]*set "pinned_version=\([0-9][0-9.]*\)"$$/\1/p' "$$launcher_path"); \
+		fi; \
+		case "$$launcher_release" in \
+			''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise launcher has invalid release: %s\n' "$$launcher_path" >&2; return 2 ;; \
+		esac; \
+		launcher_old_ifs=$$IFS; IFS=.; set -- $$launcher_release; IFS=$$launcher_old_ifs; \
+		if [ "$$#" -ne 3 ]; then \
+			printf 'ERROR: Mise launcher has invalid release: %s\n' "$$launcher_path" >&2; return 2; \
+		fi; \
+		printf '%s\n' "$$launcher_release"; \
+	}; \
 	case "$${OS:-}" in \
 		Windows_NT) mise_runtime_suffix='.exe'; latest_mise="$$scratch/receipt/bin/mise.cmd" ;; \
 		*) mise_runtime_suffix=; latest_mise="$$scratch/receipt/bin/mise" ;; \
 	esac; \
-	latest_url=$$(curl -fsSIL --proto '=https' --proto-redir '=https' \
-		-o /dev/null -w '%{url_effective}' \
-		https://github.com/jdx/mise/releases/latest); \
-	case "$$latest_url" in \
-		https://github.com/jdx/mise/releases/tag/v*) mise_release=$${latest_url##*/v} ;; \
-		*) printf 'ERROR: Mise latest redirect is invalid: %s\n' "$$latest_url" >&2; exit 2 ;; \
-	esac; \
-	case "$$mise_release" in \
-		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: resolved Mise returned invalid version: %s\n' "$$mise_release" >&2; exit 2 ;; \
-	esac; \
-	old_ifs=$$IFS; IFS=.; set -- $$mise_release; IFS=$$old_ifs; \
-	if [ "$$#" -ne 3 ]; then \
-		printf 'ERROR: resolved Mise returned invalid version: %s\n' "$$mise_release" >&2; exit 2; \
-	fi; \
-	mise_install_path="$$mise_storage_root/bootstrap/mise-$$mise_release$$mise_runtime_suffix"; \
-	mise_checked "$$scratch/generate.log" mise_exec no-config "$$mise" -C "$$scratch" generate install-script --write "$$scratch/receipt/bin/mise" --windows --version "$$mise_release"; \
+	seed_release=$$(mise_release_from_launcher "$$mise"); \
+	mise_install_path="$$mise_storage_root/bootstrap/mise-$$seed_release$$mise_runtime_suffix"; \
+	mise_checked "$$scratch/generate.log" mise_exec no-config "$$mise" -C "$$scratch" generate install-script --write "$$scratch/receipt/bin/mise" --windows; \
 	chmod +x "$$scratch/receipt/bin/mise"; \
-	mise_checked "$$scratch/receipt-version.log" mise_exec no-config "$$latest_mise" --version; \
-	receipt_runtime=$$(cat "$$scratch/receipt-version.log"); \
-	case "$$receipt_runtime" in "$$mise_release"|"$$mise_release "*|'mise '"$$mise_release"*) ;; \
-		*) printf 'ERROR: newest Mise receipt differs: resolved=%s receipt=%s\n' "$$mise_release" "$$receipt_runtime" >&2; exit 2 ;; \
+	mise_release=$$(mise_release_from_launcher "$$latest_mise"); \
+	mise_install_path="$$mise_storage_root/bootstrap/mise-$$mise_release$$mise_runtime_suffix"; \
+	mise_checked_stdout "$$scratch/receipt-version.stdout" "$$scratch/receipt-version.stderr" mise_exec no-config "$$latest_mise" --version; \
+	receipt_runtime=$$(cat "$$scratch/receipt-version.stdout"); \
+	case "$$receipt_runtime" in \
+		'mise '*) runtime_release=$${receipt_runtime#mise }; runtime_release=$${runtime_release%% *} ;; \
+		*) runtime_release=$${receipt_runtime%% *} ;; \
 	esac; \
-	printf 'mise setup runtime=%s storage=%s\n' "$$receipt_runtime" "$$mise_storage_root"; \
+	case "$$runtime_release" in \
+		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2 ;; \
+	esac; \
+	old_ifs=$$IFS; IFS=.; set -- $$runtime_release; IFS=$$old_ifs; \
+	if [ "$$#" -ne 3 ]; then \
+		printf 'ERROR: Mise receipt returned invalid version: %s\n' "$$receipt_runtime" >&2; exit 2; \
+	fi; \
+	if [ "$$runtime_release" != "$$mise_release" ]; then \
+		printf 'ERROR: Mise runtime differs from its exact receipt: expected=%s actual=%s\n' "$$mise_release" "$$runtime_release" >&2; exit 2; \
+	fi; \
+	printf 'mise setup receipt=%s storage=%s\n' "$$mise_release" "$$mise_storage_root"; \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --locked --yes; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \
@@ -523,9 +544,13 @@ $${mise_config_argument:+"$$mise_config_argument"} \
 		*) printf 'ERROR: uv --version returned an invalid value\n' >&2; exit 2 ;; \
 	esac; \
 	case "$$uv_actual" in \
-		"$$uv_required"|"$$uv_required".*) ;; \
-		*) printf 'ERROR: mise must install uv %s.x, found %s\n' "$$uv_required" "$$uv_actual" >&2; exit 2 ;; \
+		''|*[!0-9.]*|.*|*.|*..*) printf 'ERROR: uv --version returned an invalid release: %s\n' "$$uv_actual" >&2; exit 2 ;; \
 	esac; \
+	old_ifs=$$IFS; IFS=.; set -- $$uv_actual; IFS=$$old_ifs; \
+	if [ "$$#" -ne 3 ]; then \
+		printf 'ERROR: uv --version returned an invalid release: %s\n' "$$uv_actual" >&2; exit 2; \
+	fi; \
+	printf 'uv setup selector=%s receipt=%s\n' "$$uv_selector" "$$uv_actual"; \
 	mise_checked "$$scratch/direnv-path.log" mise_exec project "$$latest_mise" -C "$$project_root" which direnv; \
 	direnv_executable=$$(cat "$$scratch/direnv-path.log"); \
 	if [ ! -x "$$direnv_executable" ]; then \
@@ -746,7 +771,7 @@ _builtin_help_usage:
 	@printf '%s\n' 'flext-infra [standalone]' '';
 
 
-	@printf '  %-10s WHAT=%s\n' 'help' "$$(printf '%s' '$(_ALLOWED_WHATS_help)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s\n' 'help';
 
 
 
@@ -754,66 +779,64 @@ _builtin_help_usage:
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'deps' "$$(printf '%s' '$(_ALLOWED_WHATS_deps)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'deps';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'build' "$$(printf '%s' '$(_ALLOWED_WHATS_build)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s\n' 'build';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'check' "$$(printf '%s' '$(_ALLOWED_WHATS_check)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'check';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'test' "$$(printf '%s' '$(_ALLOWED_WHATS_test)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'test';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fmt' "$$(printf '%s' '$(_ALLOWED_WHATS_fmt)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'fmt';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'fix' "$$(printf '%s' '$(_ALLOWED_WHATS_fix)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'fix';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'run' "$$(printf '%s' '$(_ALLOWED_WHATS_run)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'run';
 
 
 
-	@printf '  %-10s WHAT=%s\n' 'status' "$$(printf '%s' '$(_ALLOWED_WHATS_status)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s\n' 'status';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'docs' "$$(printf '%s' '$(_ALLOWED_WHATS_docs)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'docs';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'clean' "$$(printf '%s' '$(_ALLOWED_WHATS_clean)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'clean';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'release' "$$(printf '%s' '$(_ALLOWED_WHATS_release)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'release';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'gen' "$$(printf '%s' '$(_ALLOWED_WHATS_gen)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'gen';
 
 
 
-	@printf '  %-10s WHAT=%s APPLY=Y\n' 'mod' "$$(printf '%s' '$(_ALLOWED_WHATS_mod)' | awk '{$$1=$$1; gsub(/ /, "|"); print}')";
+	@printf '  %-10s APPLY=Y\n' 'mod';
 
 
-	@printf '  %-10s %s\n' 'WORKSPACE' 'target repository (default: current project)';
 	@printf '  %-10s %s\n' 'BEAD' 'tracker item bound to a checkpoint';
 	@printf '  %-10s %s\n' 'BASE' 'integration branch used by checkpoint';
 	@printf '  %-10s %s\n' 'DEPENDENCY' 'deps upgrade: one distribution name (default: every package)';
 	@printf '  %-10s %s\n' 'DEPS_REFRESH' 'Y refreshes uv source cache on deps upgrade';
 	@printf '\n%s\n' 'Custom hooks (custom.mk):';
-	@printf '  %s\n' 'Define pre-<verb>, post-<verb>, pre-<verb>-<what>, post-<verb>-<what>';
+	@printf '  %s\n' 'Define pre-<verb> and post-<verb> wrappers';
 	@printf '  %s\n' 'in custom.mk to wrap one declared handler.';
-	@printf '  %s\n' 'Add _custom_<verb>_<what> to define a new WHAT.';
 	@if [ -n "$(strip $(CUSTOM_DECLARED_TARGETS))" ]; then \
 		printf '  %s\n' 'Defined in this project:'; \
 		for hook in $(CUSTOM_DECLARED_TARGETS); do printf '    %s\n' "$$hook"; done; \
@@ -1266,7 +1289,18 @@ _builtin_gen_init:
 
 _builtin_gen_all:
 	$(call _require_apply)
-	@: "$${MISE_GITHUB_CREDENTIAL_COMMAND:?ERROR: make gen apply requires MISE_GITHUB_CREDENTIAL_COMMAND}"
 	@$(PROJECT_FLEXT_INFRA) codegen conform --root "$(PROJECT_ROOT)" --scope "$(CODEGEN_SCOPE)" --mode apply
 
 _builtin_gen_apply: _builtin_gen_all
+
+# Declarative ast-grep refactoring. Universal FLEXT providers, the transitive
+# runtime dependency closure, and the project-local delta are composed once by
+# the public refactor service; Make owns only execution and APPLY acknowledgement.
+_builtin_mod_check: _builtin_require_environment
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)"
+
+_builtin_mod_all: _builtin_require_environment
+	$(call _require_apply)
+	@$(PROJECT_FLEXT_INFRA) refactor mod --workspace "$(PROJECT_ROOT)" --apply
+
+_builtin_mod_apply: _builtin_mod_all

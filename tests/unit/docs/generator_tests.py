@@ -49,7 +49,7 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
     )
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     _ = _plan_docs(generator)
     result = generator.generate(
@@ -212,7 +212,7 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
     api_readme = (workspace / "docs/api-reference/README.md").read_text(
         encoding="utf-8"
     )
-    tm.that(api_readme, has="Back to [project docs](../index.md).")
+    tm.that(api_readme, eq="# Docs\n")
     public_api = workspace / "docs/api-reference/generated/public-api.md"
     tm.that(public_api.exists(), eq=True)
     stale = workspace / "docs/api-reference/generated/stale.md"
@@ -276,7 +276,9 @@ def test_generate_preserves_declared_export_order_and_is_idempotent(
     )
 
     second = _plan_docs(generator)
-    tm.that(any(plan.requires_effect for plan in second), eq=False)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in second), eq=False
+    )
     tm.that((project / "README.md").read_text(encoding="utf-8"), eq=first_readme)
 
 
@@ -404,10 +406,12 @@ def test_generated_prose_wraps_without_reformatting_directive_blocks(
 def test_file_plan_reports_real_drift_and_reaches_fixed_point(tmp_path: Path) -> None:
     """Report drift from one bundle and reach a byte-identical fixed point."""
     workspace = u.Tests.create_docs_workspace(tmp_path)
-    generator = FlextInfraDocGenerator(workspace_root=workspace)
+    generator = FlextInfraDocGenerator(repository_root=workspace)
 
     initial = _plan_docs(generator)
-    tm.that(any(plan.requires_effect for plan in initial), eq=True)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in initial), eq=True
+    )
     published = u.Tests.materialize_codegen_plans(
         r[tuple[m.Infra.CodegenFilePlan, ...]].ok(initial)
     )
@@ -423,7 +427,7 @@ def test_stale_generated_file_drift_converges_through_file_plans(
     """Plan stale removal, publish it through the transaction adapter, and converge."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     _ = _publish_docs(generator)
     stale = workspace / "flext-a/docs/api-reference/generated/stale.md"
@@ -432,7 +436,10 @@ def test_stale_generated_file_drift_converges_through_file_plans(
     stale_plans = _plan_docs(generator)
     tm.that(stale.exists(), eq=True)
     tm.that(
-        any(plan.path == stale and plan.requires_effect for plan in stale_plans),
+        any(
+            plan.path == stale and u.Infra.codegen_file_requires_effect(plan)
+            for plan in stale_plans
+        ),
         eq=True,
     )
     published = u.Tests.materialize_codegen_plans(
@@ -442,7 +449,10 @@ def test_stale_generated_file_drift_converges_through_file_plans(
     tm.that(stale.exists(), eq=False)
 
     fixed_point = _plan_docs(generator)
-    tm.that(any(plan.requires_effect for plan in fixed_point), eq=False)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in fixed_point),
+        eq=False,
+    )
 
 
 def test_generated_file_model_is_frozen() -> None:

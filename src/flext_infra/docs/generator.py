@@ -33,11 +33,13 @@ class FlextInfraDocGenerator(
         if planned.failure:
             return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(planned)
         reports: list[m.Infra.DocsPhaseReport] = []
-        workspace_root = prepared.value.scopes[0].scope.path
+        repository_root = prepared.value.scopes[0].scope.path
         for scope, plans in planned.value:
-            changed = tuple(plan for plan in plans if plan.requires_effect)
+            changed = tuple(
+                plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
+            )
             collocated = self._is_collocated_workspace_project(
-                scope, workspace_root=workspace_root
+                scope, workspace_root=repository_root
             )
             report = m.Infra.DocsPhaseReport(
                 phase="generate",
@@ -82,9 +84,9 @@ class FlextInfraDocGenerator(
         self, bundle: m.Infra.DocsGenerationBundle
     ) -> p.Result[tuple[Path, ...]]:
         """Derive target parent chains from the exact prepared render bundle."""
-        workspace_root = bundle.scopes[0].scope.path
+        repository_root = bundle.scopes[0].scope.path
         stable = FlextInfraUtilitiesDocsGenerate.docs_verify_sources(
-            workspace_root,
+            repository_root,
             bundle.source_states,
             extra_roots=tuple(scoped.scope.path for scoped in bundle.scopes),
         )

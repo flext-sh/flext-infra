@@ -24,33 +24,14 @@ class TestsToolchainRequirement:
 
         tm.that(toolchain.python_required_version, has=f",<{major}.{int(minor) + 1}")
 
-    def test_every_fleet_binary_uses_the_latest_selector(self) -> None:
-        """Exact binary releases belong only to the generated mise.lock."""
+    def test_uv_cooldown_is_derived_from_shared_days(self) -> None:
+        """Uv and dependency-update automation share one cooldown value."""
         toolchain = config.Infra.codegen.toolchain
-        fields = (
-            "uv_version",
-            "kubectl_version",
-            "helm_version",
-            "kind_version",
-            "direnv_version",
-            "taplo_version",
-            "ast_grep_version",
-            "gitleaks_version",
-            "scc_version",
-            "kubeconform_version",
-            "qlty_version",
-            "go_version",
-        )
 
-        tm.that({getattr(toolchain, field) for field in fields}, eq={"latest"})
-        tm.that({toolchain.beads.version, toolchain.gascity.version}, eq={"latest"})
-        for removed in (
-            "dependency_cooldown_days",
-            "dependency_cooldown_exclusions",
-            "dependency_cooldown_overrides",
-            "uv_exclude_newer",
-        ):
-            tm.that(type(toolchain).model_fields, lacks=removed)
+        tm.that(
+            toolchain.uv_exclude_newer, eq=f"{toolchain.dependency_cooldown_days} days"
+        )
+        tm.that(toolchain.dependency_cooldown_exclusions, has="cryptography")
 
 
 __all__: tuple[str, ...] = ()

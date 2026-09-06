@@ -54,7 +54,11 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 "lazy-init publication is owned by codegen conform; "
                 "the generation transaction must publish plan_files()"
             )
-        changed = tuple(plan for plan in planned.value if plan.requires_effect)
+        changed = tuple(
+            plan
+            for plan in planned.value.files
+            if u.Infra.codegen_file_requires_effect(plan)
+        )
         if changed:
             drifted_files = ", ".join(str(plan.path) for plan in changed)
             return r[bool].fail(
@@ -63,8 +67,8 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             )
         return r[bool].ok(True)
 
-    def plan_files(self) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
-        """Return the complete read-only lazy-init publication plan."""
+    def plan_files(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+        """Return one complete immutable lazy-init analysis receipt."""
         self._modified_files.clear()
         self._duplicate_class_names = 0
         if not self.repository_root.is_dir():
@@ -77,9 +81,13 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         )
         planned = self._plan_in_workspace()
         if planned.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(planned)
-        plans = planned.value
-        changed = tuple(plan for plan in plans if plan.requires_effect)
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(planned)
+        analysis = planned.value
+        changed = tuple(
+            plan
+            for plan in analysis.files
+            if u.Infra.codegen_file_requires_effect(plan)
+        )
         self._modified_files.update(str(plan.path) for plan in changed)
         u.Cli.info(
             f"Lazy-init plan: {len(changed)} effects "
@@ -87,7 +95,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         )
         return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(plans)
 
-    def _plan_in_workspace(self) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    def _plan_in_workspace(self) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Open Rope once and propagate every planner or filesystem failure."""
         try:
             with FlextInfraRopeWorkspace.open_workspace(
@@ -95,13 +103,11 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
             ) as rope:
                 return self._plan_open_workspace(rope)
         except c.EXC_OS_VALUE as exc:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail_op(
-                "lazy-init planning", exc
-            )
+            return r[m.Infra.CodegenPhaseAnalysis].fail_op("lazy-init planning", exc)
 
     def _plan_open_workspace(
         self, rope: FlextInfraRopeWorkspace
-    ) -> p.Result[tuple[m.Infra.CodegenFilePlan, ...]]:
+    ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Build immutable plans from one stable Rope workspace snapshot."""
         workspace_index = rope.workspace_index
         resolved_workspace_root = self.repository_root.resolve()
@@ -137,16 +143,16 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 ))
             sorted_target_dirs = tuple(sorted(target_module_dirs))
             if not sorted_target_dirs:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"lazy-init target module not found: {self.target_module}"
                 )
             if sorted_target_dirs[1:]:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"lazy-init target module is ambiguous: {self.target_module}"
                 )
             target_package_dir = sorted_target_dirs[0]
             if target_package_dir not in indexed_package_dirs:
-                return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+                return r[m.Infra.CodegenPhaseAnalysis].fail(
                     f"lazy-init target belongs to retired support: {self.target_module}"
                 )
         package_dirs = self._package_dirs_for_target(
@@ -156,7 +162,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         )
         snapshots = self._snapshot_planner_inputs(workspace_index)
         if snapshots.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(snapshots)
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(snapshots)
         duplicates = self._detect_duplicate_class_names(rope, package_dirs=package_dirs)
         if duplicates:
             self._duplicate_class_names = len(duplicates)
@@ -164,7 +170,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 f"{name}: {', '.join(locations)}"
                 for name, locations in sorted(duplicates.items())
             )
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].fail(
+            return r[m.Infra.CodegenPhaseAnalysis].fail(
                 "lazy-init duplicate class names must be renamed before planning: "
                 f"{details}"
             )
@@ -175,16 +181,26 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         package_plans = self._plan_all_inits(
             package_dirs, planner=planner, target_package_dir=target_package_dir
         )
+        if planner.collision_count:
+            return r[m.Infra.CodegenPhaseAnalysis].fail(
+                "lazy-init public export ownership is ambiguous: "
+                f"{planner.collision_count} collision(s)"
+            )
         file_plans = self._build_file_plans(
             package_plans, index=workspace_index, snapshots=snapshots.value
         )
         if file_plans.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(file_plans)
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(file_plans)
         stable = self._verify_snapshots(snapshots.value)
         if stable.failure:
-            return r[tuple[m.Infra.CodegenFilePlan, ...]].from_failure(stable)
-        u.Cli.info(f"lazy-init: planner emitted {planner.collision_count} warnings")
-        return r[tuple[m.Infra.CodegenFilePlan, ...]].ok(file_plans.value)
+            return r[m.Infra.CodegenPhaseAnalysis].from_failure(stable)
+        return r[m.Infra.CodegenPhaseAnalysis].ok(
+            m.Infra.CodegenPhaseAnalysis(
+                phase="lazy-init",
+                files=file_plans.value,
+                inputs=tuple(snapshots.value[path] for path in sorted(snapshots.value)),
+            )
+        )
 
     @staticmethod
     def _package_dirs_for_target(

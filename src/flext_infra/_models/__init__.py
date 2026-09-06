@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         FlextInfraModelsDepsToolConfigTypeCheckers,
     )
     from .docs import FlextInfraModelsDocs
+    from .docs_generation import FlextInfraModelsDocsGeneration
     from .enforcement import FlextInfraModelsEnforcement
     from .gates import FlextInfraModelsGates
     from .git import FlextInfraModelsGit
@@ -68,6 +69,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraModelsDepsToolConfigTypeCheckers",
     "FlextInfraModelsDepsToolSettings",
     "FlextInfraModelsDocs",
+    "FlextInfraModelsDocsGeneration",
     "FlextInfraModelsEnforcement",
     "FlextInfraModelsGates",
     "FlextInfraModelsGit",
@@ -115,6 +117,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraModelsDepsToolConfigTypeCheckers",
             ),
             ".docs": ("FlextInfraModelsDocs",),
+            ".docs_generation": ("FlextInfraModelsDocsGeneration",),
             ".enforcement": ("FlextInfraModelsEnforcement",),
             ".gates": ("FlextInfraModelsGates",),
             ".git": ("FlextInfraModelsGit",),

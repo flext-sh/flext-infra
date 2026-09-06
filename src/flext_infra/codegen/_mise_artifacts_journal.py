@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import stat
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
@@ -24,12 +23,12 @@ def begin(
     directories: tuple[m.Infra.CodegenJournalDirectory, ...] = (),
 ) -> p.Result[m.Infra.CodegenTransactionJournal]:
     """Build staging authority before any disposable transaction root exists."""
-    physical_scope = _directory_identity(plan.layout.scope_root)
+    physical_scope = files.physical_directory_identity(plan.layout.scope_root)
     if physical_scope.failure:
         return r[m.Infra.CodegenTransactionJournal].from_failure(physical_scope)
     projects: list[m.Infra.CodegenJournalProject] = []
     for project in plan.projects:
-        physical_project = _directory_identity(project.layout.root)
+        physical_project = files.physical_directory_identity(project.layout.root)
         if physical_project.failure:
             return r[m.Infra.CodegenTransactionJournal].from_failure(physical_project)
         projects.append(
@@ -365,7 +364,10 @@ def read(
         )
     except c.ValidationError as exc:
         return result_type.fail_op("validate codegen transaction journal", exc)
-    return result_type.ok((journal, journal_snapshot))
+    relocated = _relocate_journal(layout, journal)
+    if relocated.failure:
+        return result_type.from_failure(relocated)
+    return result_type.ok((relocated.value, journal_snapshot))
 
 
 def cleanup(
@@ -383,6 +385,136 @@ def cleanup(
     if removed.failure:
         return r[bool].fail(removed.error or "cannot remove codegen journal")
     return r[bool].ok(True)
+
+
+def _relocate_journal(
+    layout: m.Infra.MiseToolchainWorkspaceLayout,
+    journal: m.Infra.CodegenTransactionJournal,
+) -> p.Result[m.Infra.CodegenTransactionJournal]:
+    """Rebind authenticated paths when the same physical worktree was moved."""
+    result_type = r[m.Infra.CodegenTransactionJournal]
+    identity = files.physical_directory_identity(layout.scope_root)
+    if identity.failure:
+        return result_type.from_failure(identity)
+    if identity.value != (journal.scope_device, journal.scope_inode):
+        return result_type.fail("generation journal belongs to another physical scope")
+    recorded_root = _recorded_scope_root(journal)
+    if recorded_root.failure:
+        return result_type.from_failure(recorded_root)
+    if recorded_root.value == layout.scope_root:
+        return result_type.ok(journal)
+    sources: list[m.Infra.CodegenJournalSource] = []
+    directories: list[m.Infra.CodegenJournalDirectory] = []
+    for source in journal.sources:
+        rebound = _relocated_path(source.path, recorded_root.value, layout.scope_root)
+        if rebound.failure:
+            return result_type.from_failure(rebound)
+        sources.append(source.model_copy(update={"path": rebound.value}))
+    for directory in journal.directories:
+        before: m.Cli.AtomicDirectoryState | None = None
+        if directory.before is not None:
+            relocated_before = _relocate_directory_state(
+                directory.before, recorded_root.value, layout.scope_root
+            )
+            if relocated_before.failure:
+                return result_type.from_failure(relocated_before)
+            before = relocated_before.value
+        created: m.Cli.AtomicDirectoryState | None = None
+        if directory.created is not None:
+            relocated_created = _relocate_directory_state(
+                directory.created, recorded_root.value, layout.scope_root
+            )
+            if relocated_created.failure:
+                return result_type.from_failure(relocated_created)
+            created = relocated_created.value
+        manifest: m.Cli.AtomicPhysicalTreeManifest | None = None
+        if directory.manifest is not None:
+            relocated_manifest = _relocate_manifest(
+                directory.manifest, recorded_root.value, layout.scope_root
+            )
+            if relocated_manifest.failure:
+                return result_type.from_failure(relocated_manifest)
+            manifest = relocated_manifest.value
+        try:
+            directories.append(
+                m.Infra.CodegenJournalDirectory.model_validate({
+                    **directory.model_dump(),
+                    "before": before,
+                    "created": created,
+                    "manifest": manifest,
+                })
+            )
+        except c.ValidationError as exc:
+            return result_type.fail_op("relocate generation directory", exc)
+    try:
+        return result_type.ok(
+            m.Infra.CodegenTransactionJournal.model_validate({
+                **journal.model_dump(),
+                "sources": tuple(sources),
+                "directories": tuple(directories),
+            })
+        )
+    except c.ValidationError as exc:
+        return result_type.fail_op("relocate generation journal", exc)
+
+
+def _recorded_scope_root(journal: m.Infra.CodegenTransactionJournal) -> p.Result[Path]:
+    candidates: set[Path] = set()
+    for directory in journal.directories:
+        relative = Path(directory.path)
+        for directory_state in (directory.before, directory.created):
+            if directory_state is None:
+                continue
+            candidate = directory_state.path
+            for _part in relative.parts:
+                candidate = candidate.parent
+            if candidate / relative != directory_state.path:
+                return r[Path].fail(
+                    f"generation directory path is inconsistent: {directory.path}"
+                )
+            candidates.add(candidate)
+    if len(candidates) != 1:
+        return r[Path].fail("generation journal has no single recorded scope path")
+    return r[Path].ok(candidates.pop())
+
+
+def _relocated_path(
+    path: Path, previous_root: Path, current_root: Path
+) -> p.Result[Path]:
+    if not path.is_relative_to(previous_root):
+        return r[Path].fail(f"generation journal path escapes recorded scope: {path}")
+    return r[Path].ok(current_root / path.relative_to(previous_root))
+
+
+def _relocate_directory_state(
+    directory_state: m.Cli.AtomicDirectoryState, previous_root: Path, current_root: Path
+) -> p.Result[m.Cli.AtomicDirectoryState]:
+    rebound = _relocated_path(directory_state.path, previous_root, current_root)
+    if rebound.failure:
+        return r[m.Cli.AtomicDirectoryState].from_failure(rebound)
+    return r[m.Cli.AtomicDirectoryState].ok(
+        directory_state.model_copy(update={"path": rebound.value})
+    )
+
+
+def _relocate_manifest(
+    manifest: m.Cli.AtomicPhysicalTreeManifest, previous_root: Path, current_root: Path
+) -> p.Result[m.Cli.AtomicPhysicalTreeManifest]:
+    result_type = r[m.Cli.AtomicPhysicalTreeManifest]
+    relocated: list[m.Cli.AtomicPhysicalTreeEntry] = []
+    for entry in (manifest.root, *manifest.entries):
+        rebound = _relocated_path(entry.path, previous_root, current_root)
+        if rebound.failure:
+            return result_type.from_failure(rebound)
+        relocated.append(entry.model_copy(update={"path": rebound.value}))
+    try:
+        return result_type.ok(
+            m.Cli.AtomicPhysicalTreeManifest(
+                root=relocated[0], entries=tuple(relocated[1:])
+            )
+        )
+    except c.ValidationError as exc:
+        return result_type.fail_op("relocate generation tree manifest", exc)
 
 
 def _journal_source(
@@ -562,23 +694,10 @@ def _journal_entry(
     )
 
 
-def _directory_identity(path: Path) -> p.Result[tuple[int, int]]:
-    try:
-        observed = path.lstat()
-    except OSError as exc:
-        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
-    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
-        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
-    )
-    if not stat.S_ISDIR(observed.st_mode) or reparse:
-        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
-    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
-
-
 def _validate_physical_topology(
     plan: m.Infra.MiseToolchainWorkspacePlan, journal: m.Infra.CodegenTransactionJournal
 ) -> p.Result[bool]:
-    scope = _directory_identity(plan.layout.scope_root)
+    scope = files.physical_directory_identity(plan.layout.scope_root)
     if scope.failure:
         return r[bool].from_failure(scope)
     if scope.value != (journal.scope_device, journal.scope_inode):
@@ -588,7 +707,7 @@ def _validate_physical_topology(
     if observed != expected:
         return r[bool].fail("generation project topology changed during transaction")
     for planned, recorded in zip(plan.projects, journal.projects, strict=True):
-        identity = _directory_identity(planned.layout.root)
+        identity = files.physical_directory_identity(planned.layout.root)
         if identity.failure:
             return r[bool].from_failure(identity)
         if identity.value != (recorded.device, recorded.inode):

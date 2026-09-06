@@ -34,6 +34,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Make one fixture path read-only."""
             path.chmod(0o444)
 
+        @staticmethod
+        def codegen_file_text(plan: m.Infra.CodegenFilePlan) -> str:
+            """Decode the present text payload of a generated-file test plan."""
+            return tm.not_none(plan.desired_content).decode(c.Cli.ENCODING_DEFAULT)
+
         class DeptrySelector:
             """Protocol-compatible selector backed by a real Result."""
 
@@ -1385,9 +1390,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             class_name: str,
             alias: str,
             docstring: str = "Test namespace.",
+            extra_class_names: t.StrSequence = (),
         ) -> None:
             """Write a namespace module fixture for lazy-export tests."""
             export_list = f'"{class_name}", "{alias}"'
+            extra_classes = "".join(
+                f"\nclass {extra_class_name}:\n    pass\n"
+                for extra_class_name in extra_class_names
+            )
             module_path.write_text(
                 (
                     f'"""{docstring}"""\n\n'
@@ -1396,6 +1406,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     f"class {class_name}:\n"
                     "    pass\n\n"
                     f"{alias} = {class_name}\n"
+                    f"{extra_classes}"
                 ),
                 encoding=c.Infra.ENCODING_DEFAULT,
             )
@@ -1411,11 +1422,13 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         @staticmethod
         def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
             """Materialize immutable lazy-init plans only inside test workspaces."""
-            service = FlextInfraCodegenLazyInit(workspace_root=workspace_root)
-            planned = service.plan_files()
-            if planned.failure:
-                return 1
-            changed = tuple(plan for plan in planned.value if plan.requires_effect)
+            service = FlextInfraCodegenLazyInit(repository_root=repository_root)
+            planned = service.plan_files().unwrap()
+            changed = tuple(
+                plan
+                for plan in planned.files
+                if u.Infra.codegen_file_requires_effect(plan)
+            )
             if check_only:
                 return len(changed)
             materialized = TestsFlextInfraUtilities.Tests.materialize_lazy_init(service)
@@ -1425,7 +1438,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
         def materialize_lazy_init(service: FlextInfraCodegenLazyInit) -> p.Result[bool]:
             """Publish one service plan through canonical guarded file primitives."""
             planned = service.plan_files()
-            return TestsFlextInfraUtilities.Tests.materialize_codegen_plans(planned)
+            if planned.failure:
+                return r[bool].from_failure(planned)
+            return TestsFlextInfraUtilities.Tests.materialize_codegen_plans(
+                r[tuple[m.Infra.CodegenFilePlan, ...]].ok(planned.value.files)
+            )
 
         @staticmethod
         def materialize_codegen_plans(
@@ -1434,17 +1451,24 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             """Publish immutable codegen plans only inside test workspaces."""
             if planned.failure:
                 return r[bool].from_failure(planned)
-            changed = tuple(plan for plan in planned.value if plan.requires_effect)
+            changed = tuple(
+                plan
+                for plan in planned.value
+                if u.Infra.codegen_file_requires_effect(plan)
+            )
             for plan in changed:
+                before = u.Infra.codegen_file_before_state(plan)
+                if before.failure:
+                    return r[bool].from_failure(before)
                 if plan.desired_content is None:
-                    result = u.Cli.atomic_delete_binary_file_guarded(plan.before)
+                    result = u.Cli.atomic_delete_binary_file_guarded(before.value)
                 else:
                     if plan.desired_mode is None:
                         return r[bool].fail(
                             f"lazy-init plan has no desired mode: {plan.path}"
                         )
                     result = u.Cli.atomic_write_binary_file_guarded(
-                        plan.before,
+                        before.value,
                         plan.desired_content,
                         permission_mode=plan.desired_mode,
                     )

@@ -25,7 +25,7 @@ class TestsTransactionDirectoryJournal:
         test_u.Tests.initialize_git_repo(root)
         (root / "bin").mkdir()
         owner = FlextInfraCodegenMiseArtifacts(
-            workspace_root=root, apply_changes=True, check_only=False
+            repository_root=root, apply_changes=True, check_only=False
         )
         planned = FlextInfraMiseWorkspacePlanner(owner).layout_from_selectors(
             root.resolve(),
@@ -81,7 +81,10 @@ class TestsTransactionDirectoryJournal:
         registered = tm.ok(
             transaction.verify.register_transaction_manifests(layout, journal)
         )
-        return tm.ok(transaction.journal_io.record_directories(journal, registered))
+        recorded: m.Infra.CodegenTransactionJournal = tm.ok(
+            transaction.journal_io.record_directories(journal, registered)
+        )
+        return recorded
 
     def test_temporary_tree_is_journaled_before_creation_and_removed(
         self, tmp_path: Path

@@ -387,8 +387,8 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(
             tuple(
                 plan
-                for plan in tm.ok(check_service.plan_files())
-                if plan.requires_effect
+                for plan in tm.ok(check_service.plan_files()).files
+                if u.Infra.codegen_file_requires_effect(plan)
             ),
             empty=True,
         )
@@ -528,9 +528,9 @@ class TestsFlextInfraLazyInitHelpers:
         service = u.Tests.create_lazy_init_service(workspace_root).model_copy(
             update={"target_module": "flext_child"}
         )
-        planned = tm.ok(service.plan_files())
+        planned = tm.ok(service.plan_files()).files
         generated = next(
-            plan.desired_text
+            u.Tests.codegen_file_text(plan)
             for plan in planned
             if plan.path == package_root.joinpath(c.Infra.INIT_PY).resolve()
         )
@@ -700,7 +700,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')
 
-    def test_duplicate_public_export_resolved_by_canonical_scorer(
+    def test_duplicate_public_export_fails_before_generation(
         self, tmp_path: Path
     ) -> None:
         """Duplicate public exports are resolved deterministically (warn + generate)."""

@@ -10,9 +10,7 @@ from urllib.parse import urlsplit
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
-from flext_infra._utilities.project_managed_artifacts import (
-    FlextInfraUtilitiesProjectManagedArtifacts,
-)
+
 from flext_infra.base import s
 from flext_infra.codegen.codegen_transaction import FlextInfraCodegenTransaction
 
@@ -409,9 +407,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return r[bool].from_failure(release)
         return r[bool].ok(True)
 
-    def validate_artifacts(
-        self, project_root: Path, *, config_sources: tuple[m.Cli.AtomicFileState, ...]
-    ) -> p.Result[bool]:
+    def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
         """Validate one project's committed Mise artifacts entirely offline."""
         config_result = self._read_toml(project_root / ".mise.toml")
         if config_result.failure:
@@ -441,23 +437,12 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         launcher_result = self.validate_launchers(project_root)
         if launcher_result.failure:
             return launcher_result
-        exclusions = FlextInfraUtilitiesProjectManagedArtifacts.lock_platform_exclusions_from_snapshot(
-            config_sources
-        )
-        if exclusions.failure:
-            return r[bool].fail(exclusions.error or "project Mise platforms invalid")
-        return self._validate_lock(
-            lock,
-            configured_tools=tools_result.value,
-            project_exclusions=exclusions.value,
-        )
+
+        return self._validate_lock(lock, configured_tools=tools_result.value)
 
     @staticmethod
     def _validate_lock(
-        lock: m.Infra.MiseLockSpec,
-        *,
-        configured_tools: t.StrMapping,
-        project_exclusions: t.MappingKV[str, frozenset[str]],
+        lock: m.Infra.MiseLockSpec, *, configured_tools: t.StrMapping
     ) -> p.Result[bool]:
         expected_tools = sorted(configured_tools)
         actual_tools = sorted(lock.tools)

@@ -222,7 +222,7 @@ class FlextInfraCodegenPipelineStagesMixin:
 
         def _action() -> int:
             plans = (
-                FlextInfraCodegenLazyInit(workspace_root=ctx.repository_root)
+                FlextInfraCodegenLazyInit(repository_root=ctx.repository_root)
                 .plan_files()
                 .unwrap()
             )

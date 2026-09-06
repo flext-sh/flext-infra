@@ -64,6 +64,12 @@ def publication_plan(
                 return r[tuple[m.Infra.CodegenStagedFile, ...]].fail(
                     f"staged Mise artifact mode differs: {stage / name}"
                 )
+            if not u.Infra.atomic_file_state_differs(
+                before,
+                desired_content=replacement.value.content,
+                desired_mode=replacement.value.mode,
+            ):
+                continue
             publications.append(
                 m.Infra.CodegenStagedFile(
                     phase="mise",

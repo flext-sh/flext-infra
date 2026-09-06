@@ -377,7 +377,7 @@ def validate_transaction_roots(
         if (
             recorded is None
             or recorded.created is None
-            or (recorded.created.device, recorded.created.inode) != transaction.value
+            or (recorded.created.device, recorded.created.inode) != transaction_identity
         ):
             return r[bool].fail(
                 f"Mise transaction root identity is not journaled: {relative.value}"

@@ -205,7 +205,14 @@ class FlextInfraUtilitiesRelease:
                     if dependency in selected and dependency != name
                 )
             )
-        return cls._release_kahn_waves(edges)
+        ordered = FlextInfraUtilitiesDependencies.dependency_waves(edges)
+        if ordered.failure:
+            return r[t.SequenceOf[t.StrSequence]].fail(
+                (ordered.error or "dependency cycle blocks topological order").replace(
+                    "dependency cycle", "release dependency cycle", 1
+                )
+            )
+        return ordered
 
     @staticmethod
     def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:
@@ -242,31 +249,6 @@ class FlextInfraUtilitiesRelease:
                 })
             )
         )
-
-    @staticmethod
-    def _release_kahn_waves(
-        edges: t.MappingKV[str, t.StrSequence],
-    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
-        """Layer the dependency graph, failing loudly and naming any cycle."""
-        pending = {name: set(dependencies) for name, dependencies in edges.items()}
-        waves: t.MutableSequenceOf[t.StrSequence] = []
-        while pending:
-            ready = tuple(
-                sorted(name for name, blockers in pending.items() if not blockers)
-            )
-            if not ready:
-                # No project is unblocked while projects remain: the remainder
-                # is exactly the cyclic core, so it is named outright.
-                return r[t.SequenceOf[t.StrSequence]].fail(
-                    "release dependency cycle blocks publish order: "
-                    + ", ".join(sorted(pending))
-                )
-            waves.append(ready)
-            for name in ready:
-                del pending[name]
-            for blockers in pending.values():
-                blockers.difference_update(ready)
-        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRelease"]

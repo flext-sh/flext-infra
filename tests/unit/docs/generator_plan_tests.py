@@ -81,7 +81,7 @@ def test_required_directories_reject_duplicate_targets(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a", "flext-a"]
+        repository_root=workspace, selected_projects=["flext-a", "flext-a"]
     )
     prepared = generator.prepare_bundle()
 
@@ -93,7 +93,7 @@ def test_required_directories_match_final_file_plan_targets(tmp_path: Path) -> N
     """Keep the pre-snapshot directory plan bound to the final artifact owner."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     directories_before = {path for path in workspace.rglob("*") if path.is_dir()}
 
@@ -112,7 +112,12 @@ def test_required_directories_match_final_file_plan_targets(tmp_path: Path) -> N
     planned = generator.plan_files(prepared.value)
     tm.ok(planned)
     tm.that(
-        {plan.path.parent for plan in planned.value}.issubset(set(required.value)),
+        {
+            plan.path.parent
+            for plan in planned.value
+            if plan.desired_content is not None
+            and plan.path.parent not in directories_before
+        }.issubset(set(required.value)),
         eq=True,
     )
 
@@ -126,7 +131,7 @@ def test_plan_files_returns_exact_read_only_docs_plans(tmp_path: Path) -> None:
     }
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     prepared = generator.prepare_bundle()
     tm.ok(prepared)
@@ -154,7 +159,7 @@ def test_generate_rejects_direct_apply_without_effects(tmp_path: Path) -> None:
     before = readme.read_bytes()
 
     result = FlextInfraDocGenerator().generate(
-        m.Infra.DocsGenerateRequest(workspace_root=workspace, apply=True)
+        m.Infra.DocsGenerateRequest(repository_root=workspace, apply=True)
     )
 
     tm.fail(result)
@@ -171,7 +176,7 @@ def test_stale_generated_markdown_becomes_delete_plan(tmp_path: Path) -> None:
     stale.write_text("stale\n", encoding="utf-8")
 
     generator = FlextInfraDocGenerator(
-        workspace_root=workspace, selected_projects=["flext-a"]
+        repository_root=workspace, selected_projects=["flext-a"]
     )
     prepared = generator.prepare_bundle()
     tm.ok(prepared)
@@ -183,8 +188,9 @@ def test_stale_generated_markdown_becomes_delete_plan(tmp_path: Path) -> None:
 
     tm.ok(result)
     stale_plan = next(plan for plan in result.value if plan.path == stale)
-    tm.that(stale_plan.operation, eq="delete")
-    tm.that(stale_plan.before.content, eq=b"stale\n")
+    tm.that(stale_plan.desired_content, eq=None)
+    tm.that(u.Infra.codegen_file_requires_effect(stale_plan), eq=True)
+    tm.that(tm.ok(u.Infra.codegen_file_before_state(stale_plan)).content, eq=b"stale\n")
     tm.that(stale.exists(), eq=True)
 
 
@@ -195,7 +201,7 @@ def test_scope_failure_is_not_normalized_to_empty_aggregate(tmp_path: Path) -> N
         '[submodule "broken"]\n\tpath = ../outside\n', encoding="utf-8"
     )
 
-    generator = FlextInfraDocGenerator(workspace_root=workspace)
+    generator = FlextInfraDocGenerator(repository_root=workspace)
     prepared = generator.prepare_bundle()
 
     tm.fail(prepared)

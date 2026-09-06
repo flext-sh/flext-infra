@@ -90,6 +90,7 @@ class FlextInfraGate:
             project_dir,
             timeout=self._check_timeout(project_dir, ctx),
             env=self._check_env(project_dir, ctx),
+            remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
         )
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
@@ -249,6 +250,13 @@ class FlextInfraGate:
         _ = project_dir, ctx
         return None
 
+    def _check_remove_env_keys(
+        self, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> t.StrSequence:
+        """Return inherited environment keys removed for this tool invocation."""
+        _ = project_dir, ctx
+        return ()
+
     # ------------------------------------------------------------------
     # Template method: fix
     # ------------------------------------------------------------------
@@ -324,10 +332,13 @@ class FlextInfraGate:
         cwd: Path,
         timeout: int = c.Infra.TIMEOUT_DEFAULT,
         env: t.StrMapping | None = None,
+        remove_env_keys: t.StrSequence = (),
     ) -> p.Cli.CommandOutput:
         """Run."""
         runner = self._runner or u.Cli
-        result = runner.run_raw(cmd, cwd=cwd, timeout=timeout, env=env)
+        result = runner.run_raw(
+            cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
+        )
         if result.failure:
             return m.Cli.CommandOutput(
                 stdout="",
