@@ -109,7 +109,7 @@ class FlextInfraRefactorTypingUnifier(
             module = ast.parse(source)
         except SyntaxError:
             return source
-        spans: list[tuple[int, int]] = []
+        spans: t.MutableSequenceOf[t.Pair[int, int]] = []
         for node in ast.walk(module):
             annotations = []
             if isinstance(node, ast.AnnAssign | ast.arg):
