@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from git import GitCommandError, GitConfigParser
 
 from flext_core import r
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
+from ..base import FlextInfraUtilitiesBase
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t

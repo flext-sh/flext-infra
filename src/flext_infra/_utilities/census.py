@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from flext_cli import u
 from flext_core import r
-from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
+from .._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra._models.workspace import FlextInfraModelsWorkspace as mw
+from .._models.workspace import FlextInfraModelsWorkspace as mw
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
 

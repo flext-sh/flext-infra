@@ -19,7 +19,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 from ._rewrite import FlextInfraSourceRewriter
 

@@ -74,7 +74,7 @@ class FlextInfraModelsMixins:
         @property
         def project_names(self) -> t.StrSequence | None:
             """Normalized project names from repeated selectors."""
-            from flext_infra._models.base import FlextInfraUtilitiesBase as ub
+            from .base import FlextInfraUtilitiesBase as ub
 
             return ub.normalize_sequence_values(self.projects)
 
@@ -96,14 +96,14 @@ class FlextInfraModelsMixins:
         @property
         def report_path(self) -> Path | None:
             """Resolved report path when provided."""
-            from flext_infra._models.base import FlextInfraUtilitiesBase as ub
+            from .base import FlextInfraUtilitiesBase as ub
 
             return ub.normalize_optional_path(self.report)
 
         @property
         def output_dir_path(self) -> Path | None:
             """Resolved output directory when provided."""
-            from flext_infra._models.base import FlextInfraUtilitiesBase as ub
+            from .base import FlextInfraUtilitiesBase as ub
 
             return ub.normalize_optional_path(self.output_dir)
 
