@@ -49,6 +49,9 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
             source, alias
         ):
             return source
+        typed = cls._alias_import_under_type_checking(source, module, alias)
+        if typed is not None:
+            return typed
         info = cls._parse_header(source)
         offset = info.span.last_import_end or max(
             info.span.shebang_end,
@@ -60,6 +63,39 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
         if offset < len(source) and not source[offset:].startswith("\n"):
             line = f"{line}\n"
         return f"{source[:offset]}{line}{source[offset:]}"
+
+    @classmethod
+    def _alias_import_under_type_checking(
+        cls, source: str, module: str, alias: str
+    ) -> str | None:
+        """Place an annotation-only facade import inside ``if TYPE_CHECKING:``.
+
+        A module that the package imports while initialising itself cannot
+        import that same package at runtime: injecting the facade at module
+        level made ``__version__.py`` raise ImportError on a partially
+        initialised ``flext_infra``. With deferred annotations the alias is only
+        ever read by a type checker, so the import belongs in the type-checking
+        block, which is also what the facade law prescribes. Returns None when
+        the module has no such block to extend.
+        """
+        if "from __future__ import annotations" not in source:
+            return None
+        lines = source.splitlines(keepends=True)
+        for index, line in enumerate(lines):
+            if line.rstrip() != "if TYPE_CHECKING:":
+                continue
+            following = lines[index + 1 :]
+            indent = next(
+                (
+                    item[: len(item) - len(item.lstrip())]
+                    for item in following
+                    if item.strip()
+                ),
+                "    ",
+            )
+            lines.insert(index + 1, f"{indent}from {module} import {alias}\n")
+            return "".join(lines)
+        return None
 
     @staticmethod
     def alias_used(source: str, alias: str) -> bool:
