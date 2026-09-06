@@ -122,14 +122,20 @@ class FlextInfraRefactorTypingUnifier(
             for declaration in ast.walk(statement)
             if isinstance(declaration, ast.AnnAssign)
         }
+        mutated = self._mutated_names(module)
         spans: t.MutableSequenceOf[t.Pair[int, int]] = []
         for node in ast.walk(module):
             annotations = []
             if isinstance(node, ast.AnnAssign):
-                if node in local_declarations:
+                target = node.target
+                if node in local_declarations or (
+                    isinstance(target, ast.Name) and target.id in mutated
+                ):
                     continue
                 annotations.append(node.annotation)
             elif isinstance(node, ast.arg):
+                if node.arg in mutated:
+                    continue
                 annotations.append(node.annotation)
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 annotations.append(node.returns)
@@ -152,6 +158,52 @@ class FlextInfraRefactorTypingUnifier(
                 self._record_change(change)
             rewritten = f"{rewritten[:start]}{replacement}{rewritten[end:]}"
         return rewritten
+
+    @staticmethod
+    def _mutated_names(module: ast.Module) -> frozenset[str]:
+        """Return every name the module mutates in place.
+
+        The read-only abstractions are what generalize an annotation, but a
+        value the code mutates cannot be one: Mapping has no item assignment
+        and Sequence has no append. Rewriting those declarations produced
+        exactly those errors, so a mutated name keeps its concrete type.
+        """
+        mutating_methods = frozenset({
+            "append",
+            "extend",
+            "insert",
+            "pop",
+            "popitem",
+            "remove",
+            "setdefault",
+            "sort",
+            "update",
+            "clear",
+        })
+        names: set[str] = set()
+        for node in ast.walk(module):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Subscript) and isinstance(
+                        target.value, ast.Name
+                    ):
+                        names.add(target.value.id)
+            elif isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+                names.add(node.target.id)
+            elif isinstance(node, ast.Delete):
+                for target in node.targets:
+                    if isinstance(target, ast.Subscript) and isinstance(
+                        target.value, ast.Name
+                    ):
+                        names.add(target.value.id)
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in mutating_methods
+                and isinstance(node.func.value, ast.Name)
+            ):
+                names.add(node.func.value.id)
+        return frozenset(names)
 
     @staticmethod
     def _offset(source: str, lineno: int, col: int) -> int:
