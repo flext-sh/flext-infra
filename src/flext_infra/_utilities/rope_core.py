@@ -6,7 +6,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from flext_infra._utilities._config import config
+from flext_infra import config
 from flext_infra.typings import t
 
 from ._rope.pep695_patch import FlextInfraUtilitiesRopePep695Patch

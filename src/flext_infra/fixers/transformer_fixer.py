@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.fixers._utilities.project_alias_migrator import (
+from flext_infra._utilities.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
@@ -36,8 +36,7 @@ from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from flext_infra import p, t
-
-    from .._utilities.transformer_base import FlextInfraRopeTransformer
+    from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 
 class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):

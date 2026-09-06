@@ -7,7 +7,6 @@ import importlib.util as _importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._utilities._settings import settings
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -1615,6 +1614,8 @@ class FlextInfraUtilitiesRopeAnalysis:
             # settings SSOT, with cwd as last resort — both exist where CLI runs.
             # Path() coercion keeps this correct while settings migrates the
             # field from str to Path (both accepted).
+            from flext_infra import settings
+
             repository_root = settings.Infra.repository_root
             anchor = Path(repository_root) if repository_root else Path.cwd()
             cached = FlextInfraUtilitiesRopeCore.init_rope_project(anchor)
