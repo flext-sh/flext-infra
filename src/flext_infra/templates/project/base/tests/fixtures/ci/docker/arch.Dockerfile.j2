@@ -20,7 +20,7 @@ RUN pacman -Syu --noconfirm --needed \
     && useradd --create-home --shell /bin/bash runner
 # End SECTION: base packages
 
-{{ docker_mise_bootstrap() }}
+{{ docker_mise_bootstrap(mise_bootstrap) }}
 
 # === SECTION: bootstrap proof (managed) ===
 # Source: template (clean-machine bootstrap through the canonical verb)
@@ -31,7 +31,7 @@ RUN pacman -Syu --noconfirm --needed \
 # mentioned uv.lock/flext-core, which turned the proof into a bypass -- a
 # broken bootstrap still produced a green image.
 ENV {{ make.ci.variable }}={{ make.ci.value }}
-RUN make setup
+RUN make setup {{ make.apply_variable }}={{ make.apply_value }}
 # End SECTION: bootstrap proof
 
 ENTRYPOINT []

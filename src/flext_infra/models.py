@@ -9,25 +9,27 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from flext_core import m
 from flext_cli import m as cli_m
+from flext_core import m
 from flext_infra._models.base import FlextInfraModelsBase
 from flext_infra._models.census import FlextInfraModelsCensus
 from flext_infra._models.check import FlextInfraModelsCheck
 from flext_infra._models.codegen import FlextInfraModelsCodegen
+from flext_infra._models.codemod import FlextInfraModelsCodemod
 from flext_infra._models.config import FlextInfraConfigModels
 from flext_infra._models.deps import FlextInfraModelsDeps
 from flext_infra._models.docs import FlextInfraModelsDocs
 from flext_infra._models.enforcement import FlextInfraModelsEnforcement
 from flext_infra._models.gates import FlextInfraModelsGates
 from flext_infra._models.git import FlextInfraModelsGit
-from flext_infra._models.github import FlextInfraModelsGithub
 from flext_infra._models.layout import FlextInfraModelsLayout
 from flext_infra._models.mixins import FlextInfraModelsMixins
 from flext_infra._models.refactor import FlextInfraModelsRefactor
 from flext_infra._models.release import FlextInfraModelsRelease
 from flext_infra._models.rope import FlextInfraModelsRope
+from flext_infra._models.rope_move import FlextInfraModelsRopeMove
 from flext_infra._models.scan import FlextInfraModelsScan
+from flext_infra._models.testmon import FlextInfraModelsTestmon
 from flext_infra._models.transformers import FlextInfraModelsTransformers
 from flext_infra._models.validate import FlextInfraModelsCore
 from flext_infra._models.workspace import FlextInfraModelsWorkspace
@@ -49,13 +51,13 @@ class FlextInfraModels(m):
         # remaining exposed through the single public m.Infra facade.
         FlextInfraConfigModels,
         FlextInfraModelsCodegen,
+        FlextInfraModelsCodemod,
         FlextInfraModelsDeps,
         FlextInfraModelsDocs,
         # NOTE (multi-agent): enforcement/transformers model
         # facades added for the deep-FLEXT dataclass -> m.Infra migration.
         FlextInfraModelsEnforcement,
         FlextInfraModelsGates,
-        FlextInfraModelsGithub,
         FlextInfraModelsLayout,
         FlextInfraModelsRefactor,
         FlextInfraModelsRelease,
@@ -67,7 +69,9 @@ class FlextInfraModels(m):
         FlextInfraModelsWorktree,
         FlextInfraModelsGit,
         FlextInfraModelsRope,
+        FlextInfraModelsRopeMove,
         FlextInfraModelsScan,
+        FlextInfraModelsTestmon,
         FlextInfraModelsCore,
         FlextInfraModelsBase,
     ):

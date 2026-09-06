@@ -111,6 +111,8 @@ class FlextInfraProtocolsRope(Protocol):
             self,
         ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]: ...
 
+        def import_dependents(self, import_target: str) -> tuple[Path, ...]: ...
+
         def objects(
             self,
             file_path: Path,
@@ -292,6 +294,9 @@ class FlextInfraProtocolsRope(Protocol):
 
         @staticmethod
         def init_rope_project(repository_root: Path) -> t.Infra.RopeProject: ...
+
+        @staticmethod
+        def init_rope_workspace(repository_root: Path) -> t.Infra.RopeProject: ...
 
         @staticmethod
         def get_resource_from_path(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import operator
 from pathlib import Path
 
-from flext_infra import c, m, p, r, t, u
+from flext_infra import c, config, m, p, r, t, u
 
 
 class FlextInfraWorkspaceCheckReportsMixin:
@@ -56,6 +56,9 @@ class FlextInfraWorkspaceCheckReportsMixin:
         results: t.SequenceOf[m.Infra.ProjectResult], gates: t.StrSequence
     ) -> m.Infra.SarifReport:
         """Build the SARIF 2.1.0 report model from workspace gate results."""
+        repository = u.Infra.configured_repository_ref(
+            codegen=config.Infra.codegen
+        ).unwrap()
         rules_by_id: dict[str, m.Infra.SarifRule] = {}
         sarif_results: list[m.Infra.SarifResult] = []
         for project in results:
@@ -94,7 +97,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
             runs=(
                 m.Infra.SarifRun(
                     tool_name="flext-infra-check",
-                    information_uri="https://github.com/flext-sh/flext-infra",
+                    information_uri=repository.url.removesuffix(".git"),
                     rules=tuple(rules_by_id.values()),
                     results=tuple(sarif_results),
                 ),
@@ -118,9 +121,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
             ),
         )
         if md_write_result.failure:
-            return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                md_write_result.error or "failed to write markdown report"
-            )
+            return r[t.SequenceOf[m.Infra.ProjectResult]].from_failure(md_write_result)
         sarif_path = report_base / "check-report.sarif"
         sarif_report = FlextInfraWorkspaceCheckReportsMixin._generate_sarif(
             results, resolved_gates
@@ -129,7 +130,7 @@ class FlextInfraWorkspaceCheckReportsMixin:
             u.Infra.export_pydantic_json(sarif_report, sarif_path)
         except OSError as exc:
             return r[t.SequenceOf[m.Infra.ProjectResult]].fail(
-                f"failed to write sarif report: {exc}"
+                f"failed to write sarif report: {exc}", exception=exc
             )
         total_errors = sum(project.total_errors for project in results)
         success = len(results) - outcome.failed

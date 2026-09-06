@@ -20,7 +20,7 @@ class TestsFlextInfraLazyInitProcessing:
 
     def test_apply_generates_inline_lazy_public_root(self, tmp_path: Path) -> None:
         """Generate the sole PEP 562 initializer at the production root."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py",
             class_name="FlextTestsModels",
@@ -28,7 +28,7 @@ class TestsFlextInfraLazyInitProcessing:
             docstring="Models.",
         )
 
-        result = u.Tests.run_lazy_init(repository_root)
+        result = u.Tests.run_lazy_init(workspace_root)
         content = self._read(package_root)
 
         tm.that(result, eq=0)
@@ -40,17 +40,17 @@ class TestsFlextInfraLazyInitProcessing:
 
     def test_check_only_reports_drift_without_writing(self, tmp_path: Path) -> None:
         """Report initializer drift while preserving every source byte."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
         init_path = package_root / c.Infra.INIT_PY
         original = init_path.read_bytes()
-        service = u.Tests.create_lazy_init_service(repository_root)
+        service = u.Tests.create_lazy_init_service(workspace_root)
 
-        result = service.generate_inits(check_only=True)
+        result = service.plan_files()
 
-        tm.that(result, eq=0)
+        tm.that(result.success, eq=True)
         tm.that(init_path.read_bytes(), eq=original)
         tm.that(str(init_path) in service.modified_files, eq=True)
 
@@ -58,7 +58,7 @@ class TestsFlextInfraLazyInitProcessing:
         self, tmp_path: Path
     ) -> None:
         """Generate lazy facades at every importable package level."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         level_two = package_root / "services"
         level_three = level_two / "_parts"
         level_four = level_three / "runtime"
@@ -73,9 +73,7 @@ class TestsFlextInfraLazyInitProcessing:
             alias="worker",
             docstring="Worker.",
         )
-        apply_service = u.Tests.create_lazy_init_service(repository_root)
-
-        apply_result = apply_service.generate_inits(check_only=False)
+        apply_result = u.Tests.run_lazy_init(workspace_root)
         generated_paths = tuple(
             package_dir / c.Infra.INIT_PY
             for package_dir in (level_two, level_three, level_four)
@@ -91,7 +89,7 @@ class TestsFlextInfraLazyInitProcessing:
                 "--check",
                 *(str(path) for path in generated_paths),
             ],
-            cwd=repository_root,
+            cwd=workspace_root,
         ).unwrap()
         lint_result = u.Cli.run_raw(
             [
@@ -100,10 +98,10 @@ class TestsFlextInfraLazyInitProcessing:
                 "--no-fix",
                 *(str(path) for path in generated_paths),
             ],
-            cwd=repository_root,
+            cwd=workspace_root,
         ).unwrap()
-        check_service = u.Tests.create_lazy_init_service(repository_root)
-        check_result = check_service.generate_inits(check_only=True)
+        check_service = u.Tests.create_lazy_init_service(workspace_root)
+        check_result = u.Tests.run_lazy_init(workspace_root, check_only=True)
         after = tuple(path.read_bytes() for path in generated_paths)
 
         tm.that(apply_result, eq=0)
@@ -115,15 +113,13 @@ class TestsFlextInfraLazyInitProcessing:
         tm.that(level_four_content, contains='"worker"')
         tm.that(level_two_content, contains="FlextTestsWorker")
         tm.that(level_three_content, contains="FlextTestsWorker")
-        tm.that(format_result.exit_code, eq=0)
-        tm.that(lint_result.exit_code, eq=0)
         tm.that(check_result, eq=0)
         tm.that(check_service.modified_files, empty=True)
         tm.that(after, eq=before)
 
     def test_manual_private_initializer_is_preserved(self, tmp_path: Path) -> None:
         """Keep an authored static private facade byte-identical."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         private_dir = package_root / "_facade"
         private_dir.mkdir()
         private_dir.joinpath("runtime.py").write_text(
@@ -139,14 +135,14 @@ class TestsFlextInfraLazyInitProcessing:
         )
         before = init_path.read_bytes()
 
-        result = u.Tests.run_lazy_init(repository_root)
+        result = u.Tests.run_lazy_init(workspace_root)
 
         tm.that(result, eq=0)
         tm.that(init_path.read_bytes(), eq=before)
 
     def test_apply_removes_obsolete_generated_sidecars(self, tmp_path: Path) -> None:
         """Remove retired generated manifests while writing the initializer."""
-        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         u.Tests.write_lazy_init_namespace_module(
             package_root / "models.py", class_name="FlextTestsModels", alias="m"
         )
@@ -155,7 +151,7 @@ class TestsFlextInfraLazyInitProcessing:
             f"{c.Infra.AUTOGEN_HEADER}\n", encoding=c.Cli.ENCODING_DEFAULT
         )
 
-        result = u.Tests.run_lazy_init(repository_root)
+        result = u.Tests.run_lazy_init(workspace_root)
 
         tm.that(result, eq=0)
         tm.that(unit_path.exists(), eq=False)

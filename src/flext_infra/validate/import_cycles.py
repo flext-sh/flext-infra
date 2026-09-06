@@ -134,9 +134,9 @@ class FlextInfraValidateImportCycles(s[bool]):
         try:
             pymodule = u.Infra.get_pymodule(project, resource)
         except u.Infra.rope_runtime_errors() as exc:
-            return r[str].fail(f"get_pymodule rope error: {exc!s}")
+            return r[str].fail(f"get_pymodule rope error: {exc!s}", exception=exc)
         except TypeError as exc:
-            return r[str].fail(f"get_pymodule type error: {exc!s}")
+            return r[str].fail(f"get_pymodule type error: {exc!s}", exception=exc)
         try:
             name = pymodule.get_name()
         except c.EXC_ATTR_TYPE:
@@ -166,9 +166,7 @@ class FlextInfraValidateImportCycles(s[bool]):
         """Execute the cycle-detection CLI flow using ``self.repository_root``."""
         report_result = self.build_report(self.repository_root)
         if report_result.failure:
-            return r[bool].fail(
-                report_result.error or "import-cycles validation failed"
-            )
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

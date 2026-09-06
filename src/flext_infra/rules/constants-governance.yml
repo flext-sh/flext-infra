@@ -109,7 +109,6 @@ canonical_values:
     canonical_ref: "SourceCode.CLASS_NAME_RE"
     semantic_names:
       - CLASS_RE
-      - CLASS_PATTERN
       - CLASS_NAME_RE
   - value: "^class\\s+(\\w+)\\s*\\(([^)]*)\\)\\s*:"
     type: regex

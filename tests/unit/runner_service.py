@@ -33,7 +33,7 @@ class RealSubprocessRunner:
     def run_safe(self, cmd: t.StrSequence) -> p.Result[str]:
         v = self._validate_safe_command(cmd)
         if v.failure:
-            return r[str].fail(v.error or "unsafe")
+            return r[str].from_failure(v)
         res = self.subprocess_utility.run(cmd)
         if res.failure:
             return r[str].fail(self._failure_message(res))
@@ -42,7 +42,7 @@ class RealSubprocessRunner:
     def capture_output(self, cmd: t.StrSequence) -> p.Result[t.Pair[str, str]]:
         v = self._validate_safe_command(cmd)
         if v.failure:
-            return r[t.Pair[str, str]].fail(v.error or "unsafe")
+            return r[t.Pair[str, str]].from_failure(v)
         res = self.subprocess_utility.run(cmd)
         if res.failure:
             return r[t.Pair[str, str]].fail(self._failure_message(res))

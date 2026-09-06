@@ -43,7 +43,7 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
             violations = self._collect_violations(repository_root)
         except OSError as exc:
             return r[m.Infra.ValidationReport].fail(
-                f"{self._SCAN_KIND} scan failed: {exc}"
+                f"{self._SCAN_KIND} scan failed: {exc}", exception=exc
             )
         passed = not violations
         summary = (
@@ -117,9 +117,7 @@ class FlextInfraRopeImportBoundaryBase(s[bool]):
         """Run the validation against ``self.repository_root``."""
         report_result = self.build_report(self.repository_root)
         if report_result.failure:
-            return r[bool].fail(
-                report_result.error or f"{self._VIOLATION_KIND} validation failed"
-            )
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

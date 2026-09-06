@@ -8,15 +8,10 @@ so the command contract is proven against recorded invocations.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
@@ -45,12 +40,11 @@ def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
     )
 
 
-def _shim_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Put recording shims for the external CLIs first on PATH."""
+def _shim_path(tmp_path: Path) -> Path:
+    """Create recording executables for the external CLIs."""
     bin_dir = tmp_path / "bin"
     u.Tests.cli_shim(bin_dir, c.Infra.GH)
     u.Tests.cli_shim(bin_dir, c.Infra.UV)
-    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     return bin_dir
 
 
@@ -61,28 +55,31 @@ class TestsFlextInfraReleasePublish:
         """The receipt is the only publishable input."""
 
         @staticmethod
-        def test_dry_run_verifies_the_receipt_without_effects(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
+        def test_dry_run_verifies_the_receipt_without_effects(tmp_path: Path) -> None:
             """A dry run proves the receipt and calls no external service."""
             workspace, _report = _built_workspace(tmp_path)
-            bin_dir = _shim_path(tmp_path, monkeypatch)
+            bin_dir = _shim_path(tmp_path)
 
-            tm.that(u.Tests.run_release_main(workspace, "--phase", "publish"), eq=0)
+            tm.that(
+                u.Tests.run_release_main(
+                    workspace, "--phase", "publish", executable_dir=bin_dir
+                ),
+                eq=0,
+            )
             tm.that((bin_dir / f"{c.Infra.GH}.log").exists(), eq=False)
 
         @staticmethod
-        def test_tampered_artifact_is_refused(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
+        def test_tampered_artifact_is_refused(tmp_path: Path) -> None:
             """An artifact whose bytes no longer match the receipt never leaves."""
             workspace, report = _built_workspace(tmp_path)
-            _shim_path(tmp_path, monkeypatch)
+            bin_dir = _shim_path(tmp_path)
             artifact = Path(report.records[0].artifacts[0].path)
             artifact.write_bytes(artifact.read_bytes() + b"\n")
 
             tm.that(
-                u.Tests.run_release_main(workspace, "--phase", "publish", "--apply"),
+                u.Tests.run_release_main(
+                    workspace, "--phase", "publish", "--apply", executable_dir=bin_dir
+                ),
                 ne=0,
             )
 
@@ -101,14 +98,14 @@ class TestsFlextInfraReleasePublish:
 
         @staticmethod
         def test_github_release_carries_exactly_the_receipt_artifacts(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+            tmp_path: Path,
         ) -> None:
             """The release is created with the receipt's wheel and sdist, nothing else."""
             workspace, report = _built_workspace(tmp_path)
-            bin_dir = _shim_path(tmp_path, monkeypatch)
+            bin_dir = _shim_path(tmp_path)
 
             result = u.Tests.run_release_main(
-                workspace, "--phase", "publish", "--apply"
+                workspace, "--phase", "publish", "--apply", executable_dir=bin_dir
             )
 
             tm.that(result, eq=0)
@@ -120,15 +117,18 @@ class TestsFlextInfraReleasePublish:
             tm.that((bin_dir / f"{c.Infra.UV}.log").exists(), eq=False)
 
         @staticmethod
-        def test_index_upload_uses_trusted_publishing_per_wave(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
+        def test_index_upload_uses_trusted_publishing_per_wave(tmp_path: Path) -> None:
             """``--index`` uploads the verified artifacts through trusted publishing."""
             workspace, report = _built_workspace(tmp_path)
-            bin_dir = _shim_path(tmp_path, monkeypatch)
+            bin_dir = _shim_path(tmp_path)
 
             result = u.Tests.run_release_main(
-                workspace, "--phase", "publish", "--apply", "--index"
+                workspace,
+                "--phase",
+                "publish",
+                "--apply",
+                "--index",
+                executable_dir=bin_dir,
             )
 
             tm.that(result, eq=0)

@@ -89,16 +89,12 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
         """Validate the complete exact and hashed build toolchain lock."""
         records_result = cls._constraint_records(content)
         if records_result.failure:
-            return r[bool].fail(
-                records_result.error or "release build constraint parsing failed"
-            )
+            return r[bool].from_failure(records_result)
         names: t.Infra.StrSet = set()
         for record in records_result.value:
             name_result = cls._constraint_name(record)
             if name_result.failure:
-                return r[bool].fail(
-                    name_result.error or "release build constraint validation failed"
-                )
+                return r[bool].from_failure(name_result)
             name = name_result.value
             if name in names:
                 return r[bool].fail(f"duplicate release build constraint: {name}")
@@ -146,12 +142,14 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             remove_env_keys=c.Infra.GITLEAKS_POLICY_ENV_KEYS,
         )
         if scan_result.failure:
-            return r[bool].fail(scan_result.error or "gitleaks execution failed")
+            return r[bool].from_failure(scan_result)
         command = scan_result.value
-        if command.exit_code == c.Infra.GITLEAKS_LEAK_EXIT_CODE:
+        if command.outcome.raw_return_code == c.Infra.GITLEAKS_LEAK_EXIT_CODE:
             return r[bool].fail("gitleaks detected a secret in staged release source")
-        if command.exit_code != 0:
-            return r[bool].fail(f"gitleaks failed with exit code {command.exit_code}")
+        if not u.Cli.process_succeeded(command.outcome):
+            return r[bool].fail(
+                f"gitleaks failed with exit code {command.outcome.raw_return_code}"
+            )
         return r[bool].ok(True)
 
     @staticmethod
@@ -165,9 +163,7 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if status_result.failure:
-            return r[m.Infra.SourceSnapshot].fail(
-                status_result.error or "project status failed"
-            )
+            return r[m.Infra.SourceSnapshot].from_failure(status_result)
         if status_result.value.strip():
             return r[m.Infra.SourceSnapshot].fail(
                 f"release project is dirty: {project_path}"
@@ -178,9 +174,7 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if oid_result.failure:
-            return r[m.Infra.SourceSnapshot].fail(
-                oid_result.error or "resolve release commit failed"
-            )
+            return r[m.Infra.SourceSnapshot].from_failure(oid_result)
         oid = oid_result.value.strip()
         epoch_result = u.Cli.capture(
             [c.Infra.GIT, "show", "-s", "--format=%ct", oid],
@@ -188,9 +182,7 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if epoch_result.failure:
-            return r[m.Infra.SourceSnapshot].fail(
-                epoch_result.error or "resolve commit epoch failed"
-            )
+            return r[m.Infra.SourceSnapshot].from_failure(epoch_result)
         source_date_epoch = epoch_result.value.strip()
         if not source_date_epoch.isdigit():
             return r[m.Infra.SourceSnapshot].fail(
@@ -203,13 +195,14 @@ class FlextInfraReleaseArtifactSourceMixin(FlextInfraReleaseArtifactMetadataMixi
             timeout=c.Infra.TIMEOUT_MEDIUM,
         )
         if archive_result.failure:
-            return r[m.Infra.SourceSnapshot].fail(
-                archive_result.error or "git archive failed"
-            )
+            return r[m.Infra.SourceSnapshot].from_failure(archive_result)
         try:
-            stage_path.mkdir(parents=True, exist_ok=False)
             with tarfile.open(archive_path, "r") as archive:
-                archive.extractall(stage_path, filter="data")
+                extracted = u.Infra.materialize_tar_tree(archive, stage_path)
+                if extracted.failure:
+                    return r[m.Infra.SourceSnapshot].fail(
+                        extracted.error or "extract committed release source failed"
+                    )
         except (OSError, tarfile.TarError) as exc:
             return r[m.Infra.SourceSnapshot].fail_op(
                 "extract committed release source", exc

@@ -8,6 +8,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 from flext_infra._models.config import FlextInfraConfigModels
+from flext_infra._models.docs_generation import FlextInfraModelsDocsGeneration
 
 
 class _FlextInfraDocsContracts:
@@ -45,7 +46,7 @@ class _FlextInfraDocsContracts:
 
 # NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
 # retains the exact metadata/config models and declares only analysis deltas.
-class FlextInfraModelsDocs(_FlextInfraDocsContracts):
+class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContracts):
     """Models for documentation services."""
 
     class DocsGenerateRequest(m.ContractModel):
@@ -55,8 +56,8 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         reuse the same validation rules and avoid ad-hoc multi-parameter calls.
         """
 
-        repository_root: Annotated[
-            Path, m.Field(description="Repository root for docs generation")
+        workspace_root: Annotated[
+            Path, m.Field(description="Workspace root for docs generation")
         ]
         projects: Annotated[
             t.StrSequence | None, m.Field(description="Optional selected project names")
@@ -89,21 +90,6 @@ class FlextInfraModelsDocs(_FlextInfraDocsContracts):
         written: Annotated[bool, m.Field(description="Generated file write flag")] = (
             False
         )
-
-    class DocScope(m.ArbitraryTypesModel):
-        """Documentation scope targeting a project or repository root."""
-
-        name: Annotated[t.NonEmptyStr, m.Field(description="Scope name")]
-        path: Annotated[Path, m.Field(description="Absolute path to scope root")]
-        report_dir: Annotated[
-            Path, m.Field(description="Report output directory for scope")
-        ]
-        project_class: Annotated[
-            str, m.Field(description="Docs scope classification")
-        ] = "root"
-        package_name: Annotated[
-            str, m.Field(description="Primary package name for scope")
-        ] = ""
 
     class DocstringCoverage(m.ContractModel):
         """Docstring coverage metric for one docs scope (declaration only).

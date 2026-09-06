@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
-from flext_infra import c, m, p, r, s, t, u
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
 from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
 
 if TYPE_CHECKING:
@@ -14,7 +15,9 @@ if TYPE_CHECKING:
 _log = u.fetch_logger(__name__)
 
 
-class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
+class FlextInfraCodegenPipeline(
+    FlextInfraCodegenPipelineStagesMixin, FlextInfraServiceBase[str]
+):
     """Run the full codegen pipeline directly from the validated CLI model."""
 
     _state: m.Infra.CodegenPipelineState = u.PrivateAttr(
@@ -38,7 +41,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
             logger=_log,
         )
         if pipeline_result.failure:
-            return r[str].fail(pipeline_result.error or "pipeline execution failed")
+            return r[str].from_failure(pipeline_result)
         # cli.pipeline already maps failed_stages to r.fail; value is always success.
         return self._collect_pipeline_output()
 

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, override
 
 import libcst as cst
 
-from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from flext_infra import t

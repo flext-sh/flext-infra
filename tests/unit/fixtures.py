@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from flext_infra import config
 from flext_tests import tm
 from tests import c, u
 
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
     from tests import m, t
 
 _FIXTURES_DIR = Path(__file__).resolve().parents[1] / "fixtures"
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _read_fixture(*parts: str) -> str:
@@ -103,10 +105,70 @@ def real_python_package(tmp_path: Path) -> Path:
     src_dir = project_root / "src" / "test_pkg"
     src_dir.mkdir(parents=True)
     (src_dir / "__init__.py").write_text('"""Test package."""\n__version__ = "0.1.0"\n')
+    (src_dir / "identity.py").write_text(
+        '"""Substantive unique source consumed by real scanner fixtures."""\n\n'
+        "from __future__ import annotations\n\n"
+        "def normalize_identity(parts: tuple[str, ...]) -> str:\n"
+        '    """Normalize one ordered identity without duplicated code."""\n'
+        "    normalized = tuple(part.strip() for part in parts if part.strip())\n"
+        "    if not normalized:\n"
+        '        raise ValueError("identity requires at least one non-empty part")\n'
+        '    return "::".join(normalized).casefold()\n',
+        encoding="utf-8",
+    )
     (project_root / "pyproject.toml").write_text(
         '[project]\nname = "test-pkg"\nversion = "0.1.0"\n'
     )
     return project_root
+
+
+@pytest.fixture
+def cached_runner_project(tmp_path: Path) -> Path:
+    """Create a real one-test consumer for the public cached pytest runner."""
+    project_root = tmp_path / "cached_runner_project"
+    policy = config.Infra.codegen.make.testmon_cache
+    package_root = project_root / c.Infra.DEFAULT_SRC_DIR / "runner_sample"
+    tests_root = project_root / policy.target_directory
+    package_root.mkdir(parents=True)
+    tests_root.mkdir(parents=True)
+    (package_root / "__init__.py").write_text(
+        "def answer() -> int:\n    return 42\n", encoding="utf-8"
+    )
+    (tests_root / "test_runtime.py").write_text(
+        "from flext_tests import tm\n"
+        "from runner_sample import answer\n\n"
+        "def test_runtime() -> None:\n"
+        "    tm.that(answer(), eq=42)\n",
+        encoding="utf-8",
+    )
+    return project_root
+
+
+@pytest.fixture
+def mod_workspace(tmp_path: Path) -> Path:
+    """Create the shared real workspace for the public refactor-mod CLI."""
+    project_document = u.read_project_document_cached(_PROJECT_ROOT)
+    project = u.build_project_metadata(_PROJECT_ROOT, project_document)
+    workspace = tmp_path / "mod_workspace"
+    tm.ok(u.Cli.ensure_dir(workspace))
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            workspace / c.Infra.PYPROJECT_FILENAME,
+            (
+                "[project]\n"
+                f'name = "{project.project.name}"\n'
+                f'version = "{project.project.version}"\n'
+            ),
+        )
+    )
+    tm.ok(
+        u.Cli.atomic_write_text_file(
+            workspace / "sample.py",
+            "u.Infra.serialization_lock_execute(paths, timeout)\n",
+        )
+    )
+    u.Tests.initialize_git_repo(workspace)
+    return workspace
 
 
 @pytest.fixture
@@ -253,6 +315,7 @@ def services_resource(
 
 
 __all__: list[str] = [
+    "cached_runner_project",
     "deptry_report_payload",
     "models_resource",
     "modernizer_workspace",

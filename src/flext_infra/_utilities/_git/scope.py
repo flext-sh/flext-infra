@@ -9,14 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_infra._utilities._git.semantic import FlextInfraUtilitiesGitSemanticMixin
+from flext_infra._utilities._git.semantic_index import (
+    FlextInfraUtilitiesGitSemanticIndexMixin,
+)
 from flext_infra.constants import c
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
+class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticIndexMixin):
     """Static helpers for resolving tracked files and directories within Git scopes."""
 
     @classmethod
@@ -98,7 +100,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
             except (OSError, ValueError):
                 return None
             if ignored_scope.strip():
-                return None
+                return ()
         prefix_parts = scope_prefix.parts
         scope_paths: set[str] = set()
         for repo_relative_text in repo_relative_paths:
@@ -115,7 +117,7 @@ class FlextInfraUtilitiesGitScopeMixin(FlextInfraUtilitiesGitSemanticMixin):
                 "--", scope_prefix.as_posix(), with_exceptions=False
             )
             if ignored_scope.strip():
-                return None
+                return ()
         return tuple(sorted(scope_paths))
 
     @classmethod

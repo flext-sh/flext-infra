@@ -96,7 +96,7 @@ class FlextInfraInventoryService(s[bool]):
             path, payload, m.Cli.JsonWriteOptions(sort_keys=True)
         )
         if write_result.failure:
-            return r[str].fail(write_result.error or "write failed")
+            return r[str].from_failure(write_result)
         return r[str].ok(str(path))
 
     def _write_inventory_reports(
@@ -116,7 +116,7 @@ class FlextInfraInventoryService(s[bool]):
         for filename, payload in report_specs:
             write_result = self._write_json_report(reports_dir / filename, payload)
             if write_result.failure:
-                return r[list[str]].fail(write_result.error or "write failed")
+                return r[list[str]].from_failure(write_result)
             written.append(write_result.value)
         return r[list[str]].ok(list(written))
 
@@ -132,9 +132,7 @@ class FlextInfraInventoryService(s[bool]):
             reports_dir, inventory, wiring, external
         )
         if written_result.failure:
-            return r[m.Infra.InventoryReport].fail(
-                written_result.error or "inventory report write failed"
-            )
+            return r[m.Infra.InventoryReport].from_failure(written_result)
         return r[m.Infra.InventoryReport].ok(
             m.Infra.InventoryReport(
                 total_scripts=len(scripts), reports_written=written_result.value
@@ -146,7 +144,7 @@ class FlextInfraInventoryService(s[bool]):
         """Execute the inventory CLI flow."""
         result = self.generate(self.repository_root, output_dir=self.output_dir)
         if result.failure:
-            return r[bool].fail(result.error or "inventory generation failed")
+            return r[bool].from_failure(result)
         return r[bool].ok(True)
 
 

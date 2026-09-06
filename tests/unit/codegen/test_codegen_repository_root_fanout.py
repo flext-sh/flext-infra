@@ -31,14 +31,41 @@ class TestsCodegenRepositoryRootFanout:
         self, tmp_path: Path
     ) -> None:
         """Generated workspace check/test route through workspace orchestrate."""
-        rendered = _render_root_makefile(tmp_path)
-        tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb check")
-        tm.that(rendered, has="$(WORKSPACE_ORCHESTRATE) --verb test")
-        tm.that(rendered, has="MAKE_PROFILE := workspace")
-        tm.that(rendered, has="$(FLEXT_INFRA_PYTHON) -m flext_infra")
+        repository_root = _render_root_makefile(tmp_path)
+        for verb in (c.Infra.VERB_CHECK, c.Infra.VERB_TEST):
+            execution = tm.ok(
+                test_u.Cli.run_raw(
+                    [c.Infra.MAKE, "--dry-run", verb, "APPLY=Y"],
+                    cwd=repository_root,
+                    remove_env_keys=("MAKEFLAGS",),
+                )
+            )
+            tm.that(execution.exit_code, eq=0)
+            tm.that(execution.stdout + execution.stderr, has=f"--verb {verb}")
+
+    def test_repository_root_deps_profiles_canonical_modernization(
+        self, tmp_path: Path
+    ) -> None:
+        """Generated deps profiles and renders the exact modernizer invocation."""
+        repository_root = _render_root_makefile(tmp_path)
+
+        execution = tm.ok(
+            test_u.Cli.run_raw(
+                [c.Infra.MAKE, "--dry-run", c.Infra.VERB_DEPS, "APPLY=Y"],
+                cwd=repository_root,
+                remove_env_keys=("MAKEFLAGS",),
+            )
+        )
+
+        tm.that(execution.exit_code, eq=0)
+        rendered = execution.stdout + execution.stderr
+        tm.that(rendered, has="-m cProfile")
+        tm.that(rendered, has="deps.pstats")
+        tm.that(rendered, has="validate cprofile-report")
+        tm.that(rendered, has="deps.txt")
 
 
-def _render_root_makefile(tmp_path: Path) -> str:
+def _render_root_makefile(tmp_path: Path) -> Path:
     """Render base/Makefile.j2 from a typed workspace fixture."""
     repository = test_u.Tests.repository_ref("workspace-fixture")
     workspace = m.Infra.WorkspaceSpec(
@@ -73,8 +100,11 @@ def _render_root_makefile(tmp_path: Path) -> str:
         fp for fp in plan.files if Path(fp.path).name == c.Infra.MAKEFILE_FILENAME
     )
     tm.that(makefile_plans, len=1)
-    rendered: str = makefile_plans[0].rendered
-    return rendered
+    makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
+    makefile_path.write_text(
+        makefile_plans[0].rendered, encoding=c.Infra.ENCODING_DEFAULT
+    )
+    return repository_root
 
 
 __all__: tuple[str, ...] = ()

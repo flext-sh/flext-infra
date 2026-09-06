@@ -37,9 +37,9 @@ class TestTypeGates:
                 FlextInfraMypyGate,
                 True,
                 r.ok(
-                    u.Tests.stub_run(
+                    u.Tests.create_command_output(
                         stdout='{"file": "a.py", "line": 1, "column": 0, "code": "E001", "message": "Error", "severity": "error"}',
-                        returncode=1,
+                        exit_code=1,
                     )
                 ),
                 False,
@@ -50,9 +50,9 @@ class TestTypeGates:
                 FlextInfraPyrightGate,
                 True,
                 r.ok(
-                    u.Tests.stub_run(
+                    u.Tests.create_command_output(
                         stdout='{"generalDiagnostics": [{"file": "a.py", "range": {"start": {"line": 0, "character": 0}}, "rule": "E001", "message": "Error", "severity": "error"}]}',
-                        returncode=1,
+                        exit_code=1,
                     )
                 ),
                 False,
@@ -61,7 +61,7 @@ class TestTypeGates:
             (
                 FlextInfraPyrightGate,
                 True,
-                r.ok(u.Tests.stub_run(stdout="invalid json", returncode=1)),
+                r.ok(u.Tests.create_command_output(stdout="invalid json", exit_code=1)),
                 False,
                 1,
             ),

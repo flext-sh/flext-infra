@@ -133,9 +133,7 @@ class FlextInfraDependencyDetectionAnalysis(FlextInfraDependencyDetectionRunners
         if include_mypy:
             hints_result = self.run_mypy_stub_hints(project_path)
             if hints_result.failure:
-                return r[m.Infra.TypingsReport].fail(
-                    hints_result.error or "typing hint detection failed"
-                )
+                return r[m.Infra.TypingsReport].from_failure(hints_result)
             typed_hints: t.Pair[t.StrSequence, t.StrSequence] = hints_result.value
             hinted, missing_modules = typed_hints
         required_set: t.Infra.StrSet = set(hinted)

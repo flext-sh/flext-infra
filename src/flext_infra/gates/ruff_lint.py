@@ -19,7 +19,9 @@ class FlextInfraRuffLintGate(FlextInfraGate):
 
     gate_id: ClassVar[str] = c.Infra.LINT
     gate_name: ClassVar[str] = "Ruff Lint"
-    can_fix: ClassVar[bool] = True
+    can_fix: ClassVar[bool] = False
+    
+    
 
     @override
     def _get_check_dirs(
@@ -101,7 +103,7 @@ class FlextInfraRuffLintGate(FlextInfraGate):
                 )
             )
             return False, issues
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraRuffLintGate"]

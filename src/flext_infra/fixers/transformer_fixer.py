@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra._utilities.rope_imports import FlextInfraUtilitiesRopeImports
+from flext_infra._utilities.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
@@ -26,9 +28,6 @@ from flext_infra.transformers.import_modernizer import (
 from flext_infra.transformers.mro_remover import FlextInfraRefactorMroRemover
 from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncoding
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
-from flext_infra.transformers.project_alias_migrator import (
-    FlextInfraRefactorProjectAliasMigrator,
-)
 from flext_infra.transformers.typing_dict_attr import FlextInfraRefactorTypingDictAttr
 from flext_infra.transformers.typing_dict_import import (
     FlextInfraRefactorTypingDictImport,
@@ -36,9 +35,8 @@ from flext_infra.transformers.typing_dict_import import (
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
-    from flext_infra.transformers.base import FlextInfraRopeTransformer
+    from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 
 class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
@@ -72,7 +70,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     }
 
     @override
-    def can_fix(self, fix_action: me.EnforcementFixAction) -> bool:
+    def can_fix(self, fix_action: m.EnforcementFixAction) -> bool:
         """Return whether this adapter handles ``fix_action``."""
         return fix_action.kind == self.kind and fix_action.target in self._TRANSFORMERS
 
@@ -80,7 +78,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     def fix_project(
         self,
         project_dir: Path,
-        violations: t.SequenceOf[tuple[me.EnforcementRuleSpec, p.AttributeProbe]],
+        violations: t.SequenceOf[tuple[m.EnforcementRuleSpec, p.AttributeProbe]],
         ctx: m.Infra.FixEnforcementCommand,
     ) -> m.Infra.ProjectFixResult:
         """Apply transformer fixes file-by-file for the given violations."""
@@ -150,7 +148,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
 
     @staticmethod
     def _is_owned_library_exempt(
-        project_dir: Path, fix_action: me.EnforcementFixAction | None, file_path: Path
+        project_dir: Path, fix_action: m.EnforcementFixAction | None, file_path: Path
     ) -> bool:
         """Skip import modernization inside the library's owning project.
 
@@ -181,7 +179,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         """
         paths = tuple(Path(path) for path in file_paths)
         with u.Infra.open_project(self._repository_root) as rope_project:
-            return FlextInfraUtilitiesRopeImports.normalize_imports(
+            return u.Infra.normalize_imports(
                 rope_project, file_paths=paths, preserve_canonical_aliases=True
             )
 
@@ -189,7 +187,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
         self,
         file_path: Path,
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction | None,
+        fix_action: m.EnforcementFixAction | None,
         ctx: m.Infra.FixEnforcementCommand,
         *,
         rule_id: str = "",
@@ -272,7 +270,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
     @staticmethod
     def _build_transformer(
         transformer_cls: type[FlextInfraRopeTransformer],
-        fix_action: me.EnforcementFixAction,
+        fix_action: m.EnforcementFixAction,
         file_path: Path,
     ) -> FlextInfraRopeTransformer:
         """Instantiate a transformer with params declared in the catalog."""

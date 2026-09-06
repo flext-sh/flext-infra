@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+
 from flext_infra import c, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture
 
 
 class TestsRepositoryLocalTopology:
@@ -31,14 +32,15 @@ class TestsRepositoryLocalTopology:
             issue_prefix=name,
         )
         observed = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
+        exclusion = f"{observed.repository.distribution}-excluded"
+        override = f"{observed.repository.distribution}-overridden"
+        cutoff = datetime.now(UTC).isoformat()
         declared = observed.repository.model_copy(
             update={
                 "checkout": c.Infra.CheckoutKind.INDEPENDENT,
                 "uv_link_mode": "clone",
-                "dependency_cooldown_exclusions": ("fresh-package",),
-                "dependency_cooldown_overrides": {
-                    "dated-package": "2026-09-01T00:00:00Z"
-                },
+                "dependency_cooldown_exclusions": (exclusion,),
+                "dependency_cooldown_overrides": {override: cutoff},
             }
         )
         tm.ok(
@@ -56,12 +58,9 @@ class TestsRepositoryLocalTopology:
 
         tm.that(workspace.repository.checkout, eq=c.Infra.CheckoutKind.INDEPENDENT)
         tm.that(workspace.repository.uv_link_mode, eq="clone")
+        tm.that(workspace.repository.dependency_cooldown_exclusions, eq=(exclusion,))
         tm.that(
-            workspace.repository.dependency_cooldown_exclusions, eq=("fresh-package",)
-        )
-        tm.that(
-            workspace.repository.dependency_cooldown_overrides,
-            eq={"dated-package": "2026-09-01T00:00:00Z"},
+            workspace.repository.dependency_cooldown_overrides, eq={override: cutoff}
         )
 
     def test_selected_workspace_manifest_rejects_git_contradiction(

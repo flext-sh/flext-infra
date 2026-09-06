@@ -16,9 +16,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, config
-from flext_infra import main as infra_main
-from flext_infra.services.cli_routes import CliRouteService
+from flext_infra import CliRouteService, c, config, main as infra_main
 from flext_tests import tm
 from tests import u
 
@@ -43,43 +41,113 @@ def _with_pep621_identity(repo: Path) -> Path:
     return repo
 
 
+def _seed_public_conform_checkout(root: Path) -> None:
+    """Copy the real public package, config, and tracked Mise inputs into a repo."""
+    project_root = Path(__file__).resolve().parents[3]
+    tm.ok(
+        u.Cli.files_copy_directory(
+            project_root / "src" / "flext_infra",
+            root / "src" / "flext_infra",
+            dirs_exist_ok=True,
+        )
+    )
+    tm.ok(
+        u.Cli.files_copy_directory(
+            project_root / "config", root / "config", dirs_exist_ok=True
+        )
+    )
+    u.Tests.copy_tracked_mise_seeds(root)
+    tm.ok(
+        u.Cli.files_copy(
+            project_root / c.Infra.MISE_TOML_FILENAME, root / c.Infra.MISE_TOML_FILENAME
+        )
+    )
+
+
+def _mise_transaction_state(root: Path) -> tuple[Path, Path]:
+    """Return the public workspace journal and root-project staging paths."""
+    toolchain = config.Infra.codegen.toolchain
+    state_root = (
+        root.parent
+        / toolchain.state_directory_name
+        / root.name
+        / toolchain.mise_namespace
+    )
+    return state_root / "journal.json", state_root / "projects" / "root" / "transaction"
+
+
+def _public_conform_command(root: Path) -> list[str]:
+    """Build the real CLI command whose final argument selects check or apply."""
+    return [
+        sys.executable,
+        "-m",
+        "flext_infra",
+        "codegen",
+        "conform",
+        "--root",
+        str(root),
+        "--scope",
+        "self",
+        "--mode",
+    ]
+
+
 class TestHandleLazyInit:
     """Tests for direct init command dispatch."""
 
-    @staticmethod
-    def _init(repo: Path, mode: str) -> int:
-        """Run one bootstrap init through the public CLI entry point."""
-        return infra_main([
+    def test_success(self, real_git_repo: Path) -> None:
+        """Init returns 0 on empty workspace."""
+        result = infra_main([
             "codegen",
             "init",
-            mode,
+            "--apply",
             "--workspace",
-            str(_with_pep621_identity(repo)),
+            str(_with_pep621_identity(real_git_repo)),
         ])
+        tm.that(result, eq=0)
 
-    def test_check_reports_drift_while_the_dispatcher_is_absent(
-        self, real_git_repo: Path
-    ) -> None:
-        """A checkout without the generated dispatcher is drift, never clean.
+    def test_check_mode(self, real_git_repo: Path) -> None:
+        """Init check reports managed drift without mutating the repository."""
+        repository = _with_pep621_identity(real_git_repo)
+        pyproject = repository / c.Infra.PYPROJECT_FILENAME
+        before = pyproject.read_bytes()
+        makefile = repository / c.Infra.MAKEFILE_FILENAME
+        result = infra_main([
+            "codegen",
+            "init",
+            "--check",
+            "--workspace",
+            str(repository),
+        ])
+        tm.that(result, ne=0)
+        tm.that(makefile.exists(), eq=False)
+        tm.that(pyproject.read_bytes(), eq=before)
 
-        Check mode answers one question: does the checkout already carry the
-        projection this generator would write? A bare repository does not, so
-        reporting success there would let a stale or missing Makefile pass the
-        gate that exists to catch exactly that.
-        """
-        tm.that(self._init(real_git_repo, "--check"), ne=0)
-
-    def test_apply_bootstraps_the_dispatcher_to_a_fixed_point(
-        self, real_git_repo: Path
-    ) -> None:
-        """Apply writes the dispatcher and a following check finds no drift."""
-        tm.that(self._init(real_git_repo, "--apply"), eq=0)
-
-        tm.that(self._init(real_git_repo, "--check"), eq=0)
+    def test_enforce_mode(self, real_git_repo: Path) -> None:
+        """Init in enforce mode (not check)."""
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(real_git_repo)),
+        ])
+        tm.that(result, eq=0)
 
 
 class TestMainCommandDispatch:
     """Tests for main() command routing."""
+
+    def test_init_command(self, real_git_repo: Path) -> None:
+        """main() with init command returns 0."""
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(real_git_repo)),
+        ])
+        tm.that(result, eq=0)
 
     def test_unknown_command(self) -> None:
         """main() with unknown command returns non-zero exit code."""
@@ -112,19 +180,24 @@ class TestMainCommandDispatch:
 class TestMainEntryPoint:
     """Tests for the centralized process entrypoint."""
 
-    def test_entry_point_via_sys_exit(self) -> None:
-        """The root process entrypoint serves each route's own declared help.
+    def test_entry_point_returns_int(self, real_git_repo: Path) -> None:
+        """main() returns an integer exit code."""
+        result = infra_main([
+            "codegen",
+            "init",
+            "--apply",
+            "--workspace",
+            str(_with_pep621_identity(real_git_repo)),
+        ])
+        tm.that(type(result).__name__, eq="int")
 
-        The expectation is read from the route table that renders the help, so
-        renaming or rewording a command keeps this contract honest instead of
-        freezing yesterday's wording in the test.
-        """
+    def test_entry_point_via_sys_exit(self) -> None:
+        """The root process entrypoint serves the route owner's declared help."""
         route = next(
             item
             for item in CliRouteService.route_table_for(c.Infra.CLI_GROUP_CODEGEN)
             if item.name == "init"
         )
-
         result = u.Cli.run_raw([
             sys.executable,
             "-m",
@@ -133,34 +206,18 @@ class TestMainEntryPoint:
             route.name,
             "--help",
         ])
-
         tm.ok(result)
         tm.that(
             result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
         )
         tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
 
-    def test_apply_bootstraps_managed_conflict_before_facade_imports(
+    def test_managed_conflict_is_planned_and_published_atomically(
         self, infra_git_repo: Path
     ) -> None:
-        """Repair invalid target metadata through the real process entrypoint."""
+        """Keep live bytes unchanged until the public transaction commits."""
         root = infra_git_repo
-        project_root = Path(__file__).resolve().parents[3]
-        tm.ok(
-            u.Cli.files_copy_directory(
-                project_root / "src" / "flext_infra",
-                root / "src" / "flext_infra",
-                dirs_exist_ok=True,
-            )
-        )
-        tm.ok(
-            u.Cli.files_copy_directory(
-                project_root / "config", root / "config", dirs_exist_ok=True
-            )
-        )
-        # The full surface validates the committed Mise seeds instead of minting
-        # them, so the governed fixture carries them exactly as a repository does.
-        u.Tests.copy_tracked_mise_seeds(root)
+        _seed_public_conform_checkout(root)
         (root / "pyproject.toml").write_text(
             '[project]\nname = "flext-infra"\nversion = "0.12.0.dev0"\n'
             'requires-python = ">=3.13,<3.14"\n'
@@ -176,39 +233,91 @@ class TestMainEntryPoint:
             encoding="utf-8",
         )
 
-        result = u.Cli.run_raw(
-            [
-                sys.executable,
-                "-m",
-                "flext_infra",
-                "codegen",
-                "conform",
-                "--root",
-                str(root),
-                "--scope",
-                "self",
-                "--mode",
-                "apply",
-            ],
-            cwd=root,
-            env={"PYTHONPATH": str(root / "src")},
+        pyproject = root / "pyproject.toml"
+        before = pyproject.read_bytes()
+        journal, transaction = _mise_transaction_state(root)
+        command = _public_conform_command(root)
+        checked = u.Cli.run_raw(
+            [*command, "check"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
+        tm.ok(checked)
+        tm.that(checked.value.exit_code, eq=1)
+        tm.that(pyproject.read_bytes(), eq=before)
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
 
-        tm.ok(result)
-        tm.that(
-            result.value.exit_code, eq=0, msg=result.value.stderr or result.value.stdout
+        applied = u.Cli.run_raw(
+            [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
+        tm.ok(applied)
         tm.that(
-            result.value.stdout + result.value.stderr,
-            contains="recovered owner-declared managed conflicts",
+            applied.value.exit_code,
+            eq=0,
+            msg=applied.value.stderr or applied.value.stdout,
         )
-        rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
+        rendered = pyproject.read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
         payload = tomllib.loads(rendered)
         tm.that(
             payload["tool"]["pytest"]["ini_options"]["addopts"],
             has=(f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"),
         )
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
+
+        published = pyproject.read_bytes()
+        fixed_point = u.Cli.run_raw(
+            [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
+        )
+        tm.ok(fixed_point)
+        tm.that(
+            fixed_point.value.exit_code,
+            eq=0,
+            msg=fixed_point.value.stderr or fixed_point.value.stdout,
+        )
+        tm.that(pyproject.read_bytes(), eq=published)
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
+
+    def test_present_invalid_mise_artifact_never_enters_external_resolution(
+        self, infra_git_repo: Path
+    ) -> None:
+        """Reject a present invalid artifact before credential/network work."""
+        root = infra_git_repo
+        _seed_public_conform_checkout(root)
+        lock = root / "mise.lock"
+        lock_state = tm.ok(u.Cli.atomic_read_binary_file_state(lock, required=True))
+        lock_mode = lock_state.mode
+        tm.that(lock_mode is None, eq=False)
+        if lock_mode is None:
+            msg = "required Mise lock has no permission mode"
+            raise AssertionError(msg)
+        if lock_state.content is None:
+            msg = "required Mise lock has no bytes"
+            raise AssertionError(msg)
+        corrupted = lock_state.content + b"\ninvalid = [\n"
+        tm.ok(
+            u.Cli.atomic_write_binary_file_guarded(
+                lock_state, corrupted, permission_mode=lock_mode
+            )
+        )
+        journal, transaction = _mise_transaction_state(root)
+
+        applied = u.Cli.run_raw(
+            [*_public_conform_command(root), "apply"],
+            cwd=root,
+            env={"MISE_GITHUB_CREDENTIAL_COMMAND": "", "PYTHONPATH": str(root / "src")},
+        )
+
+        tm.ok(applied)
+        tm.that(applied.value.exit_code, eq=1)
+        tm.that(
+            applied.value.stdout + applied.value.stderr,
+            lacks="MISE_GITHUB_CREDENTIAL_COMMAND is required",
+        )
+        tm.that(lock.read_bytes(), eq=corrupted)
+        tm.that(journal.exists(), eq=False)
+        tm.that(transaction.exists(), eq=False)
 
     def test_unknown_command_surfaces_root_cause_via_subprocess(self) -> None:
         """Unknown codegen subcommands must print the actual CLI failure."""

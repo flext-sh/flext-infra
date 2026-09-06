@@ -22,7 +22,7 @@ def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) ->
         "# Docs\n\n[Broken](missing.md)\n", encoding="utf-8"
     )
 
-    result = FlextInfraDocAuditor(repository_root=workspace, strict_mode=True).execute()
+    result = FlextInfraDocAuditor(workspace_root=workspace, strict_mode=True).execute()
 
     tm.fail(result)
 
@@ -30,7 +30,7 @@ def test_auditor_execute_fails_in_strict_mode_on_broken_links(tmp_path: Path) ->
 def test_fixer_execute_applies_link_and_toc_updates(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
 
-    result = FlextInfraDocFixer(repository_root=workspace, apply_changes=True).execute()
+    result = FlextInfraDocFixer(workspace_root=workspace, apply_changes=True).execute()
 
     tm.ok(result)
     content = (workspace / "docs/README.md").read_text(encoding="utf-8")
@@ -42,28 +42,33 @@ def test_fixer_execute_fails_on_unapplied_drift(tmp_path: Path) -> None:
     """The command boundary rejects fixable docs left unapplied."""
     workspace = u.Tests.create_docs_workspace(tmp_path, include_fixable_link=True)
 
-    result = FlextInfraDocFixer(repository_root=workspace).execute()
+    result = FlextInfraDocFixer(workspace_root=workspace).execute()
 
     tm.fail(result)
 
 
-def test_generator_execute_writes_reports_for_root_and_selected_project(
-    tmp_path: Path,
-) -> None:
+def test_generator_plans_root_and_selected_project(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(
         tmp_path, project_names=("flext-a", "flext-b")
     )
 
-    result = FlextInfraDocGenerator(
-        repository_root=workspace, selected_projects=["flext-a"], apply_changes=True
-    ).execute()
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    )
+    prepared = generator.prepare_bundle()
+    tm.ok(prepared)
+    required = generator.required_directories(prepared.value)
+    tm.ok(required)
+    for directory in required.value:
+        directory.mkdir(parents=True, exist_ok=True)
+    planned = generator.plan_files(prepared.value)
+    result = u.Tests.materialize_codegen_plans(planned)
 
     tm.ok(result)
-    tm.that((workspace / ".reports/docs/generate-report.md").exists(), eq=True)
-    tm.that((workspace / "flext-a/.reports/docs/generate-report.md").exists(), eq=True)
-    tm.that(
-        not (workspace / "flext-b/.reports/docs/generate-report.md").exists(), eq=True
-    )
+    planned_paths = {plan.path for plan in planned.value}
+    tm.that(workspace / "docs/projects/generated/catalog.md" in planned_paths, eq=True)
+    tm.that(workspace / "flext-a/README.md" in planned_paths, eq=True)
+    tm.that(workspace / "flext-b/README.md" not in planned_paths, eq=True)
 
 
 def test_validator_execute_fails_before_generation_and_succeeds_after(
@@ -72,15 +77,23 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
 
     before = FlextInfraDocValidator(
-        repository_root=workspace, selected_projects=["flext-a"]
+        workspace_root=workspace, selected_projects=["flext-a"]
     ).execute()
     tm.fail(before)
-    generated = FlextInfraDocGenerator(
-        repository_root=workspace, selected_projects=["flext-a"], apply_changes=True
-    ).execute()
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    )
+    prepared = generator.prepare_bundle()
+    tm.ok(prepared)
+    required = generator.required_directories(prepared.value)
+    tm.ok(required)
+    for directory in required.value:
+        directory.mkdir(parents=True, exist_ok=True)
+    planned = generator.plan_files(prepared.value)
+    generated = u.Tests.materialize_codegen_plans(planned)
     tm.ok(generated)
     after = FlextInfraDocValidator(
-        repository_root=workspace, selected_projects=["flext-a"], apply_changes=True
+        workspace_root=workspace, selected_projects=["flext-a"], apply_changes=True
     ).execute()
     tm.ok(after)
     tm.that((workspace / "flext-a/TODOS.md").exists(), eq=True)
@@ -89,7 +102,7 @@ def test_validator_execute_fails_before_generation_and_succeeds_after(
 def test_builder_execute_fails_when_mkdocs_is_missing(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
 
-    result = FlextInfraDocBuilder(repository_root=workspace).execute()
+    result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
     tm.fail(result)
     tm.that((workspace / ".reports/docs/build-report.md").exists(), eq=True)
@@ -99,23 +112,31 @@ def test_builder_execute_fails_with_invalid_mkdocs_config(tmp_path: Path) -> Non
     workspace = u.Tests.create_docs_workspace(tmp_path)
     (workspace / "mkdocs.yml").write_text("site_name: [", encoding="utf-8")
 
-    result = FlextInfraDocBuilder(repository_root=workspace).execute()
+    result = FlextInfraDocBuilder(workspace_root=workspace).execute()
 
     tm.fail(result)
 
 
 def test_generate_fix_cycle_is_byte_identical_on_second_run(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(tmp_path)
-    generator = FlextInfraDocGenerator(repository_root=workspace, apply_changes=True)
-    fixer = FlextInfraDocFixer(repository_root=workspace, apply_changes=True)
+    generator = FlextInfraDocGenerator(workspace_root=workspace)
+    fixer = FlextInfraDocFixer(workspace_root=workspace, apply_changes=True)
 
-    tm.ok(generator.execute())
+    first_bundle = generator.prepare_bundle()
+    tm.ok(first_bundle)
+    required = generator.required_directories(first_bundle.value)
+    tm.ok(required)
+    for directory in required.value:
+        directory.mkdir(parents=True, exist_ok=True)
+    tm.ok(u.Tests.materialize_codegen_plans(generator.plan_files(first_bundle.value)))
     tm.ok(fixer.execute())
     first_cycle = {
         path: path.read_bytes() for path in u.Infra.iter_markdown_files(workspace)
     }
 
-    tm.ok(generator.execute())
+    second_bundle = generator.prepare_bundle()
+    tm.ok(second_bundle)
+    tm.ok(u.Tests.materialize_codegen_plans(generator.plan_files(second_bundle.value)))
     tm.ok(fixer.execute())
     second_cycle = {
         path: path.read_bytes() for path in u.Infra.iter_markdown_files(workspace)

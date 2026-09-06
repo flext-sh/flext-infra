@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_core import r
-from flext_infra import m
+from flext_infra import m, u
 from flext_infra.base import s
 from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
@@ -35,26 +35,24 @@ if TYPE_CHECKING:
 class FlextInfraValidateLazyMapFreshness(s[bool]):
     """Flags ``__init__.py`` files whose lazy maps are out of sync with siblings."""
 
-    def build_report(self, repository_root: Path) -> p.Result[m.Infra.ValidationReport]:
+    def build_report(self, workspace_root: Path) -> p.Result[m.Infra.ValidationReport]:
         """Run the lazy-init generator in check-only mode, collect stale inits.
 
         Args:
-            repository_root: Root directory under which to scan packages.
+            workspace_root: Root directory under which to scan packages.
 
         Returns:
             r with ValidationReport listing each stale ``__init__.py`` as a violation.
 
         """
-        generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
-        try:
-            errors = generator.generate_inits(check_only=True)
-        except OSError as exc:
-            return r[m.Infra.ValidationReport].fail_op("lazy-map freshness scan", exc)
-        if errors > 0:
-            return r[m.Infra.ValidationReport].fail(
-                f"lazy-map freshness scan errored in {errors} package(s)"
-            )
-        modified = tuple(generator.modified_files)
+        planned = FlextInfraCodegenLazyInit(workspace_root=workspace_root).plan_files()
+        if planned.failure:
+            return r[m.Infra.ValidationReport].from_failure(planned)
+        modified = tuple(
+            str(plan.path)
+            for plan in planned.value.files
+            if u.Infra.codegen_file_requires_effect(plan)
+        )
         violations: t.MutableSequenceOf[str] = [
             f"stale lazy map: {path}" for path in modified
         ]
@@ -72,7 +70,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
 
     @override
     def execute(self) -> p.Result[bool]:
-        """Execute the freshness validation using ``self.repository_root``."""
+        """Execute the freshness validation using the repository owner."""
         report_result = self.build_report(self.repository_root)
         if report_result.failure:
             return r[bool].fail(

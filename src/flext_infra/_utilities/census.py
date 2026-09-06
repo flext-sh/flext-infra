@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_core import r
 from flext_infra._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
-from flext_infra._utilities._sort_keys import path_depth
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
 from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
 from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
@@ -43,7 +43,7 @@ class FlextInfraUtilitiesRefactorCensus:
         if not matching_roots:
             unknown: str = c.Infra.DEFAULT_UNKNOWN
             return unknown
-        best = max(matching_roots, key=path_depth)
+        best = max(matching_roots, key=FlextInfraUtilitiesBase.path_depth)
         name: str = best.name
         return name
 
@@ -662,9 +662,7 @@ class FlextInfraUtilitiesRefactorCensus:
             )
         )
         if updates_result.failure:
-            return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
-            )
+            return r[bool].from_failure(updates_result)
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 
@@ -685,7 +683,7 @@ class FlextInfraUtilitiesRefactorCensus:
                 object_name=candidate.object_name,
                 error=str(exc),
             )
-            return r[bool].fail(str(exc))
+            return r[bool].fail(str(exc), exception=exc)
         finally:
             rope.refresh(preserve_indexes=True, validate_project=False)
         if applied:
@@ -723,9 +721,7 @@ class FlextInfraUtilitiesRefactorCensus:
             )
         )
         if updates_result.failure:
-            return r[bool].fail(
-                updates_result.error or "simple removal planning failed"
-            )
+            return r[bool].from_failure(updates_result)
         updates = updates_result.unwrap()
         file_paths = tuple(sorted(updates))
 

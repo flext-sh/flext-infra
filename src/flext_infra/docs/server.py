@@ -43,9 +43,7 @@ class FlextInfraDocServer(FlextInfraDocServiceBase):
             output_dir=output_dir or c.Infra.DEFAULT_DOCS_OUTPUT_DIR,
         )
         if scopes_result.failure:
-            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].fail(
-                scopes_result.error or "scope resolution failed"
-            )
+            return r[t.SequenceOf[m.Infra.DocsPhaseReport]].from_failure(scopes_result)
         servable = [
             scope
             for scope in scopes_result.value

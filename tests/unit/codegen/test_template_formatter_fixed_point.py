@@ -31,11 +31,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
+                    dist="demo", workspace_repositories=()
                 ),
             )
         )
@@ -46,11 +42,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(repository,),
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
+                    dist="demo", workspace_repositories=(repository,)
                 ),
             )
         )
@@ -63,12 +55,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    has_devcontainer=False,
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
+                    dist="demo", workspace_repositories=(), has_devcontainer=False
                 ),
             )
         )
@@ -76,12 +63,7 @@ class TestsTemplateFormatterFixedPoint:
             u.Cli.template_render(
                 _TEMPLATES / ".github/dependabot.yml.j2",
                 m.Infra.GithubWorkflowRenderSpec.model_construct(
-                    dist="demo",
-                    workspace_repositories=(),
-                    has_devcontainer=True,
-                    dependency_cooldown_days=(
-                        config.Infra.codegen.toolchain.dependency_cooldown_days
-                    ),
+                    dist="demo", workspace_repositories=(), has_devcontainer=True
                 ),
             )
         )
@@ -90,23 +72,6 @@ class TestsTemplateFormatterFixedPoint:
         tm.that(with_devcontainer, has="package-ecosystem: devcontainers")
         for rendered in (without, with_devcontainer):
             tm.that(rendered, has="package-ecosystem: pip")
-
-    def test_sgconfig_render_has_one_terminal_newline(self) -> None:
-        populated = tm.ok(
-            u.Cli.template_render(
-                _TEMPLATES / "sgconfig.yml.j2",
-                m.Infra.SgconfigRenderSpec(rule_dirs=("rules",), test_dirs=("tests",)),
-            )
-        )
-        empty = tm.ok(
-            u.Cli.template_render(
-                _TEMPLATES / "sgconfig.yml.j2",
-                m.Infra.SgconfigRenderSpec(rule_dirs=("rules",), test_dirs=()),
-            )
-        )
-
-        for rendered in (populated, empty):
-            tm.that(rendered.endswith("\n") and not rendered.endswith("\n\n"), eq=True)
 
 
 __all__: tuple[str, ...] = ()

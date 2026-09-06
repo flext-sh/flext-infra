@@ -6,8 +6,7 @@ import operator
 from typing import override
 
 from flext_infra import c, m, t, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.transformers.base import FlextInfraRopeTransformer
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 
 
 class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
@@ -45,7 +44,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         if not self._order_config:
             return source, list[str]()
         try:
-            pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
+            pymodule = u.Infra.parse_string_module(source)
         except c.EXC_OS_SYNTAX:
             return source, list[str]()
         if pymodule is None:
@@ -54,7 +53,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         edits: list[tuple[int, int, str]] = []
         for class_name, class_pyname in pymodule.get_attributes().items():
             class_obj = class_pyname.get_object()
-            if not FlextInfraUtilitiesRopeAnalysis.is_pyclass(class_obj):
+            if not u.Infra.is_pyclass(class_obj):
                 continue
             block_edits = self._class_block_edits(
                 class_name=class_name, class_obj=class_obj, lines=lines
@@ -120,7 +119,7 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
         raw: list[tuple[int, int, m.Infra.MethodInfo]] = []
         for method_name, method_pyname in class_obj.get_attributes().items():
             method_obj = method_pyname.get_object()
-            if not FlextInfraUtilitiesRopeAnalysis.is_pyfunction(method_obj):
+            if not u.Infra.is_pyfunction(method_obj):
                 continue
             # flext-j47u (codex): Rope returns a tuple; only its line is optional.
             location = method_pyname.get_definition_location()
@@ -130,8 +129,8 @@ class FlextInfraRefactorClassReconstructor(FlextInfraRopeTransformer):
             definition_line = raw_line.lstrip()
             if not definition_line.startswith(("def ", "async def ", "@")):
                 continue
-            decorators = FlextInfraUtilitiesRopeAnalysis.decorator_names(method_obj)
-            start_line = FlextInfraUtilitiesRopeAnalysis.first_decorator_line(
+            decorators = u.Infra.decorator_names(method_obj)
+            start_line = u.Infra.first_decorator_line(
                 method_obj, default_line=location[1]
             )
             method_scope = method_obj.get_scope()

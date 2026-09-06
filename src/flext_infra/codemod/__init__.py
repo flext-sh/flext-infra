@@ -3,40 +3,30 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .batch_apply import FlextInfraCodemodBatchApply
-    from .batch_gates import (
-        FlextInfraModGateEngine,
-        FlextInfraModGateSnapshot,
-        FlextInfraModScanReport,
-    )
-    from .discovery import discover_rules, index_rules_by_id, rule_documents
+    from .batch_gates import FlextInfraModGateEngine
+    from .semantic_apply import FlextInfraCodemodSemanticApply
+    from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 __all__: tuple[str, ...] = (
     "FlextInfraCodemodBatchApply",
+    "FlextInfraCodemodSemanticApply",
+    "FlextInfraCodemodSnapshotReconciler",
     "FlextInfraModGateEngine",
-    "FlextInfraModGateSnapshot",
-    "FlextInfraModScanReport",
-    "discover_rules",
-    "index_rules_by_id",
-    "rule_documents",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".batch_apply": ("FlextInfraCodemodBatchApply",),
-            ".batch_gates": (
-                "FlextInfraModGateEngine",
-                "FlextInfraModGateSnapshot",
-                "FlextInfraModScanReport",
-            ),
-            ".discovery": ("discover_rules", "index_rules_by_id", "rule_documents"),
+            ".batch_gates": ("FlextInfraModGateEngine",),
+            ".semantic_apply": ("FlextInfraCodemodSemanticApply",),
+            ".snapshot_reconciler": ("FlextInfraCodemodSnapshotReconciler",),
         }),
         alias_groups=MappingProxyType({}),
         sort_keys=False,
