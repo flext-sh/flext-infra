@@ -87,17 +87,39 @@ class TestsFlextInfraDepsModernizerPackaging:
             payload, path=tmp_path / c.Infra.PYPROJECT_FILENAME, is_root=True
         )
 
-        wheel = u.Cli.toml_mapping_path(
-            payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+        wheel = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_path(
+                payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+            )
         )
-        sdist = u.Cli.toml_mapping_path(
-            payload, (c.Infra.TOOL, "hatch", "build", "targets", "sdist")
+        sdist = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_path(
+                payload, (c.Infra.TOOL, "hatch", "build", "targets", "sdist")
+            )
         )
+        # Root data directories declared by the tooling SSOT ride along in the
+        # wheel when they exist at the project root; the manifest itself lives
+        # in one of them, so the expectation derives from the same owner.
+        shipped_data_dirs = {
+            data_dir: f"app/{data_dir}"
+            for data_dir in tool_config_document.tools.hatch.packaged_data_dirs
+            if (tmp_path / data_dir).is_dir()
+        }
         tm.that(len(changes) > 0, eq=True)
         tm.that(wheel["packages"], eq=["src/app", "src/app_client"])
-        tm.that(wheel["force-include"], eq={"src/app_launch.py": "app_launch.py"})
         tm.that(
-            sdist["only-include"], eq=["src/app", "src/app_client", "src/app_launch.py"]
+            wheel["force-include"],
+            eq={"src/app_launch.py": "app_launch.py", **shipped_data_dirs},
+        )
+        # The sdist ships the same data directories as source inputs.
+        tm.that(
+            sorted(sdist["only-include"]),
+            eq=sorted([
+                "src/app",
+                "src/app_client",
+                "src/app_launch.py",
+                *shipped_data_dirs,
+            ]),
         )
 
 
