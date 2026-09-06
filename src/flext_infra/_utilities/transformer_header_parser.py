@@ -46,6 +46,13 @@ class FlextInfraUtilitiesTransformerHeaderParser:
             seen_non_header_token = True
             if current.type != token.NAME or current.string != "from":
                 continue
+            # Only a module-level import may move the header boundary. An import
+            # nested in a suite — `if TYPE_CHECKING:` above all — is not the end
+            # of the header, and treating it as one made callers splice a
+            # column-zero statement into the middle of that block, producing an
+            # unexpected indent and a file that no longer parses.
+            if current.start[1] != 0:
+                continue
             if index + 2 >= len(tokens):
                 continue
             module_token = tokens[index + 1]
