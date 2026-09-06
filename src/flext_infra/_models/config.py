@@ -13,10 +13,12 @@ from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import m, u
 from flext_infra import t
-from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-from flext_infra._constants.make import FlextInfraConstantsMake
-from flext_infra._constants.release import FlextInfraConstantsRelease
-from flext_infra._constants.validate import FlextInfraConstantsSharedInfra
+from flext_infra._models._constants.codegen_project import (
+    FlextInfraConstantsCodegenProject,
+)
+from flext_infra._models._constants.make import FlextInfraConstantsMake
+from flext_infra._models._constants.release import FlextInfraConstantsRelease
+from flext_infra._models._constants.validate import FlextInfraConstantsSharedInfra
 
 from ._defaults import immutable_empty_mapping
 from .deps_tool_config import FlextInfraModelsDepsToolSettings

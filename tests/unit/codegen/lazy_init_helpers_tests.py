@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 from tests import c, u
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class TestsFlextInfraLazyInitHelpers:
@@ -535,7 +531,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(generated, lacks='"flext_parent": ("x",)')
 
     def test_installed_parent_alias_uses_the_nearest_actual_owner(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Skip an importable parent that does not export the requested alias."""
         workspace_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -554,7 +550,6 @@ class TestsFlextInfraLazyInitHelpers:
             '__all__ = ("r",)\nr = object()\nraise RuntimeError("must not import")\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        monkeypatch.syspath_prepend(str(installed_root))
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from nearest_parent import c\n"
             "from owner_parent import r\n\n"
@@ -564,7 +559,8 @@ class TestsFlextInfraLazyInitHelpers:
             encoding=c.Cli.ENCODING_DEFAULT,
         )
 
-        tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
+        with u.Tests.Matchers.scope(python_paths=(str(installed_root),)):
+            tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
         generated = self._generated_exports(package_root)
 
         tm.that(generated, has='"owner_parent": ("r",)')

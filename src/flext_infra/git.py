@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, override
 
-from . import m, u
+from flext_infra import m, u
+
 from .base import s
 
 if TYPE_CHECKING:

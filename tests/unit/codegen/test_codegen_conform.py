@@ -11,6 +11,7 @@ import sys
 import tomllib
 from difflib import unified_diff
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -21,15 +22,6 @@ from flext_infra.services.cli_routes_codegen import CodegenRoutes
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
 from tests import c, m, p, r, u
-
-
-def _generation_lock_path(root: Path) -> Path:
-    """Resolve the public Git identity used by the generation lock."""
-    identity: m.Infra.GitIdentityReport = tm.ok(
-        u.Infra.git_identity(m.Infra.GitRepoRequest(repo_root=root))
-    )
-    return identity.git_dir / "HEAD"
-
 
 pytestmark = [pytest.mark.slow, pytest.mark.usefixtures("isolate_github_trigger_sha")]
 
@@ -138,11 +130,29 @@ def _seed_infra_package_tree(root: Path) -> None:
     tm.ok(u.Cli.atomic_write_text_file(tests_init, ""))
 
 
+class _SuffixRenderedConform(FlextInfraCodegenConform):
+    """Real conform service whose canonical render carries one extra suffix.
+
+    Simulates a broken managed template: the real ``Makefile.j2`` renders
+    through the canonical facade, then the suffix is appended exactly as a
+    corrupted template would emit it.
+    """
+
+    suffix: ClassVar[str]
+
+    @classmethod
+    def _render_template(cls, template_path: Path, context: p.Model) -> p.Result[str]:
+        rendered = u.Cli.template_render(template_path, context)
+        if rendered.failure or template_path.name != f"{c.Infra.MAKEFILE_FILENAME}.j2":
+            return rendered
+        return r[str].ok(f"{rendered.value}{cls.suffix}")
+
+
 class TestCodegenConform:
     """Prove one SSOT for project creation and existing-tree conformance."""
 
     def _conform_with_rendered_makefile(
-        self, root: Path, monkeypatch: pytest.MonkeyPatch, suffix: str
+        self, root: Path, suffix: str
     ) -> p.Result[m.Infra.CodegenResult]:
         """Apply conform with ``suffix`` appended to the rendered Makefile."""
         distribution = u.Tests.repository_ref(config.Infra.name).distribution
@@ -154,16 +164,8 @@ class TestCodegenConform:
         package_init = root / "src" / distribution.replace("-", "_") / "__init__.py"
         package_init.parent.mkdir(parents=True, exist_ok=True)
         package_init.write_text("", encoding="utf-8")
-        original_render = u.Cli.template_render
-
-        def _render(path: Path, context: p.Model) -> p.Result[str]:
-            rendered = original_render(path, context)
-            if rendered.failure or path.name != f"{c.Infra.MAKEFILE_FILENAME}.j2":
-                return rendered
-            return r[str].ok(f"{rendered.value}{suffix}")
-
-        monkeypatch.setattr(u.Cli, "template_render", _render)
-        return FlextInfraCodegenConform.execute_request(
+        service = type("_SuffixRender", (_SuffixRenderedConform,), {"suffix": suffix})
+        return service.execute_request(
             m.Infra.CodegenConformRequest(
                 root=root,
                 what=c.Infra.CodegenConformSurface.MAKEFILE,
@@ -174,17 +176,14 @@ class TestCodegenConform:
 
     @pytest.mark.slow
     def test_rendered_conflict_marker_is_rejected_before_target_changes(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+        self, infra_git_repo: Path
     ) -> None:
         root = infra_git_repo
         target = root / c.Infra.MAKEFILE_FILENAME
         original = "existing generated makefile\n"
         target.write_text(original, encoding="utf-8")
 
-        with monkeypatch.context() as render_patch:
-            rejected = self._conform_with_rendered_makefile(
-                root, render_patch, "\n<<<<<<< incoming\n"
-            )
+        rejected = self._conform_with_rendered_makefile(root, "\n<<<<<<< incoming\n")
 
         tm.fail(rejected)
         tm.that(rejected.error, has="base/Makefile.j2")
@@ -192,9 +191,9 @@ class TestCodegenConform:
         tm.that(rejected.error, has=str(root))
         tm.that(target.read_text(encoding="utf-8"), eq=original)
 
-        # The outer autouse fixture owns GITHUB_SHA isolation. Exiting the
-        # narrow render patch must not undo that fixture and restore a CI SHA
-        # that cannot belong to this synthetic repository.
+        # The outer autouse fixture owns GITHUB_SHA isolation. The rejected
+        # attempt must not undo that fixture and restore a CI SHA that cannot
+        # belong to this synthetic repository.
         tm.that(os.getenv(c.Infra.ENV_VAR_GITHUB_SHA), eq=None)
         request = m.Infra.CodegenConformRequest(
             root=root,
@@ -213,17 +212,17 @@ class TestCodegenConform:
 
     @pytest.mark.slow
     def test_setext_underline_is_accepted_as_ordinary_content(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+        self, infra_git_repo: Path
     ) -> None:
         """A Markdown Setext underline is content, so conform must not reject it."""
         applied = self._conform_with_rendered_makefile(
-            infra_git_repo, monkeypatch, "\n# Title\n=======\n"
+            infra_git_repo, "\n# Title\n=======\n"
         )
 
         tm.ok(applied)
 
     def test_diff3_ancestor_fence_is_rejected_before_target_changes(
-        self, infra_git_repo: Path, monkeypatch: pytest.MonkeyPatch
+        self, infra_git_repo: Path
     ) -> None:
         """A diff3 merge leaves an ancestor fence that must stop the plan."""
         target = infra_git_repo / c.Infra.MAKEFILE_FILENAME
@@ -231,7 +230,7 @@ class TestCodegenConform:
         target.write_text(original, encoding="utf-8")
 
         rejected = self._conform_with_rendered_makefile(
-            infra_git_repo, monkeypatch, "\n||||||| base\nancestor\n"
+            infra_git_repo, "\n||||||| base\nancestor\n"
         )
 
         tm.fail(rejected)
@@ -359,7 +358,7 @@ class TestCodegenConform:
         tm.that(merging_current.ancestor, eq=True)
 
     def test_branch_ancestry_anchors_baseline_to_triggering_commit(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """A concurrent publisher on the lane must not fail a linear commit.
 
@@ -459,8 +458,10 @@ class TestCodegenConform:
             workspace_root=root, request=request, initial_workspace=workspace
         )
 
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, triggering_sha)
-        anchored = tm.ok(service.plan(request)).branch_ancestry[0]
+        with u.Tests.env_vars_context(
+            env_vars={c.Infra.ENV_VAR_GITHUB_SHA: triggering_sha}
+        ):
+            anchored = tm.ok(service.plan(request)).branch_ancestry[0]
 
         current = next(
             reference
@@ -471,7 +472,7 @@ class TestCodegenConform:
         tm.that(anchored.baseline_sha, eq=lane_point)
 
     def test_branch_ancestry_skips_triggering_sha_in_submodule_context(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """GITHUB_SHA from the superproject must not break submodule ancestry.
 
@@ -509,10 +510,12 @@ class TestCodegenConform:
             ).value.exit_code,
             eq=128,
         )
-        monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, foreign_sha)
-        repository = u.Tests.repository_ref("flext-infra").model_copy(
-            update={"path": Path()}
-        )
+        with u.Tests.env_vars_context(
+            env_vars={c.Infra.ENV_VAR_GITHUB_SHA: foreign_sha}
+        ):
+            repository = u.Tests.repository_ref("flext-infra").model_copy(
+                update={"path": Path()}
+            )
         workspace = m.Infra.WorkspaceSpec(
             name=repository.name,
             beads=u.Tests.beads_project(repository.name),

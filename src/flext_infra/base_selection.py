@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from . import m, t
+from flext_infra import m, t
+
 from ._base_projects import FlextInfraProjectSelectionMixin
 from .base import FlextInfraServiceBase
 

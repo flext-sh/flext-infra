@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import sys
 
-from . import c, t
+from flext_infra import c, t
+
 from .services.cli_dispatch import CliDispatchService
 
 

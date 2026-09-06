@@ -419,7 +419,7 @@ class FlextInfraUtilitiesDiscovery(
         ownership_root = (
             project_root.resolve() if project_root is not None else resolved_root
         )
-        from flext_infra._utilities.git import FlextInfraUtilitiesGit
+        from .git import FlextInfraUtilitiesGit
 
         for candidate in (execution_dir, *execution_dir.parents):
             if not (candidate / c.Infra.GITMODULES).is_file():

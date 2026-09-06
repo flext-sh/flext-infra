@@ -9,7 +9,9 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, override
 
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+from flext_infra.transformers._utilities.transformer_base import (
+    FlextInfraRopeTransformer,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t

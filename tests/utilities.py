@@ -585,9 +585,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 stdout=stdout,
                 stderr=stderr,
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=returncode,
-                    timed_out=False,
-                    forwarded_signal=None,
+                    raw_return_code=returncode, timed_out=False, forwarded_signal=None
                 ),
             )
 
@@ -1311,9 +1309,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 stdout=stdout,
                 stderr=stderr,
                 outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=exit_code,
-                    timed_out=False,
-                    forwarded_signal=None,
+                    raw_return_code=exit_code, timed_out=False, forwarded_signal=None
                 ),
                 duration=duration,
             )

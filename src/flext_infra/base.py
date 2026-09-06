@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Annotated, ClassVar, Self, override
 
 from flext_core import s
+from flext_infra import c, m, p, settings, t, u
 
-from . import c, m, p, settings, t, u
 from ._base_payload import FlextInfraCommandPayloadMixin
 
 

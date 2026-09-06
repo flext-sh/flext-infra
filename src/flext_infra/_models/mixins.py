@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._utilities.base import FlextInfraUtilitiesBase as ub
+from flext_infra._models._utilities.base import FlextInfraUtilitiesBase as ub
 
 
 class FlextInfraModelsMixins:

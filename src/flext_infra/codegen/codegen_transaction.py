@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-
-from . import (
+from flext_infra.codegen import (
     _codegen_staging as generic_staging,
     _mise_artifacts_journal as journal_io,
     _mise_artifacts_publication as publication,
     _mise_artifacts_state as state,
     _mise_artifacts_verification as verify,
 )
+
 from ._mise_artifacts_recovery import FlextInfraMiseRecovery
 from ._mise_artifacts_staging import FlextInfraMiseStaging
 from .mise_artifacts_lock import FlextInfraMiseLock

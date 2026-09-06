@@ -34,6 +34,11 @@ from .mise_artifacts import FlextInfraCodegenMiseArtifacts
 class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     """Plan every selected output, then atomically write only a clean plan."""
 
+    @classmethod
+    def _render_template(cls, template_path: Path, context: p.Model) -> p.Result[str]:
+        """Render one managed template through the canonical cli facade."""
+        return u.Cli.template_render(template_path, context)
+
     @staticmethod
     def _mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
         """Project the single generated Mise isolation contract into templates."""
@@ -1111,8 +1116,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             project_dir=project_dir,
         )
 
-    @staticmethod
+    @classmethod
     def _render_gitignore(
+        cls,
         codegen: m.Infra.CodegenConfigSpec,
         *,
         profile: c.Infra.MakeProfile,
@@ -1140,9 +1146,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 "gitignore template is missing from codegen configuration"
             )
         templates_root = (
-            FlextInfraCodegenConform._package_root()
-            / "templates"
-            / codegen.templates.root
+            cls._package_root() / "templates" / codegen.templates.root
         ).resolve()
         sections = [
             section
@@ -1201,7 +1205,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
                 )
         context = m.Infra.GitignoreRenderSpec(gitignore_sections=tuple(sections))
-        return u.Cli.template_render(templates_root / entry.source, context)
+        return cls._render_template(templates_root / entry.source, context)
 
     @staticmethod
     def _select_repositories(
@@ -1444,7 +1448,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                     artifact_context
                 )
-            rendered = u.Cli.template_render(
+            rendered = self._render_template(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:
@@ -1485,7 +1489,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 "pyproject template is missing from codegen configuration"
             )
-        pyproject_render = u.Cli.template_render(
+        pyproject_render = self._render_template(
             templates_root / pyproject_entry.source, context
         )
         if pyproject_render.failure:
@@ -1865,7 +1869,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].from_failure(
                     artifact_context
                 )
-            rendered = u.Cli.template_render(
+            rendered = self._render_template(
                 templates_root / entry.source, artifact_context.value
             )
             if rendered.failure:

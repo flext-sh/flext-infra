@@ -21,8 +21,7 @@ from .__version__ import (
 
 if TYPE_CHECKING:
     from flext_cli import d, e, h, r, x
-
-    from . import (
+    from flext_infra import (
         check as check,
         codegen as codegen,
         codemod as codemod,
@@ -39,6 +38,7 @@ if TYPE_CHECKING:
         validate as validate,
         workspace as workspace,
     )
+
     from ._config import config
     from ._settings import settings
     from .api import FlextInfra, infra

@@ -7,7 +7,7 @@ import importlib.util as _importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from flext_infra._settings import settings
+from flext_infra._utilities._settings import settings
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t

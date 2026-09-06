@@ -198,7 +198,9 @@ class FlextInfraUtilitiesCodemodRules:
                 tuple(selected), dependencies=lambda name: edges.get(name, ())
             )
         except ValueError as exc:
-            return r[t.StrSequence].fail(f"codemod provider cycle: {exc}")
+            return r[t.StrSequence].fail(
+                f"codemod provider cycle: {exc}", exception=exc
+            )
         return r[t.StrSequence].ok(ordered)
 
     @staticmethod
