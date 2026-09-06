@@ -28,7 +28,7 @@ class FlextInfraCodegenLayoutPlanMixin:
         spec = self._layout_spec
         project_name = project_dir.name
         override = self._resolve_override(spec, project_name)
-        allowed = self._allowed_root_names(spec, project_name, override)
+        allowed = self._allowed_root_names(spec, project_dir, project_name, override)
         override_roots = self._override_root_names(override)
         findings: list[m.Infra.LayoutFinding] = []
         for entry in sorted(project_dir.iterdir()):
@@ -68,6 +68,7 @@ class FlextInfraCodegenLayoutPlanMixin:
     def _allowed_root_names(
         self,
         spec: m.Infra.LayoutSpec,
+        project_dir: Path,
         project_name: str,
         override: m.Infra.LayoutProjectOverrideSpec | None,
     ) -> frozenset[str]:
@@ -84,6 +85,15 @@ class FlextInfraCodegenLayoutPlanMixin:
                 allowed.update(spec.profile_extra_root_files.get(profile, ()))
         if override is not None:
             allowed.update(override.keep_root_files)
+        allowed.update(
+            Path(relative_path).parts[0]
+            for relative_path in config.Infra.codegen.retired_generated_paths
+            if Path(relative_path).parts
+        )
+        declared = u.Infra.git_declared_submodule_paths(project_dir)
+        if declared.failure:
+            raise ValueError(declared.error or "invalid .gitmodules")
+        allowed.update(path.parts[0] for path in declared.value if path.parts)
         return frozenset(allowed)
 
     @staticmethod

@@ -72,9 +72,7 @@ class FlextInfraUtilitiesWorkspaceFingerprint:
             m.Infra.GitRepoRequest(repo_root=root)
         )
         if inputs.failure:
-            return r[m.Infra.WorkspaceFingerprint].fail(
-                inputs.error or f"not a Git worktree: {root}"
-            )
+            return r[m.Infra.WorkspaceFingerprint].from_failure(inputs)
         paths_result_value = inputs.value.paths_z
         index_result_value = inputs.value.index_z
         head = inputs.value.head

@@ -2,23 +2,158 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from flext_core import r
 from flext_cli import u
+from flext_infra._utilities.codegen_facades import FlextInfraUtilitiesCodegenFacades
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
 
-class FlextInfraUtilitiesCodegen:
+class FlextInfraUtilitiesCodegen(FlextInfraUtilitiesCodegenFacades):
     """Compose all codegen utility concerns for ``u.Infra``."""
 
     if TYPE_CHECKING:
 
         @staticmethod
         def project_root(file_path: Path) -> Path | None: ...
+
+    @staticmethod
+    def mise_bootstrap_environment() -> m.Infra.MiseBootstrapEnvironmentSpec:
+        """Return the single typed isolation contract used by setup and codegen."""
+        return m.Infra.MiseBootstrapEnvironmentSpec(
+            storage_root_variable=c.Infra.MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE,
+            fixed_environment=c.Infra.MISE_BOOTSTRAP_FIXED_ENVIRONMENT,
+            transient_environment=c.Infra.MISE_BOOTSTRAP_TRANSIENT_ENVIRONMENT,
+            persistent_environment=c.Infra.MISE_BOOTSTRAP_PERSISTENT_ENVIRONMENT,
+            empty_files=c.Infra.MISE_BOOTSTRAP_EMPTY_FILES,
+            passthrough_environment=c.Infra.MISE_BOOTSTRAP_PASSTHROUGH_ENVIRONMENT,
+        )
+
+    @staticmethod
+    def prepare_mise_runtime_storage(
+        project_root: Path,
+        environment: t.StrMapping,
+        contract: m.Infra.MiseBootstrapEnvironmentSpec,
+    ) -> p.Result[Path]:
+        """Resolve and create one persistent Mise storage outside the checkout."""
+        configured = environment.get(contract.storage_root_variable, "").strip()
+        xdg_data_home = environment.get("XDG_DATA_HOME", "").strip()
+        caller_home = environment.get("HOME", "").strip()
+        if configured:
+            raw_root = configured
+        elif xdg_data_home:
+            raw_root = str(Path(xdg_data_home) / "mise")
+        elif caller_home:
+            raw_root = str(Path(caller_home) / ".local" / "share" / "mise")
+        else:
+            return r[Path].fail(
+                f"{contract.storage_root_variable}, XDG_DATA_HOME, or HOME must "
+                "identify persistent Mise storage"
+            )
+        normalized = os.path.normpath(raw_root)
+        if raw_root != normalized:
+            return r[Path].fail(f"Mise storage path must be normalized: {raw_root}")
+        storage_root = Path(normalized)
+        if not storage_root.is_absolute():
+            return r[Path].fail(f"Mise storage path must be absolute: {storage_root}")
+        physical_project = project_root.resolve(strict=True)
+        physical_tmp = Path(tempfile.gettempdir()).resolve(strict=True)
+        if storage_root == physical_tmp or storage_root.is_relative_to(physical_tmp):
+            return r[Path].fail(
+                f"persistent Mise storage must not live under /tmp: {storage_root}"
+            )
+        if storage_root == physical_project or storage_root.is_relative_to(
+            physical_project
+        ):
+            return r[Path].fail(
+                f"persistent Mise storage must be outside the checkout: {storage_root}"
+            )
+        if physical_project.is_relative_to(storage_root):
+            return r[Path].fail(
+                f"persistent Mise storage must not contain the checkout: {storage_root}"
+            )
+        if storage_root.is_symlink():
+            return r[Path].fail(
+                f"Mise storage path must not be a symlink: {storage_root}"
+            )
+        created_root = FlextInfraUtilitiesCodegen._create_mise_storage_directory(
+            storage_root
+        )
+        if created_root.failure:
+            return r[Path].from_failure(created_root)
+        physical_root = storage_root.resolve(strict=True)
+        if physical_root == physical_tmp or physical_root.is_relative_to(physical_tmp):
+            return r[Path].fail(
+                f"persistent Mise storage must not live under /tmp: {physical_root}"
+            )
+        if physical_root == physical_project or physical_root.is_relative_to(
+            physical_project
+        ):
+            return r[Path].fail(
+                f"persistent Mise storage must be outside the checkout: {physical_root}"
+            )
+        if physical_project.is_relative_to(physical_root):
+            return r[Path].fail(
+                f"persistent Mise storage must not contain the checkout: {physical_root}"
+            )
+        relative_directories = {
+            relative
+            for _name, relative in contract.persistent_environment
+            if relative != "."
+        }
+        relative_directories.add("bootstrap")
+        for relative in sorted(relative_directories):
+            directory = physical_root / relative
+            if directory.is_symlink():
+                return r[Path].fail(
+                    f"persistent Mise path must not be a symlink: {directory}"
+                )
+            created = FlextInfraUtilitiesCodegen._create_mise_storage_directory(
+                directory
+            )
+            if created.failure:
+                return r[Path].from_failure(created)
+            physical_directory = directory.resolve(strict=True)
+            if not physical_directory.is_relative_to(physical_root):
+                return r[Path].fail(
+                    f"persistent Mise path escaped storage: {physical_directory}"
+                )
+        return r[Path].ok(physical_root)
+
+    @staticmethod
+    def mise_runtime_install_path(storage_root: Path, release: str) -> p.Result[Path]:
+        """Return the immutable persistent binary path for one exact release."""
+        components = release.split(".")
+        if len(components) != c.Infra.MISE_RELEASE_COMPONENT_COUNT or not all(
+            component.isdecimal() for component in components
+        ):
+            return r[Path].fail(f"invalid Mise runtime release: {release}")
+        suffix = ".exe" if os.name == "nt" else ""
+        return r[Path].ok(storage_root / "bootstrap" / f"mise-{release}{suffix}")
+
+    @staticmethod
+    def _create_mise_storage_directory(path: Path) -> p.Result[bool]:
+        """Create one persistent directory through the atomic filesystem owner."""
+        if path.exists():
+            if not path.is_dir():
+                return r[bool].fail(f"persistent Mise path is not a directory: {path}")
+            return r[bool].ok(True)
+        planned = u.Cli.atomic_plan_directory_chain(path)
+        if planned.failure:
+            return r[bool].from_failure(planned)
+        created = u.Cli.atomic_create_directory_chain_guarded(
+            planned.value, permission_mode=0o700
+        )
+        if created.failure:
+            return r[bool].from_failure(created)
+        return r[bool].ok(True)
 
     @staticmethod
     def generate_module_skeleton(
@@ -56,6 +191,25 @@ class FlextInfraUtilitiesCodegen:
         return any(
             child.is_file() and child.suffix == ".py" for child in pkg_dir.iterdir()
         )
+
+    @staticmethod
+    def mise_toolchain_publication_required(
+        project: m.Infra.MiseToolchainProjectState,
+    ) -> bool:
+        """Return whether a changed declaration requires a new Mise publication.
+
+        A byte- and mode-identical generated configuration already owns its
+        committed launchers and lock. Re-resolving the remote ``latest`` release
+        for that unchanged declaration would make ``make gen`` nondeterministic
+        and needlessly network-bound; the caller still validates the complete
+        live bundle before accepting the fixed point.
+        """
+        config_state = project.config
+        before_content: bytes | None = config_state.before.content
+        before_mode: int | None = config_state.before.mode
+        replacement_content: bytes = config_state.replacement_content
+        replacement_mode: int = config_state.replacement_mode
+        return before_content != replacement_content or before_mode != replacement_mode
 
     @staticmethod
     def parse_final_constant_definitions(

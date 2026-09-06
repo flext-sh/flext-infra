@@ -6,8 +6,7 @@ from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from flext_core import m
-from flext_core import u
+from flext_core import m, u
 from flext_infra import c, t
 from flext_infra._models.mixins import FlextInfraModelsMixins as mm
 
@@ -61,7 +60,7 @@ class FlextInfraModelsCheck:
     class CheckProjectTarget(m.ArbitraryTypesModel):
         """Resolved project target for workspace gate execution."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -78,7 +77,7 @@ class FlextInfraModelsCheck:
     class MypyResourceLimit(m.ContractModel):
         """Validated memory and wall-time limits for every Mypy process."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
 
         memory_limit_mb: Annotated[
             int,
@@ -127,42 +126,6 @@ class FlextInfraModelsCheck:
                 description="Re-run the corresponding check after fixing",
             ),
         ] = True
-
-        @m.field_validator("rules", mode="before")
-        @classmethod
-        def _parse_rules(cls, value: str | t.SequenceOf[str] | None) -> t.StrSequence:
-            """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            if value is None:
-                return ()
-            if isinstance(value, str):
-                return tuple(part.strip() for part in value.split(",") if part.strip())
-            normalized: list[str] = []
-            for part in value:
-                if not part:
-                    continue
-                normalized.extend(
-                    token.strip() for token in part.split(",") if token.strip()
-                )
-            return tuple(normalized)
-
-        @m.field_validator("projects", mode="before")
-        @classmethod
-        def _parse_projects(
-            cls, value: str | t.SequenceOf[str] | None
-        ) -> t.StrSequence | None:
-            """Accept CSV string, sequence, or None; normalize to StrSequence."""
-            if value is None:
-                return None
-            if isinstance(value, str):
-                return tuple(part.strip() for part in value.split(",") if part.strip())
-            normalized: list[str] = []
-            for part in value:
-                if not part:
-                    continue
-                normalized.extend(
-                    token.strip() for token in part.split(",") if token.strip()
-                )
-            return tuple(normalized) or None
 
     class Issue(m.ContractModel):
         """Single issue reported by a quality gate tool."""
@@ -362,16 +325,18 @@ class FlextInfraModelsCheck:
     class SarifReport(m.ArbitraryTypesModel):
         """Complete SARIF 2.1.0 report."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        schema_uri: str = m.Field(
-            "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/Schemata/sarif-schema-2.1.0.json",
+        schema_uri: c.Infra.SarifSchema = m.Field(
+            c.Infra.SarifSchema.V2_1_0,
             alias="$schema",
             description="SARIF schema URI",
             validate_default=True,
         )
-        version: str = m.Field(
-            "2.1.0", description="SARIF version", validate_default=True
+        version: c.Infra.SarifVersion = m.Field(
+            c.Infra.SarifVersion.V2_1_0,
+            description="SARIF version",
+            validate_default=True,
         )
         runs: tuple[FlextInfraModelsCheck.SarifRun, ...] = m.Field(
             default_factory=tuple, description="SARIF runs"

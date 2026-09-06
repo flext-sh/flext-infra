@@ -52,6 +52,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         """Repository-local variables Git exports to hooks and aliases."""
 
         MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
+            "APPLY",
             "BASH_ENV",
             "CHANGED_ONLY",
             "CHECK_GATES",
@@ -166,6 +167,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "u",
         )
         INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
+            "class_nesting_plan",
             "current_workspace_version",
             "parse_semver",
         )
@@ -209,6 +211,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
 
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
+        RELEASE_VERSION_PATCH: Final[str] = "0.1.1"
         RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
         RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
         # Fixture members depend on these siblings, so a release build must see

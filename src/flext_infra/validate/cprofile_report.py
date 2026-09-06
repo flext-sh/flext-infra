@@ -62,9 +62,7 @@ class FlextInfraCProfileReport(s[bool]):
             return r[bool].fail_op("render cProfile report", exc)
         written = u.Cli.atomic_write_text_file(self.output, stream.getvalue())
         if written.failure:
-            return r[bool].fail(
-                written.error or f"failed to write cProfile report: {self.output}"
-            )
+            return r[bool].from_failure(written)
         return r[bool].ok(True)
 
 

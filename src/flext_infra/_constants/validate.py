@@ -31,6 +31,8 @@ class FlextInfraConstantsSharedInfra:
     EXEMPT_PREFIXES: Final[frozenset[str]] = frozenset({"test_", "_"})
     FACADE_MODULE_DEPTH: Final[int] = 3
     "Relative path part count for root facade modules (src/<pkg>/<file>.py)."
+    FACADE_MINIMUM_BASES: Final[int] = 2
+    "Minimum explicit bases required by a canonical nested project facade."
     ALIAS_NAMES: Final[frozenset[str]] = frozenset({
         "c",
         "t",
@@ -154,6 +156,8 @@ class FlextInfraConstantsSharedInfra:
     FOLLOW_SUPERPROJECT_BRANCH: Final[str] = "."
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
+    MARKDOWNLINT_CONFIG_FILENAME: Final[str] = ".markdownlint.json"
+    MARKDOWNLINT_IGNORE_FILENAME: Final[str] = ".markdownlintignore"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"

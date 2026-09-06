@@ -30,9 +30,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         """Resolve the superproject root or the repository's own top level."""
         root = cls._git_repository_root_path(request.repo_root)
         if root.failure:
-            return r[m.Infra.GitRootReport].fail(
-                root.error or "failed to resolve repository root"
-            )
+            return r[m.Infra.GitRootReport].from_failure(root)
         return r[m.Infra.GitRootReport].ok(
             m.Infra.GitRootReport(repository_root=root.value)
         )
@@ -44,9 +42,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
         """Resolve the primary worktree from Git's canonical storage topology."""
         primary = cls._git_primary_worktree_root_path(request.repo_root)
         if primary.failure:
-            return r[m.Infra.GitPrimaryRootReport].fail(
-                primary.error or "failed to resolve primary worktree"
-            )
+            return r[m.Infra.GitPrimaryRootReport].from_failure(primary)
         return r[m.Infra.GitPrimaryRootReport].ok(
             m.Infra.GitPrimaryRootReport(primary_root=primary.value)
         )
@@ -70,13 +66,15 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 return r[Path].ok(repository_path.expanduser().resolve())
             return r[Path].fail("failed to resolve Git superproject")
         except (OSError, ValueError) as exc:
-            return r[Path].fail(f"failed to resolve repository root: {exc}")
+            return r[Path].fail(
+                f"failed to resolve repository root: {exc}", exception=exc
+            )
         if superproject:
             return r[Path].ok(Path(superproject).resolve())
         try:
             top_level = repo.git.rev_parse("--show-toplevel").strip()
         except GitCommandError as exc:
-            return r[Path].fail(str(exc))
+            return r[Path].fail(str(exc), exception=exc)
         return r[Path].ok(Path(top_level).resolve())
 
     @classmethod
@@ -92,9 +90,11 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 "--path", "--get", "core.worktree", with_exceptions=False
             ).strip()
         except GitCommandError as exc:
-            return r[Path].fail(str(exc))
+            return r[Path].fail(str(exc), exception=exc)
         except (OSError, ValueError) as exc:
-            return r[Path].fail(f"failed to resolve primary worktree: {exc}")
+            return r[Path].fail(
+                f"failed to resolve primary worktree: {exc}", exception=exc
+            )
 
         if configured_output:
             configured = Path(configured_output)
@@ -110,7 +110,7 @@ class FlextInfraUtilitiesGitWorktreeRootsMixin(
                 ).strip()
                 git_dir = Path(git_dir_text).resolve()
             except GitCommandError as exc:
-                return r[Path].fail(str(exc))
+                return r[Path].fail(str(exc), exception=exc)
             if git_dir != common_dir:
                 listed = repo.git.worktree("list", "--porcelain")
                 registered = tuple(

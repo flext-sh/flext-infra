@@ -42,7 +42,7 @@ class FlextInfraLocCapGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse scc JSON into one Issue per over-cap module."""
         _ = project_dir, ctx
-        if result.exit_code != 0:
+        if not u.Cli.process_succeeded(result.outcome):
             return (
                 False,
                 (

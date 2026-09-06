@@ -19,6 +19,7 @@ cryptography = false
 
 [manifest]
 constraints = [{ name = "structlog", specifier = "<26" }]
+overrides = [{ name = "flext-cli", git = "https://github.com/flext-sh/flext-cli.git?rev=e45e78dad77ac92d772d3bd149140d9b1900d2d1" }]
 excludes = [{ package = { name = "flext-tests" }, dependencies = ["flext-infra"] }]
 
 [[package]]
@@ -669,7 +670,7 @@ wheels = [
 [[package]]
 name = "flext-cli"
 version = "0.12.0"
-source = { git = "https://github.com/flext-sh/flext-cli.git?rev=0.12.0-dev#edda37faa7a8399a3034cc9fccee70066eb57733" }
+source = { git = "https://github.com/flext-sh/flext-cli.git?rev=e45e78dad77ac92d772d3bd149140d9b1900d2d1#e45e78dad77ac92d772d3bd149140d9b1900d2d1" }
 dependencies = [
     { name = "cachetools" },
     { name = "click" },

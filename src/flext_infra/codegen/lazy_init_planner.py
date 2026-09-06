@@ -60,9 +60,12 @@ class FlextInfraCodegenLazyInitPlannerBase(m.ArbitraryTypesModel):
     _version_module_name: str = u.PrivateAttr(
         default_factory=lambda: f"{c.Infra.DUNDER_VERSION}.py"
     )
-    # Names two sibling modules both define without either declaring them
-    # public: no canonical owner exists, so the package publishes neither.
-    _ambiguous_exports: set[str] = u.PrivateAttr(default_factory=set)
+    _collision_count: int = u.PrivateAttr(default_factory=int)
+
+    @property
+    def collision_count(self) -> int:
+        """Number of unresolved export collisions found so far."""
+        return self._collision_count
 
 
 class FlextInfraCodegenLazyInitPlanner(
@@ -141,7 +144,9 @@ class FlextInfraCodegenLazyInitPlanner(
             lazy_map.pop(name, None)
             eager_dunders.pop(name, None)
         if not lazy_map and not eager_dunders:
-            return m.Infra.LazyInitPlan(context=context, action=empty_action)
+            return self._publish_plan(
+                m.Infra.LazyInitPlan(context=context, action=empty_action)
+            )
         excluded_lazy_names: t.StrSequence = ()
         is_public_project_root = (
             context.pkg_dir.parent.name == c.Infra.DEFAULT_SRC_DIR

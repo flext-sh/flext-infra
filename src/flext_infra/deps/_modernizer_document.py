@@ -41,7 +41,6 @@ class FlextInfraPyprojectModernizerDocumentMixin:
     if TYPE_CHECKING:
         # Members provided by the composed dependency modernizer.
         _rewrite_dependency_constraints_payload: Callable[..., t.StrSequence]
-        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None
 
         @property
         def root(self) -> Path: ...
@@ -113,6 +112,9 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             path=path,
             toolchain_root=self.root,
             taplo_version=config.Infra.codegen.toolchain.taplo_version,
+            process_timeout_seconds=(
+                config.Infra.tooling.tools.tomlsort.process_timeout_seconds
+            ),
         )
 
     def _process_document_state(
@@ -126,6 +128,8 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         rewrite_constraints: bool = False,
         locked_versions: t.MappingKV[str, str] | None = None,
         internal_names: t.StrSequence = (),
+        root_modules: t.StrSequence = (),
+        root_packages: t.StrSequence = (),
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
@@ -142,9 +146,11 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         # disk discovery converges on the first post-write conformance pass.
         project_root_exists = path.is_file()
         effective_project_dir = path.parent if project_root_exists else None
-        effective_repository_root = self.root if project_root_exists else None
+        effective_workspace_root = self.root if project_root_exists else None
         paths_manager = FlextInfraExtraPathsManager(
-            repository_root=self.root, generated_python_roots=generated_python_roots
+            repository_root=self.root,
+            generated_python_roots=generated_python_roots,
+            analysis_exclusions=analysis_exclusions or (),
         )
         effective_paths_manager = paths_manager if project_root_exists else None
         resolved_project_kind: str = project_kind or "core"
@@ -186,7 +192,7 @@ class FlextInfraPyprojectModernizerDocumentMixin:
             FlextInfraEnsurePyrightConfigPhase(config.Infra.tooling).apply_payload(
                 payload,
                 is_root=is_root,
-                repository_root=effective_repository_root,
+                workspace_root=effective_workspace_root,
                 project_dir=effective_project_dir,
                 project_kind=resolved_project_kind,
                 paths_manager=effective_paths_manager,
@@ -228,7 +234,10 @@ class FlextInfraPyprojectModernizerDocumentMixin:
         )
         changes.extend(
             FlextInfraEnsurePackagingPhase(config.Infra.tooling).apply_payload(
-                payload, path=path, is_root=is_root
+                payload,
+                path=path,
+                root_modules=root_modules,
+                root_packages=root_packages,
             )
         )
         # Existing projects consume the same Vulture SSOT as scaffolds.

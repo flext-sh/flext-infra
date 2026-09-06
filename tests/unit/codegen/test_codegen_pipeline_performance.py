@@ -52,9 +52,9 @@ class TestsFlextInfraCodegenPipelinePerformance:
         repository_root = _build_synthetic_workspace(tmp_path)
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         start = time.perf_counter()
-        result = generator.generate_inits(check_only=True)
+        result = generator.plan_files()
         elapsed = time.perf_counter() - start
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         tm.that(
             elapsed,
             lt=c.Tests.GEN_PIPELINE_MAX_SECONDS,
@@ -70,12 +70,12 @@ class TestsFlextInfraCodegenPipelinePerformance:
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         tracemalloc.start()
         try:
-            result = generator.generate_inits(check_only=True)
+            result = generator.plan_files()
             _, peak = tracemalloc.get_traced_memory()
         finally:
             tracemalloc.stop()
         peak_mb = peak / 1024 / 1024
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         tm.that(
             peak_mb,
             lt=c.Tests.GEN_PIPELINE_MEMORY_MAX_MB,
@@ -91,9 +91,9 @@ class TestsFlextInfraCodegenPipelinePerformance:
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         profile = cProfile.Profile()
         profile.enable()
-        result = generator.generate_inits(check_only=True)
+        result = generator.plan_files()
         profile.disable()
-        tm.that(result, eq=0, msg=f"Lazy-init had errors: {result}")
+        tm.that(result.success, eq=True, msg=f"Lazy-init had errors: {result}")
         stream = io.StringIO()
         stats = pstats.Stats(profile, stream=stream)
         stats.print_stats()
@@ -121,8 +121,8 @@ class TestsFlextInfraCodegenPipelinePerformance:
         repository_root = _build_synthetic_workspace(tmp_path)
         generator = FlextInfraCodegenLazyInit(repository_root=repository_root)
         # First run populates _declared_exports cache
-        result_1 = generator.generate_inits(check_only=True)
-        tm.that(result_1, eq=0, msg=f"First run had errors: {result_1}")
+        result_1 = generator.plan_files()
+        tm.that(result_1.success, eq=True, msg=f"First run had errors: {result_1}")
         # Second run should also succeed (cache should not corrupt output)
-        result_2 = generator.generate_inits(check_only=True)
-        tm.that(result_2, eq=0, msg=f"Second run had errors: {result_2}")
+        result_2 = generator.plan_files()
+        tm.that(result_2.success, eq=True, msg=f"Second run had errors: {result_2}")

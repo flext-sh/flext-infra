@@ -156,12 +156,13 @@ class FlextInfraCompatibilityAliasDetector:
 
         local_aliases_set = frozenset(local_aliases)
         violations: list[m.Infra.CompatibilityAliasViolation] = []
-        # flext-j47u (codex): parse each Rope-owned runtime statement in place;
-        # the module-wide table intentionally excludes conditional imports.
+        # Parse each Rope-owned runtime statement in place because the
+        # module-wide table intentionally excludes conditional imports.
         for statement in u.Infra.logical_statements(source):
             if (
                 statement.category != c.Infra.StatementCategory.FROM_IMPORT
                 or statement.type_checking_guarded
+                or c.Infra.PKG_CORE_UNDERSCORE not in statement.text
             ):
                 continue
             pymodule = u.Infra.get_string_module(

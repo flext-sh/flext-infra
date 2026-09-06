@@ -200,9 +200,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
         include_globs, exclude_globs = self._scan_globs(scan_targets)
         rules_list_result = self._rules_list(rules)
         if rules_list_result.failure:
-            return r[m.Infra.ValidationReport].fail(
-                rules_list_result.error or "rules must be a list"
-            )
+            return r[m.Infra.ValidationReport].from_failure(rules_list_result)
         counts, violations = self._evaluate_rules(
             m.Infra.SkillRuleEvaluationContext(
                 rules_list=rules_list_result.value,
@@ -233,7 +231,7 @@ class FlextInfraSkillValidator(s[bool], FlextInfraSkillRuleRunnerMixin):
             self.repository_root, self.skill, mode=self.mode
         )
         if report_result.failure:
-            return r[bool].fail(report_result.error or "skill validation failed")
+            return r[bool].from_failure(report_result)
         report = report_result.unwrap()
         return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
 

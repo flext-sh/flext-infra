@@ -30,7 +30,7 @@ class FlextInfraUtilitiesRopeStructure:
         enclosers: t.MutableSequenceOf[tuple[int, c.Infra.RopeScopeKind, str]] = []
         type_checking_guards: t.MutableSequenceOf[int] = []
         for start, end in finder.generate_regions():
-            text = "".join(lines.get_line(n) for n in range(start, end + 1))
+            text = "\n".join(lines.get_line(n) for n in range(start, end + 1))
             indent = len(text) - len(text.lstrip())
             FlextInfraUtilitiesRopeStructure._pop_exited_enclosers(enclosers, indent)
             while type_checking_guards and indent <= type_checking_guards[-1]:
@@ -515,15 +515,15 @@ class FlextInfraUtilitiesRopeStructure:
     def _identifiers(source: str) -> t.Infra.StrSet:
         """Return identifier tokens from a source slice."""
         identifiers: t.Infra.StrSet = set()
-        token = ""
+        token: list[str] = []
         for char in source:
             if char.isalnum() or char == "_":
-                token += char
+                token.append(char)
             elif token:
-                identifiers.add(token)
-                token = ""
+                identifiers.add("".join(token))
+                token = []
         if token:
-            identifiers.add(token)
+            identifiers.add("".join(token))
         return identifiers
 
 

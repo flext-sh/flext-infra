@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 from pathlib import Path
+import stat
 from typing import TYPE_CHECKING, Final
 
 from flext_core import r
@@ -20,12 +21,11 @@ ARTIFACT_SPECS: Final[tuple[tuple[str, int], ...]] = (
 CONFIG_SPEC: Final[tuple[str, int]] = (c.Infra.MISE_TOML_FILENAME, 0o644)
 PUBLICATION_SPECS: Final[tuple[tuple[str, int], ...]] = (CONFIG_SPEC, *ARTIFACT_SPECS)
 ARTIFACT_NAMES: Final[tuple[str, ...]] = tuple(name for name, _mode in ARTIFACT_SPECS)
-JOURNAL_NAME: Final[str] = "journal.json"
+JOURNAL_NAME: Final[str] = "flext-infra-codegen-transaction-journal.json"
 JOURNAL_MODE: Final[int] = 0o600
-LOCK_NAME: Final[str] = "publication.lock"
 STATE_DIRECTORY: Final[Path] = Path(".state") / "mise-artifacts"
-BOOTSTRAP_DIR_NAME: Final[str] = "bootstrap"
-TRANSACTION_DIR_NAME: Final[str] = "transaction"
+TRANSACTION_DIR_PREFIX: Final[str] = "transaction-"
+TRANSACTION_ID_LENGTH: Final[int] = 32
 
 
 def digest(content: bytes) -> str:
@@ -34,34 +34,76 @@ def digest(content: bytes) -> str:
 
 
 def read_state(path: Path, *, required: bool) -> p.Result[m.Cli.AtomicFileState]:
-    """Read exact state through the canonical descriptor-authenticated owner.
-
-    The reader authenticates a file through its physical parent directory and
-    never invents an identity for a parent that does not exist, so a governed
-    repository that has never carried ``bin/`` fails here with the original
-    cause. An optional read reports an absent file under an existing parent as
-    exactly that: a state whose content and mode are ``None``.
-    """
+    """Read exact state through the canonical descriptor-authenticated owner."""
     return u.Cli.atomic_read_binary_file_state(path, required=required)
 
 
-def write_publication(
-    publication: m.Infra.MiseToolchainPublication,
-) -> p.Result[m.Cli.AtomicFileState]:
-    """Consume one staged state through the canonical guarded CLI owner."""
+def physical_directory_identity(path: Path) -> p.Result[tuple[int, int]]:
+    """Return the device/inode identity of one physical directory."""
+    try:
+        observed = path.lstat()
+    except OSError as exc:
+        return r[tuple[int, int]].fail_op("inspect generation directory", exc)
+    reparse = getattr(observed, "st_file_attributes", 0) & getattr(
+        stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+    )
+    if not stat.S_ISDIR(observed.st_mode) or reparse:
+        return r[tuple[int, int]].fail(f"generation directory is not physical: {path}")
+    return r[tuple[int, int]].ok((observed.st_dev, observed.st_ino))
+
+
+def write_publication(publication: m.Infra.CodegenStagedFile) -> p.Result[bool]:
+    """Consume one staged create/replace/mode/delete through the CLI owner."""
     before = publication.before
     replacement = publication.replacement
+    if replacement is None:
+        return delete_state(before)
     if replacement.content is None or replacement.mode is None:
-        return r[m.Cli.AtomicFileState].fail(
-            f"Mise publication replacement is absent: {replacement.path}"
+        return r[bool].fail(f"codegen staged replacement is absent: {replacement.path}")
+    published = u.Cli.atomic_publish_staged_binary_file_guarded(before, replacement)
+    if published.failure:
+        return r[bool].from_failure(published)
+    observed = published.value
+    observed_identity = (
+        observed.path,
+        observed.parent_device,
+        observed.parent_inode,
+        observed.content,
+        observed.mode,
+        observed.device,
+        observed.inode,
+        observed.link_count,
+        observed.file_attributes,
+        observed.reparse_tag,
+    )
+    replacement_identity = (
+        before.path,
+        before.parent_device,
+        before.parent_inode,
+        replacement.content,
+        replacement.mode,
+        replacement.device,
+        replacement.inode,
+        replacement.link_count,
+        replacement.file_attributes,
+        replacement.reparse_tag,
+    )
+    if observed_identity != replacement_identity:
+        return r[bool].fail(
+            f"published codegen file differs from staged identity: {before.path}"
         )
-    return u.Cli.atomic_publish_staged_binary_file_guarded(before, replacement)
+    return r[bool].ok(True)
 
 
 def delete_state(state: m.Cli.AtomicFileState) -> p.Result[bool]:
     """Delete one exact existing state through the CLI owner."""
-    if state.content is None or state.mode is None:
-        return r[bool].fail(f"cannot delete absent Mise file state: {state.path}")
+    if (
+        state.content is None
+        or state.mode is None
+        or state.device is None
+        or state.inode is None
+    ):
+        return r[bool].fail(f"cannot delete absent codegen file state: {state.path}")
     return u.Cli.atomic_delete_binary_file_guarded(state)
 
 
@@ -102,12 +144,12 @@ __all__: list[str] = [
     "CONFIG_SPEC",
     "JOURNAL_MODE",
     "JOURNAL_NAME",
-    "LOCK_NAME",
     "PUBLICATION_SPECS",
     "STATE_DIRECTORY",
-    "TRANSACTION_DIR_NAME",
+    "TRANSACTION_DIR_PREFIX",
     "delete_state",
     "digest",
+    "physical_directory_identity",
     "read_state",
     "resolve_relative",
     "workspace_relative",

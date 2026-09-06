@@ -107,11 +107,11 @@ class FlextInfraPyrightGate(FlextInfraGate):
                 )
             )
             return False, issues
-        if (not issues) and result.exit_code != 0:
+        if (not issues) and not u.Cli.process_succeeded(result.outcome):
             message = (result.stderr or result.stdout).strip()
             if not message:
                 message = (
-                    f"pyright exited with code {result.exit_code} "
+                    f"pyright exited with code {result.outcome.raw_return_code} "
                     "without JSON diagnostics"
                 )
             issues.append(
@@ -124,7 +124,7 @@ class FlextInfraPyrightGate(FlextInfraGate):
                     severity=c.Infra.ERROR,
                 )
             )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
 
 __all__: list[str] = ["FlextInfraPyrightGate"]

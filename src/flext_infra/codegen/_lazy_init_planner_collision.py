@@ -97,9 +97,7 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return name in declared
 
     def _add(self, index: t.MutableLazyAliasMap, name: str, target: t.StrPair) -> None:
-        """Insert a name/target pair; a name with no single owner is not published."""
-        if name in self._ambiguous_exports:
-            return
+        """Insert a name/target pair and record ambiguous ownership."""
         existing = index.get(name)
         if existing is None or existing == target:
             index[name] = target
@@ -107,19 +105,12 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if self._is_intentional_reexport(existing, target):
             index[name] = self._pick_preferred_target(name, existing, target)
             return
-        existing_declared = self._declares_export(name, existing)
-        target_declared = self._declares_export(name, target)
-        if existing_declared and target_declared:
-            msg = (
-                f"export {name!r} is declared public by both {existing[0]} and "
-                f"{target[0]}; one package surface cannot carry two owners"
-            )
-            raise ValueError(msg)
-        if existing_declared or target_declared:
-            index[name] = existing if existing_declared else target
-            return
-        del index[name]
-        self._ambiguous_exports.add(name)
+        self._collision_count += 1
+        u.Cli.error(
+            f"export collision for {name!r}: {existing} vs {target}; "
+            f"candidate selected for complete inventory: {winner}"
+        )
+        index[name] = winner
 
     def _is_intentional_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
         """Return whether one module is a root-namespace stub re-exporting from the other."""
@@ -130,6 +121,8 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         if self._is_private_facade_reexport(a, b):
             return True
         if self._is_declared_public_reexport(a, b):
+            return True
+        if self._is_package_root_reexport(a, b):
             return True
         if self._is_test_collection_collision(a, b):
             return True
@@ -149,6 +142,25 @@ class FlextInfraCodegenLazyInitPlannerCollisionMixin:
         return (
             a_owner == b or b_owner == a or (a_owner is not None and a_owner == b_owner)
         )
+
+    def _is_package_root_reexport(self, a: t.StrPair, b: t.StrPair) -> bool:
+        """Return whether a package root republishes its direct facade owner."""
+        if a[1] != b[1]:
+            return False
+        for root_target, child_target in ((a, b), (b, a)):
+            root_module, attr = root_target
+            child_module, _ = child_target
+            if child_module.rpartition(".")[0] != root_module:
+                continue
+            root_file = self._module_file(root_module)
+            if root_file is None or root_file.name != "__init__.py":
+                continue
+            declared_exports = self.rope_workspace.exports(
+                root_file, export_options=m.Infra.ExportOptions(allow_assignments=True)
+            )
+            if attr in declared_exports:
+                return True
+        return False
 
     def _declared_export_owner(self, target: t.StrPair) -> t.StrPair | None:
         module_path, attr = target

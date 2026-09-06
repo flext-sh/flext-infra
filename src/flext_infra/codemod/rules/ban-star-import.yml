@@ -1,0 +1,22 @@
+id: ban-star-import-src
+language: python
+severity: error
+files:
+  - "**/*.py"
+ignores:
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/legado/**"
+  - "**/legacy/**"
+  - "**/node_modules/**"
+  - "**/*_pb2.py"
+  - "**/*_pb2_grpc.py"
+rule:
+  kind: import_from_statement
+  has:
+    kind: wildcard_import
+    stopBy: end
+message: >-
+  Star imports are forbidden; enumerate the public symbols after semantic
+  reference discovery. Detection remains strict because a textual expansion
+  cannot prove the imported module's runtime export contract.
