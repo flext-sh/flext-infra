@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from collections.abc import Sequence
 from enum import StrEnum, unique
-from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -68,7 +67,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     RK_IMPORTS_RESOLVE: Final[str] = "imports_resolve"
     RK_FLEXT_VALID: Final[str] = "flext_valid"
     RK_LSP_DIAGNOSTICS_CLEAN: Final[str] = "lsp_diagnostics_clean"
-    CLASS_NESTING_MAPPINGS_FILENAME: Final[str] = "class-nesting-mappings.yml"
     CLASS_NESTING_POLICY_FILENAME: Final[str] = "class-policy-v2.yml"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
@@ -394,7 +392,6 @@ class FlextInfraConstantsRefactor(FlextInfraConstantsNamespace):
     "Class names always required in scanner output."
     CLASS_PATTERN: Final[t.RegexPattern] = re.compile(r"[^A-Za-z0-9]+")
     "Pattern to split class name fragments."
-    MAPPINGS_RELATIVE_PATH: Final[Path] = Path("rules") / "class-nesting-mappings.yml"
     "Relative path from the refactor package to the nesting mappings YAML."
     MODEL_TOKENS: Final[t.StrSequence] = (
         "model",

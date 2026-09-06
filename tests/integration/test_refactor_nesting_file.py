@@ -3,109 +3,67 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c
-from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+from flext_infra.refactor.service import FlextInfraRefactorService
 from flext_tests import tm
-from tests import u
 
 if TYPE_CHECKING:
-    from tests import m, t
+    from tests import m
 
 pytestmark = [pytest.mark.integration]
 
 
-class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
-        self._config_path = config_path
-        self._class_nesting_config = None
-        self._class_nesting_policy_by_family = None
-        self._class_nesting_gate = None
-
-    @override
-    def _load_class_nesting_config(self) -> t.JsonMapping:
-        return u.Cli.yaml_load_mapping(self._config_path)
-
-    def apply_rule(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        *,
-        dry_run: bool,
-    ) -> m.Infra.Result:
-        """Expose class nesting through the integration harness contract."""
-        return self._apply_file_rule_selection(
-            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
-            {},
-            rope_project,
-            resource,
-            dry_run=dry_run,
-        )
-
-
-def _apply_rule(
-    repository_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
-) -> m.Infra.Result:
-    rule = _FileRuleHarness(config_path)
-    rope_project = u.Infra.init_rope_project(repository_root)
-    try:
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
-        if resource is None:
-            raise FileNotFoundError(file_path)
-        return rule.apply_rule(rope_project, resource, dry_run=dry_run)
-    finally:
-        rope_project.close()
+def _project_with_loose_class(tmp_path: Path) -> tuple[Path, Path]:
+    """Materialize a real project whose private module holds a loose class."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "app"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    package_dir = tmp_path / "src" / "app" / "_helpers"
+    package_dir.mkdir(parents=True)
+    (tmp_path / "src" / "app" / "__init__.py").write_text("", encoding="utf-8")
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    target_file = package_dir / "result.py"
+    target_file.write_text(
+        "class ResultHelpers:\n"
+        "    pass\n\n\n"
+        "def build(value: ResultHelpers) -> ResultHelpers:\n"
+        "    if isinstance(value, ResultHelpers):\n"
+        "        return ResultHelpers()\n"
+        "    return value\n",
+        encoding="utf-8",
+    )
+    return tmp_path, target_file
 
 
 class TestsFlextInfraIntegrationRefactorNestingFile:
-    """Behavior contract for test_refactor_nesting_file."""
+    """Behavior contract for single-file class nesting."""
 
-    def test_class_nesting_refactor_single_file_end_to_end(
+    def test_class_nesting_nests_the_loose_class_under_the_discovered_namespace(
         self, tmp_path: Path
     ) -> None:
-        """Verify class nesting refactor handles unknown module families gracefully."""
-        fixture_file = (
-            Path(__file__).parent.parent
-            / "fixtures/namespace_validator/rule0_valid.pysrc"
+        """The namespace comes from live discovery, never from a stored mapping."""
+        repository_root, target_file = _project_with_loose_class(tmp_path)
+        discovered = tm.ok(
+            FlextInfraRefactorLooseClassScanner().derive_class_nesting_mappings(
+                repository_root
+            )
         )
-        source = fixture_file.read_text(encoding="utf-8")
-        target_dir = tmp_path / "nonstandard_dir"
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target_file = target_dir / "single_file_refactor_target.py"
-        target_file.write_text(
-            source
-            + "\n\n"
-            + "from pkg import ResultHelpers\n\n"
-            + "class ResultHelpers:\n"
-            + "    pass\n\n"
-            + "def build(value: ResultHelpers) -> ResultHelpers:\n"
-            + "    if isinstance(value, ResultHelpers):\n"
-            + "        return ResultHelpers()\n"
-            + "    return value\n",
-            encoding="utf-8",
+        mapping = next(
+            entry for entry in discovered if entry.loose_name == "ResultHelpers"
         )
-        config_path = tmp_path / "class-nesting-mappings.yml"
-        config_path.write_text(
-            "confidence_threshold: low\n"
-            "class_nesting:\n"
-            "  - loose_name: ResultHelpers\n"
-            f"    current_file: {target_file.as_posix()}\n"
-            "    target_namespace: FlextUtilities\n"
-            "    target_name: ResultHelpers\n"
-            "    confidence: high\n"
-            "helper_consolidation: []\n",
-            encoding="utf-8",
+
+        service = FlextInfraRefactorService()
+        tm.ok(service.load_rules())
+        result: m.Infra.Result = service.orchestrator.refactor_file(
+            target_file, dry_run=False
         )
-        result = _apply_rule(tmp_path, target_file, config_path, dry_run=False)
-        # Module family policy treats unknown families as out-of-scope (no policy
-        # to enforce against), so the refactor proceeds gracefully and the loose
-        # ``ResultHelpers`` class is nested under ``FlextUtilities`` per the
-        # mapping config.
+
         tm.that(result.success, eq=True)
         tm.that(result.modified, eq=True)
         tm.that(result.refactored_code, none=False)
-        tm.that(result.refactored_code, has="class FlextUtilities:")
+        tm.that(result.refactored_code, has=f"class {mapping.target_namespace}:")
         tm.that(result.refactored_code, has="class ResultHelpers:")

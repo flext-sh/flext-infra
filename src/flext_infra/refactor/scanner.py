@@ -36,6 +36,41 @@ class FlextInfraRefactorLooseClassScanner:
             )
         )
 
+    def derive_class_nesting_mappings(
+        self, project_root: Path
+    ) -> p.Result[t.SequenceOf[m.Infra.ClassNestingMapping]]:
+        """Derive the class-nesting mapping set from the live source tree.
+
+        The mapping is discovery output, never a stored list: the scanner
+        already owns every field a mapping carries (the loose class, its
+        module, the namespace its module expects, the confidence its location
+        implies, and the rule reason), so a frozen YAML snapshot could only
+        drift from the tree it describes.
+        """
+        scan_result = self.scan(project_root)
+        if scan_result.failure:
+            return r[t.SequenceOf[m.Infra.ClassNestingMapping]].fail(
+                scan_result.error or "loose-class scan failed"
+            )
+        raw_violations = scan_result.value.get(c.Infra.RK_VIOLATIONS, [])
+        typed_items = t.Infra.CONTAINER_DICT_SEQ_ADAPTER.validate_python(raw_violations)
+        mappings = tuple(
+            m.Infra.ClassNestingMapping(
+                loose_name=violation.class_name,
+                current_file=violation.file,
+                target_namespace=violation.expected_prefix,
+                target_name=violation.class_name,
+                confidence=violation.confidence,
+                reason=violation.reason,
+            )
+            for violation in (
+                m.Infra.LooseClassViolation.model_validate(item)
+                for item in typed_items
+            )
+            if violation.expected_prefix
+        )
+        return r[t.SequenceOf[m.Infra.ClassNestingMapping]].ok(mappings)
+
     def _scan_discovered_files(
         self, *, project_root: Path
     ) -> tuple[t.SequenceOf[m.Infra.LooseClassViolation], t.BoolMapping, int, int]:

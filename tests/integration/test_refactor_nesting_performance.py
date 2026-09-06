@@ -6,42 +6,10 @@ import tempfile
 import time
 import tracemalloc
 from pathlib import Path
-from typing import TYPE_CHECKING, override
 
-from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
 from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
-from tests import c, tm, u
-
-if TYPE_CHECKING:
-    from tests import m, t
-
-
-class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
-        self._config_path = config_path
-        self._class_nesting_config = None
-        self._class_nesting_policy_by_family = None
-        self._class_nesting_gate = None
-
-    @override
-    def _load_class_nesting_config(self) -> t.JsonMapping:
-        return dict(u.Cli.yaml_load_mapping(self._config_path))
-
-    def apply_rule(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        *,
-        dry_run: bool,
-    ) -> m.Infra.Result:
-        """Expose class nesting through the performance harness contract."""
-        return self._apply_file_rule_selection(
-            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
-            {},
-            rope_project,
-            resource,
-            dry_run=dry_run,
-        )
+from flext_infra.refactor.service import FlextInfraRefactorService
+from tests import c, tm
 
 
 class TestsFlextInfraIntegrationRefactorNestingPerformance:
@@ -119,48 +87,36 @@ class TestsFlextInfraIntegrationRefactorNestingPerformance:
                 ),
             )
 
-    def test_rule_application_performance(self) -> None:
-        """Benchmark rule application on single file."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = Path(tmp_dir)
-            test_file = tmp_path / "test.py"
-            test_file.write_text(
-                "\nclass TimeoutEnforcer:\n"
-                "    def enforce(self, timeout: int) -> bool:\n"
-                "        return True\n\n"
-                "class RateLimiter:\n"
-                "    def limit(self, rate: int) -> bool:\n"
-                "        return True\n"
-            )
-            config_file = tmp_path / "mappings.yml"
-            config_file.write_text(
-                "\nclass_nesting:\n"
-                "  - loose_name: TimeoutEnforcer\n"
-                "    current_file: test.py\n"
-                "    target_namespace: FlextDispatcher\n"
-                "    target_name: TimeoutEnforcer\n"
-                "    confidence: high\n"
-                "  - loose_name: RateLimiter\n"
-                "    current_file: test.py\n"
-                "    target_namespace: FlextDispatcher\n"
-                "    target_name: RateLimiter\n"
-                "    confidence: high\n"
-            )
-            rule = _FileRuleHarness(config_file)
-            rope_project = u.Infra.init_rope_project(tmp_path)
-            resource = u.Infra.get_resource_from_path(rope_project, test_file)
-            if resource is None:
-                raise FileNotFoundError(test_file)
-            start = time.perf_counter()
-            try:
-                for _ in range(c.Tests.REFACTOR_RULE_ITERATIONS):
-                    _ = rule.apply_rule(rope_project, resource, dry_run=True)
-                elapsed = time.perf_counter() - start
-                avg_time = elapsed / c.Tests.REFACTOR_RULE_ITERATIONS
-                tm.that(
-                    avg_time,
-                    lt=c.Tests.REFACTOR_RULE_MAX_SECONDS,
-                    msg=f"Rule application too slow: {avg_time * 1000:.2f}ms",
-                )
-            finally:
-                rope_project.close()
+    def test_rule_application_performance(self, tmp_path: Path) -> None:
+        """Benchmark one public refactor pass over a project module."""
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "app"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
+        package_dir = tmp_path / "src" / "app" / "_dispatcher"
+        package_dir.mkdir(parents=True)
+        (tmp_path / "src" / "app" / "__init__.py").write_text("", encoding="utf-8")
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        target_file = package_dir / "timeout.py"
+        target_file.write_text(
+            "class TimeoutEnforcer:\n"
+            "    def enforce(self, timeout: int) -> bool:\n"
+            "        return True\n\n\n"
+            "class RateLimiter:\n"
+            "    def limit(self, rate: int) -> bool:\n"
+            "        return True\n",
+            encoding="utf-8",
+        )
+        service = FlextInfraRefactorService()
+        tm.ok(service.load_rules())
+
+        start = time.perf_counter()
+        for _ in range(c.Tests.REFACTOR_RULE_ITERATIONS):
+            _ = service.orchestrator.refactor_file(target_file, dry_run=True)
+        elapsed = time.perf_counter() - start
+
+        avg_time = elapsed / c.Tests.REFACTOR_RULE_ITERATIONS
+        tm.that(
+            avg_time,
+            lt=c.Tests.REFACTOR_RULE_MAX_SECONDS,
+            msg=f"Rule application too slow: {avg_time * 1000:.2f}ms",
+        )

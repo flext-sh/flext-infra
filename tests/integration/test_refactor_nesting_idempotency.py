@@ -2,117 +2,78 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
-from flext_infra import c
-from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+from flext_infra.refactor.service import FlextInfraRefactorService
 from flext_tests import tm
-from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, t
+    from tests import m
 
 
-class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
-        self._config_path = config_path
-        self._class_nesting_config = None
-        self._class_nesting_policy_by_family = None
-        self._class_nesting_gate = None
-
-    @override
-    def _load_class_nesting_config(self) -> t.JsonMapping:
-        return u.Cli.yaml_load_mapping(self._config_path)
-
-    def apply_rule(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        *,
-        dry_run: bool,
-    ) -> m.Infra.Result:
-        """Expose class nesting through the integration harness contract."""
-        return self._apply_file_rule_selection(
-            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
-            {},
-            rope_project,
-            resource,
-            dry_run=dry_run,
-        )
+def _project_with_loose_class(tmp_path: Path) -> Path:
+    """Materialize a real project whose private module holds a loose class."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "app"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    package_dir = tmp_path / "src" / "app" / "_dispatcher"
+    package_dir.mkdir(parents=True)
+    (tmp_path / "src" / "app" / "__init__.py").write_text("", encoding="utf-8")
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    target_file = package_dir / "timeout.py"
+    target_file.write_text("class TimeoutEnforcer:\n    pass\n", encoding="utf-8")
+    return target_file
 
 
-def _apply_rule(
-    repository_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
-) -> m.Infra.Result:
-    rule = _FileRuleHarness(config_path)
-    rope_project = u.Infra.init_rope_project(repository_root)
-    try:
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
-        if resource is None:
-            raise FileNotFoundError(file_path)
-        return rule.apply_rule(rope_project, resource, dry_run=dry_run)
-    finally:
-        rope_project.close()
+def _refactor(target_file: Path, *, dry_run: bool) -> m.Infra.Result:
+    """Refactor one file through the public composition root."""
+    service = FlextInfraRefactorService()
+    tm.ok(service.load_rules())
+    return service.orchestrator.refactor_file(target_file, dry_run=dry_run)
 
 
 class TestsFlextInfraIntegrationRefactorNestingIdempotency:
-    """Test that running refactor multiple times is idempotent."""
+    """Running the nesting refactor repeatedly converges after the first run."""
 
     def test_first_run_produces_changes(self, tmp_path: Path) -> None:
-        """First run should produce changes."""
-        test_file = tmp_path / "test.py"
-        test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n"
-            "  - loose_name: TimeoutEnforcer\n"
-            "    current_file: test.py\n"
-            "    target_namespace: FlextDispatcher\n"
-            "    target_name: TimeoutEnforcer\n"
-            "    confidence: high\n"
+        """First run nests the loose class under the discovered namespace."""
+        target_file = _project_with_loose_class(tmp_path)
+        discovered = tm.ok(
+            FlextInfraRefactorLooseClassScanner().derive_class_nesting_mappings(tmp_path)
         )
-        result = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
+        mapping = next(
+            entry for entry in discovered if entry.loose_name == "TimeoutEnforcer"
+        )
+
+        result = _refactor(target_file, dry_run=False)
+
         tm.that(result.modified, eq=True)
         tm.that(result.refactored_code, none=False)
-        tm.that(result.refactored_code, has="class FlextDispatcher:")
+        tm.that(result.refactored_code, has=f"class {mapping.target_namespace}:")
 
     def test_second_run_produces_no_changes(self, tmp_path: Path) -> None:
-        """Second run on already-refactored code should produce no changes."""
-        test_file = tmp_path / "test.py"
-        test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n"
-            "  - loose_name: TimeoutEnforcer\n"
-            "    current_file: test.py\n"
-            "    target_namespace: FlextDispatcher\n"
-            "    target_name: TimeoutEnforcer\n"
-            "    confidence: high\n"
-        )
-        result1 = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
-        refactored_code = tm.not_none(result1.refactored_code)
-        test_file.write_text(refactored_code)
-        result2 = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
-        tm.that(result2.success, eq=True)
+        """A file already nested is left untouched by the next run."""
+        target_file = _project_with_loose_class(tmp_path)
+        first = _refactor(target_file, dry_run=False)
+        target_file.write_text(tm.not_none(first.refactored_code), encoding="utf-8")
+
+        second = _refactor(target_file, dry_run=True)
+
+        tm.that(second.success, eq=True)
+        tm.that(second.modified, eq=False)
 
     def test_third_run_produces_no_changes(self, tmp_path: Path) -> None:
-        """Third run should also produce no changes."""
-        test_file = tmp_path / "test.py"
-        test_file.write_text("\nclass TimeoutEnforcer:\n    pass\n")
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n"
-            "  - loose_name: TimeoutEnforcer\n"
-            "    current_file: test.py\n"
-            "    target_namespace: FlextDispatcher\n"
-            "    target_name: TimeoutEnforcer\n"
-            "    confidence: high\n"
-        )
+        """Convergence holds across repeated applications."""
+        target_file = _project_with_loose_class(tmp_path)
         for _ in range(3):
-            result = _apply_rule(tmp_path, test_file, config_file, dry_run=False)
+            result = _refactor(target_file, dry_run=False)
             if result.modified and result.refactored_code is not None:
-                test_file.write_text(result.refactored_code)
-        final_result = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
+                target_file.write_text(result.refactored_code, encoding="utf-8")
+
+        final_result = _refactor(target_file, dry_run=True)
+
         tm.that(final_result.success, eq=True)
+        tm.that(final_result.modified, eq=False)

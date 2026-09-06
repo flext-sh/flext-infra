@@ -13,6 +13,7 @@ from flext_infra.transformers.class_nesting import (
 from flext_infra.transformers.helper_consolidation import (
     FlextInfraHelperConsolidationTransformer,
 )
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
 from flext_infra.transformers.nested_class_propagation import (
     FlextInfraNestedClassPropagationTransformer,
 )
@@ -144,7 +145,7 @@ class FlextInfraRefactorFileExecutor:
     ) -> m.Infra.Result:
         """Apply class nesting after the public error boundary."""
         source = resource.read()
-        config = self._load_class_nesting_config()
+        config = self._load_class_nesting_config(file_path)
         threshold = self._class_nesting_threshold(config)
         class_map = self._class_nesting_symbol_map(
             config,
@@ -227,27 +228,30 @@ class FlextInfraRefactorFileExecutor:
             refactored_code=None,
         )
 
-    def _load_class_nesting_config(self) -> t.JsonMapping:
-        """Load class nesting config."""
+    def _load_class_nesting_config(self, file_path: Path) -> t.JsonMapping:
+        """Derive the class-nesting settings for *file_path* from the live tree.
+
+        Discovery replaces the retired mapping snapshot: the loose-class scanner
+        owns the loose name, its module, the expected namespace and the
+        confidence its location implies, so the settings can never describe a
+        tree that no longer exists.
+        """
         if self._class_nesting_config is not None:
             return self._class_nesting_config
-        rules_dir = Path(__file__).resolve().parent.parent / c.Infra.RK_RULES
-        loaded = u.Cli.yaml_load_mapping(
-            rules_dir / c.Infra.CLASS_NESTING_MAPPINGS_FILENAME
-        )
+        project_root = u.Infra.resolve_project_root(file_path)
         settings: MutableMapping[str, t.Infra.InfraValue] = {}
-        threshold = loaded.get(c.Infra.RK_CONFIDENCE_THRESHOLD)
-        if isinstance(threshold, str):
-            settings[c.Infra.RK_CONFIDENCE_THRESHOLD] = threshold
-        for key in c.Infra.NESTING_SECTION_KEYS:
-            raw = loaded.get(key)
-            if isinstance(raw, list):
-                settings[key] = [
-                    dict(entry)
-                    for entry in self._coerce_class_nesting_entries(
-                        u.Cli.json_as_mapping_list(raw)
-                    )
-                ]
+        if project_root is not None:
+            derived = FlextInfraRefactorLooseClassScanner().derive_class_nesting_mappings(
+                project_root
+            )
+            if derived.failure:
+                raise ValueError(derived.error or "class-nesting discovery failed")
+            settings[c.Infra.RK_CLASS_NESTING] = [
+                dict(entry)
+                for entry in self._coerce_class_nesting_entries(
+                    [mapping.model_dump() for mapping in derived.value]
+                )
+            ]
         self._class_nesting_config = settings
         return settings
 

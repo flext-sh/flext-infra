@@ -12,7 +12,6 @@ rules:
     
     # Configuration
     settings:
-      mappings_file: "class-nesting-mappings.yml"
       schema_file: "class-nesting-schema.json"
       
     # Confidence thresholds

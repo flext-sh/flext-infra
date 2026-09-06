@@ -2,111 +2,72 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
-from flext_infra import c
-from flext_infra.refactor.file_executor import FlextInfraRefactorFileExecutor
+from flext_infra.refactor.scanner import FlextInfraRefactorLooseClassScanner
+from flext_infra.refactor.service import FlextInfraRefactorService
 from flext_tests import tm
-from tests import u
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests import m, t
+    from tests import m
 
 
-class _FileRuleHarness(FlextInfraRefactorFileExecutor):
-    def __init__(self, config_path: Path) -> None:
-        self._config_path = config_path
-        self._class_nesting_config = None
-        self._class_nesting_policy_by_family = None
-        self._class_nesting_gate = None
-
-    @override
-    def _load_class_nesting_config(self) -> t.JsonMapping:
-        return u.Cli.yaml_load_mapping(self._config_path)
-
-    def apply_rule(
-        self,
-        rope_project: t.Infra.RopeProject,
-        resource: t.Infra.RopeResource,
-        *,
-        dry_run: bool,
-    ) -> m.Infra.Result:
-        """Expose class nesting through the integration harness contract."""
-        return self._apply_file_rule_selection(
-            c.Infra.RefactorFileRuleKind.CLASS_NESTING,
-            {},
-            rope_project,
-            resource,
-            dry_run=dry_run,
-        )
+def _project(tmp_path: Path, module: str, body: str) -> Path:
+    """Materialize a real project carrying one private module."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "app"\nversion = "0.1.0"\n', encoding="utf-8"
+    )
+    package_dir = tmp_path / "src" / "app" / "_dispatcher"
+    package_dir.mkdir(parents=True)
+    (tmp_path / "src" / "app" / "__init__.py").write_text("", encoding="utf-8")
+    (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    target_file = package_dir / module
+    target_file.write_text(body, encoding="utf-8")
+    return target_file
 
 
-def _apply_rule(
-    repository_root: Path, file_path: Path, config_path: Path, *, dry_run: bool
-) -> m.Infra.Result:
-    rule = _FileRuleHarness(config_path)
-    rope_project = u.Infra.init_rope_project(repository_root)
-    try:
-        resource = u.Infra.get_resource_from_path(rope_project, file_path)
-        if resource is None:
-            raise FileNotFoundError(file_path)
-        return rule.apply_rule(rope_project, resource, dry_run=dry_run)
-    finally:
-        rope_project.close()
+def _refactor(target_file: Path) -> m.Infra.Result:
+    """Refactor one file through the public composition root."""
+    service = FlextInfraRefactorService()
+    tm.ok(service.load_rules())
+    return service.orchestrator.refactor_file(target_file, dry_run=True)
 
 
 class TestsFlextInfraIntegrationRefactorNestingProject:
-    """Test class nesting refactor across a project."""
+    """Class nesting across a project tree."""
 
     def test_project_processes_without_errors(self, tmp_path: Path) -> None:
-        """Test that full project processes without errors."""
-        src_dir = tmp_path / "src" / "test_project"
-        src_dir.mkdir(parents=True)
-        test_file = src_dir / "dispatcher.py"
-        test_file.write_text(
-            "\nclass TimeoutEnforcer:\n    pass\n\nclass RateLimiter:\n    pass\n"
+        """Every loose class in a module is nested under one discovered namespace."""
+        target_file = _project(
+            tmp_path,
+            "dispatcher.py",
+            "class TimeoutEnforcer:\n    pass\n\n\nclass RateLimiter:\n    pass\n",
         )
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n"
-            "  - loose_name: TimeoutEnforcer\n"
-            "    current_file: src/test_project/dispatcher.py\n"
-            "    target_namespace: FlextDispatcher\n"
-            "    target_name: TimeoutEnforcer\n"
-            "    confidence: high\n"
-            "  - loose_name: RateLimiter\n"
-            "    current_file: src/test_project/dispatcher.py\n"
-            "    target_namespace: FlextDispatcher\n"
-            "    target_name: RateLimiter\n"
-            "    confidence: high\n"
+        discovered = tm.ok(
+            FlextInfraRefactorLooseClassScanner().derive_class_nesting_mappings(tmp_path)
         )
-        result = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
+        namespaces = {entry.target_namespace for entry in discovered}
+
+        result = _refactor(target_file)
+
         tm.that(result.success, eq=True)
         tm.that(result.modified, eq=True)
+        tm.that(len(namespaces), eq=1)
+        tm.that(result.refactored_code, has=f"class {namespaces.pop()}:")
 
     def test_no_type_errors_introduced(self, tmp_path: Path) -> None:
-        """Verify no type errors are introduced by refactoring."""
-        src_dir = tmp_path / "src"
-        src_dir.mkdir()
-        test_file = src_dir / "test.py"
-        test_file.write_text(
-            "\nfrom typing import Optional\n\n"
+        """Annotations survive the transform untouched."""
+        target_file = _project(
+            tmp_path,
+            "helper.py",
             "class Helper:\n"
-            "    def process(self, x: Optional[int] = None) -> int:\n"
-            "        return x or 0\n"
+            "    def process(self, value: int | None = None) -> int:\n"
+            "        return value or 0\n",
         )
-        config_file = tmp_path / "mappings.yml"
-        config_file.write_text(
-            "\nclass_nesting:\n"
-            "  - loose_name: Helper\n"
-            "    current_file: src/test.py\n"
-            "    target_namespace: FlextUtilities\n"
-            "    target_name: Helper\n"
-            "    confidence: high\n"
-        )
-        result = _apply_rule(tmp_path, test_file, config_file, dry_run=True)
+
+        result = _refactor(target_file)
+
         tm.that(result.success, eq=True)
-        refactored_code = tm.not_none(result.refactored_code)
-        tm.that("Optional[int]" in refactored_code or "int" in refactored_code, eq=True)
+        tm.that(result.refactored_code, has="value: int | None = None")

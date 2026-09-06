@@ -124,12 +124,3 @@ from collections.abc import Mapping, Sequence"
       type_hints: true
       decorators: true
 
-  - id: fix-flext-redeclaration
-    name: "Fix FLEXT redeclaration"
-    description: "Remove herança redundante em classes aninhadas (FLEXT issues)"
-    enabled: true
-    severity: error
-    auto_fix: true
-    fix_action: remove_inheritance_keep_class
-    pattern: 'class.*\\(.*Constants.*\\)'
-    action: remove_inheritance_keep_class
