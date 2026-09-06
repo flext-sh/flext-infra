@@ -65,7 +65,9 @@ class TestsFlextInfraDepsDetectionDeptry:
         self, tmp_path: Path, deptry_report_payload: t.JsonPayload
     ) -> None:
         """Verify success with issues."""
-        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(tmp_path)
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
+        )
         out_file = project / ".deptry-report.json"
         write_result = u.Cli.json_write(out_file, deptry_report_payload)
         tm.ok(write_result)
@@ -96,7 +98,9 @@ class TestsFlextInfraDepsDetectionDeptry:
     def test_runner_failure(self, tmp_path: Path) -> None:
         """Verify runner failure."""
         service = u.Tests.create_deptry_service(run_error="runner failed")
-        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(tmp_path)
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
+        )
 
         tm.fail(service.run_deptry(project, venv_bin))
 
@@ -111,7 +115,9 @@ class TestsFlextInfraDepsDetectionDeptry:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )
-        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(tmp_path)
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
+        )
         for payload in ("{ invalid json }", ""):
             out_file = project / ".deptry-report.json"
             out_file.write_text(payload, encoding=c.Cli.ENCODING_DEFAULT)
@@ -125,7 +131,9 @@ class TestsFlextInfraDepsDetectionDeptry:
         service = u.Tests.create_deptry_service(
             command_output=u.Tests.create_command_output()
         )
-        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(tmp_path)
+        venv_bin, project = TestsFlextInfraDepsDetectionDeptry._deptry_environment(
+            tmp_path
+        )
         default_out = project / ".deptry-report.json"
         default_out.write_text("[]", encoding=c.Cli.ENCODING_DEFAULT)
 

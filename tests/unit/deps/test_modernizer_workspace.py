@@ -22,7 +22,10 @@ class TestsFlextInfraDepsModernizerWorkspace:
 
     @staticmethod
     def _reject_external_selector(
-        modernizer_workspace: Path, selector: str, external_pyproject: Path, original: str
+        modernizer_workspace: Path,
+        selector: str,
+        external_pyproject: Path,
+        original: str,
     ) -> None:
         """Run the modernizer on an undeclared selector and prove no mutation."""
         modernizer = FlextInfraPyprojectModernizer(

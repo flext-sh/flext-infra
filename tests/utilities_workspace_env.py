@@ -57,9 +57,7 @@ class TestsFlextInfraUtilitiesWorkspaceEnvMixin:
             Every SSOT pattern whose section targets that profile.
 
         """
-        profile = (
-            TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root)
-        )
+        profile = TestsFlextInfraUtilitiesWorkspaceEnvMixin.repository_profile(root)
         gitignore_sections: tuple[m.Infra.ScaffoldGitignoreSectionSpec, ...] = (
             config.Infra.codegen.gitignore_sections
         )

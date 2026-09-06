@@ -49,13 +49,9 @@ class TestsFlextInfraUtilitiesTomlMixin:
 
     @staticmethod
     def toml_table_at(content: str, *path: str) -> t.JsonMapping:
-        current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
-            tomllib.loads(content)
-        )
+        current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(tomllib.loads(content))
         for segment in path:
-            current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(
-                current[segment]
-            )
+            current = TestsFlextInfraUtilitiesTomlMixin.toml_mapping(current[segment])
         return current
 
     @staticmethod
@@ -76,9 +72,7 @@ class TestsFlextInfraUtilitiesTomlMixin:
         )
 
     @staticmethod
-    def infra_mapping_result(
-        value: t.Infra.InfraMapping,
-    ) -> p.Result[t.JsonMapping]:
+    def infra_mapping_result(value: t.Infra.InfraMapping) -> p.Result[t.JsonMapping]:
         """Provide the typed test helper `infra_mapping_result`."""
         return r[t.JsonMapping].ok(
             TestsFlextInfraUtilitiesTomlMixin.infra_mapping(value)

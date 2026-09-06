@@ -20,9 +20,7 @@ class ExtraPathsTestSupport:
         )
 
     @staticmethod
-    def project(
-        root: Path, name: str, package: str, *, with_git: bool = True
-    ) -> Path:
+    def project(root: Path, name: str, package: str, *, with_git: bool = True) -> Path:
         """Materialize one importable project with a declared distribution name."""
         project = root / name
         (project / "src" / package).mkdir(parents=True)

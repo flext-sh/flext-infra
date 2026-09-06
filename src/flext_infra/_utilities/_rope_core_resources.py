@@ -27,9 +27,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
         outside the project root or does not exist on disk. Rope failures
         (resource/type contract bugs) are never converted; they escape.
         """
-        root_real_path = getattr(
-            getattr(rope_project, "root", None), "real_path", None
-        )
+        root_real_path = getattr(getattr(rope_project, "root", None), "real_path", None)
         if not isinstance(root_real_path, str):
             return None
         root = Path(root_real_path)
@@ -38,9 +36,7 @@ class FlextInfraUtilitiesRopeCoreResourcesMixin:
             return None
         resource = rope_project.get_resource(str(resolved_path.relative_to(root)))
         return (
-            resource
-            if FlextInfraUtilitiesRopeRuntime.is_resource(resource)
-            else None
+            resource if FlextInfraUtilitiesRopeRuntime.is_resource(resource) else None
         )
 
     @staticmethod

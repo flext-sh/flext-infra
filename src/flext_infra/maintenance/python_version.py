@@ -172,9 +172,7 @@ class FlextInfraPythonVersionEnforcer(s[int]):
             return False
         write_result = u.Cli.files_write_text(version_file, desired)
         if write_result.failure:
-            msg = (
-                f"failed to write {version_file}: {write_result.error}"
-            )
+            msg = f"failed to write {version_file}: {write_result.error}"
             raise RuntimeError(msg)
         logger.info(
             "python_version_file_conformed",

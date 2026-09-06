@@ -44,9 +44,13 @@ class TestsFlextInfraDepsModernizerPytest:
         pytest_policy = tool_config.tools.pytest
         tm.that(ini["minversion"], eq=pytest_policy.min_version)
         tm.that(
-            set(u.Tests.strings(ini["python_classes"])), eq=set(pytest_policy.python_classes)
+            set(u.Tests.strings(ini["python_classes"])),
+            eq=set(pytest_policy.python_classes),
         )
-        tm.that(set(u.Tests.strings(ini["python_files"])), eq=set(pytest_policy.python_files))
+        tm.that(
+            set(u.Tests.strings(ini["python_files"])),
+            eq=set(pytest_policy.python_files),
+        )
         tm.that(
             set(u.Tests.strings(ini["addopts"])),
             eq={

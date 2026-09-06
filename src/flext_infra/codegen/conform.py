@@ -354,19 +354,37 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             workspace = workspace_result.value
         project = workspace.project
-        if project is None:
-            return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(
-                "scaffold workspace has no project metadata"
-            )
-        profile = workspace.repository.role
         root = request.root.expanduser().resolve()
-        directories = {root}
-        for entry in config.Infra.codegen.templates.entries:
-            if profile not in entry.profiles:
-                continue
-            destination = entry.destination.format(
-                package_name=project.package_name, ns=project.namespace_attribute
+        # Why (flext-jwpyy.1): package_name/ns are scaffold-only metadata that
+        # exists solely on the `codegen new` route; load_workspace_spec never
+        # carries them. An existing tree renders the literal managed_files
+        # surface, so its parent chains derive from that SSOT instead of the
+        # placeholder template destinations.
+        if project is None:
+            destinations: t.StrSequence = tuple(
+                managed.path.as_posix()
+                for managed in config.Infra.codegen.managed_files
             )
+        else:
+            profile = workspace.repository.role
+            destinations = tuple(
+                entry.destination.format(
+                    package_name=project.package_name, ns=project.namespace_attribute
+                )
+                for entry in config.Infra.codegen.templates.entries
+                if profile in entry.profiles
+            )
+        beads_linked = self._member_beads_is_linked(root)
+        directories = {root}
+        for destination in destinations:
+            # Both render routes skip the inherited-ledger destinations, so the
+            # parent chain must honour the same ownership rule: a linked
+            # `.beads` route is a symlink, never a directory this cycle owns.
+            if beads_linked and destination in {
+                c.Infra.BEADS_CONFIG_RELPATH,
+                c.Infra.BEADS_METADATA_RELPATH,
+            }:
+                continue
             relative = Path(destination)
             if relative.is_absolute() or ".." in relative.parts:
                 return r[tuple[m.Cli.AtomicDirectoryState, ...]].fail(

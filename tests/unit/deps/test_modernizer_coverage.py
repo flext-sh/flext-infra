@@ -59,7 +59,8 @@ class TestsFlextInfraDepsModernizerCoverage:
             eq=sorted(set(tool_config.tools.coverage.exclude_also)),
         )
         tm.that(
-            list(u.Tests.strings(run["omit"])), eq=sorted(set(tool_config.tools.coverage.omit))
+            list(u.Tests.strings(run["omit"])),
+            eq=sorted(set(tool_config.tools.coverage.omit)),
         )
         # Declaration-layer Protocol facades are never runtime coverage targets.
         tm.that("*/protocols.py" in tool_config.tools.coverage.omit, eq=True)

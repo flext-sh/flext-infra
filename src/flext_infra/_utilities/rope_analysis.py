@@ -109,10 +109,8 @@ class FlextInfraUtilitiesRopeAnalysis:
         if cached is not None:
             return cached
         pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
-        state = (
-            FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
-                rope_project=rope_project, resource=resource, pymodule=pymodule
-            )
+        state = FlextInfraUtilitiesRopeAnalysis._module_semantic_state_from_pymodule(
+            rope_project=rope_project, resource=resource, pymodule=pymodule
         )
         FlextInfraUtilitiesRopeAnalysis._SEMANTIC_STATE_CACHE[cache_key] = state
         return state
@@ -461,9 +459,7 @@ class FlextInfraUtilitiesRopeAnalysis:
         if cached is not None:
             export_names = cached
         else:
-            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(
-                rope_project, resource
-            )
+            pymodule = FlextInfraUtilitiesRopeCore.get_pymodule(rope_project, resource)
             export_names = FlextInfraUtilitiesRopeAnalysis._module_export_names(
                 export_options=resolved_export_options,
                 pymodule=pymodule,

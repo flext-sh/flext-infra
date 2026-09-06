@@ -12,8 +12,7 @@ from .._utilities._rope_method_order import FlextInfraUtilitiesRopeMethodOrderMi
 
 
 class FlextInfraUtilitiesRopeHelpers(
-    FlextInfraUtilitiesRopeBracketBalanceMixin,
-    FlextInfraUtilitiesRopeMethodOrderMixin,
+    FlextInfraUtilitiesRopeBracketBalanceMixin, FlextInfraUtilitiesRopeMethodOrderMixin
 ):
     """Generic text, import-placement, and method-order helpers."""
 

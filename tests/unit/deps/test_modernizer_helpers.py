@@ -168,9 +168,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize(
         ("optional_deps", "expected_dev", "expected_docs"),
         [
-            (_FULL_OPTIONAL_DEPS, ["pytest"],
-                ["sphinx"],
-            ),
+            (_FULL_OPTIONAL_DEPS, ["pytest"], ["sphinx"]),
             ({"dev": ["pytest"]}, ["pytest"], []),
             ({}, [], []),
         ],
@@ -195,9 +193,7 @@ class TestsFlextInfraDepsModernizerHelpers:
     @pytest.mark.parametrize(
         ("optional_deps", "expected_length", "expect_pytest"),
         [
-            (_FULL_OPTIONAL_DEPS, 5,
-                True,
-            ),
+            (_FULL_OPTIONAL_DEPS, 5, True),
             ({}, 0, False),
             ({"dev": ["pytest>=7.0"], "test": ["pytest>=6.0"]}, 1, True),
         ],

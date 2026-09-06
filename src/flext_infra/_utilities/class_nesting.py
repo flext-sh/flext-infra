@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,9 +18,9 @@ if TYPE_CHECKING:
 class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
     """Plan class nesting from semantic module ownership instead of record lists."""
 
-    @staticmethod
+    @classmethod
     def class_nesting_plan(
-        rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
+        cls, rope_workspace: p.Infra.RopeWorkspaceDsl, file_path: Path
     ) -> p.Result[tuple[m.Infra.ClassNestingViolation, ...]]:
         """Return top-level classes that must move under the declared module owner."""
         resolved_file = file_path.resolve()
@@ -57,6 +58,13 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                 f"for {convention.module_name}; discovered: {class_names}"
             )
 
+        # Nesting never crosses an inheritance edge with the owner. Moving an
+        # owner ancestor emits `class Owner(Owner.Base)` and moving an owner
+        # descendant emits a nested `class Member(Owner)`; both name a class
+        # that is still unbound while the body executes, so both fail at import.
+        related = cls._owner_inheritance_closure(
+            rope_workspace.source(resolved_file), target_namespace
+        )
         relative_file = resolved_file.relative_to(
             rope_workspace.repository_root.resolve()
         ).as_posix()
@@ -74,9 +82,38 @@ class FlextInfraUtilitiesClassNesting(FlextInfraUtilitiesClassNestingCst):
                     rewrite_scope=c.Infra.RK_FILE,
                 )
                 for item in top_level_classes
-                if item.name != target_namespace
+                if item.name != target_namespace and item.name not in related
             )
         )
+
+    @staticmethod
+    def _owner_inheritance_closure(source: str, owner_name: str) -> frozenset[str]:
+        """Return every module-level class inheriting, or inherited by, the owner."""
+        bases_by_class = {
+            node.name: tuple(
+                base.id for base in node.bases if isinstance(base, ast.Name)
+            )
+            for node in ast.parse(source).body
+            if isinstance(node, ast.ClassDef)
+        }
+        closure: set[str] = set()
+        pending = list(bases_by_class.get(owner_name, ()))
+        while pending:
+            name = pending.pop()
+            if name in closure or name not in bases_by_class:
+                continue
+            closure.add(name)
+            pending.extend(bases_by_class[name])
+        descendants = True
+        while descendants:
+            descendants = False
+            for name, bases in bases_by_class.items():
+                if name in closure or name == owner_name:
+                    continue
+                if any(base == owner_name or base in closure for base in bases):
+                    closure.add(name)
+                    descendants = True
+        return frozenset(closure)
 
     @classmethod
     def plan_class_nesting_cutover(

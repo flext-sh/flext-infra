@@ -103,7 +103,9 @@ class TestGateErrorReportingPublicBehavior:
     ) -> None:
         runner = u.Tests.command_runner(stderr="rumdl execution failed", returncode=2)
 
-        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(tmp_path, runner)
+        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(
+            tmp_path, runner
+        )
 
         tm.ok(result)
         tm.that(result.value[0].passed, eq=False)
@@ -116,7 +118,9 @@ class TestGateErrorReportingPublicBehavior:
         diagnostic = "README.md:3:2: [MD057] Relative link 'missing.md' does not exist"
         runner = u.Tests.command_runner(stdout=diagnostic, returncode=1)
 
-        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(tmp_path, runner)
+        result = TestGateErrorReportingPublicBehavior.failing_markdown_run(
+            tmp_path, runner
+        )
 
         tm.ok(result)
         tm.that(result.value[0].passed, eq=False)

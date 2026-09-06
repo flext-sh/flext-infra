@@ -18,7 +18,9 @@ class _DetectorStub:
         self.log: p.Logger = u.fetch_logger(__name__)
 
 
-def _setup(tmp_path: Path, deps: u.Tests.DepsReportStub) -> FlextInfraDependencyDetectorRuntime:
+def _setup(
+    tmp_path: Path, deps: u.Tests.DepsReportStub
+) -> FlextInfraDependencyDetectorRuntime:
     deptry_path = tmp_path / ".venv" / "bin" / "deptry"
     deptry_path.parent.mkdir(parents=True, exist_ok=True)
     deptry_path.write_text("", encoding="utf-8")

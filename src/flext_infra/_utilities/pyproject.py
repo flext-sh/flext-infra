@@ -165,9 +165,7 @@ class FlextInfraUtilitiesPyproject:
                 f"{payload_result.error}"
             )
             raise RuntimeError(msg)
-        return FlextInfraUtilitiesPyproject.validate_infra_payload(
-            payload_result.value
-        )
+        return FlextInfraUtilitiesPyproject.validate_infra_payload(payload_result.value)
 
     @staticmethod
     def normalized_toml_payload(document: t.Cli.TomlDocument) -> t.JsonMapping:

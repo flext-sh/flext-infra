@@ -90,7 +90,9 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         return r[t.Infra.LayoutStatus].ok("applied")
 
     @classmethod
-    def _managed_profile(cls, project_dir: Path) -> p.Result[c.Infra.MakeProfile | None]:
+    def _managed_profile(
+        cls, project_dir: Path
+    ) -> p.Result[c.Infra.MakeProfile | None]:
         """Make profile when the project is governed by a workspace.
 
         ``ok(None)`` means the project sits outside any Git repository and is

@@ -7,10 +7,13 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models.config import FlextInfraConfigModels
-from flext_infra._models.docs_generation import FlextInfraModelsDocsGeneration
+
+from .config import FlextInfraConfigModels
+from .docs_generation import FlextInfraModelsDocsGeneration
 
 
+# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
+# retains the exact metadata/config models and declares only analysis deltas.
 class _FlextInfraDocsContracts:
     """Field-only source and rendering contracts for documentation."""
 
@@ -44,8 +47,6 @@ class _FlextInfraDocsContracts:
         count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
 
 
-# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
-# retains the exact metadata/config models and declares only analysis deltas.
 class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContracts):
     """Models for documentation services."""
 
@@ -157,7 +158,7 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
             t.StrTuple, m.Field(default=(), description="Rope-resolved public symbols")
         ] = ()
         export_bindings: Annotated[
-            tuple[_FlextInfraDocsContracts.DocsExportBinding, ...],
+            tuple[FlextInfraModelsDocs._FlextInfraDocsContracts.DocsExportBinding, ...],
             m.Field(default=(), description="Export-to-module bindings"),
         ] = ()
         modules: Annotated[
