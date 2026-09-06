@@ -8,8 +8,8 @@ from pathlib import Path
 
 from flext_cli import u
 from flext_infra import c, m, p, r, t
-from . import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeRuntime
 
+from . import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeRuntime
 from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
 

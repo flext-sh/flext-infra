@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
@@ -30,10 +29,12 @@ from flext_infra.transformers.typing_dict_import import (
 )
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
+from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from flext_infra import p, t
+
     from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 

@@ -15,8 +15,8 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from packaging.requirements import InvalidRequirement, Requirement
-from packaging.version import InvalidVersion, Version
 from packaging.utils import canonicalize_name
+from packaging.version import InvalidVersion, Version
 
 from flext_cli import u
 from flext_core import r

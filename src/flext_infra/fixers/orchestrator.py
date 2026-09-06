@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
-from .._enforcement.engine import FlextInfraEnforcementEngine
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
 
+from .._enforcement.engine import FlextInfraEnforcementEngine
 from .gate_fixer import FlextInfraGateFixerAdapter
 from .manual_fixer import FlextInfraManualFixerAdapter
 from .rope_fixer import FlextInfraRopeFixerAdapter
