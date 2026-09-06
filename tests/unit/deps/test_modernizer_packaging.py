@@ -87,17 +87,37 @@ class TestsFlextInfraDepsModernizerPackaging:
             payload, path=tmp_path / c.Infra.PYPROJECT_FILENAME, is_root=True
         )
 
-        wheel = u.Cli.toml_mapping_path(
-            payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+        wheel = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_path(
+                payload, (c.Infra.TOOL, "hatch", "build", "targets", "wheel")
+            )
         )
-        sdist = u.Cli.toml_mapping_path(
-            payload, (c.Infra.TOOL, "hatch", "build", "targets", "sdist")
+        sdist = t.Infra.MUTABLE_INFRA_MAPPING_ADAPTER.validate_python(
+            u.Cli.toml_mapping_path(
+                payload, (c.Infra.TOOL, "hatch", "build", "targets", "sdist")
+            )
         )
+        # The manifest write above materialises ``config/`` at the project root,
+        # so the phase also ships every declared data dir present there.
+        present_data_dirs = [
+            data_dir
+            for data_dir in tool_config_document.tools.hatch.packaged_data_dirs
+            if (tmp_path / data_dir).is_dir()
+        ]
         tm.that(len(changes) > 0, eq=True)
         tm.that(wheel["packages"], eq=["src/app", "src/app_client"])
-        tm.that(wheel["force-include"], eq={"src/app_launch.py": "app_launch.py"})
         tm.that(
-            sdist["only-include"], eq=["src/app", "src/app_client", "src/app_launch.py"]
+            wheel["force-include"],
+            eq={
+                "src/app_launch.py": "app_launch.py",
+                **{data_dir: f"app/{data_dir}" for data_dir in present_data_dirs},
+            },
+        )
+        tm.that(
+            sdist["only-include"],
+            eq=sorted(
+                ["src/app", "src/app_client", "src/app_launch.py", *present_data_dirs]
+            ),
         )
 
 
