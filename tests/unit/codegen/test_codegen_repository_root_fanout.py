@@ -102,7 +102,8 @@ def _render_root_makefile(tmp_path: Path) -> Path:
     tm.that(makefile_plans, len=1)
     makefile_path = repository_root / c.Infra.MAKEFILE_FILENAME
     makefile_path.write_text(
-        makefile_plans[0].rendered, encoding=c.Infra.ENCODING_DEFAULT
+        test_u.Tests.codegen_file_text(makefile_plans[0]),
+        encoding=c.Infra.ENCODING_DEFAULT,
     )
     return repository_root
 

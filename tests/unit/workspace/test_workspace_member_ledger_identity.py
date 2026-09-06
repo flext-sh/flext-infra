@@ -8,7 +8,8 @@ from pathlib import Path
 from flext_infra import c
 from flext_infra.workspace import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import WorktreeFixture, u
+from tests import u
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorkspaceMemberLedgerIdentity:

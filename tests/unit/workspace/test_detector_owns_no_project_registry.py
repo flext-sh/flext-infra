@@ -7,7 +7,8 @@ from pathlib import Path
 from flext_infra import config
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import WorktreeFixture, u
+from tests import u
+from tests.unit.workspace import WorktreeFixture
 
 
 def _standalone(root: Path, *, name: str) -> Path:

@@ -308,12 +308,11 @@ class TestsFlextInfraModCliRoute:
         report = m.Infra.ModScanEvidence.model_validate_json(
             tm.not_none(report_state.content)
         )
-        identity_finding = tm.not_none(
-            next(
-                (entry for entry in report.entries if entry.rule_id == "identity-fix"),
-                None,
-            )
-        )
+        matches = [
+            entry for entry in report.entries if entry.rule_id == "identity-fix"
+        ]
+        tm.that(matches, len=1)
+        identity_finding = matches[0]
 
         tm.that(exit_code, ne=0)
         tm.that(identity_finding.actionable, eq=False)

@@ -113,8 +113,8 @@ class TestsCodegenMakeEnvironment:
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
         (project_root / "custom.mk").write_text(
-            ".PHONY: _custom_status_probe\n"
-            "_custom_status_probe:\n"
+            ".PHONY: _custom-status\n"
+            "_custom-status:\n"
             "\t@printf '%s\\n' "
             "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
@@ -131,11 +131,7 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             test_u.Tests.run_isolated_make(
-                [
-                    "--no-print-directory",
-                    "status",
-                    f"{config.Infra.codegen.make.selector}=probe",
-                ],
+                ["--no-print-directory", "status"],
                 cwd=project_root,
                 env=active_env,
             )
@@ -361,11 +357,11 @@ class TestsCodegenMakeEnvironment:
             tm.that(makefile, has=f"{handler}: _builtin_require_environment")
             tm.that(phony_targets, has=handler)
 
-    def test_standalone_check_selector_executes_its_exact_gate(
+    def test_standalone_check_executes_its_declared_default_gates(
         self, tmp_path: Path
     ) -> None:
-        """Translate public WHAT once and run the sole CHECK_GATES executor."""
-        project_root, _workspace_root = self._render_makefile(
+        """Standalone check runs exactly the owner-declared default gate set."""
+        project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         invocation_log = tmp_path / "check-invocation.log"
@@ -382,7 +378,6 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "check",
-                    f"{config.Infra.codegen.make.selector}=lint",
                     f"UV={uv}",
                 ],
                 cwd=project_root,
@@ -391,14 +386,15 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
+        gates = ",".join(config.Infra.codegen.make.check_gates_default)
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
-        tm.that(invocation, has="--gates lint --projects .")
+        tm.that(invocation, has=f"--gates {gates} --projects .")
 
-    def test_dependency_upgrade_selects_only_one_distribution(
+    def test_dependency_upgrade_scopes_to_declared_project_locks(
         self, tmp_path: Path
     ) -> None:
-        """Refresh one Git dependency without globally upgrading the lock."""
+        """Upgrade exactly the declared project locks through the deps verb."""
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -417,8 +413,6 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "deps",
-                    f"{config.Infra.codegen.make.selector}=upgrade",
-                    "DEPENDENCY=flext-cli",
                     "APPLY=Y",
                 ],
                 cwd=project_root,
@@ -431,15 +425,20 @@ class TestsCodegenMakeEnvironment:
 
         tm.that(process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr)
         commands = uv_log.read_text(encoding="utf-8").splitlines()
+        # The upgrade scope is exactly the declared project locks: one pass with
+        # the upgrade flag, then one plain lock verification of the same root.
         tm.that(
-            commands, has=(f"lock --project {project_root} --upgrade-package flext-cli")
+            [line for line in commands if line.startswith("lock")],
+            eq=(
+                f"lock --project {project_root} --upgrade",
+                f"lock --project {project_root}",
+            ),
         )
-        tm.that(any(" --upgrade " in f" {line} " for line in commands), eq=False)
 
-    def test_dependency_upgrade_rejects_non_distribution_selector(
+    def test_dependency_upgrade_requires_the_write_enable_token(
         self, tmp_path: Path
     ) -> None:
-        """Fail before uv when the dependency selector is not one package name."""
+        """Fail before uv when the write-enable token is absent."""
         project_root, _repository_root = self._render_makefile(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
@@ -457,9 +456,6 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "deps",
-                    f"{config.Infra.codegen.make.selector}=upgrade",
-                    "DEPENDENCY=flext-cli --all",
-                    "APPLY=Y",
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
@@ -468,8 +464,11 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
+        apply_variable = config.Infra.codegen.make.apply_variable
+        apply_value = config.Infra.codegen.make.apply_value
         tm.that(
-            process.stdout + process.stderr, has="DEPENDENCY must be one normalized"
+            process.stdout + process.stderr,
+            has=f"this action requires {apply_variable}={apply_value}",
         )
         tm.that(uv_log.exists(), eq=False)
 

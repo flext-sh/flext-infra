@@ -7,7 +7,8 @@ from pathlib import Path
 from flext_infra import main as infra_main
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import WorktreeFixture, c, u
+from tests import c, u
+from tests.unit.workspace import WorktreeFixture
 
 
 def _write_project(project_root: Path, name: str) -> None:
@@ -85,16 +86,7 @@ class TestsFlextInfraWorkspaceMain:
 
     def test_workspace_main_orchestrate_returns_failure_for_unknown_verb(self) -> None:
         tm.that(
-            (
-                workspace_main([
-                    "orchestrate",
-                    "--verb",
-                    "legacy-check",
-                    "--projects",
-                    "p-a",
-                ])
-                == 1
-            ),
+            (workspace_main(["orchestrate", "--verb", "legacy-check"]) == 1),
             eq=True,
         )
 

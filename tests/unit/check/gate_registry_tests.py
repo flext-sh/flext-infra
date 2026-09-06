@@ -25,18 +25,14 @@ class TestGateRegistry:
             tm.that(gate_cls is not None and gate_cls.gate_id == gate_id, eq=True)
 
     def test_check_vocabulary_is_allowed_minus_mutating(self) -> None:
-        allowed = frozenset(c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES)
+        allowed = frozenset(c.Infra.CANONICAL_GATE_IDS)
         tm.that(allowed, eq=c.Infra.ALLOWED_GATES - c.Infra.MUTATING_GATES)
         tm.that(allowed & c.Infra.MUTATING_GATES, eq=frozenset())
 
     def test_default_and_fixable_are_subsets_of_check_vocabulary(self) -> None:
-        allowed = frozenset(c.Infra.PROJECT_CHECK_GATES_ALLOWED_VALUES)
-        tm.that(
-            frozenset(c.Infra.PROJECT_CHECK_GATES_DEFAULT_VALUES) <= allowed, eq=True
-        )
-        tm.that(
-            frozenset(c.Infra.PROJECT_CHECK_GATES_FIXABLE_VALUES) <= allowed, eq=True
-        )
+        allowed = frozenset(c.Infra.CANONICAL_GATE_IDS)
+        tm.that(frozenset(c.Infra.CANONICAL_DEFAULT_GATE_IDS) <= allowed, eq=True)
+        tm.that(frozenset(c.Infra.CANONICAL_FIXABLE_GATE_IDS) <= allowed, eq=True)
 
     def test_canonical_alias_check_detects_root_tests_consumer(
         self, tmp_path: Path

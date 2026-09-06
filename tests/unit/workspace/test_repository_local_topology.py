@@ -11,7 +11,8 @@ import pytest
 from flext_infra import c, m, t
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
-from tests import WorktreeFixture, u
+from tests import u
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsRepositoryLocalTopology:
@@ -278,7 +279,9 @@ class TestsRepositoryLocalTopology:
 
         mode = tm.ok(FlextInfraWorkspaceDetector().detect(child))
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(child))
-        resolved = tm.ok(FlextInfraWorkspaceDetector.resolve_repository_root(child))
+        resolved = tm.ok(
+            u.Infra.git_show_toplevel(m.Infra.GitRepoRequest(repo_root=child))
+        ).repository_root
 
         tm.that(mode, eq=c.Infra.MakeProfile.STANDALONE)
         tm.that(workspace.repository.name, eq="child")
@@ -664,7 +667,7 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="governed declared_repository checkout is missing")
+        tm.fail(result, has="governed subproject checkout is missing")
 
     def test_uninitialized_gitlink_does_not_borrow_parent_origin(
         self, tmp_path: Path
@@ -852,9 +855,7 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(
-            result, has="declared_repository origin differs from its .gitmodules URL"
-        )
+        tm.fail(result, has="subproject origin differs from its .gitmodules URL")
 
     def test_gitmodule_rejects_unknown_provider_without_raw_url(
         self, tmp_path: Path

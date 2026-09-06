@@ -311,7 +311,7 @@ class TestCodegenConform:
                 ["git", "merge-base", "--is-ancestor", baseline, divergent], cwd=root
             )
         )
-        tm.that(divergent_check.exit_code, eq=1)
+        tm.that(divergent_check.outcome.raw_return_code, eq=1)
         repository = u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path()}
         )
@@ -432,7 +432,7 @@ class TestCodegenConform:
                 cwd=root,
             )
         )
-        tm.that(live_tip_check.exit_code, eq=1)
+        tm.that(live_tip_check.outcome.raw_return_code, eq=1)
 
         repository = u.Tests.repository_ref("flext-infra").model_copy(
             update={"path": Path()}
@@ -506,7 +506,7 @@ class TestCodegenConform:
         tm.that(
             u.Cli.run_raw(
                 ["git", "cat-file", "-t", foreign_sha], cwd=root
-            ).value.exit_code,
+            ).value.outcome.raw_return_code,
             eq=128,
         )
         monkeypatch.setenv(c.Infra.ENV_VAR_GITHUB_SHA, foreign_sha)
@@ -719,7 +719,7 @@ class TestCodegenConform:
 
         selected_process = tm.ok(selected)
         selected_output = selected_process.stdout + selected_process.stderr
-        tm.that(selected_process.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(selected_process.outcome), eq=True)
         tm.that(selected_output, has="uv --version")
         tm.that(selected_output, lacks="uv@")
         tm.that(selected_output, lacks="UV_VERSION")
@@ -893,7 +893,7 @@ class TestCodegenConform:
         tm.that(tm.ok(u.Infra.codegen_file_before_state(env_plan)).content, eq=None)
         tm.that((root / ".env.example").exists(), eq=False)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
-            tm.that(plans[required].requires_effect, eq=True)
+            tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
 
         applied = FlextInfraCodegenConform.execute_request(request)
         tm.ok(applied)
@@ -1272,7 +1272,7 @@ class TestCodegenConform:
         )
         output = tm.ok(outcome)
         tm.that(output.stderr, eq="")
-        tm.that(output.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
         tm.that(
             output.stdout,
             has=[
@@ -1308,7 +1308,7 @@ class TestCodegenConform:
         )
         outcome = u.Cli.run_raw(["make", "-C", str(root), "check", "WHAT=probe"])
         output = tm.ok(outcome)
-        tm.that(output.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
         combined = output.stdout + output.stderr
         pre_at = combined.find("HOOK_PRE")
         body_at = combined.find("HANDLER_BODY")
@@ -1429,12 +1429,13 @@ class TestScriptDispatchMakefile:
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
                     name="incidente",
-                    default_what="all",
-                    whats=("all",),
-                    apply_what="all",
+                    description="Dispatch incidente through the declared script dispatcher.",
+                    requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
-                    name="charts", default_what="all", whats=("all",), apply_what="all"
+                    name="charts",
+                    description="Dispatch charts through the declared script dispatcher.",
+                    requires_apply=True,
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(
@@ -1504,9 +1505,10 @@ class TestScriptDispatchMakefile:
         tm.that("gen" in verb_names, eq=True)
         tm.that("codegen" in verb_names, eq=False)
         gen = next(verb for verb in make_config.verbs if verb.name == "gen")
-        tm.that(gen.default_what, eq="check")
-        tm.that(gen.apply_guarded, eq=True)
-        tm.that("init" in gen.whats, eq=True)
+        # WHAT selectors were exterminated: one verb, one meaning, declared once.
+        tm.that(hasattr(gen, "default_what"), eq=False)
+        tm.that(gen.requires_apply, eq=True)
+        tm.that("initialize" in verb_names, eq=True)
         tm.that(hasattr(make_config, "serialization"), eq=False)
         rendered = self._render_root_makefile(
             tmp_path, extra_verbs=(), script_dispatch=None
@@ -1685,16 +1687,19 @@ class TestScriptDispatchMakefile:
             tmp_path,
             extra_verbs=(
                 m.Infra.MakeVerbSpec(
-                    name="charts", default_what="all", whats=("all",), apply_what="all"
+                    name="charts",
+                    description="Dispatch charts through the declared script dispatcher.",
+                    requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
                     name="chart-release",
-                    default_what="all",
-                    whats=("all",),
-                    apply_what="all",
+                    description="Dispatch chart-release through the declared script dispatcher.",
+                    requires_apply=True,
                 ),
                 m.Infra.MakeVerbSpec(
-                    name="bead", default_what="all", whats=("all",), apply_what="all"
+                    name="bead",
+                    description="Dispatch bead through the declared script dispatcher.",
+                    requires_apply=True,
                 ),
             ),
             script_dispatch=m.Infra.ScriptDispatchSpec(

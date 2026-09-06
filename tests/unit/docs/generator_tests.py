@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import TYPE_CHECKING
 
 import pytest
@@ -56,7 +57,7 @@ def test_generate_returns_reports_for_root_and_selected_project(tmp_path: Path) 
     _ = _plan_docs(generator)
     result = generator.generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=False
+            repository_root=workspace, projects=["flext-a"], apply=False
         )
     )
 
@@ -90,7 +91,7 @@ def test_collocated_workspace_project_keeps_root_aggregate_as_single_owner(
         '"""Workspace fixture package."""\n', encoding="utf-8"
     )
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["."], apply=False
+        repository_root=workspace, projects=["."], apply=False
     )
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["."]
@@ -115,7 +116,7 @@ def test_root_generated_catalog_survives_project_pass_and_required_indexes_valid
     """Preserve root output while leaving optional curated indexes unowned."""
     workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-a"], apply=False
+        repository_root=workspace, projects=["flext-a"], apply=False
     )
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-a"]
@@ -199,7 +200,7 @@ def test_governed_api_survives_generation_and_curated_paths_are_unowned(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("# Docs\n", encoding="utf-8")
     request = m.Infra.DocsGenerateRequest(
-        workspace_root=workspace, projects=["flext-infra-fixture"], apply=False
+        repository_root=workspace, projects=["flext-infra-fixture"], apply=False
     )
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-infra-fixture"]
@@ -420,7 +421,10 @@ def test_file_plan_reports_real_drift_and_reaches_fixed_point(tmp_path: Path) ->
     tm.ok(published)
 
     fixed_point = _plan_docs(generator)
-    tm.that(any(plan.requires_effect for plan in fixed_point), eq=False)
+    tm.that(
+        any(u.Infra.codegen_file_requires_effect(plan) for plan in fixed_point),
+        eq=False,
+    )
 
 
 def test_stale_generated_file_drift_converges_through_file_plans(
@@ -485,26 +489,30 @@ def test_generate_report_tracks_written_files() -> None:
 
 
 def test_link_sanitizer_preserves_external_schemes_and_fragments() -> None:
-    secure = c.Infra.DOCS_SECURE_WEB_SCHEME
-    external = [
-        f"{secure}://example.invalid",
-        *[
-            f"{scheme}:payload"
-            for scheme in sorted(c.Infra.DOCS_EXTERNAL_SCHEMES)
-            if scheme != secure
-        ],
+    """Keep external and fragment links verbatim while local links become text."""
+    guides = import_module("flext_infra._utilities").FlextInfraUtilitiesDocsGuidesMixin
+    preserved = [
+        f"{c.Infra.DOCS_SECURE_WEB_SCHEME}://example.invalid",
+        "mailto:user@example.invalid",
         f"{c.Infra.DOCS_FRAGMENT_PREFIX}section",
     ]
-    content = "\n".join(f"[link]({target})" for target in external)
+    local = "guides/setup"
+    content = "\n".join(
+        [*[f"[link]({target})" for target in preserved], f"[link]({local})"]
+    )
 
-    sanitized = u.Infra.docs_sanitize_internal_anchor_links(content)
+    sanitized = guides.docs_sanitize_internal_anchor_links(content)
 
-    for target in external:
+    for target in preserved:
         tm.that(sanitized, has=f"[link]({target})")
+    tm.that(sanitized, has="link")
+    tm.that(sanitized, lacks=f"[link]({local})")
+    tm.that(sanitized, lacks=local)
 
 
-def test_link_sanitizer_rejects_http() -> None:
+def test_docs_url_scheme_rejects_http() -> None:
+    """The docs URL contract rejects insecure web schemes in favor of HTTPS."""
     target = f"{c.Infra.DOCS_INSECURE_WEB_SCHEME}://example.invalid"
 
     with pytest.raises(ValueError, match="use HTTPS"):
-        u.Infra.docs_sanitize_internal_anchor_links(f"[link]({target})")
+        u.Infra.docs_url_scheme(target)

@@ -183,7 +183,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
         public_exports = exports_content.split(
             "__all__: tuple[str, ...] =", maxsplit=1
         )[1]
@@ -284,7 +284,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has='"FlextDemo"')
         tm.that(exports_content, has='"demo"')
@@ -319,7 +319,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has="FlextDemoService")
         tm.that(exports_content, has='"BLUE"')
@@ -336,7 +336,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        first = self._generated_exports(package_root)
+        first = self._generated_init(package_root)
         tm.that(u.Tests.run_lazy_init(workspace_root, check_only=True), eq=0)
 
         tm.that(self._generated_init(package_root), eq=first)
@@ -565,7 +565,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        generated = self._generated_exports(package_root)
+        generated = self._generated_init(package_root)
 
         tm.that(generated, has='"owner_parent": ("r",)')
         tm.that(generated, lacks='"nearest_parent": ("r",)')
@@ -691,7 +691,7 @@ class TestsFlextInfraLazyInitHelpers:
         )
 
         tm.that(u.Tests.run_lazy_init(workspace_root), eq=0)
-        exports_content = self._generated_exports(package_root)
+        exports_content = self._generated_init(package_root)
 
         tm.that(exports_content, has="FlextDemoHttpTransport")
         tm.that(exports_content, has='"services"')

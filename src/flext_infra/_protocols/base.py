@@ -613,7 +613,7 @@ class FlextInfraProtocolsBase(Protocol):
         """Service for pip-based dependency checking."""
 
         def run_pip_check(
-            self, workspace_root: Path, venv_bin: Path
+            self, repository_root: Path, venv_bin: Path
         ) -> p.Result[t.Pair[t.StrSequence, int]]:
             """Run pip check on workspace and return results."""
             ...

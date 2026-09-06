@@ -87,7 +87,7 @@ class TestCodegenManifestlessExisting:
             tm.that(u.Infra.codegen_file_requires_effect(plans[relative]), eq=False)
             tm.that((root / relative).read_text(encoding="utf-8"), eq=content)
         for required in ("Makefile", ".mise.toml", ".python-version", ".gitignore"):
-            tm.that(plans[required].requires_effect, eq=True)
+            tm.that(u.Infra.codegen_file_requires_effect(plans[required]), eq=True)
 
         tm.ok(FlextInfraCodegenConform.execute_request(artifact_request))
         tm.that((root / ".env.example").exists(), eq=False)

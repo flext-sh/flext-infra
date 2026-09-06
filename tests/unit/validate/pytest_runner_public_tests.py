@@ -28,8 +28,8 @@ class TestsFlextInfraPytestRunner:
         runner = FlextInfraPytestRunner(
             repository_root=cached_runner_project,
             started_at_monotonic=time.monotonic(),
-            target=cache.target_directory.as_posix(),
-            reports=cache.reports_directory.as_posix(),
+            target=cache.target_directory,
+            reports=cache.reports_directory,
             testmon_db=testmon_db,
         )
 

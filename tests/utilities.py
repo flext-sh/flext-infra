@@ -47,10 +47,10 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 self._result = result
 
             def resolve_projects(
-                self, workspace_root: Path, names: t.StrSequence
+                self, repository_root: Path, names: t.StrSequence
             ) -> p.Result[Sequence[m.Infra.ProjectInfo]]:
                 """Return the configured project-selection result."""
-                del workspace_root, names
+                del repository_root, names
                 return self._result
 
         class DeptryRunner(p.Cli.CommandRunner):
@@ -227,10 +227,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 input_data: str | bytes | None = None,
                 *,
                 live: bool = False,
+                heartbeat_seconds: float | None = None,
                 deadline: p.Cli.ProcessDeadline | None = None,
-            ) -> p.Result[int]:
+            ) -> p.Result[p.Cli.ProcessOutcome]:
                 """Provide the typed test helper `run_to_file`."""
-                del input_data, live, deadline
+                del input_data, live, heartbeat_seconds, deadline
                 result = self.run_raw(
                     cmd,
                     cwd=cwd,
@@ -239,14 +240,14 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                     remove_env_keys=remove_env_keys,
                 )
                 if result.failure:
-                    return r[int].from_failure(result)
+                    return r[p.Cli.ProcessOutcome].from_failure(result)
                 output_path = (
                     output_file if isinstance(output_file, Path) else Path(output_file)
                 )
                 output_path.write_text(
                     f"{result.value.stdout}{result.value.stderr}", encoding="utf-8"
                 )
-                return r[int].ok(result.value.outcome.raw_return_code)
+                return r[p.Cli.ProcessOutcome].ok(result.value.outcome)
 
         class TomlReaderSequence(p.Infra.TomlReader):
             """Protocol-compatible TOML reader that replays typed results."""
@@ -620,6 +621,52 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
 
         @staticmethod
+        def write_standalone_workspace_manifest(
+            project_dir: Path,
+            name: str,
+            *,
+            upstream: str | None = None,
+            inherited_facets: t.StrSequence = (),
+            root_modules: t.StrSequence = (),
+            root_packages: t.StrSequence = (),
+        ) -> Path:
+            """Write the declared ``config/workspace.yaml`` of one standalone repository.
+
+            The Makefile projection reads declarations only, so this fixture is
+            the complete topology input for ``codegen conform --what makefile
+            --scope self``. Every value is derived from the same typed SSOT the
+            production loader validates against, never frozen by hand.
+            """
+            repository = TestsFlextInfraUtilities.Tests.repository_ref(
+                name, role=c.Infra.MakeProfile.STANDALONE
+            ).model_copy(update={"checkout": c.Infra.CheckoutKind.INDEPENDENT})
+            project = TestsFlextInfraUtilities.Tests.project_spec(name)
+            if upstream is not None:
+                project = project.model_copy(update={"upstream": upstream})
+            if inherited_facets:
+                project = project.model_copy(
+                    update={"inherited_facets": tuple(inherited_facets)}
+                )
+            if root_modules or root_packages:
+                project = project.model_copy(
+                    update={
+                        "root_modules": tuple(root_modules),
+                        "root_packages": tuple(root_packages),
+                    }
+                )
+            manifest = m.Infra.WorkspaceManifestSpec(
+                version=c.Infra.WORKSPACE_MANIFEST_VERSION,
+                name=name,
+                repository=repository,
+                project=project,
+            )
+            config_dir = project_dir / c.CONFIG_DIR_NAME
+            config_dir.mkdir(parents=True, exist_ok=True)
+            manifest_path = config_dir / c.Infra.WORKSPACE_MANIFEST_FILENAME
+            tm.ok(u.Cli.yaml_dump(manifest_path, manifest.model_dump(mode="json")))
+            return manifest_path
+
+        @staticmethod
         def standalone_workspace(
             project_dir: Path, name: str = "flext-demo"
         ) -> m.Infra.WorkspaceSpec:
@@ -644,6 +691,40 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return workspace.model_copy(
                 update={"project": TestsFlextInfraUtilities.Tests.project_spec(name)}
             )
+
+        @staticmethod
+        def required_beads(
+            workspace: m.Infra.WorkspaceSpec,
+        ) -> m.Infra.BeadsProjectSpec:
+            """Return the ledger identity the observed loader must always resolve.
+
+            Every observed load owns a Beads identity — the loader rejects a
+            spec without one — so a test asserting that identity states the
+            contract here instead of reaching into the spec at each call site.
+            """
+            return workspace.beads
+
+        @staticmethod
+        def copy_tracked_mise_seeds(root: Path) -> None:
+            """Copy this checkout's committed Mise toolchain seeds into ``root``.
+
+            ``codegen conform`` validates the tracked, checksum-verified
+            ``bin/mise`` seeds instead of minting them, so a fixture tree that
+            conforms the full surface must carry them exactly as a governed
+            repository does. The declared ``.mise.toml`` travels with its
+            ``mise.lock``: the lock answers that exact declaration, so a fixture
+            carrying one without the other reads as a changed toolchain and
+            makes conform resolve every selector against its remote registry —
+            a network call inside a unit test. Conform still renders and
+            publishes the configuration; it simply has nothing to re-resolve
+            when the rendered bytes match the seed.
+            """
+            source_root = Path(__file__).resolve().parents[1]
+            for relative in (".mise.toml", "bin/mise", "bin/mise.cmd", "mise.lock"):
+                source = source_root / relative
+                destination = root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                _ = shutil.copy2(source, destination)
 
         @staticmethod
         def write_mise_stub(path: Path) -> Path:
@@ -1511,11 +1592,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
 
         @staticmethod
         def consolidate_codegen(
-            *, workspace_root: Path, project: str | None = None, dry_run: bool = True
+            *, repository_root: Path, project: str | None = None, dry_run: bool = True
         ) -> p.Result[str]:
             """Provide the typed test helper `consolidate_codegen`."""
             service: FlextInfraCodegenConsolidator = FlextInfraCodegenConsolidator(
-                repository_root=workspace_root, dry_run=dry_run, project_name=project
+                repository_root=repository_root, dry_run=dry_run, project_name=project
             )
             result: p.Result[str] = service.execute()
             return result
@@ -1739,11 +1820,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             @override
             def discover_project_paths(
                 self,
-                workspace_root: Path,
+                repository_root: Path,
                 *,
                 projects_filter: t.StrSequence | None = None,
             ) -> p.Result[Sequence[Path]]:
-                del workspace_root, projects_filter
+                del repository_root, projects_filter
                 if self.discovery_failure is not None:
                     return r[Sequence[Path]].fail(self.discovery_failure)
                 return r[Sequence[Path]].ok(self.project_paths)
