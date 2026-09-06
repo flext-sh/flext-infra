@@ -2630,6 +2630,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Snapshot one target and bind it to exact desired bytes and mode."""
         project = root.expanduser().absolute()
         path = (project / relative_path).absolute()
+        # Generation owns the destination directory of every artifact it
+        # declares. Reading the before-state of a declared file whose parent
+        # does not exist yet fails on the missing parent rather than reporting
+        # an absent file, so a repository that has never rendered a nested
+        # artifact — `.beads/config.yaml` on a fresh clone — could not even be
+        # planned. Materializing the empty destination is idempotent and is the
+        # generator's own responsibility.
+        path.parent.mkdir(parents=True, exist_ok=True)
         before = u.Cli.atomic_read_binary_file_state(path, required=False)
         if before.failure:
             return r[m.Infra.CodegenFilePlan].from_failure(before)
