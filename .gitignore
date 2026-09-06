@@ -30,6 +30,18 @@
 .claude/skills/core.gc-*
 .claude/skills/gascity.*
 .claude/skills/gc.*
+.codex/skills/.gc-skill-ownership.json
+.codex/skills/core.gc-*
+.codex/skills/gascity.*
+.codex/skills/gc.*
+
+# Gas City rig runtime and lane worktrees (runtime state, never source)
+.gc/
+/worktrees/
+
+# AI Hub workspace projections (runtime state, never source)
+/.aihub/
+/.cursor/mcp.json
 
 # Aider AI data
 .aider/
