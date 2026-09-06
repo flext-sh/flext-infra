@@ -197,6 +197,15 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 raise ValueError(msg)
             return self
 
+        @u.computed_field
+        @property
+        def unchanged(self) -> bool:
+            """Whether publishing would rewrite identical bytes and mode."""
+            return (
+                self.before.content == self.replacement.content
+                and self.before.mode == self.replacement.mode
+            )
+
     class MiseToolchainJournalSource(m.ArbitraryTypesModel):
         """One immutable source identity guarded by a Mise transaction journal."""
 
