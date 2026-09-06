@@ -6,6 +6,7 @@ from pathlib import Path
 
 from flext_cli import cli
 from flext_infra import u
+from flext_infra.api import infra
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
@@ -16,7 +17,7 @@ class FlextInfraCodemodSemanticApply:
 
     @classmethod
     def apply(cls, root: Path, preflight: m.Infra.ModScanReport) -> None:
-        """Apply deferred-model, API-alias, and private-import cutovers."""
+        """Apply every semantic cutover selected by the canonical mod circuit."""
         original = cls._source_inventory(root, preflight)
         working = dict(original)
         changed: set[Path] = set()
@@ -54,6 +55,11 @@ class FlextInfraCodemodSemanticApply:
         cls._apply_plan(working, future_annotations, changed)
         deferred = cls._deferred_model_edits(working)
         cls._apply_plan(working, deferred, changed)
+        with infra.rope_workspace(root) as rope_workspace:
+            nesting = u.Infra.plan_class_nesting_cutover(
+                rope_workspace=rope_workspace, sources=working
+            )
+        cls._apply_plan(working, nesting, changed)
         alias_findings = tuple(
             finding
             for finding in preflight.entries
@@ -77,10 +83,19 @@ class FlextInfraCodemodSemanticApply:
         cli.display_text(
             "mod: semantic cutover "
             f"future_annotations={len(future_annotations)} "
-            f"deferred_models={len(deferred)} alias_files={len(aliases)} "
+            f"deferred_models={len(deferred)} nesting_files={len(nesting)} "
+            f"alias_files={len(aliases)} "
             f"private_import_files={len(private_imports)}"
         )
         cls._publish(original, working, changed)
+        with infra.rope_workspace(root) as rope_workspace:
+            nesting_residue = u.Infra.plan_class_nesting_cutover(
+                rope_workspace=rope_workspace, sources=working
+            )
+        if nesting_residue:
+            files = ", ".join(edit.file_path.as_posix() for edit in nesting_residue)
+            msg = f"class-nesting fixed point retained structural edits: {files}"
+            raise RuntimeError(msg)
 
     @staticmethod
     def _source_inventory(
