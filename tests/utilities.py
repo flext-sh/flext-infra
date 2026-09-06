@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 import shutil
-import tomllib
 from collections.abc import Mapping, MutableMapping, MutableSequence, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
@@ -310,12 +308,42 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
+        def number(value: t.JsonValue) -> float:
+            """Narrow one parsed payload value to a real number."""
+            tm.that(isinstance(value, (int, float)), eq=True)
+            if not isinstance(value, (int, float)):
+                msg = "payload value is not a number"
+                raise TypeError(msg)
+            return float(value)
+
+        @staticmethod
+        def json_payload(content: str) -> t.JsonMapping:
+            """Parse JSON text through the canonical reader and narrow it."""
+            return TestsFlextInfraUtilities.Tests.mapping(
+                tm.ok(u.Cli.json_loads(content))
+            )
+
+        @staticmethod
+        def toml_payload(content: str) -> t.JsonMapping:
+            """Parse TOML text through the canonical reader, never `tomllib`.
+
+            The facade returns an absent mapping for unparseable text; a test
+            that asked for a payload has already decided the text is one, so
+            the absence is a defect rather than a value to carry forward.
+            """
+            parsed = u.Cli.toml_mapping_from_text(content)
+            if parsed is None:
+                msg = "TOML payload is not parseable"
+                raise ValueError(msg)
+            return parsed
+
+        @staticmethod
         def toml_table_at(content: str, *path: str) -> t.JsonMapping:
-            current = TestsFlextInfraUtilities.Tests.toml_mapping(
-                tomllib.loads(content)
+            current = TestsFlextInfraUtilities.Tests.mapping(
+                TestsFlextInfraUtilities.Tests.toml_payload(content)
             )
             for segment in path:
-                current = TestsFlextInfraUtilities.Tests.toml_mapping(current[segment])
+                current = TestsFlextInfraUtilities.Tests.mapping(current[segment])
             return current
 
         @staticmethod
@@ -332,7 +360,7 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             table = TestsFlextInfraUtilities.Tests.toml_table_at(content, *path[:-1])
             values = TestsFlextInfraUtilities.Tests.toml_list(table[path[-1]])
             return tuple(
-                TestsFlextInfraUtilities.Tests.toml_mapping(value) for value in values
+                TestsFlextInfraUtilities.Tests.mapping(value) for value in values
             )
 
         @staticmethod
@@ -462,12 +490,71 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             )
             path.write_text(
                 f"version: {spec.version}\n"
-                f"workspace: {json.dumps(spec.workspace)}\n"
-                f"database: {json.dumps(spec.database)}\n"
-                f"issue_prefix: {json.dumps(spec.issue_prefix)}\n\n",
+                f"workspace: {tm.ok(u.Cli.json_dumps(spec.workspace))}\n"
+                f"database: {tm.ok(u.Cli.json_dumps(spec.database))}\n"
+                f"issue_prefix: {tm.ok(u.Cli.json_dumps(spec.issue_prefix))}\n\n",
                 encoding="utf-8",
             )
             return path
+
+        @staticmethod
+        def write_canonical_package_layout(package_dir: Path) -> None:
+            """Materialize the complete facade layout a governed package declares.
+
+            The namespace validator grades a project, not a file: every missing
+            facade, private-family base and composition tree is a violation of
+            its own. A fixture that writes one module and expects a clean report
+            is asserting that the layout law does not exist.
+            """
+            stem = u.derive_class_stem(package_dir.name)
+            namespace = stem.removeprefix("Flext")
+            families = (
+                ("c", "constants", "_constants", "Constants"),
+                ("t", "typings", "_typings", "Types"),
+                ("p", "protocols", "_protocols", "Protocols"),
+                ("m", "models", "_models", "Models"),
+                ("u", "utilities", "_utilities", "Utilities"),
+            )
+            for alias, public_name, private_dir, suffix in families:
+                private_root = package_dir / private_dir
+                private_root.mkdir(parents=True, exist_ok=True)
+                (private_root / c.Infra.INIT_PY).write_text("", encoding="utf-8")
+                for module_name, class_suffix in (
+                    ("base", "Base"),
+                    ("domain", "Domain"),
+                ):
+                    (private_root / f"{module_name}.py").write_text(
+                        "from __future__ import annotations\n\n\n"
+                        f"class {stem}{suffix}{class_suffix}:\n    pass\n",
+                        encoding="utf-8",
+                    )
+                (package_dir / f"{public_name}.py").write_text(
+                    "from __future__ import annotations\n\n"
+                    f"from flext_core import {alias}\n\n"
+                    f"from {package_dir.name}.{private_dir}.base import "
+                    f"{stem}{suffix}Base\n"
+                    f"from {package_dir.name}.{private_dir}.domain import "
+                    f"{stem}{suffix}Domain\n\n\n"
+                    f"class {stem}{suffix}({alias}):\n"
+                    f"    class {namespace}({stem}{suffix}Base, {stem}{suffix}Domain):\n"
+                    "        pass\n",
+                    encoding="utf-8",
+                )
+            for simple_name, class_suffix in (
+                ("settings", "Settings"),
+                ("config", "Config"),
+                ("base", "Base"),
+                ("api", "Api"),
+                ("cli", "Cli"),
+            ):
+                (package_dir / f"{simple_name}.py").write_text(
+                    "from __future__ import annotations\n\n\n"
+                    f"class {stem}{class_suffix}:\n    pass\n",
+                    encoding="utf-8",
+                )
+            services = package_dir / "services"
+            services.mkdir(parents=True, exist_ok=True)
+            (services / c.Infra.INIT_PY).write_text("", encoding="utf-8")
 
         @staticmethod
         def declare_workspace_projects(
@@ -523,12 +610,16 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
             return result
 
         @staticmethod
-        def toml_mapping(value: t.JsonPayload | None) -> t.JsonMapping:
-            """Provide the typed test helper `toml_mapping`."""
+        def mapping(value: t.JsonPayload | None) -> t.JsonMapping:
+            """Narrow one parsed payload value to a mapping.
+
+            The format it came from does not change the narrowing, so TOML,
+            JSON and YAML payloads share this one owner.
+            """
             normalized: t.JsonValue = u.normalize_to_json_value(value)
             tm.that(normalized, is_=Mapping)
             if not isinstance(normalized, Mapping):
-                msg = "normalized TOML value is not a mapping"
+                msg = "normalized payload value is not a mapping"
                 raise TypeError(msg)
             result: dict[str, t.JsonValue] = dict(normalized)
             return result
@@ -984,6 +1075,11 @@ class TestsFlextInfraUtilities(FlextTestsUtilities, u):
                 TestsFlextInfraUtilities.Tests.declare_workspace_projects(
                     workspace, project_names
                 )
+            # A release lane conforms its full surface, and conform reads the
+            # committed toolchain seeds rather than minting them. A governed
+            # repository carries `bin/mise` and its lock; a fixture that omits
+            # them is not the tree the release protocol runs against.
+            TestsFlextInfraUtilities.Tests.copy_tracked_mise_seeds(workspace)
             if initialize_root_git:
                 TestsFlextInfraUtilities.Tests.initialize_git_repo(workspace)
             else:

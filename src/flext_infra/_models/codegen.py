@@ -781,7 +781,8 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
             if self.state == "staging" and any(
-                directory.disposition == "generated" and directory.phase == "transaction"
+                directory.disposition == "generated"
+                and directory.phase == "transaction"
                 for directory in self.directories
             ):
                 # A staging journal authorizes no live transition — that is the

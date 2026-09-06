@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -10,7 +9,7 @@ import pytest
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import u, u as test_u
 from tests.unit.workspace.worktree_fixture import WorktreeFixture
 
 
@@ -111,7 +110,7 @@ class TestsCodegenBeadsProjection:
         rendered = self._rendered(self._plan(root), c.Infra.BEADS_METADATA_RELPATH)
         if rendered is None:
             pytest.fail("local identity must produce the Beads marker")
-        metadata = json.loads(rendered)
+        metadata = u.Tests.json_payload(rendered)
         tm.that(metadata["project_id"], eq=minted)
         tm.that(
             set(metadata),

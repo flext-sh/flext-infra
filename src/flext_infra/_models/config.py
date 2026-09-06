@@ -2173,6 +2173,42 @@ class FlextInfraConfigModels:
                 ),
             ),
         ] = ()
+        root_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional top-level packages under the source directory "
+                    "that the distribution must ship beyond the primary "
+                    "package. Declared per repository because the layout is a "
+                    "fact of that repository, not of its upstream profile."
+                ),
+            ),
+        ] = ()
+        root_modules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Top-level single-file modules under the source directory "
+                    "shipped alongside the packages; see the root_packages "
+                    "namesake for why the declaration is per repository."
+                ),
+            ),
+        ] = ()
+        runtime_dependency_overlay: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Runtime requirements this repository adds ahead of its "
+                    "dependency profile's runtime set. The profile states what "
+                    "every project on that upstream needs; the overlay states "
+                    "what this one additionally needs, so neither owner has to "
+                    "encode the other's scope."
+                ),
+            ),
+        ] = ()
         homepage: Annotated[t.NonEmptyStr, m.Field(description="Project homepage")]
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
@@ -2378,6 +2414,37 @@ class FlextInfraConfigModels:
                 description=(
                     "Upstream facets re-exported by the project root; see the "
                     "RepositoryRef namesake for the lazy-init contract."
+                ),
+            ),
+        ] = ()
+        root_packages: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional shipped top-level packages; see the ProjectSpec "
+                    "namesake for the declaration contract."
+                ),
+            ),
+        ] = ()
+        root_modules: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Additional shipped top-level modules; see the ProjectSpec "
+                    "namesake for the declaration contract."
+                ),
+            ),
+        ] = ()
+        runtime_dependency_overlay: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                default=(),
+                description=(
+                    "Repository-declared runtime requirements rendered ahead of "
+                    "the dependency profile's runtime set; see the ProjectSpec "
+                    "namesake."
                 ),
             ),
         ] = ()

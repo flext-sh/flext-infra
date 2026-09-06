@@ -35,8 +35,18 @@ class FlextInfraUtilitiesClassNesting:
             msg = f"class-nesting target has no project layout: {resolved_file}"
             raise ValueError(msg)
         module_relative = resolved_file.relative_to(layout.package_dir.resolve())
+        # Rope reports the canonical facade re-export (`c = FlextProjectConstants`)
+        # as a class object too, because the name resolves to one. Nesting is a
+        # rule about declarations, and that binding is the declared shape of the
+        # module, so it is not a class this plan may move.
+        source_lines = resource.read().splitlines()
         classes = tuple(
-            FlextInfraUtilitiesRopeAnalysis.get_class_info(rope_project, resource)
+            class_info
+            for class_info in FlextInfraUtilitiesRopeAnalysis.get_class_info(
+                rope_project, resource
+            )
+            if 0 < class_info.line <= len(source_lines)
+            and source_lines[class_info.line - 1].lstrip().startswith("class ")
         )
         if len(classes) <= 1:
             return ()

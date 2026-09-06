@@ -916,7 +916,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     config=config_spec,
                 )
             )
-            if self.initial_workspace is None or (repository_root / ".git").exists():
+            # Ancestry is a statement about history: a tree with no repository
+            # has none to prove, and asking git about it turns creating a fresh
+            # project into a missing-baseline failure.
+            if (repository_root / c.Infra.GIT_DIR).exists():
                 ancestry_result = self._branch_ancestry_plan(target)
                 if ancestry_result.failure:
                     return r[m.Infra.CodegenPlan].from_failure(ancestry_result)
@@ -2434,6 +2437,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 env_prefix=project.environment_prefix,
                 upstream=project.upstream,
                 inherited_facets=project.inherited_facets,
+                root_packages=project.root_packages,
+                root_modules=project.root_modules,
+                runtime_dependency_overlay=project.runtime_dependency_overlay,
                 description=project.description,
                 version=version_result.value,
                 license=project.license,

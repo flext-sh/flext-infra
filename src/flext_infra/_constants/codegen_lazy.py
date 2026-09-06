@@ -76,6 +76,8 @@ class FlextInfraConstantsCodegenLazy:
         "tests",
     })
     "Root import surfaces generated as private lazy plumbing, not public ABI."
+    WRAPPER_NAMESPACE_DEPTH: Final[int] = 2
+    "Dotted depth of a namespace package under a governed wrapper surface."
     # flext-pulj (codex): pytest must register fixture plugins before importing
     # them, so their private package initializer is always side-effect free.
     # Real cycle exceptions are the bootstrap packages imported while

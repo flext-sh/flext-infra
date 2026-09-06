@@ -64,7 +64,7 @@ class FlextInfraUtilitiesCodegenFacades:
             reachable.update(cls._reachable_bases((class_name,), ancestors))
         if not additions:
             return source
-        updated = cls._insert_imports(source, facade, additions)
+        updated = cls._insert_imports(source, facade, additions, package=pkg_dir.name)
         _, namespace = cls._facade_classes(
             ast.parse(updated, filename=str(facade_path)), facade_path
         )
@@ -170,11 +170,18 @@ class FlextInfraUtilitiesCodegenFacades:
 
     @staticmethod
     def _insert_imports(
-        source: str, facade: ast.ClassDef, additions: t.SequenceOf[tuple[str, str]]
+        source: str,
+        facade: ast.ClassDef,
+        additions: t.SequenceOf[tuple[str, str]],
+        *,
+        package: str,
     ) -> str:
+        # The owner lives in the package being rendered. Naming this project
+        # instead made every generated consumer facade import from flext-infra,
+        # a module that does not exist in the consumer's own distribution.
         lines = source.splitlines(keepends=True)
         rendered = [
-            f"from flext_infra._utilities.{module} import (\n    {class_name},\n)\n"
+            f"from {package}._utilities.{module} import (\n    {class_name},\n)\n"
             for module, class_name in additions
         ]
         lines[facade.lineno - 1 : facade.lineno - 1] = [*rendered, "\n"]

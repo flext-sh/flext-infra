@@ -6,7 +6,6 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import tomllib
 from typing import TYPE_CHECKING
 
 from flext_infra import config
@@ -69,9 +68,11 @@ class TestConfigFixerProcessFile:
 
         tm.ok(result)
         tm.that(result.value, has="synchronized search-path from YAML rules")
-        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        pyrefly = u.Tests.toml_table_at(
+            pyproject.read_text(encoding="utf-8"), "tool", "pyrefly"
+        )
         tm.that(
-            payload["tool"]["pyrefly"]["search-path"],
+            pyrefly["search-path"],
             eq=_extra_paths_manager(tmp_path).pyrefly_search_paths(
                 project_dir=tmp_path, is_root=True
             ),
@@ -104,11 +105,10 @@ class TestConfigFixerProcessFile:
 
         tm.ok(result)
         tm.that(result.value, lacks="synchronized project-includes from YAML rules")
-        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-        tm.that(
-            payload["tool"]["pyrefly"]["project-includes"],
-            eq=["src/**/*.py*", "tests/**/*.py*"],
+        pyrefly = u.Tests.toml_table_at(
+            pyproject.read_text(encoding="utf-8"), "tool", "pyrefly"
         )
+        tm.that(pyrefly["project-includes"], eq=["src/**/*.py*", "tests/**/*.py*"])
 
     def test_process_file_preserves_unrelated_toml_comments_and_formatting(
         self, tmp_path: Path
@@ -169,9 +169,11 @@ class TestConfigFixerProcessFile:
 
         tm.ok(result)
         tm.that(result.value, has="removed ignore=true sub-settings for '*.py'")
-        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        pyrefly = u.Tests.toml_table_at(
+            pyproject.read_text(encoding="utf-8"), "tool", "pyrefly"
+        )
         expected_sub_settings: t.JsonList = [{"matches": "*.pyi", "ignore": False}]
-        tm.that(payload["tool"]["pyrefly"]["sub-settings"], eq=expected_sub_settings)
+        tm.that(pyrefly["sub-settings"], eq=expected_sub_settings)
 
     def test_process_file_syncs_root_project_excludes_via_public_api(
         self, tmp_path: Path
@@ -188,9 +190,11 @@ class TestConfigFixerProcessFile:
 
         tm.ok(result)
         tm.that(result.value, has="synchronized project-excludes from YAML rules")
-        payload = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+        pyrefly = u.Tests.toml_table_at(
+            pyproject.read_text(encoding="utf-8"), "tool", "pyrefly"
+        )
         tm.that(
-            payload["tool"]["pyrefly"]["project-excludes"],
+            pyrefly["project-excludes"],
             eq=sorted(set(config.Infra.tooling.tools.pyrefly.project_exclude_globs)),
         )
 

@@ -228,7 +228,13 @@ class FlextInfraDuplicationGate(FlextInfraGate):
     ) -> p.Result[tuple[m.Infra.Issue, ...]]:
         """Extract one Issue per clone side that falls inside ``project_dir``."""
         if not scan.stdout.strip():
-            return r[tuple[m.Infra.Issue, ...]].fail("jscpd returned empty JSON report")
+            # jscpd succeeded and reported nothing, which means it was handed a
+            # scope with no comparable source. Naming the tool hid the project
+            # whose scope is empty, which is the fact the operator needs.
+            return r[tuple[m.Infra.Issue, ...]].fail(
+                f"duplication scan produced no report for project "
+                f"{project_dir.name}: the scanned scope is empty"
+            )
         parsed = u.Cli.json_parse(scan.stdout)
         if parsed.failure:
             return r[tuple[m.Infra.Issue, ...]].from_failure(parsed)

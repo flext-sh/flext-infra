@@ -908,7 +908,7 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(violations[0].object_name, eq=expected_object_name)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
         tm.that(len(files), eq=0)
 
@@ -966,9 +966,9 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_entry = entries[0]
@@ -1008,9 +1008,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.ok(report_result)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
         service_path = str((workspace / "src" / "sample_pkg" / "service.py").resolve())
@@ -1044,9 +1044,9 @@ class TestsFlextInfraRefactorMainCli:
         tm.that(result, eq=0)
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)
 
@@ -1072,8 +1072,8 @@ class TestsFlextInfraRefactorMainCli:
 
         payload_result = u.Cli.json_read(impact_map_path)
         tm.ok(payload_result)
-        payload = u.Tests.toml_mapping(payload_result.unwrap())
+        payload = u.Tests.mapping(payload_result.unwrap())
         files = t.Cli.JSON_LIST_ADAPTER.validate_python(payload["files"])
-        entries = [u.Tests.toml_mapping(item) for item in files]
+        entries = [u.Tests.mapping(item) for item in files]
 
         tm.that(len(entries), eq=1)

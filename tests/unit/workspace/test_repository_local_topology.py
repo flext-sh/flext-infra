@@ -661,7 +661,7 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(result, has="governed declared_repository checkout is missing")
+        tm.fail(result, has="governed subproject checkout is missing")
 
     def test_uninitialized_gitlink_does_not_borrow_parent_origin(
         self, tmp_path: Path
@@ -849,9 +849,7 @@ class TestsRepositoryLocalTopology:
 
         result = FlextInfraWorkspaceDetector.load_workspace_spec(root)
 
-        tm.fail(
-            result, has="declared_repository origin differs from its .gitmodules URL"
-        )
+        tm.fail(result, has="subproject origin differs from its .gitmodules URL")
 
     def test_gitmodule_rejects_unknown_provider_without_raw_url(
         self, tmp_path: Path

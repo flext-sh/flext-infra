@@ -16,11 +16,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
 from flext_infra import config
 from flext_tests import tm
-from tests import TestsFlextInfraUtilities as tu
+from tests import TestsFlextInfraUtilities as tu, u
 
 
 def _repository_root() -> Path:
@@ -52,9 +50,10 @@ def _ssot_per_file_ignores() -> frozenset[str]:
 
     project: set[str] = set()
     for path in sorted((_repository_root() / "config").glob("*.yaml")):
-        payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        managed = payload.get("ManagedArtifacts") or {}
-        project.update(managed.get("Ruff", {}).get("per_file_ignores", {}))
+        payload = tm.ok(u.Cli.yaml_safe_load(path))
+        managed = u.Tests.mapping(payload.get("ManagedArtifacts") or {})
+        ruff_section = u.Tests.mapping(managed.get("Ruff") or {})
+        project.update(u.Tests.mapping(ruff_section.get("per_file_ignores") or {}))
     return fleet | frozenset(project)
 
 

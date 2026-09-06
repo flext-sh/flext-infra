@@ -91,6 +91,10 @@ class TestsCodegenMakeEnvironment:
                 project_root / "Makefile", test_u.Tests.codegen_file_text(makefile)
             )
         )
+        # `make setup` bootstraps through the committed toolchain seeds, exactly
+        # as a governed checkout does; a fixture without them is not the tree the
+        # generated Makefile was written for.
+        test_u.Tests.copy_tracked_mise_seeds(project_root)
         return project_root, repository_root
 
     @pytest.mark.parametrize(
@@ -112,9 +116,11 @@ class TestsCodegenMakeEnvironment:
         hostile_python = hostile_bin / "python"
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
+        # The grammar carries no selector: a repository overrides a whole verb
+        # through `_custom-<verb>`, so the probe is the custom `status` handler.
         (project_root / "custom.mk").write_text(
-            ".PHONY: _custom_status_probe\n"
-            "_custom_status_probe:\n"
+            ".PHONY: _custom-status\n"
+            "_custom-status:\n"
             "\t@printf '%s\\n' "
             "'FLEXT_INFRA_PYTHON=$(FLEXT_INFRA_PYTHON)' "
             "'UV_PROJECT_ENVIRONMENT=$(UV_PROJECT_ENVIRONMENT)' "
@@ -131,9 +137,7 @@ class TestsCodegenMakeEnvironment:
         }
         process = tm.ok(
             test_u.Tests.run_isolated_make(
-                ["--no-print-directory", "status", "WHAT=probe"],
-                cwd=project_root,
-                env=active_env,
+                ["--no-print-directory", "status"], cwd=project_root, env=active_env
             )
         )
         tm.that(

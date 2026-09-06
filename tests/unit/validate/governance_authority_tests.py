@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import flext_infra
-from flext_infra import u
 from flext_tests import tm
+from tests import u
 
 ROOT = Path(flext_infra.__file__).resolve().parents[2]
 COMMON_DIR = Path(
@@ -52,12 +51,16 @@ def test_prompt_skills_resolve_to_existing_paths() -> None:
 
 
 def test_markdownlint_does_not_suppress_strict_rules() -> None:
-    config = json.loads((ROOT / ".markdownlint.json").read_text(encoding="utf-8"))
+    config = u.Tests.json_payload(
+        (ROOT / ".markdownlint.json").read_text(encoding="utf-8")
+    )
     assert config.get("MD012") is not False
     assert config.get("MD050") is not False
     assert config.get("MD064") is not False
     assert config.get("MD075") is not False
-    assert config["MD013"]["line_length"] <= 500
+    line_length = u.Tests.mapping(config["MD013"])["line_length"]
+    assert isinstance(line_length, int)
+    assert line_length <= 500
 
 
 def test_flext_law_requires_automated_structural_rewires() -> None:

@@ -321,13 +321,12 @@ class FlextInfraGate:
             cmd, cwd=cwd, timeout=timeout, env=env, remove_env_keys=remove_env_keys
         )
         if result.failure:
-            return m.Cli.CommandOutput(
-                stdout="",
-                stderr=result.error or "command execution failed",
-                outcome=m.Cli.ProcessOutcome(
-                    raw_return_code=1, timed_out=False, forwarded_signal=None
-                ),
-            )
+            # A tool that could not run is not a tool that ran and failed.
+            # Synthesizing an exit code here turned every spawn failure into an
+            # ordinary gate issue, which is the silent-failure shape the gates
+            # themselves exist to reject.
+            msg = result.error or "command execution failed"
+            raise RuntimeError(msg)
         return result.value
 
     def _existing_check_dirs(self, project_dir: Path) -> t.StrSequence:

@@ -84,10 +84,19 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
         outer_bases = tuple(
             cls.name_of(base) for base in (getattr(outer, "bases", ()) or ())
         )
+        # The nested namespace is named after the project that owns the facade
+        # (`FlextLdifModels` nests `Ldif`), so the expected name is derived from
+        # the outer class. Naming `Infra` here made the rule pass only inside
+        # this project and reject every other member of the fleet.
+        namespace = (
+            getattr(outer, "name", "")
+            .removesuffix(c.Infra.FAMILY_SUFFIXES.get(layer, ""))
+            .removeprefix(c.Infra.PKG_PREFIX_UNDERSCORE.rstrip("_").capitalize())
+        )
         nested = tuple(
             node
             for node in (getattr(outer, "body", ()) or ())
-            if cls.kind(node) == "ClassDef" and getattr(node, "name", "") == "Infra"
+            if cls.kind(node) == "ClassDef" and getattr(node, "name", "") == namespace
         )
         messages: list[str] = []
         if layer not in outer_bases:
@@ -96,12 +105,13 @@ class FlextInfraNamespaceRulesStructure(FlextInfraNamespaceRulesBase):
             )
         if len(nested) != 1:
             messages.append(
-                f"{filepath}:{cls.line(outer)} — facade must declare one nested Infra MRO"
+                f"{filepath}:{cls.line(outer)} — facade must declare one nested "
+                f"{namespace} MRO"
             )
         elif len(getattr(nested[0], "bases", ()) or ()) < c.Infra.FACADE_MINIMUM_BASES:
             messages.append(
-                f"{filepath}:{cls.line(nested[0])} — Infra must explicitly compose its "
-                "private family through multiple inheritance"
+                f"{filepath}:{cls.line(nested[0])} — {namespace} must explicitly "
+                "compose its private family through multiple inheritance"
             )
         return tuple(messages)
 

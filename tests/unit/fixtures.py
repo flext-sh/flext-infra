@@ -161,6 +161,14 @@ def mod_workspace(tmp_path: Path) -> Path:
             ),
         )
     )
+    # A declared distribution owns a package: resolving the package name from
+    # `[project].name` alone is impossible for a `flext-` distribution, so a
+    # fixture without `src/<pkg>/` is not the project it claims to be.
+    package_dir = (
+        workspace / c.Infra.DEFAULT_SRC_DIR / (project.project.name.replace("-", "_"))
+    )
+    tm.ok(u.Cli.ensure_dir(package_dir))
+    tm.ok(u.Cli.atomic_write_text_file(package_dir / c.Infra.INIT_PY, ""))
     tm.ok(
         u.Cli.atomic_write_text_file(
             workspace / "sample.py",

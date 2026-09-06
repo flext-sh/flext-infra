@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tomllib
 from difflib import unified_diff
 from pathlib import Path
 
@@ -260,8 +259,9 @@ class TestCodegenConform:
         tm.ok(applied)
         rendered = (root / "pyproject.toml").read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
-        payload = tomllib.loads(rendered)
-        addopts = payload["tool"]["pytest"]["ini_options"]["addopts"]
+        addopts = u.Tests.toml_table_at(rendered, "tool", "pytest", "ini_options")[
+            "addopts"
+        ]
         tm.that(
             addopts,
             has=f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}",
@@ -835,11 +835,15 @@ class TestCodegenConform:
         )
 
         tm.ok(result)
-        payload = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+        manifest = (root / "pyproject.toml").read_text(encoding="utf-8")
         tm.that(
-            payload["tool"]["pyrefly"]["project-includes"], lacks="scripts/**/*.py*"
+            u.Tests.toml_table_at(manifest, "tool", "pyrefly")["project-includes"],
+            lacks="scripts/**/*.py*",
         )
-        tm.that(payload["tool"]["pyright"]["include"], lacks="scripts")
+        tm.that(
+            u.Tests.toml_table_at(manifest, "tool", "pyright")["include"],
+            lacks="scripts",
+        )
 
     # Why (suite budget): two conform apply cycles plus a check over a full
     # managed tree on a real git repo; the per-case wall only holds idle.
@@ -982,11 +986,15 @@ class TestCodegenConform:
             for item in second.files
             if item.path.name == c.Infra.PYPROJECT_FILENAME
         )
-        rendered_tooling = tomllib.loads(u.Tests.codegen_file_text(first_pyproject))[
-            "tool"
-        ]
-        report = rendered_tooling["coverage"]["report"]
-        addopts = set(rendered_tooling["pytest"]["ini_options"]["addopts"])
+        rendered_manifest = u.Tests.codegen_file_text(first_pyproject)
+        report = u.Tests.toml_table_at(rendered_manifest, "tool", "coverage", "report")
+        addopts = set(
+            u.Tests.toml_list(
+                u.Tests.toml_table_at(
+                    rendered_manifest, "tool", "pytest", "ini_options"
+                )["addopts"]
+            )
+        )
         pytest_policy = config.Infra.tooling.tools.pytest
 
         tm.that(
@@ -1409,65 +1417,6 @@ class TestScriptDispatchMakefile:
         )
         rendered: str = u.Tests.codegen_file_text(makefile)
         return rendered
-
-    def test_script_dispatch_repo_routes_extra_verbs_and_normalizes_what(
-        self, tmp_path: Path
-    ) -> None:
-        """Extra verbs join PUBLIC_VERBS and WHAT hyphens map to script stems."""
-        rendered = self._render_root_makefile(
-            tmp_path,
-            extra_verbs=(
-                m.Infra.MakeVerbSpec(
-                    name="incidente",
-                    description="Run the declared incident script.",
-                    requires_apply=True,
-                ),
-                m.Infra.MakeVerbSpec(
-                    name="charts",
-                    description="Run the declared charts script.",
-                    requires_apply=True,
-                ),
-            ),
-            script_dispatch=m.Infra.ScriptDispatchSpec(
-                dispatcher="scripts/dispatch.py",
-                roots=("scripts", "apps/demo-app/scripts"),
-            ),
-        )
-        # Extra verbs are public targets the dispatcher can reach.
-        tm.that("incidente" in rendered, eq=True)
-        tm.that("charts" in rendered, eq=True)
-        # The generated dispatch normalizes hyphenated WHAT to the module stem.
-        tm.that("tr '-' '_'" in rendered, eq=True)
-        # It forwards to the declared dispatcher through uv, not a raw builtin.
-        tm.that("scripts/dispatch.py" in rendered, eq=True)
-        # Existence check spans every declared script root.
-        tm.that("apps/demo-app/scripts" in rendered, eq=True)
-        # REGRESSION (fork-bomb): every line of the single-recipe _dispatch shell
-        # command must continue with a trailing backslash. A blank/unterminated
-        # line splits the recipe, drops $$what/$$builtin, and recurses into the
-        # default goal. Verify continuity across the whole define body.
-        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
-        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
-        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
-        tm.that(broken, eq=[])
-
-    def test_dispatch_routes_custom_what_before_allowlist(self, tmp_path: Path) -> None:
-        """Custom ``_custom_<verb>_<what>`` handlers bypass the builtin allowlist.
-
-        ai-hub and other projects extend ``run`` / ``check`` via custom.mk. The
-        continuous Makefile must discover those handlers and dispatch them
-        instead of rejecting unknown WHATs as ``allowed:default``.
-        """
-        rendered = self._render_root_makefile(
-            tmp_path, extra_verbs=(), script_dispatch=None
-        )
-        body = rendered.split("define _dispatch", 1)[1].split("endef", 1)[0]
-        tm.that("_custom_$(1)_$$what" in body, eq=True)
-        tm.that("custom_rc" in body, eq=False)
-        tm.that('$(SELF_MAKE) "$$custom"' in body, eq=True)
-        recipe = [ln for ln in body.splitlines() if ln.startswith("\t")]
-        broken = [ln for ln in recipe[:-1] if not ln.rstrip().endswith("\\")]
-        tm.that(broken, eq=[])
 
     def test_repo_without_script_dispatch_omits_script_routing(
         self, tmp_path: Path

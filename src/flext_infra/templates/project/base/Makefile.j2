@@ -14,8 +14,13 @@
 
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
+# The bootstrap goal is what installs uv, so it must be reachable before uv
+# resolves. `setup` names it as a prerequisite and keeps MAKECMDGOALS, but the
+# internal goal is also invoked directly (CI boot steps do), and there the
+# filter would miss and the uv $(error) below would fire ahead of the recipe
+# that provides it.
 ifeq ($(filter command line override,$(origin SETUP_BOOTSTRAP_ONLY)),)
-ifneq ($(filter setup,$(MAKECMDGOALS)),)
+ifneq ($(filter setup _bootstrap_setup_tools,$(MAKECMDGOALS)),)
 SETUP_BOOTSTRAP_ONLY := Y
 export SETUP_BOOTSTRAP_ONLY
 endif
@@ -264,10 +269,14 @@ UV_SYNC_FLAGS := $(if $(SHARED_RUNTIME),--all-packages ,)--all-extras --all-grou
 {{ makefile_custom_include }}
 SELF_MAKE := $(MAKE) --no-print-directory -f "$(SELF_MAKEFILE)"
 
+# `SELF_MAKE` expands `$(MAKE)` at definition time, so a recipe calling it does
+# not carry the literal token make looks for when it marks a line recursive.
+# Without the `+` prefix every dispatched verb is merely printed under `-n`,
+# and a dry run then reports nothing about what the verb would actually do.
 define RUN_PUBLIC
-	$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) pre-$(1))
-	$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) _custom-$(1),@$(SELF_MAKE) _builtin-$(1))
-	$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) post-$(1))
+	+$(if $(filter pre-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) pre-$(1))
+	+$(if $(filter _custom-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) _custom-$(1),@$(SELF_MAKE) _builtin-$(1))
+	+$(if $(filter post-$(1),$(CUSTOM_DECLARED_TARGETS)),@$(SELF_MAKE) post-$(1))
 endef
 
 define _require_apply

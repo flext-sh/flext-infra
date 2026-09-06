@@ -286,8 +286,16 @@ class TestsFlextInfraInfraRopeService:
                 eq=True,
             )
 
+    # `typings.py` is declared namespace-protected, so no nesting plan may move
+    # anything out of it. Deriving the cases from both owners keeps this test
+    # valid when either catalog changes.
     @pytest.mark.parametrize(
-        ("family_alias", "module_name"), tuple(c.Infra.FAMILY_PUBLIC_MODULES.items())
+        ("family_alias", "module_name"),
+        tuple(
+            (alias, module_name)
+            for alias, module_name in c.Infra.FAMILY_PUBLIC_MODULES.items()
+            if f"{module_name}.py" not in c.Infra.NAMESPACE_PROTECTED_FILES
+        ),
     )
     def test_class_nesting_plan_uses_declared_family_owner(
         self, tmp_path: Path, family_alias: str, module_name: str
@@ -321,7 +329,9 @@ class TestsFlextInfraInfraRopeService:
         tm.that(len(violations), eq=1)
         violation = violations[0]
         tm.that(violation.class_name, eq=extra_class_name)
-        tm.that(violation.target_namespace, eq=convention.module_policy.expected_family)
+        # The plan names the namespace the class moves into, which is the
+        # facade alias; `expected_family` is the owner class that declares it.
+        tm.that(violation.target_namespace, eq=convention.module_policy.expected_alias)
         tm.that(violation.file, eq=module_path.relative_to(repository_root).as_posix())
 
     def test_open_workspace_indexes_every_project_from_any_internal_call(
