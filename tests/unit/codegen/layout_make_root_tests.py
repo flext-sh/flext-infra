@@ -40,7 +40,9 @@ def test_make_repository_root_ignores_foreign_env_leak(tmp_path: Path) -> None:
     """A poisoned environment REPOSITORY_ROOT never wins over the checkout."""
     env = dict(os.environ, REPOSITORY_ROOT=str(tmp_path / "foreign-checkout"))
     resolved = _make_database_repository_root(env=env)
-    expected = _git_root("--show-toplevel")
+    expected = _git_root("--show-superproject-working-tree") or _git_root(
+        "--show-toplevel"
+    )
     tm.that(resolved, eq=expected)
 
 

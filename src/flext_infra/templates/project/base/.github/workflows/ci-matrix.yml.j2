@@ -19,7 +19,6 @@ name: ci-matrix
 # End SECTION: triggers
 
 
-
 # === SECTION: permissions (managed) ===
 # Source: template (minimal read-only permissions)
 permissions:
@@ -70,7 +69,7 @@ jobs:
   # End SECTION: distro-matrix
 
   # === SECTION: macos (managed) ===
-  # Source: template + config:github_actions.checkout/mise
+  # Source: template + config:github_actions.checkout + generated Make setup
   macos:
     runs-on: macos-latest
     env:
@@ -82,10 +81,6 @@ jobs:
           # No step needs authenticated git after checkout; persisting the
           # token into .git/config would expose it to every later command.
           persist-credentials: false
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
-          version: {{ mise_version }}
       - name: Bootstrap
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
       - name: Verb surface
@@ -98,7 +93,7 @@ jobs:
   # End SECTION: macos
 
   # === SECTION: windows (managed) ===
-  # Source: template + config:github_actions.checkout/mise
+  # Source: template + config:github_actions.checkout + generated Make setup
   windows:
     runs-on: windows-latest
     env:
@@ -110,10 +105,6 @@ jobs:
           # No step needs authenticated git after checkout; persisting the
           # token into .git/config would expose it to every later command.
           persist-credentials: false
-      - name: Install mise toolchain
-        uses: {{ github_actions["mise"].repository }}@{{ github_actions["mise"].sha }}  # {{ github_actions["mise"].version }}
-        with:
-          version: {{ mise_version }}
       - name: Bootstrap
         shell: bash
         run: {{ make.ci.variable }}={{ make.ci.value }} make setup
@@ -126,4 +117,4 @@ jobs:
       - name: Canonical check
         shell: bash
         run: {{ make.ci.variable }}={{ make.ci.value }} make check
-  # End SECTION: windows
+# End SECTION: windows

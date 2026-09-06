@@ -46,12 +46,16 @@ if TYPE_CHECKING:
     from .test_codegen_hook_conformance import TestGitHookConformance
     from .test_codegen_linked_worktree_manifest import TestCodegenLinkedWorktreeTopology
     from .test_codegen_make_environment import TestsCodegenMakeEnvironment
+    from .test_codegen_pipeline_performance import (
+        TestsFlextInfraCodegenPipelinePerformance,
+    )
     from .test_codegen_pyproject_conform import TestsFlextInfraCodegenPyprojectConform
     from .test_codegen_uv_exclude_newer_overlay import TestCodegenUvExcludeNewerOverlay
     from .test_managed_conflicts import TestsFlextInfraCodegenManagedConflicts
     from .test_managed_maintenance_headers import (
         TestsFlextInfraManagedMaintenanceHeaders,
     )
+    from .test_review_mro_vw2w_template_contracts import TestsReviewTemplateContracts
     from .test_vscode_owner_merge import TestsVscodeOwnerMerge
     from .test_repository_root_setup_submodules import (
         TestsRepositoryRootSetupSubmodules,
@@ -74,6 +78,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraCodegenGeneration",
     "TestsFlextInfraCodegenLazyInitService",
     "TestsFlextInfraCodegenManagedConflicts",
+    "TestsFlextInfraCodegenPipelinePerformance",
     "TestsFlextInfraCodegenPyprojectConform",
     "TestsFlextInfraLazyInitBootstrapPackage",
     "TestsFlextInfraLazyInitCleanup",
@@ -85,6 +90,7 @@ __all__: tuple[str, ...] = (
     "TestsFlextInfraManagedMaintenanceHeaders",
     "TestsMakeTestSelector",
     "TestsRepositoryRootSetupSubmodules",
+    "TestsReviewTemplateContracts",
     "TestsVscodeOwnerMerge",
     "c",
     "codegen",
@@ -146,6 +152,9 @@ _LAZY_IMPORTS = MappingProxyType(
                 "TestCodegenLinkedWorktreeTopology",
             ),
             ".test_codegen_make_environment": ("TestsCodegenMakeEnvironment",),
+            ".test_codegen_pipeline_performance": (
+                "TestsFlextInfraCodegenPipelinePerformance",
+            ),
             ".test_codegen_pyproject_conform": (
                 "TestsFlextInfraCodegenPyprojectConform",
             ),
@@ -155,6 +164,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".test_managed_conflicts": ("TestsFlextInfraCodegenManagedConflicts",),
             ".test_managed_maintenance_headers": (
                 "TestsFlextInfraManagedMaintenanceHeaders",
+            ),
+            ".test_review_mro_vw2w_template_contracts": (
+                "TestsReviewTemplateContracts",
             ),
             ".test_vscode_owner_merge": ("TestsVscodeOwnerMerge",),
             ".test_repository_root_setup_submodules": (

@@ -4,12 +4,9 @@
 tooling SSOT. When a per-file-ignore that the workspace genuinely relies on is
 absent from that SSOT, the rendered tree silently *adds* lint errors, the
 transaction guard reports ``breakage=yes`` and refuses to apply -- so a missing
-SSOT entry blocks every other generated artifact from landing.
-
-Concretely: ``scripts/cmd`` intentionally uses hyphenated command filenames
-(``loc-cap.py``), which is a CLI naming convention, not a Python import path.
-The ignore for that directory must live in the SSOT so the generator reproduces
-it instead of dropping it.
+SSOT entry blocks every other generated artifact from landing. Every glob that
+any governed pyproject still declares must therefore trace back to the tooling
+SSOT (or to a project-local overlay), never to a hand-edited projection.
 
 Copyright (c) 2025 FLEXT Team. All rights reserved.
 SPDX-License-Identifier: MIT

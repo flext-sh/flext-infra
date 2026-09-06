@@ -127,10 +127,10 @@ class TestCodegenLinkedWorktreeTopology:
         tm.fail(result, has=expected_error)
         tm.that(WorktreeFixture.repository_snapshot(root), eq=before)
 
-    def test_declared_repository_identities_and_topology_inputs_are_never_rewritten(
+    def test_declared_repositories_inherit_identity_and_topology_inputs_are_never_rewritten(
         self, tmp_path: Path
     ) -> None:
-        """Conform distinct declared_repositories without copying identity from the root."""
+        """Conform declared repositories without creating member-local ledger identity."""
         root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
             root,
@@ -140,32 +140,28 @@ class TestCodegenLinkedWorktreeTopology:
             issue_prefix="root-prefix",
         )
         project_names = ("fixture-alpha", "fixture-beta")
-        expected_identities = {
-            "fixture-alpha": ("alpha-workspace", "alpha-database", "alpha-prefix"),
-            "fixture-beta": ("beta-workspace", "beta-database", "beta-prefix"),
-        }
-        for project_name, identity in expected_identities.items():
+        for project_name in project_names:
             WorktreeFixture.initialize_governed_project(
                 root / project_name,
                 project_name,
-                workspace=identity[0],
-                database=identity[1],
-                issue_prefix=identity[2],
+                workspace="root-workspace",
+                database="root-database",
+                issue_prefix="root-prefix",
+                beads_owner=False,
+            )
+            WorktreeFixture.link_member_beads(
+                root / project_name,
+                root,
+                workspace_name="root-workspace",
+                database="root-database",
+                issue_prefix="root-prefix",
             )
         gitmodules = WorktreeFixture.write_gitmodules(root, project_names)
         u.Tests.git_bootstrap(root, ("add", c.Infra.GITMODULES, *project_names))
         u.Tests.git_bootstrap(
-            root, ("commit", "-m", "fixture: declare independent declared_repositories")
+            root, ("commit", "-m", "fixture: declare workspace declared repositories")
         )
-        protected_bytes = {
-            gitmodules: gitmodules.read_bytes(),
-            **{
-                root / project_name / "config" / "beads.yaml": (
-                    root / project_name / "config" / "beads.yaml"
-                ).read_bytes()
-                for project_name in project_names
-            },
-        }
+        protected_bytes = {gitmodules: gitmodules.read_bytes()}
 
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(root))
         tm.that(
@@ -174,11 +170,14 @@ class TestCodegenLinkedWorktreeTopology:
             ),
             eq=project_names,
         )
-        for project_name, identity in expected_identities.items():
+        for project_name in project_names:
             beads = tm.ok(
                 FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
             )
-            tm.that((beads.workspace, beads.database, beads.issue_prefix), eq=identity)
+            tm.that(beads.workspace, eq="root-workspace")
+            tm.that(beads.database, eq="root-database")
+            tm.that(beads.issue_prefix, eq="root-prefix")
+            tm.that((root / project_name / ".beads").is_symlink(), eq=True)
 
         applied = tm.ok(
             FlextInfraCodegenConform.execute_request(

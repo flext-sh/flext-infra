@@ -17,7 +17,7 @@ pytestmark = pytest.mark.slow
 def _render_repository_root_makefile(tmp_path: Path) -> str:
     root_repository = test_u.Tests.repository_ref("flext")
     project = test_u.Tests.repository_ref(
-        "flext-core", path=Path("flext-core"), role=c.Infra.RepositoryRole.STANDALONE
+        "flext-core", path=Path("flext-core"), role=c.Infra.MakeProfile.STANDALONE
     )
     workspace = m.Infra.WorkspaceSpec(
         beads=test_u.Tests.beads_project("flext"),
@@ -136,7 +136,7 @@ class TestsRepositoryRootSetupSubmodules:
 
         tm.that(rendered, has="_builtin_setup_environment: _builtin_setup_submodules")
         tm.that(rendered, has="submodule update --init --")
-        tm.that(rendered, has="$(UV) sync --project")
+        tm.that(rendered, has="$(UV) sync --frozen --project")
         tm.that(rendered, lacks="submodule update --init --recursive")
 
     def test_make_setup_initializes_local_submodule_before_environment(

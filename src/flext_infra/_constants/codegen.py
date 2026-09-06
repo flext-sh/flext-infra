@@ -58,6 +58,8 @@ class FlextInfraConstantsCodegen(
         r"\[(?P<rule>NS-\d{3})-\d{3}\]\s+(?P<module>[^:]+):(?P<line>\d+)\s+\u2014\s+(?P<message>.+)"
     )
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
+    MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
+    "Number of numeric components in a generated Mise release version."
 
     # --- Pipeline stage StrEnum (was: class Pipeline plain strings) ---
     @unique

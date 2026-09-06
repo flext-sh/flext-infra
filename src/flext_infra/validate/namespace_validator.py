@@ -88,9 +88,9 @@ class FlextInfraNamespaceValidator(s[bool], FlextInfraNamespaceRules):
                             require_public_class=is_facade,
                         )
                     )
-                    if is_facade and not is_test_file:
-                        violations.extend(self.check_rule_1(tree, rel))
-                        violations.extend(self.check_rule_2(tree, rel))
+                if not is_test_file:
+                    violations.extend(self.check_rule_1(tree, rel))
+                    violations.extend(self.check_rule_2(tree, rel))
                 violations.extend(
                     self.check_rule_3(
                         tree, rel, class_stem=prefix, package_name=package_name

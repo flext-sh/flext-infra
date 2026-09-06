@@ -6,6 +6,9 @@ from typing import ClassVar
 
 from flext_infra import c, m, p, t
 from flext_infra.release.orchestrator import FlextInfraReleaseOrchestrator
+from flext_infra.services._workspace.environment_beads import (
+    FlextInfraWorkspaceEnvironmentSync,
+)
 from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.services.cli_routes_refactor import RefactorRoutes
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -29,6 +32,18 @@ class WorkspaceRoutes(RefactorRoutes):
             flext_root=params.flext_root,
             python=params.python,
         ).map(CliRouteBase.as_route_value)
+
+    @staticmethod
+    def _sync_environment(
+        params: m.Infra.WorkspaceEnvironmentCliRequest,
+    ) -> p.Result[t.Cli.ResultValue]:
+        """Keep the internal beads render context off the public CLI surface."""
+        request = m.Infra.WorkspaceEnvironmentSyncRequest.model_validate(
+            params.model_dump()
+        )
+        return FlextInfraWorkspaceEnvironmentSync.execute_request(request).map(
+            CliRouteBase.as_route_value
+        )
 
     workspace_routes: ClassVar[dict[str, tuple[m.Cli.ResultCommandRoute, ...]]] = {
         c.Infra.CLI_GROUP_REFACTOR: RefactorRoutes.refactor_routes,
@@ -83,6 +98,12 @@ class WorkspaceRoutes(RefactorRoutes):
                         CliRouteBase.result_handler(
                             FlextInfraOrchestratorService.execute_command
                         ),
+                    ),
+                    (
+                        "sync-environment",
+                        "Sync generated direnv/mise environment files",
+                        m.Infra.WorkspaceEnvironmentCliRequest,
+                        _sync_environment,
                     ),
                 )
             ),

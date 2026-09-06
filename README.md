@@ -12,7 +12,7 @@
 
 <!-- AUTO-GENERATED — DO NOT EDIT MANUALLY -->
 
-**Version**: `0.12.0rc0` | **Python**: 3.13+ | **Project class**: `infra`
+**Version**: `0.12.0` | **Python**: 3.13+ | **Project class**: `infra`
 
 > **Alpha (0.12.0).** This package is alpha quality. Every package in the
 > workspace must be re-checked and re-validated at 0.12.0 before any promotion
@@ -57,7 +57,7 @@ slot registry verification).
 - Public extensions exposed by this project: `FlextInfra`,
   `FlextInfraAbstractionBoundaryGate`,
   `FlextInfraAccessorMigrationOrchestrator`, `FlextInfraBanditGate`,
-  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+186 more).
+  `FlextInfraBooleanLogicFixer`, `FlextInfraCProfileReport` (+189 more).
 - Library abstraction boundaries: see AGENTS.md §2.7.
 
 ## Quality Gates

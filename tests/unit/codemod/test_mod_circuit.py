@@ -212,7 +212,7 @@ class TestsFlextInfraModCircuitApply:
         root = _repo(tmp_path, "value = dict()\n")
         dirty_source = "value = dict()\n# pending edit\n"
         (root / "sample.py").write_text(dirty_source, encoding="utf-8")
-        _rule(root, pattern="value = dict()", fix="import os\nvalue = {}")
+        _rule(root, pattern="value = dict()", fix="import os\nimport sys\nvalue = {}")
 
         result = FlextInfraCodemodBatchApply(
             repository_root=root, apply_changes=True

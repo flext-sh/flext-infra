@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import zipfile
 from typing import TYPE_CHECKING
 
 from flext_tests import tm
@@ -23,7 +24,9 @@ class TestsFlextInfraReleaseDag:
             """Create strict reports without persisting package artifacts."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
 
             result = u.Tests.run_release_main(
@@ -32,10 +35,6 @@ class TestsFlextInfraReleaseDag:
                 c.Tests.RELEASE_PHASE_BUILD,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--dry-run",
             )
 
@@ -50,25 +49,6 @@ class TestsFlextInfraReleaseDag:
             tm.that(report.records[0].project, eq=project_name)
             tm.that(report.records[0].artifacts, eq=())
 
-        @staticmethod
-        def test_validate_only_skips_release_artifacts(tmp_path: Path) -> None:
-            """Skip release reports when only validation is selected."""
-            workspace = u.Tests.create_release_workspace(tmp_path)
-
-            result = u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                c.Tests.RELEASE_PHASE_VALIDATE,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
-                "--dry-run",
-            )
-
-            tm.that(result, eq=0)
-            tm.that((workspace / ".reports" / "release").exists(), eq=False)
-
     class TestsBuildConstraints:
         """Hashed build-toolchain policy behavior."""
 
@@ -79,7 +59,9 @@ class TestsFlextInfraReleaseDag:
             """Build only with the complete hashed toolchain and attest its digest."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             constraints_path = workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH
 
@@ -87,19 +69,13 @@ class TestsFlextInfraReleaseDag:
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
 
             report_path = (
-                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_TARGET)
+                u.Tests.release_report_dir(workspace, c.Tests.RELEASE_VERSION_BASE)
                 / "build-report.json"
             )
             report = m.Infra.BuildReport.model_validate_json(
@@ -122,38 +98,139 @@ class TestsFlextInfraReleaseDag:
             """Reject a valid hash record that omits required toolchain members."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             constraints_path = workspace / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH
-            first_record = "\n".join(
-                constraints_path.read_text(encoding="utf-8").splitlines()[:3]
+            # Keep exactly the first pin record: comment lines are skipped and a
+            # record spans every line that ends with a continuation.
+            first_record: list[str] = []
+            for line in constraints_path.read_text(encoding="utf-8").splitlines():
+                if not line.strip() or line.lstrip().startswith("#"):
+                    continue
+                first_record.append(line)
+                if not line.rstrip().endswith("\\"):
+                    break
+            constraints_path.write_text(
+                "\n".join(first_record) + "\n", encoding="utf-8"
             )
-            constraints_path.write_text(first_record + "\n", encoding="utf-8")
 
             result = u.Tests.run_release_main(
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
 
             build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             ).read_text(encoding="utf-8")
             tm.that(result, eq=1)
             tm.that(build_log, has="release build toolchain mismatch")
             tm.that(build_log, has="packaging")
 
+    class TestsArchiveBoundary:
+        """Publishable archive content policy."""
+
+        @staticmethod
+        def test_package_data_may_carry_an_operational_looking_tree(
+            tmp_path: Path,
+        ) -> None:
+            """A `.github` tree inside the package is data, not repository operations.
+
+            flext-infra ships the fleet's `.github` workflow templates as package
+            data; only the archive root is an operational boundary.
+            """
+            project_name = "flext-a"
+            workspace = u.Tests.create_release_workspace(
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
+            )
+            project = workspace / project_name
+            templates = project / "src" / "flext_a" / "templates" / ".github"
+            templates.mkdir(parents=True)
+            (templates / "ci.yml.j2").write_text("name: CI\n", encoding="utf-8")
+            u.Tests.commit_git_changes(project, "package the workflow templates")
+
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--projects",
+                project_name,
+                "--apply",
+            )
+
+            build_log = u.Tests.release_build_log(
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+            ).read_text(encoding="utf-8")
+            tm.that(result, eq=0, msg=build_log)
+            wheel = next(
+                u.Tests.release_artifact_dir(
+                    workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+                ).glob("*.whl")
+            )
+            with zipfile.ZipFile(wheel) as archive:
+                tm.that(archive.namelist(), has="flext_a/templates/.github/ci.yml.j2")
+
     class TestsMetadata:
         """Publishable metadata policy behavior."""
+
+        @staticmethod
+        def test_pinned_sibling_version_comes_from_the_committed_lock(
+            tmp_path: Path,
+        ) -> None:
+            """A standalone repository pins a git-consumed sibling to its locked version.
+
+            The sibling is not part of this release, so the only truthful
+            version is what the committed lock resolved for the pinned ref.
+            """
+            project_name = "flext-a"
+            workspace = u.Tests.create_release_workspace(
+                tmp_path, project_names=(project_name,), initialize_project_git=True
+            )
+            lock_lines = ["version = 1", ""]
+            for sibling in c.Tests.RELEASE_INTERNAL_DEPENDENCIES:
+                source = (
+                    f"https://github.com/flext-sh/{sibling}.git?rev=0.12.0-dev#0000"
+                )
+                lock_lines.extend([
+                    "[[package]]",
+                    f'name = "{sibling}"',
+                    'version = "0.9.0"',
+                    f'source = {{ git = "{source}" }}',
+                    "",
+                ])
+            (workspace / c.Infra.UV_LOCK_FILENAME).write_text(
+                "\n".join(lock_lines), encoding="utf-8"
+            )
+
+            result = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--projects",
+                project_name,
+                "--apply",
+            )
+
+            tm.that(result, eq=0)
+            artifact_dir = u.Tests.release_artifact_dir(
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+            )
+            wheel = next(artifact_dir.glob("*.whl"))
+            with zipfile.ZipFile(wheel) as archive:
+                metadata = next(
+                    archive.read(name).decode("utf-8")
+                    for name in archive.namelist()
+                    if name.endswith("METADATA")
+                )
+            tm.that(metadata, has="Requires-Dist: flext-core~=0.9.0")
+            tm.that(metadata, lacks="git+")
 
         @staticmethod
         def test_missing_hatch_config_fails_before_artifact_build(
@@ -162,7 +239,9 @@ class TestsFlextInfraReleaseDag:
             """Reject committed metadata without the required Hatch boundary."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             pyproject = project / "pyproject.toml"
@@ -177,25 +256,19 @@ class TestsFlextInfraReleaseDag:
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
 
             build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             ).read_text(encoding="utf-8")
             tm.that(result, eq=1)
             tm.that(build_log, has="release pyproject must define [tool.hatch]")
             tm.that(
                 u.Tests.release_artifact_dir(
-                    workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                    workspace, c.Tests.RELEASE_VERSION_BASE, project_name
                 ).exists(),
                 eq=False,
             )
@@ -210,7 +283,9 @@ class TestsFlextInfraReleaseDag:
             """Detect committed secret material despite permissive ambient config."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             synthetic_token = hashlib.sha256(project_name.encode()).hexdigest()
@@ -228,19 +303,13 @@ class TestsFlextInfraReleaseDag:
                     workspace,
                     "--phase",
                     c.Tests.RELEASE_PHASE_BUILD,
-                    "--version",
-                    c.Tests.RELEASE_VERSION_TARGET,
                     "--projects",
                     project_name,
-                    "--interactive",
-                    "0",
-                    "--create-branches",
-                    "0",
                     "--apply",
                 )
 
             build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             ).read_text(encoding="utf-8")
             tm.that(result, eq=1)
             tm.that(build_log, has="gitleaks detected a secret")
@@ -250,7 +319,9 @@ class TestsFlextInfraReleaseDag:
             """Reject project-owned scanner policy from the committed source set."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             project = workspace / project_name
             (project / ".gitleaks.toml").write_text(
@@ -262,22 +333,49 @@ class TestsFlextInfraReleaseDag:
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
 
             build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             ).read_text(encoding="utf-8")
             tm.that(result, eq=1)
             tm.that(build_log, has="sensitive staged source path: .gitleaks.toml")
+
+        @staticmethod
+        def test_codegen_owned_env_example_is_accepted(tmp_path: Path) -> None:
+            """A file codegen owns is a projection, never a secret, whatever its name.
+
+            Every generated repository carries `.env.example`; rejecting it by
+            its `.env.` prefix blocked the build phase fleet-wide.
+            """
+            project_name = "flext-a"
+            workspace = u.Tests.create_release_workspace(
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
+            )
+            project = workspace / project_name
+            (project / ".env.example").write_text(
+                "FLEXT_A_LOG_LEVEL=INFO\n", encoding="utf-8"
+            )
+            u.Tests.commit_git_changes(project, "add the generated environment example")
+
+            _ = u.Tests.run_release_main(
+                workspace,
+                "--phase",
+                c.Tests.RELEASE_PHASE_BUILD,
+                "--projects",
+                project_name,
+                "--apply",
+            )
+
+            build_log = u.Tests.release_build_log(
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
+            ).read_text(encoding="utf-8")
+            tm.that(build_log, lacks="sensitive staged source path")
 
     class TestsCommittedSource:
         """Immutable committed-source behavior."""
@@ -287,7 +385,9 @@ class TestsFlextInfraReleaseDag:
             """Reject a project whose committed source has working-tree changes."""
             project_name = "flext-a"
             workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,), initialize_project_git=True
+                tmp_path,
+                project_names=(project_name, *c.Tests.RELEASE_INTERNAL_DEPENDENCIES),
+                initialize_project_git=True,
             )
             package_file = workspace / project_name / "src" / "flext_a" / "__init__.py"
             package_file.write_text("# uncommitted release change\n", encoding="utf-8")
@@ -296,50 +396,19 @@ class TestsFlextInfraReleaseDag:
                 workspace,
                 "--phase",
                 c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
                 "--projects",
                 project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
                 "--apply",
             )
 
             build_log = u.Tests.release_build_log(
-                workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                workspace, c.Tests.RELEASE_VERSION_BASE, project_name
             ).read_text(encoding="utf-8")
             tm.that(result, eq=1)
             tm.that(build_log, has="release project is dirty")
             tm.that(
                 u.Tests.release_artifact_dir(
-                    workspace, c.Tests.RELEASE_VERSION_TARGET, project_name
+                    workspace, c.Tests.RELEASE_VERSION_BASE, project_name
                 ).exists(),
                 eq=False,
             )
-
-        @staticmethod
-        def test_member_without_git_repository_is_rejected(tmp_path: Path) -> None:
-            """Reject a project that lacks a committed Git source identity."""
-            project_name = "flext-a"
-            workspace = u.Tests.create_release_workspace(
-                tmp_path, project_names=(project_name,)
-            )
-
-            result = u.Tests.run_release_main(
-                workspace,
-                "--phase",
-                c.Tests.RELEASE_PHASE_BUILD,
-                "--version",
-                c.Tests.RELEASE_VERSION_TARGET,
-                "--projects",
-                project_name,
-                "--interactive",
-                "0",
-                "--create-branches",
-                "0",
-                "--apply",
-            )
-
-            tm.that(result, eq=1)

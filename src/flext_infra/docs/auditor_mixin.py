@@ -24,12 +24,9 @@ class FlextInfraDocAuditorMixin:
 
     @staticmethod
     def find_architecture_config(repository_root: Path) -> Path | None:
-        """Walk up from repository_root looking for the architecture settings."""
-        for candidate in [repository_root, *repository_root.parents]:
-            path = candidate / "docs/architecture/architecture_config.json"
-            if path.exists():
-                return path
-        return None
+        """Return repository-local architecture settings without crossing ownership."""
+        path = repository_root / "docs/architecture/architecture_config.json"
+        return path if path.is_file() else None
 
     @staticmethod
     def parse_audit_gate(
@@ -72,7 +69,7 @@ class FlextInfraDocAuditorMixin:
     def load_audit_budgets(
         cls, repository_root: Path
     ) -> p.Result[t.Pair[int | None, t.IntMapping]]:
-        """Load audit budgets from the nearest architecture settings."""
+        """Load audit budgets from repository-local architecture settings."""
         empty: t.Pair[int | None, t.IntMapping] = (None, {})
         settings = cls.find_architecture_config(repository_root)
         if settings is None:

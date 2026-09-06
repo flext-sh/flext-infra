@@ -85,6 +85,7 @@ class FlextInfraConstantsMake:
         "security",
         "markdown",
         "smells",
+        "direnv",
     )
     # The gates CI=N owns: the type checkers only. They are the slow, whole-
     # program analyses, so CI=Y runs the strict complement of this set -- ruff
@@ -147,6 +148,15 @@ class FlextInfraConstantsMake:
         "UV_PROJECT",
         "UV_PROJECT_ENVIRONMENT",
         "VIRTUAL_ENV",
+        # flext-zykgh: WHAT is a dispatch selector owned by each Makefile, exactly
+        # like PROJECT/PROJECTS above. The root translates `WHAT=<gate>` into
+        # `--make-arg CHECK_GATES=<gate>` before delegating, but the inherited
+        # WHAT then overrode that intent in the member, which dispatched
+        # `_builtin_check_<gate>` — a target the standalone profile never emits
+        # because it selects gates through CHECK_GATES. The member failed with
+        # "No rule to make target" in ~34ms while reporting "0 errors", a
+        # missing-target failure disguised as a clean gate run.
+        "WHAT",
     )
     "Environment keys removed before project-level make orchestration."
     ORCHESTRATOR_ENV_NO_COLOR: Final[str] = "NO_COLOR"
@@ -167,6 +177,7 @@ class FlextInfraConstantsMake:
     PYTEST_ENV_VERBOSE: Final[str] = "FLEXT_PYTEST_VERBOSE_RAW"
     PYTEST_ENV_WHAT: Final[str] = "FLEXT_PYTEST_WHAT_RAW"
     PYTEST_ENV_COV: Final[str] = "FLEXT_PYTEST_COV_RAW"
+    PYTEST_ENV_PROFILE: Final[str] = "FLEXT_PYTEST_PROFILE_RAW"
     PYTEST_ENV_CI: Final[str] = "CI"
     PYTEST_INHERITED_ENV_REMOVE_KEYS: Final[t.StrSequence] = (
         "PYTEST_ADDOPTS",
@@ -183,12 +194,6 @@ class FlextInfraConstantsMake:
         ("GATES", ""),
         ("PROPAGATE", ""),
         ("FIX", ""),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
-        ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
         ("FILE", ""),
         ("FILES", ""),
         ("CHANGED_ONLY", ""),
@@ -226,26 +231,10 @@ class FlextInfraConstantsMake:
         ("RUFF_ARGS", ""),
         ("PYRIGHT_ARGS", ""),
         ("CHECK_ONLY", ""),
-        ("RELEASE_PHASE", "all"),
-        ("INTERACTIVE", "1"),
         ("DRY_RUN", ""),
-        ("PUSH", ""),
-        ("VERSION", ""),
         ("MESSAGE", ""),
-        ("TAG", ""),
-        ("BUMP", ""),
-        ("RELEASE_DEV_SUFFIX", "0"),
-        ("RELEASE_NEXT_DEV", "0"),
-        ("RELEASE_NEXT_BUMP", "minor"),
-        ("CREATE_BRANCHES", "1"),
-        ("PR_ACTION", "status"),
-        ("PR_BASE", ""),
-        ("PR_HEAD", ""),
         ("PR_TITLE", ""),
-        ("PR_BODY", ""),
-        ("PR_DRAFT", "0"),
-        ("PR_INCLUDE_ROOT", "1"),
-        ("PR_CHECKPOINT", "1"),
+        ("INDEX", ""),
         ("DEPS_REPORT", "1"),
         ("VERBOSE", ""),
     )
@@ -292,11 +281,6 @@ class FlextInfraConstantsMake:
         "RULES=ENFORCE-XXX,...       Scope fix-enforcement to rules",
         "VERBOSE=1                   Show executed commands",
     )
-    PROJECT_PR_OPTION_LINES: Final[t.StrSequence] = (
-        "PR_ACTION=status|create",
-        "PR_BASE=<branch>  PR_HEAD=<branch>",
-        "PR_TITLE='...'  PR_BODY='...'  PR_DRAFT=0|1",
-    )
     # Phase-set per verb for legacy CLI helpers. Make routing is owned by
     # the registry discovered from scripts/cmd through flext-tests.
     WHAT_PHASES: Final[t.MappingKV[str, frozenset[str]]] = MappingProxyType({
@@ -338,7 +322,7 @@ class FlextInfraConstantsMake:
         ("help", "Show this help"),
     )
     STANDALONE_POST_SETUP_VERBS: Final[str] = (
-        "check, test, fmt, build, val, clean, docs, pr"
+        "check, test, fmt, build, val, clean, docs"
     )
     PROJECT_SELECTION_CONFLICT_ERROR: Final[str] = (
         "ERROR: Cannot use PROJECT and PROJECTS together"

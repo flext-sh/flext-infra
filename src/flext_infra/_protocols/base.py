@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import c, m, t
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -184,13 +184,23 @@ class FlextInfraProtocolsBase(Protocol):
             """Whether generated mutations are forbidden."""
             ...
 
+        @property
+        def dependency_cooldown_exclusions(self) -> t.StrSequence:
+            """Packages exempted from cooldown for this repository."""
+            ...
+
+        @property
+        def dependency_cooldown_overrides(self) -> t.StrMapping:
+            """Per-package cooldown cutoffs for this repository."""
+            ...
+
     @runtime_checkable
     class ProjectSpec(Protocol):
         """Scaffold-only project metadata consumed by initial generation."""
 
         @property
-        def version(self) -> str:
-            """Declared release version, the SSOT for ``[project].version``."""
+        def workspace_root_rel(self) -> str:
+            """Declared relative path from the project to its workspace root."""
             ...
 
     @runtime_checkable
@@ -277,40 +287,6 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
-    class GithubPullRequestFields(Protocol):
-        """Shared PR execution fields accepted at the transport boundary."""
-
-        @property
-        def action(self) -> c.Infra.PullRequestAction:
-            """Requested PR operation."""
-            ...
-
-        @property
-        def base(self) -> str | None:
-            """Target branch when explicitly selected."""
-            ...
-
-        @property
-        def head(self) -> str | None:
-            """Source branch when explicitly selected."""
-            ...
-
-        @property
-        def title(self) -> str | None:
-            """PR title used for creation."""
-            ...
-
-        @property
-        def body(self) -> str | None:
-            """PR body used for creation."""
-            ...
-
-        @property
-        def draft(self) -> bool:
-            """Whether creation requests a draft PR."""
-            ...
-
-    @runtime_checkable
     class WorkspaceEnvironmentRequest(Protocol):
         """Read-only workspace environment validation request."""
 
@@ -343,6 +319,11 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def uv_link_mode(self) -> str:
             """Portable uv installation link mode."""
+            ...
+
+        @property
+        def uv_environments(self) -> t.StrSequence:
+            """Marker expressions limiting the environments uv resolves."""
             ...
 
         @property
@@ -406,8 +387,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def tokei_version(self) -> str:
-            """Exact Tokei analyzer version."""
+        def scc_version(self) -> str:
+            """Exact scc code-counter version."""
             ...
 
         @property
@@ -428,11 +409,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def go_version(self) -> str:
             """Exact Go runtime version backing go: mise selectors."""
-            ...
-
-        @property
-        def mise_version(self) -> str:
-            """Exact mise binary version."""
             ...
 
         @property
@@ -716,6 +692,45 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
     @runtime_checkable
+    class MiseArtifactsOwner(Protocol):
+        """Single public owner composed by private Mise transaction mechanics."""
+
+        workspace_root: Path
+
+        @classmethod
+        def validate_launchers(cls, root: Path) -> p.Result[bool]:
+            """Validate one generated launcher receipt."""
+            ...
+
+        @classmethod
+        def validate_seed(cls, path: Path) -> p.Result[str]:
+            """Validate one staged native launcher seed without executing it."""
+            ...
+
+        @classmethod
+        def launcher_release(cls, root: Path) -> p.Result[str]:
+            """Return the release embedded identically by both launchers."""
+            ...
+
+        @staticmethod
+        def is_mise_release(value: str | None) -> bool:
+            """Return whether a runtime identity is an exact Mise release."""
+            ...
+
+        def hydrate_lock_checksums_at(self, root: Path) -> p.Result[bool]:
+            """Hydrate missing checksums in one staged lock."""
+            ...
+
+        def validate_artifacts(
+            self,
+            project_root: Path,
+            *,
+            config_sources: tuple[m.Cli.AtomicFileState, ...],
+        ) -> p.Result[bool]:
+            """Validate one complete project artifact set."""
+            ...
+
+    @runtime_checkable
     class PyprojectModernizer(Protocol):
         """Protocol for pyproject.toml modernization services."""
 
@@ -815,16 +830,4 @@ class FlextInfraProtocolsBase(Protocol):
             self, params: m.Infra.GithubWorkflowLintRequest
         ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
             """Lint GitHub workflow files."""
-            ...
-
-        def run_github_pull_request(
-            self, params: m.Infra.GithubPullRequestRequest
-        ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
-            """Manage pull request for a single project."""
-            ...
-
-        def run_github_workspace_pull_requests(
-            self, params: m.Infra.GithubPullRequestWorkspaceRequest
-        ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
-            """Manage pull requests across the workspace."""
             ...

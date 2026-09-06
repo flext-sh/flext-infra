@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from flext_core import r
-from flext_infra import config, m, u
+from flext_infra import config, m, p, r, u
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 
@@ -19,21 +18,37 @@ class TestsCodegenMiseArtifacts:
         return "a" * 64
 
     @classmethod
-    def _write_launchers(cls, root: Path, *, version: str | None = None) -> None:
-        resolved = version or config.Infra.codegen.toolchain.mise_version
+    def _write_launchers(
+        cls,
+        root: Path,
+        *,
+        version: str = "2026.9.1",
+        windows_version: str | None = None,
+    ) -> None:
+        resolved_windows = windows_version or version
         checksum = cls._launcher_checksum()
         launchers = root / "bin"
         launchers.mkdir(parents=True, exist_ok=True)
         (launchers / "mise").write_text(
             "\n".join((
                 "#!/usr/bin/env bash",
-                f'local mise_version="${{MISE_VERSION:-{resolved}}}"',
+                f'local mise_version="${{MISE_VERSION:-{version}}}"',
                 f'checksum_linux_x86_64="{checksum}"',
                 f'checksum_linux_x86_64_musl="{checksum}"',
                 f'checksum_linux_arm64="{checksum}"',
                 f'checksum_linux_arm64_musl="{checksum}"',
+                f'checksum_linux_armv7="{checksum}"',
+                f'checksum_linux_armv7_musl="{checksum}"',
                 f'checksum_macos_x86_64="{checksum}"',
                 f'checksum_macos_arm64="{checksum}"',
+                f'checksum_linux_x86_64_zstd="{checksum}"',
+                f'checksum_linux_x86_64_musl_zstd="{checksum}"',
+                f'checksum_linux_arm64_zstd="{checksum}"',
+                f'checksum_linux_arm64_musl_zstd="{checksum}"',
+                f'checksum_linux_armv7_zstd="{checksum}"',
+                f'checksum_linux_armv7_musl_zstd="{checksum}"',
+                f'checksum_macos_x86_64_zstd="{checksum}"',
+                f'checksum_macos_arm64_zstd="{checksum}"',
                 "",
             )),
             encoding="utf-8",
@@ -42,8 +57,9 @@ class TestsCodegenMiseArtifacts:
         (launchers / "mise.cmd").write_text(
             "\n".join((
                 "@echo off",
-                f'set "pinned_version={resolved}"',
+                f'set "pinned_version={resolved_windows}"',
                 f'set "sum_x64={checksum}"',
+                f'set "sum_arm64={checksum}"',
                 "",
             )),
             encoding="utf-8",
@@ -219,7 +235,7 @@ class TestsCodegenMiseArtifacts:
 
     def test_launcher_version_drift_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project")
-        self._write_launchers(root, version="2000.1.1")
+        self._write_launchers(root, windows_version="2000.1.1")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "repository_root": root,
@@ -247,6 +263,95 @@ class TestsCodegenMiseArtifacts:
         }).execute()
 
         tm.ok(result, eq=True)
+
+    @classmethod
+    def _member(cls, root: Path, name: str, *, identical: bool) -> Path:
+        member = root / name
+        member.mkdir()
+        root_config = (root / ".mise.toml").read_text(encoding="utf-8")
+        member_config = (
+            root_config
+            if identical
+            else root_config.replace("lockfile = true", "lockfile = false")
+        )
+        (member / ".mise.toml").write_text(member_config, encoding="utf-8")
+        cls._write_launchers(member)
+        (member / "mise.lock").write_text("lockfile_version = 0\n", encoding="utf-8")
+        return member
+
+    def test_from_root_applies_byte_identical_member_lock(self, tmp_path: Path) -> None:
+        root = self._project(tmp_path / "root")
+        member = self._member(root, "member-identical", identical=True)
+        expected_lock = (root / "mise.lock").read_text(encoding="utf-8")
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-identical",
+            "from_root": True,
+            "apply_changes": True,
+        }).execute()
+
+        tm.ok(result, eq=True)
+        tm.that((member / "mise.lock").read_text(encoding="utf-8"), eq=expected_lock)
+
+    def test_from_root_rejects_materially_different_member(
+        self, tmp_path: Path
+    ) -> None:
+        root = self._project(tmp_path / "root")
+        member = self._member(root, "member-different", identical=False)
+        unchanged_lock = (member / "mise.lock").read_text(encoding="utf-8")
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-different",
+            "from_root": True,
+            "apply_changes": True,
+        }).execute()
+
+        tm.fail(result, has="not identical")
+        tm.that((member / "mise.lock").read_text(encoding="utf-8"), eq=unchanged_lock)
+
+    def test_from_root_requires_explicit_apply(self, tmp_path: Path) -> None:
+        root = self._project(tmp_path / "root")
+        _member = self._member(root, "member-identical", identical=True)
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-identical",
+            "from_root": True,
+        }).execute()
+
+        tm.fail(result, has="requires explicit --apply")
+
+    def test_from_root_fails_causally_after_post_copy_divergence(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        root = self._project(tmp_path / "root")
+        _member = self._member(root, "member-identical", identical=True)
+        original_write = u.Cli.atomic_write_text_file
+
+        def write_divergent_lock(path: Path, content: str) -> p.Result[bool]:
+            if path.name == "mise.lock":
+                content = f"{content}# diverged\n"
+            return original_write(path, content)
+
+        monkeypatch.setattr(u.Cli, "atomic_write_text_file", write_divergent_lock)
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "workspace_root": root,
+            "project_filter": "member-identical",
+            "from_root": True,
+            "apply_changes": True,
+        }).execute()
+
+        tm.fail(result, has="mise.lock diverged after atomic propagation")
+
+    def test_project_selector_is_cli_exposed(self) -> None:
+        """The propagation selector reaches the schema-driven CLI as --project."""
+        field = FlextInfraCodegenMiseArtifacts.model_fields["project_filter"]
+
+        tm.that(field.alias, eq="project")
+        tm.that(field.exclude, ne=True)
 
 
 __all__: tuple[str, ...] = ()

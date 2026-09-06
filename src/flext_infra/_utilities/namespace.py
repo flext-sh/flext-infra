@@ -29,6 +29,10 @@ class FlextInfraUtilitiesCodegenNamespace:
     _governance_file: Final[Path] = (
         Path(__file__).parent.parent / "rules" / "constants-governance.yml"
     )
+    # flext-perf.1 (agent: codex): cache __all__ AST extraction by path+mtime
+    # so the 4-5 redundant _declared_exports calls per policy() hit memory
+    # instead of re-reading + re-parsing the same file from disk each time.
+    _declared_exports_cache: ClassVar[dict[str, tuple[int, t.StrSequence]]] = {}
 
     @classmethod
     def _is_rule_fixable(cls, rule_id: str, module: str) -> bool:
@@ -179,21 +183,34 @@ class FlextInfraUtilitiesCodegenNamespace:
     def _declared_exports(cls, file_path: Path) -> t.StrSequence:
         if not file_path.is_file():
             return ()
+        resolved = file_path.resolve()
+        try:
+            mtime_ns = resolved.stat().st_mtime_ns
+        except OSError:
+            mtime_ns = 0
+        cache_key = str(resolved)
+        cached = cls._declared_exports_cache.get(cache_key)
+        if cached is not None and cached[0] == mtime_ns:
+            return cached[1]
         tree = ast.parse(file_path.read_text(encoding=c.Infra.ENCODING_DEFAULT))
+        result: t.StrSequence = ()
         for node in tree.body:
             match node:
                 case ast.Assign(targets=targets, value=value) if any(
                     isinstance(target, ast.Name) and target.id == c.Infra.DUNDER_ALL
                     for target in targets
                 ):
-                    return cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_exports(tree, value, file_path)
+                    break
                 case ast.AnnAssign(target=ast.Name(id=name), value=value) if (
                     name == c.Infra.DUNDER_ALL and value is not None
                 ):
-                    return cls._literal_exports(tree, value, file_path)
+                    result = cls._literal_exports(tree, value, file_path)
+                    break
                 case _:
                     continue
-        return ()
+        cls._declared_exports_cache[cache_key] = (mtime_ns, result)
+        return result
 
     @classmethod
     def layout(

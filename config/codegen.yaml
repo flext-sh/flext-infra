@@ -12,6 +12,11 @@ Infra:
       # Dependency floors live in pyproject; uv.lock owns resolved versions.
       python_version: "3.13"
       uv_link_mode: copy
+      # Supported resolution environments for the generated lock. Windows is
+      # not a supported deployment target: the win32 split resolves meltano's
+      # structlog<26 cap against flext-core's structlog>=26.1 floor and is
+      # unsatisfiable, so uv must skip that split instead of failing the lock.
+      uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT (CWE-829): projected to uv exclude-newer and
       # every Dependabot ecosystem so updates never raise floors that uv blocks.
       dependency_cooldown_days: 7
@@ -25,13 +30,15 @@ Infra:
       kubectl_version: "1.32"
       helm_version: "3.19"
       kind_version: "0.31"
+      direnv_version: "2.37"
       taplo_version: "0.10"
       ast_grep_version: "0.45"
       gitleaks_version: "8.30"
-      tokei_version: "14.0"
+      scc_version: "4.0"
       kubeconform_version: "0.8"
       qlty_version: "0.642"
-      mise_version: "2026.8.14"
+      # Moving selector is deliberate: setup must always provision the newest
+      # Mise release instead of rejecting a newer binary than code generation.
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -41,23 +48,55 @@ Infra:
         - macos-arm64
         - windows-x64
       mise_lock_platform_exclusions:
+        # Keyed by full mise selector (that is the key the lock validator
+        # resolves). gc does not build for Windows: its process control uses
+        # syscall.Kill/Flock (unix-only), so no windows-x64 artifact can exist.
+        github:marlon-costa-dc/gascity:
+          - windows-x64
+        # ast-grep publishes no distinct musl assets; every unsupported pair is
+        # explicit so the offline validator rejects any additional omission.
+        # scc (loc-cap gate; see .mise.toml.j2) carries no exclusion: pinned to
+        # the aqua backend, its evergreen catch-all release rule ships real
+        # per-platform assets for every target platform, so it never falls
+        # back to a source build.
         ast-grep:
           - linux-x64-musl
           - linux-arm64-musl
-        tokei:
-          - linux-x64
-          - linux-arm64
-          - linux-x64-musl
-          - linux-arm64-musl
-          - macos-x64
-          - macos-arm64
-          - windows-x64
       protected_mise_tools:
         - beads
+        - gascity
       go_version: "1.26"
+      gascity:
+        # The fleet gc is the operator's build of upstream tag v1.4.1: the
+        # source tree is byte-identical, but it links beads v1.2.2 without a
+        # module replace, so the native store's version_compat gate stops
+        # degrading every rig to the fork-per-op BdStore fallback.
+        selector: github:marlon-costa-dc/gascity
+        # Operator order 2026-09-04: always the newest release of OUR fork.
+        # Freezing this stranded the fleet on a build predating its own source
+        # fix (415a2ea8c, read_timeout 15000 -> 120000), whose 15s bound killed
+        # DOLT_GC at 17s and left the hq store unbacked for days.
+        version: latest
+        # Suffixed release tag; mise only resolves it when told it is a prerelease.
+        prerelease: true
+        # Selector shapes that identify gc in a mise manifest, so a regenerated
+        # .mise.toml cannot silently swap the fleet build for another distribution.
+        selector_patterns:
+          - gc
+          - gascity
+          - "*:*/gascity"
       beads:
-        selector: github:gastownhall/beads
-        version: "1.2.2"
+        selector: github:marlon-costa-dc/beads
+        # Operator order 2026-09-04: always the newest release of OUR fork.
+        # The selector, not a pinned version, is what keeps the fleet off
+        # upstream; freezing the version only rejects our own later releases.
+        version: latest
+        # The fleet bd is the operator's fork: it carries 4c1c40337
+        # "fix(list): stop bd list from looping forever on hierarchy cycles",
+        # absent from upstream v1.2.2, which has already produced a 17.7 GB
+        # runaway and an OOM on this host. The tag is a prerelease, so mise
+        # must be allowed to resolve it.
+        prerelease: true
         # Selector shapes that identify this tool in a mise manifest, so a
         # regenerated .mise.toml cannot silently replace the pinned release.
         selector_patterns:
@@ -104,53 +143,49 @@ Infra:
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
+    # Runner packages a distribution's own tests need (Ubuntu apt names),
+    # installed by the generated CI before the gates run. A test that drives
+    # a real external engine keeps running in CI instead of being skipped;
+    # the engine is declared here, once, at the fleet SSOT.
+    ci_system_packages:
+      flext-cli:
+        # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
+        - libreoffice-calc
     # Per-distribution private declared repository auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
     ci_private_submodules:
       cosmos-main:
+        known_hosts: &github_ssh_known_hosts
+          - github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
         paths:
           - apps/cosmos-charts
           - apps/cosmos-gitops
         deploy_keys:
           - secret: CHARTS_DEPLOY_KEY
-            host_alias: github-charts
             submodule: cosmos-charts
             path: apps/cosmos-charts
-            ssh_url: git@github-charts:datacosmos-br/cosmos-charts.git
+            remote: git@github.com:datacosmos-br/cosmos-charts.git
           - secret: GITOPS_DEPLOY_KEY
-            host_alias: github.com
             submodule: cosmos-gitops
             path: apps/cosmos-gitops
-            ssh_url: git@github.com:datacosmos-br/cosmos-gitops.git
+            remote: git@github.com:datacosmos-br/cosmos-gitops.git
       invest:
+        known_hosts: *github_ssh_known_hosts
         paths:
           - neptor
         deploy_keys:
           - secret: NEPTOR_DEPLOY_KEY
-            host_alias: github-neptor
             submodule: neptor
             path: neptor
-            ssh_url: git@github-neptor:marlonsc/neptor.git
+            remote: git@github.com:marlonsc/neptor.git
 
     github_actions:
       checkout:
         repository: actions/checkout
         version: v7.0.1
         sha: 3d3c42e5aac5ba805825da76410c181273ba90b1
-      setup-python:
-        repository: actions/setup-python
-        version: v7.0.0
-        sha: 5fda3b95a4ea91299a34e894583c3862153e4b97
-      setup-uv:
-        repository: astral-sh/setup-uv
-        version: v9.0.0
-        sha: c771a70e6277c0a99b617c7a806ffedaca235ff9
-      mise:
-        repository: jdx/mise-action
-        version: v4.2.3
-        sha: 9e7f7633ff6f6d6048a9418a68d48f288f50eb14
       kind:
         repository: helm/kind-action
         version: v1.14.0
@@ -175,7 +210,6 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
-
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -214,6 +248,10 @@ Infra:
           name: flext-infra
         dependencies: [flext-tests]
 
+    infra_repository:
+      distribution: flext-infra
+      provider: flext-sh
+    infrastructure_provider: flext-sh
     providers:
       - name: flext-sh
         organization: flext-sh
@@ -240,6 +278,11 @@ Infra:
         base_url: https://github.com/marlonsc
         branch: develop
     branch_policy:
+      ci_trigger_branches:
+        - dev
+        - develop
+        - 0.12.0-dev
+        - main
       technical_branch_patterns:
         - __dolt_remote_info__
         - dolt/*
@@ -317,8 +360,10 @@ Infra:
         # make fmt / make fix APPLY=Y only. This supersedes the earlier
         # check_gates_skip list, which could drift out of sync with the set it
         # was meant to complement.
-        # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
-        # full pytest+coverage; absent = testmon incremental.
+        # RULING 1: CI is ternary (Y/N/absent). CI=Y owns the Review workflow,
+        # including full pytest+coverage while attestation is not selected;
+        # CI=N owns the complementary local check gates; absent uses testmon
+        # for incremental developer runs.
         #
         # The set is the SLOW whole-program type checkers, matching
         # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
@@ -341,8 +386,9 @@ Infra:
         - { verb: fmt, apply: true, contexts: [local, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, pre_commit] }
         - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
-        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
-        - { verb: test, apply: false, contexts: [local, pre_push] }
+        # Review CI proves the complete native gate set. Draft PRs do not select
+        # the job, while attestation reuse is selected externally by AI Hub.
+        - { verb: test, apply: false, contexts: [local, ci, pre_push] }
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -355,6 +401,8 @@ Infra:
           - .benchmarks
           - .hypothesis
         root_dirs:
+          - .test-tmp
+          - .test-runtime
           - build
           - dist
           - htmlcov
@@ -455,7 +503,7 @@ Infra:
           # Coverage is on unless CI=Y (no separate cov verb).
           # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
           # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, cache-status, cache-clear, cache-checkpoint]
+          whats: [all, full, cache-status, cache-clear, cache-checkpoint]
           apply_guarded: false
           accepts_apply: true
           apply_what: all
@@ -478,15 +526,6 @@ Infra:
           # checkout lock). accepts_apply unlocks the APPLY token only.
           accepts_apply: true
           apply_what: default
-        - name: work
-          default_what: status
-          whats: [help, status, start, land, finish]
-          # `work` mutates only for start/land/finish; status is the read-only
-          # fixed-point after mutation, so serialize-make can re-check without APPLY=Y.
-          # apply_what stays singular by model contract: it is only the implicit
-          # WHAT selected when callers set APPLY=Y without naming one explicitly.
-          apply_guarded: true
-          apply_what: start
         - name: status
           default_what: diagnostics
           whats: [diagnostics]
@@ -511,10 +550,15 @@ Infra:
           # from apply_what so serialize-make can re-check without APPLY=Y).
           apply_guarded: true
           apply_what: generated
+        # The release protocol: `plan` is the read-only decision (and guard),
+        # `version` opens the release pull request, `tag` marks the merged
+        # release commit, `build` produces the receipt, `publish` uploads what
+        # the receipt attests. Every mutation requires APPLY=Y.
         - name: release
-          default_what: status
-          whats: [status]
-          apply_guarded: false
+          default_what: plan
+          whats: [plan, version, tag, build, publish]
+          apply_guarded: true
+          apply_what: version
         - name: gen
           default_what: check
           # `init` is the narrow package-initializer owner. It intentionally
@@ -579,6 +623,8 @@ Infra:
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
       - { name: .pytest_cache, source_scan_ignore: true }
+      - { name: .test-tmp, source_scan_ignore: true }
+      - { name: .test-runtime, source_scan_ignore: true }
       - { name: .testmondata, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }
@@ -1153,6 +1199,13 @@ Infra:
       - path: LICENSE
         owner: codegen
         policy: create-only
+      # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
+      - path: config/build-constraints.txt
+        owner: codegen
+        policy: full
+      - path: config/gitleaks-release.toml
+        owner: codegen
+        policy: full
       - path: Makefile
         owner: make
         policy: full
@@ -1178,42 +1231,6 @@ Infra:
         # previous lint projection unresolvable through the canonical surface.
         conflict_sections: [tool.pytest.ini_options, tool.uv, tool.ruff.lint.per-file-ignores]
 
-    # Automated semantic versioning, owned by the market tool rather than by a
-    # local implementation. python-semantic-release reads Conventional Commits,
-    # decides major/minor/patch, writes the version, generates the changelog and
-    # creates the tag. We already had bump_version/parse_semver and a release
-    # orchestrator, but nothing DERIVED the bump: a human still passed
-    # `bump=minor` by hand, which is exactly the judgement call the commit
-    # history already encodes and the one a human gets wrong.
-    #
-    # Declared here so every generated pyproject carries the same contract and
-    # no project hand-rolls its own. Exceptions belong in `overrides` below,
-    # never in a project-local edit.
-    release:
-      tool: python-semantic-release
-      # `uv` is the runner: no separate install step, no global state.
-      runner: uv
-      # Commit parser and the branch that produces releases. FLEXT branch model:
-      # 0.12.0-dev is the integration branch, main is the produced release.
-      commit_parser: conventional
-      release_branch: 0.12.0-dev
-      # Where the version lives. Both are kept in step by the tool itself, so a
-      # tag can never disagree with the packaged metadata.
-      version_variables:
-        - src/{package}/version.py:__version__
-      version_toml:
-        - pyproject.toml:project.version
-      # Build through the canonical verb so a release artifact is produced the
-      # same way a local build is; a second build path is a second contract.
-      build_command: uv build
-      # Tag shape shared with the workspace release workflow.
-      tag_format: "v{version}"
-      # Changelog is generated, never hand-maintained.
-      changelog_file: CHANGELOG.md
-      # Per-distribution exceptions. A project lands here only when its release
-      # contract genuinely differs from the standard.
-      overrides: {}
-
     scaffold:
       build:
         backend: hatchling.build
@@ -1235,16 +1252,16 @@ Infra:
           # The security gate (flext_infra.gates.bandit) runs unconditionally for
           # every project owning src/, so the tool it shells out to must be a
           # declared dev dependency of every generated project.
-          - bandit>=1.8
+          - bandit>=1.9.4
           - flext-tests
           # Floors let uv select released tools without a cap or downgrade path.
           # Every diagnostic from the resolved release remains blocking.
-          - mypy>=2.3.0
-          - pyrefly>=1.1.1
+          - mypy>=2.3.1
+          - pyrefly>=1.2.0
           - pyright>=1.1.411
-          - pytest>=9.0.3
+          - pytest>=9.1.1
           - pytest-testmon>=2.2.0
-          - ruff>=0.15.12
+          - ruff>=0.16.0
           - rumdl>=0.2.45
           - vulture>=2.16
           - yamlfix>=1.19.1
@@ -1303,6 +1320,17 @@ Infra:
             - "!.code-review-graph/"
             - "!.claude/"
             - "!.claude-plugin/"
+            # Provider surfaces are generated governance artifacts owned by the
+            # workspace root, so each provider directory is trackable exactly
+            # like .claude/ and .agents/ above.
+            - "!.codex/"
+            - "!.codex/**"
+            - "!.cursor/"
+            - "!.cursor/**"
+            - "!.gemini/"
+            - "!.gemini/**"
+            - "!.opencode/"
+            - "!.opencode/**"
             - "!/config/"
             - "!.claude/CLAUDE.md"
             - "!.claude/settings.json"
@@ -1314,14 +1342,10 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!scripts/"
-            - "!scripts/cmd/"
-            - "!scripts/cmd/**"
             - "scripts/*.py"
             - "scripts/*.sh"
             - "scripts/*.md"
             - "scripts/maintenance/"
-            - "!scripts/dispatch.py"
-            - "!scripts/__init__.py"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
           profiles: [workspace, standalone]
           patterns:
@@ -1338,6 +1362,11 @@ Infra:
             # ignored: their embedded-mode file carries a per-machine
             # project_id UUID.
             - "!.beads/metadata.json"
+            # The canonical ledger identity (the [project] id). Conform reads
+            # it to render the identity-preserving metadata.json; untracked,
+            # every fresh clone rendered a metadata without the id and failed
+            # the gen check gate against the committed file.
+            - "!.beads/identity.toml"
         - name: "Python configuration"
           profiles: [workspace]
           patterns:
@@ -1365,6 +1394,17 @@ Infra:
             - "!Makefile"
             - "!Makefile.flext-docker"
             - "!*.mk"
+            # jscpd detector SSOT consumed by the committed `make duplication`
+            # target (flext-1sm3w); the deny-first root cannot swallow it.
+            - "!.jscpd.json"
+            - "!*.mk"
+            # The generated toolchain lock pins every tool to a checksum. A
+            # clean CI checkout must receive it, so the deny-first root cannot
+            # swallow it; `make gen` owns its content.
+            - "!.mise.toml"
+            - "!mise.lock"
+            - "!bin/mise"
+            - "!bin/mise.cmd"
         - name: "Documentation"
           profiles: [workspace]
           patterns:
@@ -1409,18 +1449,32 @@ Infra:
         # NOTE: member contents are emitted by the same derived section as the
         # member directories themselves (see the note above), so both come from
         # the live workspace topology and can never diverge from each other.
+        # `.claude/*` re-blocked the whole directory AFTER the whitelist above
+        # had unblocked it, and in gitignore the last matching rule wins — so
+        # every governed provider artifact (.claude/settings.json, the skill
+        # surfaces) became untrackable. Local session data is named explicitly
+        # instead of re-blocking the directory that the whitelist just opened.
         - name: "BLOCK: AI/Agent Local Data (NEVER track these)"
           patterns:
-            - ".claude/*"
-        # Only the repository root owns agent skills as real versioned files.
-        # Non-root checkouts keep `.agents/` gitignored: ai-hub materializes
-        # provider surfaces as real local files via generate-workspace-config
-        # (never mode-120000 symlinks). Out-of-bounds symlinks make the ArgoCD
-        # repo-server refuse the repository, so declared_repositories must not track them.
-        - name: "BLOCK: Agent surface outside the repository root"
+            - ".claude/local/"
+            - ".claude/history/"
+            - ".claude/todos/"
+            - ".claude/statsig/"
+            - ".claude/projects/"
+            - ".claude/shell-snapshots/"
+            - ".claude/settings.local.json.bak"
+        # Provider surfaces are REAL files, so the ArgoCD symlink hazard that
+        # once justified blocking `.agents/` in non-root checkouts no longer
+        # applies: ai-hub materializes them via generate-workspace-config and
+        # never as mode-120000 symlinks (measured: flext-cli, a standalone
+        # checkout, carries 74 regular files and 0 symlinks under .agents/).
+        # Blocking them made governed projections untrackable in exactly the
+        # repositories that must carry their own authorization surface.
+        - name: "WHITELIST: Governed agent projections (every repository role)"
           profiles: [standalone]
           patterns:
-            - ".agents/"
+            - "!.agents/"
+            - "!.agents/**"
         - name: "WHITELIST: Agent skills owned by the repository root"
           profiles: [workspace]
           patterns:
@@ -1429,15 +1483,34 @@ Infra:
         - name: "Skill scan reports (transient, regenerated by skill_validate.py)"
           patterns:
             - ".agents/skills/*/report.json"
+        # Why: the Gas City pack runtime writes skill symlinks (`<pack>.<skill>`,
+        # absolute links into its cache) and an ownership manifest into a
+        # registered rig's provider trees whenever it runs. They are runtime
+        # state, never source: tracked, they break every consumer that refuses
+        # symlinks (the release snapshot validator rejected flext-infra's own
+        # build on `.agents/skills/core.gc-agents`). Only Gas City packs project
+        # dotted skill names; governed skills are kebab-case directories.
+        - name: "Gas City skill projections (runtime state, never source)"
+          patterns:
+            - ".agents/skills/.gc-skill-ownership.json"
+            - ".agents/skills/core.gc-*"
+            - ".agents/skills/gascity.*"
+            - ".agents/skills/gc.*"
+            - ".claude/skills/.gc-skill-ownership.json"
+            - ".claude/skills/core.gc-*"
+            - ".claude/skills/gascity.*"
+            - ".claude/skills/gc.*"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
             - ".aider.conf.yml"
             - ".aider.chat.history.md"
             - "**/.aider/"
+        # `.cursor/` moved to the governed provider whitelist above: it now
+        # carries generated hooks/skills that must be versioned. Only assistants
+        # with no governed surface stay blocked here.
         - name: "Other AI assistants"
           patterns:
-            - ".cursor/"
             - ".copilot/"
             - ".codeium/"
         - name: "Oracle dump files"
@@ -1473,7 +1546,6 @@ Infra:
             - "**/*.egg-info/"
             - "**/dist/"
             - "**/build/"
-            - "!scripts/cmd/build/"
             - "**/.eggs/"
         - name: "Skill validation temporary reports"
           patterns:
@@ -1522,7 +1594,11 @@ Infra:
             - "**/*.dylib"
             - "**/*.test"
             - "**/*.out"
-            - "vendor/"
+            # Anchored: only a root-level Go vendor tree is ignorable. Unanchored
+            # `vendor/` also matched a vendored package inside src/ (flext-cli
+            # src/flext_cli/vendor), and hatchling honours .gitignore, so the
+            # published wheel silently shipped without it (flext-f6gqq).
+            - "/vendor/"
         - name: "Node.js inside allowed directories"
           patterns:
             - "**/node_modules/"
@@ -1644,6 +1720,11 @@ Infra:
           profiles: [workspace, standalone]
           patterns:
             - "!.beads/metadata.json"
+            # The canonical ledger identity: conform reads it to render the
+            # identity-preserving metadata.json on fresh checkouts. Without
+            # the exception the render loses the project id and the gen
+            # check gate drifts on every clean clone.
+            - "!.beads/identity.toml"
         - name: "codegen module-standardizer reject artifacts (ADR-005 \u00a79)"
           patterns:
             - "*.tpl.rej"
@@ -1654,6 +1735,17 @@ Infra:
             - ".venv"
             - ".venv/"
             - ".bin/"
+            # Repo-root bin/: only the mise bootstrap pair is tracked; every
+            # other entry (venv shims, local symlinks) is machine-local and
+            # gets rewritten by `make setup`, so tracking it makes the docs
+            # byte-identical verification fail on a clean runner.
+            # A deny-all allowlist (`/*/`) excludes the bin/ directory itself,
+            # and git never descends into an excluded directory, so the two
+            # negations below cannot re-include the pair without this line.
+            - "!/bin/"
+            - "/bin/*"
+            - "!/bin/mise"
+            - "!/bin/mise.cmd"
             - ".tools/"
             - "__pycache__/"
             - "base.mk"
@@ -1734,6 +1826,21 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
+        # Why (flext-to3n7): the release build phase snapshots these two policy
+        # files before the first artifact build (hash-pinned build backend for
+        # `uv build --require-hashes`, and the Gitleaks policy). They are one
+        # fleet-wide policy owned here and projected into every repository;
+        # a repository never hand-writes its own (overwrite: true).
+        - source: base/config/build-constraints.txt.j2
+          destination: config/build-constraints.txt
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        - source: base/config/gitleaks-release.toml.j2
+          destination: config/gitleaks-release.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
         - source: base/gitignore.j2
           destination: .gitignore
           profiles: [workspace, standalone]
@@ -1764,9 +1871,10 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Ledger routing config: rendered only for the repository root (owned
-        # ledger) and marker-attached standalones (routing-only); the engine
-        # planner skips every other profile/class (mro-z89e governance).
+        # Ledger routing config: rendered only for repositories that own a
+        # ledger. The repository root owns a shared ledger when a gitlink's
+        # `.beads` path is a symlink; real member `.beads` directories keep an
+        # independent ledger.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace, standalone]
@@ -1791,11 +1899,13 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
+        # Every repository releases itself through the protocol; the workspace
+        # root additionally publishes its members to the package index.
         - source: base/.github/workflows/release.yml.j2
           destination: .github/workflows/release.yml
-          profiles: [workspace]
+          profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
           destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
           profiles: [workspace, standalone]

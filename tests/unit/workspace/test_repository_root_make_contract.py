@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from flext_infra import config
 from flext_infra.codegen.conform import FlextInfraCodegenConform
+from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_infra.workspace.orchestrator import FlextInfraOrchestratorService
 from flext_tests import tm
 
@@ -50,6 +51,14 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
             workspace=f"{project_name}-workspace",
             database=f"{project_name}-database",
             issue_prefix=f"{project_name}-prefix",
+            beads_owner=False,
+        )
+        WorktreeFixture.link_member_beads(
+            project_root,
+            workspace_root,
+            workspace_name=root_repository.name,
+            database=root_repository.name,
+            issue_prefix=root_repository.name,
         )
     gitmodules_path = WorktreeFixture.write_gitmodules(repository_root, project_names)
     protected_paths = {
@@ -60,8 +69,14 @@ def _write_workspace(tmp_path: Path) -> tuple[Path, tuple[str, ...]]:
     # These tests assert what the generated Makefile contains, so the public
     # planning surface provides the exact artifacts without writing the fixture.
     # Generation is runtime-independent and never invokes tracker services.
+    # Project-owned artifacts render only for a spec carrying scaffold
+    # metadata, so the aggregate workspace is injected the same way every
+    # other conform test provides it.
+    workspace = tm.ok(
+        FlextInfraWorkspaceDetector.load_workspace_spec(workspace_root)
+    ).model_copy(update={"project": u.Tests.project_spec("fixture-workspace")})
     planned = tm.ok(
-        FlextInfraCodegenConform().plan(
+        FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
                 root=repository_root,
                 scope=c.Infra.CodegenConformScope.SELF,
@@ -357,7 +372,7 @@ class TestsRepositoryRootMakeContract:
         # The root owns its own environment: the venv lives beside it and the
         # sync targets the repository root, never an ambient caller project.
         tm.that(output, has=f'venv "{expected_environment}"')
-        tm.that(output, has=f'sync --project "{repository_root}"')
+        tm.that(output, has=f'sync --frozen --project "{repository_root}"')
         tm.that(output, has=f'pip check --python "{expected_environment}"')
 
     def test_orchestrator_sanitizes_child_env_and_forwards_gates(
@@ -385,6 +400,7 @@ class TestsRepositoryRootMakeContract:
             tm.that(child_log, has="gates=lint,pyrefly")
             tm.that(child_log, lacks=str(hostile_root))
 
+    @pytest.mark.slow
     def test_orchestrator_fail_fast_preserves_child_exit_and_skips_remaining(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -10,6 +10,7 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from flext_core import r
+from flext_infra import config
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,6 +27,12 @@ class FlextInfraReleaseArtifactArchiveMixin:
         path = PurePosixPath(name)
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe staged source path: {name}"
+        # Why: a file codegen owns (`.env.example`) is a projection of the
+        # fleet template, never a secret; only its name matches the pattern.
+        if any(
+            name == item.path.as_posix() for item in config.Infra.codegen.managed_files
+        ):
+            return ""
         blocked_suffixes = (".jks", ".key", ".keystore", ".p12", ".pem", ".pfx")
         for part in path.parts:
             normalized = part.casefold()
@@ -54,24 +61,30 @@ class FlextInfraReleaseArtifactArchiveMixin:
         return r[bool].ok(True)
 
     @staticmethod
-    def _member_path_error(name: str) -> str:
-        """Return a policy error for one archive member, or an empty string."""
+    def _member_path_error(name: str, *, root_index: int) -> str:
+        """Return a policy error for one archive member, or an empty string.
+
+        Repository-operational directories (``.git``, ``.github``, ``.reports``)
+        are rejected only at the archive's content root (``root_index``): a
+        package may legitimately ship such a tree as data — flext-infra packages
+        the fleet's ``.github`` templates. Sensitive material is rejected at
+        every depth.
+        """
         path = PurePosixPath(name)
         if not name or "\\" in name or path.is_absolute() or ".." in path.parts:
             return f"unsafe archive member path: {name}"
-        blocked_parts = frozenset({
-            ".env",
-            ".git",
-            ".github",
-            ".reports",
-            ".secrets.baseline",
-            "__pycache__",
-        })
+        operational_roots = frozenset({".git", ".github", ".reports"})
+        sensitive_parts = frozenset({".env", ".secrets.baseline", "__pycache__"})
         blocked_suffixes = (".jks", ".key", ".keystore", ".p12", ".pem", ".pfx")
+        if (
+            len(path.parts) > root_index
+            and path.parts[root_index].casefold() in operational_roots
+        ):
+            return f"operational or sensitive archive member: {name}"
         for part in path.parts:
             normalized = part.casefold()
             if (
-                normalized in blocked_parts
+                normalized in sensitive_parts
                 or normalized.startswith((".env.", ".gitleaks"))
                 or normalized.endswith(blocked_suffixes)
             ):
@@ -152,7 +165,8 @@ class FlextInfraReleaseArtifactArchiveMixin:
             if PurePosixPath(info.filename).name.casefold() in cls._license_names()
         )
         for info in members:
-            error = cls._member_path_error(info.filename)
+            # A wheel's content root is the package (or its .dist-info/.data).
+            error = cls._member_path_error(info.filename, root_index=0)
             if error:
                 return r[bool].fail(error)
             if stat.S_ISLNK(info.external_attr >> 16):
@@ -199,7 +213,8 @@ class FlextInfraReleaseArtifactArchiveMixin:
         )
         roots: set[str] = set()
         for member in members:
-            error = cls._member_path_error(member.name)
+            # An sdist's content root sits under its single `<name>-<version>/`.
+            error = cls._member_path_error(member.name, root_index=1)
             if error:
                 return r[bool].fail(error)
             parts = PurePosixPath(member.name).parts

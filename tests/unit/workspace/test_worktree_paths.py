@@ -29,7 +29,7 @@ class TestsWorktreePaths(WorktreeFixture):
         """A valid PEP 621 string survives typed setup in the isolated lane."""
         repository = self._repository(tmp_path)
         branch = "feature/example"
-        lane = self._lane(repository, repository, branch)
+        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
 
         added = tm.ok(
             FlextInfraWorktreeService(
@@ -69,7 +69,7 @@ class TestsWorktreePaths(WorktreeFixture):
         """Setup never inherits the primary checkout as its workspace owner."""
         repository = self._repository(tmp_path)
         branch = "feature/isolated-metadata"
-        lane = self._lane(repository, repository, branch)
+        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
         (repository / "pyproject.toml").write_text(
             '[dependency-groups]\ndescription = "dirty primary WIP"\n', encoding="utf-8"
         )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import importlib.util as _importlib_util
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
@@ -510,7 +511,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         if export_options.require_explicit_all:
             return ()
         return FlextInfraUtilitiesRopeAnalysis._implicit_export_names(
-            attributes=attributes, export_options=export_options, resource=resource
+            attributes=attributes,
+            export_options=export_options,
+            resource=resource,
+            pymodule=pymodule,
         )
 
     @staticmethod
@@ -559,8 +563,10 @@ class FlextInfraUtilitiesRopeAnalysis:
         attributes: t.MappingKV[str, t.Infra.RopePyName],
         export_options: m.Infra.ExportOptions,
         resource: t.Infra.RopeResource,
+        pymodule: t.Infra.RopePyModule,
     ) -> t.StrSequence:
         """Return implicit export names accepted by the export options."""
+        guard_spans = FlextInfraUtilitiesRopeAnalysis._script_guard_spans(pymodule)
         names: t.MutableSequenceOf[str] = []
         for name, pyname in attributes.items():
             if name == c.Infra.DUNDER_ALL:
@@ -568,21 +574,69 @@ class FlextInfraUtilitiesRopeAnalysis:
             if not FlextInfraUtilitiesRopeAnalysis._is_local_name(pyname, resource):
                 continue
             if FlextInfraUtilitiesRopeAnalysis._is_export_name(
-                export_options=export_options, name=name, pyname=pyname
+                export_options=export_options,
+                name=name,
+                pyname=pyname,
+                guard_spans=guard_spans,
             ):
                 names.append(name)
         return tuple(dict.fromkeys(names))
 
     @staticmethod
+    def _script_guard_spans(
+        pymodule: t.Infra.RopePyModule,
+    ) -> t.SequenceOf[t.Pair[int, int]]:
+        """Return the line spans of top-level ``if __name__ == "__main__":`` blocks.
+
+        Names bound there exist only when the module runs as a script; a
+        package facade that re-exported them (flext-core's examples exported
+        ``result`` and ``msg``) failed every importer.
+        """
+        module_ast = pymodule.get_ast()
+        body = getattr(module_ast, "body", ())
+        spans: t.MutableSequenceOf[t.Pair[int, int]] = []
+        for node in body:
+            if not isinstance(node, ast.If):
+                continue
+            test = node.test
+            if not (
+                isinstance(test, ast.Compare)
+                and len(test.ops) == 1
+                and isinstance(test.ops[0], ast.Eq)
+                and len(test.comparators) == 1
+            ):
+                continue
+            sides = (test.left, test.comparators[0])
+            names = {side.id for side in sides if isinstance(side, ast.Name)}
+            values = {side.value for side in sides if isinstance(side, ast.Constant)}
+            if names == {"__name__"} and values == {"__main__"}:
+                spans.append((node.lineno, node.end_lineno or node.lineno))
+        return tuple(spans)
+
+    @staticmethod
     def _is_export_name(
-        *, export_options: m.Infra.ExportOptions, name: str, pyname: t.Infra.RopePyName
+        *,
+        export_options: m.Infra.ExportOptions,
+        name: str,
+        pyname: t.Infra.RopePyName,
+        guard_spans: t.SequenceOf[t.Pair[int, int]] = (),
     ) -> bool:
         """Return whether one Rope name is exportable under the options."""
         if FlextInfraUtilitiesRopeRuntime.is_imported_name(pyname):
             return False
         if FlextInfraUtilitiesRopeRuntime.is_assigned_name(pyname):
             allow_assignments: bool = export_options.allow_assignments
-            return allow_assignments
+            if not allow_assignments:
+                return False
+            lines = tuple(
+                line
+                for assignment in pyname.assignments
+                if (line := getattr(assignment.ast_node, "lineno", None)) is not None
+            )
+            return not lines or not all(
+                any(start <= line <= end for start, end in guard_spans)
+                for line in lines
+            )
         if not FlextInfraUtilitiesRopeRuntime.is_defined_name(pyname):
             return False
         obj = pyname.get_object()

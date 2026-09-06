@@ -100,4 +100,23 @@ class TestScaffoldProjectIdempotency:
         tm.that(len(second_result.files_skipped), eq=5)
 
 
+class TestScaffoldProjectFacadeOwnership:
+    def test_examples_and_scripts_inherit_project_facade(self, tmp_path: Path) -> None:
+        project = _create_test_project(tmp_path, with_all_modules=True)
+        (project / "examples").mkdir()
+        (project / "scripts").mkdir()
+        scaffolder = FlextInfraCodegenScaffolder(workspace_root=tmp_path)
+        [result] = scaffolder.run(projects=[_project_info(project)])
+
+        tm.that(len(result.files_created), eq=10)
+        tm.that(
+            (project / "examples" / "constants.py").read_text(encoding="utf-8"),
+            has="from test_project import FlextConstants",
+        )
+        tm.that(
+            (project / "scripts" / "constants.py").read_text(encoding="utf-8"),
+            has="from test_project import FlextConstants",
+        )
+
+
 __all__: t.StrSequence = []

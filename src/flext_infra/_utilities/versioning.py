@@ -81,15 +81,12 @@ class FlextInfraUtilitiesVersioning:
     def bump_version(
         version: str, bump_type: str | c.Infra.VersionBump
     ) -> p.Result[str]:
-        """Bump a semantic version string.
+        """Return the next release version for one bump kind.
 
-        Args:
-            version: The current version string.
-            bump_type: One of "major", "minor", or "patch".
-
-        Returns:
-            r[str] with the bumped version.
-
+        A pre-release (``0.12.0rc0``) is finalized to its base release by any
+        real bump: the base was already reserved when the pre-release was cut,
+        so the first releasable change ships it. ``none`` returns the version
+        unchanged for both shapes.
         """
         try:
             normalized_bump = c.Infra.VersionBump(bump_type)
@@ -98,7 +95,11 @@ class FlextInfraUtilitiesVersioning:
         result = FlextInfraUtilitiesVersioning.parse_semver(version)
         if result.failure:
             return r[str].fail(result.error or "parse failed")
+        if normalized_bump == c.Infra.VersionBump.NONE:
+            return r[str].ok(version)
         major, minor, patch = result.value
+        if Version(version).is_prerelease:
+            return r[str].ok(f"{major}.{minor}.{patch}")
         if normalized_bump == c.Infra.VersionBump.MAJOR:
             major += 1
             minor = 0
@@ -108,6 +109,15 @@ class FlextInfraUtilitiesVersioning:
             patch = 0
         else:
             patch += 1
+        return r[str].ok(f"{major}.{minor}.{patch}")
+
+    @staticmethod
+    def finalize_version(version: str) -> p.Result[str]:
+        """Return the base release of ``version`` (a final version is itself)."""
+        result = FlextInfraUtilitiesVersioning.parse_semver(version)
+        if result.failure:
+            return r[str].fail(result.error or "parse failed")
+        major, minor, patch = result.value
         return r[str].ok(f"{major}.{minor}.{patch}")
 
     @staticmethod
@@ -164,6 +174,18 @@ class FlextInfraUtilitiesVersioning:
         return r[t.Triple[int, int, int]].ok((major, minor, patch))
 
     @staticmethod
+    def version_is_newer(candidate: str, reference: str) -> p.Result[bool]:
+        """Whether ``candidate`` orders after ``reference`` under PEP 440.
+
+        Pre-release segments take part in the ordering: ``0.12.0`` is newer
+        than ``0.12.0rc2`` although both share the release triple.
+        """
+        try:
+            return r[bool].ok(Version(candidate) > Version(reference))
+        except InvalidVersion as exc:
+            return r[bool].fail(f"invalid version: {exc}")
+
+    @staticmethod
     def render_project_version(content: str, version: str) -> p.Result[str]:
         """Render one canonical project-version update without writing it."""
         version_result = FlextInfraUtilitiesVersioning.parse_semver(version)
@@ -200,7 +222,15 @@ class FlextInfraUtilitiesVersioning:
         )
         if rendered.failure:
             return r[bool].fail(f"{rendered.error} in {pyproject}")
-        return u.Cli.atomic_write_text_file(pyproject, rendered.value)
+        written = u.Cli.atomic_write_text_file(pyproject, rendered.value)
+        if written.failure:
+            return written
+        # Why: flext-core caches the parsed pyproject per process. This is the
+        # protocol's only writer of the version, and the docs projections
+        # rendered right after the stamp must see the stamped version, not
+        # the document read before it (flext-cli#129 drifted that way).
+        u.read_project_document_cached.cache_clear()
+        return written
 
 
 __all__: list[str] = ["FlextInfraUtilitiesVersioning"]

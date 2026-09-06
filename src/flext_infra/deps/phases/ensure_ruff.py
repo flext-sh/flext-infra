@@ -15,9 +15,14 @@ from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 class FlextInfraEnsureRuffConfigPhase:
     """Ensure standard Ruff configuration inline with known-first-party overlay."""
 
-    def __init__(self, tool_config: m.Infra.ToolConfigDocument) -> None:
+    def __init__(
+        self,
+        tool_config: m.Infra.ToolConfigDocument,
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+    ) -> None:
         """Store tool configuration used to build canonical Ruff settings."""
         self._tool_config = tool_config
+        self._managed_artifacts = managed_artifacts
 
     @staticmethod
     def _workspace_project_namespaces(project_dir: Path) -> t.StrSequence:
@@ -70,8 +75,13 @@ class FlextInfraEnsureRuffConfigPhase:
         return ()
 
     @staticmethod
-    def _project_per_file_ignores(project_dir: Path) -> t.MappingKV[str, t.StrSequence]:
+    def _project_per_file_ignores(
+        project_dir: Path,
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
+    ) -> t.MappingKV[str, t.StrSequence]:
         """Load validated project-owned Ruff additions from ``config/*.yaml``."""
+        if managed_artifacts is not None:
+            return managed_artifacts.artifacts.Ruff.per_file_ignores
         loaded = (
             FlextInfraUtilitiesProjectManagedArtifacts.load_project_managed_artifacts(
                 project_dir
@@ -86,6 +96,7 @@ class FlextInfraEnsureRuffConfigPhase:
         return FlextInfraEnsureRuffConfigPhase.compose_per_file_ignores(
             project_dir,
             global_ignores=self._tool_config.tools.ruff.lint.per_file_ignores,
+            managed_artifacts=self._managed_artifacts,
         )
 
     @staticmethod
@@ -93,6 +104,7 @@ class FlextInfraEnsureRuffConfigPhase:
         project_dir: Path,
         *,
         global_ignores: t.MappingKV[str, t.StrSequence] | None = None,
+        managed_artifacts: m.Infra.ProjectManagedArtifactsResolution | None = None,
     ) -> t.MappingKV[str, t.StrSequence]:
         """Return the effective Ruff exemption map for one project.
 
@@ -109,7 +121,7 @@ class FlextInfraEnsureRuffConfigPhase:
             else global_ignores
         )
         local_ignores = FlextInfraEnsureRuffConfigPhase._project_per_file_ignores(
-            project_dir
+            project_dir, managed_artifacts
         )
         return {
             pattern: tuple(sorted({*effective_global.get(pattern, ()), *rules}))
@@ -124,15 +136,21 @@ class FlextInfraEnsureRuffConfigPhase:
         stale_patterns: t.StrSequence,
         per_file_ignores: t.MappingKV[str, t.StrSequence],
         include_handler: bool,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> m.Infra.Deps.Toml.PhaseConfig:
         """Build the canonical Ruff phase for one project path."""
         ruff_cfg = self._tool_config.tools.ruff
         effective_src = sorted(ruff_cfg.src)
+        workspace_exclusions = (
+            self._workspace_exclusion_globs(path.parent)
+            if analysis_exclusions is None
+            else ()
+        )
+        provided_exclusions = () if analysis_exclusions is None else analysis_exclusions
         effective_exclude = sorted({
             *ruff_cfg.exclude,
-            *self._workspace_exclusion_globs(path.parent),
-            *analysis_exclusions,
+            *workspace_exclusions,
+            *provided_exclusions,
         })
         # Models stay declaration-only; the
         # Ruff phase owns the derived union consumed by emitted tool config.
@@ -220,7 +238,7 @@ class FlextInfraEnsureRuffConfigPhase:
         doc: t.Cli.TomlDocument,
         *,
         path: Path,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply canonical Ruff tables with namespace-aware first-party detection."""
         effective_ignores = self._per_file_ignores(path.parent)
@@ -255,7 +273,7 @@ class FlextInfraEnsureRuffConfigPhase:
         payload: t.MutableJsonMapping,
         *,
         path: Path,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> t.StrSequence:
         """Apply canonical Ruff settings directly to one normalized payload."""
         effective_ignores = self._per_file_ignores(path.parent)

@@ -50,6 +50,14 @@ class FlextInfraPyprojectModernizer(
             description="Rewrite dependency constraints from uv.lock",
         ),
     ] = False
+    managed_artifacts: Annotated[
+        m.Infra.ProjectManagedArtifactsResolution | None,
+        m.Field(
+            default=None,
+            exclude=True,
+            description="Caller-owned project ManagedArtifacts resolution",
+        ),
+    ] = None
     tomlsort_sort_first: t.StrSequence = m.Field(
         default_factory=lambda: config.Infra.tooling.tools.tomlsort.sort_first,
         exclude=True,
@@ -66,7 +74,7 @@ class FlextInfraPyprojectModernizer(
         declared_python_dirs_are_complete: bool = False,
         generated_python_roots: t.StrSequence = (),
         project_kind: str | None = None,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> p.Result[str]:
         """Return one canonical pyproject using the same phases as workspace apply.
 
@@ -120,7 +128,7 @@ class FlextInfraPyprojectModernizer(
         declared_python_dirs: t.StrSequence = (),
         declared_python_dirs_are_complete: bool = False,
         project_kind: str | None = None,
-        analysis_exclusions: t.StrSequence = (),
+        analysis_exclusions: t.StrSequence | None = None,
     ) -> p.Result[m.Infra.ToolingRuntimeContext]:
         """Resolve typed project/workspace values for the complete Jinja template."""
         # flext-j47u (codex): resolve values only; template retains the full structure.
@@ -244,8 +252,22 @@ class FlextInfraPyprojectModernizer(
             project_dir=path.parent, is_root=True
         )
         path_rules = config.Infra.tooling.tools.pyrefly.path_rules
+        # A shared search path belongs to the project when the scaffold
+        # declares it or the tree already has it — the same rule
+        # `pyrefly_search_paths` applies after the write. Seeding every
+        # configured path regardless left `scripts` in the render and out of
+        # the sync, so apply could never reach a fixed point.
+        project_dir = path.parent
         declared_roots = (
-            (path_rules.source_dir, *path_rules.project_shared_search_paths)
+            (
+                path_rules.source_dir,
+                *(
+                    shared
+                    for shared in path_rules.project_shared_search_paths
+                    if shared in declared_python_dirs or (project_dir / shared).is_dir()
+                ),
+                path_rules.project_root,
+            )
             if path_rules.source_dir in declared_python_dirs
             else ()
         )
@@ -254,6 +276,17 @@ class FlextInfraPyprojectModernizer(
         # for search/mypy whenever scaffolding supplied them; pyright extras keep
         # discovery order (sorted {'.', 'src'}) so the first write matches sync.
         derived_search_path = declared_roots or discovered_search
+        # mypy and pyrefly diverge here (cosmos-45hiv, 2026-08-31): mypy
+        # enumerates each search-path root as a package root, so roots that
+        # re-spell the same files (". " vs a rooted "scripts/") make it abort
+        # with source-file-found-twice. pyrefly resolves first-match and needs
+        # the extra roots. mypy keeps declared source roots; pyrefly keeps the
+        # full derivation.
+        derived_mypy_path = (
+            tuple(root for root in declared_roots if root != ".")
+            if declared_roots
+            else derived_search_path
+        )
         derived_extra_paths = discovered_extra or declared_roots
         resolved_project_kind = project_kind or "core"
         if project_kind is None and path.parent.resolve() != self.root.resolve():
@@ -282,9 +315,9 @@ class FlextInfraPyprojectModernizer(
                 # have written a partial mypy_path ('.' only). Prefer derivation
                 # so the template matches post-write ExtraPaths sync.
                 "mypy_path": (
-                    derived_search_path
+                    derived_mypy_path
                     if declared_roots
-                    else (mypy.get("mypy_path") or derived_search_path)
+                    else (mypy.get("mypy_path") or derived_mypy_path)
                 ),
                 "pyrefly_search_path": (
                     derived_search_path

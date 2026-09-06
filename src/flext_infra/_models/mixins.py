@@ -159,66 +159,6 @@ class FlextInfraModelsMixins:
         version: Annotated[str, m.Field(description="Version string")] = ""
         tag: Annotated[str, m.Field(description="Git tag (e.g. v1.0.0)")] = ""
 
-    class AutomationMixin:
-        """Shared release automation toggles."""
-
-        push: Annotated[bool, m.Field(description="Push to remote")] = False
-        dev_suffix: Annotated[bool, m.Field(description="Add dev suffix")] = False
-
-    # ═══════════════════ GITHUB REQUEST MIXINS ═══════════════════
-
-    class WorkspaceCliRequestMixin:
-        """CLI workspace request fields — branch/checkpoint + canonical fail-fast.
-
-        Merged surface of the former ``GithubWorkspaceRequestMixin`` +
-        ``GithubWorkspaceCliRequestMixin``. ``fail_fast`` default aligned
-        to the canonical ``ScopeMixin`` value (``True``); commands that
-        need the legacy ``False`` declare it locally.
-        """
-
-        include_root: Annotated[bool, m.Field(description="Include root project")] = (
-            False
-        )
-        branch: Annotated[str, m.Field(description="Branch name filter")] = ""
-        checkpoint: Annotated[bool, m.Field(description="Enable checkpoints")] = True
-        fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
-
-    class GithubPullRequestFieldsMixin:
-        """Shared pull-request fields used by single and workspace requests."""
-
-        action: Annotated[
-            c.Infra.PullRequestAction,
-            m.Field(description="Pull-request publication action"),
-        ] = c.Infra.PullRequestAction.STATUS
-
-        @m.field_validator("action", mode="before")
-        @classmethod
-        def _validate_pull_request_action(
-            cls, value: object
-        ) -> c.Infra.PullRequestAction:
-            """Normalize the CLI string boundary to the strict action enum."""
-            if isinstance(value, c.Infra.PullRequestAction):
-                return value
-            if isinstance(value, str):
-                return c.Infra.PullRequestAction(value)
-            msg = "pull-request action must be a string or PullRequestAction"
-            raise TypeError(msg)
-
-        base: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Base branch; repository default when omitted"),
-        ] = None
-        head: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Head branch; current branch when omitted"),
-        ] = None
-        title: Annotated[
-            t.NonEmptyStr | None,
-            m.Field(description="Required pull-request title for create"),
-        ] = None
-        body: Annotated[str | None, m.Field(description="PR body")] = None
-        draft: Annotated[bool, m.Field(description="Draft PR")] = False
-
     # ═══════════════════ FIELD CONTRACT MIXINS ═══════════════════
 
     class FilePathMixin:

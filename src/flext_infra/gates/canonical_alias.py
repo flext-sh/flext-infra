@@ -71,23 +71,13 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             return self._skip_result(project_dir, started)
         files_result = self._alias_files(project_dir)
         if files_result.failure:
-            issue = m.Infra.Issue(
-                file=c.Infra.PYPROJECT_FILENAME,
-                line=1,
-                column=1,
-                code=self.gate_id,
-                message=files_result.error or "canonical-alias scan failed",
-            )
-            return self._build_gate_result(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=False,
-                    errors=[issue.formatted],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=[issue],
-                raw_output=issue.message,
+            file_path_str = files_result.error or "canonical-alias scan failed"
+            return self._build_single_issue_result(
+                project_dir,
+                Path(c.Infra.PYPROJECT_FILENAME),
+                file_path_str,
+                passed=False,
+                started=started,
                 ctx=ctx,
             )
 
@@ -129,16 +119,12 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         finally:
             rope_project.close()
 
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=len(issues) == 0,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=len(issues) == 0,
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
+            started=started,
             ctx=ctx,
         )
 
@@ -152,16 +138,14 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
             return self._skip_result(project_dir, started)
         files_result = self._alias_files(project_dir)
         if files_result.failure:
-            return self._build_gate_result(
-                result=m.Infra.GateResult(
-                    gate=self.gate_id,
-                    project=project_dir.name,
-                    passed=False,
-                    errors=[files_result.error or "canonical-alias fix failed"],
-                    duration=round(time.monotonic() - started, 3),
-                ),
-                issues=[],
-                raw_output=files_result.error or "canonical-alias fix failed",
+            message = files_result.error or "canonical-alias fix failed"
+            return self._build_single_issue_result(
+                project_dir,
+                project_dir,
+                message,
+                passed=False,
+                started=started,
+                ctx=ctx,
             )
 
         rope_project = u.Infra.init_rope_project(project_dir)
@@ -326,42 +310,9 @@ class FlextInfraCanonicalAliasGate(FlextInfraGate):
         ctx: m.Infra.GateContext,
     ) -> m.Infra.GateExecution:
         """Build a failed fix result for local rewrite failures."""
-        issue = m.Infra.Issue(
-            file=str(file_path),
-            line=1,
-            column=1,
-            code=self.gate_id,
-            message=message,
-            severity="ERROR",
+        return self._build_single_issue_result(
+            project_dir, file_path, message, passed=False, started=started, ctx=ctx
         )
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=False,
-                errors=[issue.formatted],
-                duration=round(time.monotonic() - started, 3),
-            ),
-            issues=[issue],
-            raw_output=issue.message,
-            ctx=ctx,
-        )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — execution happens in ``check``."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — ``check`` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraCanonicalAliasGate"]

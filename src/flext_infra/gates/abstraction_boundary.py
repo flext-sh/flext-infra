@@ -21,7 +21,7 @@ from flext_infra.gates.base_gate import FlextInfraGate
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p, t
+    from flext_infra import t
 
 
 class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
@@ -53,28 +53,24 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
                 code=self.gate_id,
                 message=files_result.error or "abstraction-boundary scan failed",
             )
-            return self._result(project_dir, started, [issue])
+            return self._build_check_gate_execution(
+                project_dir,
+                passed=False,
+                issues=[issue],
+                raw_output=issue.formatted,
+                started=started,
+            )
         issues = [
             issue
             for file_path in files_result.value
             for issue in self._scan_file(file_path, project_dir.name)
         ]
-        return self._result(project_dir, started, issues)
-
-    def _result(
-        self, project_dir: Path, started: float, issues: t.SequenceOf[m.Infra.Issue]
-    ) -> m.Infra.GateExecution:
-        """Assemble the gate execution from collected issues."""
-        return self._build_gate_result(
-            result=m.Infra.GateResult(
-                gate=self.gate_id,
-                project=project_dir.name,
-                passed=len(issues) == 0,
-                errors=[issue.formatted for issue in issues],
-                duration=round(time.monotonic() - started, 3),
-            ),
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=len(issues) == 0,
             issues=issues,
             raw_output="\n".join(issue.formatted for issue in issues),
+            started=started,
         )
 
     def _scan_file(self, path: Path, project: str) -> t.SequenceOf[m.Infra.Issue]:
@@ -134,22 +130,6 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
             message=message,
             severity="ERROR",
         )
-
-    @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """No external tool — scanning happens in `check`."""
-        _ = project_dir, ctx, check_dirs
-        return []
-
-    @override
-    def _parse_check_output(
-        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
-        """Unused — `check` is overridden directly."""
-        _ = result, project_dir, ctx
-        return True, ()
 
 
 __all__: list[str] = ["FlextInfraAbstractionBoundaryGate"]

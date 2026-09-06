@@ -285,6 +285,12 @@ class TestsFlextInfraDepsModernizerWorkspace:
         (member / c.Infra.PYPROJECT_FILENAME).write_text(
             '[project]\nname = "declared-name"\nversion = "0.1.0"\n', encoding="utf-8"
         )
+        u.Tests.write_beads_project(
+            member,
+            workspace="workspace",
+            database="declared_name",
+            issue_prefix="declared-name",
+        )
 
         modernizer = FlextInfraPyprojectModernizer(
             repository_root=workspace,

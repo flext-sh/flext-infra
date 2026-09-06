@@ -54,12 +54,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     description: Annotated[
         str, m.Field(default="", description="Project description (default: derived).")
     ] = ""
-    # Project config owns the
-    # already-validated version value consumed directly by project generation.
-    version: Annotated[
-        str,
-        m.Field(description="Initial project version (default: config.Infra.version)."),
-    ] = config.Infra.version
     provider: Annotated[
         str, m.Field(min_length=1, description="Configured Git provider key.")
     ]
@@ -127,7 +121,7 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             provider=self.provider,
             url=repository_url,
             path=Path(),
-            role=c.Infra.RepositoryRole.STANDALONE,
+            role=c.Infra.MakeProfile.STANDALONE,
             state=c.Infra.RepositoryState.ACTIVE,
             checkout=c.Infra.CheckoutKind.INDEPENDENT,
             codegen=c.Infra.CodegenKind.CONFORM,
@@ -156,7 +150,6 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                     self.description
                     or f"{class_stem} — FLEXT typed integration package"
                 ),
-                version=self.version,
                 license=self.license,
                 author_name=self.author_name,
                 author_email=self.author_email,

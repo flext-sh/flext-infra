@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from .codegen.layout import FlextInfraCodegenLayout
     from .codegen.lazy_init import FlextInfraCodegenLazyInit
     from .codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
+    from .codegen.make_bootstrap import FlextInfraCodegenMakeBootstrap
     from .codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
     from .codegen.managed_conflicts_bootstrap import (
         ManagedConflictBootstrapError,
@@ -144,9 +145,10 @@ if TYPE_CHECKING:
     from .fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
     from .gates.abstraction_boundary import FlextInfraAbstractionBoundaryGate
     from .gates.bandit import FlextInfraBanditGate
-    from .gates.base_gate import FlextInfraGate
+    from .gates.base_gate import FlextInfraGate, FlextInfraScannerGateMixin
     from .gates.canonical_alias import FlextInfraCanonicalAliasGate
     from .gates.deferred_self_reference import FlextInfraDeferredSelfReferenceGate
+    from .gates.direnv import FlextInfraDirenvGate
     from .gates.layout import FlextInfraLayoutGate
     from .gates.loc_cap import FlextInfraLocCapGate
     from .gates.markdown import FlextInfraMarkdownGate
@@ -291,6 +293,7 @@ if TYPE_CHECKING:
     )
     from .validate.tier_whitelist import FlextInfraValidateTierWhitelist
     from .workspace.detector import FlextInfraWorkspaceDetector
+    from .workspace.environment_contracts import envrc_contract_violations
     from .workspace.environment_provenance import (
         FlextInfraWorkspaceEnvironmentProvenance,
     )
@@ -327,6 +330,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraCodegenLayout",
     "FlextInfraCodegenLazyInit",
     "FlextInfraCodegenLazyInitPlanner",
+    "FlextInfraCodegenMakeBootstrap",
     "FlextInfraCodegenManagedConflicts",
     "FlextInfraCodegenMiseArtifacts",
     "FlextInfraCodegenPipeline",
@@ -346,6 +350,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraDependencyDetectionAnalysis",
     "FlextInfraDependencyDetectionService",
     "FlextInfraDependencyDetectorRuntime",
+    "FlextInfraDirenvGate",
     "FlextInfraDocAuditor",
     "FlextInfraDocAuditorMixin",
     "FlextInfraDocBuilder",
@@ -466,6 +471,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraRuntimeCensusValidator",
     "FlextInfraRuntimeDevDependencyDetector",
     "FlextInfraSandboxOrchestrator",
+    "FlextInfraScannerGateMixin",
     "FlextInfraServiceBase",
     "FlextInfraSilentFailureDetector",
     "FlextInfraSilentFailureGate",
@@ -526,6 +532,7 @@ __all__: tuple[str, ...] = (
     "docs",
     "docs_main",
     "e",
+    "envrc_contract_violations",
     "fixers",
     "gates",
     "h",
@@ -577,6 +584,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".codegen.layout": ("FlextInfraCodegenLayout",),
             ".codegen.lazy_init": ("FlextInfraCodegenLazyInit",),
             ".codegen.lazy_init_planner": ("FlextInfraCodegenLazyInitPlanner",),
+            ".codegen.make_bootstrap": ("FlextInfraCodegenMakeBootstrap",),
             ".codegen.managed_conflicts": ("FlextInfraCodegenManagedConflicts",),
             ".codegen.managed_conflicts_bootstrap": (
                 "ManagedConflictBootstrapError",
@@ -681,9 +689,10 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates": ("gates",),
             ".gates.abstraction_boundary": ("FlextInfraAbstractionBoundaryGate",),
             ".gates.bandit": ("FlextInfraBanditGate",),
-            ".gates.base_gate": ("FlextInfraGate",),
+            ".gates.base_gate": ("FlextInfraGate", "FlextInfraScannerGateMixin"),
             ".gates.canonical_alias": ("FlextInfraCanonicalAliasGate",),
             ".gates.deferred_self_reference": ("FlextInfraDeferredSelfReferenceGate",),
+            ".gates.direnv": ("FlextInfraDirenvGate",),
             ".gates.layout": ("FlextInfraLayoutGate",),
             ".gates.loc_cap": ("FlextInfraLocCapGate",),
             ".gates.markdown": ("FlextInfraMarkdownGate",),
@@ -859,6 +868,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".validate.tier_whitelist": ("FlextInfraValidateTierWhitelist",),
             ".workspace": ("workspace",),
             ".workspace.detector": ("FlextInfraWorkspaceDetector",),
+            ".workspace.environment_contracts": ("envrc_contract_violations",),
             ".workspace.environment_provenance": (
                 "FlextInfraWorkspaceEnvironmentProvenance",
             ),

@@ -81,6 +81,7 @@ class TestConfigFixerProcessFile:
         self, tmp_path: Path
     ) -> None:
         """Keep every existing tracked Python root in project includes."""
+        u.Tests.write_project_beads_config(tmp_path, "tmp")
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "package.py").write_text("VALUE = 1\n", encoding="utf-8")
         (tmp_path / "tests").mkdir()

@@ -137,6 +137,18 @@ class FlextInfraModelsDepsToolConfigProjectArtifacts(
             m.Field(description="Source YAML path for every local Mise selector."),
         ]
 
+    class ProjectManagedArtifactsSnapshot(m.ArbitraryTypesModel):
+        """One immutable YAML snapshot and its single parsed resolution."""
+
+        sources: Annotated[
+            tuple[m.Cli.AtomicFileState, ...],
+            m.Field(description="Ordered exact project configuration sources."),
+        ]
+        resolution: Annotated[
+            FlextInfraModelsDepsToolConfigProjectArtifacts.ProjectManagedArtifactsResolution,
+            m.Field(description="Managed artifacts parsed from those exact sources."),
+        ]
+
 
 class FlextInfraModelsDepsToolConfigProject(
     FlextInfraModelsDepsToolConfigProjectArtifacts
