@@ -344,7 +344,7 @@ Infra:
         # Why: pre-commit runs fmt+fix (mutation) then CI=Y make check (same
         # gates as CI: mypy pyright security markdown smells). This bans
         # broken code from ever being committed. pre-push adds gen+test.
-        - { verb: setup, apply: true, contexts: [local, ci] }
+        - { verb: setup, apply: false, contexts: [local, ci] }
         - { verb: gen, apply: true, contexts: [local, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, pre_commit] }
@@ -441,7 +441,7 @@ Infra:
           requires_apply: false
         - name: setup
           description: Provision the declared environment and hooks.
-          requires_apply: true
+          requires_apply: false
         - name: deps
           description: Upgrade, lock, and conform every declared dependency.
           requires_apply: true
