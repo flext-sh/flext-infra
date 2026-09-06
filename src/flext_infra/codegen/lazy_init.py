@@ -99,7 +99,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         """Open Rope once and propagate every planner or filesystem failure."""
         try:
             with FlextInfraRopeWorkspace.open_workspace(
-                self.repository_root, rope_workspace_root=self.repository_root
+                self.repository_root, rope_repository_root=self.repository_root
             ) as rope:
                 return self._plan_open_workspace(rope)
         except c.EXC_OS_VALUE as exc:

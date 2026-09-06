@@ -17,8 +17,7 @@ from pathlib import Path
 from flext_core import p as core_p
 from flext_infra.workspace.flext_binding import FlextInfraFlextBindingService
 from flext_tests import tm
-from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests import WorktreeFixture, u
 
 
 def _consumer(tmp_path: Path) -> Path:

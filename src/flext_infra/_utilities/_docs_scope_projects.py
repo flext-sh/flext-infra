@@ -33,9 +33,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
         discovered = owner.discover_projects(workspace_root)
         if discovered.failure:
-            return r[t.SequenceOf[mw.ProjectInfo]].fail(
-                discovered.error or "discovery failed"
-            )
+            return r[t.SequenceOf[mw.ProjectInfo]].from_failure(discovered)
         projects = list(discovered.value)
         root = owner.absolute_lexical(workspace_root)
         if all(project.path != root for project in projects):

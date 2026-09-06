@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import stat
 from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
@@ -373,10 +374,7 @@ def live(
     for project in plan.projects:
         validated = owner.validate_artifacts(project.layout.root)
         if validated.failure:
-            return r[bool].fail(
-                validated.error
-                or f"published Mise validation failed for {project.layout.selector}"
-            )
+            return r[bool].from_failure(validated)
     artifact_after = _artifact_snapshot(plan, replacements)
     if artifact_after.failure:
         return r[bool].from_failure(artifact_after)

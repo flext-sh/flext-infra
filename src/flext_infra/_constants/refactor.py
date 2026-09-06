@@ -93,10 +93,16 @@ class FlextInfraConstantsRefactor:
     CODEMOD_RESOURCE_DIRNAME: Final[str] = "codemod"
     CODEMOD_RULE_SUFFIX: Final[str] = ".yml"
     CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
+    CODEMOD_CONFIG_RELPATH: Final[Path] = Path(CODEMOD_RESOURCE_DIRNAME) / (
+        CODEMOD_CONFIG_FILENAME
+    )
     CODEMOD_RULE_DIRS_KEY: Final[str] = "ruleDirs"
     CODEMOD_UTIL_DIRS_KEY: Final[str] = "utilDirs"
     CODEMOD_TEST_CONFIGS_KEY: Final[str] = "testConfigs"
     CODEMOD_TEST_DIR_KEY: Final[str] = "testDir"
+    CODEMOD_SCOPE_KEY: Final[str] = "scope"
+    CODEMOD_SCOPE_UNIVERSAL: Final[str] = "universal"
+    CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
     CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
     CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (

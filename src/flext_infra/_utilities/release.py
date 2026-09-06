@@ -46,7 +46,7 @@ class FlextInfraUtilitiesRelease:
         for member in members:
             path_result = FlextInfraUtilitiesRelease.archive_member_path(member.name)
             if path_result.failure:
-                return r[bool].fail(path_result.error or "unsafe archive member path")
+                return r[bool].from_failure(path_result)
             if member.issym() or member.islnk():
                 return r[bool].fail(
                     f"release archive contains symbolic or hard link: {member.name}"

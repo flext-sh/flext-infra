@@ -392,9 +392,9 @@ class FlextInfraUtilitiesDiscovery(
         return tuple(ordered)
 
     @classmethod
-    def rope_workspace_root(cls, workspace_root: Path) -> Path:
+    def rope_repository_root(cls, repository_root: Path) -> Path:
         """Return the execution-context root for one conditional Rope scan."""
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         execution_dir = (
             resolved_root if resolved_root.is_dir() else resolved_root.parent
         )
@@ -569,7 +569,7 @@ class FlextInfraUtilitiesDiscovery(
         )
         if not parent_packages:
             return {}
-        workspace_root = cls.rope_workspace_root(project_root)
+        workspace_root = cls.rope_repository_root(project_root)
         for candidate in project_root.resolve().parents:
             if (candidate / c.Infra.GITMODULES).is_file():
                 workspace_root = candidate

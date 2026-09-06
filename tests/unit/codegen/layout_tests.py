@@ -265,25 +265,6 @@ def test_declared_repositories_are_canonical_root_entries(tmp_path: Path) -> Non
     tm.that(findings[undeclared_name].rule, eq="review")
 
 
-def test_retired_generated_paths_remain_layout_neutral_until_conform(
-    tmp_path: Path,
-) -> None:
-    """The layout pass leaves explicitly retired projections to their owner."""
-    project = _build_loose_project(tmp_path)
-    retired_roots = {
-        Path(relative_path).parts[0]
-        for relative_path in config.Infra.codegen.retired_generated_paths
-    }
-    for root_name in retired_roots:
-        (project / root_name).write_text("retired\n", encoding="utf-8")
-    engine = _engine(tmp_path)
-
-    report = engine.check_project(project)
-
-    finding_paths = {finding.path for finding in report.findings}
-    tm.that(finding_paths.isdisjoint(retired_roots), eq=True)
-
-
 def test_duplicate_root_md_archives_when_docs_copy_exists(tmp_path: Path) -> None:
     """Root move_docs_files collide with docs/ -> archive root, keep docs."""
     project = _build_loose_project(tmp_path)

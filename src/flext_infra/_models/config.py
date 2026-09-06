@@ -405,6 +405,7 @@ class FlextInfraConfigModels:
                     "linux-arm64-musl",
                     "macos-x64",
                     "macos-arm64",
+                    "windows-x64",
                 ],
                 ...,
             ],
@@ -413,7 +414,6 @@ class FlextInfraConfigModels:
                 description="Platforms materialized into the project mise lockfile",
             ),
         ]
-
         beads: Annotated[
             FlextInfraConfigModels.BeadsToolSpec,
             m.Field(description="Official Beads CLI installed through mise"),
@@ -451,7 +451,6 @@ class FlextInfraConfigModels:
             if len(set(self.mise_lock_platforms)) != len(self.mise_lock_platforms):
                 msg = "mise_lock_platforms must be unique"
                 raise ValueError(msg)
-
             return self
 
         @m.computed_field
@@ -688,11 +687,13 @@ class FlextInfraConfigModels:
         dependency_cooldown_days: Annotated[
             t.PositiveInt,
             m.Field(
+                ge=1,
+                le=90,
                 description=(
-                    "Rolling supply-chain cooldown rendered into dependabot.yml; "
-                    "the template reads it on every ecosystem block, so the spec "
-                    "must declare it or the whole render dies"
-                )
+                    "Shared uv and Dependabot dependency cooldown rendered into "
+                    "dependabot.yml; the template reads it on every ecosystem "
+                    "block, so the spec must declare it or the whole render dies"
+                ),
             ),
         ]
         github_actions: Annotated[
@@ -1704,7 +1705,7 @@ class FlextInfraConfigModels:
     class RepositoryRef(_ConfigContract):
         """One declared repository and its immutable Git origin contract."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         name: Annotated[t.NonEmptyStr, m.Field(description="Catalog key")]
         distribution: Annotated[
@@ -1853,7 +1854,7 @@ class FlextInfraConfigModels:
     class RepositoryConformTarget(_ConfigContract):
         """Runtime-derived conformance identity for one repository."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(use_enum_values=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(use_enum_values=False)
 
         repository: Annotated[
             FlextInfraConfigModels.RepositoryRef,
@@ -2365,6 +2366,13 @@ class FlextInfraConfigModels:
         license: Annotated[t.NonEmptyStr, m.Field(description="SPDX license id")]
         python_required_version: Annotated[
             t.NonEmptyStr, m.Field(description="PEP 440 project Python requirement")
+        ]
+        mise_lock_platforms: Annotated[
+            tuple[t.NonEmptyStr, ...],
+            m.Field(
+                min_length=1,
+                description="Fleet platforms projected into native Mise lock policy",
+            ),
         ]
         kubectl_version: Annotated[
             t.NonEmptyStr, _tool_version_field("Exact kubectl toolchain version")
@@ -3103,7 +3111,7 @@ class FlextInfraConfigModels:
 
         # The bump map is consumed as enum members by the strict release plan,
         # so the contract base's value coercion is switched off here.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             strict=False, frozen=True, extra="forbid", use_enum_values=False
         )
 

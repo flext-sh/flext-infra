@@ -118,7 +118,11 @@ except BlockingIOError:
             )
 
         tm.ok(contended)
-        tm.that(contended.value.exit_code, eq=0, msg=contended.value.stderr)
+        tm.that(
+            u.Cli.process_succeeded(contended.value.outcome),
+            eq=True,
+            msg=contended.value.stderr,
+        )
 
     def test_nested_independent_repo_ignores_ancestor_journal(
         self, tmp_path: Path

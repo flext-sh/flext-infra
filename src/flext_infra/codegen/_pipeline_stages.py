@@ -226,7 +226,9 @@ class FlextInfraCodegenPipelineStagesMixin:
                 .plan_files()
                 .unwrap()
             )
-            return sum(plan.requires_effect for plan in plans)
+            return sum(
+                u.Infra.codegen_file_requires_effect(plan) for plan in plans.files
+            )
 
         return self._run_stage(
             c.Infra.PipelineStage.LAZY_INIT,

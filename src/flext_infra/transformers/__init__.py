@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .pattern_modernizer import FlextInfraRefactorPatternModernizer
     from .pydantic_modernizer import FlextInfraRefactorPydanticModernizer
     from .result_di_modernizer import FlextInfraRefactorResultDiModernizer
+    from .signature_propagator import FlextInfraRefactorSignaturePropagator
     from .smells.base import (
         FlextInfraSmellFixer,
         auto_fixable_smell_tags,
@@ -37,6 +38,7 @@ if TYPE_CHECKING:
         smell_fixer_for,
     )
     from .smells.boolean_logic import FlextInfraBooleanLogicFixer
+    from .symbol_propagator import FlextInfraRefactorSymbolPropagator
     from .tier0_import_fixer import FlextInfraTransformerTier0ImportFixer
     from .typing_dict_attr import FlextInfraRefactorTypingDictAttr
     from .typing_dict_import import FlextInfraRefactorTypingDictImport
@@ -62,6 +64,8 @@ __all__: tuple[str, ...] = (
     "FlextInfraRefactorPatternTransformer",
     "FlextInfraRefactorPydanticModernizer",
     "FlextInfraRefactorResultDiModernizer",
+    "FlextInfraRefactorSignaturePropagator",
+    "FlextInfraRefactorSymbolPropagator",
     "FlextInfraRefactorTypingDictAttr",
     "FlextInfraRefactorTypingDictImport",
     "FlextInfraRefactorTypingUnifier",
@@ -97,6 +101,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".pattern_modernizer": ("FlextInfraRefactorPatternModernizer",),
             ".pydantic_modernizer": ("FlextInfraRefactorPydanticModernizer",),
             ".result_di_modernizer": ("FlextInfraRefactorResultDiModernizer",),
+            ".signature_propagator": ("FlextInfraRefactorSignaturePropagator",),
             ".smells": ("smells",),
             ".smells.base": (
                 "FlextInfraSmellFixer",
@@ -105,6 +110,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "smell_fixer_for",
             ),
             ".smells.boolean_logic": ("FlextInfraBooleanLogicFixer",),
+            ".symbol_propagator": ("FlextInfraRefactorSymbolPropagator",),
             ".tier0_import_fixer": ("FlextInfraTransformerTier0ImportFixer",),
             ".typing_dict_attr": ("FlextInfraRefactorTypingDictAttr",),
             ".typing_dict_import": ("FlextInfraRefactorTypingDictImport",),

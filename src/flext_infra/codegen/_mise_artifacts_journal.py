@@ -326,9 +326,7 @@ def write(
         expected, content, permission_mode=files.JOURNAL_MODE
     )
     if written.failure:
-        return r[m.Cli.AtomicFileState].fail(
-            written.error or "cannot publish codegen transaction journal"
-        )
+        return r[m.Cli.AtomicFileState].from_failure(written)
     observed = state.journal_state(layout)
     if observed.failure:
         return r[m.Cli.AtomicFileState].from_failure(observed)
@@ -385,7 +383,7 @@ def cleanup(
         return directories
     removed = files.delete_state(journal_state)
     if removed.failure:
-        return r[bool].fail(removed.error or "cannot remove codegen journal")
+        return r[bool].from_failure(removed)
     return r[bool].ok(True)
 
 
@@ -624,9 +622,7 @@ def _journal_entry(
         backup = recovery_root / f"{index:06d}.original"
         written = process.write_new(backup, before.content, files.JOURNAL_MODE)
         if written.failure:
-            return r[m.Infra.CodegenJournalEntry].fail(
-                written.error or f"cannot back up generated file: {before.path}"
-            )
+            return r[m.Infra.CodegenJournalEntry].from_failure(written)
         relative_backup = files.workspace_relative(plan.layout.scope_root, backup)
         if relative_backup.failure:
             return r[m.Infra.CodegenJournalEntry].from_failure(relative_backup)

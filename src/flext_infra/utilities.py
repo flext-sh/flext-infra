@@ -15,7 +15,7 @@ from flext_infra._utilities.base import FlextInfraUtilitiesBase
 from flext_infra._utilities.census import FlextInfraUtilitiesRefactorCensus
 from flext_infra._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from flext_infra._utilities.codegen import FlextInfraUtilitiesCodegen
-from flext_infra._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from flext_infra._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from flext_infra._utilities.compatibility_aliases import (
     FlextInfraUtilitiesCompatibilityAliases,
 )
@@ -113,7 +113,6 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesProcess,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
-        FlextInfraUtilitiesCodegenFilePlan,
         FlextInfraUtilitiesCompatibilityAliases,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,
@@ -166,6 +165,7 @@ class FlextInfraUtilities(u):
         FlextInfraWorktreeLifecycle,
         FlextInfraWorktreeProvisioning,
         FlextInfraUtilitiesWorkspaceFingerprint,
+        FlextInfraUtilitiesCodemodRules,
     ):
         """Infrastructure-domain utilities - all methods exposed directly."""
 

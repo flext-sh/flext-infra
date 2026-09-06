@@ -91,17 +91,17 @@ def stage_file_plans(
                 # Distinct name: `before` above is this file's AtomicFileState
                 # and is published below; reusing it here bound a Result and
                 # the staged-file model rejected it.
-                root_state = u.Cli.atomic_read_empty_directory_state(
+                phase_root_before = u.Cli.atomic_read_empty_directory_state(
                     phase_root, required=False
                 )
-                if root_state.failure:
-                    return result_type.from_failure(root_state)
-                if root_state.value.exists:
+                if phase_root_before.failure:
+                    return result_type.from_failure(phase_root_before)
+                if phase_root_before.value.exists:
                     return result_type.fail(
                         f"{phase} staging root already exists: {phase_root}"
                     )
                 created = u.Cli.atomic_create_empty_directory_guarded(
-                    root_state.value, permission_mode=0o700
+                    phase_root_before.value, permission_mode=0o700
                 )
                 if created.failure:
                     return result_type.from_failure(created)

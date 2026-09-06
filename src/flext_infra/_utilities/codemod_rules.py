@@ -192,10 +192,13 @@ class FlextInfraUtilitiesCodemodRules:
             )
             for name in selected
         }
-        waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
-        if waves.failure:
-            return r[t.StrSequence].from_failure(waves)
-        return r[t.StrSequence].ok(tuple(name for wave in waves.value for name in wave))
+        try:
+            ordered = u.Infra.dependency_order(
+                tuple(selected), dependencies=lambda name: edges.get(name, ())
+            )
+        except ValueError as exc:
+            return r[t.StrSequence].fail(f"codemod provider cycle: {exc}")
+        return r[t.StrSequence].ok(ordered)
 
     @staticmethod
     def _provider_configs(

@@ -26,7 +26,7 @@ class FlextInfraMiseStaging:
     def stage(
         self, plan: m.Infra.MiseToolchainWorkspacePlan
     ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
-        """Generate, hydrate, and validate all destination-local candidates."""
+        """Stage and validate the committed lock selected before publication."""
         stages: list[Path] = []
         for project in plan.projects:
             if project.layout.transaction_root is None:

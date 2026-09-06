@@ -1648,7 +1648,7 @@ class TestScriptDispatchMakefile:
         )
 
         tm.ok(invoked)
-        tm.that(invoked.value.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(invoked.value.outcome), eq=True)
         tm.that(forbidden.exists(), eq=False)
         tm.that(
             calls.read_text(encoding="utf-8").splitlines(),

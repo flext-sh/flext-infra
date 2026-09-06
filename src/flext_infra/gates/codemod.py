@@ -36,10 +36,13 @@ class FlextInfraCodemodGate(FlextInfraGate):
         self, project_dir: Path, ctx: m.Infra.GateContext
     ) -> m.Infra.GateExecution:
         """Run ast-grep scan with cascaded codemod rules."""
-        _ = ctx
         started = time.monotonic()
         planned = u.Infra.codemod_rule_plan(project_dir)
         if planned.failure:
+            failure = planned.error
+            if not failure:
+                msg = "codemod rule planning failed without a diagnostic"
+                raise RuntimeError(msg)
             return self._build_check_gate_execution(
                 project_dir,
                 passed=False,
@@ -49,15 +52,16 @@ class FlextInfraCodemodGate(FlextInfraGate):
                         line=1,
                         column=0,
                         code=self.gate_id,
-                        message=planned.error or "ast-grep rule discovery failed",
+                        message=failure,
                         severity=str(c.Infra.GateSeverity.ERROR.value),
                     ),
                 ),
-                raw_output=planned.error or "ast-grep rule discovery failed",
+                raw_output=failure,
                 started=started,
             )
 
         issues: list[m.Infra.Issue] = []
+        raw_outputs: list[str] = []
         for ruleset in planned.value.rulesets:
             scan = self._run(
                 u.Infra.ast_grep_scan_command(
@@ -67,48 +71,54 @@ class FlextInfraCodemodGate(FlextInfraGate):
                 timeout=self._check_timeout(project_dir, ctx),
             )
             issues.extend(self._issues_from_scan(scan, ruleset.provider))
+            raw_outputs.extend(
+                output
+                for output in (scan.stdout.strip(), scan.stderr.strip())
+                if output
+            )
 
+        summary = (
+            f"{len(planned.value.rules)} rules from "
+            f"{len(planned.value.rulesets)} providers scanned, "
+            f"{len(issues)} violations"
+        )
         return self._build_check_gate_execution(
             project_dir,
             passed=not issues,
             issues=issues,
-            raw_output=(
-                f"{len(planned.value.rules)} rules from "
-                f"{len(planned.value.rulesets)} providers scanned, "
-                f"{len(issues)} violations"
-            ),
+            raw_output="\n".join((*raw_outputs, summary)),
             started=started,
-        )
-
-    @staticmethod
-    def _rules(project_dir: Path) -> t.SequenceOf[Path]:
-        """Resolve inherited rules through the public dependency utility."""
-        return u.Infra.project_dependency_resource_files(
-            project_dir,
-            resource_parts=(c.Infra.CODEMOD_RESOURCE_DIRNAME, c.Cli.RULES_DIR_NAME),
-            distribution_prefix=c.Infra.PKG_PREFIX_HYPHEN,
-            suffix=c.Infra.CODEMOD_RULE_SUFFIX,
         )
 
     def _issues_from_scan(
         self, scan: p.Cli.CommandOutput, provider: str
     ) -> t.SequenceOf[m.Infra.Issue]:
         """Turn one rule scan into issues; a scanner crash is never a silent pass."""
-        if not u.Cli.process_succeeded(scan.outcome) and not scan.stdout.strip():
+        if not scan.stdout.strip() and (
+            not u.Cli.process_succeeded(scan.outcome) or scan.stderr.strip()
+        ):
+            failure = (
+                "execution failed"
+                if not u.Cli.process_succeeded(scan.outcome)
+                else "emitted stderr"
+            )
+            detail = scan.stderr.strip()
+            if not detail:
+                detail = (
+                    "ast-grep returned exit code "
+                    f"{scan.outcome.raw_return_code} without diagnostics"
+                )
             return (
                 m.Infra.Issue(
                     file=c.Infra.PYPROJECT_FILENAME,
                     line=1,
                     column=0,
                     code=self.gate_id,
-                    message=(
-                        f"{provider}: ast-grep execution failed — "
-                        f"{scan.stderr or 'unknown error'}"
-                    ),
+                    message=f"{provider}: ast-grep {failure} — {detail}",
                     severity=str(c.Infra.GateSeverity.ERROR.value),
                 ),
             )
-        return tuple(
+        findings = tuple(
             m.Infra.Issue(
                 file=provider,
                 line=1,
@@ -120,6 +130,7 @@ class FlextInfraCodemodGate(FlextInfraGate):
             for line in scan.stdout.splitlines()
             if line.strip()
         )
+        return findings
 
     @override
     def _build_check_command(
@@ -127,10 +138,9 @@ class FlextInfraCodemodGate(FlextInfraGate):
     ) -> t.StrSequence:
         """Per-rule scans are issued by check(); expose the first rule command."""
         _ = ctx, check_dirs
-        rules = self._rules(project_dir)
-        if not rules:
-            return (c.Infra.SG, c.Infra.SCAN, ".")
-        return u.Infra.ast_grep_scan_command(rules[0])
+        planned = u.Infra.codemod_rule_plan(project_dir).unwrap()
+        ruleset = planned.rulesets[0]
+        return u.Infra.ast_grep_scan_command(ruleset.config, rule_ids=ruleset.rule_ids)
 
     @override
     def _parse_check_output(
@@ -138,7 +148,6 @@ class FlextInfraCodemodGate(FlextInfraGate):
     ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse a single ast-grep scan result into issues."""
         _ = ctx
-        rules = self._rules(project_dir)
-        rule_path = rules[0] if rules else project_dir
-        issues = self._issues_from_scan(result, rule_path)
+        planned = u.Infra.codemod_rule_plan(project_dir).unwrap()
+        issues = self._issues_from_scan(result, planned.rulesets[0].provider)
         return not issues, issues
