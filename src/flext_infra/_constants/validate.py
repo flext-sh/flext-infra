@@ -119,7 +119,7 @@ class FlextInfraConstantsSharedInfra:
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
     METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
         "flext-core/src/flext_core/_utilities/project_metadata.py",
-        "flext-infra/src/flext_infra/_utilities/iteration.py",
+        "flext-infra/src/flext_infra/iteration.py",
         "flext-infra/src/flext_infra/__version__.py",
     )
     METADATA_TARGET_SCOPE_MARKERS: Final[t.StrSequence] = (

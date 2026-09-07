@@ -57,7 +57,7 @@ class FlextInfraCodegenLazyInitGenerationFilePlanMixin:
             entry.init_path.resolve() for entry in index.packages_by_dir.values()
         }
         return cls._snapshot_paths(
-            module_paths | template_paths | project_metadata_paths, init_paths
+            module_paths | template_paths, init_paths | project_metadata_paths
         )
 
     @staticmethod

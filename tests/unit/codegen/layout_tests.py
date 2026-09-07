@@ -165,7 +165,7 @@ def test_special_and_reference_root_dirs_skipped(tmp_path: Path) -> None:
     tm.that("external-docs" in paths, eq=False)
 
 
-def test_subprojects_are_canonical_root_entries(tmp_path: Path) -> None:
+def test_declared_repositories_are_canonical_root_entries(tmp_path: Path) -> None:
     """A workspace root accepts only repository directories declared by topology."""
     declared_name = "flext-declared"
     undeclared_name = "flext-undeclared"

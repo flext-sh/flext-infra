@@ -104,7 +104,6 @@ class TestConstantsQualityGateVerdict:
                     "typings.py": '"""Empty typing fixture."""\n',
                 },
             )
-
         gate = FlextInfraCodegenQualityGate(repository_root=tmp_path)
         report_result = gate.build_report()
         tm.ok(report_result)
