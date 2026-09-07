@@ -7,9 +7,8 @@ from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.refactor._wrapper_rewrite import (
-    FlextInfraWrapperRootNamespaceRewriteMixin,
-)
+
+from ._wrapper_rewrite import FlextInfraWrapperRootNamespaceRewriteMixin
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -40,7 +39,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         """Discover wrapper files, rewrite ``Core.Tests`` chains, persist results."""
         scan = self._scan_workspace()
         if scan.failure:
-            return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
+            return r[t.JsonPayload].from_failure(scan)
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
         accumulator = m.Infra.WrapperRewriteAccumulator()
         metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
@@ -79,7 +78,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if resolved.failure:
             return r[
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-            ].fail(resolved.error or "project resolution failed")
+            ].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
                 project_roots=tuple(project.path for project in resolved.value)
@@ -88,7 +87,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if iter_result.failure:
             return r[
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-            ].fail(iter_result.error or "python file iteration failed")
+            ].from_failure(iter_result)
         project_runtime_aliases = {
             project.path.name: frozenset(layout.runtime_aliases)
             for project in resolved.value

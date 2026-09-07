@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from sys import stdlib_module_names
 from typing import TYPE_CHECKING
 
 from flext_infra import c, m
-from flext_infra.codegen._codegen_generation_renderers import (
-    FlextInfraCodegenGenerationRenderersMixin,
-)
+
+from ._codegen_generation_renderers import FlextInfraCodegenGenerationRenderersMixin
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -19,6 +19,15 @@ class FlextInfraCodegenGenerationStandardMixin(
     FlextInfraCodegenGenerationRenderersMixin
 ):
     """Render the two canonical generated initializer forms."""
+
+    @staticmethod
+    def _is_stdlib_import(target: t.StrPair) -> bool:
+        """Return whether an absolute import target belongs to the stdlib."""
+        module = target[0]
+        return (
+            not module.startswith(".")
+            and module.partition(".")[0] in stdlib_module_names
+        )
 
     @staticmethod
     def _type_checking_filtered(plan: m.Infra.LazyInitPlan) -> t.LazyAliasMap:
@@ -33,7 +42,8 @@ class FlextInfraCodegenGenerationStandardMixin(
             for name, target in source.items()
             if name in public_names
             and target[0] not in wildcard_modules
-            and name not in c.Infra.ROOT_TEMPLATE_RUNTIME_IMPORTS
+            and name not in c.Infra.ROOT_TEMPLATE_BINDINGS
+            and not FlextInfraCodegenGenerationStandardMixin._is_stdlib_import(target)
         }
         for (
             alias_name,
@@ -87,7 +97,9 @@ class FlextInfraCodegenGenerationStandardMixin(
     def _lazy_groups(
         cls, plan: m.Infra.LazyInitPlan
     ) -> tuple[
-        t.StrSequencePairSequence, t.StrPairSequencePairSequence, t.LazyAliasMap
+        t.SequenceOf[t.StrSequencePair],
+        t.SequenceOf[t.StrPairSequencePair],
+        t.LazyAliasMap,
     ]:
         """Build owned lazy metadata groups and their filtered public map."""
         current_pkg = plan.context.current_pkg
@@ -96,6 +108,8 @@ class FlextInfraCodegenGenerationStandardMixin(
             name: target
             for name, target in plan.lazy_map.items()
             if name in public_names
+            and name not in c.Infra.ROOT_TEMPLATE_BINDINGS
+            and not cls._is_stdlib_import(target)
         }
         lazy_entries = cls._build_lazy_entries(
             tuple(lazy_map),
@@ -104,6 +118,104 @@ class FlextInfraCodegenGenerationStandardMixin(
         )
         lazy_module_groups, lazy_alias_groups = cls._group_lazy_entries(lazy_entries)
         return lazy_module_groups, lazy_alias_groups, lazy_map
+
+    @staticmethod
+    def _format_lazy_group_entry(
+        module: str,
+        values: t.StrSequence,
+        *,
+        trailing: bool,
+        indent: str = "            ",
+    ) -> t.StrSequence:
+        """Format one mapping entry exactly as Ruff formats a tuple value."""
+        inner = ", ".join(values)
+        if len(values) == 1:
+            inner = f"{inner},"
+        compact = f'{indent}"{module}": ({inner}),'
+        if len(compact) <= c.Infra.MAX_LINE_LENGTH:
+            return (compact,)
+        value_indent = f"{indent}    "
+        separator = "," if trailing else ""
+        return (
+            f'{indent}"{module}": (',
+            *(f"{value_indent}{value}," for value in values),
+            f"{indent}){separator}",
+        )
+
+    @staticmethod
+    def _format_exports_tuple(exports: t.StrSequence) -> str:
+        """Render a canonical public export tuple, including the empty form."""
+        if not exports:
+            return "()"
+        inner = ", ".join(f'"{name}"' for name in exports)
+        if len(exports) == 1:
+            inner = f"{inner},"
+        compact = f"({inner})"
+        if len("__all__: tuple[str, ...] = ") + len(compact) <= c.Infra.MAX_LINE_LENGTH:
+            return compact
+        return "\n".join(("(", *(f'    "{name}",' for name in exports), ")"))
+
+    @classmethod
+    def _format_lazy_module_mapping(
+        cls, groups: t.SequenceOf[t.StrSequencePair]
+    ) -> str:
+        """Render the immutable module mapping without a formatter subprocess."""
+        if not groups:
+            return "        MappingProxyType({}),"
+        if len(groups) == 1:
+            module, names = groups[0]
+            inner = ", ".join(f'"{name}"' for name in names)
+            if len(names) == 1:
+                inner = f"{inner},"
+            compact = f'        MappingProxyType({{"{module}": ({inner})}}),'
+            if len(compact) <= c.Infra.MAX_LINE_LENGTH:
+                return compact
+        lines: t.MutableSequenceOf[str] = ["        MappingProxyType({"]
+        for module, names in groups:
+            lines.extend(
+                cls._format_lazy_group_entry(
+                    module,
+                    tuple(f'"{name}"' for name in names),
+                    trailing=len(groups) > 1,
+                )
+            )
+        lines.append("        }),")
+        return "\n".join(lines)
+
+    @classmethod
+    def _format_lazy_alias_mapping(
+        cls, groups: t.SequenceOf[t.StrPairSequencePair]
+    ) -> str:
+        """Render the immutable alias mapping without a formatter subprocess."""
+        if not groups:
+            return "        alias_groups=MappingProxyType({}),"
+        if len(groups) == 1:
+            module, pairs = groups[0]
+            values = tuple(
+                f'("{export_name}", "{attr_name}")' for export_name, attr_name in pairs
+            )
+            inner = ", ".join(values)
+            if len(values) == 1:
+                inner = f"{inner},"
+            compact = (
+                f'        alias_groups=MappingProxyType({{"{module}": ({inner})}}),'
+            )
+            if len(compact) <= c.Infra.MAX_LINE_LENGTH:
+                return compact
+        lines: t.MutableSequenceOf[str] = ["        alias_groups=MappingProxyType({"]
+        for module, pairs in groups:
+            lines.extend(
+                cls._format_lazy_group_entry(
+                    module,
+                    tuple(
+                        f'("{export_name}", "{attr_name}")'
+                        for export_name, attr_name in pairs
+                    ),
+                    trailing=len(groups) > 1,
+                )
+            )
+        lines.append("        }),")
+        return "\n".join(lines)
 
     @classmethod
     def _root_context(cls, plan: m.Infra.LazyInitPlan) -> m.Infra.LazyInitRootRender:
@@ -124,9 +236,18 @@ class FlextInfraCodegenGenerationStandardMixin(
             docstring=cls._format_root_package_docstring(current_pkg),
             runtime_import_lines=cls._runtime_import_lines(plan),
             type_checking_lines=type_checking_lines,
-            exports=cls._build_published_exports(plan.exports, lazy_map),
-            lazy_module_groups=lazy_module_groups,
-            lazy_alias_groups=lazy_alias_groups,
+            exports_tuple=cls._format_exports_tuple(
+                cls._build_published_exports(
+                    tuple(
+                        name
+                        for name in plan.exports
+                        if name in lazy_map or name in plan.eager_dunders
+                    ),
+                    lazy_map,
+                )
+            ),
+            lazy_module_mapping=cls._format_lazy_module_mapping(lazy_module_groups),
+            lazy_alias_mapping=cls._format_lazy_alias_mapping(lazy_alias_groups),
         )
 
     @classmethod

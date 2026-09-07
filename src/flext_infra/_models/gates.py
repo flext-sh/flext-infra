@@ -2,24 +2,26 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Annotated, ClassVar, Literal, Self
 
 from flext_cli import u
 from flext_core import m
-from flext_infra import t
+from flext_infra import c, t
+
+from .._models.duplication import FlextInfraModelsDuplication
 
 
-class FlextInfraModelsGates:
+class FlextInfraModelsGates(FlextInfraModelsDuplication):
     """Quality gate execution domain models."""
 
     class GateContext(m.ContractModel):
         """Quality gate execution context and configuration."""
 
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", arbitrary_types_allowed=True, populate_by_name=True
         )
         repository_root: Path = m.Field(
@@ -33,12 +35,6 @@ class FlextInfraModelsGates:
             bool,
             m.Field(description="Never write files even when fix mode is requested"),
         ] = False
-        gate_mode: Annotated[
-            Literal["error", "warn"],
-            m.Field(
-                description="Gate failure mode: error fails the pipeline, warn reports only"
-            ),
-        ] = "error"
         ruff_args: Annotated[
             t.StrSequence, m.Field(description="Extra arguments for Ruff")
         ] = ()
@@ -84,14 +80,13 @@ class FlextInfraModelsGates:
     class GateAttestationPredicate(m.ContractModel):
         """Canonical signed statement for locally completed gates."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             extra="forbid", frozen=True, strict=False
         )
 
         schema_version: Annotated[
-            Literal["https://flext.sh/attestations/gates/v1"],
-            m.Field(description="Predicate schema identity"),
-        ]
+            str, m.Field(description="Predicate schema identity")
+        ] = c.Infra.GATE_ATTESTATION_SCHEMA
         repository: Annotated[t.NonEmptyStr, m.Field(description="Origin repository")]
         commit_sha: Annotated[t.NonEmptyStr, m.Field(description="Full commit SHA")]
         tree_sha: Annotated[t.NonEmptyStr, m.Field(description="Full tree SHA")]
@@ -111,6 +106,9 @@ class FlextInfraModelsGates:
 
         @u.model_validator(mode="after")
         def _validate_predicate(self) -> Self:
+            if self.schema_version != c.Infra.GATE_ATTESTATION_SCHEMA:
+                msg = "schema_version must match the canonical gate attestation schema"
+                raise ValueError(msg)
             for name, value in (
                 ("commit_sha", self.commit_sha),
                 ("tree_sha", self.tree_sha),

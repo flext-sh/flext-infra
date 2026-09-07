@@ -1,8 +1,8 @@
-# @flext-managed: continuous
-# @flext-regenerate: make deps WHAT=upgrade APPLY=Y
-# @flext-ssot: flext-infra/src/flext_infra/_constants/deps.py
-# @flext-ssot-dependencies: flext-infra/config/codegen.yaml (project_defaults.dev, dependency_profiles)
-# @flext-maintenance: do not edit managed sections; edit the SSOT
+# @flext-generated: continuous
+# @flext-owner: flext-infra/src/flext_infra/_constants/deps.py
+# @flext-adjust: edit the dependency owner; never this projection
+# @flext-regenerate: make deps APPLY=Y
+# @flext-owner-dependencies: flext-infra/config/codegen.yaml (scaffold.project.dev, scaffold.project.external_runtime_packages, dependency_profiles, runtime_dependency_overlays)
 # [MANAGED] FLEXT pyproject standardization
 # Sections with [MANAGED] are enforced by flext_infra.deps.modernizer.
 # Sections with [CUSTOM] are project-specific extension points.
@@ -480,7 +480,7 @@ skip-magic-trailing-comma = true
 [tool.ruff.lint]
 # FLEXT Ruff suppression rationale (validated against semantic facet order):
 # FLEXT ruff[import-outside-top-level]: Public facade models are imported lazily only at validation and construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
-# FLEXT ruff[unsorted-imports]: Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory semantic c-t-p-m-u dependency order in FLEXT facades.
+# FLEXT ruff[relative-imports]: The codemod rule ban-private-import requires the opposite form. Same-owner implementation modules use relative sibling imports and every other consumer uses a public facade, because an absolute private import couples a consumer to an owner layout. Selecting both gates makes every internal import fail one of them. Converting the 304 findings produced 301 ban-private-import errors and took the suite from 1717 to 3135, so the architectural rule decides.
 ignore = [
   "ambiguous-unicode-character-comment",
   "ambiguous-unicode-character-docstring",
@@ -501,6 +501,7 @@ ignore = [
   "no-self-use",
   "non-imperative-mood",
   "pytest-fixture-autouse",
+  "relative-imports",
   "too-many-arguments",
   "too-many-branches",
   "too-many-locals",
@@ -512,7 +513,6 @@ ignore = [
   "typing-only-first-party-import",
   "typing-only-standard-library-import",
   "typing-only-third-party-import",
-  "unsorted-imports",
 ]
 select = ["ALL"]
 
@@ -633,7 +633,7 @@ dev = [
   "faker>=40.37.0",
   "flext-tests @ git+https://github.com/flext-sh/flext-tests.git@0.12.0-dev",
   "hypothesis>=6.165.10",
-  "isort>=8.0.1",
+  "isort>=9.0.1",
   "matplotlib-stubs>=0.3.11",
   "mkdocs>=1.6.1",
   "mkdocs-autorefs>=1.4.4",
@@ -657,7 +657,7 @@ dev = [
   "mypy>=2.3.1",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6.2",
-  "pylint>=4.0.7",
+  "pylint>=4.0.8",
   "pyrefly>=1.2.0",
   "pyright>=1.1.411",
   "pytest>=9.1.1",

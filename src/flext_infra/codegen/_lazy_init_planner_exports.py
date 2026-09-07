@@ -103,9 +103,8 @@ class FlextInfraCodegenLazyInitPlannerExportsMixin:
                 continue
             # In public src packages, public submodules (without expected_alias) derive
             # from their explicit __all__; non-public/private subpackages auto-discover.
-            require_explicit_all = (
-                context.surface not in c.Infra.NON_PUBLIC_LAZY_ROOTS
-                and not any(part.startswith("_") for part in context.pkg_dir.parts)
+            require_explicit_all = context.surface in c.Infra.NON_PUBLIC_LAZY_ROOTS or (
+                not any(part.startswith("_") for part in context.pkg_dir.parts)
                 and not py_file.stem.startswith("_")
                 and (
                     u.Infra.matches_root_namespace_file(py_file.name)

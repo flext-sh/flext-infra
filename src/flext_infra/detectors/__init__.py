@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from .internal_import_detector import FlextInfraInternalImportDetector
     from .loose_object_detector import FlextInfraLooseObjectDetector
     from .loose_test_function_detector import FlextInfraLooseTestFunctionDetector
+    from .lsp_diagnostics import FlextInfraLspDiagnosticsDetector
     from .manual_protocol_detector import FlextInfraManualProtocolDetector
     from .manual_typing_alias_detector import FlextInfraManualTypingAliasDetector
     from .namespace_source_detector import FlextInfraNamespaceSourceDetector
@@ -39,6 +40,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraInternalImportDetector",
     "FlextInfraLooseObjectDetector",
     "FlextInfraLooseTestFunctionDetector",
+    "FlextInfraLspDiagnosticsDetector",
     "FlextInfraManualProtocolDetector",
     "FlextInfraManualTypingAliasDetector",
     "FlextInfraNamespaceSourceDetector",
@@ -62,6 +64,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".internal_import_detector": ("FlextInfraInternalImportDetector",),
             ".loose_object_detector": ("FlextInfraLooseObjectDetector",),
             ".loose_test_function_detector": ("FlextInfraLooseTestFunctionDetector",),
+            ".lsp_diagnostics": ("FlextInfraLspDiagnosticsDetector",),
             ".manual_protocol_detector": ("FlextInfraManualProtocolDetector",),
             ".manual_typing_alias_detector": ("FlextInfraManualTypingAliasDetector",),
             ".namespace_source_detector": ("FlextInfraNamespaceSourceDetector",),

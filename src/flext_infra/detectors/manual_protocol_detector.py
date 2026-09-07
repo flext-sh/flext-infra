@@ -32,8 +32,9 @@ class FlextInfraManualProtocolDetector:
         file_path = ctx.file_path
         try:
             source = file_path.read_text(encoding=c.Cli.ENCODING_DEFAULT)
-        except OSError:
-            return []
+        except OSError as exc:
+            msg = f"manual-protocol detector could not read {file_path}: {exc}"
+            raise RuntimeError(msg) from exc
         return [
             m.Infra.ManualProtocolViolation(
                 file=str(file_path), line=ci.line, name=ci.name

@@ -12,6 +12,7 @@ in Singer-SDK boundary files), ``subprocess``, ``tomllib``/``tomlkit`` outside
 
 from __future__ import annotations
 
+import ast
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -30,8 +31,6 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
     gate_id: ClassVar[str] = "boundary"
     gate_name: ClassVar[str] = "Abstraction Boundary"
     can_fix: ClassVar[bool] = False
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["boundary"][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO["boundary"][1]
 
     @override
     def check(
@@ -108,11 +107,18 @@ class FlextInfraAbstractionBoundaryGate(FlextInfraGate):
         """Flag concrete FlextCli<X> imports outside src extension files."""
         if "/src/" in posix and path.name in c.Infra.BOUNDARY_EXTENSION_FILES:
             return ()
+        tree = ast.parse(text, filename=str(path))
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        for match in c.Infra.BOUNDARY_CONCRETE_IMPORT_RE.finditer(text):
-            for name in c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.findall(
-                match.group("imports")
+        for statement in ast.walk(tree):
+            if not (
+                isinstance(statement, ast.ImportFrom)
+                and statement.module == "flext_cli"
             ):
+                continue
+            for imported in statement.names:
+                name = imported.name
+                if c.Infra.BOUNDARY_FLEXT_CLI_CONCRETE_RE.fullmatch(name) is None:
+                    continue
                 issues.append(
                     self._issue(
                         path, f"imports concrete `{name}` (use cli/c/m/p/t/u/s)"

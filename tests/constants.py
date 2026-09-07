@@ -10,12 +10,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re as _re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Final
 
 from flext_infra import c
 from flext_tests import FlextTestsConstants
+from tests.constants_scan import TestsFlextInfraConstantsScanMixin
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -29,7 +29,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
     All base constants from FlextTestsConstants are available through inheritance.
     """
 
-    class Tests(FlextTestsConstants.Tests):
+    class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
         GIT_LOCAL_ENV_KEYS: Final[t.StrSequence] = (
@@ -52,6 +52,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         """Repository-local variables Git exports to hooks and aliases."""
 
         MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
+            "APPLY",
             "BASH_ENV",
             "CHANGED_ONLY",
             "CHECK_GATES",
@@ -84,44 +85,6 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         RELEASE_PHASE_BUILD: Final[str] = c.Infra.ReleasePhase.BUILD
         RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.ReleasePhase.PUBLISH
 
-        LOG_NOISE_LINES: Final[t.StrSequence] = (
-            "make[1]: Nothing to be done",
-            "INFO: running tests",
-            "warning: ignoring duplicate",
-            "Success: 5 passed",
-            "make[2]: Entering directory",
-        )
-        LOG_ERROR_LINES: Final[t.StrSequence] = (
-            "ERROR: something went wrong",
-            "FAIL: test_foo failed",
-            "error: compilation failed",
-            "E  AssertionError: mismatch",
-            "FAILED tests/test_foo.py::test_bar",
-        )
-        LOG_PATTERN_CASES: ClassVar[tuple[tuple[str, int], ...]] = (
-            ("error: compilation failed", 1),
-            ("E  AssertionError: mismatch", 1),
-            ("FAILED tests/test_foo.py::test_bar", 1),
-            ("make[2]: Entering directory", 0),
-            ("warning: ignoring duplicate", 0),
-            ("Success: 5 passed", 0),
-        )
-        LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = _re.compile(
-            r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)"
-        )
-        LOG_MIXED_SCENARIO_LINES: Final[t.StrSequence] = (
-            "make[1]: running",
-            "ERROR: build failed",
-            "INFO: post-build",
-            "FAIL: test broken",
-            "Total: 2 failed",
-        )
-        SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = _re.compile(
-            r"hello", _re.MULTILINE
-        )
-        LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = _re.compile(
-            r'["\']([^"\']+)["\']'
-        )
         INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (
             "FlextInfra",
             "c",
@@ -166,6 +129,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "u",
         )
         INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
+            "class_nesting_plan",
             "current_workspace_version",
             "parse_semver",
         )
@@ -209,6 +173,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
 
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
+        RELEASE_VERSION_PATCH: Final[str] = "0.1.1"
         RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
         RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
         # Fixture members depend on these siblings, so a release build must see

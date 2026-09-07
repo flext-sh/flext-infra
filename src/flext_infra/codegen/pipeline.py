@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, override
 
 from flext_cli import cli
-from flext_infra import c, m, p, r, s, t, u
-from flext_infra.codegen._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
+from flext_infra import c, m, p, r, t, u
+from flext_infra.base import FlextInfraServiceBase
+
+from ._pipeline_stages import FlextInfraCodegenPipelineStagesMixin
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -14,7 +16,9 @@ if TYPE_CHECKING:
 _log = u.fetch_logger(__name__)
 
 
-class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
+class FlextInfraCodegenPipeline(
+    FlextInfraCodegenPipelineStagesMixin, FlextInfraServiceBase[str]
+):
     """Run the full codegen pipeline directly from the validated CLI model."""
 
     _state: m.Infra.CodegenPipelineState = u.PrivateAttr(
@@ -38,7 +42,7 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
             logger=_log,
         )
         if pipeline_result.failure:
-            return r[str].fail(pipeline_result.error or "pipeline execution failed")
+            return r[str].from_failure(pipeline_result)
         # cli.pipeline already maps failed_stages to r.fail; value is always success.
         return self._collect_pipeline_output()
 
@@ -48,7 +52,8 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
 
     def _build_codegen_stages(self) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
         """Build DAG stage specs with linear dependency chain."""
-        handlers: t.Cli.PipelineHandlerMap = {
+<<<<<<< HEAD
+        handlers: t.MappingKV[str, p.Cli.PipelineStage] = {
             c.Infra.PipelineStage.DISCOVER: self._stage_discover,
             c.Infra.PipelineStage.TOOLCHAIN: self._stage_toolchain,
             c.Infra.PipelineStage.PY_TYPED: self._stage_py_typed,
@@ -58,6 +63,22 @@ class FlextInfraCodegenPipeline(FlextInfraCodegenPipelineStagesMixin, s[str]):
             c.Infra.PipelineStage.DEPS: self._stage_deps,
             c.Infra.PipelineStage.LAZY_INIT: self._stage_lazy_init,
             c.Infra.PipelineStage.CENSUS_AFTER: self._stage_census_after,
+=======
+        handlers: dict[str, p.Cli.PipelineStage] = {
+            c.Infra.PipelineStage.DISCOVER: lambda ctx, /: self._stage_discover(ctx),
+            c.Infra.PipelineStage.TOOLCHAIN: lambda ctx, /: self._stage_toolchain(ctx),
+            c.Infra.PipelineStage.PY_TYPED: lambda ctx, /: self._stage_py_typed(ctx),
+            c.Infra.PipelineStage.CENSUS_BEFORE: lambda ctx, /: (
+                self._stage_census_before(ctx)
+            ),
+            c.Infra.PipelineStage.SCAFFOLD: lambda ctx, /: self._stage_scaffold(ctx),
+            c.Infra.PipelineStage.AUTO_FIX: lambda ctx, /: self._stage_auto_fix(ctx),
+            c.Infra.PipelineStage.DEPS: lambda ctx, /: self._stage_deps(ctx),
+            c.Infra.PipelineStage.LAZY_INIT: lambda ctx, /: self._stage_lazy_init(ctx),
+            c.Infra.PipelineStage.CENSUS_AFTER: lambda ctx, /: self._stage_census_after(
+                ctx
+            ),
+>>>>>>> origin/0.12.0-dev
         }
         return cli.linear_pipeline(c.Infra.PIPELINE_STAGE_ORDER, handlers)
 

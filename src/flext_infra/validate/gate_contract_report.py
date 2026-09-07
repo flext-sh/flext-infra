@@ -152,7 +152,7 @@ class FlextInfraGateContractReportMixin:
             options=m.Cli.JsonWriteOptions(indent=2, sort_keys=True),
         )
         if write.failure:
-            return r[Path].fail(write.error or f"cannot write {report_path}")
+            return r[Path].from_failure(write)
         return r[Path].ok(report_path)
 
     def _print_summary(

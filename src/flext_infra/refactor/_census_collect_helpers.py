@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, config, m
-from flext_infra._enforcement.engine import FlextInfraEnforcementEngine
+
+from .._enforcement.engine import FlextInfraEnforcementEngine
 
 if TYPE_CHECKING:
-    from flext_core._models.enforcement import FlextModelsEnforcement as me
     from flext_infra import p, t
 
 
@@ -93,12 +93,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
     @staticmethod
     def _declarative_rules_for_selection(
         rule_names: t.StrSequence | None,
-    ) -> tuple[me.EnforcementRuleSpec, ...]:
+    ) -> tuple[m.EnforcementRuleSpec, ...]:
         """Return catalog declarative rules selected by the census request."""
         return FlextInfraEnforcementEngine.declarative_rules(rule_names)
 
     @staticmethod
-    def _rule_requires_stub_file(rule: me.EnforcementRuleSpec) -> bool:
+    def _rule_requires_stub_file(rule: m.EnforcementRuleSpec) -> bool:
         """Return whether ``rule`` must scan ``.pyi`` files outside Rope modules."""
         return FlextInfraEnforcementEngine.rule_requires_stub_file(rule)
 
@@ -120,15 +120,12 @@ class FlextInfraRefactorCensusCollectHelpersMixin:
         project_root = module.project_root
         if project_root is None:
             return False
-        try:
-            relative_path = module.file_path.resolve().relative_to(
-                project_root.resolve()
-            )
-        except ValueError:
+        resolved_file = module.file_path.resolve()
+        resolved_root = project_root.resolve()
+        if not resolved_file.is_relative_to(resolved_root):
             return False
-        return bool(relative_path.parts) and (
-            relative_path.parts[0] in config.Infra.source_scan.roots
-        )
+        parts = resolved_file.relative_to(resolved_root).parts
+        return bool(parts) and (parts[0] in config.Infra.source_scan.roots)
 
     def _modules_for_rules(
         self,

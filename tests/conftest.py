@@ -20,14 +20,9 @@ from tests import c, t, u
 pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep the checkout trigger from leaking into synthetic Git repositories.
-
-    Tests that exercise trigger anchoring opt in after constructing a commit in
-    their own repository. Every other fixture owns unrelated history, so the
-    outer GitHub Actions SHA is invalid input for it.
-    """
+    """Remove the outer checkout identity for explicit conform test consumers."""
     monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
 
 
