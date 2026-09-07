@@ -10,10 +10,9 @@ agent: agent
 Resolve authority in this order:
 
 1. [Workspace law](../../AGENTS.md)
-2. [FLEXT context routing](../../.agents/skills/flext-context-routing/SKILL.md)
-3. [Branch-matched FLEXT law](../../.agents/skills/flext-law/SKILL.md)
-4. Nearest scoped `AGENTS.md`
-5. Active Bead
+2. [FLEXT capability owner](../../.agents/skills/flext-development/SKILL.md)
+3. Nearest scoped `AGENTS.md`
+4. Active Bead
 
 Work from observed runtime behavior and the public contract. Inventory the
 owner, consumers, tests, fixtures, generated projections, documentation, and
