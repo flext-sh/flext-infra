@@ -28,11 +28,12 @@ def _write_bootstrap_owner(package_root: Path, subpackage: str) -> Path:
     facet_dir = package_root / subpackage
     facet_dir.mkdir()
     (facet_dir / c.Infra.INIT_PY).write_text("", encoding=c.Cli.ENCODING_DEFAULT)
+    symbol_name = f"Flext{subpackage.removeprefix('_').title().replace('_', '')}Part"
     (facet_dir / "part.py").write_text(
         '"""Bootstrap implementation detail."""\n\n'
-        "class FlextLazyPart:\n"
+        f"class {symbol_name}:\n"
         '    """Bootstrap owner."""\n\n'
-        '__all__ = ["FlextLazyPart"]\n',
+        f'__all__ = ["{symbol_name}"]\n',
         encoding=c.Cli.ENCODING_DEFAULT,
     )
     return facet_dir
@@ -45,7 +46,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         self, tmp_path: Path
     ) -> None:
         """Private facets of the bootstrap owner never import the bootstrap."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name=c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE.replace("_", "-"),
             package_name=c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE,
@@ -53,7 +54,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         lazy_parts = _write_bootstrap_owner(package_root, "_lazy_parts")
         typings = _write_bootstrap_owner(package_root, "_typings")
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
         for facet in (lazy_parts, typings):
@@ -75,7 +76,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         succeeds, the facet survives as a package initializer, it remains
         codegen-owned, and it still imports nothing from the bootstrap.
         """
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(
             tmp_path,
             project_name=c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE.replace("_", "-"),
             package_name=c.Infra.LAZY_BOOTSTRAP_ROOT_PACKAGE,
@@ -85,7 +86,7 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         init_path = lazy_parts / c.Infra.INIT_PY
         init_path.write_text(generated_stub, encoding=c.Cli.ENCODING_DEFAULT)
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(repository_root)
 
         tm.that(result, eq=0)
         tm.that(init_path.is_file(), eq=True)
@@ -98,10 +99,10 @@ class TestsFlextInfraLazyInitBootstrapPackage:
         self, tmp_path: Path
     ) -> None:
         """Private packages outside the bootstrap owner keep their generated map."""
-        workspace_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
+        repository_root, package_root = u.Tests.create_lazy_init_workspace(tmp_path)
         consumer_facet = _write_bootstrap_owner(package_root, "_models")
 
-        result = u.Tests.run_lazy_init(workspace_root)
+        result = u.Tests.run_lazy_init(repository_root)
 
         init_content = (consumer_facet / c.Infra.INIT_PY).read_text(
             encoding=c.Cli.ENCODING_DEFAULT

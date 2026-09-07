@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
@@ -225,7 +226,7 @@ class TestGitHookConformance:
             root, c.Infra.MakeProfile.STANDALONE
         )
 
-        retired = {plan.path for plan in tm.ok(planned) if plan.absent}
+        retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
         tm.that(hook_config in retired, eq=False)
 
     def test_standalone_retires_workspace_only_generated_projection(
@@ -234,13 +235,15 @@ class TestGitHookConformance:
         """Remove a generated projection excluded from the selected profile."""
         target = tmp_path / ".github/ci-template/ci.yml"
         target.parent.mkdir(parents=True)
-        target.write_text(f"{c.Infra.TEMPLATE_GENERATED_MARKER}\n", encoding="utf-8")
+        target.write_text(
+            f"# {c.Infra.TEMPLATE_GENERATED_MARKERS[0]}\n", encoding="utf-8"
+        )
 
         planned = FlextInfraCodegenConform.retired_projection_plans(
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
 
-        retired = {plan.path for plan in tm.ok(planned) if plan.absent}
+        retired = {plan.path for plan in tm.ok(planned) if plan.desired_content is None}
         tm.that(target in retired, eq=True)
 
 

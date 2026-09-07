@@ -10,15 +10,14 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from flext_cli import u
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
-from flext_infra._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
-from flext_infra._utilities.namespace_common import (
-    FlextInfraUtilitiesRefactorNamespaceCommon,
-)
-from flext_infra._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+from .._utilities.namespace import FlextInfraUtilitiesCodegenNamespace
+from .._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
+from .._utilities.rope_module_patch import FlextInfraUtilitiesRopeModulePatch
 
 # flext-j47u (codex): annotation-only stdlib types are safe runtime imports;
 # TYPE_CHECKING is reserved for real reverse-dependency cycle boundaries.
@@ -134,7 +133,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
         project_root: Path,
         project_name: str,
         facade_statuses: t.SequenceOf[m.Infra.FacadeStatus],
-        workspace_root: Path | None = None,
+        repository_root: Path | None = None,
     ) -> None:
         """Ensure missing facades."""
         del project_name
@@ -157,7 +156,7 @@ class FlextInfraUtilitiesRefactorNamespaceFacades:
             FlextInfraUtilitiesRefactorNamespaceFacades.build_expected_base_chains(
                 project_root=project_root
             )
-            if workspace_root is not None
+            if repository_root is not None
             else None
         )
         for status in facade_statuses:

@@ -1,33 +1,27 @@
-"""Release orchestration lifecycle dispatch and execution helpers."""
+"""Release protocol dispatch: plan, version, and tag phases."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-from flext_cli import cli
 from flext_core import r
-from flext_infra import c, m, u
+from flext_infra import c, config, m, t, u
+from flext_infra.codegen.conform import FlextInfraCodegenConform
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from collections.abc import Callable
 
-    from flext_infra import p, t
+    from flext_infra import p
 
 
 class FlextInfraReleaseOrchestratorDispatchMixin:
-    """Core release orchestrator flow and phase dispatch."""
+    """Core release flow and the phases that decide and record a release."""
 
     if TYPE_CHECKING:
-        phase: str
-        tag: str
-        version: str
-        bump: str
-        interactive: int
-        push: bool
-        dev_suffix: bool
-        create_branches: int
-        next_dev: bool
-        next_bump: str
+        phase: c.Infra.ReleasePhase
+        index: bool
+        pr_title: str
 
         @property
         def root(self) -> Path: ...
@@ -41,10 +35,6 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
         @property
         def effective_dry_run(self) -> bool: ...
 
-        def phase_version(
-            self, ctx: m.Infra.ReleasePhaseDispatchConfig
-        ) -> p.Result[bool]: ...
-
         def phase_build(
             self, ctx: m.Infra.ReleasePhaseDispatchConfig
         ) -> p.Result[bool]: ...
@@ -53,397 +43,527 @@ class FlextInfraReleaseOrchestratorDispatchMixin:
             self, ctx: m.Infra.ReleasePhaseDispatchConfig
         ) -> p.Result[bool]: ...
 
-        def _build_targets(
-            self, workspace_root: Path, project_names: t.StrSequence
-        ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]: ...
-
-        def _version_files(
-            self, workspace_root: Path, project_names: t.StrSequence
-        ) -> p.Result[t.SequenceOf[Path]]: ...
-
-        def _version_update_files(
-            self, files: t.SequenceOf[Path], target: str, *, dry_run: bool
-        ) -> p.Result[int]: ...
-
-    @property
-    def phase_names(self) -> t.StrSequence:
-        """Normalized phase sequence for release execution."""
-        return u.Infra.resolve_phase_names(self.phase)
-
-    def _resolve_version(
-        self, version_arg: str, bump_arg: str, interactive: int, root_path: Path
-    ) -> p.Result[str]:
-        """Resolve release version from explicit or interactive inputs."""
-        if version_arg:
-            requested = version_arg
-            parse_result = u.Infra.parse_semver(requested)
-            return (
-                r[str].ok(requested)
-                if parse_result.success
-                else r[str].fail(parse_result.error or "invalid version")
-            )
-        current_result = u.Infra.current_workspace_version(root_path)
-        if current_result.failure:
-            return r[str].fail(current_result.error or "cannot read current version")
-        current = current_result.value
-
-        requested_bump = bump_arg
-        if (not requested_bump) and interactive == 1:
-            requested_bump = u.norm_str(input("bump> "), case="lower")
-        if not requested_bump:
-            return r[str].ok(current)
-        return u.Infra.bump_version(current, requested_bump)
-
-    @staticmethod
-    def _resolve_tag(tag_arg: str, version: str) -> p.Result[str]:
-        """Resolve tag string from explicit argument or semantic version."""
-        if tag_arg:
-            if not tag_arg.startswith("v"):
-                return r[str].fail("tag must start with v")
-            return r[str].ok(tag_arg)
-        return r[str].ok(f"v{version}")
-
-    def run_release(
-        self, release_config: m.Infra.ReleaseOrchestratorConfig
-    ) -> p.Result[bool]:
-        """Run release workflow via the configured pipeline."""
-        try:
-            spec = m.Infra.ReleaseSpec(
-                version=release_config.version,
-                tag=release_config.tag,
-                bump_type=release_config.next_bump,
-            )
-        except c.ValidationError as exc:
-            return r[bool].fail_op("validate release identity", exc)
-        invalid_phase = next(
-            (
-                phase
-                for phase in release_config.phases
-                if phase not in c.Infra.VALID_PHASES
-            ),
-            None,
-        )
-        if invalid_phase is not None:
-            return r[bool].fail(f"invalid phase: {invalid_phase}")
-        names = release_config.project_names or ()
-        self.logger.info(
-            "release_run_started",
-            release_version=spec.version,
-            release_tag=spec.tag,
-            phases=str(release_config.phases),
-            projects=str(names),
-        )
-        if release_config.create_branches and not release_config.dry_run:
-            branch_result = self._create_branches(
-                release_config.workspace_root, spec.version, names
-            )
-            if branch_result.failure:
-                return branch_result
-        return self._run_release_pipeline(release_config, spec, names)
-
-    def _run_release_pipeline(
-        self,
-        release_config: m.Infra.ReleaseOrchestratorConfig,
-        spec: m.Infra.ReleaseSpec,
-        names: t.StrSequence,
-    ) -> p.Result[bool]:
-        """Execute configured release stages and the optional next-dev bump."""
-        dispatch_cfg = m.Infra.ReleasePhaseDispatchConfig(
-            phase=c.Infra.VERB_VALIDATE,
-            workspace_root=release_config.workspace_root,
-            version=spec.version,
-            tag=spec.tag,
-            project_names=names,
-            dry_run=release_config.dry_run,
-            push=release_config.push,
-            dev_suffix=release_config.dev_suffix,
-        )
-        pipeline_result = cli.pipeline(
-            self._build_release_stages(release_config.phases, dispatch_cfg),
-            context=cli.stage_context(
-                release_config.workspace_root,
-                settings={
-                    "dry_run": release_config.dry_run,
-                    "push": release_config.push,
-                    "dev_suffix": release_config.dev_suffix,
-                },
-            ),
-            logger=self.logger,
-        )
-        if pipeline_result.failure:
-            return r[bool].fail(pipeline_result.error or "pipeline execution failed")
-        # cli.pipeline already maps failed_stages to r.fail; value is always success.
-        if release_config.next_dev and not release_config.dry_run:
-            return self._bump_next_dev(
-                release_config.workspace_root,
-                spec.version,
-                names,
-                release_config.next_bump,
-            )
-        self.logger.info("release_run_completed", status=c.Infra.RK_OK)
-        return r[bool].ok(True)
-
     def execute(self) -> p.Result[bool]:
-        """Execute release with resolved configuration."""
-        root = self.root
-        phases = self.phase_names
-        project_names = self.project_names
-        needs_version = bool(
-            {c.Infra.ReleasePhase.VERSION, c.Infra.DIR_BUILD, c.Infra.VERB_PUBLISH}
-            & set(phases)
+        """Resolve the declared version once and dispatch the selected phase."""
+        current = u.Infra.current_workspace_version(self.root)
+        if current.failure:
+            return r[bool].from_failure(current)
+        ctx = m.Infra.ReleasePhaseDispatchConfig(
+            phase=self.phase,
+            repository_root=self.root,
+            version=current.value,
+            tag=c.Infra.TAG_FORMAT.format(version=current.value),
+            project_names=self.project_names or (),
+            dry_run=self.effective_dry_run,
+            index=self.index,
+            pr_title=self.pr_title,
         )
-        if needs_version:
-            version_result = self._resolve_version(
-                self.version, self.bump, self.interactive, root
-            )
-            if version_result.failure:
-                return r[bool].fail(version_result.error or "version resolution failed")
-            resolved_version = version_result.value
-        else:
-            resolved_version = self.version or "0.0.0"
-
-        tag_result = self._resolve_tag(self.tag, resolved_version)
-        if tag_result.failure:
-            return r[bool].fail(tag_result.error or "tag resolution failed")
-        return self.run_release(
-            m.Infra.ReleaseOrchestratorConfig(
-                workspace_root=root,
-                version=resolved_version,
-                tag=tag_result.value,
-                phases=phases,
-                project_names=project_names,
-                dry_run=self.effective_dry_run,
-                push=self.push,
-                dev_suffix=self.dev_suffix,
-                create_branches=self.create_branches == 1,
-                next_dev=self.next_dev,
-                next_bump=self.next_bump,
-            )
+        self.logger.info(
+            "release_phase_started", phase=str(ctx.phase), current=ctx.version
         )
-
-    def _build_release_stages(
-        self, phases: t.StrSequence, dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig
-    ) -> t.SequenceOf[m.Cli.PipelineStageSpec]:
-        """Build release stage specs preserving declared order."""
-        active: set[str] = set(phases)
-        phase_order: t.StrSequence = [
-            c.Infra.VERB_VALIDATE,
-            c.Infra.ReleasePhase.VERSION,
-            c.Infra.DIR_BUILD,
-            c.Infra.VERB_PUBLISH,
-        ]
-        active_stage_order: t.MutableSequenceOf[str] = []
-        handlers: dict[str, t.Cli.PipelineHandler] = {}
-        for phase_name in phase_order:
-            if phase_name not in active:
-                continue
-            active_stage_order.append(phase_name)
-            handlers[phase_name] = self._make_phase_handler(phase_name, dispatch_cfg)
-        return cli.linear_pipeline(active_stage_order, handlers)
-
-    def phase_validate(
-        self, workspace_root: Path, *, dry_run: bool = False
-    ) -> p.Result[bool]:
-        """Execute validation phase via workspace val command."""
-        if dry_run:
-            self.logger.info(
-                "release_phase_validate",
-                action="dry-run",
-                status=c.Cli.PipelineStageStatus.OK,
-            )
-            return r[bool].ok(True)
-        return u.Cli.run_checked(
-            [c.Infra.MAKE, "val", "VALIDATE_SCOPE=workspace"], cwd=workspace_root
-        )
-
-    def _make_phase_handler(
-        self, phase_name: str, dispatch_cfg: m.Infra.ReleasePhaseDispatchConfig
-    ) -> t.Cli.PipelineHandler:
-        """Adapt a phase handler to pipeline stage result contract."""
-
-        def handler(
-            _ctx: m.Cli.PipelineStageContext,
-        ) -> p.Result[m.Cli.PipelineStageResult]:
-            phase_cfg = dispatch_cfg.model_copy(update={"phase": phase_name})
-            phase_result = self._dispatch_phase(phase_cfg)
-            if phase_result.failure:
-                return r[m.Cli.PipelineStageResult].fail(
-                    phase_result.error or f"{phase_name} failed"
-                )
-            return cli.ok_stage(phase_name)
-
-        return handler
-
-    def _dispatch_phase(
-        self, ctx: m.Infra.ReleasePhaseDispatchConfig
-    ) -> p.Result[bool]:
-        """Route to the configured release phase implementation."""
-        match ctx.phase:
-            case c.Infra.VERB_VALIDATE:
-                return self.phase_validate(ctx.workspace_root, dry_run=ctx.dry_run)
-            case c.Infra.ReleasePhase.VERSION:
-                return self.phase_version(ctx)
-            case c.Infra.DIR_BUILD:
-                return self.phase_build(ctx)
-            case c.Infra.VERB_PUBLISH:
-                return self.phase_publish(ctx)
-            case phase:
-                return r[bool].fail(f"unknown phase: {phase}")
-
-    def _collect_changes(self, workspace_root: Path, previous: str) -> p.Result[str]:
-        """Collect commit messages in release tag range."""
-        rev = f"{previous}..{c.Infra.GIT_HEAD}" if previous else c.Infra.GIT_HEAD
-        return u.Cli.capture([c.Infra.GIT, "log", "--oneline", rev], cwd=workspace_root)
-
-    def _previous_tag(self, workspace_root: Path, tag: str) -> p.Result[str]:
-        """Find previous release tag for changelog generation."""
-        tags_result = u.Cli.capture(
-            [c.Infra.GIT, "tag", "--list", "--sort=-version:refname"],
-            cwd=workspace_root,
-        )
-        if tags_result.failure:
-            return r[str].fail(tags_result.error or "release tag listing failed")
-        previous = next(
-            (
-                candidate
-                for candidate in tags_result.value.splitlines()
-                if candidate and candidate != tag
+        handlers: dict[
+            c.Infra.ReleasePhase,
+            Callable[[m.Infra.ReleasePhaseDispatchConfig], p.Result[bool]],
+        ] = {
+            c.Infra.ReleasePhase.PLAN: lambda cfg: self.phase_plan(cfg).map(
+                lambda _plan: True
             ),
-            "",
+            c.Infra.ReleasePhase.VERSION: self.phase_version,
+            c.Infra.ReleasePhase.TAG: self.phase_tag,
+            c.Infra.ReleasePhase.BUILD: self.phase_build,
+            c.Infra.ReleasePhase.PUBLISH: self.phase_publish,
+        }
+        return handlers[ctx.phase](ctx)
+
+    # ------------------------------------------------------------------ plan
+
+    def phase_plan(
+        self, ctx: m.Infra.ReleasePhaseDispatchConfig
+    ) -> p.Result[m.Infra.ReleasePlan]:
+        """Derive the next version and prove no version changed outside the protocol."""
+        root = ctx.repository_root
+        if ctx.pr_title and not c.Infra.CONVENTIONAL_SUBJECT_RE.match(ctx.pr_title):
+            return r[m.Infra.ReleasePlan].fail(
+                "pull-request title must follow Conventional Commits "
+                f"(type(scope)!: description): {ctx.pr_title!r}"
+            )
+        guard = self._guard_version_change(root, ctx.version)
+        if guard.failure:
+            return r[m.Infra.ReleasePlan].from_failure(guard)
+        latest = self._latest_tag(root)
+        if latest.failure:
+            return r[m.Infra.ReleasePlan].from_failure(latest)
+        plan = self._derive_plan(root, ctx.version, latest.value)
+        if plan.failure:
+            return plan
+        report_dir = u.Cli.resolve_report_dir(root, c.Infra.PROJECT, c.Infra.RK_RELEASE)
+        written = u.Cli.json_write(
+            report_dir / c.Infra.RELEASE_PLAN_FILENAME,
+            plan.value.model_dump(mode="json", exclude_computed_fields=True),
+            m.Cli.JsonWriteOptions(sort_keys=True),
         )
-        return r[str].ok(previous)
+        if written.failure:
+            return r[m.Infra.ReleasePlan].from_failure(written)
+        self.logger.info(
+            "release_plan",
+            current=plan.value.current,
+            next=plan.value.next,
+            bump=str(plan.value.bump),
+            releasable=plan.value.releasable,
+        )
+        return plan
+
+    def _derive_plan(
+        self, root: Path, current: str, latest_tag: str
+    ) -> p.Result[m.Infra.ReleasePlan]:
+        """Apply the protocol's decision rules to the repository state."""
+        # Why: the merged release commit is not always HEAD (CI plans on the
+        # pull request's synthetic merge commit), so it is looked up in the
+        # whole history since the last tag.
+        history = self._subjects(root, latest_tag, merges_only=False)
+        if history.failure:
+            return r[m.Infra.ReleasePlan].from_failure(history)
+        current_tag = c.Infra.TAG_FORMAT.format(version=current)
+        if latest_tag != current_tag and any(
+            u.Infra.is_release_subject(subject, current) for subject in history.value
+        ):
+            # The release commit is merged and awaits its tag: nothing to bump.
+            return r[m.Infra.ReleasePlan].ok(
+                m.Infra.ReleasePlan(
+                    current=current,
+                    next=current,
+                    bump=c.Infra.VersionBump.NONE,
+                    previous_tag=latest_tag or None,
+                )
+            )
+        final = u.Infra.finalize_version(current)
+        if final.failure:
+            return r[m.Infra.ReleasePlan].from_failure(final)
+        declared_ahead = self._declared_ahead_of_tag(final.value, latest_tag)
+        if declared_ahead.failure:
+            return r[m.Infra.ReleasePlan].from_failure(declared_ahead)
+        if not latest_tag or final.value != current or declared_ahead.value:
+            # A first release ships the declared version as is; a declared
+            # pre-release ships its base; a declared version beyond the last
+            # tag ships as declared. Each of those releases was decided when
+            # the version was written, so the titles merged since the tag are
+            # not consulted. Titles decide only once the declared version has
+            # been tagged.
+            return r[m.Infra.ReleasePlan].ok(
+                m.Infra.ReleasePlan(
+                    current=current,
+                    next=final.value,
+                    bump=c.Infra.VersionBump.NONE,
+                    previous_tag=latest_tag or None,
+                    declared=True,
+                )
+            )
+        merges = self._subjects(root, latest_tag, merges_only=True)
+        if merges.failure:
+            return r[m.Infra.ReleasePlan].from_failure(merges)
+        bump = u.Infra.plan_bump(merges.value, config.Infra.release.bump_types)
+        if bump.failure:
+            return r[m.Infra.ReleasePlan].from_failure(bump)
+        next_version = u.Infra.bump_version(current, bump.value)
+        if next_version.failure:
+            return r[m.Infra.ReleasePlan].from_failure(next_version)
+        return r[m.Infra.ReleasePlan].ok(
+            m.Infra.ReleasePlan(
+                current=current,
+                next=next_version.value,
+                bump=bump.value,
+                previous_tag=latest_tag,
+                merges=tuple(merges.value),
+            )
+        )
 
     @staticmethod
-    def _preflight_release_branch(repository: Path, branch: str) -> p.Result[bool]:
-        """Require a clean repository and a non-conflicting release branch."""
-        status_result = u.Cli.capture(
-            [c.Infra.GIT, "status", "--porcelain"], cwd=repository
+    def _declared_ahead_of_tag(version: str, latest_tag: str) -> p.Result[bool]:
+        """Whether the declared (final) version is newer than the last tag's.
+
+        The comparison keeps pre-release segments: a repository at ``0.12.0``
+        whose last tag is ``v0.12.0rc2`` is ahead of it.
+        """
+        if not latest_tag:
+            return r[bool].ok(True)
+        tag_prefix = c.Infra.TAG_FORMAT.format(version="")
+        return u.Infra.version_is_newer(version, latest_tag.removeprefix(tag_prefix))
+
+    def _guard_version_change(self, root: Path, version: str) -> p.Result[bool]:
+        """Reject a pyproject version that differs from the integration base.
+
+        The only legitimate diff is the protocol's own release commit, whose
+        subject names exactly the version it introduces.
+        """
+        branch = self._integration_branch(root)
+        if branch.failure:
+            return r[bool].from_failure(branch)
+        base = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "merge-base",
+                f"{c.Infra.GIT_ORIGIN}/{branch.value}",
+                c.Infra.GIT_HEAD,
+            ],
+            cwd=root,
         )
-        if status_result.failure:
-            return r[bool].fail(status_result.error or "branch status check failed")
-        if status_result.value.strip():
-            return r[bool].fail(f"release branch repository is dirty: {repository}")
-        current_result = u.Cli.capture(
-            [c.Infra.GIT, "branch", "--show-current"], cwd=repository
+        if base.failure:
+            return r[bool].from_failure(base)
+        base_oid = base.value.strip()
+        head_oid = u.Cli.capture([c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=root)
+        if head_oid.failure:
+            return r[bool].from_failure(head_oid)
+        if base_oid == head_oid.value.strip():
+            return r[bool].ok(True)
+        base_content = u.Cli.capture(
+            [c.Infra.GIT, "show", f"{base_oid}:{c.Infra.PYPROJECT_FILENAME}"], cwd=root
         )
-        if current_result.failure:
-            return r[bool].fail(current_result.error or "current branch check failed")
-        if current_result.value.strip() == branch:
-            return r[bool].ok(False)
-        exists_result = u.Cli.capture(
-            [c.Infra.GIT, "branch", "--list", branch], cwd=repository
+        if base_content.failure:
+            return r[bool].from_failure(base_content)
+        base_match = c.Infra.VERSION_RE.search(base_content.value)
+        base_version = base_match.group(1) if base_match else ""
+        if base_version == version:
+            return r[bool].ok(True)
+        # Why: CI checks out the pull request's synthetic merge commit, and an
+        # open release lane may carry integration merges above its release
+        # commit; the protocol's commit is therefore looked up in the whole
+        # base..HEAD range, not only at HEAD.
+        subjects = self._subjects(root, base_oid, merges_only=False)
+        if subjects.failure:
+            return r[bool].from_failure(subjects)
+        if any(
+            u.Infra.is_release_subject(subject, version) for subject in subjects.value
+        ):
+            return r[bool].ok(True)
+        release_subject = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=version)
+        return r[bool].fail(
+            f"{c.Infra.PYPROJECT_FILENAME} version changed outside the release "
+            f"protocol: {base_version} -> {version} (HEAD {head_oid.value.strip()[:12]} "
+            f"carries no {release_subject!r}); run `make release WHAT=version APPLY=Y` "
+            "instead"
         )
-        if exists_result.failure:
-            return r[bool].fail(exists_result.error or "release branch check failed")
-        if exists_result.value.strip():
-            return r[bool].fail(
-                f"release branch already exists without being active: {repository}"
-            )
+
+    # --------------------------------------------------------------- version
+
+    def phase_version(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+        """Open or update the release pull request for the planned version."""
+        root = ctx.repository_root
+        plan = self.phase_plan(ctx)
+        if plan.failure:
+            return r[bool].from_failure(plan)
+        if not plan.value.releasable:
+            self.logger.info("release_version_none", current=ctx.version)
+            return r[bool].ok(True)
+        if ctx.dry_run:
+            return r[bool].ok(True)
+        preflight = self._preflight_version(root, plan.value)
+        if preflight.failure:
+            return preflight
+        branch = self._integration_branch(root)
+        if branch.failure:
+            return r[bool].from_failure(branch)
+        for step in (
+            lambda: self._switch_release_branch(root, branch.value),
+            lambda: self._stamp_release(ctx, plan.value),
+            lambda: self._commit_release(root, plan.value),
+            lambda: self._publish_release_branch(root, branch.value, plan.value),
+        ):
+            outcome = step()
+            if outcome.failure:
+                return outcome
+        self.logger.info("release_version_pull_request", version=plan.value.next)
         return r[bool].ok(True)
 
-    def _create_branches(
-        self, workspace_root: Path, version: str, project_names: t.StrSequence
+    def _preflight_version(
+        self, root: Path, plan: m.Infra.ReleasePlan
     ) -> p.Result[bool]:
-        """Create release branches for workspace and selected projects."""
-        branch = f"release/{version}"
-        projects_result = u.Infra.resolve_projects(workspace_root, project_names)
-        if projects_result.failure:
+        """Require a clean checkout on the integration branch and a free tag."""
+        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        if status.failure:
+            return r[bool].from_failure(status)
+        if status.value.dirty:
             return r[bool].fail(
-                projects_result.error or "release project resolution failed"
+                f"release version requires a clean checkout: {root}\n"
+                f"{status.value.porcelain}"
             )
-        repositories = (
-            workspace_root,
-            *(project.path for project in projects_result.value),
-        )
-        pending: t.MutableSequenceOf[Path] = []
-        for repository in repositories:
-            preflight_result = self._preflight_release_branch(repository, branch)
-            if preflight_result.failure:
-                return r[bool].fail(
-                    preflight_result.error
-                    or f"release branch preflight failed: {repository}"
-                )
-            if preflight_result.value:
-                pending.append(repository)
-        for repository in pending:
-            switch_result = u.Cli.run_checked(
-                [c.Infra.GIT, "switch", "--create", branch], cwd=repository
+        branch = self._integration_branch(root)
+        if branch.failure:
+            return r[bool].from_failure(branch)
+        current = u.Infra.git_current_branch(m.Infra.GitRepoRequest(repo_root=root))
+        if current.failure:
+            return r[bool].from_failure(current)
+        if current.value.text != branch.value:
+            return r[bool].fail(
+                f"release version runs on {branch.value}, not {current.value.text}"
             )
-            if switch_result.failure:
-                return r[bool].fail(
-                    switch_result.error
-                    or f"release branch creation failed: {repository}"
-                )
+        exists = u.Cli.capture([c.Infra.GIT, "tag", "-l", plan.tag], cwd=root)
+        if exists.failure:
+            return r[bool].from_failure(exists)
+        if exists.value.strip():
+            return r[bool].fail(f"release tag already exists: {plan.tag}")
         return r[bool].ok(True)
 
-    def _create_tag(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-        """Create annotated Git tag if needed."""
-        exists_capture = u.Cli.capture(
-            [c.Infra.GIT, "tag", "-l", tag], cwd=workspace_root
+    def _switch_release_branch(self, root: Path, integration: str) -> p.Result[bool]:
+        """Continue the open release lane when it exists, else start it from HEAD."""
+        remote_ref = f"refs/remotes/{c.Infra.GIT_ORIGIN}/{c.Infra.RELEASE_BRANCH}"
+        # Why: a rerun (CI retry, or a local run after a first attempt) must
+        # continue the same lane, whether it already exists locally or only
+        # on the remote, and never fail on "branch already exists".
+        local = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                f"refs/heads/{c.Infra.RELEASE_BRANCH}",
+            ],
+            cwd=root,
         )
-        if exists_capture.failure:
-            return r[bool].fail(exists_capture.error or "tag check failed")
-        if exists_capture.value.strip() == tag:
+        fetch = u.Cli.run_checked(
+            [c.Infra.GIT, "fetch", c.Infra.GIT_ORIGIN, c.Infra.RELEASE_BRANCH], cwd=root
+        )
+        if local.success:
+            switched = u.Cli.run_checked(
+                [c.Infra.GIT, "switch", c.Infra.RELEASE_BRANCH], cwd=root
+            )
+        elif fetch.success:
+            switched = u.Cli.run_checked(
+                [c.Infra.GIT, "switch", "--create", c.Infra.RELEASE_BRANCH, remote_ref],
+                cwd=root,
+            )
+        else:
+            return u.Cli.run_checked(
+                [c.Infra.GIT, "switch", "--create", c.Infra.RELEASE_BRANCH], cwd=root
+            )
+        if switched.failure:
+            return switched
+        return u.Infra.git_merge_no_edit(
+            m.Infra.GitCommitishRequest(repo_root=root, commitish=integration)
+        ).map(lambda _report: True)
+
+    def _stamp_release(
+        self, ctx: m.Infra.ReleasePhaseDispatchConfig, plan: m.Infra.ReleasePlan
+    ) -> p.Result[bool]:
+        """Write the version SSOT, the release notes, and the changelog."""
+        root = ctx.repository_root
+        stamped = u.Infra.replace_project_version(root, plan.next)
+        if stamped.failure:
+            return stamped
+        # Why: the lock records the project's own version, so the stamp
+        # refreshes it the way `make deps APPLY=Y` does; otherwise
+        # `make deps` (uv lock --check) is red on the release lane.
+        locked = u.Cli.run_checked(
+            [c.Infra.UV, "lock", "--project", str(root)], cwd=root
+        )
+        if locked.failure:
+            return locked
+        notes_path = (
+            u.Cli.resolve_report_dir(root, c.Infra.PROJECT, c.Infra.RK_RELEASE)
+            / plan.tag
+            / c.Infra.RELEASE_NOTES_FILENAME
+        )
+        projects = u.Infra.resolve_projects(root, ctx.project_names)
+        if projects.failure:
+            return r[bool].from_failure(projects)
+        notes = u.Infra.generate_notes(
+            plan.next,
+            plan.tag,
+            projects.value,
+            "\n".join(f"- {subject}" for subject in plan.merges),
+            notes_path,
+        )
+        if notes.failure:
+            return notes
+        changelog = u.Infra.update_changelog(root, plan.next, plan.tag, notes_path)
+        if changelog.failure:
+            return changelog
+        # Why: README, docs/index and the API overview render the version, and
+        # the docs generator owns them; the stamp regenerates its projections
+<<<<<<< HEAD
+        # so selector-free `make gen` stays a fixed point on the release lane.
+=======
+        # so `make gen APPLY=Y` stays a fixed point on the release lane.
+>>>>>>> origin/0.12.0-dev
+        return FlextInfraCodegenConform.execute_request(
+            m.Infra.CodegenConformRequest(
+                root=root,
+                scope=c.Infra.CodegenConformScope.ALL,
+                mode=c.Infra.CodegenConformMode.APPLY,
+            )
+        ).map(lambda _result: True)
+
+    def _commit_release(self, root: Path, plan: m.Infra.ReleasePlan) -> p.Result[bool]:
+        """Commit the stamped SSOT and every projection regenerated from it.
+
+        Preflight proved the checkout clean, so every path the status now
+        lists was produced by the stamp; those exact paths are staged. A
+        rerun stamps the bytes the lane already carries and commits nothing.
+        """
+        status = u.Infra.git_status(m.Infra.GitStatusRequest(repo_root=root))
+        if status.failure:
+            return r[bool].from_failure(status)
+        # The status code and the path are whitespace-separated; the first
+        # line arrives without its leading status padding.
+        produced = tuple(
+            line.split(maxsplit=1)[1]
+            for line in status.value.porcelain.splitlines()
+            if line.strip()
+        )
+        if not produced:
+            self.logger.info("release_version_unchanged", version=plan.next)
+            return r[bool].ok(True)
+        staged = u.Infra.git_add_paths(
+            m.Infra.GitPathsRequest(repo_root=root, paths=produced)
+        )
+        if staged.failure:
+            return r[bool].from_failure(staged)
+        committed = u.Infra.git_commit(
+            m.Infra.GitCommitRequest(
+                repo_root=root,
+                message=c.Infra.RELEASE_COMMIT_SUBJECT.format(version=plan.next),
+            )
+        )
+        if committed.failure:
+            return r[bool].from_failure(committed)
+        return r[bool].ok(True)
+
+    def _publish_release_branch(
+        self, root: Path, integration: str, plan: m.Infra.ReleasePlan
+    ) -> p.Result[bool]:
+        """Push the release lane and open or update its pull request."""
+        pushed = u.Infra.git_push_upstream(
+            m.Infra.GitPushRequest(repo_root=root, branch=c.Infra.RELEASE_BRANCH)
+        )
+        if pushed.failure:
+            return r[bool].from_failure(pushed)
+        title = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=plan.next)
+        body = (
+            u.Cli.resolve_report_dir(root, c.Infra.PROJECT, c.Infra.RK_RELEASE)
+            / plan.tag
+            / c.Infra.RELEASE_NOTES_FILENAME
+        )
+        exists = u.Cli.capture(
+            [c.Infra.GH, "pr", "view", c.Infra.RELEASE_BRANCH, "--json", "number"],
+            cwd=root,
+        )
+        command = (
+            [c.Infra.GH, "pr", "edit", c.Infra.RELEASE_BRANCH]
+            if exists.success
+            else [
+                c.Infra.GH,
+                "pr",
+                "create",
+                "--base",
+                integration,
+                "--head",
+                c.Infra.RELEASE_BRANCH,
+            ]
+        )
+        return u.Cli.run_checked(
+            [*command, "--title", title, "--body-file", str(body)], cwd=root
+        )
+
+    # ------------------------------------------------------------------- tag
+
+    def phase_tag(self, ctx: m.Infra.ReleasePhaseDispatchConfig) -> p.Result[bool]:
+        """Tag the merged release commit; idempotent when the tag already points here."""
+        root = ctx.repository_root
+        head = self._head_subject(root)
+        if head.failure:
+            return r[bool].from_failure(head)
+        expected = c.Infra.RELEASE_COMMIT_SUBJECT.format(version=ctx.version)
+        if not u.Infra.is_release_subject(head.value, ctx.version):
+            return r[bool].fail(
+                f"release tag requires HEAD to be the release commit {expected!r}, "
+                f"found {head.value!r}"
+            )
+        if ctx.dry_run:
+            return r[bool].ok(True)
+        created = self._create_tag(root, ctx.tag)
+        if created.failure:
+            return created
+        return u.Cli.run_checked(
+            [c.Infra.GIT, "push", c.Infra.GIT_ORIGIN, ctx.tag], cwd=root
+        )
+
+    def _create_tag(self, repository_root: Path, tag: str) -> p.Result[bool]:
+        """Create the annotated tag at HEAD, or accept it when it already points there."""
+        existing = u.Cli.capture(
+            [c.Infra.GIT, "rev-list", "-n", "1", tag], cwd=repository_root
+        )
+        if existing.success and existing.value.strip():
+            head = u.Cli.capture(
+                [c.Infra.GIT, "rev-parse", c.Infra.GIT_HEAD], cwd=repository_root
+            )
+            if head.failure:
+                return r[bool].from_failure(head)
+            if existing.value.strip() != head.value.strip():
+                return r[bool].fail(f"release tag {tag} already points elsewhere")
             return r[bool].ok(True)
         return u.Cli.run_checked(
-            [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"], cwd=workspace_root
+            [c.Infra.GIT, "tag", "-a", tag, "-m", f"release: {tag}"],
+            cwd=repository_root,
         )
 
-    def _push_release(self, workspace_root: Path, tag: str) -> p.Result[bool]:
-        """Push branch and tag to origin."""
-        return u.Cli.run_checked(
-            [c.Infra.GIT, "push", c.Infra.GIT_ORIGIN, c.Infra.GIT_HEAD, tag],
-            cwd=workspace_root,
+    # --------------------------------------------------------------- helpers
+
+    @staticmethod
+    def _integration_branch(root: Path) -> p.Result[str]:
+        """Resolve the published integration branch this repository releases from."""
+        return u.Infra.repository_baseline_branch(
+            root,
+            preference=tuple(
+                config.Infra.codegen.branch_policy.integration_branch_preference
+            ),
         )
 
-    def _bump_next_dev(
-        self,
-        workspace_root: Path,
-        version: str,
-        project_names: t.StrSequence,
-        bump: str,
-    ) -> p.Result[bool]:
-        """Bump workspace to next development version."""
-        bump_result = u.Infra.bump_version(version, bump)
-        if bump_result.failure:
-            return r[bool].fail(bump_result.error or "bump failed")
-        next_version = bump_result.value
-        ctx = m.Infra.ReleasePhaseDispatchConfig(
-            phase=c.Infra.ReleasePhase.VERSION,
-            workspace_root=workspace_root,
-            version=next_version,
-            tag=f"v{next_version}",
-            project_names=project_names,
-            dev_suffix=True,
-        )
-        result = self.phase_version(ctx)
-        if result.success:
-            self.logger.info("release_next_dev_version", version=f"{next_version}.dev0")
-        return result
+    @staticmethod
+    def _head_subject(root: Path) -> p.Result[str]:
+        """Return the HEAD commit subject."""
+        return u.Cli.capture(
+            [c.Infra.GIT, "log", "-1", "--format=%s", c.Infra.GIT_HEAD], cwd=root
+        ).map(str.strip)
 
-    def _generate_notes(
-        self, ctx: m.Infra.ReleasePhaseDispatchConfig, output_path: Path
-    ) -> p.Result[bool]:
-        """Generate release notes with project diff context."""
-        workspace_root = ctx.workspace_root
-        tag = ctx.tag
-        previous_result = self._previous_tag(workspace_root, tag)
-        if previous_result.failure:
-            return r[bool].fail(
-                previous_result.error or "previous release tag resolution failed"
-            )
-        changes_result = self._collect_changes(workspace_root, previous_result.value)
-        if changes_result.failure:
-            return r[bool].fail(
-                changes_result.error or "release change collection failed"
-            )
-        projects_result = u.Infra.resolve_projects(workspace_root, ctx.project_names)
-        if projects_result.failure:
-            return r[bool].fail(
-                projects_result.error or "release project resolution failed"
-            )
-        return u.Infra.generate_notes(
-            ctx.version, tag, projects_result.value, changes_result.value, output_path
+    @staticmethod
+    def _latest_tag(root: Path) -> p.Result[str]:
+        """Return the highest release tag, or an empty string before the first release."""
+        tags = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "tag",
+                "--list",
+                c.Infra.TAG_FORMAT.format(version="*"),
+                "--sort=-version:refname",
+            ],
+            cwd=root,
+        )
+        if tags.failure:
+            return r[str].from_failure(tags)
+        return r[str].ok(next((line for line in tags.value.splitlines() if line), ""))
+
+    @staticmethod
+    def _subjects(
+        root: Path, since: str, *, merges_only: bool
+    ) -> p.Result[t.StrSequence]:
+        """Return commit subjects reachable from HEAD since ``since`` (all when empty).
+
+        Merge commits carry the pull-request titles the bump is derived from;
+        the full history is what the release commit is looked up in.
+        """
+        log = u.Cli.capture(
+            [
+                c.Infra.GIT,
+                "log",
+                *(("--merges",) if merges_only else ()),
+                "--format=%s",
+                f"{since}..{c.Infra.GIT_HEAD}",
+            ],
+            cwd=root,
+        )
+        if log.failure:
+            return r[t.StrSequence].from_failure(log)
+        return r[t.StrSequence].ok(
+            tuple(line for line in log.value.splitlines() if line.strip())
         )
 
 

@@ -13,14 +13,13 @@ per clone (flext-c6di).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, override
+from pathlib import Path
+from typing import Annotated, override
 
 from flext_infra import c, config, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.deps._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from ._extra_paths_sync import FlextInfraExtraPathsSyncMixin
 
 
 class FlextInfraExtraPathsManager(
@@ -38,6 +37,13 @@ class FlextInfraExtraPathsManager(
             description="Analyzer roots the active codegen plan materializes",
         ),
     ] = ()
+    analysis_exclusions: Annotated[
+        t.StrSequence,
+        m.Field(
+            default=(),
+            description="Workspace-relative paths excluded from analyzer discovery",
+        ),
+    ] = ()
 
     _workspace_project_names: t.Infra.StrSet = u.PrivateAttr(default_factory=set)
 
@@ -45,13 +51,20 @@ class FlextInfraExtraPathsManager(
     def model_post_init(self, __context: t.MappingKV[str, p.AttributeProbe], /) -> None:
         """Initialize workspace metadata after validation."""
         self._workspace_project_names = set(
-            u.Infra.workspace_project_paths(self.workspace_root)
+            u.Infra.workspace_project_paths(self.repository_root)
         )
 
     @property
     def workspace_project_names(self) -> t.StrSequence:
         """Managed workspace project names backing dependency resolution."""
         return tuple(sorted(self._workspace_project_names))
+
+    @property
+    def analysis_excluded_top_dirs(self) -> frozenset[str]:
+        """First path segments from the caller's validated topology."""
+        return frozenset(
+            Path(path).parts[0] for path in self.analysis_exclusions if Path(path).parts
+        )
 
     @override
     def execute(self) -> p.Result[bool]:
@@ -60,7 +73,7 @@ class FlextInfraExtraPathsManager(
             dry_run=self.effective_dry_run, project_dirs=self.project_dirs
         )
         if result.failure:
-            return r[bool].fail(result.error or "extra-path synchronization failed")
+            return r[bool].from_failure(result)
         return r[bool].ok(True)
 
     @override
@@ -109,22 +122,68 @@ class FlextInfraExtraPathsManager(
             relative_path
             for relative_path in rules.project_shared_search_paths
             if (project_dir / relative_path).is_dir()
+            or relative_path in self.generated_python_roots
         ]
-        # Why (ai-hub-qwoc, fleet-wide fix): pyrefly resolves the FIRST
-        # matching search-path entry. "src" must precede "." or every module
-        # resolves twice (ai_hub.X via src AND src.ai_hub.X via "."),
-        # producing distinct classes for the same symbol and phantom
-        # bad-argument-type errors. A naive sorted({...}) puts "." before
-        # "src" (ASCII '.' < 's'), silently breaking every consumer with a
-        # "." shared search path (e.g. tests.* resolution). Sort everything
-        # else, then place the declared source root first so it always wins.
+        # Why (cosmos-45hiv, 2026-08-31): the project root closes the chain for
+        # cross-tree imports. `scripts/` is a checked env dir and owns
+        # `scripts/__init__.py`, so `tests/` and `scripts/` import its modules
+        # as `scripts.*`; resolving them needs the repo root on the search
+        # path. It must come LAST: pyrefly resolves the FIRST matching entry,
+        # so `source_dir` ahead of "." keeps `src.x` from also resolving as
+        # `x` (the ai-hub-qwoc duplicate-class failure below). mypy cannot
+        # share this value — it enumerates every search-path root and reports
+        # the same file under two module names as source-file-found-twice —
+        # which is why the two tools now derive separately.
+        root_path = rules.project_root
+        has_project_root = (project_dir / root_path).is_dir()
         paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
-        has_source_root = (project_dir / source_root).is_dir()
+        has_source_root = (
+            project_dir / source_root
+        ).is_dir() or source_root in self.generated_python_roots
         paths.discard(source_root)
+        paths.discard(root_path)
         ordered = sorted(paths)
+        if has_project_root:
+            ordered.append(root_path)
         if has_source_root:
             return (source_root, *ordered)
         return tuple(ordered)
+
+    @override
+    def mypy_search_paths(self, *, project_dir: Path, is_root: bool) -> t.StrSequence:
+        """Compute mypy search paths: like pyrefly but without the project root.
+
+        mypy treats each search-path entry as a package root and enumerates the
+        files under it. When a root re-spells a module that another root already
+        provides -- the repo root resolving ``scripts/legado/lib/argocd.py`` as
+        ``scripts.legado.lib.argocd`` while ``scripts/`` on the same path offers
+        it as ``legado.lib.argocd`` -- mypy reports "Source file found twice
+        under different module names" and aborts before checking anything.
+        pyrefly does not have that failure mode: it resolves imports
+        first-match-wins, so the project root is a safe resolution aid there
+        and stays one (see :meth:`pyrefly_search_paths`).
+        """
+        rules = config.Infra.tooling.tools.pyrefly.path_rules
+        source_root = rules.source_dir
+        configured_typings = (
+            rules.root_typings_paths if is_root else rules.project_typings_paths
+        )
+        typings_paths = [
+            relative_path
+            for relative_path in configured_typings
+            if (project_dir / relative_path).is_dir()
+        ]
+        shared_paths = [
+            relative_path
+            for relative_path in rules.project_shared_search_paths
+            if (project_dir / relative_path).is_dir()
+        ]
+        paths: t.Infra.StrSet = {*typings_paths, *shared_paths}
+        paths.discard(source_root)
+        paths.discard(rules.project_root)
+        if (project_dir / source_root).is_dir():
+            return (source_root, *sorted(paths))
+        return tuple(sorted(paths))
 
     def pyrefly_project_includes(
         self, *, project_dir: Path, is_root: bool
@@ -133,7 +192,11 @@ class FlextInfraExtraPathsManager(
         rules = config.Infra.tooling.tools.pyrefly.path_rules
         # flext-j47u (codex): never reread an on-disk Pyright table while its
         # in-memory payload is being conformed; include only real production roots.
-        discovered_python_roots = set(u.Infra.discover_python_dirs(project_dir))
+        discovered_python_roots = set(
+            u.Infra.discover_python_dirs(
+                project_dir, workspace_excluded_top_dirs=self.analysis_excluded_top_dirs
+            )
+        )
         includes: t.Infra.StrSet = set(
             self.pyrefly_include_globs(
                 tuple(
