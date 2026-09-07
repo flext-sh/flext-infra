@@ -1098,18 +1098,12 @@ Infra:
       - path: .beads/metadata.json
         owner: codegen
         policy: full
-      - path: .env.example
-        owner: codegen
-        policy: create-only
       - path: .envrc
         owner: codegen
         policy: full
       - path: .gitignore
         owner: codegen
         policy: merge
-      - path: .gitmodules
-        owner: workspace
-        policy: manual
       - path: .mise.toml
         owner: codegen
         policy: full
@@ -1133,9 +1127,6 @@ Infra:
       - path: .vscode/settings.json
         owner: vscode
         policy: merge
-      - path: LICENSE
-        owner: codegen
-        policy: create-only
       # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
       - path: config/build-constraints.txt
         owner: codegen
@@ -1146,18 +1137,6 @@ Infra:
       - path: Makefile
         owner: make
         policy: full
-      - path: README.md
-        owner: codegen
-        policy: create-only
-      - path: base.mk
-        owner: make
-        policy: delegated
-      - path: config/workspace.yaml
-        owner: workspace
-        policy: manual
-      - path: custom.mk
-        owner: custom
-        policy: create-only
       - path: pyproject.toml
         owner: codegen
         policy: merge
