@@ -146,7 +146,7 @@ class FlextInfraNamespaceEnforcer(
         cls, params: m.Infra.RefactorNamespaceEnforceInput
     ) -> p.Result[m.Infra.WorkspaceEnforcementReport]:
         """Execute namespace enforcement directly from the canonical payload."""
-        enforcer = cls(repository_root=params.workspace_path)
+        enforcer = cls(repository_root=params.repository_root)
         report = enforcer.enforce(
             apply=params.apply, project_names=params.project_names, gates=params.gates
         )

@@ -108,6 +108,16 @@ class TestsFlextInfraUtilityFacadeProjection:
             package / "codemod" / "batch_apply.py",
             "from flext_sample import u\n\nu.Sample.plan_cutover()\n",
         )
+        # The facade and its private family exist together in a real package;
+        # without the owner directory the renderer stops at the incomplete
+        # artifact check and never reaches the base expression under test.
+        self._write(
+            package / "_utilities" / "semantic_cutover.py",
+            "class FlextSampleUtilitiesSemanticCutover:\n"
+            "    @staticmethod\n"
+            "    def plan_cutover() -> None:\n"
+            "        pass\n",
+        )
         self._write(
             package / "utilities.py",
             "from upstream import u\n\n"

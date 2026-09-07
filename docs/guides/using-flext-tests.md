@@ -68,7 +68,6 @@ def test_settings_isolation(settings: FlextTestsSettings) -> None:
     # Next test receives a fresh singleton via reset_settings
     assert FlextSettings.fetch_global() is not settings
 ```
-
 ## Resetting singletons manually
 
 When a fixture is not enough:
@@ -81,7 +80,6 @@ FlextSettings.reset_for_testing()
 FlextTestsSettings.reset_for_testing()
 FlextContainer.reset_for_testing()
 ```
-
 ## Testing result flows
 
 Use the `r` alias instead of importing from `returns` directly:
@@ -95,7 +93,6 @@ def test_safe_divide() -> None:
     failure = safe_divide(10, 0)
     assert failure.failure
 ```
-
 ## Good practices
 
 - Rely on `reset_settings` and `test_runtime` for isolation.
@@ -129,7 +126,6 @@ FlextSettings.fetch_global().debug = True
 
 # Importing returns directly instead of using the r alias
 ```
-
 ## Related
 
 - `.agents/skills/using-flext-tests/SKILL.md`

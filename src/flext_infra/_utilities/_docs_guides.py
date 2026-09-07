@@ -49,14 +49,17 @@ class FlextInfraUtilitiesDocsGuidesMixin:
     @staticmethod
     def docs_sanitize_internal_anchor_links(content: str) -> str:
         """Replace local Markdown links with text while retaining external links."""
+        preserved = (
+            *(f"{scheme}:" for scheme in sorted(c.Infra.DOCS_EXTERNAL_SCHEMES)),
+            c.Infra.DOCS_FRAGMENT_PREFIX,
+        )
 
         def sanitize_link(match: re.Match[str]) -> str:
+            # The declared scheme catalog is the only authority for what
+            # survives: a second list here drifted into preserving `http://`
+            # while the insecure scheme is rejected elsewhere.
             target = match.group(2)
-            return (
-                match.group(0)
-                if target.startswith(("http://", "https://", "#", "mailto:"))
-                else match.group(1)
-            )
+            return match.group(0) if target.startswith(preserved) else match.group(1)
 
         return re.sub(c.Infra.MARKDOWN_LINK_RE, sanitize_link, content)
 

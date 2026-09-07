@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -10,7 +9,7 @@ import pytest
 from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import u, u as test_u
 from tests.unit.workspace import WorktreeFixture
 
 
@@ -74,10 +73,9 @@ class TestsCodegenBeadsProjection:
 
         if rendered_config is None:
             pytest.fail("local identity must produce the declarative Beads config")
-        tm.that(rendered_config, has='issue-prefix: "project-prefix"')
-        # The config projection carries the ISSUE prefix, not the database name;
-        # asserting a bare `prefix: <database>` kept this red against a template
-        # that is correct (see any governed .beads/config.yaml on disk).
+        # `issue_prefix` is the key bd itself resolves (`bd config get
+        # issue_prefix`); the hyphenated spelling reads as unset, so bd appended
+        # its own key on first write and left every governed checkout dirty.
         tm.that(rendered_config, has='issue_prefix: "project-prefix"')
         tm.that(rendered_config, has="gc.endpoint_origin: inherited_city")
         tm.that(rendered_config, has="gc.endpoint_status: verified")
@@ -112,7 +110,7 @@ class TestsCodegenBeadsProjection:
         rendered = self._rendered(self._plan(root), c.Infra.BEADS_METADATA_RELPATH)
         if rendered is None:
             pytest.fail("local identity must produce the Beads marker")
-        metadata = json.loads(rendered)
+        metadata = u.Tests.json_payload(rendered)
         tm.that(metadata["project_id"], eq=minted)
         tm.that(
             set(metadata),

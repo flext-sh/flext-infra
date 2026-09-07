@@ -35,7 +35,7 @@ class FlextInfraDependencyDetectorRuntime(FlextInfraDependencyDetectorRuntimeSte
     def run(self, params: m.Infra.DetectCommand) -> p.Result[bool]:
         """Execute dependency detection and generate workspace report (orchestrator)."""
         detector = self._detector
-        root = params.workspace_path
+        root = params.repository_root
         venv_bin = root / c.Infra.VENV_BIN_REL
         env_result = self._validate_environment(params, root, venv_bin)
         if env_result.failure:

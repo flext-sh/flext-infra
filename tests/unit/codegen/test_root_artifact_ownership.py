@@ -197,18 +197,11 @@ class TestsAncestryNetworkBoundary:
         ):
             root.joinpath(relative_parent).mkdir(parents=True, exist_ok=True)
         u.Tests.commit_git_changes(root, "Seed manifest-less topology")
-        tm.ok(
-            u.Cli.run_checked(
-                [
-                    c.Infra.GIT,
-                    "remote",
-                    "set-url",
-                    "origin",
-                    str(root / "unreachable-origin.git"),
-                ],
-                cwd=root,
-            )
-        )
+        # Ownership is resolved from the declared provider URL, so the remote
+        # keeps it. What is removed is the local rewrite target the fixture
+        # installed: any fetch would then have to leave this machine, and a
+        # plan that stays offline never notices.
+        (root.parent / "origin.git").rename(root.parent / "origin.git.removed")
         request = m.Infra.CodegenConformRequest(root=root)
         tm.ok(
             FlextInfraCodegenConform(repository_root=root, request=request).plan(

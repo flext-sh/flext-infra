@@ -61,14 +61,14 @@ class TestRunProjectsPublicBehavior:
         return original_pythonpath or ""
 
     def test_invalid_gates_fail(self, tmp_path: Path) -> None:
-        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["p1"], ["invalid_gate"], reports_dir=tmp_path / "reports"
         )
 
         tm.fail(result)
 
     def test_missing_projects_are_skipped(self, tmp_path: Path) -> None:
-        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["nonexistent"], ["lint"], reports_dir=tmp_path / "reports"
         )
 
@@ -79,7 +79,7 @@ class TestRunProjectsPublicBehavior:
     def test_run_projects_creates_reports(
         self, tmp_path: Path, report_name: str
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_pythonpath = self._install_fake_ruff(
@@ -98,7 +98,7 @@ class TestRunProjectsPublicBehavior:
     def test_run_projects_creates_project_scoped_reports_dir(
         self, tmp_path: Path
     ) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_pythonpath = self._install_fake_ruff(
@@ -115,7 +115,7 @@ class TestRunProjectsPublicBehavior:
         tm.that((tmp_path / "reports" / "p1").is_dir(), eq=True)
 
     def test_fail_fast_stops_after_first_failed_project(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         for name in ("p1", "p2", "p3"):
             project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
@@ -143,7 +143,7 @@ class TestRunProjectsPublicBehavior:
         tm.that(len(result.value), eq=1)
 
     def test_run_projects_reports_mixed_project_errors(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         for name in ("p1", "p2"):
             project_dir = u.Tests.mk_project(tmp_path, name, with_src=True)
             (project_dir / "src" / "test.py").write_text(
@@ -176,7 +176,7 @@ class TestRunProjectsPublicBehavior:
         tm.that(result.value[1].total_errors, eq=0)
 
     def test_run_project_returns_single_project_result(self, tmp_path: Path) -> None:
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
         (project_dir / "src" / "test.py").write_text("value = 1\n", encoding="utf-8")
         original_pythonpath = self._install_fake_ruff(

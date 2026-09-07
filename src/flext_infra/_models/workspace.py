@@ -27,9 +27,7 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        repository_root: Annotated[
-            Path, m.Field(alias="workspace", description="Repository root path")
-        ]
+        repository_root: Annotated[Path, m.Field(description="Repository root path")]
 
     class WorkspaceProjectContext(m.ContractModel):
         """Canonical context derived from one runtime working directory."""
@@ -59,9 +57,7 @@ class FlextInfraModelsWorkspace:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        repository_root: Annotated[
-            Path, m.Field(alias="workspace", description="Consumer project root")
-        ]
+        repository_root: Annotated[Path, m.Field(description="Consumer project root")]
         flext_root: Annotated[
             Path, m.Field(description="Flext worktree supplying the packages")
         ]

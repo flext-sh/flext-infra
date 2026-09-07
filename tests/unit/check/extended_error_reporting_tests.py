@@ -30,7 +30,7 @@ class TestGateErrorReportingPublicBehavior:
         project_dir = u.Tests.mk_project(tmp_path, "p1")
         _ = (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")
         return FlextInfraWorkspaceChecker(
-            workspace=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
+            repository_root=tmp_path, gate_runners={c.Infra.MARKDOWN: runner}
         ).run_projects(["p1"], ["markdown"], reports_dir=tmp_path / "reports")
 
     def test_mypy_ignores_empty_lines_in_json_output(self, tmp_path: Path) -> None:

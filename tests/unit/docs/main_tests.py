@@ -20,7 +20,7 @@ def test_docs_cli_validate_fails_before_generation(tmp_path: Path) -> None:
             infra_main([
                 "docs",
                 "validate",
-                "--workspace",
+                "--repository-root",
                 str(workspace),
                 "--projects",
                 "flext-a",
@@ -43,7 +43,7 @@ def test_docs_cli_generate_apply_rejects_a_second_publication_owner(
             infra_main([
                 "docs",
                 "generate",
-                "--workspace",
+                "--repository-root",
                 str(workspace),
                 "--apply",
                 "--projects",

@@ -101,7 +101,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             reports_dir = reports_dir_result.value
         gate_ctx = m.Infra.GateContext(
-            workspace=self._repository_root,
+            repository_root=self._repository_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=not ctx.apply,

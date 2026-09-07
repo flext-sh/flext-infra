@@ -36,7 +36,11 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         )
         u.Tests.initialize_git_repo(workspace)
         buffer = StringIO()
-        cli_args = ["namespace-enforce", f"--workspace={workspace!s}", "--dry-run"]
+        cli_args = [
+            "namespace-enforce",
+            f"--repository-root={workspace!s}",
+            "--dry-run",
+        ]
         with redirect_stdout(buffer):
             result = infra_main(["refactor", *cli_args])
         tm.that(result, ne=0)
@@ -62,7 +66,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
             result = infra_main([
                 "refactor",
                 "wrapper-root-namespace",
-                f"--workspace={workspace!s}",
+                f"--repository-root={workspace!s}",
                 "--dry-run",
             ])
 
@@ -90,7 +94,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         result = infra_main([
             "refactor",
             "wrapper-root-namespace",
-            f"--workspace={workspace!s}",
+            f"--repository-root={workspace!s}",
             "--check",
         ])
 
@@ -118,7 +122,7 @@ class TestsFlextInfraRefactorInfraRefactorCliModelsWorkflow:
         result = infra_main([
             "refactor",
             "wrapper-root-namespace",
-            f"--workspace={workspace!s}",
+            f"--repository-root={workspace!s}",
             "--apply",
         ])
 

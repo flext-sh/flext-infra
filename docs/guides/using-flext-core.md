@@ -64,7 +64,6 @@ assert safe_divide(10, 2).success
 assert safe_divide(10, 2).value == 5.0
 assert safe_divide(10, 0).failure
 ```
-
 ## Settings
 
 ```python
@@ -73,7 +72,6 @@ from flext_core import FlextSettings
 settings = FlextSettings.fetch_global()
 assert isinstance(settings.model_dump(), dict)
 ```
-
 Subprojects extend `FlextSettings` with their own `env_prefix`:
 
 ```python
@@ -83,7 +81,6 @@ from flext_core import FlextSettings, m
 class FlextCliSettings(FlextSettings):
     model_config = m.SettingsConfigDict(env_prefix="FLEXT_CLI_", extra="ignore")
 ```
-
 ## Container
 
 ```python
@@ -96,7 +93,6 @@ resolved: p.Result[str] = container.resolve("service", type_cls=str)
 assert resolved.success
 assert resolved.value == "ready"
 ```
-
 ## Logging
 
 ```python
@@ -105,16 +101,14 @@ from flext_core import u
 logger = u.fetch_logger(__name__)
 logger.info("user.created", user_id=42)
 ```
-
 ## Service runtime
 
 ```python
-from flext_core import s, FlextSettings
+from flext_core import FlextSettings, s
 
 settings = FlextSettings.fetch_global()
 runtime = s(settings=settings)
 ```
-
 ## Good practices
 
 - Use aliases instead of importing nested modules directly.

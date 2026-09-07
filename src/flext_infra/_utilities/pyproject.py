@@ -134,9 +134,19 @@ class FlextInfraUtilitiesPyproject:
             cwd=execution_root,
             timeout=process_timeout_seconds,
         )
-        if identified.failure or not u.Cli.process_succeeded(identified.value.outcome):
+        if identified.failure:
             return r[Path].fail(
-                identified.error or "resolved Taplo executable failed identity check"
+                f"Taplo identity check could not run: {binary}: {identified.error}"
+            )
+        if not u.Cli.process_succeeded(identified.value.outcome):
+            # The cause belongs in the message: a shim that resolves but cannot
+            # execute reports the same generic text as a genuine version
+            # mismatch, and the two need opposite repairs.
+            detail = identified.value.stderr.strip() or identified.value.stdout.strip()
+            return r[Path].fail(
+                f"Taplo identity check failed: {binary} exited "
+                f"{identified.value.outcome.raw_return_code}: "
+                f"{detail or 'no diagnostic output'}"
             )
         observed = identified.value.stdout.strip()
         identity_matches = (

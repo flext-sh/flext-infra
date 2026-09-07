@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from flext_infra import t
 
 
-class FlextInfraUtilitiesIterationDirectory:
+class FlextInfraUtilitiesIterationDirectory(FlextInfraUtilitiesGitScopeMixin):
     """Static helpers for iterating Python files within a single directory tree."""
 
     @classmethod

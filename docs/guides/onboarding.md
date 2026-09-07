@@ -33,7 +33,7 @@ Confirm the package's canonical config, settings, public API, and owned `c`, `t`
 ## Prepare and discover
 
 ```bash
-make setup APPLY=Y
+make setup
 make help
 ```
 

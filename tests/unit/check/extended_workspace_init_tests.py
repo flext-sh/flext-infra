@@ -27,12 +27,12 @@ class TestWorkspaceChecker:
         tm.that(FlextInfraWorkspaceChecker.parse_tool_args(raw), eq=list(expected))
 
     def test_init_creates_default_reports_dir(self, tmp_path: Path) -> None:
-        FlextInfraWorkspaceChecker(workspace=tmp_path)
+        FlextInfraWorkspaceChecker(repository_root=tmp_path)
         reports_dir = tmp_path / c.Infra.REPORTS_DIR_NAME / c.Infra.VERB_CHECK
         tm.that(reports_dir.exists(), eq=True)
 
     def test_execute_returns_failure(self, tmp_path: Path) -> None:
-        result = FlextInfraWorkspaceChecker(workspace=tmp_path).execute()
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).execute()
         tm.fail(result, has="Use execute_command() directly")
 
     def test_resolve_gates_rejects_duplicate_explicit_gates(self) -> None:
@@ -55,7 +55,7 @@ class TestWorkspaceChecker:
         reports_file = tmp_path / "reports.txt"
         reports_file.write_text("", encoding="utf-8")
 
-        result = FlextInfraWorkspaceChecker(workspace=tmp_path).run_projects(
+        result = FlextInfraWorkspaceChecker(repository_root=tmp_path).run_projects(
             ["project-a"], [c.Infra.LINT], reports_dir=reports_file
         )
 

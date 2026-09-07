@@ -23,14 +23,10 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
 
     _repository_root: Path
 
-    def __init__(
-        self, repository_root: Path | None = None, *, workspace: Path | None = None
-    ) -> None:
+    def __init__(self, repository_root: Path | None = None) -> None:
         """Initialize pyrefly settings fixer."""
-        resolved_workspace = u.Infra.resolve_repository_root_or_cwd(
-            repository_root or workspace
-        )
-        super().__init__(repository_root=resolved_workspace)
+        resolved_root = u.Infra.resolve_repository_root_or_cwd(repository_root)
+        super().__init__(repository_root=resolved_root)
         self._repository_root = self.repository_root
 
     @override
@@ -41,7 +37,7 @@ class FlextInfraConfigFixer(FlextInfraConfigFixerSteps, FlextInfraServiceBase[bo
     @classmethod
     def execute_payload(cls, params: m.Infra.FixPyreflyConfigCommand) -> p.Result[bool]:
         """Execute pyrefly config repair from the canonical check command payload."""
-        fixer = cls(repository_root=params.workspace_path)
+        fixer = cls(repository_root=params.repository_root)
         fix_result = fixer.run(
             projects=params.project_names or [],
             dry_run=params.dry_run,

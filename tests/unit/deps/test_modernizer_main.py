@@ -68,7 +68,7 @@ class TestsFlextInfraDepsModernizerMain:
             main([
                 "deps",
                 "modernize",
-                "--workspace",
+                "--repository-root",
                 str(modernizer_workspace),
                 "--audit",
                 "--skip-comments",

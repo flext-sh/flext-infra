@@ -16,6 +16,7 @@ from ._utilities.base import FlextInfraUtilitiesBase
 from ._utilities.census import FlextInfraUtilitiesRefactorCensus
 from ._utilities.class_nesting import FlextInfraUtilitiesClassNesting
 from ._utilities.codegen import FlextInfraUtilitiesCodegen
+from ._utilities.codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
 from ._utilities.codemod_rules import FlextInfraUtilitiesCodemodRules
 from ._utilities.compatibility_aliases import FlextInfraUtilitiesCompatibilityAliases
 from ._utilities.deferred_self_reference_ast import (
@@ -42,6 +43,7 @@ from ._utilities.namespace_analysis import FlextInfraUtilitiesRefactorNamespaceF
 from ._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
 from ._utilities.namespace_facades import FlextInfraUtilitiesRefactorNamespaceFacades
 from ._utilities.namespace_moves import FlextInfraUtilitiesRefactorNamespaceMoves
+from ._utilities.network import FlextInfraUtilitiesNetwork
 from ._utilities.private_imports import FlextInfraUtilitiesPrivateImports
 from ._utilities.process import FlextInfraUtilitiesProcess
 from ._utilities.project_managed_artifacts import (
@@ -94,8 +96,10 @@ class FlextInfraUtilities(u):
         FlextInfraUtilitiesBase,
         FlextInfraUtilitiesClassNesting,
         FlextInfraUtilitiesProcess,
+        FlextInfraUtilitiesNetwork,
         FlextInfraUtilitiesResourceLimits,
         FlextInfraUtilitiesCodegen,
+        FlextInfraUtilitiesCodegenFilePlan,
         FlextInfraUtilitiesCompatibilityAliases,
         FlextInfraUtilitiesCodegenNamespace,
         FlextInfraUtilitiesPyprojectConform,

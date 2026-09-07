@@ -22,7 +22,7 @@ summary, not a second policy owner.
 Discover and prepare the declared command surface before changing code:
 
 ```bash
-make setup APPLY=Y
+make setup
 make help
 ```
 
