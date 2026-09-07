@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from flext_cli import p
-    from flext_infra import c, m, t
+    from flext_infra import m, t
 
 
 @runtime_checkable
@@ -285,40 +285,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def branch(self) -> str:
             """Provider-owned integration baseline."""
-            ...
-
-    @runtime_checkable
-    class GithubPullRequestFields(Protocol):
-        """Shared PR execution fields accepted at the transport boundary."""
-
-        @property
-        def action(self) -> c.Infra.PullRequestAction:
-            """Requested PR operation."""
-            ...
-
-        @property
-        def base(self) -> str | None:
-            """Target branch when explicitly selected."""
-            ...
-
-        @property
-        def head(self) -> str | None:
-            """Source branch when explicitly selected."""
-            ...
-
-        @property
-        def title(self) -> str | None:
-            """PR title used for creation."""
-            ...
-
-        @property
-        def body(self) -> str | None:
-            """PR body used for creation."""
-            ...
-
-        @property
-        def draft(self) -> bool:
-            """Whether creation requests a draft PR."""
             ...
 
     @runtime_checkable
@@ -806,31 +772,3 @@ class FlextInfraProtocolsBase(Protocol):
         show_diff: bool
         analysis_output: Path | None
         impact_map_output: Path | None
-
-    @runtime_checkable
-    class GithubCliHandlers(Protocol):
-        """Protocol for GitHub CLI handler mixins."""
-
-        def sync_github_workflows(
-            self, params: m.Infra.GithubWorkflowSyncRequest
-        ) -> p.Result[m.Infra.GithubWorkflowSyncReport]:
-            """Sync GitHub workflow files."""
-            ...
-
-        def lint_github_workflows(
-            self, params: m.Infra.GithubWorkflowLintRequest
-        ) -> p.Result[m.Infra.GithubWorkflowLintOutcome]:
-            """Lint GitHub workflow files."""
-            ...
-
-        def run_github_pull_request(
-            self, params: m.Infra.GithubPullRequestRequest
-        ) -> p.Result[m.Infra.GithubPullRequestOutcome]:
-            """Manage pull request for a single project."""
-            ...
-
-        def run_github_workspace_pull_requests(
-            self, params: m.Infra.GithubPullRequestWorkspaceRequest
-        ) -> p.Result[m.Infra.GithubPullRequestWorkspaceReport]:
-            """Manage pull requests across the workspace."""
-            ...
