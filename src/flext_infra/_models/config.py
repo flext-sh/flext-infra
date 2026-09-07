@@ -3388,7 +3388,7 @@ class FlextInfraConfigModels:
             ),
         ]
         requirements: Annotated[
-            "FlextInfraConfigModels.GenRequirementEntries",
+            FlextInfraConfigModels.GenRequirementEntries,
             m.Field(description="Mandatory generation requirements"),
         ]
 
@@ -3410,6 +3410,30 @@ class FlextInfraConfigModels:
         fixed_point: Annotated[
             FlextInfraConfigModels.FixedPointSpec,
             m.Field(description="Post-generation fixed-point validation"),
+        ]
+
+    class CodegenToolchainOverridesSpec(_ConfigContract):
+        """Override section of ToolchainSpec: per-distribution cooldown deltas."""
+
+        dependency_cooldown_overrides: Annotated[
+            Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
+            m.Field(
+                description="Per-distribution dependency cooldown override contracts",
+            ),
+        ] = MappingProxyType({})
+
+    class CodegenOverridesSpec(_ConfigContract):
+        """Typed content of the config overrides layer (config/codegen-overrides.yaml).
+
+        Layer 2 of the hierarchical architecture: project-specific parameters
+        that sit on top of the immutable codegen.yaml business rules. Every field
+        here is a delta applied to the base config; the overrides file never
+        duplicates immutable rules.
+        """
+
+        Infra: Annotated[
+            FlextInfraConfigModels.CodegenOverridesRoot,
+            m.Field(description="flext-infra override namespace"),
         ]
 
     class UvEnvironmentPlan(_ConfigContract):
