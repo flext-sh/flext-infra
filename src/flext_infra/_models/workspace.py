@@ -7,8 +7,11 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import c, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models._defaults import ImmutableEmptyMapping
+from .._models._git.identity import FlextInfraModelsGitIdentity
+from .._models.config import FlextInfraConfigModels
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsWorkspace:
@@ -22,18 +25,41 @@ class FlextInfraModelsWorkspace:
     class WorkspaceEnvironmentRequest(m.ContractModel):
         """Read-only request for validating the active workspace environment."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        workspace_root: Annotated[
-            Path, m.Field(alias="workspace", description="Workspace root path")
+        repository_root: Annotated[
+            Path, m.Field(alias="workspace", description="Repository root path")
         ]
+
+    class WorkspaceProjectContext(m.ContractModel):
+        """Canonical context derived from one runtime working directory."""
+
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(extra="forbid", frozen=True)
+
+        cwd: Annotated[Path, m.Field(description="Resolved submitted directory")]
+        identity: Annotated[
+            FlextInfraModelsGitIdentity.GitIdentityReport | None,
+            m.Field(description="Observed Git identity, absent outside a repository"),
+        ] = None
+        workspace: Annotated[
+            FlextInfraConfigModels.WorkspaceSpec | None,
+            m.Field(description="Governed workspace contract when declared"),
+        ] = None
+        target: Annotated[
+            FlextInfraConfigModels.RepositoryConformTarget | None,
+            m.Field(description="Effective governed project properties"),
+        ] = None
+        governed: Annotated[
+            bool,
+            m.Field(description="Whether repository-local FLEXT governance exists"),
+        ] = False
 
     class FlextBindingRequest(m.ContractModel):
         """Session request binding one consumer onto a flext worktree."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        workspace_root: Annotated[
+        repository_root: Annotated[
             Path, m.Field(alias="workspace", description="Consumer project root")
         ]
         flext_root: Annotated[
@@ -62,7 +88,7 @@ class FlextInfraModelsWorkspace:
     class ProjectInfo(mm.ProjectEntryNameMixin, m.ArbitraryTypesModel):
         """Discovered project metadata for workspace operations."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 
@@ -84,9 +110,9 @@ class FlextInfraModelsWorkspace:
             c.Infra.MakeProfile,
             m.Field(description="Topology proven by this checkout's .gitmodules"),
         ] = c.Infra.MakeProfile.STANDALONE
-        is_workspace_subproject: Annotated[
+        declared_subproject: Annotated[
             bool,
-            m.Field(description="Whether an enclosing workspace declares this entry"),
+            m.Field(description="Whether the aggregate workspace declares this path"),
         ] = False
 
     class ProjectPyprojectState(m.ArbitraryTypesModel):
@@ -96,7 +122,7 @@ class FlextInfraModelsWorkspace:
         mutable state.
         """
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(
             frozen=True, validate_default=False
         )
 

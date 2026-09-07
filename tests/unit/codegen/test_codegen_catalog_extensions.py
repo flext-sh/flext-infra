@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import tomllib
+from fnmatch import fnmatchcase
 from pathlib import Path
+
+import pytest
 
 from flext_infra import c, config, m, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import WorktreeFixture, u as test_u
+from tests import u as test_u
+from tests.unit.workspace import WorktreeFixture
+
+pytestmark = pytest.mark.slow
 
 
 def _repository(
@@ -33,6 +39,7 @@ class TestsCodegenCatalogExtensions:
         tm.that(resolved.provider, eq=source.provider)
         tm.that(source.internal_distribution_prefix, eq="flext-")
 
+<<<<<<< Updated upstream
     def test_infra_repository_provider_must_resolve_exactly_once(self) -> None:
         codegen = config.Infra.codegen
         source = codegen.infra_repository
@@ -58,33 +65,30 @@ class TestsCodegenCatalogExtensions:
         tm.that(duplicate_result.failure, eq=True)
         tm.that(duplicate_result.error, has="must resolve exactly once")
 
-    def test_beads_toolchain_uses_an_immutable_release_selector(self) -> None:
-        selector = config.Infra.codegen.toolchain.beads.version
+    def test_beads_toolchain_resolves_the_latest_fork_release(self) -> None:
+        tm.that(config.Infra.codegen.toolchain.beads.version, eq="latest")
 
-        version_parts = selector.split(".")
-        is_semver = len(version_parts) == 3 and all(
-            part.isdecimal() for part in version_parts
-        )
-        is_commit = len(selector) == 40 and all(
-            char in "0123456789abcdef" for char in selector
-        )
-        tm.that(is_semver or is_commit, eq=True)
-
+    def test_bootstrap_toolchain_tracks_latest_mise_release(self) -> None:
+        template = (
+            Path(__file__).parents[3]
+            / "src/flext_infra/templates/project/base/tool_bootstrap_recipe.j2"
+        ).read_text(encoding="utf-8")
+        tm.that(template, lacks="latest_release_url")
+        tm.that(template, lacks="curl ")
+        tm.that(template, lacks="--windows --version")
+        tm.that(template, has="generate install-script --write")
+        tm.that(template, has='mise_install_path="$$scratch/runtime/seed-mise')
+        tm.that(template, has='mise_install_path="$$scratch/runtime/mise')
+        tm.that(template, has="receipt_runtime")
+        tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
+=======
     def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
         toolchain = config.Infra.codegen.toolchain
 
         mise_parts = toolchain.mise_version.split(".")
         tm.that(len(mise_parts), eq=3)
         tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
-        beads_version = toolchain.beads.version
-        beads_parts = beads_version.split(".")
-        beads_is_semver = len(beads_parts) == 3 and all(
-            part.isdecimal() for part in beads_parts
-        )
-        beads_is_commit = len(beads_version) == 40 and all(
-            char in "0123456789abcdef" for char in beads_version
-        )
-        tm.that(beads_is_semver or beads_is_commit, eq=True)
+>>>>>>> Stashed changes
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -101,8 +105,27 @@ class TestsCodegenCatalogExtensions:
         tm.that("_builtin_setup_conform" in content, eq=False)
         setup_env = content.split("_builtin_setup_environment:", 1)[1]
         tm.that("codegen conform" in setup_env.split("\n\n", 1)[0], eq=False)
+        tm.that(
+            content,
+            has='"$${SETUP_DIRENV:?missing Mise-resolved direnv executable}" allow',
+        )
+        mise_template = template.with_name(".mise.toml.j2").read_text(encoding="utf-8")
+        tm.that(mise_template, has='direnv = "{{ direnv_version }}"')
+        tm.that(mise_template, lacks="credential_command")
+        tm.that(mise_template, lacks="minimum_release_age")
         tm.that("_builtin_gen_check:" in content, eq=True)
         tm.that("_builtin_gen_apply:" in content, eq=True)
+        bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
+            encoding="utf-8"
+        )
+        # Setup executes the tracked, checksum-verified receipt directly; it
+        # never remints an identical launcher or probes a mutable release.
+        tm.that(bootstrap, lacks="generate install-script")
+        tm.that(bootstrap, lacks="https://github.com/jdx/mise/releases")
+        tm.that(bootstrap, lacks="curl")
+        tm.that(bootstrap, lacks="GH_CONFIG_DIR")
+        tm.that(bootstrap, lacks="self-update")
+        tm.that("mise launcher version mismatch" in bootstrap, eq=False)
         verb_names = {verb.name for verb in config.Infra.codegen.make.verbs}
         tm.that("conform" in verb_names, eq=False)
 
@@ -126,7 +149,7 @@ class TestsCodegenCatalogExtensions:
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
-        rendered = tomllib.loads(tm.ok(result))
+        rendered = tomllib.loads(tm.ok(result).rendered)
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(
@@ -140,10 +163,13 @@ class TestsCodegenCatalogExtensions:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=root.name,
+<<<<<<< Updated upstream
             beads=test_u.Tests.beads_project(root.name),
+=======
+>>>>>>> Stashed changes
             repository=root,
             project=test_u.Tests.project_spec(root.name),
-            subprojects=(member,),
+            declared_repositories=(member,),
         )
         provider = test_u.Tests.provider()
         member_source = tmp_path / "member-source"
@@ -153,6 +179,7 @@ class TestsCodegenCatalogExtensions:
             workspace=member.name,
             database=member.name,
             issue_prefix=member.name,
+            beads_owner=False,
         )
         member_head = tm.ok(
             u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=member_source)
@@ -178,9 +205,9 @@ class TestsCodegenCatalogExtensions:
             ])
         )
 
-        workspace_root = tmp_path / "workspace"
+        repository_root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
-            workspace_root,
+            repository_root,
             root.distribution,
             workspace=root.name,
             database=root.name,
@@ -199,10 +226,10 @@ class TestsCodegenCatalogExtensions:
                     bare_repo.as_posix(),
                     member.name,
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
-        member_checkout = workspace_root / member.name
+        member_checkout = repository_root / member.name
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "remote", "set-url", "origin", member.url],
@@ -215,6 +242,13 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
+        WorktreeFixture.link_member_beads(
+            member_checkout,
+            repository_root,
+            workspace_name=root.name,
+            database=root.name,
+            issue_prefix=root.name,
+        )
         tm.ok(
             u.Cli.run_checked(
                 [
@@ -226,21 +260,21 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        gitmodules = WorktreeFixture.write_gitmodules(workspace_root, (member.name,))
+        gitmodules = WorktreeFixture.write_gitmodules(repository_root, (member.name,))
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "add", c.Infra.GITMODULES, member.name],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "commit", "-q", "-m", "Attach governed member"],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         root_head = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=workspace_root)
+            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=repository_root)
         )
         tm.ok(
             u.Cli.run_checked(
@@ -250,14 +284,13 @@ class TestsCodegenCatalogExtensions:
                     f"refs/remotes/origin/{provider.branch}",
                     root_head,
                 ],
-                cwd=workspace_root,
+                cwd=repository_root,
             )
         )
         declared_gitmodules = gitmodules.read_bytes()
-
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
             m.Infra.CodegenConformRequest(
-                root=workspace_root,
+                root=repository_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
@@ -271,12 +304,34 @@ class TestsCodegenCatalogExtensions:
         root_makefile = next(
             file
             for file in plan.files
-            if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
+            if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
-        tm.that(root_makefile.rendered, has=f"WORKSPACE_SUBPROJECTS := {member.name}")
+<<<<<<< Updated upstream
         tm.that(
-            any(file.path.name == c.Infra.GITMODULES for file in plan.files), eq=False
+            test_u.Tests.codegen_file_text(root_makefile),
+            has=f"DECLARED_REPOSITORIES := {member.name}",
         )
+        gitmodules_plan = next(
+            file for file in plan.files if file.path == gitmodules.resolve()
+=======
+        for selector in mise["tools"]:
+            tm.that(
+                any(
+                    fnmatchcase(selector, pattern)
+                    for pattern in (
+                        config.Infra.codegen.toolchain.suspended_mise_selector_patterns
+                    )
+                ),
+                eq=False,
+            )
+        tm.that(
+            mise["tools"]["kubeconform"],
+            eq=config.Infra.codegen.toolchain.kubeconform_version,
+>>>>>>> Stashed changes
+        )
+        tm.that(gitmodules_plan.policy, eq="manual")
+        tm.that(u.Infra.codegen_file_requires_effect(gitmodules_plan), eq=False)
+        tm.that(gitmodules_plan.desired_content, eq=declared_gitmodules)
         tm.that(gitmodules.read_bytes(), eq=declared_gitmodules)
 
 
