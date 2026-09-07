@@ -91,9 +91,8 @@ def test_required_directories_reject_duplicate_targets(tmp_path: Path) -> None:
 
 def test_required_directories_match_final_file_plan_targets(tmp_path: Path) -> None:
     """Keep the pre-snapshot directory plan bound to the final artifact owner."""
-    workspace = u.Tests.create_docs_workspace(tmp_path, project_names=("flext-a",))
-    generator = FlextInfraDocGenerator(
-        repository_root=workspace, selected_projects=["flext-a"]
+    workspace, generator = u.Tests.docs_workspace_generator(
+        tmp_path, project_names=("flext-a",), selected_projects=["flext-a"]
     )
     directories_before = {path for path in workspace.rglob("*") if path.is_dir()}
 
@@ -131,18 +130,11 @@ def test_plan_files_returns_exact_read_only_docs_plans(tmp_path: Path) -> None:
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-a"]
     )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
-    result = generator.plan_files(prepared.value)
+    plans = u.Tests.plan_docs_bundle(generator)
 
-    tm.ok(result)
-    tm.that(result.value, empty=False)
-    tm.that(all(plan.desired_mode == 0o644 for plan in result.value), eq=True)
-    tm.that(all(plan.source_states for plan in result.value), eq=True)
+    tm.that(plans, empty=False)
+    tm.that(all(plan.desired_mode == 0o644 for plan in plans), eq=True)
+    tm.that(all(plan.source_states for plan in plans), eq=True)
     tm.that(
         {path: path.read_bytes() for path in workspace.rglob("*") if path.is_file()},
         eq=before,
@@ -176,16 +168,9 @@ def test_stale_generated_markdown_becomes_delete_plan(tmp_path: Path) -> None:
     generator = FlextInfraDocGenerator(
         repository_root=workspace, selected_projects=["flext-a"]
     )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
-    result = generator.plan_files(prepared.value)
+    plans = u.Tests.plan_docs_bundle(generator)
 
-    tm.ok(result)
-    stale_plan = next(plan for plan in result.value if plan.path == stale)
+    stale_plan = next(plan for plan in plans if plan.path == stale)
     tm.that(stale_plan.desired_content, eq=None)
     tm.that(u.Infra.codegen_file_requires_effect(stale_plan), eq=True)
     tm.that(tm.ok(u.Infra.codegen_file_before_state(stale_plan)).content, eq=b"stale\n")

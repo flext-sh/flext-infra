@@ -24,7 +24,7 @@ from ._census_rules_shared import FlextInfraRefactorCensusRulesSharedMixin
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraRefactorCensusRulesStructMixin(
@@ -42,10 +42,10 @@ class FlextInfraRefactorCensusRulesStructMixin(
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
+        symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect + plan fixes for misplaced class declarations."""
@@ -94,10 +94,10 @@ class FlextInfraRefactorCensusRulesStructMixin(
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
+        symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect + plan fixes for private-import bypass violations."""
@@ -147,10 +147,10 @@ class FlextInfraRefactorCensusRulesStructMixin(
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
+        symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect + plan fixes for compatibility-alias violations."""
@@ -213,10 +213,10 @@ class FlextInfraRefactorCensusRulesStructMixin(
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
+        symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect + plan fixes for inline/lazy imports inside function bodies."""
@@ -267,10 +267,10 @@ class FlextInfraRefactorCensusRulesStructMixin(
         file_path: Path,
         *,
         project_name: str,
-        objects: tuple[m.Infra.Census.Object, ...] | None,
+        objects: t.VariadicTuple[m.Infra.Census.Object] | None,
         applied: frozenset[str],
         selected_kinds: frozenset[str],
-        symbol_index: dict[str, tuple[str, int]],
+        symbol_index: t.MappingKV[str, t.Pair[str, int]],
         convention: m.Infra.RopeModuleConvention,
     ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]:
         """Detect exception-silencing patterns; auto-fix deterministic sentinels."""

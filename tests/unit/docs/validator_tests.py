@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_core import r
 from flext_infra.docs.generator import FlextInfraDocGenerator
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_tests import tm
@@ -16,21 +15,9 @@ if TYPE_CHECKING:
 
 def _publish_docs(workspace: Path) -> None:
     """Publish one generated docs bundle through the transaction adapter."""
-    generator = FlextInfraDocGenerator(
-        repository_root=workspace, selected_projects=["flext-a"]
+    _ = u.Tests.publish_docs_bundle(
+        FlextInfraDocGenerator(repository_root=workspace, selected_projects=["flext-a"])
     )
-    prepared = generator.prepare_bundle()
-    tm.ok(prepared)
-    required = generator.required_directories(prepared.value)
-    tm.ok(required)
-    for directory in required.value:
-        directory.mkdir(parents=True, exist_ok=True)
-    planned = generator.plan_files(prepared.value)
-    tm.ok(planned)
-    published = u.Tests.materialize_codegen_plans(
-        r[tuple[m.Infra.CodegenFilePlan, ...]].ok(planned.value)
-    )
-    tm.ok(published)
 
 
 def test_validate_report_model_fields() -> None:

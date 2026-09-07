@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.deps.phases.ensure_formatting import (
     FlextInfraEnsureFormattingToolingPhase,
 )
@@ -18,6 +20,31 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from tests import m
+
+
+def _project_with_local_ruff_policy(tmp_path: Path, name: str) -> Path:
+    """Create one project whose local config extends Ruff per-file ignores."""
+    project_dir = tmp_path / name
+    config_dir = project_dir / "config"
+    config_dir.mkdir(parents=True)
+    (config_dir / "cli.yaml").write_text(
+        "ManagedArtifacts:\n"
+        "  Ruff:\n"
+        "    per_file_ignores:\n"
+        "      src/flext_cli/_config.py: [N802]\n",
+        encoding="utf-8",
+    )
+    return project_dir
+
+
+def _apply_ruff_phase_twice(
+    phase: FlextInfraEnsureRuffConfigPhase, project_dir: Path
+) -> t.StrSequence:
+    """Apply one Ruff phase twice to a fresh document and return the second changes."""
+    doc = u.Cli.toml_document()
+    path = project_dir / "pyproject.toml"
+    _ = phase.apply(doc, path=path)
+    return phase.apply(doc, path=path)
 
 
 class TestsFlextInfraDepsModernizerTooling:
@@ -142,41 +169,28 @@ skip = ".git,poetry.lock"
         tm.that(codespell, lacks="skip")
         tm.that(changes, has="removed codespell.skip hardcode")
 
-    def test_namespace_phase_sets_detected_first_party(self, tmp_path: Path) -> None:
-        """Detect the project package as first-party code."""
-        project_dir = tmp_path / "flext-sample"
-        package_dir = project_dir / "src" / "flext_sample"
-        package_dir.mkdir(parents=True, exist_ok=True)
-        _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        doc = u.Cli.toml_document()
-
-        _ = FlextInfraEnsureNamespaceToolingPhase().apply(
-            doc, path=project_dir / "pyproject.toml"
-        )
-
-        deptry = TestsFlextInfraDepsModernizerTooling._deptry_mapping(doc)
-        tm.that(
-            list(u.Tests.toml_strings(deptry["known_first_party"])),
-            eq=["flext_core", "flext_sample"],
-        )
-
-    def test_namespace_phase_includes_workspace_source_packages(
-        self, tmp_path: Path
+    @pytest.mark.parametrize(
+        "pyproject_source",
+        [
+            pytest.param("", id="detected-project-package"),
+            pytest.param(
+                "[project]\n"
+                'dependencies = ["flext-core>=0.1.0"]\n\n'
+                "[tool.uv.sources.flext-core]\n"
+                "workspace = true\n",
+                id="declared-workspace-source-package",
+            ),
+        ],
+    )
+    def test_namespace_phase_sets_first_party_packages(
+        self, tmp_path: Path, pyproject_source: str
     ) -> None:
-        """Include declared workspace dependencies in first-party packages."""
+        """Detect the project package and declared workspace deps as first party."""
         project_dir = tmp_path / "flext-sample"
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        doc = u.Tests.toml_doc(
-            """
-[project]
-dependencies = ["flext-core>=0.1.0"]
-
-[tool.uv.sources.flext-core]
-workspace = true
-"""
-        )
+        doc = u.Tests.toml_doc(pyproject_source)
 
         _ = FlextInfraEnsureNamespaceToolingPhase().apply(
             doc, path=project_dir / "pyproject.toml"
@@ -296,11 +310,10 @@ select = ["E501"]
         package_dir = project_dir / "src" / "flext_sample"
         package_dir.mkdir(parents=True, exist_ok=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
-        doc = u.Cli.toml_document()
 
-        _ = phase.apply(doc, path=project_dir / "pyproject.toml")
-        second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
+        second_changes = _apply_ruff_phase_twice(
+            FlextInfraEnsureRuffConfigPhase(tool_config_document), project_dir
+        )
 
         tm.that(second_changes, eq=[])
 
@@ -308,16 +321,7 @@ select = ["E501"]
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Project config extends Ruff policy only for its managed artifact."""
-        project_dir = tmp_path / "flext-cli"
-        config_dir = project_dir / "config"
-        config_dir.mkdir(parents=True)
-        (config_dir / "tooling.yaml").write_text(
-            "ManagedArtifacts:\n"
-            "  Ruff:\n"
-            "    per_file_ignores:\n"
-            "      src/flext_cli/_config.py: [N802]\n",
-            encoding="utf-8",
-        )
+        project_dir = _project_with_local_ruff_policy(tmp_path, "flext-cli")
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsureRuffConfigPhase(tool_config_document).apply(
@@ -348,21 +352,11 @@ select = ["E501"]
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         """Repeated project-local policy application reaches one fixed point."""
-        project_dir = tmp_path / "flext-cli"
-        config_dir = project_dir / "config"
-        config_dir.mkdir(parents=True)
-        (config_dir / "tooling.yaml").write_text(
-            "ManagedArtifacts:\n"
-            "  Ruff:\n"
-            "    per_file_ignores:\n"
-            "      src/flext_cli/_config.py: [N802]\n",
-            encoding="utf-8",
-        )
-        phase = FlextInfraEnsureRuffConfigPhase(tool_config_document)
-        doc = u.Cli.toml_document()
+        project_dir = _project_with_local_ruff_policy(tmp_path, "flext-cli")
 
-        _ = phase.apply(doc, path=project_dir / "pyproject.toml")
-        second_changes = phase.apply(doc, path=project_dir / "pyproject.toml")
+        second_changes = _apply_ruff_phase_twice(
+            FlextInfraEnsureRuffConfigPhase(tool_config_document), project_dir
+        )
 
         tm.that(second_changes, eq=[])
 

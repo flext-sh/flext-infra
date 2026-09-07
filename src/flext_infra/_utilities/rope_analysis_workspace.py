@@ -33,8 +33,12 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
         return None
 
     @classmethod
-    def _package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
-        """Package name for dir."""
+    def package_name_for_dir(cls, package_dir: Path, *, project_root: Path) -> str:
+        """Return the import package a directory declares inside a project.
+
+        An empty string when the directory sits outside the project or under no
+        recognised source root.
+        """
         try:
             relative_parts = package_dir.relative_to(project_root).parts
         except ValueError:
@@ -54,10 +58,8 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     def _module_name_for_file(cls, file_path: Path, *, project_root: Path) -> str:
         """Return the module name for a file."""
         if file_path.name in {c.Infra.INIT_PY, c.Infra.INIT_PYI}:
-            return cls._package_name_for_dir(
-                file_path.parent, project_root=project_root
-            )
-        package_name = cls._package_name_for_dir(
+            return cls.package_name_for_dir(file_path.parent, project_root=project_root)
+        package_name = cls.package_name_for_dir(
             file_path.parent, project_root=project_root
         )
         return f"{package_name}.{file_path.stem}" if package_name else ""
@@ -83,7 +85,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
     @classmethod
     def _python_and_stub_file_paths(
         cls, rope_project: t.Infra.RopeProject, resolved_root: Path
-    ) -> tuple[Path, ...]:
+    ) -> t.VariadicTuple[Path]:
         """Return indexed sources, declared wrapper modules, and typing stubs."""
         python_paths = {
             path.resolve()
@@ -157,7 +159,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 else ""
             )
             package_name = (
-                cls._package_name_for_dir(package_dir, project_root=project_root)
+                cls.package_name_for_dir(package_dir, project_root=project_root)
                 if project_root is not None
                 else module_name
                 if is_package_init
@@ -246,7 +248,7 @@ class FlextInfraUtilitiesRopeAnalysisWorkspace:
                 )
             )
             package_name = (
-                cls._package_name_for_dir(package_dir, project_root=project_root)
+                cls.package_name_for_dir(package_dir, project_root=project_root)
                 if project_root is not None
                 else init_entry.package_name
                 if init_entry is not None

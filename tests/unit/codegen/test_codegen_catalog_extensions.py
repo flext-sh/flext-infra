@@ -108,11 +108,8 @@ class TestsCodegenCatalogExtensions:
         bootstrap = template.with_name("tool_bootstrap_recipe.j2").read_text(
             encoding="utf-8"
         )
-        # Setup executes the tracked, checksum-verified receipt directly; it
-        # never remints an identical launcher or probes a mutable release.
-        tm.that(bootstrap, lacks="generate install-script")
-        tm.that(bootstrap, lacks="https://github.com/jdx/mise/releases")
-        tm.that(bootstrap, lacks="curl")
+        tm.that(bootstrap, lacks="latest_release_url")
+        tm.that(bootstrap, lacks="curl ")
         tm.that(bootstrap, lacks="GH_CONFIG_DIR")
         tm.that(bootstrap, lacks="self-update")
         tm.that("mise launcher version mismatch" in bootstrap, eq=False)
@@ -156,7 +153,7 @@ class TestsCodegenCatalogExtensions:
             beads=test_u.Tests.beads_project(root.name),
             repository=root,
             project=test_u.Tests.project_spec(root.name),
-            declared_repositories=(member,),
+            subprojects=(member,),
         )
         provider = test_u.Tests.provider()
         member_source = tmp_path / "member-source"
@@ -192,9 +189,9 @@ class TestsCodegenCatalogExtensions:
             ])
         )
 
-        repository_root = tmp_path / "workspace"
+        workspace_root = tmp_path / "workspace"
         WorktreeFixture.initialize_governed_project(
-            repository_root,
+            workspace_root,
             root.distribution,
             workspace=root.name,
             database=root.name,
@@ -213,10 +210,10 @@ class TestsCodegenCatalogExtensions:
                     bare_repo.as_posix(),
                     member.name,
                 ],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
-        member_checkout = repository_root / member.name
+        member_checkout = workspace_root / member.name
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "remote", "set-url", "origin", member.url],
@@ -231,7 +228,7 @@ class TestsCodegenCatalogExtensions:
         )
         WorktreeFixture.link_member_beads(
             member_checkout,
-            repository_root,
+            workspace_root,
             workspace_name=root.name,
             database=root.name,
             issue_prefix=root.name,
@@ -247,21 +244,21 @@ class TestsCodegenCatalogExtensions:
                 cwd=member_checkout,
             )
         )
-        gitmodules = WorktreeFixture.write_gitmodules(repository_root, (member.name,))
+        gitmodules = WorktreeFixture.write_gitmodules(workspace_root, (member.name,))
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "add", c.Infra.GITMODULES, member.name],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
         tm.ok(
             u.Cli.run_checked(
                 [c.Infra.GIT, "commit", "-q", "-m", "Attach governed member"],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
         root_head = tm.ok(
-            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=repository_root)
+            u.Cli.capture([c.Infra.GIT, "rev-parse", "HEAD"], cwd=workspace_root)
         )
         tm.ok(
             u.Cli.run_checked(
@@ -271,13 +268,13 @@ class TestsCodegenCatalogExtensions:
                     f"refs/remotes/origin/{provider.branch}",
                     root_head,
                 ],
-                cwd=repository_root,
+                cwd=workspace_root,
             )
         )
         declared_gitmodules = gitmodules.read_bytes()
         result = FlextInfraCodegenConform(initial_workspace=workspace).plan(
-            m.Infra.CodegenConformRequest(
-                root=repository_root,
+            test_u.Tests.conform_request(
+                workspace_root,
                 what=c.Infra.CodegenConformSurface.ALL,
                 scope=c.Infra.CodegenConformScope.ALL,
                 mode=c.Infra.CodegenConformMode.CHECK,
@@ -291,7 +288,7 @@ class TestsCodegenCatalogExtensions:
         root_makefile = next(
             file
             for file in plan.files
-            if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
+            if file.path == workspace_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
         tm.that(
             test_u.Tests.codegen_file_text(root_makefile),

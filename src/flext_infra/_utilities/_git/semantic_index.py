@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from git import BaseIndexEntry, GitCommandError, Repo
 
@@ -13,16 +13,16 @@ from flext_infra.models import m
 from ..._utilities._git.semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
 
 if TYPE_CHECKING:
-    from flext_infra import p
-
-_GITLINK_MODE = "160000"
-_STAGED_GITLINK_FIELDS = 2
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesGitSemanticIndexMixin(
     FlextInfraUtilitiesGitSemanticPathsMixin
 ):
     """Own semantic index operations."""
+
+    _GITLINK_MODE: ClassVar[str] = "160000"
+    _STAGED_GITLINK_FIELDS: ClassVar[int] = 2
 
     @classmethod
     def git_head_numstat(
@@ -64,7 +64,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
         )
 
     @staticmethod
-    def _git_capture_fingerprint(repo: Repo) -> tuple[bytes, bytes, bytes]:
+    def _git_capture_fingerprint(repo: Repo) -> t.Triple[bytes, bytes, bytes]:
         """Capture (paths_z, index_z, head) bytes for fingerprinting."""
         paths_z = repo.git.ls_files(
             "-z", "--cached", "--others", "--exclude-standard"
@@ -124,7 +124,7 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             )
         match output.split():
             case [mode, oid, stage, indexed_path] if (
-                mode == _GITLINK_MODE
+                mode == cls._GITLINK_MODE
                 and stage == str(c.Infra.GIT_STAGE_NORMAL)
                 and indexed_path == request.reference
             ):
@@ -149,7 +149,10 @@ class FlextInfraUtilitiesGitSemanticIndexMixin(
             )
         for line in staged.splitlines():
             fields = line.split()
-            if len(fields) >= _STAGED_GITLINK_FIELDS and fields[0] == _GITLINK_MODE:
+            if (
+                len(fields) >= cls._STAGED_GITLINK_FIELDS
+                and fields[0] == cls._GITLINK_MODE
+            ):
                 return r[m.Infra.GitOidReport].ok(m.Infra.GitOidReport(oid=fields[1]))
         return r[m.Infra.GitOidReport].fail(
             f"governed gitlink is absent from the index: {request.reference}"

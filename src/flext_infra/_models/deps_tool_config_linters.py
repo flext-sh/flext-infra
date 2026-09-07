@@ -243,7 +243,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ] = m.Field(default_factory=ImmutableEmptyMapping)
         overrides: Annotated[
-            tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig],
             m.Field(
                 description="Per-module mypy overrides for auto-generated files and PEP 695 generics."
             ),

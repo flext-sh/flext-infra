@@ -13,7 +13,9 @@ from typing import ClassVar, override
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base import s
 from flext_infra.workspace.environment import FlextInfraWorkspaceEnvironmentMixin
-from flext_infra.workspace.environment_contracts import envrc_contract_violations
+from flext_infra.workspace.environment_contracts import (
+    FlextInfraWorkspaceEnvironmentContracts,
+)
 
 
 class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMixin):
@@ -62,15 +64,15 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
         )
         if rendered.failure:
             return r[result_type].from_failure(rendered)
-        violations = envrc_contract_violations(
-            rendered.value, root=request.workspace_root, resolve_home=False
+        violations = FlextInfraWorkspaceEnvironmentContracts.envrc_contract_violations(
+            rendered.value, root=request.repository_root, resolve_home=False
         )
         if violations:
             return r[result_type].fail(
                 "generated beads-workspace .envrc violates contracts: "
                 + "; ".join(violations)
             )
-        envrc = request.workspace_root / c.Infra.ENVRC_FILENAME
+        envrc = request.repository_root / c.Infra.ENVRC_FILENAME
         written = cls._write_generated_text(
             envrc, rendered.value, apply=request.apply, force=request.force
         )
@@ -87,13 +89,13 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
         runner: p.Cli.CommandRunner | None = None,
     ) -> p.Result[bool]:
         """Run ``direnv allow`` for one applied sync that owns the envrc."""
-        envrc = request.workspace_root / c.Infra.ENVRC_FILENAME
+        envrc = request.repository_root / c.Infra.ENVRC_FILENAME
         if not request.apply or not request.allow_direnv or not envrc.is_file():
             return r[bool].ok(False)
         runner_service = runner or u.Cli
         result = runner_service.run_raw(
-            (c.Infra.CLI_DIRENV, "allow", str(request.workspace_root)),
-            cwd=request.workspace_root,
+            (c.Infra.CLI_DIRENV, "allow", str(request.repository_root)),
+            cwd=request.repository_root,
             timeout=c.Infra.TIMEOUT_DEFAULT,
         )
         if result.failure:
@@ -101,7 +103,7 @@ class FlextInfraWorkspaceBeadsEnvironmentMixin(FlextInfraWorkspaceEnvironmentMix
         output = result.value
         if not u.Cli.process_succeeded(output.outcome):
             return r[bool].fail(
-                f"direnv allow failed for {request.workspace_root}: "
+                f"direnv allow failed for {request.repository_root}: "
                 f"{output.stderr.strip() or output.stdout.strip()}"
             )
         return r[bool].ok(True)
@@ -125,7 +127,7 @@ class FlextInfraWorkspaceEnvironmentSync(
         )
 
 
-__all__: tuple[str, ...] = (
+__all__: t.VariadicTuple[str] = (
     "FlextInfraWorkspaceBeadsEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentSync",
 )

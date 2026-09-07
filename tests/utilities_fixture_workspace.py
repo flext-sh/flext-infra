@@ -41,6 +41,19 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return project_dir
 
     @staticmethod
+    def demo_project(root: Path, *, name: str = "demo-project") -> tuple[Path, Path]:
+        """Create one minimal buildable project; return its root and package dir."""
+        project = root / name
+        package_dir = project / "src" / name.replace("-", "_")
+        package_dir.mkdir(parents=True)
+        (project / "pyproject.toml").write_text(
+            f"[project]\nname='{name}'\n", encoding="utf-8"
+        )
+        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        return project, package_dir
+
+    @staticmethod
     def src_package(project_dir: Path, package_name: str, *, pyproject: str) -> Path:
         """Create one ``src``-layout package plus its ``pyproject.toml``.
 

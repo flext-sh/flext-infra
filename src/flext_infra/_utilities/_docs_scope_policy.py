@@ -6,8 +6,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 
 from flext_cli import u
-from flext_infra.constants import FlextInfraConstants as c
-from flext_infra.typings import FlextInfraTypes as t
+from flext_infra import c, t
 
 from .._utilities._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
 
