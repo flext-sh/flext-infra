@@ -323,11 +323,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         itself is absent or malformed.
         """
         package_root = Path(__file__).resolve().parent.parent
+        # Installed (wheel) layout ships config inside the package; the source
+        # checkout keeps it at the repository root next to src/.
         gen_path = (
-            package_root.parent.parent
-            / c.Infra.CODEGEN_CONFIG_DIR
-            / c.Infra.CODEGEN_GEN_FILENAME
+            package_root / c.Infra.CODEGEN_CONFIG_DIR / c.Infra.CODEGEN_GEN_FILENAME
         )
+        if not gen_path.is_file():
+            gen_path = (
+                package_root.parent.parent
+                / c.Infra.CODEGEN_CONFIG_DIR
+                / c.Infra.CODEGEN_GEN_FILENAME
+            )
         if not gen_path.is_file():
             return r[bool].fail(
                 f"generation requirements contract is absent: {gen_path}; "
