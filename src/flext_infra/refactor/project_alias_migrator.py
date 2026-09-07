@@ -12,6 +12,11 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
+<<<<<<< HEAD:src/flext_infra/refactor/project_alias_migrator.py
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+=======
+>>>>>>> origin/0.12.0-dev:src/flext_infra/_utilities/project_alias_migrator.py
 from flext_infra.constants import c
 from flext_infra.models import m
 

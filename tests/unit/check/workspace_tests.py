@@ -34,7 +34,7 @@ class TestFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker()
         tm.that(checker, none=False)
 
-    def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
+    def test_init_with_custom_repository_root(self, tmp_path: Path) -> None:
         """Test that checker accepts custom workspace root."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         tm.that(checker, none=False)

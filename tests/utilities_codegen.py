@@ -49,13 +49,13 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         package_name: str = "flext_test_project",
     ) -> tuple[Path, Path]:
         """Provide the typed test helper `create_lazy_init_workspace`."""
-        workspace_root = tmp_path / project_name
-        package_root = workspace_root / c.Infra.DEFAULT_SRC_DIR / package_name
+        repository_root = tmp_path / project_name
+        package_root = repository_root / c.Infra.DEFAULT_SRC_DIR / package_name
         package_root.mkdir(parents=True)
-        (workspace_root / "Makefile").write_text(
+        (repository_root / "Makefile").write_text(
             "check:\n\t@true\n", encoding=c.Infra.ENCODING_DEFAULT
         )
-        (workspace_root / c.Infra.PYPROJECT_FILENAME).write_text(
+        (repository_root / c.Infra.PYPROJECT_FILENAME).write_text(
             (
                 f'[project]\nname = "{project_name}"\nversion = "0.1.0"\n\n'
                 + TestsFlextInfraUtilitiesCodegenMixin.ruff_per_file_ignores_toml()
@@ -66,9 +66,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
             "", encoding=c.Infra.ENCODING_DEFAULT
         )
         TestsFlextInfraUtilitiesProjectFixtureMixin.write_project_beads_config(
-            workspace_root, project_name
+            repository_root, project_name
         )
-        return (workspace_root, package_root)
+        return (repository_root, package_root)
 
     @staticmethod
     def write_lazy_init_namespace_module(
@@ -107,9 +107,9 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         )
 
     @staticmethod
-    def run_lazy_init(workspace_root: Path, *, check_only: bool = False) -> int:
+    def run_lazy_init(repository_root: Path, *, check_only: bool = False) -> int:
         """Materialize immutable lazy-init plans only inside test workspaces."""
-        service = FlextInfraCodegenLazyInit(repository_root=workspace_root)
+        service = FlextInfraCodegenLazyInit(repository_root=repository_root)
         planned = service.plan_files().unwrap()
         changed = tuple(
             plan for plan in planned.files if u.Infra.codegen_file_requires_effect(plan)
@@ -122,7 +122,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return 0 if materialized.success else 1
 
     @staticmethod
-    def plan_lazy_init(workspace_root: Path) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
+    def plan_lazy_init(repository_root: Path) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Return the lazy-init planning receipt WITHOUT unwrapping it.
 
         Refusing to plan is a first-class planning outcome — ambiguous export
@@ -130,7 +130,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         that unwraps turns that refusal into an exception and makes the
         pre-effect contract unobservable through the public surface.
         """
-        return FlextInfraCodegenLazyInit(repository_root=workspace_root).plan_files()
+        return FlextInfraCodegenLazyInit(repository_root=repository_root).plan_files()
 
     @staticmethod
     def materialize_lazy_init(service: FlextInfraCodegenLazyInit) -> p.Result[bool]:
@@ -173,16 +173,16 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         return r[bool].ok(True)
 
     @staticmethod
-    def create_lazy_init_service(workspace_root: Path) -> FlextInfraCodegenLazyInit:
+    def create_lazy_init_service(repository_root: Path) -> FlextInfraCodegenLazyInit:
         """Provide the typed test helper `create_lazy_init_service`."""
-        return FlextInfraCodegenLazyInit(repository_root=workspace_root)
+        return FlextInfraCodegenLazyInit(repository_root=repository_root)
 
     @staticmethod
     def lazy_init_scenario(
         tmp_path: Path,
     ) -> tuple[Path, Path, FlextInfraCodegenLazyInit]:
         """Create the workspace, write its namespace module, build the service."""
-        workspace_root, package_root = (
+        repository_root, package_root = (
             TestsFlextInfraUtilitiesCodegenMixin.create_lazy_init_workspace(tmp_path)
         )
         TestsFlextInfraUtilitiesCodegenMixin.write_lazy_init_namespace_module(
@@ -190,7 +190,7 @@ class TestsFlextInfraUtilitiesCodegenMixin:
         )
         init_path = package_root / c.Infra.INIT_PY
         service = TestsFlextInfraUtilitiesCodegenMixin.create_lazy_init_service(
-            workspace_root
+            repository_root
         )
         return package_root, init_path, service
 

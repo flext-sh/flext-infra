@@ -145,17 +145,17 @@ class TestsFlextInfraUtilitiesGatesMixin:
 
     @staticmethod
     def create_gate_context(
-        workspace_root: Path, *, reports_dir: Path | None = None
+        repository_root: Path, *, reports_dir: Path | None = None
     ) -> m.Infra.GateContext:
         """Provide the typed test helper `create_gate_context`."""
         return m.Infra.GateContext(
-            workspace=workspace_root, reports_dir=reports_dir or workspace_root
+            workspace=repository_root, reports_dir=reports_dir or repository_root
         )
 
     @staticmethod
     def run_gate_check(
         gate_class: type[FlextInfraGate],
-        workspace_root: Path,
+        repository_root: Path,
         project_dir: Path,
         *,
         ctx: m.Infra.GateContext | None = None,
@@ -163,12 +163,12 @@ class TestsFlextInfraUtilitiesGatesMixin:
         runner: p.Cli.CommandRunner | None = None,
     ) -> m.Infra.GateExecution:
         """Provide the typed test helper `run_gate_check`."""
-        gate = gate_class(workspace_root, runner=runner)
+        gate = gate_class(repository_root, runner=runner)
         return gate.check(
             project_dir,
             ctx
             or TestsFlextInfraUtilitiesGatesMixin.create_gate_context(
-                workspace_root, reports_dir=reports_dir
+                repository_root, reports_dir=reports_dir
             ),
         )
 

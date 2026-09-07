@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from flext_cli import m as cli_m
 from flext_core import r
 from flext_infra import m, p
+from flext_infra._utilities.base import FlextInfraUtilitiesBase
 
 
 class FlextInfraUtilitiesCodegenFilePlan:
@@ -20,6 +23,20 @@ class FlextInfraUtilitiesCodegenFilePlan:
                 f"codegen destination parent is absent: {plan.path.parent}"
             )
         return r[cli_m.Cli.AtomicFileState].ok(plan.before)
+
+    @staticmethod
+    def codegen_required_directories(
+        plans: tuple[m.Infra.CodegenFilePlan, ...],
+    ) -> tuple[Path, ...]:
+        """Return missing destination parents directly from authenticated plans."""
+        required = {
+            directory
+            for plan in plans
+            if plan.desired_content is not None
+            and isinstance(plan.before, cli_m.Cli.AtomicDirectoryChainPlan)
+            for directory in plan.before.directories
+        }
+        return tuple(sorted(required, key=FlextInfraUtilitiesBase.path_depth_then_text))
 
     @staticmethod
     def atomic_file_state_differs(

@@ -1,7 +1,7 @@
 """Tests for the module-cap SUPREME LAW (§3.1) gate.
 
 The gate flags any module whose scc `Code` line count exceeds the owned cap
-``c.Infra.LOC_CAP_MAX`` and accepts modules under it, exercised through the
+the config-owned ceiling and accepts modules under it, exercised through the
 public gate runner. Fixtures derive from that constant so a legitimate cap
 change never silently inverts these assertions (UNIVERSAL_CORE P0).
 """
@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from flext_infra import c, r
+from flext_infra import config, r
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_tests import tm
 from tests import u
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 # Fixtures are derived from the current cap so a future owner change cannot
 # silently invert these assertions.
-_OVER_CAP_LOC = c.Infra.LOC_CAP_MAX + 50
+_OVER_CAP_LOC = config.Infra.codegen.loc_cap.max_lines + 50
 _UNDER_CAP_LOC = 1
 _OVER_CAP = (
     "from __future__ import annotations\n\n"

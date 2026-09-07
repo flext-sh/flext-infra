@@ -40,12 +40,7 @@ def _prepare_project(
                 source_root / root_package / c.Infra.INIT_PY, "VALUE = 1\n"
             )
         )
-    _ = u.Tests.write_standalone_workspace_manifest(
-        root,
-        config.Infra.name,
-        root_modules=(root_module,),
-        root_packages=(root_package,),
-    )
+    _ = u.Tests.write_standalone_workspace_manifest(root, config.Infra.name)
     u.Tests.copy_tracked_mise_seeds(root)
     return root_module, root_package
 

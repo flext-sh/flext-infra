@@ -33,17 +33,11 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsProjectSpec(
-            version=c.Infra.BEADS_CONFIG_VERSION,
-            workspace="flext",
-            database="flext",
-            issue_prefix="flext",
-        ),
         name="workspace",
         repository=_repository(
             "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
         ),
-        subprojects=(
+        declared_repositories=(
             _repository(
                 "flext-core", role=c.Infra.MakeProfile.STANDALONE, path="flext-core"
             ),
@@ -52,7 +46,7 @@ def _workspace() -> m.Infra.WorkspaceSpec:
 
 
 class TestsFlextInfraCodegenPyprojectConform:
-    def test_workspace_root_uses_workspace_provenance(self) -> None:
+    def test_repository_root_uses_workspace_provenance(self) -> None:
         workspace = _workspace()
         result = u.Infra.pyproject_dependencies_conform(
             """[project]
@@ -75,7 +69,7 @@ workspace = true
 
     def test_standalone_uses_catalog_git_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.subprojects[0]
+        member = workspace.declared_repositories[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
@@ -143,10 +137,12 @@ constraint-dependencies = ["uv>=0"]
 
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.subprojects[0].model_copy(
+        member = workspace.declared_repositories[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
         )
-        invalid_workspace = workspace.model_copy(update={"subprojects": (member,)})
+        invalid_workspace = workspace.model_copy(
+            update={"declared_repositories": (member,)}
+        )
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
@@ -157,7 +153,7 @@ constraint-dependencies = ["uv>=0"]
 
     def test_workspace_rejects_conflicting_direct_source(self) -> None:
         workspace = _workspace()
-        member = workspace.subprojects[0]
+        member = workspace.declared_repositories[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 '[project]\nname = "workspace"\n'
@@ -218,9 +214,22 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
+        declared_dev_names = {
+            name
+            for requirement in document["dependency-groups"]["dev"]
+            if (name := u.Infra.dep_name(requirement)) is not None
+        }
+        # The rolling supply-chain window applies to runtime libraries only.
+        # Exemption follows the typed distribution identities, never table
+        # placement: an unknown package in dev remains a runtime library.
         expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
-            for package in toolchain.dependency_cooldown_exclusions
+            for package in {
+                *toolchain.dependency_cooldown_exclusions,
+                *declared_dev_names.intersection(
+                    config.Infra.codegen.python_tool_distributions
+                ),
+            }
             if package not in toolchain.dependency_cooldown_overrides
         }
         expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
@@ -231,6 +240,10 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+        tm.that(
+            "custom-tool" not in document["tool"]["uv"]["exclude-newer-package"],
+            eq=True,
+        )
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.
@@ -253,8 +266,8 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(
             document["project"]["dependencies"][0],
             eq=(
-                f"{workspace.subprojects[0].distribution} @ "
-                f"git+{workspace.subprojects[0].url}@{_PROVIDER_SPEC.branch}"
+                f"{workspace.declared_repositories[0].distribution} @ "
+                f"git+{workspace.declared_repositories[0].url}@{_PROVIDER_SPEC.branch}"
             ),
         )
 
