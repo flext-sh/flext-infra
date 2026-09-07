@@ -25,7 +25,7 @@ class TestCodegenCiMatrix:
     @staticmethod
     def _render_project(root: Path) -> Path:
         """Render one fresh internal_flext project into root and return it."""
-        beads = tm.ok(
+        tm.ok(
             FlextInfraWorkspaceDetector.load_beads_spec(
                 Path(__file__).resolve().parents[3]
             )

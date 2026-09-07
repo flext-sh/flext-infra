@@ -39,9 +39,7 @@ def _fleet_render() -> str:
 class TestsMiseDistributionPolicy:
     """Reject alternate owners and fleet collisions through the composition owner."""
 
-    def test_tooling_owner_rejects_suspended_distribution(
-        self, tmp_path: Path
-    ) -> None:
+    def test_tooling_owner_rejects_suspended_distribution(self, tmp_path: Path) -> None:
         root = _workspace(tmp_path / "project")
         config_dir = root / "config"
         config_dir.mkdir()

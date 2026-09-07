@@ -134,8 +134,7 @@ def test_gen_init_is_a_direct_hermetic_owner_route() -> None:
     assert all("codegen conform" not in line for line in init_lines)
     assert "$(filter-out help setup gen,$(PUBLIC_VERBS)):" in text
     assert (
-        "$(addprefix _mise_dispatch_,$(filter-out help setup,$(PUBLIC_VERBS))):"
-        in text
+        "$(addprefix _mise_dispatch_,$(filter-out help setup,$(PUBLIC_VERBS))):" in text
     )
     assert '$(SELF_MAKE) "_mise_dispatch_$@"' in text
     public_init = text.split("gen:\n", 1)[1].split("\n\n", 1)[0]

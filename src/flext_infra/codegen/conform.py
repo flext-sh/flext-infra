@@ -2148,6 +2148,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository_root
                     ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
+                    private_dependency_auth=codegen.ci_private_dependency_auth,
                     system_packages=tuple(codegen.ci_system_packages.get(dist, ())),
                 )
             )

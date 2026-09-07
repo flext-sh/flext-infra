@@ -111,9 +111,6 @@ class FlextInfraConstantsRefactor:
     CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
     CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
     CODEMOD_EPHEMERAL_DIRNAME: Final[str] = "__pycache__"
-    CODEMOD_DOCUMENT_SEPARATOR_RE: Final[re.Pattern[str]] = re.compile(
-        r"^---\s*$", re.MULTILINE
-    )
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
         RK_FILE_EXTENSIONS,

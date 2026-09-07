@@ -154,11 +154,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             ]
         return self._build_project_fix_result(
-            project_dir,
-            fixed,
-            previewed,
-            skipped,
-            failed,
+            project_dir, fixed, previewed, skipped, failed
         )
 
     def _preview_from_check(

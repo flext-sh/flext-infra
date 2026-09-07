@@ -173,6 +173,16 @@ Infra:
             path: neptor
             remote: git@github.com:marlonsc/neptor.git
 
+    # A private git dependency cannot be cloned with the workflow's own token:
+    # secrets.GITHUB_TOKEN is scoped to the repository that runs the workflow,
+    # and uv drives dependency clones through plain git, which carries no
+    # credential at all. The declared GitHub App mints an installation token for
+    # the owner before `make setup`, so every project that carries a private git
+    # dependency authenticates the same way instead of special-casing one repo.
+    ci_private_dependency_auth:
+      app_id_secret: CI_DEPENDENCIES_APP_ID
+      private_key_secret: CI_DEPENDENCIES_APP_PRIVATE_KEY
+
     github_actions:
       checkout:
         repository: actions/checkout
@@ -182,6 +192,10 @@ Infra:
         repository: helm/kind-action
         version: v1.14.0
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
+      create-github-app-token:
+        repository: actions/create-github-app-token
+        version: v3.2.0
+        sha: bcd2ba49218906704ab6c1aa796996da409d3eb1
       upload-artifact:
         repository: actions/upload-artifact
         version: v4.6.2

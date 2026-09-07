@@ -27,6 +27,7 @@ from flext_infra.constants import c
 # facade import and stays cycle-free.
 from flext_infra.typings import t
 
+from .codegen import FlextInfraUtilitiesCodegen
 from .pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
@@ -40,16 +41,23 @@ class FlextInfraUtilitiesDependencies:
     def update_mise_lock(
         project_root: Path, *, platforms: t.StrSequence, staging_parent: Path
     ) -> p.Result[bool]:
-        """Generate a fresh native Mise lock and publish it atomically."""
+        """Generate a fresh native Mise lock and publish it atomically.
+
+        The lock is resolved from the rendered declaration -- the config SSOT
+        that ``make gen`` publishes -- never from the on-disk ``.mise.toml``.
+        Locking the stale projection deadlocked every newly declared selector:
+        offline ``gen`` refuses a config whose tool set the lock lacks, and the
+        lock never gained a tool the published config did not already carry.
+        This step is the online owner of the lock, so it resolves the declared
+        set here and ``gen`` stays offline.
+        """
         launcher = project_root / "bin" / ("mise.cmd" if os.name == "nt" else "mise")
         if not launcher.is_file():
             return r[bool].fail(f"generated Mise launcher is absent: {launcher}")
-        config_path = project_root / c.Infra.MISE_TOML_FILENAME
-        config_state = u.Cli.atomic_read_binary_file_state(config_path, required=True)
-        if config_state.failure:
-            return r[bool].from_failure(config_state)
-        if config_state.value.content is None:
-            return r[bool].fail(f"generated Mise config is absent: {config_path}")
+        declaration = FlextInfraUtilitiesCodegen.render_mise_toml(project_root)
+        if declaration.failure:
+            return r[bool].from_failure(declaration)
+        declared_content = declaration.value.encode("utf-8")
         live_lock = u.Cli.atomic_read_binary_file_state(
             project_root / c.Infra.MISE_LOCK_FILENAME, required=False
         )
@@ -70,9 +78,9 @@ class FlextInfraUtilitiesDependencies:
             return r[bool].from_failure(temporary)
         stage_root = temporary.value
         staged_config = u.Cli.atomic_create_binary_file_guarded(
-            stage_root / config_path.name,
-            config_state.value.content,
-            permission_mode=config_state.value.mode or 0o644,
+            stage_root / c.Infra.MISE_TOML_FILENAME,
+            declared_content,
+            permission_mode=0o644,
         )
         generated: p.Result[bytes]
         if staged_config.failure:

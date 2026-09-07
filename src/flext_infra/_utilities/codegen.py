@@ -17,6 +17,7 @@ from flext_infra.typings import t
 
 from .codegen_facades import FlextInfraUtilitiesCodegenFacades
 from .codegen_file_plan import FlextInfraUtilitiesCodegenFilePlan
+from .project_managed_artifacts import FlextInfraUtilitiesProjectManagedArtifacts
 
 
 class FlextInfraUtilitiesCodegen(
@@ -51,6 +52,51 @@ class FlextInfraUtilitiesCodegen(
             pycache_namespace=toolchain.pycache_namespace,
             environment_path_prepends=toolchain.environment_path_prepends,
             mise_bootstrap=FlextInfraUtilitiesCodegen.mise_bootstrap_environment(),
+        )
+
+    @staticmethod
+    def render_mise_toml(project_root: Path) -> p.Result[str]:
+        """Return the exact ``.mise.toml`` body ``make gen`` will publish.
+
+        The declaration is the canonical template rendered from
+        ``Infra.codegen.toolchain`` and overlaid with the repository's own
+        ``ManagedArtifacts.Mise`` tools -- the same two owners the conform
+        template loop reads, never the mutable on-disk projection.
+
+        ``make deps`` locks this body, so a selector that the config SSOT has
+        newly declared reaches ``mise.lock`` in the cycle that declares it.
+        Locking the on-disk copy instead made the declaration unreachable: the
+        offline ``gen`` validator refuses to publish a config whose tool set the
+        lock lacks, and the lock could never gain a tool the published config
+        did not already carry. The two paths cannot silently diverge, because
+        that same validator compares this rendered tool set against the lock on
+        every ``gen``.
+        """
+        codegen_spec = config.Infra.codegen
+        entries = tuple(
+            entry
+            for entry in codegen_spec.templates.entries
+            if entry.destination == c.Infra.MISE_TOML_FILENAME
+            and entry.delegate == "render"
+        )
+        if len(entries) != 1:
+            return r[str].fail(
+                "codegen configuration must declare exactly one "
+                f"{c.Infra.MISE_TOML_FILENAME} render template"
+            )
+        templates_root = (
+            Path(__file__).resolve().parent.parent
+            / "templates"
+            / codegen_spec.templates.root
+        ).resolve()
+        source = (templates_root / entries[0].source).resolve()
+        if not source.is_relative_to(templates_root) or not source.is_file():
+            return r[str].fail(f"canonical Mise template is absent: {source}")
+        rendered = u.Cli.template_render(source, codegen_spec.toolchain)
+        if rendered.failure:
+            return r[str].from_failure(rendered)
+        return FlextInfraUtilitiesProjectManagedArtifacts.compose_mise_toml(
+            project_root, rendered.value
         )
 
     @staticmethod

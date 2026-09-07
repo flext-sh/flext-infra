@@ -662,6 +662,25 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class CiPrivateDependencyAuthSpec(_ConfigContract):
+        """GitHub App contract that authenticates private git dependencies in CI.
+
+        A workflow's own token is scoped to the repository that runs it, so it
+        cannot clone a private sibling declared as a git dependency; uv drives
+        those clones through plain git, which carries no credential at all. The
+        declared App mints an installation token for the owner instead, and the
+        generated workflow configures git with it before make setup.
+        """
+
+        app_id_secret: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Secret holding the GitHub App identifier"),
+        ]
+        private_key_secret: Annotated[
+            t.NonEmptyStr,
+            m.Field(description="Secret holding the GitHub App private key"),
+        ]
+
     class CiPrivateSubmodulesSpec(_ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
@@ -824,6 +843,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Optional private-subproject deploy-key init for this "
                     "distribution; None means the workflow skips the step"
+                ),
+            ),
+        ] = None
+        private_dependency_auth: Annotated[
+            FlextInfraConfigModels.CiPrivateDependencyAuthSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "GitHub App that authenticates private git dependencies "
+                    "before make setup; None means the workflow skips the step"
                 ),
             ),
         ] = None
@@ -2865,6 +2894,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Per-distribution override of checkout_submodules, for "
                     "projects that really do exercise their subprojects in CI"
+                ),
+            ),
+        ]
+        ci_private_dependency_auth: Annotated[
+            FlextInfraConfigModels.CiPrivateDependencyAuthSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "GitHub App that authenticates private git dependencies in "
+                    "generated CI; absent means no repository declares one"
                 ),
             ),
         ]

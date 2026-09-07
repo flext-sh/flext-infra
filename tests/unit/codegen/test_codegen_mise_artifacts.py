@@ -359,9 +359,7 @@ class TestsCodegenMiseArtifacts:
     ) -> None:
         """Retire stale generated lock entries without invoking Mise."""
         stale_selector = "github:example/stale"
-        root = self._project(
-            tmp_path / "project", extra_lock_selector=stale_selector
-        )
+        root = self._project(tmp_path / "project", extra_lock_selector=stale_selector)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "workspace_root": root,
@@ -369,10 +367,7 @@ class TestsCodegenMiseArtifacts:
         }).execute()
 
         tm.ok(result, eq=True)
-        tm.that(
-            (root / "mise.lock").read_text(encoding="utf-8"),
-            lacks=stale_selector,
-        )
+        tm.that((root / "mise.lock").read_text(encoding="utf-8"), lacks=stale_selector)
 
     def test_missing_platform_checksum_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project", include_checksum=False)

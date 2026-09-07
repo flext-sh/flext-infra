@@ -375,7 +375,6 @@ def validate_transaction_roots(
             return r[bool].from_failure(transaction)
         if transaction.value is False:
             continue
-        transaction_identity = transaction.value
         relative = files.workspace_relative(layout.scope_root, transaction_root)
         if relative.failure:
             return r[bool].from_failure(relative)
