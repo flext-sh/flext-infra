@@ -10,15 +10,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
-
-if TYPE_CHECKING:
-    import pytest
 
 
 def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
