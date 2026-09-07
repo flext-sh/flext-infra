@@ -306,6 +306,85 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             m.Infra.CodegenResult(plan=verified.value, written_files=written)
         )
 
+    @staticmethod
+    def _enforce_gen_requirements(
+        request: m.Infra.CodegenConformRequest,
+    ) -> p.Result[bool]:
+        """Load and validate the ``.gen`` requirements contract before generation.
+
+        The ``.gen`` file is the compliance contract that declares mandatory
+        generation requirements. It sits on top of the ``.j2`` template surface
+        and guarantees that:
+
+        - All managed files use only allowed policies (no bypass via manual,
+          delegated, or create-only).
+        - Generation steps are mandatory and cannot be skipped.
+        - All generation is driven exclusively by authoritative config layers.
+
+        Returns failure if any requirement is violated, or if the ``.gen`` file
+        itself is absent or malformed.
+        """
+        package_root = Path(__file__).resolve().parent.parent
+        gen_path = (
+            package_root.parent.parent
+            / c.Infra.CODEGEN_CONFIG_DIR
+            / c.Infra.CODEGEN_GEN_FILENAME
+        )
+        if not gen_path.is_file():
+            return r[bool].fail(
+                f"generation requirements contract is absent: {gen_path}; "
+                f"{c.Infra.CODEGEN_GEN_FILENAME} is the mandatory conformance gate"
+            )
+        loaded = u.Cli.config_load(gen_path, expand_env=False)
+        if loaded.failure:
+            return r[bool].fail(
+                f"failed to load generation requirements: {loaded.error or gen_path}"
+            )
+        try:
+            requirements = m.Infra.GenRequirementsSpec.model_validate(loaded.value.data)
+        except Exception as exc:
+            return r[bool].fail(
+                f"invalid .gen requirements contract at {gen_path}: {exc}"
+            )
+        bypass_policies = c.Infra.MANAGED_FILE_POLICIES_BYPASS
+        forbidden_in_contract = frozenset(requirements.requirements.managed_file_policies.forbidden)
+        if bypass_policies != forbidden_in_contract:
+            return r[bool].fail(
+                f".gen requirements declares forbidden policies {sorted(forbidden_in_contract)} "
+                f"that do not match the canonical bypass set {sorted(bypass_policies)}"
+            )
+        config_spec = config.Infra.codegen
+        for managed in config_spec.managed_files:
+            if managed.policy in bypass_policies:
+                return r[bool].fail(
+                    f"managed file uses bypass policy '{managed.policy}': {managed.path}; "
+                    f"all managed files must use an allowed policy: "
+                    f"{sorted(requirements.requirements.managed_file_policies.allowed)}"
+                )
+        steps = requirements.requirements.generation_steps
+        if steps.mandatory is not True:
+            return r[bool].fail(
+                ".gen requirements must declare generation_steps.mandatory: true"
+            )
+        if steps.fail_on_drift is not True:
+            return r[bool].fail(
+                ".gen requirements must declare generation_steps.fail_on_drift: true"
+            )
+        authority = requirements.requirements.config_authority
+        if authority.requires_config is not True:
+            return r[bool].fail(
+                ".gen requirements must declare config_authority.requires_config: true"
+            )
+        if authority.reject_manual_edits is not True:
+            return r[bool].fail(
+                ".gen requirements must declare config_authority.reject_manual_edits: true"
+            )
+        if requirements.requirements.fixed_point.required is not True:
+            return r[bool].fail(
+                ".gen requirements must declare fixed_point.required: true"
+            )
+        return r[bool].ok(True)
+
     def _execute_managed(
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
@@ -742,6 +821,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenPlan]:
         """Build and validate the complete selection without writing."""
+        gen_violation = self._enforce_gen_requirements(request)
+        if gen_violation.failure:
+            return r[m.Infra.CodegenPlan].from_failure(gen_violation)
         config_spec = config.Infra.codegen
         root = request.root.expanduser().resolve()
         repository_root = root
