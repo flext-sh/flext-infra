@@ -11,6 +11,9 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, t
+from flext_infra._utilities.iteration_directory import (
+    FlextInfraUtilitiesIterationDirectory,
+)
 
 from .._utilities._git.scope import FlextInfraUtilitiesGitScopeMixin
 from .._utilities.iteration_directory import FlextInfraUtilitiesIterationDirectory
@@ -19,7 +22,7 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
-class FlextInfraUtilitiesIterationWorkspace:
+class FlextInfraUtilitiesIterationWorkspace(FlextInfraUtilitiesIterationDirectory):
     """Static helpers for discovering Python files across workspace projects."""
 
     @classmethod

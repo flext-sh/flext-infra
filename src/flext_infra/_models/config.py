@@ -54,6 +54,26 @@ class FlextInfraConfigModels:
     # YAML is accepted only at the flext-cli loading boundary and is immediately
     # model-validated here.
 
+    class MiseReleaseProbeSpec(_ConfigContract):
+        """Read-only reachability probe deciding online or offline resolution."""
+
+        url: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^https://",
+                description=(
+                    "HTTPS endpoint of the Mise release feed; any HTTP answer "
+                    "means online, a connection failure or timeout means offline"
+                ),
+            ),
+        ]
+        timeout_seconds: Annotated[
+            float,
+            m.Field(
+                gt=0, le=30, description="Bound of the single preflight probe request"
+            ),
+        ]
+
     class MiseToolSpec(_ConfigContract):
         """One mise backend whose exact release is owned by ``mise.lock``."""
 
@@ -396,6 +416,38 @@ class FlextInfraConfigModels:
                 "Exact Go runtime version; mise resolves go: backend "
                 "selectors through it, so beads only installs when Go "
                 "is a declared tool"
+            ),
+        ]
+        mise_lock_platform_exclusions: Annotated[
+            Mapping[
+                t.NonEmptyStr,
+                tuple[
+                    Literal[
+                        "linux-x64",
+                        "linux-arm64",
+                        "linux-x64-musl",
+                        "linux-arm64-musl",
+                        "macos-x64",
+                        "macos-arm64",
+                    ],
+                    ...,
+                ],
+            ],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Platforms a backend cannot represent in mise.lock, declared "
+                    "per selector so the offline validator rejects any other omission"
+                ),
+            ),
+        ]
+        mise_release_probe: Annotated[
+            FlextInfraConfigModels.MiseReleaseProbeSpec,
+            m.Field(
+                description=(
+                    "Preflight probe that selects online or offline Mise "
+                    "toolchain resolution for an apply-mode generation"
+                )
             ),
         ]
         mise_lock_platforms: Annotated[
@@ -1969,9 +2021,6 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Selected repository Make profile"),
         ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr, m.Field(description="Relative workspace root path")
-        ]
         workspace_subprojects: Annotated[
             tuple[str, ...], m.Field(description="Declared workspace subproject paths")
         ] = ()
@@ -2205,9 +2254,9 @@ class FlextInfraConfigModels:
         documentation: Annotated[
             t.NonEmptyStr, m.Field(description="Project documentation URL")
         ]
-        workspace_root_rel: Annotated[
+        repository_root_rel: Annotated[
             t.NonEmptyStr,
-            m.Field(description="Declared relative path to the workspace root"),
+            m.Field(description="Declared relative path to the repository root"),
         ]
         year: Annotated[int, m.Field(ge=2025, description="Copyright year")]
 
@@ -2288,10 +2337,6 @@ class FlextInfraConfigModels:
         make_profile: Annotated[
             FlextInfraConstantsCodegenProject.MakeProfile,
             m.Field(description="Generated Make execution profile"),
-        ]
-        workspace_root_rel: Annotated[
-            t.NonEmptyStr,
-            m.Field(description="Relative path to the declared workspace root"),
         ]
         makefile_custom_include: Annotated[
             str,
@@ -2843,6 +2888,15 @@ class FlextInfraConfigModels:
                 ),
             ),
         ]
+        retired_generated_paths: Annotated[
+            tuple[Path, ...],
+            m.Field(
+                description=(
+                    "Generated repository-relative projections removed during "
+                    "conformance after their consumers have been rewired"
+                )
+            ),
+        ] = ()
         uv_exclude_dependencies: Annotated[
             tuple[FlextInfraConfigModels.UvScopedDependencyExclusionSpec, ...],
             m.Field(description="Project-scoped official uv dependency exclusions"),
@@ -3499,6 +3553,15 @@ class FlextInfraConfigModels:
             FlextInfraConstantsCodegenProject.CodegenConformMode,
             m.Field(description="Read-only check or atomic apply"),
         ] = FlextInfraConstantsCodegenProject.CodegenConformMode.CHECK
+        toolchain_resolution: Annotated[
+            FlextInfraConstantsCodegenProject.MiseResolutionMode,
+            m.Field(
+                description=(
+                    "Mise toolchain resolution for apply: auto probes the "
+                    "declared release endpoint, online and offline pin the path"
+                )
+            ),
+        ] = FlextInfraConstantsCodegenProject.MiseResolutionMode.AUTO
 
     class CodegenArtifactComposition(_ConfigContract):
         """Rendered artifact plus the exact source states used to compose it."""

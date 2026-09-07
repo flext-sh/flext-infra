@@ -6,11 +6,10 @@
 # Source: repository-local identity plus the Gas City contract in config/codegen.yaml.
 # Repository-local projection; conform only renders configuration and never
 # initializes, starts, or verifies runtime state.
-issue-prefix: "flext"
+issue_prefix: "flext"
 dolt.auto-start: false
-dolt:
-  disable-event-flush: true
-  mode: server
+dolt.disable-event-flush: true
+dolt.mode: server
 export.auto: false
 backup.enabled: false
 gc.endpoint_origin: inherited_city

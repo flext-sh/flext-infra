@@ -61,7 +61,6 @@ from flext_core import FlextSettings, m
 class FlextApiSettings(FlextSettings):
     model_config = m.SettingsConfigDict(env_prefix="FLEXT_API_", extra="ignore")
 ```
-
 ## Model-driven command
 
 ```python
@@ -70,7 +69,6 @@ from __future__ import annotations
 from flext_cli import m, t
 from flext_cli.services.cli import FlextCliCli
 from flext_cli.settings import FlextCliSettings
-
 
 settings = FlextCliSettings.fetch_global()
 
@@ -91,7 +89,6 @@ command = FlextCliCli.model_command(
     model_cls=GreetInput, handler=greet_handler, settings=settings
 )
 ```
-
 **Common mistakes to avoid:**
 
 - `FlextCliCli.build_model_command(...)` does not exist; use `FlextCliCli.model_command(...)`.
@@ -106,7 +103,6 @@ runner = CliRunner()
 result = runner.invoke(app, ["greet", "--name", "Ada"])
 assert result.exit_code == 0
 ```
-
 ## Good practices
 
 - Use plain `m.BaseModel` subclasses for command input.
@@ -119,7 +115,6 @@ assert result.exit_code == 0
 def main(name: str):  # ad-hoc command, no model
     u.Cli.print(f"Hello, {name}")
 ```
-
 ## Related
 
 - `.agents/skills/using-flext-cli/SKILL.md`

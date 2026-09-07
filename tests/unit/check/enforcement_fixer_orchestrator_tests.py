@@ -137,7 +137,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=False
+                repository_root=str(tmp_path), projects=("demo",), apply=False
             ),
         )
 
@@ -165,7 +165,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=True
+                repository_root=str(tmp_path), projects=("demo",), apply=True
             ),
         )
 
@@ -290,7 +290,7 @@ class TestsEnforcementFixerOrchestrator:
             exit_code = infra_main([
                 "check",
                 "fix-enforcement",
-                "--workspace",
+                "--repository-root",
                 str(project_dir),
                 "--rules",
                 "ENFORCE-079",

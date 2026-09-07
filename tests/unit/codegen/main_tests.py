@@ -10,7 +10,6 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 import sys
-import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -38,6 +37,9 @@ def _with_pep621_identity(repo: Path) -> Path:
         f'[project.urls]\nRepository = "{repository.url}"\n',
         encoding="utf-8",
     )
+    # Identity is not only PEP 621: a governed checkout also declares its own
+    # ledger, and conform refuses to render without it.
+    u.Tests.write_project_beads_config(repo, repository.distribution)
     return repo
 
 
@@ -101,7 +103,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -116,7 +118,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--check",
-            "--workspace",
+            "--repository-root",
             str(repository),
         ])
         tm.that(result, ne=0)
@@ -129,7 +131,7 @@ class TestHandleLazyInit:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -144,7 +146,7 @@ class TestMainCommandDispatch:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(result, eq=0)
@@ -167,7 +169,7 @@ class TestMainCommandDispatch:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(custom_root)),
         ])
         tm.that(result, eq=0)
@@ -186,7 +188,7 @@ class TestMainEntryPoint:
             "codegen",
             "init",
             "--apply",
-            "--workspace",
+            "--repository-root",
             str(_with_pep621_identity(real_git_repo)),
         ])
         tm.that(type(result).__name__, eq="int")
@@ -259,9 +261,9 @@ class TestMainEntryPoint:
         )
         rendered = pyproject.read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
-        payload = tomllib.loads(rendered)
+        ini_options = u.Tests.toml_table_at(rendered, "tool", "pytest", "ini_options")
         tm.that(
-            payload["tool"]["pytest"]["ini_options"]["addopts"],
+            ini_options["addopts"],
             has=(f"--timeout={config.Infra.tooling.tools.pytest.case_timeout_seconds}"),
         )
         tm.that(journal.exists(), eq=False)

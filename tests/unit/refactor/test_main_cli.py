@@ -247,7 +247,14 @@ class TestsFlextInfraRefactorMainCli:
         cls, workspace: Path, *, rules: str, kinds: str | None = None
     ) -> None:
         """Run one applying census through the CLI, asserting a clean exit."""
-        args = ["--workspace", str(workspace), "census", "--apply", "--rules", rules]
+        args = [
+            "--repository-root",
+            str(workspace),
+            "census",
+            "--apply",
+            "--rules",
+            rules,
+        ]
         if kinds is not None:
             args = [*args, "--kinds", kinds]
         tm.that(cls._refactor_main(*args), eq=0)
@@ -384,12 +391,13 @@ class TestsFlextInfraRefactorMainCli:
         cls._write(workspace / "tests" / "test_operations.py", _LAZY_CASCADE_TEST)
         return workspace, service_file, init_path
 
-    def test_refactor_census_accepts_workspace_before_subcommand(
+    def test_refactor_census_accepts_the_repository_root_option(
         self, tmp_path: Path
     ) -> None:
+        """The root is a subcommand option, not a group flag ahead of the verb."""
         workspace = tmp_path / "workspace"
         self._write_workspace_pyproject(workspace)
-        result = self._refactor_main("--workspace", str(workspace), "census")
+        result = self._refactor_main("census", "--repository-root", str(workspace))
         tm.that(result, eq=0)
 
     def test_refactor_census_apply_fixes_missing_runtime_alias(
@@ -874,7 +882,7 @@ class TestsFlextInfraRefactorMainCli:
         impact_map_path = tmp_path / "cli-impact-map.json"
 
         result = self._refactor_main(
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "census",
             "--rules",

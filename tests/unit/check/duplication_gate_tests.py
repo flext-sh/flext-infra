@@ -28,7 +28,7 @@ def normalize_records(records: list[str]) -> tuple[str, ...]:
 
 
 def _ctx(root: Path) -> m.Infra.GateContext:
-    return m.Infra.GateContext(workspace=root, reports_dir=root / "reports")
+    return m.Infra.GateContext(repository_root=root, reports_dir=root / "reports")
 
 
 class TestDuplicationGate:

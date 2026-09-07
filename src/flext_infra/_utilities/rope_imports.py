@@ -854,14 +854,28 @@ class FlextInfraUtilitiesRopeImports:
         ``flext_core`` to the project's local facade modules.
         """
         _ = parse_failures
-        file_paths: set[Path] = {Path(v.file) for v in violations}
-        for file_path in file_paths:
+        # Each violation names the project that owns the alias. Inferring the
+        # owner from the path instead would silently do nothing whenever the
+        # file does not sit inside a recognized project tree, which is exactly
+        # the case the detector reports.
+        declared_owners: dict[Path, set[str]] = defaultdict(set)
+        for violation in violations:
+            declared_owners[Path(violation.file)].add(violation.module_name)
+        for file_path, owners in declared_owners.items():
+            if len(owners) > 1:
+                msg = (
+                    f"canonical alias violations disagree on the owning project "
+                    f"for {file_path}: {sorted(owners)}"
+                )
+                raise ValueError(msg)
             resource = FlextInfraUtilitiesRopeCore.get_resource_from_path(
                 rope_project, file_path
             )
             if resource is None:
                 continue
-            transformer = FlextInfraRefactorProjectAliasMigrator(file_path=file_path)
+            transformer = FlextInfraRefactorProjectAliasMigrator(
+                file_path=file_path, current_project=next(iter(owners))
+            )
             updated, changes = transformer.transform(rope_project, resource)
             if changes:
                 cleanup_result = FlextInfraUtilitiesRopeImports.normalize_imports(

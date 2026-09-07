@@ -74,10 +74,10 @@ class TestsFlextInfraDepsModernizerTooling:
 
         _ = FlextInfraEnsureFormattingToolingPhase(tool_config_document).apply(doc)
 
-        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
-        codespell = u.Tests.toml_mapping(tool["codespell"])
-        tomlsort = u.Tests.toml_mapping(tool["tomlsort"])
-        yamlfix = u.Tests.toml_mapping(tool["yamlfix"])
+        tool = u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Tests.mapping(tool["codespell"])
+        tomlsort = u.Tests.mapping(tool["tomlsort"])
+        yamlfix = u.Tests.mapping(tool["yamlfix"])
         tm.that(
             codespell["check-filenames"],
             eq=tool_config_document.tools.codespell.check_filenames,
@@ -137,8 +137,8 @@ skip = ".git,poetry.lock"
 
         changes = phase.apply(doc)
 
-        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
-        codespell = u.Tests.toml_mapping(tool["codespell"])
+        tool = u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        codespell = u.Tests.mapping(tool["codespell"])
         tm.that(codespell, lacks="skip")
         tm.that(changes, has="removed codespell.skip hardcode")
 
@@ -219,7 +219,7 @@ select = ["E501"]
 
         root = u.Tests.toml_doc_mapping(doc)
         tm.that(root, lacks="lint")
-        ruff = u.Tests.toml_mapping(u.Tests.toml_mapping(root["tool"])["ruff"])
+        ruff = u.Tests.mapping(u.Tests.mapping(root["tool"])["ruff"])
         tm.that(
             frozenset(u.Tests.toml_strings(ruff["exclude"])),
             eq=frozenset(tool_config_document.tools.ruff.exclude),
@@ -243,12 +243,12 @@ select = ["E501"]
             frozenset(u.Tests.toml_strings(ruff["src"])),
             eq=frozenset(tool_config_document.tools.ruff.src),
         )
-        format_section = u.Tests.toml_mapping(ruff["format"])
+        format_section = u.Tests.mapping(ruff["format"])
         tm.that(
             format_section["docstring-code-format"],
             eq=tool_config_document.tools.ruff.format.docstring_code_format,
         )
-        lint_section = u.Tests.toml_mapping(ruff["lint"])
+        lint_section = u.Tests.mapping(ruff["lint"])
         tm.that(
             frozenset(u.Tests.toml_strings(lint_section["select"])),
             eq=frozenset(tool_config_document.tools.ruff.lint.select),
@@ -261,7 +261,7 @@ select = ["E501"]
             }),
             eq=True,
         )
-        isort = u.Tests.toml_mapping(lint_section["isort"])
+        isort = u.Tests.mapping(lint_section["isort"])
         tm.that(
             isort["combine-as-imports"],
             eq=tool_config_document.tools.ruff.lint.isort.combine_as_imports,
@@ -270,7 +270,7 @@ select = ["E501"]
             list(u.Tests.toml_strings(isort["known-first-party"])),
             eq=["flext_core", "flext_sample"],
         )
-        per_file_ignores = u.Tests.toml_mapping(lint_section["per-file-ignores"])
+        per_file_ignores = u.Tests.mapping(lint_section["per-file-ignores"])
         tm.that(
             per_file_ignores,
             eq={
@@ -404,11 +404,11 @@ select = ["E501"]
             doc, path=repository_root / "pyproject.toml"
         )
 
-        ruff = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["ruff"]
+        ruff = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["ruff"]
         )
-        lint_section = u.Tests.toml_mapping(ruff["lint"])
-        isort = u.Tests.toml_mapping(lint_section["isort"])
+        lint_section = u.Tests.mapping(ruff["lint"])
+        isort = u.Tests.mapping(lint_section["isort"])
         known_first_party = list(u.Tests.toml_strings(isort["known-first-party"]))
         tm.that(known_first_party, has="flext_core")
         tm.that("demo_migration_tool" in known_first_party, eq=False)

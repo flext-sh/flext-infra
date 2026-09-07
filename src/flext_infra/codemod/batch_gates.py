@@ -153,9 +153,10 @@ class FlextInfraModGateEngine:
                 continue
             source_path = config_root / relative
             if source_path.is_file():
-                if source_path.read_text(encoding="utf-8") == temp_path.read_text(
-                    encoding="utf-8"
-                ):
+                # Byte comparison, not text: the config root also carries
+                # non-UTF-8 files (compiled caches next to the rules), and
+                # deciding "unchanged" never requires decoding them.
+                if source_path.read_bytes() == temp_path.read_bytes():
                     continue
             else:
                 source_path.parent.mkdir(parents=True, exist_ok=True)
@@ -385,7 +386,7 @@ class FlextInfraModGateEngine:
             )
             sys.stderr.flush()
             context = m.Infra.GateContext(
-                workspace=owner,
+                repository_root=owner,
                 reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
                 check_only=True,
             )

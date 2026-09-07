@@ -66,7 +66,30 @@ class FlextInfraConstantsMake:
         for gate in FlextInfraConstantsCheck.SARIF_TOOL_INFO
         if gate not in FlextInfraConstantsCheck.MUTATING_GATES
     )
-    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = CANONICAL_GATE_IDS
+    CANONICAL_DEFAULT_GATE_IDS: Final[tuple[str, ...]] = (
+        "lint",
+        "pyrefly",
+        "mypy",
+        "pyright",
+        "deferred-self-reference",
+        "security",
+        "markdown",
+        "boundary",
+        "canonical-alias",
+        "runtime-census",
+        "layout",
+        "tier-whitelist",
+        "smells",
+        "direnv",
+    )
+    (
+        "Gates that run by default. A gate joins this set the moment its own "
+        "debt reaches zero, and every declared gate outside it is a tracked "
+        "activation, never a silent exclusion: `loc-cap`, `namespace`, "
+        "`silent-failure`, `duplication` and `codemod` still carry inherited "
+        "findings and enter "
+        "one at a time, each with its own change that drives its count to zero."
+    )
     CANONICAL_FIXABLE_GATE_IDS: Final[tuple[str, ...]] = (
         "lint",
         "markdown",

@@ -74,7 +74,8 @@ def test_project_without_src_returns_empty(tmp_path: Path) -> None:
     tm.that(result.files_modified, empty=True)
 
 
-def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
+def test_lazy_init_artifacts_defer_to_the_conform_transaction(tmp_path: Path) -> None:
+    """The fixer never writes a generated init; the journaled transaction owns it."""
     project = u.Tests.create_codegen_project(
         tmp_path=tmp_path,
         name="test-proj",
@@ -87,9 +88,11 @@ def test_files_modified_tracks_affected_files(tmp_path: Path) -> None:
     )
     fixer = FlextInfraCodegenFixer(repository_root=tmp_path)
     [result] = fixer.fix_workspace(projects=[_project_info(project)])
-    modified_str = " ".join(result.files_modified)
-    tm.that(modified_str, contains="__init__.py")
-    tm.that(result.files_modified, length_gte=1)
+    tm.that(result.files_modified, empty=True)
+    [deferred] = result.violations_skipped
+    tm.that(deferred.rule, eq="LAZY-INIT")
+    tm.that(deferred.message, has="codegen conform transaction")
+    tm.that(deferred.fixable, eq=False)
 
 
 __all__: t.StrSequence = []

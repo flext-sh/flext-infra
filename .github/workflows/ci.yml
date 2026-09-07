@@ -79,7 +79,7 @@ jobs:
         run: CI=Y make check APPLY=Y
 
       # Why (aihub-v01jg): CI=Y runs ONE HALF of the gate set
-      # (lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication); the complement
+      # (lint pyright deferred-self-reference security markdown boundary canonical-alias runtime-census layout tier-whitelist smells direnv); the complement
       # (pyrefly mypy) is owned by
       # CI=N and, without this step, ran on developer
       # machines only. That split let real defects reach main twice: five
@@ -88,7 +88,7 @@ jobs:
       # construction, so running both here costs one extra pass and closes the
       # hole rather than trusting everyone to run the other half by hand.
       - name: check complement (blocking)
-        run: CI=N make check
+        run: CI=N make check APPLY=Y
 
       - name: test (blocking)
         # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).

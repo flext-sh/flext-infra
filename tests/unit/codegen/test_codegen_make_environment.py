@@ -123,6 +123,8 @@ class TestsCodegenMakeEnvironment:
         hostile_python = hostile_bin / "python"
         hostile_python.write_text("#!/bin/sh\nexit 0\n")
         hostile_python.chmod(0o755)
+        # The grammar carries no selector: a repository overrides a whole verb
+        # through `_custom-<verb>`, so the probe is the custom `status` handler.
         (project_root / "custom.mk").write_text(
             ".PHONY: _custom-status\n"
             "_custom-status:\n"

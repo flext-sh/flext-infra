@@ -101,7 +101,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             reports_dir = reports_dir_result.value
         gate_ctx = m.Infra.GateContext(
-            workspace=self._repository_root,
+            repository_root=self._repository_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=not ctx.apply,
@@ -153,11 +153,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             ]
         return self._build_project_fix_result(
-            project_dir,
-            fixed,
-            previewed,
-            skipped,
-            failed,
+            project_dir, fixed, previewed, skipped, failed
         )
 
     def _preview_from_check(

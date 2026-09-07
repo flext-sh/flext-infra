@@ -733,6 +733,8 @@ class FlextInfraUtilitiesRefactorNamespaceMoves:
             for name, bound in FlextInfraUtilitiesRopeSource.parse_import_names(
                 names_part
             )
+            # Why: u here is flext_cli's plain facade (no nested Infra); call
+            # the owning class directly, matching the sibling Rope* calls.
             if not FlextInfraUtilitiesTransformerHeader.alias_locally_bound(
                 target_source, bound
             )

@@ -32,14 +32,11 @@ class FlextInfraModelsMixins:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        workspace: Annotated[
-            str,
-            m.Field(
-                alias="workspace",
-                validation_alias=t.AliasChoices("workspace", "workspace_path"),
-                description="Repository root",
-            ),
-        ] = "."
+        repository_root: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value).resolve()),
+            m.Field(description="Repository root"),
+        ] = Path()
         projects: Annotated[
             t.StrSequence | None,
             m.Field(
@@ -52,7 +49,7 @@ class FlextInfraModelsMixins:
                 description=(
                     "Dotted module path to scope verb to a single module "
                     "(e.g. flext_core.result). Mutually compatible with "
-                    "--projects/--workspace; narrows the run."
+                    "--projects/--repository-root; narrows the run."
                 )
             ),
         ] = None
@@ -67,11 +64,6 @@ class FlextInfraModelsMixins:
         ] = None
         fail_fast: Annotated[bool, m.Field(description="Stop on first failure")] = True
         verbose: Annotated[bool, m.Field(description="Verbose output")] = False
-
-        @property
-        def workspace_path(self) -> Path:
-            """Resolved workspace path for CLI execution."""
-            return Path(self.workspace).resolve()
 
         @property
         def project_names(self) -> t.StrSequence | None:
@@ -216,11 +208,6 @@ class FlextInfraModelsMixins:
         """Shared confidence field for refactor diagnostics."""
 
         confidence: Annotated[str, m.Field(description="Confidence level")] = "low"
-
-    class RewriteScopeMixin:
-        """Shared rewrite-scope field for refactor diagnostics."""
-
-        rewrite_scope: Annotated[str, m.Field(description="Rewrite scope")] = "file"
 
     # ═══════════════════ PROJECT NAME / PATH VARIANTS ═══════════════════
 
