@@ -356,7 +356,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             try:
                 rewrite(detect_ctx, selected)
             except c.EXC_BROAD_RUNTIME as exc:
-                return m.Infra.FileFixOutcome(errors=(f"{rewrite_error_detail}: {exc}",))
+                return m.Infra.FileFixOutcome(
+                    errors=(f"{rewrite_error_detail}: {exc}",)
+                )
             return m.Infra.FileFixOutcome(
                 messages=(change_message(len(selected), apply),),
                 files_modified=(target.record_path,),
@@ -724,11 +726,11 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             if not target.file_path.is_file():
                 return m.Infra.FileFixOutcome(skipped=("file not found",))
             try:
-                all_violations = FlextInfraClassPlacementDetector.detect_file(detect_ctx)
-            except c.EXC_BROAD_RUNTIME:
-                return m.Infra.FileFixOutcome(
-                    errors=("detector raised runtime error",)
+                all_violations = FlextInfraClassPlacementDetector.detect_file(
+                    detect_ctx
                 )
+            except c.EXC_BROAD_RUNTIME:
+                return m.Infra.FileFixOutcome(errors=("detector raised runtime error",))
             classvar_violations = [
                 v for v in all_violations if v.action == "classvar_relocation"
             ]
