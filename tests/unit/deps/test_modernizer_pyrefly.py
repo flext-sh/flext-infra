@@ -13,6 +13,15 @@ from flext_tests import tm
 from tests import t, u
 from tests.unit.deps import ExtraPathsTestSupport
 
+
+def _json_table(value: t.JsonValue) -> MutableMapping[str, t.JsonValue]:
+    """Narrow one JSON/TOML value to a table, failing loud otherwise."""
+    if not isinstance(value, MutableMapping):
+        msg = f"expected a TOML table, got {type(value).__name__}"
+        raise TypeError(msg)
+    return value
+
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -29,8 +38,7 @@ class TestsFlextInfraModernizerPyrefly:
         """Create one fresh TOML document carrying an empty tool.pyrefly table."""
         doc = u.Cli.toml_document()
         doc["tool"] = u.Cli.toml_table()
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
+        tool = _json_table(doc["tool"])
         tool["pyrefly"] = u.Cli.toml_table()
         return doc, tool
 
@@ -42,8 +50,7 @@ class TestsFlextInfraModernizerPyrefly:
     ]:
         """Create the document plus its typed tool and tool.pyrefly tables."""
         doc, tool = TestsFlextInfraModernizerPyrefly._pyrefly_document()
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _json_table(tool["pyrefly"])
         return doc, tool, pyrefly
 
     def test_modernizer_omits_checkout_specific_analyzer_virtualenvs(
@@ -183,8 +190,7 @@ class TestsFlextInfraModernizerPyrefly:
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _json_table(tool["pyrefly"])
         tm.that(u.Cli.toml_unwrap_item(pyrefly["python-version"]), eq="3.13")
 
     def test_ensure_pyrefly_config_removes_generated_code_suppression(
@@ -214,8 +220,7 @@ class TestsFlextInfraModernizerPyrefly:
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _json_table(tool["pyrefly"])
         tm.that(u.Cli.toml_unwrap_item(pyrefly["search-path"]), eq=["src"])
 
     def test_ensure_pyrefly_config_phase_apply_search_path_with_project_context(
@@ -242,8 +247,7 @@ class TestsFlextInfraModernizerPyrefly:
             paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
         )
 
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _json_table(tool["pyrefly"])
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
         tm.that(search_path, eq=["src", "."])
 
@@ -266,10 +270,8 @@ class TestsFlextInfraModernizerPyrefly:
             declared_python_dirs_are_complete=True,
         )
 
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        tool = _json_table(doc["tool"])
+        pyrefly = _json_table(tool["pyrefly"])
         # Re-run the same phase construction on a fresh document: the search
         # path must be deterministic (source root first, then the project
         # root appended last for cross-tree scripts.* resolution).
@@ -282,10 +284,10 @@ class TestsFlextInfraModernizerPyrefly:
             declared_python_dirs=declared_python_dirs,
             declared_python_dirs_are_complete=True,
         )
-        fresh_tool = fresh["tool"]
+        fresh_tool = _json_table(fresh["tool"])
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly["search-path"]),
-            eq=u.Cli.toml_unwrap_item(fresh_tool["pyrefly"]["search-path"]),
+            eq=u.Cli.toml_unwrap_item(_json_table(fresh_tool["pyrefly"])["search-path"]),
         )
         tm.that(
             u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]),
@@ -309,10 +311,8 @@ class TestsFlextInfraModernizerPyrefly:
             declared_python_dirs_are_complete=True,
         )
 
-        tool = doc["tool"]
-        tm.that(tool, is_=MutableMapping)
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        tool = _json_table(doc["tool"])
+        pyrefly = _json_table(tool["pyrefly"])
         fresh = u.Cli.toml_document()
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             fresh,
@@ -322,9 +322,9 @@ class TestsFlextInfraModernizerPyrefly:
             declared_python_dirs=(),
             declared_python_dirs_are_complete=True,
         )
-        fresh_tool = fresh["tool"]
+        fresh_tool = _json_table(fresh["tool"])
         tm.that(
-            u.Cli.toml_unwrap_item(fresh_tool["pyrefly"]["search-path"]),
+            u.Cli.toml_unwrap_item(_json_table(fresh_tool["pyrefly"])["search-path"]),
             eq=u.Cli.toml_unwrap_item(pyrefly["search-path"]),
         )
         tm.that(u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES]), eq=[])
@@ -351,8 +351,7 @@ class TestsFlextInfraModernizerPyrefly:
             paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
         )
 
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _json_table(tool["pyrefly"])
         project_includes = u.Cli.toml_unwrap_item(pyrefly[c.Infra.PROJECT_INCLUDES])
         tm.that(project_includes, eq=["src/**/*.py*"])
 
@@ -399,8 +398,7 @@ class TestsFlextInfraModernizerPyrefly:
             paths_manager=FlextInfraExtraPathsManager(repository_root=tmp_path),
         )
 
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _json_table(tool["pyrefly"])
         search_path = u.Cli.toml_unwrap_item(pyrefly["search-path"])
         tm.that(search_path, eq=["src", "."])
 
@@ -412,8 +410,7 @@ class TestsFlextInfraModernizerPyrefly:
         _ = FlextInfraEnsurePyreflyConfigPhase(tool_config_document).apply(
             doc, is_root=True
         )
-        pyrefly = tool["pyrefly"]
-        tm.that(pyrefly, is_=MutableMapping)
+        pyrefly = _json_table(tool["pyrefly"])
         errors = pyrefly["errors"]
         tm.that(errors, is_=MutableMapping)
         tm.that(len(errors), gt=0)

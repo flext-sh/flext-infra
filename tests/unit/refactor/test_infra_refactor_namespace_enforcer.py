@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 from flext_infra.detectors.loose_object_detector import FlextInfraLooseObjectDetector
 from flext_infra.detectors.manual_protocol_detector import (
     FlextInfraManualProtocolDetector,
@@ -24,16 +26,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Create missing facades and rewrite imports during enforcement."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         _ = (pkg / "service.py").write_text(
             "from flext_core import c, m, r, p, t, u, p\nfrom flext_infra import c, m, t, u, p\n\nVALUE = 1",
             encoding="utf-8",
@@ -62,21 +55,11 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Detect manual typings and compatibility aliases."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\nfrom typing import TypeAlias\n\nPayloadMap: TypeAlias = dict[str, str]\nLegacyResult = ModernResult",
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
 
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
             apply=False
@@ -89,17 +72,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """ENFORCE-080 has a distinct report field from legacy aliases."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "flext-infra"
-        pkg = project / "src" / "flext_infra"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='flext-infra'\n", encoding="utf-8"
+        workspace, _project, pkg = u.Tests.namespace_workspace(
+            tmp_path,
+            project_name="flext-infra",
+            package_name="flext_infra",
+            pyproject="[project]\nname='flext-infra'\n",
         )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         models_dir = pkg / "_models"
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         typings_dir = pkg / "_typings"
         models_dir.mkdir()
         typings_dir.mkdir()
@@ -157,16 +136,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Detect manual protocols outside canonical protocol modules."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\nfrom typing import Protocol\n\nclass ServiceContract(Protocol):\n    def run(self) -> str:\n        ...",
             encoding="utf-8",
@@ -189,16 +159,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Detect imports that cross an internal private boundary."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         _ = (pkg / "service.py").write_text(
             "from __future__ import annotations\nfrom flext_core import FlextUtilitiesGuards\nfrom sample_pkg.protocols import _InternalContract\n\n_ = FlextUtilitiesGuards\n_ = _InternalContract",
             encoding="utf-8",
@@ -216,19 +177,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Allow protocols declared in the private protocols directory."""
-        proto_dir = tmp_path / "_protocols"
-        proto_dir.mkdir(parents=True)
-        target = proto_dir / "base.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from typing import Protocol\n\n"
-            "class BaseContract(Protocol):\n"
-            "    def run(self) -> str: ...\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraManualProtocolDetector.detect_file(
-            m.Infra.DetectorContext(file_path=target, rope_project=rope_project)
+            u.Tests.detector_context(
+                tmp_path / "_protocols" / "base.py",
+                "from __future__ import annotations\n"
+                "from typing import Protocol\n\n"
+                "class BaseContract(Protocol):\n"
+                "    def run(self) -> str: ...\n",
+                rope_project,
+            )
         )
 
         tm.that(violations, empty=True)
@@ -237,17 +194,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Allow protocols declared in the canonical protocols module."""
-        target = tmp_path / "protocols.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from typing import Protocol\n\n"
-            "class BaseContract(Protocol):\n"
-            "    def run(self) -> str: ...\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraManualProtocolDetector.detect_file(
-            m.Infra.DetectorContext(file_path=target, rope_project=rope_project)
+            u.Tests.detector_context(
+                tmp_path / "protocols.py",
+                "from __future__ import annotations\n"
+                "from typing import Protocol\n\n"
+                "class BaseContract(Protocol):\n"
+                "    def run(self) -> str: ...\n",
+                rope_project,
+            )
         )
 
         tm.that(violations, empty=True)
@@ -256,17 +211,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Flag a protocol declared in a service module."""
-        target = tmp_path / "service.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from typing import Protocol\n\n"
-            "class ServiceContract(Protocol):\n"
-            "    def run(self) -> str: ...\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraManualProtocolDetector.detect_file(
-            m.Infra.DetectorContext(file_path=target, rope_project=rope_project)
+            u.Tests.detector_context(
+                tmp_path / "service.py",
+                "from __future__ import annotations\n"
+                "from typing import Protocol\n\n"
+                "class ServiceContract(Protocol):\n"
+                "    def run(self) -> str: ...\n",
+                rope_project,
+            )
         )
 
         tm.that(len(violations), eq=1)
@@ -276,18 +229,11 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Allow same-package imports used to assemble a facade."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path, declare=False)
         parts_pkg = pkg / "_parts"
         nested_pkg = pkg / "nested"
         parts_pkg.mkdir(parents=True)
         nested_pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (nested_pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "impl.py").write_text(
@@ -327,24 +273,20 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Flag cross-package private imports originating in a scripts tree."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
+        workspace, project, pkg = u.Tests.namespace_workspace(
+            tmp_path,
+            pyproject=(
+                "[project]\n"
+                "name='sample'\n"
+                "[tool.hatch.build.targets.wheel]\n"
+                "packages=['src/sample_pkg']\n"
+            ),
+        )
         parts_pkg = pkg / "_parts"
         scripts_dir = project / "scripts"
         parts_pkg.mkdir(parents=True)
         scripts_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\n"
-            "name='sample'\n"
-            "[tool.hatch.build.targets.wheel]\n"
-            "packages=['src/sample_pkg']\n",
-            encoding="utf-8",
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = (parts_pkg / "impl.py").write_text(
             "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
             encoding="utf-8",
@@ -368,22 +310,20 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Allow pytest white-box imports within the same project."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
+        workspace, project, pkg = u.Tests.namespace_workspace(
+            tmp_path,
+            pyproject=(
+                "[project]\n"
+                "name='sample'\n"
+                "[tool.hatch.build.targets.wheel]\n"
+                "packages=['src/sample_pkg']\n"
+            ),
+            declare=False,
+        )
         parts_pkg = pkg / "_parts"
         tests_dir = project / "tests"
         parts_pkg.mkdir(parents=True)
         tests_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\n"
-            "name='sample'\n"
-            "[tool.hatch.build.targets.wheel]\n"
-            "packages=['src/sample_pkg']\n",
-            encoding="utf-8",
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (parts_pkg / "impl.py").write_text(
             "from __future__ import annotations\n\nclass PartsImpl:\n    pass\n",
@@ -411,19 +351,16 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Detect a loose module logger assignment."""
-        target = tmp_path / "target.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from flext_core import FlextLogger\n\n"
-            "logger = u.fetch_logger(__name__)\n\n"
-            "class DemoTarget:\n"
-            "    pass\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "target.py",
+                "from __future__ import annotations\n"
+                "from flext_core import FlextLogger\n\n"
+                "logger = u.fetch_logger(__name__)\n\n"
+                "class DemoTarget:\n"
+                "    pass\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -435,21 +372,18 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Flag a private module function as a loose object."""
-        target = tmp_path / "target.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "\n"
-            "def _helper() -> None:\n"
-            "    return None\n"
-            "\n"
-            "class DemoTarget:\n"
-            "    pass\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "target.py",
+                "from __future__ import annotations\n"
+                "\n"
+                "def _helper() -> None:\n"
+                "    return None\n"
+                "\n"
+                "class DemoTarget:\n"
+                "    pass\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -461,14 +395,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Enforce one public class per canonical module."""
-        target = tmp_path / "target.py"
-        target.write_text(
-            "from __future__ import annotations\n\nVALUE = 1\n", encoding="utf-8"
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "target.py",
+                "from __future__ import annotations\n\nVALUE = 1\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -479,19 +411,16 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Skip the private base-module FLEXT contract exception."""
-        target = tmp_path / "_base.py"
-        target.write_text(
-            "from __future__ import annotations\n\n"
-            "class _DemoTyping:\n"
-            "    pass\n\n"
-            "class _DemoBase:\n"
-            "    pass\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "_base.py",
+                "from __future__ import annotations\n\n"
+                "class _DemoTyping:\n"
+                "    pass\n\n"
+                "class _DemoBase:\n"
+                "    pass\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -501,23 +430,18 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Skip pytest module functions in test files."""
-        tests_dir = tmp_path / "tests"
-        tests_dir.mkdir()
-        target = tests_dir / "test_sample.py"
-        target.write_text(
-            "from __future__ import annotations\n\n"
-            "import pytest\n\n"
-            "@pytest.fixture\n"
-            "def sample_value() -> int:\n"
-            "    return 1\n\n"
-            "def test_sample_value(sample_value: int) -> None:\n"
-            "    assert sample_value == 1\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "tests" / "test_sample.py",
+                "from __future__ import annotations\n\n"
+                "import pytest\n\n"
+                "@pytest.fixture\n"
+                "def sample_value() -> int:\n"
+                "    return 1\n\n"
+                "def test_sample_value(sample_value: int) -> None:\n"
+                "    assert sample_value == 1\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -527,18 +451,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Skip the canonical typings-module exception."""
-        target = tmp_path / "typings.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from typing import TypeVar\n"
-            "\n"
-            "TValue = TypeVar('TValue')\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "typings.py",
+                "from __future__ import annotations\n"
+                "from typing import TypeVar\n"
+                "\n"
+                "TValue = TypeVar('TValue')\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -548,18 +469,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Skip aliases declared in a canonical facade module."""
-        target = tmp_path / "cli.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "\n"
-            "def _adapter() -> None:\n"
-            "    return None\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "cli.py",
+                "from __future__ import annotations\n"
+                "\n"
+                "def _adapter() -> None:\n"
+                "    return None\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -569,20 +487,17 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Flag a public ClassVar outside a constants class."""
-        target = tmp_path / "target.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from pathlib import Path\n"
-            "from typing import ClassVar\n\n"
-            "class ServiceConfig:\n"
-            "    HOME: ClassVar[Path] = Path('/home')\n"
-            "    AI_HUB: ClassVar[Path] = Path('.ai-hub')\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "target.py",
+                "from __future__ import annotations\n"
+                "from pathlib import Path\n"
+                "from typing import ClassVar\n\n"
+                "class ServiceConfig:\n"
+                "    HOME: ClassVar[Path] = Path('/home')\n"
+                "    AI_HUB: ClassVar[Path] = Path('.ai-hub')\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -591,46 +506,32 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         tm.that({v.name for v in classvar_violations}, eq={"HOME", "AI_HUB"})
         tm.that(classvar_violations[0].suggestion, has="Constants")
 
-    def test_loose_object_detector_skips_classvar_in_constants_class(
-        self, tmp_path: Path, rope_project: t.Infra.RopeProject
+    @pytest.mark.parametrize(
+        ("module_parts", "owner_class"),
+        [
+            (("target.py",), "SampleConstants"),
+            (("_constants", "service.py"), "ServiceConfig"),
+        ],
+        ids=["constants_class", "constants_module"],
+    )
+    def test_loose_object_detector_skips_classvar_owned_by_constants(
+        self,
+        tmp_path: Path,
+        rope_project: t.Infra.RopeProject,
+        module_parts: tuple[str, ...],
+        owner_class: str,
     ) -> None:
-        """Allow ClassVar declarations inside a constants class."""
-        target = tmp_path / "target.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from pathlib import Path\n"
-            "from typing import ClassVar\n\n"
-            "class SampleConstants:\n"
-            "    HOME: ClassVar[Path] = Path.home()\n",
-            encoding="utf-8",
-        )
-
+        """Allow ClassVar in a constants class and in a private constants module."""
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
-            )
-        )
-
-        tm.that([v for v in violations if v.kind == "classvar"], empty=True)
-
-    def test_loose_object_detector_skips_classvar_in_constants_module(
-        self, tmp_path: Path, rope_project: t.Infra.RopeProject
-    ) -> None:
-        """Allow ClassVar declarations in a private constants module."""
-        target = tmp_path / "_constants" / "service.py"
-        target.parent.mkdir(parents=True)
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from pathlib import Path\n"
-            "from typing import ClassVar\n\n"
-            "class ServiceConfig:\n"
-            "    HOME: ClassVar[Path] = Path.home()\n",
-            encoding="utf-8",
-        )
-
-        violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path.joinpath(*module_parts),
+                "from __future__ import annotations\n"
+                "from pathlib import Path\n"
+                "from typing import ClassVar\n\n"
+                f"class {owner_class}:\n"
+                "    HOME: ClassVar[Path] = Path.home()\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -640,18 +541,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Flag ClassVar imported through the typing module."""
-        target = tmp_path / "target.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "import typing\n\n"
-            "class ServiceConfig:\n"
-            "    HOME: typing.ClassVar[str] = 'home'\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "target.py",
+                "from __future__ import annotations\n"
+                "import typing\n\n"
+                "class ServiceConfig:\n"
+                "    HOME: typing.ClassVar[str] = 'home'\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -663,18 +561,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Skip private ClassVar declarations."""
-        target = tmp_path / "target.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "from typing import ClassVar\n\n"
-            "class ServiceConfig:\n"
-            "    _INTERNAL: ClassVar[str] = 'secret'\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "target.py",
+                "from __future__ import annotations\n"
+                "from typing import ClassVar\n\n"
+                "class ServiceConfig:\n"
+                "    _INTERNAL: ClassVar[str] = 'secret'\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -684,15 +579,12 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Skip the package initializer module exception."""
-        target = tmp_path / "__init__.py"
-        target.write_text(
-            "from __future__ import annotations\n\n_LAZY_IMPORTS = {}\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "__init__.py",
+                "from __future__ import annotations\n\n_LAZY_IMPORTS = {}\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -702,20 +594,17 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path, rope_project: t.Infra.RopeProject
     ) -> None:
         """Exclude a canonical class alias from the public-class count."""
-        target = tmp_path / "protocols.py"
-        target.write_text(
-            "from __future__ import annotations\n"
-            "\n"
-            "class SampleProtocols:\n"
-            "    pass\n"
-            "\n"
-            "p = SampleProtocols\n",
-            encoding="utf-8",
-        )
-
         violations = FlextInfraLooseObjectDetector.detect_file(
-            m.Infra.DetectorContext(
-                file_path=target, project_name="sample-proj", rope_project=rope_project
+            u.Tests.detector_context(
+                tmp_path / "protocols.py",
+                "from __future__ import annotations\n"
+                "\n"
+                "class SampleProtocols:\n"
+                "    pass\n"
+                "\n"
+                "p = SampleProtocols\n",
+                rope_project,
+                project_name="sample-proj",
             )
         )
 
@@ -725,17 +614,8 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Move a manual protocol into the canonical protocols module."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         service_file = pkg / "service.py"
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = service_file.write_text(
             "from __future__ import annotations\nfrom typing import Protocol\n\nclass ServiceContract(Protocol):\n    def run(self) -> str:\n        ...\n\nclass ServiceImpl:\n    def run(self) -> str:\n        return 'ok'",
             encoding="utf-8",
@@ -758,16 +638,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Keep applied fixes when unrelated violations remain."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         service_file = pkg / "service.py"
         _ = service_file.write_text(
             "from __future__ import annotations\n"
@@ -801,16 +672,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Detect cyclic imports inside the production source package."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path)
         _ = (pkg / "a.py").write_text(
             "from __future__ import annotations\nfrom sample_pkg.b import value_b\nvalue_a = value_b\n",
             encoding="utf-8",
@@ -830,22 +692,13 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Detect a missing runtime alias outside the src tree."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
+        workspace, project, _pkg = u.Tests.namespace_workspace(tmp_path)
         scripts_dir = project / "scripts"
-        pkg.mkdir(parents=True)
         scripts_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (scripts_dir / "constants.py").write_text(
             "from __future__ import annotations\n\nclass DemoConstants:\n    pass\n",
             encoding="utf-8",
         )
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
 
         report = FlextInfraNamespaceEnforcer(repository_root=workspace).enforce(
             apply=False
@@ -857,18 +710,15 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Respect configured namespace scan directories."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        examples_dir = project / "examples"
-        pkg.mkdir(parents=True)
-        examples_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n\n[tool.flext.namespace]\nscan_dirs = ['src']\n",
-            encoding="utf-8",
+        workspace, project, _pkg = u.Tests.namespace_workspace(
+            tmp_path,
+            pyproject=(
+                "[project]\nname='sample'\n\n[tool.flext.namespace]\nscan_dirs = ['src']\n"
+            ),
+            declare=False,
         )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        examples_dir = project / "examples"
+        examples_dir.mkdir(parents=True)
         _ = (examples_dir / "constants.py").write_text(
             "from __future__ import annotations\n\nclass DemoConstants:\n    pass\n",
             encoding="utf-8",
@@ -884,17 +734,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Skip dynamic directories when no scan override is declared."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
+        workspace, project, _pkg = u.Tests.namespace_workspace(tmp_path, declare=False)
         docs_dir = project / "docs"
-        pkg.mkdir(parents=True)
         docs_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         _ = (docs_dir / "contracts.py").write_text(
             "from __future__ import annotations\nfrom typing import Protocol\n\nclass HiddenContract(Protocol):\n    def run(self) -> str:\n        ...\n",
             encoding="utf-8",
@@ -910,18 +752,9 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Preserve a script shebang while adding the future import."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
+        workspace, project, _pkg = u.Tests.namespace_workspace(tmp_path)
         scripts_dir = project / "scripts"
-        pkg.mkdir(parents=True)
         scripts_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         script_file = scripts_dir / "run.py"
         _ = script_file.write_text(
             "#!/usr/bin/env python3\n# -*- coding: utf-8 -*-\nu.Cli.print('ok')\n",
@@ -939,19 +772,10 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Insert the future import after a one-line module docstring."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
+        workspace, project, _pkg = u.Tests.namespace_workspace(tmp_path)
         scripts_dir = project / "scripts"
-        pkg.mkdir(parents=True)
         scripts_dir.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
         target_file = scripts_dir / "base_improved.py"
-        u.Tests.declare_workspace_projects(workspace, (project.name,))
         _ = target_file.write_text(
             '"""Improved test base with high automation and real functionality."""\n'
             "from pathlib import Path\n"
@@ -975,15 +799,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Leave indented import aliases unchanged."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path, declare=False)
         service_file = pkg / "service.py"
         _ = service_file.write_text(
             "from __future__ import annotations\n\n"
@@ -1002,15 +818,7 @@ class TestsFlextInfraRefactorInfraRefactorNamespaceEnforcer:
         self, tmp_path: Path
     ) -> None:
         """Leave multiline import alias blocks unchanged."""
-        workspace = tmp_path / "workspace"
-        project = workspace / "sample-proj"
-        pkg = project / "src" / "sample_pkg"
-        pkg.mkdir(parents=True)
-        _ = (project / "pyproject.toml").write_text(
-            "[project]\nname='sample'\n", encoding="utf-8"
-        )
-        _ = (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
-        _ = (pkg / "__init__.py").write_text("", encoding="utf-8")
+        workspace, _project, pkg = u.Tests.namespace_workspace(tmp_path, declare=False)
         module_file = pkg / "constants.py"
         _ = module_file.write_text(
             "from __future__ import annotations\n"

@@ -10,11 +10,15 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
@@ -43,11 +47,12 @@ def _built_workspace(tmp_path: Path) -> tuple[Path, m.Infra.BuildReport]:
     )
 
 
-def _shim_path(tmp_path: Path) -> Path:
-    """Create recording executables for the external CLIs."""
+def _shim_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Put recording shims for the external CLIs first on PATH."""
     bin_dir = tmp_path / "bin"
     u.Tests.cli_shim(bin_dir, c.Infra.GH)
     u.Tests.cli_shim(bin_dir, c.Infra.UV)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     return bin_dir
 
 
@@ -63,8 +68,12 @@ class TestsFlextInfraReleasePublish:
         ) -> None:
             """A dry run proves the receipt and calls no external service."""
             workspace, _report = _built_workspace(tmp_path)
+<<<<<<< HEAD
+            bin_dir = _shim_path(tmp_path, monkeypatch)
+=======
             bin_dir = _shim_path(tmp_path)
             monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+>>>>>>> origin/0.12.0-dev
 
             tm.that(u.Tests.run_release_main(workspace, "--phase", "publish"), eq=0)
             tm.that((bin_dir / f"{c.Infra.GH}.log").exists(), eq=False)
@@ -75,8 +84,12 @@ class TestsFlextInfraReleasePublish:
         ) -> None:
             """An artifact whose bytes no longer match the receipt never leaves."""
             workspace, report = _built_workspace(tmp_path)
+<<<<<<< HEAD
+            _shim_path(tmp_path, monkeypatch)
+=======
             bin_dir = _shim_path(tmp_path)
             monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+>>>>>>> origin/0.12.0-dev
             artifact = Path(report.records[0].artifacts[0].path)
             artifact.write_bytes(artifact.read_bytes() + b"\n")
 
@@ -104,8 +117,12 @@ class TestsFlextInfraReleasePublish:
         ) -> None:
             """The release is created with the receipt's wheel and sdist, nothing else."""
             workspace, report = _built_workspace(tmp_path)
+<<<<<<< HEAD
+            bin_dir = _shim_path(tmp_path, monkeypatch)
+=======
             bin_dir = _shim_path(tmp_path)
             monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+>>>>>>> origin/0.12.0-dev
 
             result = u.Tests.run_release_main(
                 workspace, "--phase", "publish", "--apply"
@@ -125,8 +142,12 @@ class TestsFlextInfraReleasePublish:
         ) -> None:
             """``--index`` uploads the verified artifacts through trusted publishing."""
             workspace, report = _built_workspace(tmp_path)
+<<<<<<< HEAD
+            bin_dir = _shim_path(tmp_path, monkeypatch)
+=======
             bin_dir = _shim_path(tmp_path)
             monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+>>>>>>> origin/0.12.0-dev
 
             result = u.Tests.run_release_main(
                 workspace, "--phase", "publish", "--apply", "--index"

@@ -7,6 +7,10 @@ from typing import TYPE_CHECKING, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
+<<<<<<< HEAD
+from flext_infra.docs._generator_bundle import FlextInfraDocGeneratorBundleMixin
+=======
+>>>>>>> origin/0.12.0-dev
 from flext_infra.docs.base import FlextInfraDocServiceBase
 
 from ._generator_bundle import FlextInfraDocGeneratorBundleMixin
@@ -39,7 +43,7 @@ class FlextInfraDocGenerator(
                 plan for plan in plans if u.Infra.codegen_file_requires_effect(plan)
             )
             collocated = self._is_collocated_workspace_project(
-                scope, workspace_root=repository_root
+                scope, repository_root=repository_root
             )
             report = m.Infra.DocsPhaseReport(
                 phase="generate",

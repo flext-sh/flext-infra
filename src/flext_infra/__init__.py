@@ -159,6 +159,7 @@ if TYPE_CHECKING:
     from .gates.smells import FlextInfraSmellsGate
     from .gates.tier_whitelist import FlextInfraTierWhitelistGate
     from .git import FlextInfraGitService
+    from .iteration import FlextInfraUtilitiesIteration
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
     from .models import FlextInfraModels, FlextInfraModels as m
@@ -178,6 +179,7 @@ if TYPE_CHECKING:
     from .refactor.namespace_enforcer_phases import (
         FlextInfraNamespaceEnforcerPhasesMixin,
     )
+    from .refactor.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
     from .refactor.project_classifier import FlextInfraProjectClassifier
     from .refactor.violation_analyzer import FlextInfraRefactorViolationAnalyzer
     from .refactor.wrapper_root_namespace import FlextInfraWrapperRootNamespaceRefactor
@@ -447,6 +449,7 @@ __all__: tuple[str, ...] = (
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraUtilities",
+    "FlextInfraUtilitiesIteration",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
     "FlextInfraValidateLazyMapFreshness",
@@ -654,6 +657,7 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.smells": ("FlextInfraSmellsGate",),
             ".gates.tier_whitelist": ("FlextInfraTierWhitelistGate",),
             ".git": ("FlextInfraGitService",),
+            ".iteration": ("FlextInfraUtilitiesIteration",),
             ".maintenance": ("maintenance",),
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),
@@ -674,6 +678,9 @@ _LAZY_IMPORTS = MappingProxyType(
             ".refactor.namespace_enforcer": ("FlextInfraNamespaceEnforcer",),
             ".refactor.namespace_enforcer_phases": (
                 "FlextInfraNamespaceEnforcerPhasesMixin",
+            ),
+            ".refactor.project_alias_migrator": (
+                "FlextInfraRefactorProjectAliasMigrator",
             ),
             ".refactor.project_classifier": ("FlextInfraProjectClassifier",),
             ".refactor.violation_analyzer": ("FlextInfraRefactorViolationAnalyzer",),

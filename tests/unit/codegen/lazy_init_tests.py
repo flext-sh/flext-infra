@@ -131,7 +131,12 @@ class TestExcludedDirectories:
             tmp_path / ".test-runtime" / "invocation" / "tests", _VALID_TESTS_INIT
         )
         result = FlextInfraCodegenLazyInit(repository_root=tmp_path).plan_files()
+<<<<<<< HEAD
+        tm.ok(result)
+        tm.that({plan.path for plan in result.value.files}, lacks=scratch_init)
+=======
         tm.that({plan.path for plan in tm.ok(result).files}, lacks=scratch_init)
+>>>>>>> origin/0.12.0-dev
 
 
 class TestEdgeCases:

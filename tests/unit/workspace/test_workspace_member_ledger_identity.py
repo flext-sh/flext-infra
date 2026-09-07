@@ -98,7 +98,8 @@ class TestsWorkspaceMemberLedgerIdentity:
         workspace = tm.ok(FlextInfraWorkspaceDetector.load_workspace_spec(parent))
 
         tm.that(
-            tuple(item.path for item in workspace.subprojects), has=Path("apps/member")
+            tuple(item.path for item in workspace.declared_repositories),
+            has=Path("apps/member"),
         )
 
     def test_submodule_self_load_accepts_an_independent_ledger(

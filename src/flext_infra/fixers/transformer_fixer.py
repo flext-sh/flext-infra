@@ -12,6 +12,12 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
+<<<<<<< HEAD
+from flext_infra.refactor.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
+=======
+>>>>>>> origin/0.12.0-dev
 from flext_infra.transformers.cast_remover import FlextInfraRefactorCastRemover
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
@@ -141,12 +147,7 @@ class FlextInfraTransformerFixerAdapter(FlextInfraFixerAdapter):
                     )
                 )
         return self._build_project_fix_result(
-            project_dir,
-            fixed,
-            previewed,
-            skipped,
-            failed,
-            files_modified,
+            project_dir, fixed, previewed, skipped, failed, files_modified
         )
 
     @staticmethod

@@ -79,6 +79,14 @@ class FlextInfraConstantsNamespace:
         "validator",
         "root_validator",
     })
+    # The subset reached by bare name rather than through a model instance:
+    # `@validator(...)` is imported from pydantic and called directly, while
+    # `dict`, `json`, `parse_obj` and `parse_raw` are only Pydantic when they
+    # appear as an attribute -- as bare names they are the builtins.
+    NAMESPACE_PYDANTIC_V1_DECORATORS: Final[frozenset[str]] = frozenset({
+        "validator",
+        "root_validator",
+    })
     NAMESPACE_SERVICE_LOCATOR_NAMES: Final[frozenset[str]] = frozenset({
         "container",
         "get_service",

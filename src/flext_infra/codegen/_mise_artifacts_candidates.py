@@ -13,6 +13,18 @@ if TYPE_CHECKING:
     from flext_infra import p
 
 
+def normalize_lock_mode(path: Path) -> p.Result[bool]:
+    """Normalize an external lock output through guarded byte-mode publication."""
+    state = files.read_state(path, required=True)
+    if state.failure:
+        return r[bool].from_failure(state)
+    if state.value.content is None or state.value.mode is None:
+        return r[bool].fail(f"generated Mise lock is absent: {path}")
+    return u.Cli.atomic_write_binary_file_guarded(
+        state.value, state.value.content, permission_mode=files.ARTIFACT_SPECS[2][1]
+    )
+
+
 def publication_plan(
     projects: tuple[m.Infra.MiseToolchainProjectState, ...], stages: tuple[Path, ...]
 ) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
