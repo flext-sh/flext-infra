@@ -683,8 +683,6 @@ types-toml = false
 vulture = false
 yamlfix = false
 
-[tool.uv.workspace]
-members = []
 
 [tool.vulture]
 exclude = ["*/_protocols/*"]
