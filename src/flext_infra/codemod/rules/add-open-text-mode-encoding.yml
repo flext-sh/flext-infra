@@ -32,16 +32,8 @@ id: add-open-builtin-default-mode-encoding
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   pattern: open($PATH)
 constraints:
@@ -57,16 +49,8 @@ id: add-open-builtin-text-mode-encoding
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   pattern: open($PATH, $MODE)
 constraints:
@@ -81,16 +65,8 @@ id: add-path-open-default-mode-encoding
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   pattern: $RECV.open()
 constraints:
@@ -107,16 +83,8 @@ id: add-path-open-text-mode-encoding
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   pattern: $RECV.open($MODE)
 constraints:

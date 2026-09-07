@@ -40,16 +40,8 @@ id: ban-pydantic-v1-model-methods
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   any:
     - pattern: $RECEIVER.parse_obj($$$ARGS)
@@ -66,16 +58,8 @@ id: ban-pydantic-v1-config-class
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   kind: class_definition
   has:

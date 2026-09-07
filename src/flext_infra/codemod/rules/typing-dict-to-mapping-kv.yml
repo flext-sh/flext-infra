@@ -36,16 +36,8 @@ id: typing-dict-to-mapping-kv
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   any:
     - all:

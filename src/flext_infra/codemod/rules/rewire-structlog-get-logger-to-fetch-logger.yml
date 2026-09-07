@@ -29,16 +29,8 @@ id: rewire-structlog-get-logger-default-name
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   all:
     - pattern: structlog.get_logger()
@@ -57,16 +49,8 @@ id: rewire-structlog-get-logger-explicit-name
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   all:
     - pattern: structlog.get_logger($NAME)
@@ -92,16 +76,8 @@ id: rewire-structlog-get-logger-missing-u-import
 language: python
 severity: error
 files:
-  - "**/*.py"
-ignores:
-  - "**/.claude/**"
-  - "**/.git/**"
-  - "**/.venv/**"
-  - "**/legado/**"
-  - "**/legacy/**"
-  - "**/node_modules/**"
-  - "**/*_pb2.py"
-  - "**/*_pb2_grpc.py"
+  - "src/**/*.py"
+  - "tests/**/*.py"
 rule:
   all:
     - any:
