@@ -3247,7 +3247,7 @@ class FlextInfraConfigModels:
             m.Field(description="Rope-only static enforcement policy"),
         ]
 
-     class Root(_ConfigContract):
+    class Root(_ConfigContract):
         """Root payload deep-merged from flext-infra config files."""
 
         Infra: Annotated[
@@ -3268,11 +3268,12 @@ class FlextInfraConfigModels:
                 description=(
                     "Whether this layer accepts project-specific overrides; "
                     "true for overrides, false for immutable business rules"
-                ),
+                )
             ),
         ]
         description: Annotated[
-            t.NonEmptyStr, m.Field(description="Human-readable purpose of this config layer"),
+            t.NonEmptyStr,
+            m.Field(description="Human-readable purpose of this config layer"),
         ]
 
     class ConfigLayersSpec(_ConfigContract):
@@ -3330,10 +3331,11 @@ class FlextInfraConfigModels:
         """Mandatory generation requirement: all steps must run."""
 
         mandatory: Annotated[
-            bool, m.Field(description="Whether every generation step must execute"),
+            bool, m.Field(description="Whether every generation step must execute")
         ]
         skip_on_no_change: Annotated[
-            bool, m.Field(description="Whether steps with no change are eligible to skip")
+            bool,
+            m.Field(description="Whether steps with no change are eligible to skip"),
         ]
         fail_on_drift: Annotated[
             bool, m.Field(description="Whether detected drift causes failure")
@@ -3343,23 +3345,29 @@ class FlextInfraConfigModels:
         """Mandatory generation requirement: config-driven authority."""
 
         requires_config: Annotated[
-            bool, m.Field(description="Whether generation requires authoritative config"),
+            bool,
+            m.Field(description="Whether generation requires authoritative config"),
         ]
         requires_overrides: Annotated[
-            bool, m.Field(description="Whether the overrides layer must be present"),
+            bool, m.Field(description="Whether the overrides layer must be present")
         ]
         reject_manual_edits: Annotated[
-            bool, m.Field(description="Whether manual edits to managed files are rejected")
+            bool,
+            m.Field(description="Whether manual edits to managed files are rejected"),
         ]
 
     class FixedPointSpec(_ConfigContract):
         """Mandatory generation requirement: post-generation fixed-point validation."""
 
         required: Annotated[
-            bool, m.Field(description="Whether fixed-point re-conform validation is required")
+            bool,
+            m.Field(
+                description="Whether fixed-point re-conform validation is required"
+            ),
         ]
         max_replans: Annotated[
-            int, m.Field(ge=1, le=10, description="Maximum re-plan attempts before failure")
+            int,
+            m.Field(ge=1, le=10, description="Maximum re-plan attempts before failure"),
         ]
 
     class GenRequirementsSpec(_ConfigContract):
@@ -3370,10 +3378,14 @@ class FlextInfraConfigModels:
         is the compliance contract that governs their execution.
         """
 
-        version: Annotated[int, m.Field(ge=1, description="Generation requirements contract version")]
+        version: Annotated[
+            int, m.Field(ge=1, description="Generation requirements contract version")
+        ]
         config_layers: Annotated[
             FlextInfraConfigModels.ConfigLayersSpec,
-            m.Field(description="Hierarchical config architecture (immutable + overrides)"),
+            m.Field(
+                description="Hierarchical config architecture (immutable + overrides)"
+            ),
         ]
         requirements: Annotated[
             "FlextInfraConfigModels.GenRequirementEntries",
