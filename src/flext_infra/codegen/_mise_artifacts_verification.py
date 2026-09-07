@@ -330,13 +330,12 @@ class FlextInfraMiseArtifactsVerification:
 
     @classmethod
     def destinations(cls, plan: m.Infra.MiseToolchainWorkspacePlan) -> p.Result[bool]:
-        """Prove all Mise destinations still equal the locked preflight snapshot."""
+        """Prove all Mise destinations still equal the captured preflight snapshot."""
         for project in plan.projects:
             expected_states = (
                 project.config.before,
                 project.artifacts.unix_launcher,
                 project.artifacts.windows_launcher,
-                project.artifacts.lock,
             )
             current = cls.states_current(expected_states)
             if current.failure:
@@ -647,7 +646,6 @@ class FlextInfraMiseArtifactsVerification:
                 project.config.before,
                 project.artifacts.unix_launcher,
                 project.artifacts.windows_launcher,
-                project.artifacts.lock,
             )
             observed: list[bytes] = []
             for expected, (_name, required_mode) in zip(

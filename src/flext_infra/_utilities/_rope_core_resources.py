@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from .._constants.namespace import FlextInfraConstantsNamespace
 from .._constants.validate import FlextInfraConstantsSharedInfra
-from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from flext_infra.typings import t

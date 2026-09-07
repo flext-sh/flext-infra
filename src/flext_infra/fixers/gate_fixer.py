@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.check.workspace_check_gates import FlextInfraGateRegistry
-from flext_infra.fixers.base import FlextInfraFixerAdapter
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -101,7 +102,7 @@ class FlextInfraGateFixerAdapter(FlextInfraFixerAdapter):
                 )
             reports_dir = reports_dir_result.value
         gate_ctx = m.Infra.GateContext(
-            workspace=self._repository_root,
+            repository_root=self._repository_root,
             reports_dir=reports_dir,
             apply_fixes=ctx.apply,
             check_only=not ctx.apply,

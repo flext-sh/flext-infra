@@ -14,11 +14,11 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from .discovery import FlextInfraUtilitiesDiscovery
+from .docs_scope import FlextInfraUtilitiesDocsScope
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_source import FlextInfraUtilitiesRopeSource
 
 
 class FlextInfraUtilitiesCodegenNamespace:
@@ -81,7 +81,17 @@ class FlextInfraUtilitiesCodegenNamespace:
         parts = tuple(part for part in package_name.split(".") if part)
         if not parts:
             return False
-        return len(parts) == 1
+        if len(parts) == 1:
+            return True
+        # A governed wrapper surface is not itself an importable package: its
+        # namespace root is the directory under it, so `tests.unit` is what
+        # `flext_demo` is under `src/`. Requiring a single part made every such
+        # package publish the inherited test aliases and none of its own
+        # declarations, which is the opposite of the contract above.
+        return (
+            len(parts) == c.Infra.WRAPPER_NAMESPACE_DEPTH
+            and parts[0] in c.Infra.NON_PUBLIC_LAZY_ROOTS
+        )
 
     @staticmethod
     def ordered_namespace_exports(

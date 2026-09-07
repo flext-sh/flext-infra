@@ -9,7 +9,7 @@ from flext_cli import u
 from flext_core.result import FlextResult as r
 from flext_infra import c, t
 
-from .._utilities.git import FlextInfraUtilitiesGit
+from .git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -43,13 +43,13 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
         return state.value.content is not None
 
     @staticmethod
-    def docs_workspace_roots(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
+    def docs_repository_roots(
+        repository_root: Path, extra_roots: t.SequenceOf[Path] = ()
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Return existing physical roots from one stable workspace topology."""
         try:
-            return FlextInfraUtilitiesDocsScopePathsMixin._docs_workspace_roots(
-                workspace_root, extra_roots
+            return FlextInfraUtilitiesDocsScopePathsMixin._docs_repository_roots(
+                repository_root, extra_roots
             )
         except (OSError, TypeError, ValueError) as exc:
             return r[tuple[Path, ...]].fail(
@@ -57,13 +57,13 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             )
 
     @staticmethod
-    def _docs_workspace_roots(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path]
+    def _docs_repository_roots(
+        repository_root: Path, extra_roots: t.SequenceOf[Path]
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Discover roots while the public boundary owns exception conversion."""
-        root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(workspace_root)
+        root = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(repository_root)
         if not FlextInfraUtilitiesDocsScopePathsMixin.physical_directory_exists(root):
-            return r[tuple[Path, ...]].fail(f"docs workspace root is missing: {root}")
+            return r[tuple[Path, ...]].fail(f"docs repository root is missing: {root}")
         manifest_path = root / c.Infra.GITMODULES
         manifest_before = u.Cli.atomic_read_binary_file_state(
             manifest_path, required=False
@@ -80,7 +80,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             return r[tuple[Path, ...]].from_failure(manifest_after)
         if manifest_after.value != manifest_before.value:
             return r[tuple[Path, ...]].fail(
-                f"docs workspace topology changed during discovery: {manifest_path}"
+                f"docs repository topology changed during discovery: {manifest_path}"
             )
         candidates = [root]
         for declared_path in declared.value:
@@ -94,7 +94,7 @@ class FlextInfraUtilitiesDocsScopePathsMixin:
             lexical = FlextInfraUtilitiesDocsScopePathsMixin.absolute_lexical(candidate)
             if not lexical.is_relative_to(root):
                 return r[tuple[Path, ...]].fail(
-                    f"docs source root escapes workspace {root}: {lexical}"
+                    f"docs source root escapes repository {root}: {lexical}"
                 )
             candidates.append(lexical)
         roots = [

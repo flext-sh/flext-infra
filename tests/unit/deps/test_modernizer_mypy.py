@@ -101,7 +101,7 @@ class TestsFlextInfraDepsModernizerMypy:
         )
         mypy_mapping = TestsFlextInfraDepsModernizerMypy._mypy_mapping(doc)
         override_modules = {
-            tuple(u.Tests.toml_strings(u.Tests.toml_mapping(entry)["module"]))
+            tuple(u.Tests.toml_strings(u.Tests.mapping(entry)["module"]))
             for entry in u.Tests.toml_list(mypy_mapping["overrides"])
         }
         tm.that(
@@ -195,8 +195,8 @@ warn_return_any = false
 
         _ = FlextInfraEnsurePydanticMypyConfigPhase(tool_config_document).apply(doc)
 
-        pydantic_mypy_mapping = u.Tests.toml_mapping(
-            u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
+        pydantic_mypy_mapping = u.Tests.mapping(
+            u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])["pydantic-mypy"]
         )
         tm.that(
             pydantic_mypy_mapping["init_forbid_extra"],

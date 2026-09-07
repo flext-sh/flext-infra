@@ -14,7 +14,8 @@ import time
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
-from flext_infra.gates.base_gate import FlextInfraGate
+
+from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,6 +41,10 @@ class FlextInfraCodemodGate(FlextInfraGate):
         started = time.monotonic()
         planned = u.Infra.codemod_rule_plan(project_dir)
         if planned.failure:
+            failure = planned.error
+            if not failure:
+                msg = "codemod rule planning failed without a diagnostic"
+                raise RuntimeError(msg)
             return self._build_check_gate_execution(
                 project_dir,
                 passed=False,

@@ -13,7 +13,8 @@ from flext_infra.docs.server import FlextInfraDocServer
 from flext_infra.docs.validator import FlextInfraDocValidator
 from flext_infra.maintenance.clean import FlextInfraCleanService
 from flext_infra.maintenance.python_version import FlextInfraPythonVersionEnforcer
-from flext_infra.services.cli_routes_validate_commands import ValidationCommandRoutes
+
+from .cli_routes_validate_commands import ValidationCommandRoutes
 
 
 class ValidationRoutes(ValidationCommandRoutes):

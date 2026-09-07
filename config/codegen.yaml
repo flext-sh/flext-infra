@@ -8,27 +8,23 @@ Infra:
       # compatible 3.13 patch; no patch is pinned in generated repositories.
       # Derived as computed fields on ToolchainSpec:
       #   python_required_version -> >=3.13,<3.14
-      # Every fleet binary is selected as latest. mise.lock alone owns the
-      # resolved immutable versions and checksums; dependency floors remain in
-      # pyproject and uv.lock alone owns their resolved Python distributions.
+      # Every fleet binary is selected as latest at setup time; mise resolves
+      # each moving selector to the newest published release. Dependency
+      # floors remain in pyproject and uv.lock alone owns their resolved
+      # Python distributions.
       python_version: "3.13"
       state_directory_name: .flext-runtime
       scratch_namespace: scratch
       pycache_namespace: pycache
       mise_namespace: mise-artifacts
       uv_link_mode: copy
-      # Supported resolution environments for the generated lock. Windows is
-      # not a supported deployment target: the win32 split resolves meltano's
-      # structlog<26 cap against flext-core's structlog>=26.1 floor and is
-      # unsatisfiable, so uv must skip that split instead of failing the lock.
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
       # Supply-chain cooldown SSOT shared by uv and generated update policy.
       dependency_cooldown_days: 7
       dependency_cooldown_exclusions: [cryptography]
       dependency_cooldown_overrides: {}
-      # Moving selectors consumed by generated .mise.toml and CI. Freezing a
-      # major, minor, or patch here would create a second lock owner and prevent
-      # setup from converging the fleet on the newest published release.
+      # Moving selectors consumed by generated .mise.toml and CI. The fleet
+      # runs unlocked: setup converges on the newest published release.
       uv_version: latest
       kubectl_version: latest
       helm_version: latest
@@ -43,13 +39,6 @@ Infra:
       node_version: "26.8"
       jscpd_version: "5.1.2"
       waza_version: "0.38.7"
-      mise_lock_platforms:
-        - linux-x64
-        - linux-arm64
-        - linux-x64-musl
-        - linux-arm64-musl
-        - macos-x64
-        - macos-arm64
       protected_mise_tools:
         - beads
         - gascity
@@ -185,6 +174,12 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+    # Generated projections already retired: their consumers are rewired, so
+    # conformance removes them and the layout gate still accepts them at the
+    # repository root until that removal lands everywhere.
+    retired_generated_paths:
+      - sgconfig.yml
+
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -1209,8 +1204,8 @@ Infra:
           - pyright>=1.1.411
           - pytest>=9.1.1
           - pytest-testmon>=2.2.0
-          - ruff>=0.16.0
-          - rumdl>=0.2.45
+          - ruff>=0.16.5
+          - rumdl>=0.2.62
           - vulture>=2.16
           - yamlfix>=1.19.1
         dependency_profiles:
@@ -1344,11 +1339,10 @@ Infra:
             # target (flext-1sm3w); the deny-first root cannot swallow it.
             - "!.jscpd.json"
             - "!*.mk"
-            # The generated toolchain lock pins every tool to a checksum. A
-            # clean CI checkout must receive it, so the deny-first root cannot
-            # swallow it; `make gen` owns its content.
+            # The generated toolchain config and launcher must reach a clean
+            # CI checkout, so the deny-first root cannot swallow them;
+            # `make gen` owns their content.
             - "!.mise.toml"
-            - "!mise.lock"
             - "!bin/mise"
             - "!bin/mise.cmd"
         - name: "Documentation"

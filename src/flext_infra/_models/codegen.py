@@ -10,10 +10,10 @@ from typing import Annotated, ClassVar, Literal, Self
 from flext_cli import m, u
 from flext_infra import c, p, t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.codegen_render import FlextInfraModelsCodegenRender
-from .._models.config import FlextInfraConfigModels
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import ImmutableEmptyMapping
+from .codegen_render import FlextInfraModelsCodegenRender
+from .config import FlextInfraConfigModels
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
@@ -50,7 +50,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         windows_launcher: Annotated[
             Path, m.Field(description="Windows launcher destination")
         ]
-        lock: Annotated[Path, m.Field(description="Project Mise lock destination")]
 
     class MiseToolchainProjectLayout(m.ArbitraryTypesModel):
         """Stable paths needed to validate and recover one project."""
@@ -145,7 +144,7 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         ]
         artifacts: Annotated[
             FlextInfraModelsCodegen.MiseToolchainArtifactSet,
-            m.Field(description="Named launcher and lock states"),
+            m.Field(description="Named launcher states"),
         ]
 
         @u.model_validator(mode="after")
@@ -155,13 +154,11 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 self.layout.artifacts.config,
                 self.layout.artifacts.unix_launcher,
                 self.layout.artifacts.windows_launcher,
-                self.layout.artifacts.lock,
             )
             observed = (
                 self.config.before.path,
                 self.artifacts.unix_launcher.path,
                 self.artifacts.windows_launcher.path,
-                self.artifacts.lock.path,
             )
             if observed != expected:
                 msg = "Mise project states differ from declared destinations"
@@ -179,10 +176,6 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
         windows_launcher: Annotated[
             m.Cli.AtomicFileState,
             m.Field(description="Observed Windows launcher state"),
-        ]
-        lock: Annotated[
-            m.Cli.AtomicFileState,
-            m.Field(description="Observed project Mise lock state"),
         ]
 
     class MiseToolchainWorkspacePlan(m.ArbitraryTypesModel):
@@ -782,9 +775,19 @@ class FlextInfraModelsCodegen(FlextInfraModelsCodegenRender):
                 msg = "staging codegen journal must not authorize live transitions"
                 raise ValueError(msg)
             if self.state == "staging" and any(
-                directory.disposition != "temporary" for directory in self.directories
+                directory.disposition == "generated"
+                and directory.phase == "transaction"
+                for directory in self.directories
             ):
-                msg = "staging codegen journal can authorize only temporary paths"
+                # A staging journal authorizes no live transition — that is the
+                # `entries` rule above. It must still authorize the destination
+                # directory of a file phase: staging snapshots the live target,
+                # which requires a physical parent, so a generated destination
+                # can never be recorded after the entries it makes possible.
+                # Rollback removes them with the temporary roots
+                # (`include_generated` for any non-committed journal). Only the
+                # transaction's own roots stay restricted to `temporary`.
+                msg = "staging codegen journal cannot generate a transaction root"
                 raise ValueError(msg)
             entry_paths = tuple(entry.path for entry in self.entries)
             if len(set(entry_paths)) != len(entry_paths):

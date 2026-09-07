@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from flext_cli import u
 from flext_infra.constants import c
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
+from .discovery import FlextInfraUtilitiesDiscovery
+from .namespace_common import FlextInfraUtilitiesRefactorNamespaceCommon
 
 if TYPE_CHECKING:
     from flext_infra import t

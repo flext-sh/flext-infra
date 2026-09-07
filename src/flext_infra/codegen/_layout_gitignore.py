@@ -16,6 +16,8 @@ from flext_infra import c, config, p, r, t, u
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 
+from .conform import FlextInfraCodegenConform
+
 
 class FlextInfraCodegenLayoutGitignoreMixin:
     """Ensure the layout gitignore patterns for one project directory."""

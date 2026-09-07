@@ -9,10 +9,8 @@ from typing import TYPE_CHECKING
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from .._utilities.compatibility_alias_cst import (
-    FlextInfraUtilitiesCompatibilityAliasCst,
-)
-from .._utilities.compatibility_alias_validation import (
+from .compatibility_alias_cst import FlextInfraUtilitiesCompatibilityAliasCst
+from .compatibility_alias_validation import (
     FlextInfraUtilitiesCompatibilityAliasValidation,
 )
 
@@ -80,11 +78,14 @@ class FlextInfraUtilitiesCompatibilityAliases:
                 if isinstance(node, ast.ImportFrom) and node.module in specs_by_module:
                     module_rewrites = specs_by_module[node.module]
                     for imported in node.names:
-                        target = module_rewrites.get(imported.name)
-                        if target is None:
+                        # Distinct name: `target` is already bound as a plain
+                        # str while collecting the specs above, so reusing it
+                        # would make this guard unreachable to a type checker.
+                        imported_target = module_rewrites.get(imported.name)
+                        if imported_target is None:
                             continue
                         import_aliases.setdefault(node.module, {})[imported.name] = (
-                            target
+                            imported_target
                         )
                         if imported.asname not in {None, imported.name}:
                             msg = (
@@ -92,16 +93,22 @@ class FlextInfraUtilitiesCompatibilityAliases:
                                 f"{imported.name} as {imported.asname} in {file_path}"
                             )
                             raise ValueError(msg)
-                        qualified_aliases[f"{node.module}.{imported.name}"] = target
+                        qualified_aliases[f"{node.module}.{imported.name}"] = (
+                            imported_target
+                        )
                 elif isinstance(node, ast.Import):
                     for imported in node.names:
-                        module_rewrites = specs_by_module.get(imported.name)
-                        if module_rewrites is None:
+                        # Distinct name: the ImportFrom branch above binds
+                        # module_rewrites from a subscript, which is never
+                        # optional, so reusing it here would make this guard
+                        # unreachable to a type checker.
+                        imported_rewrites = specs_by_module.get(imported.name)
+                        if imported_rewrites is None:
                             continue
                         bound = imported.asname or imported.name
                         attribute_aliases.update(
                             ((bound, alias), target)
-                            for alias, target in module_rewrites.items()
+                            for alias, target in imported_rewrites.items()
                         )
             if not (local_aliases or import_aliases or attribute_aliases):
                 continue

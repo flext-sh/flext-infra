@@ -8,7 +8,7 @@ from pathlib import Path
 from flext_cli import u
 from flext_infra import c, t
 
-from .._utilities._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
+from ._docs_scope_state import FlextInfraUtilitiesDocsScopeStateMixin
 
 
 class FlextInfraUtilitiesDocsScopePolicyMixin(FlextInfraUtilitiesDocsScopeStateMixin):

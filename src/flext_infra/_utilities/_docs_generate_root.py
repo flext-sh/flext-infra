@@ -10,13 +10,11 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities._docs_generate_plan import DocsRenderedArtifactTuple
-from .._utilities._docs_generate_project import (
-    FlextInfraUtilitiesDocsGenerateProjectMixin,
-)
-from .._utilities.docs_api import FlextInfraUtilitiesDocsApi
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from .._utilities.docs_render import FlextInfraUtilitiesDocsRender
+from ._docs_generate_plan import DocsRenderedArtifactTuple
+from ._docs_generate_project import FlextInfraUtilitiesDocsGenerateProjectMixin
+from .docs_api import FlextInfraUtilitiesDocsApi
+from .docs_contract import FlextInfraUtilitiesDocsContract
+from .docs_render import FlextInfraUtilitiesDocsRender
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

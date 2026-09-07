@@ -59,21 +59,37 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
     @staticmethod
     def docs_source_paths(
-        workspace_root: Path, extra_roots: t.SequenceOf[Path] = ()
+        repository_root: Path, extra_roots: t.SequenceOf[Path] = ()
     ) -> p.Result[t.VariadicTuple[Path]]:
         """Discover every physical source consumed by one docs render."""
-        roots = FlextInfraUtilitiesDocsScope.docs_workspace_roots(
-            workspace_root, extra_roots
+        roots = FlextInfraUtilitiesDocsScope.docs_repository_roots(
+            repository_root, extra_roots
         )
         if roots.failure:
             return r[tuple[Path, ...]].from_failure(roots)
         paths: set[Path] = set()
         for root in roots.value:
-            for fixed_path in (
+            # The docs configuration lives one directory down, and a repository
+            # that has never generated documentation has no `docs/` yet. Reading
+            # a leaf under a directory that does not exist is not "absent", it
+            # is a failure, so its presence is established first.
+            docs_root_present = (
+                FlextInfraUtilitiesDocsGenerateSourcesMixin._source_directory_exists(
+                    root / c.Infra.DIR_DOCS
+                )
+            )
+            if docs_root_present.failure:
+                return r[tuple[Path, ...]].from_failure(docs_root_present)
+            fixed_paths = (
                 root / c.Infra.GITMODULES,
                 root / c.Infra.PYPROJECT_FILENAME,
-                root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,
-            ):
+                *(
+                    (root / c.Infra.DIR_DOCS / c.Infra.DOCS_CONFIG_FILENAME,)
+                    if docs_root_present.value
+                    else ()
+                ),
+            )
+            for fixed_path in fixed_paths:
                 state = cli_u.Cli.atomic_read_binary_file_state(
                     fixed_path, required=False
                 )
@@ -121,14 +137,14 @@ class FlextInfraUtilitiesDocsGenerateSourcesMixin:
 
     @staticmethod
     def docs_verify_sources(
-        workspace_root: Path,
+        repository_root: Path,
         source_states: t.SequenceOf[m.Cli.AtomicFileState],
         *,
         extra_roots: t.SequenceOf[Path] = (),
     ) -> p.Result[bool]:
         """Require exact source topology and physical states to remain unchanged."""
         discovered = FlextInfraUtilitiesDocsGenerateSourcesMixin.docs_source_paths(
-            workspace_root, extra_roots
+            repository_root, extra_roots
         )
         if discovered.failure:
             return r[bool].from_failure(discovered)

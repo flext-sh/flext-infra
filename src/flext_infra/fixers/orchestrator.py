@@ -12,12 +12,12 @@ from typing import TYPE_CHECKING, Annotated, ClassVar, override
 from flext_core import r
 from flext_infra import m, p, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.fixers.gate_fixer import FlextInfraGateFixerAdapter
-from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
-from flext_infra.fixers.rope_fixer import FlextInfraRopeFixerAdapter
-from flext_infra.fixers.transformer_fixer import FlextInfraTransformerFixerAdapter
 
 from .._enforcement.engine import FlextInfraEnforcementEngine
+from .gate_fixer import FlextInfraGateFixerAdapter
+from .manual_fixer import FlextInfraManualFixerAdapter
+from .rope_fixer import FlextInfraRopeFixerAdapter
+from .transformer_fixer import FlextInfraTransformerFixerAdapter
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -60,7 +60,7 @@ class FlextInfraEnforcementFixerOrchestrator(
     def execute_payload(cls, params: m.Infra.FixEnforcementCommand) -> p.Result[str]:
         """Execute enforcement fixes from the canonical CLI payload."""
         instance = cls(
-            repository_root=params.workspace_path,
+            repository_root=params.repository_root,
             selected_projects=params.projects,
             apply=params.apply,
             rules=tuple(params.rules),
@@ -301,7 +301,7 @@ class FlextInfraEnforcementFixerOrchestrator(
         of the CLI default or any future check-after implementation.
         """
         return m.Infra.FixEnforcementCommand(
-            workspace=str(self.repository_root),
+            repository_root=str(self.repository_root),
             projects=self.project_names,
             apply=self.apply,
             rules=self.rules,

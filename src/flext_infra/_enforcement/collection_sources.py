@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 
 from flext_infra import c, m, u
 
-from .._enforcement.collection_base import (
+from .collection_base import (
     FlextInfraEnforcementCollectionBase,
     FlextInfraEnforcementEvaluation,
 )
-from .._enforcement.collection_tests import FlextInfraEnforcementTestsCollector
-from .._enforcement.metadata import FlextInfraEnforcementMetadata
-from .._enforcement.selection import FlextInfraEnforcementSelection
+from .collection_tests import FlextInfraEnforcementTestsCollector
+from .metadata import FlextInfraEnforcementMetadata
+from .selection import FlextInfraEnforcementSelection
 
 if TYPE_CHECKING:
     from flext_infra import p, t

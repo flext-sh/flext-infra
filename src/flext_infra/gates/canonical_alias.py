@@ -21,7 +21,6 @@ from flext_infra.refactor.project_alias_migrator import (
     FlextInfraRefactorProjectAliasMigrator,
 )
 
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 
 if TYPE_CHECKING:
     from flext_infra import p

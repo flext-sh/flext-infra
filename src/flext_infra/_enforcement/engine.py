@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .._enforcement.collection_sources import FlextInfraEnforcementSourceCollectors
+from .collection_sources import FlextInfraEnforcementSourceCollectors
 
 
 class FlextInfraEnforcementEngine(FlextInfraEnforcementSourceCollectors):

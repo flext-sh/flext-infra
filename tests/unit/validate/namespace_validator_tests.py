@@ -25,6 +25,8 @@ def _make_project_with_module(
     package_dir = project_root / "src" / "flext_test"
     package_dir.mkdir(parents=True)
     _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    # The validator grades the whole package, so the fixture is a package.
+    u.Tests.write_canonical_package_layout(package_dir)
     _ = (package_dir / module_name).write_text(module_source, encoding="utf-8")
     return project_root
 
@@ -36,6 +38,7 @@ def _make_project_with_module_path(
     package_dir = project_root / "src" / "flext_test"
     package_dir.mkdir(parents=True)
     _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+    u.Tests.write_canonical_package_layout(package_dir)
     target = package_dir / module_path
     target.parent.mkdir(parents=True, exist_ok=True)
     _ = target.write_text(module_source, encoding="utf-8")
@@ -74,6 +77,7 @@ class TestFlextInfraNamespaceValidator:
         package_dir = project_root / "src" / "flext_test"
         package_dir.mkdir(parents=True)
         _ = (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        u.Tests.write_canonical_package_layout(package_dir)
         tracked_module = package_dir / "models.py"
         tracked_module.write_text(_read_fixture("rule0_valid.py"), encoding="utf-8")
 

@@ -10,9 +10,9 @@ from flext_core.result import FlextResult as r
 from flext_infra import c, t
 
 from .._models.workspace import FlextInfraModelsWorkspace as mw
-from .._utilities._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
-from .._utilities.git import FlextInfraUtilitiesGit
-from .._utilities.project_discovery import FlextInfraUtilitiesProjectDiscovery
+from ._docs_scope_policy import FlextInfraUtilitiesDocsScopePolicyMixin
+from .git import FlextInfraUtilitiesGit
+from .project_discovery import FlextInfraUtilitiesProjectDiscovery
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraProtocols as p
@@ -141,7 +141,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``."""
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
-        roots = owner.docs_repository_roots(repository_root)
+        roots = owner.docs_workspace_roots(repository_root)
         if roots.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].from_failure(roots)
         repository_root = roots.value[0]

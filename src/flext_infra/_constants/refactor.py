@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Final
 
 from flext_core import c
 
-from .._constants.base import FlextInfraConstantsBase as cb
+from .base import FlextInfraConstantsBase as cb
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -97,6 +97,7 @@ class FlextInfraConstantsRefactor:
         r"^---\s*$", re.MULTILINE
     )
     CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
+    # Why: restored — deleted declaration with consumers left behind in codemod_rules.py
     CODEMOD_CONFIG_RELPATH: Final[Path] = Path(CODEMOD_RESOURCE_DIRNAME) / (
         CODEMOD_CONFIG_FILENAME
     )
@@ -109,6 +110,7 @@ class FlextInfraConstantsRefactor:
     CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
     CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
     CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
+    CODEMOD_EPHEMERAL_DIRNAME: Final[str] = "__pycache__"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
         RK_FILE_EXTENSIONS,

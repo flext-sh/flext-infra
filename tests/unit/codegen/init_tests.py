@@ -24,13 +24,15 @@ def _baseline_leaf_modules() -> tuple[str, ...]:
     package-surface contract must be measured in a subprocess that imports
     ONLY the package, so the probe reports what the surface itself loads.
     """
-    import json
     import os
 
+    # The probe runs in a separate interpreter that carries only the standard
+    # library, so it reports one module name per line instead of serializing.
+    # Line-oriented output needs no encoder on either side.
     code = (
-        "import json, sys, flext_infra.codegen as m\n"
+        "import sys, flext_infra.codegen as m\n"
         "m.__all__; dir(m)\n"
-        "print(json.dumps(sorted(n for n in sys.modules"
+        "print('\\n'.join(sorted(n for n in sys.modules"
         " if n.startswith('flext_infra.codegen.'))))"
     )
     # Why (review #355): uv workspaces inject sibling sources (flext-core)
@@ -45,11 +47,10 @@ def _baseline_leaf_modules() -> tuple[str, ...]:
     )
     probe_env = dict(os.environ)
     probe_env["PYTHONPATH"] = os.pathsep.join([*sibling_srcs, str(_PROJECT_SRC)])
-    from flext_infra import u
+    from tests import u
 
     result = tm.ok(u.Cli.run([sys.executable, "-c", code], env=probe_env, timeout=60))
-    loaded = json.loads(result.stdout.strip())
-    return tuple(loaded)
+    return tuple(line for line in result.stdout.strip().splitlines() if line.strip())
 
 
 # Why: the symbol must be absent for the test to mean anything, so it

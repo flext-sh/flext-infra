@@ -8,6 +8,7 @@ subject is the pull-request title.
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
@@ -15,9 +16,8 @@ from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
-
-    import pytest
 
 
 def _plan(workspace: Path) -> m.Infra.ReleasePlan:
@@ -92,14 +92,18 @@ def _planned_release(workspace: Path) -> m.Infra.ReleasePlan:
     return _plan(workspace)
 
 
-def _lane_with_shim(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> tuple[Path, Path]:
-    """Return the release-lane fixture with the recording ``gh`` shim on PATH."""
+@contextmanager
+def _lane_with_shim(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
+    """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
+
+    Why: PATH is restored by the public ``env_vars_context`` facade rather than
+    ``monkeypatch``, so the fixture stays inside the test utilities contract.
+    """
     workspace = _release_lane_workspace(tmp_path)
     gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}")
-    return workspace, gh_log
+    shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
+    with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
+        yield workspace, gh_log
 
 
 def _apply_release_version(workspace: Path, integration: str) -> None:
@@ -339,106 +343,121 @@ class TestsFlextInfraReleaseProtocol:
         """The release pull request."""
 
         @staticmethod
-        def test_apply_opens_the_release_pull_request(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
+        def test_apply_opens_the_release_pull_request(tmp_path: Path) -> None:
             """Stamp, commit on the release lane, push it, and open the pull request."""
-            workspace, gh_log = _lane_with_shim(tmp_path, monkeypatch)
-            integration = u.Tests.integration_branch(workspace)
-            # flext-core caches the parsed pyproject per process; a warm cache
-            # holding the pre-stamp document must not leak into the projections.
-            tm.ok(u.read_project_metadata(workspace))
+            with _lane_with_shim(tmp_path) as (workspace, gh_log):
+                integration = u.Tests.integration_branch(workspace)
+                # flext-core caches the parsed pyproject per process; a warm cache
+                # holding the pre-stamp document must not leak into the projections.
+                tm.ok(u.read_project_metadata(workspace))
 
-            result = u.Tests.run_release_main(
-                workspace, "--phase", "version", "--apply"
-            )
-
-            tm.that(result, eq=0)
-            tm.ok(
-                u.Infra.current_workspace_version(workspace),
-                eq=c.Tests.RELEASE_VERSION_BASE,
-            )
-            tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
-            head = tm.ok(
-                cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
-            ).strip()
-            tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
-            # The docs projections render the version; the release commit
-            # carries them regenerated, so the lane is a `gen check` fixed point.
-            committed = tm.ok(
-                cli.capture(
-                    [c.Infra.GIT, "show", "--name-only", "--format=", c.Infra.GIT_HEAD],
-                    cwd=workspace,
+                result = u.Tests.run_release_main(
+                    workspace, "--phase", "version", "--apply"
                 )
-            )
-            tm.that(committed, has=["pyproject.toml", "uv.lock", "docs/index.md"])
-            tm.that(
-                (workspace / "uv.lock").read_text(encoding="utf-8"),
-                has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',
-            )
-            tm.that(
-                (workspace / "docs" / "index.md").read_text(encoding="utf-8"),
-                has=f"- Version: `{c.Tests.RELEASE_VERSION_BASE}`",
-                lacks=c.Tests.RELEASE_VERSION_PRERELEASE,
-            )
-            tm.that(
-                u.Infra.git_status(
-                    m.Infra.GitStatusRequest(repo_root=workspace)
-                ).value.dirty,
-                eq=False,
-            )
-            tm.that(
+
+                tm.that(result, eq=0)
                 tm.ok(
-                    cli.capture(
-                        [c.Infra.GIT, "branch", "--show-current"], cwd=workspace
-                    )
-                ).strip(),
-                eq=c.Infra.RELEASE_BRANCH,
-            )
-            remote_ref = tm.ok(
-                cli.capture(
-                    [c.Infra.GIT, "rev-parse", f"refs/heads/{c.Infra.RELEASE_BRANCH}"],
-                    cwd=tmp_path / "remote" / "origin.git",
+                    u.Infra.current_workspace_version(workspace),
+                    eq=c.Tests.RELEASE_VERSION_BASE,
                 )
-            ).strip()
-            tm.that(len(remote_ref), eq=40)
-            recorded = gh_log.read_text(encoding="utf-8")
-            tm.that(
-                recorded,
-                has=f"pr create --base {integration} --head {c.Infra.RELEASE_BRANCH}",
-            )
-            tm.that(recorded, has="--title chore(release): v0.1.0")
+                tm.that((workspace / "docs" / "CHANGELOG.md").is_file(), eq=True)
+                head = tm.ok(
+                    cli.capture(
+                        [c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace
+                    )
+                ).strip()
+                tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
+                # The docs projections render the version; the release commit
+                # carries them regenerated, so the lane is a `gen check` fixed point.
+                committed = tm.ok(
+                    cli.capture(
+                        [
+                            c.Infra.GIT,
+                            "show",
+                            "--name-only",
+                            "--format=",
+                            c.Infra.GIT_HEAD,
+                        ],
+                        cwd=workspace,
+                    )
+                )
+                tm.that(committed, has=["pyproject.toml", "uv.lock", "docs/index.md"])
+                tm.that(
+                    (workspace / "uv.lock").read_text(encoding="utf-8"),
+                    has=f'version = "{c.Tests.RELEASE_VERSION_BASE}"',
+                )
+                tm.that(
+                    (workspace / "docs" / "index.md").read_text(encoding="utf-8"),
+                    has=f"- Version: `{c.Tests.RELEASE_VERSION_BASE}`",
+                    lacks=c.Tests.RELEASE_VERSION_PRERELEASE,
+                )
+                tm.that(
+                    u.Infra.git_status(
+                        m.Infra.GitStatusRequest(repo_root=workspace)
+                    ).value.dirty,
+                    eq=False,
+                )
+                tm.that(
+                    tm.ok(
+                        cli.capture(
+                            [c.Infra.GIT, "branch", "--show-current"], cwd=workspace
+                        )
+                    ).strip(),
+                    eq=c.Infra.RELEASE_BRANCH,
+                )
+                remote_ref = tm.ok(
+                    cli.capture(
+                        [
+                            c.Infra.GIT,
+                            "rev-parse",
+                            f"refs/heads/{c.Infra.RELEASE_BRANCH}",
+                        ],
+                        cwd=tmp_path / "remote" / "origin.git",
+                    )
+                ).strip()
+                tm.that(len(remote_ref), eq=40)
+                recorded = gh_log.read_text(encoding="utf-8")
+                tm.that(
+                    recorded,
+                    has=(
+                        f"pr create --base {integration} "
+                        f"--head {c.Infra.RELEASE_BRANCH}"
+                    ),
+                )
+                tm.that(recorded, has="--title chore(release): v0.1.0")
 
         @staticmethod
         def test_rerun_continues_the_lane_without_a_second_commit(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+            tmp_path: Path,
         ) -> None:
             """A retry from the integration branch is idempotent on the open lane."""
-            workspace, _ = _lane_with_shim(tmp_path, monkeypatch)
-            integration = u.Tests.integration_branch(workspace)
-            _apply_release_version(workspace, integration)
+            with _lane_with_shim(tmp_path) as (workspace, _):
+                integration = u.Tests.integration_branch(workspace)
+                _apply_release_version(workspace, integration)
 
-            result = u.Tests.run_release_main(
-                workspace, "--phase", "version", "--apply"
-            )
-
-            tm.that(result, eq=0)
-            lane_commits = tm.ok(
-                cli.capture(
-                    [
-                        c.Infra.GIT,
-                        "rev-list",
-                        "--count",
-                        f"{integration}..{c.Infra.RELEASE_BRANCH}",
-                    ],
-                    cwd=workspace,
+                result = u.Tests.run_release_main(
+                    workspace, "--phase", "version", "--apply"
                 )
-            ).strip()
-            tm.that(lane_commits, eq="1")
-            head = tm.ok(
-                cli.capture([c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace)
-            ).strip()
-            tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
+
+                tm.that(result, eq=0)
+                lane_commits = tm.ok(
+                    cli.capture(
+                        [
+                            c.Infra.GIT,
+                            "rev-list",
+                            "--count",
+                            f"{integration}..{c.Infra.RELEASE_BRANCH}",
+                        ],
+                        cwd=workspace,
+                    )
+                ).strip()
+                tm.that(lane_commits, eq="1")
+                head = tm.ok(
+                    cli.capture(
+                        [c.Infra.GIT, "log", "-1", "--format=%s"], cwd=workspace
+                    )
+                ).strip()
+                tm.that(head, eq=c.Infra.RELEASE_COMMIT_SUBJECT.format(version="0.1.0"))
 
         @staticmethod
         def test_dry_run_changes_nothing(tmp_path: Path) -> None:
@@ -499,51 +518,55 @@ class TestsFlextInfraReleaseProtocol:
         """Tagging the merged release commit."""
 
         @staticmethod
-        def test_merged_release_commit_is_tagged_and_pushed(
-            tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-        ) -> None:
+        def test_merged_release_commit_is_tagged_and_pushed(tmp_path: Path) -> None:
             """After the release pull request merges, HEAD earns its tag once."""
-            workspace, _ = _lane_with_shim(tmp_path, monkeypatch)
-            integration = u.Tests.integration_branch(workspace)
-            _apply_release_version(workspace, integration)
-            # GitHub merges the release pull request under its title plus the
-            # pull-request number.
-            subject = f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.0')} (#1)"
-            tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
-            tm.ok(
-                cli.run_checked(
-                    [
-                        c.Infra.GIT,
-                        "merge",
-                        "--no-ff",
-                        "-m",
-                        subject,
-                        c.Infra.RELEASE_BRANCH,
-                    ],
-                    cwd=workspace,
+            with _lane_with_shim(tmp_path) as (workspace, _):
+                integration = u.Tests.integration_branch(workspace)
+                _apply_release_version(workspace, integration)
+                # GitHub merges the release pull request under its title plus the
+                # pull-request number.
+                subject = (
+                    f"{c.Infra.RELEASE_COMMIT_SUBJECT.format(version='0.1.0')} (#1)"
                 )
-            )
-
-            first = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
-            second = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
-
-            tm.that(first, eq=0)
-            tm.that(second, eq=0)
-            tm.that(
                 tm.ok(
-                    cli.capture([c.Infra.GIT, "tag", "-l", "v0.1.0"], cwd=workspace)
-                ).strip(),
-                eq="v0.1.0",
-            )
-            tm.that(
+                    cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace)
+                )
                 tm.ok(
-                    cli.capture(
-                        [c.Infra.GIT, "tag", "-l", "v0.1.0"],
-                        cwd=tmp_path / "remote" / "origin.git",
+                    cli.run_checked(
+                        [
+                            c.Infra.GIT,
+                            "merge",
+                            "--no-ff",
+                            "-m",
+                            subject,
+                            c.Infra.RELEASE_BRANCH,
+                        ],
+                        cwd=workspace,
                     )
-                ).strip(),
-                eq="v0.1.0",
-            )
+                )
+
+                first = u.Tests.run_release_main(workspace, "--phase", "tag", "--apply")
+                second = u.Tests.run_release_main(
+                    workspace, "--phase", "tag", "--apply"
+                )
+
+                tm.that(first, eq=0)
+                tm.that(second, eq=0)
+                tm.that(
+                    tm.ok(
+                        cli.capture([c.Infra.GIT, "tag", "-l", "v0.1.0"], cwd=workspace)
+                    ).strip(),
+                    eq="v0.1.0",
+                )
+                tm.that(
+                    tm.ok(
+                        cli.capture(
+                            [c.Infra.GIT, "tag", "-l", "v0.1.0"],
+                            cwd=tmp_path / "remote" / "origin.git",
+                        )
+                    ).strip(),
+                    eq="v0.1.0",
+                )
 
         @staticmethod
         def test_head_without_release_commit_is_refused(tmp_path: Path) -> None:

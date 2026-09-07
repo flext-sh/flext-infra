@@ -7,15 +7,13 @@ the utility metric and the persisted audit reports.
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 import pytest
 
 from flext_infra.docs.auditor import FlextInfraDocAuditor
-from flext_infra.utilities import u
 from flext_tests import tm
-from tests import m
+from tests import m, u
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -104,12 +102,18 @@ class TestsDocstringCoverage:
 
             markdown = (report_dir / "audit-report.md").read_text(encoding="utf-8")
             tm.that(markdown, has="Docstring coverage:")
-            summary = json.loads(
+            summary = u.Tests.json_payload(
                 (report_dir / "audit-summary.json").read_text(encoding="utf-8")
             )
-            metric = summary["summary"]["docstring_coverage"]
-            tm.that(metric["checked"] > 0, eq=True)
-            tm.that(0.0 <= metric["percent"] < _FULL_COVERAGE_PERCENT, eq=True)
+            metric = u.Tests.mapping(
+                u.Tests.mapping(summary["summary"])["docstring_coverage"]
+            )
+            checked = metric["checked"]
+            percent = metric["percent"]
+            assert isinstance(checked, int)
+            assert isinstance(percent, float)
+            tm.that(checked > 0, eq=True)
+            tm.that(0.0 <= percent < _FULL_COVERAGE_PERCENT, eq=True)
 
     class TestExecuteChecksSelector:
         """execute() honors the CLI --checks selector (no hardcoded "all")."""
@@ -122,13 +126,17 @@ class TestsDocstringCoverage:
             ).execute()
 
             tm.ok(result)
-            summary = json.loads(
+            summary = u.Tests.json_payload(
                 (project / ".reports/docs/audit-summary.json").read_text(
                     encoding="utf-8"
                 )
-            )["summary"]
+            )
+            summary = u.Tests.mapping(summary["summary"])
             tm.that(summary["checks"], eq=["docstrings"])
-            tm.that(summary["docstring_coverage"]["checked"] > 0, eq=True)
+            coverage = u.Tests.mapping(summary["docstring_coverage"])
+            checked = coverage["checked"]
+            assert isinstance(checked, int)
+            tm.that(checked > 0, eq=True)
 
         def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
@@ -136,11 +144,12 @@ class TestsDocstringCoverage:
             result = FlextInfraDocAuditor(repository_root=project).execute()
 
             tm.ok(result)
-            summary = json.loads(
+            summary = u.Tests.json_payload(
                 (project / ".reports/docs/audit-summary.json").read_text(
                     encoding="utf-8"
                 )
-            )["summary"]
+            )
+            summary = u.Tests.mapping(summary["summary"])
             tm.that(summary["checks"], has="docstrings")
             tm.that(summary["checks"], has="links")
 
@@ -155,14 +164,17 @@ class TestsDocstringCoverage:
             ).execute()
 
             tm.fail(result)
-            summary = json.loads(
+            summary = u.Tests.json_payload(
                 (project / ".reports/docs/audit-summary.json").read_text(
                     encoding="utf-8"
                 )
-            )["summary"]
+            )
+            summary = u.Tests.mapping(summary["summary"])
             tm.that(
                 (
-                    summary["docstring_coverage"]["percent"]
+                    u.Tests.number(
+                        u.Tests.mapping(summary["docstring_coverage"])["percent"]
+                    )
                     < _PARTIAL_COVERAGE_THRESHOLD
                 ),
                 eq=True,

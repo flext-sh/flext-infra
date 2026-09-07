@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .discovery import FlextInfraUtilitiesDiscovery
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping

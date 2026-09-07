@@ -49,7 +49,7 @@ and hardcoded project-owned values are prohibited.
 Run only from the workspace root:
 
 ```bash
-make setup APPLY=Y
+make setup
 make help
 make gen APPLY=Y
 make mod APPLY=Y

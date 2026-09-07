@@ -76,6 +76,19 @@ class FlextInfraProtocolsBase(Protocol):
             """Primary Python package name."""
             ...
 
+    @runtime_checkable
+    class MiseArtifactsOwner(Protocol):
+        """Owner contract consumed by the atomic generation transaction."""
+
+        @property
+        def repository_root(self) -> Path:
+            """Repository whose generated Mise surfaces are transacted."""
+            ...
+
+        def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
+            """Validate one project's committed Mise declaration and launchers."""
+            ...
+
     # These declaration-only
     # contracts preserve config-model field types across the public p/u facades.
     @runtime_checkable
@@ -241,7 +254,7 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def declared_repositories(
+        def subprojects(
             self,
         ) -> t.SequenceOf[FlextInfraProtocolsBase.RepositoryRef]:
             """Direct governed repositories declared by local .gitmodules."""
@@ -411,8 +424,8 @@ class FlextInfraProtocolsBase(Protocol):
             ...
 
         @property
-        def tokei_version(self) -> str:
-            """Exact Tokei analyzer version."""
+        def scc_version(self) -> str:
+            """Exact scc code-counter version."""
             ...
 
         @property
@@ -438,11 +451,6 @@ class FlextInfraProtocolsBase(Protocol):
         @property
         def mise_version(self) -> str:
             """Exact mise binary version."""
-            ...
-
-        @property
-        def mise_lock_platforms(self) -> t.StrSequence:
-            """Platforms materialized into the project mise lockfile."""
             ...
 
         @property

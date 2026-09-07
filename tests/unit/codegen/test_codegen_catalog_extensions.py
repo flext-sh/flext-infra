@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 import pytest
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m
 from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_tests import tm
-from tests import u as test_u
+from tests import u, u as test_u
 from tests.unit.workspace import WorktreeFixture
 
 pytestmark = pytest.mark.slow
@@ -136,7 +135,7 @@ class TestsCodegenCatalogExtensions:
             tmp_path, c.Infra.MISE_TOML_FILENAME, '[tools]\npython = "3.13"\n'
         )
 
-        rendered = tomllib.loads(tm.ok(result).rendered)
+        rendered = u.Tests.toml_payload(tm.ok(result).rendered)
         tm.that(rendered["tools"], eq={"python": "3.13", "node": "26"})
 
     def test_local_manifest_conforms_without_global_repository_rows(

@@ -603,7 +603,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[bool].fail(
                 f"workspace Beads ledger owner is not physical: {owner}"
             )
-        for repository in workspace.declared_repositories:
+        for repository in workspace.subprojects:
             state = FlextInfraCodegenConform._beads_route_state(
                 (root / repository.path).resolve()
             )
@@ -629,35 +629,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
-        pending: list[Path] = []
-        for repository in workspace.subprojects:
-            member = (root / repository.path).resolve()
-            route = member / c.Infra.BEADS_DIRNAME
-            if route.is_symlink():
-                if route.resolve() != owner.resolve():
-                    return r[bool].fail(
-                        f"workspace Beads ledger route has another owner: {route}"
-                    )
-                continue
-            if route.exists():
-                if not route.is_dir():
-                    return r[bool].fail(
-                        f"workspace Beads ledger route is not a directory: {route}"
-                    )
-                unexpected = sorted(
-                    entry.name
-                    for entry in route.iterdir()
-                    if entry.name not in allowed_entries
-                )
-                if unexpected:
-                    return r[bool].fail(
-                        f"workspace member has unmerged Beads state at {route}: "
-                        + ", ".join(unexpected)
-                    )
-            pending.append(route)
-        if not pending:
-            return r[bool].ok(False)
-        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
+        route = root / c.Infra.BEADS_DIRNAME
+        if route.is_symlink():
             return r[bool].fail(
                 "composed project reaches the workspace ledger through a "
                 f"cross-project symbolic link: {route}"
@@ -1202,7 +1175,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # descends far enough to reach the subproject itself.
         member_patterns: list[str] = []
         if workspace is not None:
-            for declared_repository in workspace.declared_repositories:
+            for declared_repository in workspace.subprojects:
                 parts = declared_repository.path.as_posix().strip("/").split("/")
                 # Every ancestor is unignored so git can descend into the
                 # subproject, then its contents are unignored with the `/**` form.
@@ -1259,13 +1232,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
         elif scope is c.Infra.CodegenConformScope.DECLARED:
-            if not workspace.declared_repositories:
+            if not workspace.subprojects:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "subprojects scope requires local .gitmodules entries"
                 )
-            selected = tuple(workspace.declared_repositories)
+            selected = tuple(workspace.subprojects)
         else:
-            selected = (workspace.repository, *workspace.declared_repositories)
+            selected = (workspace.repository, *workspace.subprojects)
         mutable = tuple(
             repository
             for repository in selected
@@ -2001,7 +1974,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]]:
         """Resolve provider baselines only for mutable governed subprojects."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
-        for repository in workspace.declared_repositories:
+        for repository in workspace.subprojects:
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
                 return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].from_failure(provider)
@@ -2182,7 +2155,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if provider.failure:
                 return r[p.Model].from_failure(provider)
             workspace_repositories = (
-                tuple(workspace.declared_repositories)
+                tuple(workspace.subprojects)
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -2256,8 +2229,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
-            declared_repositories = (
-                tuple(workspace.declared_repositories)
+            subprojects = (
+                tuple(workspace.subprojects)
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -2280,10 +2253,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                         workspace
                     ),
-                    workspace_declared_repositories=tuple(
-                        item.path.as_posix() for item in workspace.declared_repositories
+                    workspace_subprojects=tuple(
+                        item.path.as_posix() for item in workspace.subprojects
                     ),
-                    workspace_repositories=declared_repositories,
+                    workspace_repositories=subprojects,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=FlextInfraCodegenConform._link_mode(
                         repository, codegen.toolchain
@@ -2352,8 +2325,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        declared_repositories = (
-            tuple(workspace.declared_repositories)
+        subprojects = (
+            tuple(workspace.subprojects)
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
@@ -2398,10 +2371,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_declared_repositories=tuple(
-                    item.path.as_posix() for item in workspace.declared_repositories
+                workspace_subprojects=tuple(
+                    item.path.as_posix() for item in workspace.subprojects
                 ),
-                workspace_repositories=declared_repositories,
+                workspace_repositories=subprojects,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,
@@ -2551,7 +2524,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 version=version_result.value,
                 license=project.license,
                 python_required_version=codegen.toolchain.python_required_version,
-                mise_lock_platforms=codegen.toolchain.mise_lock_platforms,
                 kubectl_version=codegen.toolchain.kubectl_version,
                 helm_version=codegen.toolchain.helm_version,
                 kind_version=codegen.toolchain.kind_version,
@@ -3034,7 +3006,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups = (*groups, "workspace")
             editable_repositories = tuple(
                 item
-                for item in (workspace.repository, *workspace.declared_repositories)
+                for item in (workspace.repository, *workspace.subprojects)
                 if item.package and item.editable and not item.read_only
             )
         return m.Infra.UvEnvironmentPlan(

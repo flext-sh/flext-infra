@@ -12,6 +12,9 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c, m, u
 from flext_infra.fixers.base import FlextInfraFixerAdapter
+from flext_infra.refactor.project_alias_migrator import (
+    FlextInfraRefactorProjectAliasMigrator,
+)
 from flext_infra.transformers.compatibility_alias import (
     FlextInfraRefactorCompatibilityAlias,
 )
@@ -27,7 +30,7 @@ from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncodin
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+from ..refactor.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 
 if TYPE_CHECKING:
     from flext_infra import p, t

@@ -15,18 +15,6 @@ if TYPE_CHECKING:
     from flext_infra import p, t
 
 
-def normalize_lock_mode(path: Path) -> p.Result[bool]:
-    """Normalize an external lock output through guarded byte-mode publication."""
-    state = files.read_state(path, required=True)
-    if state.failure:
-        return r[bool].from_failure(state)
-    if state.value.content is None or state.value.mode is None:
-        return r[bool].fail(f"generated Mise lock is absent: {path}")
-    return u.Cli.atomic_write_binary_file_guarded(
-        state.value, state.value.content, permission_mode=files.ARTIFACT_SPECS[2][1]
-    )
-
-
 def publication_plan(
     projects: t.VariadicTuple[m.Infra.MiseToolchainProjectState],
     stages: t.VariadicTuple[Path],
@@ -38,7 +26,6 @@ def publication_plan(
             project.config.before,
             project.artifacts.unix_launcher,
             project.artifacts.windows_launcher,
-            project.artifacts.lock,
         )
         for before, (name, mode) in zip(
             before_states, files.PUBLICATION_SPECS, strict=True

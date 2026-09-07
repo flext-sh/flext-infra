@@ -12,6 +12,8 @@ from .config import FlextInfraConfigModels
 from .docs_generation import FlextInfraModelsDocsGeneration
 
 
+# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
+# retains the exact metadata/config models and declares only analysis deltas.
 class _FlextInfraDocsContracts:
     """Field-only source and rendering contracts for documentation."""
 
@@ -45,8 +47,6 @@ class _FlextInfraDocsContracts:
         count: Annotated[t.NonNegativeInt, m.Field(description="Project count")]
 
 
-# NOTE (multi-agent, flext-wkii.17.23 / agent: uv_overlay_owner): docs transport
-# retains the exact metadata/config models and declares only analysis deltas.
 class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContracts):
     """Models for documentation services."""
 
@@ -58,7 +58,7 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
         """
 
         repository_root: Annotated[
-            Path, m.Field(description="Workspace root for docs generation")
+            Path, m.Field(description="Repository root for docs generation")
         ]
         projects: Annotated[
             t.StrSequence | None, m.Field(description="Optional selected project names")

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+
+from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -45,7 +46,7 @@ class FlextInfraBanditGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        if result.outcome.raw_return_code != 0 and not result.stdout.strip():
+        if not u.Cli.process_succeeded(result.outcome) and not result.stdout.strip():
             detail = result.stderr.strip() or "no diagnostics"
             issues.append(
                 m.Infra.Issue(
@@ -53,7 +54,10 @@ class FlextInfraBanditGate(FlextInfraGate):
                     line=0,
                     column=0,
                     code="TOOL_ERROR",
-                    message=f"bandit exited with code {result.outcome.raw_return_code}: {detail}",
+                    message=(
+                        "bandit exited with code "
+                        f"{result.outcome.raw_return_code}: {detail}"
+                    ),
                     severity="ERROR",
                 )
             )

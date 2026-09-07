@@ -10,9 +10,9 @@ from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_imports import FlextInfraUtilitiesRopeImports
+from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 
 class FlextInfraUtilitiesRopeInventory:

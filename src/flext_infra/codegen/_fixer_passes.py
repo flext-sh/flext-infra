@@ -6,9 +6,9 @@ from collections.abc import Callable
 from pathlib import Path
 
 from flext_infra import m, u
-from flext_infra.codegen.lazy_init import FlextInfraCodegenLazyInit
 
 from ._fixer_results import FlextInfraCodegenFixerResultsMixin
+from .lazy_init import FlextInfraCodegenLazyInit
 
 _log = u.fetch_logger(__name__)
 
