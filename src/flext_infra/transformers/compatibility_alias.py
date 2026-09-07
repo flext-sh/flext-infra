@@ -13,7 +13,8 @@ import ast
 from typing import TYPE_CHECKING, override
 
 from flext_infra import c, u
-from flext_infra.transformers.base import FlextInfraRopeTransformer
+
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from flext_infra import t

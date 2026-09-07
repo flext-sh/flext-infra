@@ -11,7 +11,8 @@ from typing import Annotated, ClassVar
 
 from flext_cli import m
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
+
+from .._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsTransformers:
@@ -28,12 +29,12 @@ class FlextInfraModelsTransformers:
             str, m.Field(description="Public facade root from which consumers import")
         ]
 
-    class AliasMigrationEdit(m.ContractModel):
-        """One validated in-memory canonical alias source rewrite."""
+    class SemanticMigrationEdit(m.ContractModel):
+        """One validated in-memory semantic source rewrite."""
 
         # Why (flext-ygc2k): source bytes must survive validation byte-exact;
         # the strict base strips whitespace, which corrupts CAS comparisons.
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(str_strip_whitespace=False)
 
         file_path: Annotated[Path, m.Field(description="Source file to rewrite")]
         original_source: Annotated[
@@ -89,7 +90,7 @@ class FlextInfraModelsTransformers:
     class SourceRewrite(m.ArbitraryTypesModel):
         """One source rewrite: replace ``source[start:end]`` with ``text``."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         start: Annotated[int, m.Field(description="Start byte offset in the source")]
         end: Annotated[int, m.Field(description="End byte offset in the source")]
@@ -99,7 +100,8 @@ class FlextInfraModelsTransformers:
         """Byte offsets for the logical sections of a Python module header.
 
         Mutable accumulator populated incrementally by the header tokenizer
-        (``transformers/_header.py``); never frozen while a parse is open.
+        (``_utilities/transformer_header_parser.py``); never frozen while a
+        parse is open.
         """
 
         shebang_end: Annotated[
@@ -121,7 +123,7 @@ class FlextInfraModelsTransformers:
     class HeaderInfo(m.ArbitraryTypesModel):
         """Structural summary of a module header."""
 
-        model_config: ClassVar[m.ConfigDict] = m.ConfigDict(frozen=True)
+        model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
 
         has_future_annotations: Annotated[
             bool, m.Field(description="Whether the module already imports annotations")

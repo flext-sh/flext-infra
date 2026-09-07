@@ -50,7 +50,8 @@ class FlextInfraNamespaceEnforcerProjectMixin:
     """
 
     if TYPE_CHECKING:
-        _workspace_root: Path
+        _repository_root: Path
+        _rope_project: t.Infra.RopeProject
 
         def _detect_and_apply[V](
             self,
@@ -67,7 +68,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             project: tuple[Path, str],
             rope_project: t.Infra.RopeProject,
             apply: bool,
-            workspace_root: Path,
+            repository_root: Path,
         ) -> t.SequenceOf[m.Infra.FacadeStatus]: ...
 
         @staticmethod
@@ -82,14 +83,13 @@ class FlextInfraNamespaceEnforcerProjectMixin:
         gates: t.StrSequence | None = None,
     ) -> m.Infra.ProjectEnforcementReport:
         """Enforce project."""
-        with u.Infra.open_project(project_root) as rope_project:
-            return self._enforce_project_with_rope(
-                project_root=project_root,
-                project_name=project_name,
-                apply=apply,
-                gates=gates,
-                rope_project=rope_project,
-            )
+        return self._enforce_project_with_rope(
+            project_root=project_root,
+            project_name=project_name,
+            apply=apply,
+            gates=gates,
+            rope_project=self._rope_project,
+        )
 
     @staticmethod
     def _detector_context(
@@ -124,7 +124,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             project=(project_root, project_name),
             rope_project=rope_project,
             apply=apply,
-            workspace_root=self._workspace_root,
+            repository_root=self._repository_root,
         )
         py_files = self._collect_py_files(project_root=project_root)
         project_layout = u.Infra.layout(project_root)
@@ -180,9 +180,7 @@ class FlextInfraNamespaceEnforcerProjectMixin:
             apply=apply,
         )
         cyclic_imports = FlextInfraCyclicImportDetector.scan_project(
-            project_root=project_root,
-            rope_project=rope_project,
-            _parse_failures=parse_failures,
+            project_root=project_root, rope_project=rope_project
         )
         internal_import_violations = self._detect_and_apply(
             py_files=py_files,

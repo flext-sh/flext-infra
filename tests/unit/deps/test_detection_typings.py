@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
-from flext_infra import m, p, r as tr
+import pytest
+
+from flext_infra import p, r as tr
 from flext_infra.deps.detection import FlextInfraDependencyDetectionService
 from flext_tests import tm
-from tests import t
+from tests import t, u
 
 
 class _StubToml:
@@ -35,11 +36,12 @@ class TestsFlextInfraDepsDetectionTypings:
         tm.that(result.get("key"), eq="value")
         tm.that(result.get("num"), eq=42)
 
-    def test_failure_returns_empty(self) -> None:
-        """Verify failure returns empty."""
+    def test_failure_fails_loud(self) -> None:
+        """Verify a failed limits read escapes instead of returning empty."""
         service = FlextInfraDependencyDetectionService()
         service.toml = _StubToml([tr[t.JsonMapping].fail("not found")])
-        tm.that(service.load_dependency_limits(Path("/fake/limits.toml")), empty=True)
+        with pytest.raises(RuntimeError, match="failed to load dependency limits"):
+            service.load_dependency_limits(Path("/fake/limits.toml"))
 
     def test_unconvertible_values_skipped(self) -> None:
         """Verify unconvertible values skipped."""
@@ -60,30 +62,18 @@ class TestsFlextInfraDepsDetectionTypings:
     def test_run_mypy_stub_hints_empty_output(self, tmp_path: Path) -> None:
         """Verify run mypy stub hints empty output."""
         service = FlextInfraDependencyDetectionService()
-        with patch.object(
-            service,
-            "_run_raw",
-            return_value=tr[m.Cli.CommandOutput].ok(
-                m.Cli.CommandOutput(stdout="", stderr="", exit_code=0)
-            ),
-        ):
-            tm.that(tm.ok(service.run_mypy_stub_hints(tmp_path)), eq=([], []))
+        service.runner = u.Tests.command_runner()
+        tm.that(tm.ok(service.run_mypy_stub_hints(tmp_path)), eq=([], []))
 
     def test_parses_hints(self, tmp_path: Path) -> None:
         """Verify parses hints."""
         service = FlextInfraDependencyDetectionService()
-        with patch.object(
-            service,
-            "_run_raw",
-            return_value=tr[m.Cli.CommandOutput].ok(
-                m.Cli.CommandOutput(
-                    stdout='note: hint: "pip install types-pyyaml"',
-                    stderr='error: Library stubs not installed for "requests"',
-                    exit_code=1,
-                )
-            ),
-        ):
-            tm.that(
-                tm.ok(service.run_mypy_stub_hints(tmp_path)),
-                eq=(["types-pyyaml"], ["requests"]),
-            )
+        service.runner = u.Tests.command_runner(
+            stdout='note: hint: "pip install types-pyyaml"',
+            stderr='error: Library stubs not installed for "requests"',
+            returncode=1,
+        )
+        tm.that(
+            tm.ok(service.run_mypy_stub_hints(tmp_path)),
+            eq=(["types-pyyaml"], ["requests"]),
+        )

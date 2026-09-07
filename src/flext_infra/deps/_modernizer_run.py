@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import c, m, t, u
+from flext_infra import c, config, m, t, u
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -47,8 +47,10 @@ class FlextInfraPyprojectModernizerRunMixin:
             rewrite_constraints: bool = False,
             locked_versions: t.MappingKV[str, str] | None = None,
             internal_names: t.StrSequence = (),
+            root_modules: t.StrSequence = (),
+            root_packages: t.StrSequence = (),
             declared_python_dirs: t.StrSequence = (),
-            analysis_exclusions: t.StrSequence = (),
+            analysis_exclusions: t.StrSequence | None = None,
         ) -> t.StrSequence: ...
 
     def process_file(
@@ -76,7 +78,7 @@ class FlextInfraPyprojectModernizerRunMixin:
         check_mode = self.audit or self.check_only
         dry_run = check_mode or self.effective_dry_run
         project_names = list(self.project_names or [])
-        # Modernization writes only the requested workspace root and its
+        # Modernization writes only the requested repository root and its
         # declared subprojects, never siblings.
         include_root = not project_names or "." in project_names
         selected_names = (
@@ -91,8 +93,8 @@ class FlextInfraPyprojectModernizerRunMixin:
         resolved_root = self.root.resolve()
         outside_subproject_names = [
             subproject_name
-            for subproject_name, subproject_path in configured_subproject_paths.items()
-            if not subproject_path.resolve().is_relative_to(resolved_root)
+            for subproject_name, declared_path in configured_subproject_paths.items()
+            if not declared_path.resolve().is_relative_to(resolved_root)
         ]
         if outside_subproject_names:
             u.Cli.error(
@@ -200,7 +202,10 @@ class FlextInfraPyprojectModernizerRunMixin:
         document_states: t.MutableSequenceOf[m.Infra.PyprojectDocumentState] = []
         invalid_paths: t.MutableSequenceOf[Path] = []
         total = 0
-        for file_path in files:
+        first_drift_reported = False
+        file_count = len(files)
+        for index, file_path in enumerate(files, start=1):
+            u.Cli.progress(index, file_count, str(file_path), c.Infra.VERB_DEPS)
             document_state_result = (
                 r[m.Infra.PyprojectDocumentState].ok(root_state)
                 if file_path.resolve() == root_state.pyproject_path.resolve()
@@ -221,6 +226,18 @@ class FlextInfraPyprojectModernizerRunMixin:
                     locked_versions=locked_versions,
                     internal_names=internal_names,
                 )
+                if changes and not first_drift_reported:
+                    diff_lines = u.Infra.unified_diff_lines(
+                        document_state.original_rendered,
+                        document_state.rendered,
+                        fromfile=f"{file_path}:before",
+                        tofile=f"{file_path}:after",
+                        max_lines=30,
+                    )
+                    u.Cli.info(
+                        "deps: first rendered drift\n" + "".join(diff_lines).rstrip()
+                    )
+                    first_drift_reported = True
             if not changes:
                 continue
             resolved_file_path = file_path.resolve()
@@ -240,6 +257,24 @@ class FlextInfraPyprojectModernizerRunMixin:
             u.Cli.info(f"Total: {total} change(s) across {len(violations)} file(s)")
             if dry_run:
                 u.Cli.info("(dry-run — no files modified)")
+        if not dry_run:
+            for project_root in sorted({
+                state.pyproject_path.parent for state in document_states
+            }):
+                locked = u.Infra.update_mise_lock(
+                    project_root,
+                    platforms=config.Infra.codegen.toolchain.mise_lock_platforms,
+                    staging_parent=u.Infra.external_tool_state_dir(
+                        self.root,
+                        project_root,
+                        config.Infra.codegen.toolchain.mise_namespace,
+                    ),
+                )
+                if locked.failure:
+                    u.Cli.error(
+                        locked.error or f"Mise lock update failed for {project_root}"
+                    )
+                    return 2
         if check_mode and total > 0:
             return 1
         if not dry_run and (not self.skip_check):

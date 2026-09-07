@@ -31,6 +31,8 @@ class FlextInfraConstantsSharedInfra:
     EXEMPT_PREFIXES: Final[frozenset[str]] = frozenset({"test_", "_"})
     FACADE_MODULE_DEPTH: Final[int] = 3
     "Relative path part count for root facade modules (src/<pkg>/<file>.py)."
+    FACADE_MINIMUM_BASES: Final[int] = 2
+    "Minimum explicit bases required by a canonical nested project facade."
     ALIAS_NAMES: Final[frozenset[str]] = frozenset({
         "c",
         "t",
@@ -154,6 +156,8 @@ class FlextInfraConstantsSharedInfra:
     FOLLOW_SUPERPROJECT_BRANCH: Final[str] = "."
     GITIGNORE: Final[str] = ".gitignore"
     PRE_COMMIT_CONFIG_FILENAME: Final[str] = ".pre-commit-config.yaml"
+    MARKDOWNLINT_CONFIG_FILENAME: Final[str] = ".markdownlint.json"
+    MARKDOWNLINT_IGNORE_FILENAME: Final[str] = ".markdownlintignore"
     "Hook-config projection whose presence decides whether a checkout runs hooks."
     BEADS_CONFIG_RELPATH: Final[str] = ".beads/config.yaml"
     BEADS_METADATA_RELPATH: Final[str] = ".beads/metadata.json"
@@ -191,6 +195,7 @@ class FlextInfraConstantsSharedInfra:
     # --- Package name prefixes (was: class Packages) ---
     PKG_CORE: Final[str] = "flext-core"
     PKG_CORE_UNDERSCORE: Final[str] = "flext_core"
+    PKG_TESTS_UNDERSCORE: Final[str] = "flext_tests"
     PKG_INFRA_UNDERSCORE: Final[str] = "flext_infra"
     PKG_ROOT: Final[str] = "flext"
     PKG_PREFIX_HYPHEN: Final[str] = "flext-"
@@ -226,6 +231,8 @@ class FlextInfraConstantsSharedInfra:
     # --- Timeout values in seconds (was: class Timeouts) ---
     TIMEOUT_DEFAULT: Final[int] = 300
     TIMEOUT_SHORT: Final[int] = 60
+    TIMEOUT_SHORT_POLL: Final[int] = 2
+    "Bounded wait proving a child is still blocked on a held owner lock."
     TIMEOUT_MEDIUM: Final[int] = 120
     TIMEOUT_LONG: Final[int] = 600
     TIMEOUT_CI: Final[int] = 900
