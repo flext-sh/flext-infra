@@ -10,9 +10,8 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
 from flext_infra import c, m, u
-from flext_infra.detectors.internal_import_detector import (
-    FlextInfraInternalImportDetector,
-)
+
+from .internal_import_detector import FlextInfraInternalImportDetector
 
 if TYPE_CHECKING:
     from flext_infra import t

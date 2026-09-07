@@ -82,7 +82,7 @@ class TestsFlextInfraLazyInitProcessing:
         level_two_content, level_three_content, level_four_content = (
             path.read_text(encoding=c.Cli.ENCODING_DEFAULT) for path in generated_paths
         )
-        u.Cli.run_raw(
+        formatted = u.Cli.run_raw(
             [
                 c.Infra.RUFF,
                 c.Infra.FORMAT,
@@ -91,7 +91,7 @@ class TestsFlextInfraLazyInitProcessing:
             ],
             cwd=workspace_root,
         ).unwrap()
-        u.Cli.run_raw(
+        linted = u.Cli.run_raw(
             [
                 c.Infra.RUFF,
                 c.Infra.CHECK,
@@ -105,6 +105,11 @@ class TestsFlextInfraLazyInitProcessing:
         after = tuple(path.read_bytes() for path in generated_paths)
 
         tm.that(apply_result, eq=0)
+        # The generated initializers are published code: they must already be
+        # formatted and lint-clean, or `make fmt`/`make fix` would rewrite a
+        # generated file and break the generation fixed point.
+        tm.that(u.Cli.process_succeeded(formatted.outcome), eq=True)
+        tm.that(u.Cli.process_succeeded(linted.outcome), eq=True)
         for content in (level_two_content, level_three_content, level_four_content):
             tm.that(content, contains="install_lazy_exports(")
             tm.that(content, contains="__all__: tuple[str, ...]")

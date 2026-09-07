@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 from flext_cli import u
 from flext_infra import c, m, t
 
-from .._utilities.process import FlextInfraUtilitiesProcess
+from .process import FlextInfraUtilitiesProcess
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p

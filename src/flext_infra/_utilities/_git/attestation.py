@@ -13,10 +13,8 @@ from flext_cli import u
 from flext_core import r
 from flext_infra.models import m
 
-from ..._utilities._git.remote import canonical_origin_remote
-from ..._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-)
+from .remote import canonical_origin_remote
+from .semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
 
 if TYPE_CHECKING:
     from flext_infra import p, t

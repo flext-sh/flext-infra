@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, ClassVar
 
 from flext_cli import cli as cli_facade
 from flext_infra.constants import c
-from flext_infra.services.cli_routes import CliRouteService
 from flext_infra.typings import t
 from flext_infra.utilities import u
+
+from .cli_routes import CliRouteService
 
 if TYPE_CHECKING:
     from flext_infra import p

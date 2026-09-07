@@ -11,6 +11,7 @@ import operator
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
+# Why: restore imports dropped by botched #586 merge conflict resolution (flext-ct0mo)
 from flext_infra import c, m, u
 from flext_infra.detectors.class_placement_detector import (
     FlextInfraClassPlacementDetector,
@@ -22,10 +23,11 @@ from flext_infra.detectors.inline_import_detector import FlextInfraInlineImportD
 from flext_infra.detectors.private_import_bypass_detector import (
     FlextInfraPrivateImportBypassDetector,
 )
-from flext_infra.fixers.base import FlextInfraFixerAdapter
 from flext_infra.refactor.classvar_constant_autofix import (
     FlextInfraRefactorClassvarConstantAutofix,
 )
+
+from .base import FlextInfraFixerAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -356,7 +358,9 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             try:
                 rewrite(detect_ctx, selected)
             except c.EXC_BROAD_RUNTIME as exc:
-                return m.Infra.FileFixOutcome(errors=(f"{rewrite_error_detail}: {exc}",))
+                return m.Infra.FileFixOutcome(
+                    errors=(f"{rewrite_error_detail}: {exc}",)
+                )
             return m.Infra.FileFixOutcome(
                 messages=(change_message(len(selected), apply),),
                 files_modified=(target.record_path,),
@@ -724,11 +728,11 @@ class FlextInfraRopeFixerAdapter(FlextInfraFixerAdapter):
             if not target.file_path.is_file():
                 return m.Infra.FileFixOutcome(skipped=("file not found",))
             try:
-                all_violations = FlextInfraClassPlacementDetector.detect_file(detect_ctx)
-            except c.EXC_BROAD_RUNTIME:
-                return m.Infra.FileFixOutcome(
-                    errors=("detector raised runtime error",)
+                all_violations = FlextInfraClassPlacementDetector.detect_file(
+                    detect_ctx
                 )
+            except c.EXC_BROAD_RUNTIME:
+                return m.Infra.FileFixOutcome(errors=("detector raised runtime error",))
             classvar_violations = [
                 v for v in all_violations if v.action == "classvar_relocation"
             ]

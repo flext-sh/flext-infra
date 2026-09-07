@@ -14,13 +14,13 @@ from flext_infra.models import m
 from flext_infra.typings import t
 
 from .._models.refactor_census import FlextInfraModelsRefactorCensus as mrc
-from .._utilities.base import FlextInfraUtilitiesBase
-from .._utilities.protected_edit import FlextInfraUtilitiesProtectedEdit
-from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
-from .._utilities.rope_helpers import FlextInfraUtilitiesRopeHelpers
-from .._utilities.rope_imports import FlextInfraUtilitiesRopeImports
-from .._utilities.rope_runtime import FlextInfraUtilitiesRopeRuntime
+from .base import FlextInfraUtilitiesBase
+from .protected_edit import FlextInfraUtilitiesProtectedEdit
+from .rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .rope_core import FlextInfraUtilitiesRopeCore
+from .rope_helpers import FlextInfraUtilitiesRopeHelpers
+from .rope_imports import FlextInfraUtilitiesRopeImports
+from .rope_runtime import FlextInfraUtilitiesRopeRuntime
 
 if TYPE_CHECKING:
     from collections.abc import Callable as _CensusCallable

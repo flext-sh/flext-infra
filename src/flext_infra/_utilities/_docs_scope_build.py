@@ -9,12 +9,10 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities._docs_scope_selection import (
-    FlextInfraUtilitiesDocsScopeSelectionMixin,
-)
-from .._utilities.base import FlextInfraUtilitiesBase
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
-from .._utilities.pyproject import FlextInfraUtilitiesPyproject
+from ._docs_scope_selection import FlextInfraUtilitiesDocsScopeSelectionMixin
+from .base import FlextInfraUtilitiesBase
+from .docs_scope import FlextInfraUtilitiesDocsScope
+from .pyproject import FlextInfraUtilitiesPyproject
 
 if TYPE_CHECKING:
     from pathlib import Path

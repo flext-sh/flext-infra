@@ -16,7 +16,8 @@ from typing import ClassVar, override
 
 from flext_infra import config, m
 from flext_infra.codegen.layout import FlextInfraCodegenLayout
-from flext_infra.gates.base_gate import FlextInfraGate
+
+from .base_gate import FlextInfraGate
 
 
 class FlextInfraLayoutGate(FlextInfraGate):

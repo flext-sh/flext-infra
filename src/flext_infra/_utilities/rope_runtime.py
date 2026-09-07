@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from .._utilities.rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
-from .._utilities.rope_runtime_refactors import FlextInfraUtilitiesRopeRuntimeRefactors
-from .._utilities.rope_runtime_types import FlextInfraUtilitiesRopeRuntimeTypes
+from .rope_runtime_modules import FlextInfraUtilitiesRopeRuntimeModules
+from .rope_runtime_refactors import FlextInfraUtilitiesRopeRuntimeRefactors
+from .rope_runtime_types import FlextInfraUtilitiesRopeRuntimeTypes
 
 
 class FlextInfraUtilitiesRopeRuntime(

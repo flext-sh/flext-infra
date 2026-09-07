@@ -7,11 +7,9 @@ from typing import Annotated, Literal, Self
 from flext_cli import m, u
 from flext_infra import t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
-from .._models.deps_tool_config_type_checkers import (
-    FlextInfraModelsDepsToolConfigTypeCheckers,
-)
+from ._defaults import ImmutableEmptyMapping
+from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
+from .deps_tool_config_type_checkers import FlextInfraModelsDepsToolConfigTypeCheckers
 
 
 class FlextInfraModelsDepsToolSettings(

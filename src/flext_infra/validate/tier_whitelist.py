@@ -19,15 +19,14 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c
+from flext_infra import c, u
 
 from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flext_infra import t
 
 
@@ -61,6 +60,10 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         configuration is ``class Foo(FlextSettings, BaseSettings)`` per
         ``flext_core._settings.base`` docstring, and that base name only
         lives in ``pydantic_settings``.
+
+        Ownership is resolved from the scanned project's own declared
+        ``[project].name`` (never the checkout's directory basename) so the
+        check stays correct under a renamed worktree checkout.
         """
         if any(
             part in c.Infra.TIER_WHITELIST_NON_RUNTIME_DIR_PARTS
@@ -74,9 +77,17 @@ class FlextInfraValidateTierWhitelist(FlextInfraRopeImportBoundaryBase):
         ):
             return True
         owner = c.ENFORCEMENT_LIBRARY_OWNERS.get(top)
-        if owner is None:
+        posix = _file_path.as_posix()
+        if owner is None or "/src/" not in posix:
             return False
-        return f"/{owner}/src/" in _file_path.as_posix()
+        # The owning project is the one that declares the file, not the root
+        # being scanned: a workspace scan reaches every member, and reading the
+        # scan root would grant or deny the exemption for all of them at once.
+        project_root = Path(posix.rsplit("/src/", 1)[0])
+        payload = u.Infra.project_payload(project_root)
+        if not payload:
+            return False
+        return owner == u.Infra.project_name_from_payload(project_root, payload)
 
     @override
     def _format_violation(self, file_path: Path, module_name: str) -> str:

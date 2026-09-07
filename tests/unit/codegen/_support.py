@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from flext_infra import c, config, m, t
 
 
@@ -10,6 +12,29 @@ class CodegenTestSupport:
 
     class Ci:
         """Construct GitHub workflow render contracts from canonical config."""
+
+        # Why: ci_trigger_branches is no longer config-owned (flext-jwpyy.1
+        # relocated it from BranchPolicySpec to a per-render derivation in
+        # FlextInfraCodegenConform._artifact_render_context). Mirror the exact
+        # literal baseline conform.py renders so tests stay in lockstep with
+        # production without reading a retired config field.
+        CI_TRIGGER_BASELINE_BRANCHES: ClassVar[tuple[str, ...]] = (
+            "dev",
+            "develop",
+            "0.12.0-dev",
+            "main",
+        )
+
+        @classmethod
+        def ci_trigger_branches(cls, repository_branch: str) -> tuple[str, ...]:
+            """Reproduce conform.py's deduplicated per-render trigger set."""
+            return tuple(
+                dict.fromkeys((
+                    *cls.CI_TRIGGER_BASELINE_BRANCHES[:-1],
+                    repository_branch,
+                    cls.CI_TRIGGER_BASELINE_BRANCHES[-1],
+                ))
+            )
 
         @staticmethod
         def workflow_spec(

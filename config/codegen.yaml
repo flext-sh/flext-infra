@@ -43,6 +43,23 @@ Infra:
       node_version: "26.8"
       jscpd_version: "5.1.2"
       waza_version: "0.38.7"
+      # `make gen APPLY=Y` reaches this probe once, read-only, before any
+      # effect: an HTTP answer selects online resolution (newest Mise launcher
+      # and every moving tool selector re-resolved), a connection failure or
+      # timeout selects offline resolution (published launchers and lock kept
+      # byte-identical). The path is chosen in preflight, never after a failed
+      # download.
+      # Keyed by the full mise selector, which is the key the lock validator
+      # resolves. ast-grep publishes no distinct musl assets, so every
+      # unsupported pair is declared explicitly and the offline validator
+      # rejects any omission that is not declared here.
+      mise_lock_platform_exclusions:
+        ast-grep:
+          - linux-x64-musl
+          - linux-arm64-musl
+      mise_release_probe:
+        url: https://api.github.com/repos/jdx/mise/releases/latest
+        timeout_seconds: 3
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -156,6 +173,16 @@ Infra:
             path: neptor
             remote: git@github.com:marlonsc/neptor.git
 
+    # A private git dependency cannot be cloned with the workflow's own token:
+    # secrets.GITHUB_TOKEN is scoped to the repository that runs the workflow,
+    # and uv drives dependency clones through plain git, which carries no
+    # credential at all. The declared GitHub App mints an installation token for
+    # the owner before `make setup`, so every project that carries a private git
+    # dependency authenticates the same way instead of special-casing one repo.
+    ci_private_dependency_auth:
+      app_id_secret: CI_DEPENDENCIES_APP_ID
+      private_key_secret: CI_DEPENDENCIES_APP_PRIVATE_KEY
+
     github_actions:
       checkout:
         repository: actions/checkout
@@ -165,6 +192,10 @@ Infra:
         repository: helm/kind-action
         version: v1.14.0
         sha: ef37e7f390d99f746eb8b610417061a60e82a6cc
+      create-github-app-token:
+        repository: actions/create-github-app-token
+        version: v3.2.0
+        sha: bcd2ba49218906704ab6c1aa796996da409d3eb1
       upload-artifact:
         repository: actions/upload-artifact
         version: v4.6.2
@@ -185,6 +216,12 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+    # Generated projections already retired: their consumers are rewired, so
+    # conformance removes them and the layout gate still accepts them at the
+    # repository root until that removal lands everywhere.
+    retired_generated_paths:
+      - sgconfig.yml
+
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -1440,6 +1477,31 @@ Infra:
         # symlinks (the release snapshot validator rejected flext-infra's own
         # build on `.agents/skills/core.gc-agents`). Only Gas City packs project
         # dotted skill names; governed skills are kebab-case directories.
+        # Why (operator law 2026-09-06): personal config, personal skills and
+        # agent hooks are written only in their own project, never into a
+        # workspace member. The ai-hub daemon materializes these hook trees into
+        # every governed checkout whenever it runs, so they are runtime state
+        # and must never become trackable source here. This blocks the hook
+        # projections specifically; the governed provider surfaces whitelisted
+        # above (settings, law documents, skills) stay trackable.
+        - name: "Agent hook projections (runtime state, never source)"
+          patterns:
+            - ".agents/aihub-hooks/"
+            - ".agents/hooks.json"
+            - ".agents/.hooks.json.agents-governance.json"
+            - ".claude/aihub-hooks/"
+            - ".claude/hooks.json"
+            - ".claude/.hooks.json.agents-governance.json"
+            - ".codex/aihub-hooks/"
+            - ".codex/hooks.json"
+            - ".codex/.hooks.json.agents-governance.json"
+            - ".cursor/aihub-hooks/"
+            - ".cursor/hooks.json"
+            - ".cursor/.hooks.json.agents-governance.json"
+            - ".gemini/aihub-hooks/"
+            - ".gemini/hooks.json"
+            - ".gemini/.hooks.json.agents-governance.json"
+            - ".github/hooks/aihub-hooks/"
         - name: "Gas City skill projections (runtime state, never source)"
           patterns:
             - ".agents/skills/.gc-skill-ownership.json"

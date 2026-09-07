@@ -6,16 +6,16 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-from .._utilities.iteration_directory import FlextInfraUtilitiesIterationDirectory
-from .._utilities.iteration_matching import FlextInfraUtilitiesIterationMatching
-from .._utilities.iteration_project import FlextInfraUtilitiesIterationProject
-from .._utilities.iteration_workspace import FlextInfraUtilitiesIterationWorkspace
+from .iteration_directory import FlextInfraUtilitiesIterationDirectory
+from .iteration_matching import FlextInfraUtilitiesIterationMatching
+from .iteration_project import FlextInfraUtilitiesIterationProject
+from .iteration_workspace import FlextInfraUtilitiesIterationWorkspace
 
 
 class FlextInfraUtilitiesIteration(
     FlextInfraUtilitiesIterationMatching,
-    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationWorkspace,
+    FlextInfraUtilitiesIterationDirectory,
     FlextInfraUtilitiesIterationProject,
 ):
     """Static helpers for discovering and iterating Python files in workspace."""

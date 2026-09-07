@@ -12,10 +12,8 @@ from flext_core import r
 from flext_infra.constants import c
 from flext_infra.typings import t
 
-from ..._utilities._git.worktree_discovery import (
-    FlextInfraUtilitiesGitWorktreeDiscoveryMixin,
-)
-from ..._utilities._git.worktree_io import git_stdin
+from .worktree_discovery import FlextInfraUtilitiesGitWorktreeDiscoveryMixin
+from .worktree_io import git_stdin
 
 if TYPE_CHECKING:
     from flext_infra import p

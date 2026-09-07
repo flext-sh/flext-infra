@@ -11,10 +11,7 @@ from __future__ import annotations
 import ast
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra.transformers.smells.base import (
-    FlextInfraSmellFixer,
-    register_smell_fixer,
-)
+from .base import FlextInfraSmellFixer, register_smell_fixer
 
 if TYPE_CHECKING:
     from pathlib import Path

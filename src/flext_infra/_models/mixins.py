@@ -8,8 +8,6 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from .._utilities.base import FlextInfraUtilitiesBase as ub
-
 
 class FlextInfraModelsMixins:
     """Centralized reusable field and helper mixins for models.
@@ -32,14 +30,11 @@ class FlextInfraModelsMixins:
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
-        workspace: Annotated[
-            str,
-            m.Field(
-                alias="workspace",
-                validation_alias=t.AliasChoices("workspace", "workspace_path"),
-                description="Repository root",
-            ),
-        ] = "."
+        repository_root: Annotated[
+            Path,
+            m.BeforeValidator(lambda value: Path(value).resolve()),
+            m.Field(description="Repository root"),
+        ] = Path()
         projects: Annotated[
             t.StrSequence | None,
             m.Field(
@@ -52,7 +47,7 @@ class FlextInfraModelsMixins:
                 description=(
                     "Dotted module path to scope verb to a single module "
                     "(e.g. flext_core.result). Mutually compatible with "
-                    "--projects/--workspace; narrows the run."
+                    "--projects/--repository-root; narrows the run."
                 )
             ),
         ] = None
@@ -69,14 +64,11 @@ class FlextInfraModelsMixins:
         verbose: Annotated[bool, m.Field(description="Verbose output")] = False
 
         @property
-        def workspace_path(self) -> Path:
-            """Resolved workspace path for CLI execution."""
-            return Path(self.workspace).resolve()
-
-        @property
         def project_names(self) -> t.StrSequence | None:
             """Normalized project names from repeated selectors."""
-            return ub.normalize_sequence_values(self.projects)
+            from flext_infra import u
+
+            return u.Infra.normalize_sequence_values(self.projects)
 
     class ReadMixin(ScopeMixin):
         """Read-only commands — report file + output directory only.
@@ -96,12 +88,16 @@ class FlextInfraModelsMixins:
         @property
         def report_path(self) -> Path | None:
             """Resolved report path when provided."""
-            return ub.normalize_optional_path(self.report)
+            from flext_infra import u
+
+            return u.Infra.normalize_optional_path(self.report)
 
         @property
         def output_dir_path(self) -> Path | None:
             """Resolved output directory when provided."""
-            return ub.normalize_optional_path(self.output_dir)
+            from flext_infra import u
+
+            return u.Infra.normalize_optional_path(self.output_dir)
 
     class WriteMixin(ScopeMixin):
         """Canonical write contract — apply/dry-run + safety gates.
@@ -216,11 +212,6 @@ class FlextInfraModelsMixins:
         """Shared confidence field for refactor diagnostics."""
 
         confidence: Annotated[str, m.Field(description="Confidence level")] = "low"
-
-    class RewriteScopeMixin:
-        """Shared rewrite-scope field for refactor diagnostics."""
-
-        rewrite_scope: Annotated[str, m.Field(description="Rewrite scope")] = "file"
 
     # ═══════════════════ PROJECT NAME / PATH VARIANTS ═══════════════════
 

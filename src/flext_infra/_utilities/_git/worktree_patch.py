@@ -11,10 +11,8 @@ from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from ..._utilities._git.worktree_checkpoint import (
-    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
-)
-from ..._utilities._git.worktree_io import git_stdin
+from .worktree_checkpoint import FlextInfraUtilitiesGitWorktreeCheckpointMixin
+from .worktree_io import git_stdin
 
 if TYPE_CHECKING:
     from flext_infra import p

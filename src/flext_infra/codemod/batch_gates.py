@@ -10,11 +10,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from flext_infra import c, m, p, r, t, u
-from flext_infra.codemod.snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 from flext_infra.detectors.lsp_diagnostics import FlextInfraLspDiagnosticsDetector
 from flext_infra.gates.pyrefly import FlextInfraPyreflyGate
 from flext_infra.gates.ruff_format import FlextInfraRuffFormatGate
 from flext_infra.gates.ruff_lint import FlextInfraRuffLintGate
+
+from .snapshot_reconciler import FlextInfraCodemodSnapshotReconciler
 
 
 class FlextInfraModGateEngine:
@@ -54,7 +55,7 @@ class FlextInfraModGateEngine:
                 shutil.copytree(
                     config_root,
                     temp_root,
-                    ignore=shutil.ignore_patterns(c.Infra.DUNDER_PYCACHE),
+                    ignore=shutil.ignore_patterns(c.Infra.CODEMOD_EPHEMERAL_DIRNAME),
                 )
                 split_rules = cls._materialize_split_rule_files(
                     config_root=config_root,
@@ -149,13 +150,16 @@ class FlextInfraModGateEngine:
             if not temp_path.is_file():
                 continue
             relative = temp_path.relative_to(temp_root)
-            if relative in split_temp_paths:
+            if relative in split_temp_paths or c.Infra.CODEMOD_EPHEMERAL_DIRNAME in (
+                relative.parts
+            ):
                 continue
             source_path = config_root / relative
             if source_path.is_file():
-                if source_path.read_text(encoding="utf-8") == temp_path.read_text(
-                    encoding="utf-8"
-                ):
+                # Byte comparison, not text: the config root also carries
+                # non-UTF-8 files (compiled caches next to the rules), and
+                # deciding "unchanged" never requires decoding them.
+                if source_path.read_bytes() == temp_path.read_bytes():
                     continue
             else:
                 source_path.parent.mkdir(parents=True, exist_ok=True)
@@ -385,7 +389,7 @@ class FlextInfraModGateEngine:
             )
             sys.stderr.flush()
             context = m.Infra.GateContext(
-                workspace=owner,
+                repository_root=owner,
                 reports_dir=owner / c.Infra.REPORTS_DIR_NAME,
                 check_only=True,
             )

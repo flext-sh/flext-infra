@@ -16,7 +16,6 @@ from flext_infra.refactor.namespace_enforcer import FlextInfraNamespaceEnforcer
 from flext_infra.refactor.wrapper_root_namespace import (
     FlextInfraWrapperRootNamespaceRefactor,
 )
-from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.transformers.cli_modernizer import FlextInfraRefactorCliModernizer
 from flext_infra.transformers.logging_modernizer import (
     FlextInfraRefactorLoggingModernizer,
@@ -30,6 +29,8 @@ from flext_infra.transformers.pydantic_modernizer import (
 from flext_infra.transformers.result_di_modernizer import (
     FlextInfraRefactorResultDiModernizer,
 )
+
+from .cli_route_base import CliRouteBase
 
 
 class RefactorRoutes(CliRouteBase):

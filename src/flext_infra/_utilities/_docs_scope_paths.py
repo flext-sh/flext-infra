@@ -10,7 +10,7 @@ from flext_core.result import FlextResult as r
 from flext_infra.constants import FlextInfraConstants as c
 from flext_infra.typings import FlextInfraTypes as t
 
-from .._utilities.git import FlextInfraUtilitiesGit
+from .git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra import FlextInfraProtocols as p

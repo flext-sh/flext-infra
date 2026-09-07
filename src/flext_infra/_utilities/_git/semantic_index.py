@@ -10,7 +10,7 @@ from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from ..._utilities._git.semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
+from .semantic_paths import FlextInfraUtilitiesGitSemanticPathsMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

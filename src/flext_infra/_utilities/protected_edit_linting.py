@@ -14,8 +14,8 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.discovery import FlextInfraUtilitiesDiscovery
-from .._utilities.resource_limits import FlextInfraUtilitiesResourceLimits
+from .discovery import FlextInfraUtilitiesDiscovery
+from .resource_limits import FlextInfraUtilitiesResourceLimits
 
 
 class FlextInfraUtilitiesProtectedEditLinting:

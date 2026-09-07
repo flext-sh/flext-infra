@@ -32,7 +32,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
         """Run one rope fixer adapter pass over a single reported file."""
         adapter = FlextInfraRopeFixerAdapter(tmp_path)
         ctx = m.Infra.FixEnforcementCommand(
-            workspace=str(tmp_path), projects=("demo",), apply=apply
+            repository_root=str(tmp_path), projects=("demo",), apply=apply
         )
         return adapter.fix_project(
             project_dir, ((rule, SimpleNamespace(file_path=str(file_path))),), ctx
@@ -61,7 +61,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def reject_inaccessible_config_project(tmp_path: Path) -> None:
         """Run the config fixer on an inaccessible project, proving the failure."""
-        fixer = FlextInfraConfigFixer(workspace=tmp_path)
+        fixer = FlextInfraConfigFixer(repository_root=tmp_path)
         result = fixer.run(["nonexistent"])
 
         tm.fail(result)
@@ -70,7 +70,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     @staticmethod
     def gate_context(root: Path) -> m.Infra.GateContext:
         """Build the standard check-mode gate context for one root."""
-        return m.Infra.GateContext(workspace=root, reports_dir=root)
+        return m.Infra.GateContext(repository_root=root, reports_dir=root)
 
     @staticmethod
     def check_gate_asserting(
@@ -149,7 +149,7 @@ class TestsFlextInfraUtilitiesGatesMixin:
     ) -> m.Infra.GateContext:
         """Provide the typed test helper `create_gate_context`."""
         return m.Infra.GateContext(
-            workspace=workspace_root, reports_dir=reports_dir or workspace_root
+            repository_root=workspace_root, reports_dir=reports_dir or workspace_root
         )
 
     @staticmethod

@@ -14,7 +14,8 @@ from flext_infra import m
 from flext_infra.detectors.silent_failure_detector import (
     FlextInfraSilentFailureDetector,
 )
-from flext_infra.gates.base_gate import FlextInfraGate, FlextInfraScannerGateMixin
+
+from .base_gate import FlextInfraGate, FlextInfraScannerGateMixin
 
 if TYPE_CHECKING:
     from flext_infra import t

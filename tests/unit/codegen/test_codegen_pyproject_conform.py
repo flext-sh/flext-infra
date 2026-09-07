@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
-from flext_infra import c, config, m, u
+from flext_infra import c, config, m
 from flext_tests import tm
-from tests import u as test_u
+from tests import u, u as test_u
 
 _PROVIDER_SPEC = config.Infra.codegen.providers[0]
 
@@ -33,12 +32,6 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsProjectSpec(
-            version=c.Infra.BEADS_CONFIG_VERSION,
-            workspace="flext",
-            database="flext",
-            issue_prefix="flext",
-        ),
         name="workspace",
         repository=_repository(
             "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
@@ -69,9 +62,15 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
-        document = tomllib.loads(tm.ok(result))
-        tm.that(document["project"]["dependencies"], eq=["flext-core"])
-        tm.that(document["dependency-groups"]["workspace"], eq=["flext-core"])
+        rendered = tm.ok(result)
+        tm.that(
+            u.Tests.toml_table_at(rendered, "project")["dependencies"],
+            eq=["flext-core"],
+        )
+        tm.that(
+            u.Tests.toml_table_at(rendered, "dependency-groups")["workspace"],
+            eq=["flext-core"],
+        )
 
     def test_standalone_uses_catalog_git_provenance(self) -> None:
         workspace = _workspace()
@@ -82,9 +81,8 @@ workspace = true
             workspace=workspace,
             workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
-        document = tomllib.loads(tm.ok(result))
         tm.that(
-            document["project"]["dependencies"],
+            u.Tests.toml_table_at(tm.ok(result), "project")["dependencies"],
             eq=[f"{member.distribution} @ git+{member.url}@{_PROVIDER_SPEC.branch}"],
         )
 
@@ -114,9 +112,11 @@ constraint-dependencies = ["uv>=0", "requests<3"]
             )
         )
 
-        document = tomllib.loads(first)
         tm.that(second, eq=first)
-        tm.that(document["tool"]["uv"]["constraint-dependencies"], eq=["requests<3"])
+        tm.that(
+            u.Tests.toml_table_at(first, "tool", "uv")["constraint-dependencies"],
+            eq=["requests<3"],
+        )
 
     def test_dependency_conformance_deletes_empty_uv_constraint_key(self) -> None:
         workspace = _workspace()
@@ -137,7 +137,7 @@ constraint-dependencies = ["uv>=0"]
             )
         )
 
-        uv_config = tomllib.loads(conformed)["tool"]["uv"]
+        uv_config = u.Tests.toml_table_at(conformed, "tool", "uv")
         tm.that(uv_config["link-mode"], eq="copy")
         tm.that("constraint-dependencies" not in uv_config, eq=True)
 
@@ -214,23 +214,33 @@ python-interpreter-path = "../.venv/bin/python"
                 required_dev_dependencies=required_dev,
             )
         )
-        document = tomllib.loads(first)
+        uv_table = u.Tests.toml_table_at(first, "tool", "uv")
+        pyrefly_table = u.Tests.toml_table_at(first, "tool", "pyrefly")
+        dev_group = u.Tests.toml_list(
+            u.Tests.toml_table_at(first, "dependency-groups")["dev"]
+        )
+        project_dependencies = u.Tests.toml_list(
+            u.Tests.toml_table_at(first, "project")["dependencies"]
+        )
         tm.that(second, eq=first)
-        tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
-        tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
+        tm.that(uv_table["link-mode"], eq=toolchain.uv_link_mode)
+        tm.that(uv_table["exclude-newer"], eq=toolchain.uv_exclude_newer)
         expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
-            for package in toolchain.dependency_cooldown_exclusions
+            for package in {
+                *toolchain.dependency_cooldown_exclusions,
+                *declared_dev_names.intersection(
+                    config.Infra.codegen.python_tool_distributions
+                ),
+            }
             if package not in toolchain.dependency_cooldown_overrides
         }
         expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
-        tm.that(
-            document["tool"]["uv"]["exclude-newer-package"],
-            eq=expected_exclude_newer_package,
-        )
-        tm.that("required-version" not in document["tool"]["uv"], eq=True)
-        tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
-        tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+        tm.that(uv_table["exclude-newer-package"], eq=expected_exclude_newer_package)
+        tm.that("required-version" not in uv_table, eq=True)
+        tm.that("python-interpreter-path" not in pyrefly_table, eq=True)
+        tm.that("custom-tool>=1" in dev_group, eq=True)
+        tm.that("custom-tool" not in uv_table["exclude-newer-package"], eq=True)
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.
@@ -245,13 +255,12 @@ python-interpreter-path = "../.venv/bin/python"
         # integration-branch source. Asserting by package name keeps both shapes
         # in scope without re-encoding either.
         rendered_names = {
-            u.Infra.dep_name(requirement)
-            for requirement in document["dependency-groups"]["dev"]
+            u.Infra.dep_name(str(requirement)) for requirement in dev_group
         }
         for requirement in required_dev:
             tm.that(u.Infra.dep_name(requirement) in rendered_names, eq=True)
         tm.that(
-            document["project"]["dependencies"][0],
+            project_dependencies[0],
             eq=(
                 f"{workspace.subprojects[0].distribution} @ "
                 f"git+{workspace.subprojects[0].url}@{_PROVIDER_SPEC.branch}"
@@ -274,7 +283,7 @@ python-interpreter-path = "../.venv/bin/python"
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
             )
         )
-        tm.that(tomllib.loads(conformed)["project"]["version"], eq="0.0.1")
+        tm.that(u.Tests.toml_table_at(conformed, "project")["version"], eq="0.0.1")
 
     def test_ssot_required_dev_floor_replaces_stale_same_name_pin(self) -> None:
         """Toolchain required_dev floors win over older same-package member pins."""
@@ -297,10 +306,12 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
                 required_dev_dependencies=("rumdl>=0.2.45",),
             )
         )
-        document = tomllib.loads(conformed)
-        tm.that("rumdl>=0.2.45" in document["dependency-groups"]["dev"], eq=True)
-        tm.that("rumdl>=0.2.46" not in document["dependency-groups"]["dev"], eq=True)
-        tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+        dev_group = u.Tests.toml_list(
+            u.Tests.toml_table_at(conformed, "dependency-groups")["dev"]
+        )
+        tm.that("rumdl>=0.2.45" in dev_group, eq=True)
+        tm.that("rumdl>=0.2.46" not in dev_group, eq=True)
+        tm.that("custom-tool>=1" in dev_group, eq=True)
 
     def test_exclude_dependencies_emit_for_standalone_without_project_key(self) -> None:
         """Standalone member CI needs scoped excludes without the routing key."""
@@ -325,10 +336,11 @@ dependencies = []
                 uv_exclude_dependencies=(exclusion,),
             )
         )
-        document = tomllib.loads(conformed)
-        excludes = document["tool"]["uv"]["exclude-dependencies"]
+        excludes = u.Tests.toml_list(
+            u.Tests.toml_table_at(conformed, "tool", "uv")["exclude-dependencies"]
+        )
         tm.that(
             excludes,
             eq=[{"package": {"name": "flext-tests"}, "dependencies": ["flext-infra"]}],
         )
-        tm.that("project" not in excludes[0], eq=True)
+        tm.that("project" not in u.Tests.mapping(excludes[0]), eq=True)

@@ -129,7 +129,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "u",
         )
         INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
-            "class_nesting_plan",
+            "class_nesting_plans",
             "current_workspace_version",
             "parse_semver",
         )

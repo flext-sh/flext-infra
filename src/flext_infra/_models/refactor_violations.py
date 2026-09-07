@@ -7,25 +7,28 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import t
 
-from .._models._defaults import immutable_empty_mapping
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import immutable_empty_mapping
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRefactorViolations:
     """Class-nesting violation, helper classification, and analysis report models."""
 
     class ClassNestingViolation(
-        mm.ConfidenceLevelMixin,
-        mm.RewriteScopeMixin,
-        mm.FileLineViolationMixin,
-        m.ArbitraryTypesModel,
+        mm.ConfidenceLevelMixin, mm.FileLineViolationMixin, m.ArbitraryTypesModel
     ):
-        """Normalized class-nesting violation with rewrite metadata."""
+        """Loose top-level class and the facade its module policy derives for it."""
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
         class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         target_namespace: Annotated[
-            str, m.Field(description="Expected namespace class")
+            str,
+            m.Field(
+                description=(
+                    "Facade class derived from the module's namespace policy; "
+                    "empty when the module declares no family to nest under"
+                )
+            ),
         ] = ""
 
     class ClassNestingReport(m.ArbitraryTypesModel):

@@ -49,7 +49,6 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=tu.Tests.beads_project("flext"),
         name="workspace",
         repository=_repository("workspace", role=_ROLE.WORKSPACE, path="."),
         subprojects=(
@@ -261,7 +260,7 @@ workspace = true
             package for package in packages if package["name"] == provider.distribution
         ]
         tm.that(len(provider_packages), eq=1)
-        provider_source = tu.Tests.toml_mapping(provider_packages[0]["source"])
+        provider_source = tu.Tests.mapping(provider_packages[0]["source"])
         tm.that(provider_source.get("editable"), eq=provider.path.as_posix())
         tm.that("git" in provider_source, eq=False)
 

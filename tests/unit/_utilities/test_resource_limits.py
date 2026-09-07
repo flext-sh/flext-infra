@@ -61,19 +61,20 @@ class TestsFlextInfraUtilitiesResourceLimits:
 
     @pytest.mark.parametrize("invalid_value", ["", "1024.0", "-1", " 1024"])
     def test_mypy_resource_limit_rejects_non_integer_environment(
-        self, invalid_value: str
+        self, invalid_value: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Reject non-integer process text before constructing the strict model."""
-        with (
-            tm.scope(
-                env={
-                    c.Infra.MYPY_MEMORY_LIMIT_MB_ENV: invalid_value,
-                    c.Infra.MYPY_TIMEOUT_SECONDS_ENV: "120",
-                }
-            ),
-            pytest.raises(
-                ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
-            ),
+        """Reject non-integer process text before constructing the strict model.
+
+        The value reaches the process environment verbatim: ``tm.scope`` routes
+        it through a model whose base config strips whitespace, which would
+        repair `` 1024`` into a valid limit and make the padded case untestable.
+        The contract under test is exactly that no such repair happens.
+        """
+        monkeypatch.setenv(c.Infra.MYPY_MEMORY_LIMIT_MB_ENV, invalid_value)
+        monkeypatch.setenv(c.Infra.MYPY_TIMEOUT_SECONDS_ENV, "120")
+
+        with pytest.raises(
+            ValueError, match=f"{c.Infra.MYPY_MEMORY_LIMIT_MB_ENV} must be"
         ):
             u.Infra.mypy_resource_limit()
 

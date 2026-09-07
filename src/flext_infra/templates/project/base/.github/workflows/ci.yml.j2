@@ -48,6 +48,7 @@ jobs:
           submodules: {{ checkout_submodules }}
           fetch-depth: 0
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
 {%- if custom_steps %}
 
       # Project-owned steps, the CI counterpart of custom.mk: the generator
@@ -97,7 +98,7 @@ jobs:
       # construction, so running both here costs one extra pass and closes the
       # hole rather than trusting everyone to run the other half by hand.
       - name: {{ step.verb }} complement (blocking)
-        run: {{ make.ci.variable }}={{ make.ci.local_value }} make {{ step.verb }}
+        run: {{ make.ci.variable }}={{ make.ci.local_value }} make {{ step.verb }}{% if step.apply %} {{ make.apply_variable }}={{ make.apply_value }}{% endif %}
 {%- endif %}
 {% endfor %}
       - name: Dump reports on failure
@@ -158,6 +159,7 @@ jobs:
           fetch-depth: 0
           submodules: {{ checkout_submodules }}
 {%- include "_fragments/private_submodules_init.j2" %}
+{%- include "_fragments/private_dependency_auth.j2" %}
 {%- if custom_steps %}
 
       # Project-owned steps, the CI counterpart of custom.mk: the generator

@@ -6,9 +6,7 @@ from typing import TYPE_CHECKING
 
 import libcst as cst
 
-from .._utilities.class_nesting_references import (
-    FlextInfraUtilitiesClassNestingReferences,
-)
+from .class_nesting_references import FlextInfraUtilitiesClassNestingReferences
 
 if TYPE_CHECKING:
     from flext_infra import t

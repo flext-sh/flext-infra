@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import ClassVar
 
 from flext_infra import m
-from flext_infra.services.cli_route_base import CliRouteBase
 from flext_infra.validate.cprofile_report import FlextInfraCProfileReport
 from flext_infra.validate.fresh_import import FlextInfraValidateFreshImport
 from flext_infra.validate.import_cycles import FlextInfraValidateImportCycles
@@ -23,6 +22,8 @@ from flext_infra.validate.silent_failure import FlextInfraSilentFailureValidator
 from flext_infra.validate.skill_validator import FlextInfraSkillValidator
 from flext_infra.validate.stub_chain import FlextInfraStubSupplyChain
 from flext_infra.validate.tier_whitelist import FlextInfraValidateTierWhitelist
+
+from .cli_route_base import CliRouteBase
 
 
 class ValidationCommandRoutes(CliRouteBase):

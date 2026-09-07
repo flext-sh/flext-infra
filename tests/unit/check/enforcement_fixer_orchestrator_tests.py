@@ -9,11 +9,11 @@ from types import SimpleNamespace
 import pytest
 
 from flext_cli import cli
-from flext_infra import m, main as infra_main, p, t, u
+from flext_infra import m, main as infra_main, p, t
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_tests import tm
-from tests import c, u as test_u
+from tests import c, u
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -29,10 +29,12 @@ class TestsEnforcementFixerOrchestrator:
         self, tmp_path: Path
     ) -> None:
         """The public dry-run reports a no-change skip for a clean source file."""
-        project_dir = test_u.Tests.mk_project(
+        project_dir = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
-        test_u.Tests.declare_workspace_projects(tmp_path, ("demo",))
+        # Discovery only reaches declared members: an undeclared child directory
+        # is not a project of this root, so the selector would not resolve.
+        u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         source_file = project_dir / "src" / "demo" / "sample.py"
         source_file.parent.mkdir(parents=True)
         source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
@@ -53,10 +55,12 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_stub_file_rule_collects_pyi_probes(self, tmp_path: Path) -> None:
         """The public dry-run reports source stubs and ignores virtualenv stubs."""
-        project_dir = test_u.Tests.mk_project(
+        project_dir = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
-        test_u.Tests.declare_workspace_projects(tmp_path, ("demo",))
+        # Discovery only reaches declared members: an undeclared child directory
+        # is not a project of this root, so the selector would not resolve.
+        u.Tests.declare_workspace_projects(tmp_path, ("demo",))
         stub_file = project_dir / "src" / "demo" / "__init__.pyi"
         excluded_stub = project_dir / ".venv" / "ignored.pyi"
         stub_file.parent.mkdir(parents=True)
@@ -83,10 +87,10 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.parent.mkdir(parents=True)
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
 
-        result = test_u.Tests.run_rope_fixer(
+        result = u.Tests.run_rope_fixer(
             tmp_path,
             project_dir,
-            test_u.Tests.enforcement_rule("ENFORCE-090"),
+            u.Tests.enforcement_rule("ENFORCE-090"),
             stub_file,
             apply=False,
         )
@@ -103,10 +107,10 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.parent.mkdir(parents=True)
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
 
-        result = test_u.Tests.run_rope_fixer(
+        result = u.Tests.run_rope_fixer(
             tmp_path,
             project_dir,
-            test_u.Tests.enforcement_rule("ENFORCE-090"),
+            u.Tests.enforcement_rule("ENFORCE-090"),
             stub_file,
             apply=True,
         )
@@ -118,7 +122,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_manual_fix_dry_run_previews_without_mutation(self, tmp_path: Path) -> None:
         """Manual fix actions produce explicit previews in dry-run."""
-        rule = test_u.Tests.enforcement_rule("ENFORCE-097")
+        rule = u.Tests.enforcement_rule("ENFORCE-097")
         fix_action = rule.fix_action
         if fix_action is None:
             pytest.fail("ENFORCE-097 must declare a manual fix action")
@@ -137,7 +141,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=False
+                repository_root=str(tmp_path), projects=("demo",), apply=False
             ),
         )
 
@@ -149,7 +153,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_manual_fix_apply_fails_loudly(self, tmp_path: Path) -> None:
         """Manual fix actions cannot be reported as applied automatically."""
-        rule = test_u.Tests.enforcement_rule("ENFORCE-097")
+        rule = u.Tests.enforcement_rule("ENFORCE-097")
         adapter = FlextInfraManualFixerAdapter(tmp_path)
 
         result = adapter.fix_project(
@@ -165,7 +169,7 @@ class TestsEnforcementFixerOrchestrator:
                 ),
             ),
             m.Infra.FixEnforcementCommand(
-                workspace=str(tmp_path), projects=("demo",), apply=True
+                repository_root=str(tmp_path), projects=("demo",), apply=True
             ),
         )
 
@@ -175,7 +179,7 @@ class TestsEnforcementFixerOrchestrator:
 
     def test_missing_selected_project_fails_resolution(self, tmp_path: Path) -> None:
         """A typoed project filter is a hard failure, not a zero-project success."""
-        _ = test_u.Tests.mk_project(
+        _ = u.Tests.mk_project(
             tmp_path, "demo", pyproject='[project]\nname = "demo"\nversion = "0.1.0"\n'
         )
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
@@ -290,7 +294,7 @@ class TestsEnforcementFixerOrchestrator:
             exit_code = infra_main([
                 "check",
                 "fix-enforcement",
-                "--workspace",
+                "--repository-root",
                 str(project_dir),
                 "--rules",
                 "ENFORCE-079",

@@ -9,7 +9,7 @@ from pathlib import Path
 from flext_infra.constants import c
 from flext_infra.typings import t
 
-from .._utilities.protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
+from .protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
 
 
 class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLinting):

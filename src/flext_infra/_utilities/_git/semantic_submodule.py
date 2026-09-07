@@ -12,9 +12,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from ..._utilities._git.semantic_identity import (
-    FlextInfraUtilitiesGitSemanticIdentityMixin,
-)
+from .semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
 
 if TYPE_CHECKING:
     from flext_infra import p

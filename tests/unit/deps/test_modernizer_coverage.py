@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import tomllib
 from pathlib import Path
 
 from flext_infra import config
@@ -44,10 +43,10 @@ class TestsFlextInfraDepsModernizerCoverage:
             doc, project_kind="integration"
         )
 
-        tool = u.Tests.toml_mapping(u.Tests.toml_doc_mapping(doc)["tool"])
-        coverage = u.Tests.toml_mapping(tool["coverage"])
-        report = u.Tests.toml_mapping(coverage["report"])
-        run = u.Tests.toml_mapping(coverage["run"])
+        tool = u.Tests.mapping(u.Tests.toml_doc_mapping(doc)["tool"])
+        coverage = u.Tests.mapping(tool["coverage"])
+        report = u.Tests.mapping(coverage["report"])
+        run = u.Tests.mapping(coverage["run"])
         tm.that(
             report["fail_under"], eq=tool_config.tools.coverage.fail_under.integration
         )
@@ -111,8 +110,10 @@ dependencies = ["flext-core", "flext-cli", "flext-ldap"]
             root_modernizer.conform_source(member_first, path=member_path)
         )
 
-        root_report = tomllib.loads(root_first)["tool"]["coverage"]["report"]
-        member_report = tomllib.loads(member_first)["tool"]["coverage"]["report"]
+        root_report = u.Tests.toml_table_at(root_first, "tool", "coverage", "report")
+        member_report = u.Tests.toml_table_at(
+            member_first, "tool", "coverage", "report"
+        )
         tm.that(root_second, eq=root_first)
         tm.that(member_second, eq=member_first)
         tm.that(root_report["fail_under"], eq=thresholds.platform)

@@ -10,8 +10,8 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.dependencies import FlextInfraUtilitiesDependencies
-from .._utilities.repository import FlextInfraUtilitiesRepository
+from .dependencies import FlextInfraUtilitiesDependencies
+from .repository import FlextInfraUtilitiesRepository
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
