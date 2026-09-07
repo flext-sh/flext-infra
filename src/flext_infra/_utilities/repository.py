@@ -19,8 +19,8 @@ class FlextInfraUtilitiesRepository:
         distribution: str,
         *,
         provider: m.Infra.ProviderSpec,
-        role: c.Infra.RepositoryRole = c.Infra.RepositoryRole.STANDALONE,
-        checkout: c.Infra.CheckoutKind = c.Infra.CheckoutKind.SUBMODULE,
+        role: c.Infra.MakeProfile = c.Infra.MakeProfile.STANDALONE,
+        kind: c.Infra.ProjectKind = c.Infra.ProjectKind.INTERNAL_FLEXT,
     ) -> m.Infra.RepositoryRef:
         """Derive one repository reference from generic provider policy.
 
@@ -36,7 +36,7 @@ class FlextInfraUtilitiesRepository:
             path=Path(distribution),
             role=role,
             provider=provider.name,
-            checkout=checkout,
+            kind=kind,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=True,
@@ -103,7 +103,10 @@ class FlextInfraUtilitiesRepository:
 
     @classmethod
     def repository_baseline_branch(
-        cls, repository_root: Path, fallback: str | None = None
+        cls,
+        repository_root: Path,
+        fallback: str | None = None,
+        preference: tuple[str, ...] | None = None,
     ) -> p.Result[str]:
         """Return the integration baseline the repository actually publishes.
 
@@ -112,13 +115,19 @@ class FlextInfraUtilitiesRepository:
         baseline is therefore derived from live Git: the published
         remote-tracking integration branch wins.
 
+        ``preference`` is the ordered set of names to try, owned by
+        ``codegen.branch_policy.integration_branch_preference`` so a workspace
+        declares its own release line instead of asking for a constant in this
+        package. Omitting it uses the built-in conventional ordering.
+
         ``fallback`` carries the provider default for a repository that cannot
         have published anything yet (project creation). Without it, a checkout
         with no integration branch fails closed instead of guessing.
         """
-        from flext_infra.utilities import u
+        from flext_infra import u
 
-        for candidate in c.Infra.INTEGRATION_BRANCH_PREFERENCE:
+        candidates = preference or c.Infra.INTEGRATION_BRANCH_PREFERENCE
+        for candidate in candidates:
             reference = f"refs/remotes/origin/{candidate}"
             resolved = u.Infra.git_ref_exists(
                 m.Infra.GitRefRequest(repo_root=repository_root, reference=reference)
@@ -129,7 +138,7 @@ class FlextInfraUtilitiesRepository:
             return r[str].ok(fallback)
         return r[str].fail(
             "repository publishes no integration branch "
-            f"({', '.join(c.Infra.INTEGRATION_BRANCH_PREFERENCE)}): {repository_root}"
+            f"({', '.join(candidates)}): {repository_root}"
         )
 
     @staticmethod
@@ -150,9 +159,7 @@ class FlextInfraUtilitiesRepository:
         if resolved_workspace is None:
             loaded = FlextInfraWorkspaceDetector.load_workspace_spec(repository_root)
             if loaded.failure:
-                return r[m.Infra.RepositoryConformTarget].fail(
-                    loaded.error or "workspace topology load failed"
-                )
+                return r[m.Infra.RepositoryConformTarget].from_failure(loaded)
             resolved_workspace = loaded.value
         return FlextInfraWorkspaceDetector.conform_target(
             repository_root, resolved_workspace

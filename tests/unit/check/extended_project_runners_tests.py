@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 class TestsExtendedProjectRunners:
     """Exercise runner behavior through the public checker API only."""
 
+    # Why (suite budget): full-suite xdist can stall durable atomic report writes
+    # beyond the default case timeout while the nested checker publishes reports.
+    @pytest.mark.slow
     def test_run_projects_records_requested_gates(self, tmp_path: Path) -> None:
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         project_dir = u.Tests.mk_project(tmp_path, "p1", with_src=True)
@@ -45,10 +48,7 @@ class TestsExtendedProjectRunners:
                 ["p1"], ["lint", "pyrefly"], reports_dir=tmp_path / "reports"
             )
         finally:
-            if original_pythonpath:
-                os.environ["PYTHONPATH"] = original_pythonpath
-            else:
-                os.environ.pop("PYTHONPATH", None)
+            u.Tests.restore_env("PYTHONPATH", original_pythonpath)
 
         tm.ok(result)
         # 'format' is not a check gate: 73887691 gave each tool one owner and

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, override
 
-from flext_infra import c, m
+from flext_infra import c, m, u
 from flext_infra.gates.base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
@@ -19,8 +19,6 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.FORMAT
     gate_name: ClassVar[str] = "Ruff Format"
     can_fix: ClassVar[bool] = True
-    tool_name: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][0]
-    tool_url: ClassVar[str] = c.Infra.SARIF_TOOL_INFO[c.Infra.FORMAT][1]
 
     @override
     def _get_check_dirs(
@@ -37,7 +35,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         """Build check command."""
         _ = project_dir, ctx
         return self._python_module_command(
-            c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs, "--quiet"
+            c.Infra.RUFF, c.Infra.FORMAT, "--check", *check_dirs
         )
 
     @override
@@ -47,7 +45,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []
-        if result.exit_code != 0 and result.stdout.strip():
+        if not u.Cli.process_succeeded(result.outcome) and result.stdout.strip():
             seen: t.Infra.StrSet = set()
             for line in result.stdout.strip().splitlines():
                 raw = line.strip()
@@ -70,7 +68,7 @@ class FlextInfraRuffFormatGate(FlextInfraGate):
                             message="Would be reformatted",
                         )
                     )
-        return result.exit_code == 0, issues
+        return u.Cli.process_succeeded(result.outcome), issues
 
     @override
     def _build_fix_command(

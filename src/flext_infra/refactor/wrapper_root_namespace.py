@@ -7,9 +7,8 @@ from typing import TYPE_CHECKING, Annotated, ClassVar, override
 
 from flext_infra import c, m, p, r, t, u
 from flext_infra.base_selection import FlextInfraProjectSelectionServiceBase
-from flext_infra.refactor._wrapper_rewrite import (
-    FlextInfraWrapperRootNamespaceRewriteMixin,
-)
+
+from ._wrapper_rewrite import FlextInfraWrapperRootNamespaceRewriteMixin
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -40,7 +39,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         """Discover wrapper files, rewrite ``Core.Tests`` chains, persist results."""
         scan = self._scan_workspace()
         if scan.failure:
-            return r[t.JsonPayload].fail(scan.error or "wrapper scan failed")
+            return r[t.JsonPayload].from_failure(scan)
         py_files, project_runtime_aliases, wrapper_submodules = scan.value
         accumulator = m.Infra.WrapperRewriteAccumulator()
         metadata_aliases = u.runtime_alias_names(c.Infra.PKG_INFRA_UNDERSCORE)
@@ -75,11 +74,11 @@ class FlextInfraWrapperRootNamespaceRefactor(
         selected_projects: t.StrSequence = (
             self.project_names if self.project_names is not None else ()
         )
-        resolved = u.Infra.resolve_projects(self.workspace_root, selected_projects)
+        resolved = u.Infra.resolve_projects(self.repository_root, selected_projects)
         if resolved.failure:
             return r[
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-            ].fail(resolved.error or "project resolution failed")
+            ].from_failure(resolved)
         iter_result = u.Infra.iter_python_files(
             m.Infra.SourceScanRequest(
                 project_roots=tuple(project.path for project in resolved.value)
@@ -88,7 +87,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         if iter_result.failure:
             return r[
                 tuple[t.SequenceOf[Path], dict[str, frozenset[str]], frozenset[str]]
-            ].fail(iter_result.error or "python file iteration failed")
+            ].from_failure(iter_result)
         project_runtime_aliases = {
             project.path.name: frozenset(layout.runtime_aliases)
             for project in resolved.value
@@ -109,7 +108,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
         ok, report = u.Infra.protected_source_writes(
             dict(updates),
             request=m.Infra.ProtectedSourceWritesRequest(
-                workspace=self.workspace_root, skip_pytest=True
+                workspace=self.repository_root, skip_pytest=True
             ),
         )
         if ok:
@@ -143,7 +142,7 @@ class FlextInfraWrapperRootNamespaceRefactor(
             "per_project_changes": per_project_changes_payload,
             "per_project_replacements": per_project_replacements_payload,
             "changed_files_preview": changed_files_preview,
-            "workspace": str(self.workspace_root),
+            "workspace": str(self.repository_root),
             "mode": mode_value,
         }
         return report_payload

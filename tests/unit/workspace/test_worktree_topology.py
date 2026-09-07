@@ -7,7 +7,7 @@ from pathlib import Path
 from flext_infra import FlextInfraWorktreeService, c, m
 from flext_tests import tm
 from tests import u
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorktreeTopology(WorktreeFixture):
@@ -19,16 +19,8 @@ class TestsWorktreeTopology(WorktreeFixture):
         """Update preserves lane ancestry through the canonical no-ff merge."""
         repository = self._repository(tmp_path)
         branch = "feature/update"
-        lane = self._lane(repository, repository, branch)
-        tm.ok(
-            FlextInfraWorktreeService(
-                workspace_root=repository,
-                operation=c.Infra.WorktreeOperation.ADD,
-                branch=branch,
-                base="HEAD",
-                apply_changes=True,
-            ).execute()
-        )
+        lane = tm.ok(FlextInfraWorktreeService.canonical_lane_path(repository, branch))
+        _ = self.add_worktree(repository, branch)
         (repository / "owner.txt").write_text("owner\n", encoding="utf-8")
         tm.ok(u.Cli.run_checked([c.Infra.GIT, "add", "owner.txt"], cwd=repository))
         tm.ok(
@@ -51,7 +43,7 @@ class TestsWorktreeTopology(WorktreeFixture):
 
         updated = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=lane,
+                repository_root=lane,
                 operation=c.Infra.WorktreeOperation.UPDATE,
                 branch=branch,
                 base=base,
@@ -76,22 +68,12 @@ class TestsWorktreeTopology(WorktreeFixture):
         """A child lane is namespaced by the epic lane that owns it."""
         repository = self._repository(tmp_path)
         epic_branch = "feature/epic-alpha"
-        epic = Path(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    workspace_root=repository,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=epic_branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute()
-            )
-        )
+        epic = Path(self.add_worktree(repository, epic_branch))
         child_branch = "feature/child-one"
 
         child = tm.ok(
             FlextInfraWorktreeService(
-                workspace_root=repository,
+                repository_root=repository,
                 operation=c.Infra.WorktreeOperation.ADD,
                 branch=child_branch,
                 base=epic_branch,

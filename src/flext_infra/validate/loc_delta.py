@@ -55,16 +55,16 @@ class FlextInfraLocDeltaValidator(s[bool]):
     def execute(self) -> p.Result[bool]:
         """Evaluate the workspace HEAD commit's labelled net-LOC delta."""
         report = u.Infra.git_head_numstat(
-            m.Infra.GitRepoRequest(repo_root=self.workspace_root)
+            m.Infra.GitRepoRequest(repo_root=self.repository_root)
         )
         if report.failure:
-            return r[bool].fail(report.error or "git numstat read failed")
+            return r[bool].from_failure(report)
         insertions, deletions = self._sum_numstat(report.value.numstat)
         verdict = self.evaluate(
             subject=report.value.subject, insertions=insertions, deletions=deletions
         )
         if verdict.failure:
-            return r[bool].fail(verdict.error or "net-LOC-delta violation")
+            return r[bool].from_failure(verdict)
         return r[bool].ok(True)
 
 

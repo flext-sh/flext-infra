@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from flext_infra import config
-from flext_infra.codegen.managed_conflicts import FlextInfraCodegenManagedConflicts
+from flext_infra import config, u
 from flext_tests import tm
 
 
-class TestsFlextInfraCodegenManagedConflicts:
+class TestsManagedConflictRecovery:
     """Prove conflict recovery remains bounded by the document SSOT."""
 
     def test_every_generated_pyproject_section_declares_recovery(self) -> None:
@@ -44,7 +43,7 @@ class TestsFlextInfraCodegenManagedConflicts:
         )
 
         recovered = tm.ok(
-            FlextInfraCodegenManagedConflicts.recover_toml(
+            u.Infra.recover_managed_toml(
                 content, conflict_sections=("tool.ruff.lint.per-file-ignores",)
             )
         )
@@ -76,9 +75,7 @@ class TestsFlextInfraCodegenManagedConflicts:
         )
 
         recovered: str = tm.ok(
-            FlextInfraCodegenManagedConflicts.recover_toml(
-                content, conflict_sections=("tool.uv",)
-            )
+            u.Infra.recover_managed_toml(content, conflict_sections=("tool.uv",))
         )
 
         tm.that(
@@ -106,9 +103,7 @@ class TestsFlextInfraCodegenManagedConflicts:
             ">>>>>>> origin/0.12.0-dev\n"
         )
 
-        result = FlextInfraCodegenManagedConflicts.recover_toml(
-            content, conflict_sections=("tool.uv",)
-        )
+        result = u.Infra.recover_managed_toml(content, conflict_sections=("tool.uv",))
 
         tm.fail(result, has="outside owner-declared TOML sections: project")
 
@@ -117,9 +112,7 @@ class TestsFlextInfraCodegenManagedConflicts:
         content = '[tool.uv]\nlink-mode = "copy"\n'
 
         recovered: str = tm.ok(
-            FlextInfraCodegenManagedConflicts.recover_toml(
-                content, conflict_sections=("tool.uv",)
-            )
+            u.Infra.recover_managed_toml(content, conflict_sections=("tool.uv",))
         )
 
         tm.that(recovered, eq=content)

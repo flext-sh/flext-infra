@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
-    """Create a new FLEXT project (internal member or external standalone)."""
+    """Scaffold one new repository of a declared governance kind."""
 
     name: Annotated[
         str,
@@ -33,7 +33,11 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     ]
     kind: Annotated[
         c.Infra.ProjectKind,
-        m.Field(description="Project kind: internal (monorepo member) or external."),
+        m.Field(
+            description=(
+                "Governance kind: internal_flext, internal, or third_party_fork."
+            )
+        ),
     ]
     output_root: Annotated[
         Path, m.Field(description="Directory that becomes the generated project root.")
@@ -54,27 +58,12 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
     description: Annotated[
         str, m.Field(default="", description="Project description (default: derived).")
     ] = ""
-    # Project config owns the
-    # already-validated version value consumed directly by project generation.
-    version: Annotated[
-        str,
-        m.Field(description="Initial project version (default: config.Infra.version)."),
-    ] = config.Infra.version
     provider: Annotated[
         str, m.Field(min_length=1, description="Configured Git provider key.")
     ]
     repository_url: Annotated[
         str, m.Field(description="Canonical Git clone URL for the new repository.")
     ] = ""
-    beads_workspace: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads workspace identity.")
-    ]
-    beads_database: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads database identity.")
-    ]
-    beads_issue_prefix: Annotated[
-        str, m.Field(min_length=1, description="Explicit Beads issue prefix.")
-    ]
     license: Annotated[
         str, m.Field(min_length=1, description="SPDX project license identifier.")
     ]
@@ -127,25 +116,20 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
             provider=self.provider,
             url=repository_url,
             path=Path(),
-            role=c.Infra.RepositoryRole.STANDALONE,
+            role=c.Infra.MakeProfile.STANDALONE,
             state=c.Infra.RepositoryState.ACTIVE,
-            checkout=c.Infra.CheckoutKind.INDEPENDENT,
+            kind=self.kind,
             codegen=c.Infra.CodegenKind.CONFORM,
             package=True,
             editable=False,
             read_only=False,
         )
         workspace = m.Infra.WorkspaceSpec(
-            name=self.beads_workspace,
-            beads=m.Infra.BeadsProjectSpec(
-                version=c.Infra.BEADS_CONFIG_VERSION,
-                workspace=self.beads_workspace,
-                database=self.beads_database,
-                issue_prefix=self.beads_issue_prefix,
-            ),
+            name=self.name,
             repository=repository,
             project=m.Infra.ProjectSpec(
                 package_name=package_name,
+                workspace_root_rel=".",
                 class_stem=class_stem,
                 namespace=project_namespace,
                 constant_name=self.name,
@@ -156,14 +140,14 @@ class FlextInfraCodegenProjectNew(s[m.Infra.CodegenResult]):
                     self.description
                     or f"{class_stem} — FLEXT typed integration package"
                 ),
-                version=self.version,
                 license=self.license,
                 author_name=self.author_name,
                 author_email=self.author_email,
                 upstream=self.upstream,
                 homepage=repository_page,
                 documentation=repository_page,
-                workspace_root_rel=".",
+                repository_root_rel=".",
+                repository_root_rel=".",
                 year=self.year,
             ),
         )

@@ -23,13 +23,10 @@ class FlextInfraDocAuditorMixin:
     """Mixin providing helper methods for the documentation auditor."""
 
     @staticmethod
-    def find_architecture_config(workspace_root: Path) -> Path | None:
-        """Walk up from workspace_root looking for the architecture settings."""
-        for candidate in [workspace_root, *workspace_root.parents]:
-            path = candidate / "docs/architecture/architecture_config.json"
-            if path.exists():
-                return path
-        return None
+    def find_architecture_config(repository_root: Path) -> Path | None:
+        """Return repository-local architecture settings without crossing ownership."""
+        path = repository_root / "docs/architecture/architecture_config.json"
+        return path if path.is_file() else None
 
     @staticmethod
     def parse_audit_gate(
@@ -70,11 +67,11 @@ class FlextInfraDocAuditorMixin:
 
     @classmethod
     def load_audit_budgets(
-        cls, workspace_root: Path
+        cls, repository_root: Path
     ) -> p.Result[t.Pair[int | None, t.IntMapping]]:
-        """Load audit budgets from the nearest architecture settings."""
+        """Load audit budgets from repository-local architecture settings."""
         empty: t.Pair[int | None, t.IntMapping] = (None, {})
-        settings = cls.find_architecture_config(workspace_root)
+        settings = cls.find_architecture_config(repository_root)
         if settings is None:
             return r[t.Pair[int | None, t.IntMapping]].ok(empty)
         payload_result = u.Cli.json_read(settings)
@@ -116,9 +113,11 @@ class FlextInfraDocAuditorMixin:
                 "links",
                 "forbidden-terms",
                 "placeholders",
+                "machine-paths",
                 "stale-symbols",
                 "scope-boundary",
                 "generated-ownership",
+                "command-contract",
                 "docstrings",
                 "python-codeblocks",
             }

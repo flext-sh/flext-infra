@@ -16,6 +16,18 @@ if TYPE_CHECKING:
 class FlextInfraConstantsSourceCode:
     """Source code patterns, exclusion sets, and detection constants."""
 
+    MERGE_CONFLICT_CONTROLS: Final[tuple[tuple[str, str], ...]] = (
+        ("current", "<<<<<<< "),
+        ("ancestor", "||||||| "),
+        ("separator", "======="),
+        ("incoming", ">>>>>>> "),
+    )
+    "Git merge-control kinds and their immutable protocol tokens."
+    TOML_SECTION_HEADER_RE: Final[t.RegexPattern] = re.compile(
+        r"^\s*\[([^\[\]]+)\]\s*(?:#.*)?$"
+    )
+    "Regex: one complete TOML table header with an optional comment."
+
     # --- Directory exclusion sets (was: class Excluded) ---
     COMMON_EXCLUDED_DIRS: Final[frozenset[str]] = frozenset({
         ".git",
@@ -66,7 +78,6 @@ class FlextInfraConstantsSourceCode:
         "agents",
         "hooks",
         "instructions",
-        "prompts",
         "skills",
     })
     "GitHub provider directories owned by the agentsctl projection."
@@ -377,51 +388,6 @@ class FlextInfraConstantsSourceCode:
         )
 
     @staticmethod
-    def compile_flext_prefixed_annotation(
-        prefix: str, old_symbol: str
-    ) -> t.RegexPattern:
-        r"""Compile ``(<prefix>[ \t]*)\b<old>\b`` for annotation-prefixed qualification."""
-        escaped_prefix = re.escape(prefix)
-        return re.compile(rf"({escaped_prefix}[ \t]*)\b{re.escape(old_symbol)}\b")
-
-    @staticmethod
-    def compile_import_namespace_rewrite(old_name: str) -> t.RegexPattern:
-        r"""Compile ``(from <mod> import (?:.*?,\s*)?)\b<old>\b((?:\s*,.*)?)`` for namespace import rewrite."""
-        return re.compile(
-            rf"(from\s+\S+\s+import\s+(?:.*?,\s*)?)"
-            rf"\b{re.escape(old_name)}\b"
-            rf"((?:\s*,.*)?)"
-        )
-
-    @staticmethod
-    def compile_import_alias_finder(old_name: str) -> t.RegexPattern:
-        r"""Compile ``from <mod> import [^\n]*\b<old>\b\s+as\s+(\w+)`` to find alias bindings."""
-        return re.compile(
-            rf"from\s+\S+\s+import\s+[^\n]*\b{re.escape(old_name)}\b\s+as\s+"
-            rf"([A-Za-z_]\w*)"
-        )
-
-    @staticmethod
-    def compile_bare_qualify_allowing_call(old_name: str) -> t.RegexPattern:
-        r"""Compile bare-symbol qualification pattern allowing call sites (no ``(?!\s*\()``)."""
-        escaped = re.escape(old_name)
-        return re.compile(
-            rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)"
-            rf"\b{escaped}\b"
-            rf"(?!\s*[=:](?!=))"
-        )
-
-    @staticmethod
-    def compile_alias_qualify(alias_name: str) -> t.RegexPattern:
-        """Compile bare-alias qualification pattern (excludes def/class/import/dot/assign and ``as``)."""
-        escaped = re.escape(alias_name)
-        return re.compile(
-            rf"(?<!class\s)(?<!def\s)(?<!\.)(?<!import\s)(?<!as\s)"
-            rf"\b{escaped}\b"
-            rf"(?!\s*[=:](?!=))"
-        )
-
-    @staticmethod
     def compile_assign_or_annotation_start(name: str) -> t.RegexPattern:
         r"""Compile ``^<name>\s*(:|==?)\s*`` for line-start annotation/assignment match."""
         return re.compile(rf"^{re.escape(name)}\s*(:|==?)\s*")
@@ -449,11 +415,6 @@ class FlextInfraConstantsSourceCode:
         return re.compile(
             rf"^class\s+{re.escape(name)}(?:\[[^\]]+\])?\s*\((?P<bases>.*)\)\s*:"
         )
-
-    @staticmethod
-    def compile_attribute_qualify(old_name: str) -> t.RegexPattern:
-        r"""Compile ``(\w+)\.\b<old>\b`` to qualify attribute-style references."""
-        return re.compile(rf"(\w+)\.\b{re.escape(old_name)}\b")
 
     @staticmethod
     def compile_function_def_block(name: str) -> t.RegexPattern:
@@ -563,9 +524,13 @@ class FlextInfraConstantsSourceCode:
     )
     "Regex: pytest block-end markers (summary/warnings/timing)."
 
-    # flext-r3r8: analyzers cover production; pytest owns executable test validation.
-    CHECK_DIRS_SUBPROJECT: Final[t.StrSequence] = ("src",)
-    "Productive Python root passed positionally to subproject analyzers."
+    CHECK_DIRS_REPOSITORY: Final[t.StrSequence] = (
+        "src",
+        "examples",
+        "scripts",
+        "tests",
+    )
+    "All first-class Python roots passed to repository analyzers."
 
     GITHUB_REPO_URL: Final[str] = "https://github.com/flext-sh/flext"
     "Official GitHub repository URL for the FLEXT project."
