@@ -27,7 +27,7 @@ from flext_infra.transformers.open_encoding import FlextInfraRefactorOpenEncodin
 from flext_infra.transformers.pattern import FlextInfraRefactorPatternTransformer
 from flext_infra.transformers.typing_unifier import FlextInfraRefactorTypingUnifier
 
-from .._utilities.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+from ..refactor.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 
 if TYPE_CHECKING:
     from flext_infra import p, t

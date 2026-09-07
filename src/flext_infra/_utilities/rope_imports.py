@@ -11,7 +11,7 @@ from flext_infra import c, m, p, r, t
 
 from .._utilities import FlextInfraUtilitiesRopeCore, FlextInfraUtilitiesRopeRuntime
 from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from .project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
+from ..refactor.project_alias_migrator import FlextInfraRefactorProjectAliasMigrator
 
 
 class FlextInfraUtilitiesRopeImports:
