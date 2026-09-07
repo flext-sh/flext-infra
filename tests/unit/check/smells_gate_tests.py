@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c
+import pytest
+
 from flext_infra.check import FlextInfraGateRegistry
 from flext_infra.gates.smells import FlextInfraSmellsGate
 from flext_tests import tm
@@ -28,10 +29,14 @@ class TestSmellsGate:
     def test_missing_project_configuration_is_a_blocking_failure(
         self, tmp_path: Path
     ) -> None:
+        """A missing generated prerequisite escapes; it is not a code finding.
+
+        The qlty config is owned by the generator, so its absence is an
+        operational gap the operator has to close with `make gen APPLY=Y`.
+        Reporting it as one more issue inside the scan would bury an
+        unrunnable gate among the findings it never produced.
+        """
         project = u.Tests.mk_project(tmp_path, "smells-project", with_src=True)
 
-        execution = FlextInfraSmellsGate(tmp_path).check(project, _ctx(tmp_path))
-
-        tm.that(execution.result.passed, eq=False)
-        tm.that(len(execution.issues), eq=1)
-        tm.that(execution.issues[0].severity, eq=str(c.Infra.GateSeverity.ERROR.value))
+        with pytest.raises(FileNotFoundError, match="run make gen APPLY=Y"):
+            _ = FlextInfraSmellsGate(tmp_path).check(project, _ctx(tmp_path))
