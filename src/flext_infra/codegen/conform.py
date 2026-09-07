@@ -310,6 +310,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self, request: m.Infra.CodegenConformRequest
     ) -> p.Result[m.Infra.CodegenResult]:
         """Run complete conformance inside the sole generation lock."""
+        gen_violation = self._enforce_gen_requirements(request)
+        if gen_violation.failure:
+            return r[m.Infra.CodegenResult].from_failure(gen_violation)
         mode = c.Infra.CodegenConformMode(request.mode)
         mise_owner = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root,

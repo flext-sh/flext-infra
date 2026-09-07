@@ -3418,9 +3418,75 @@ class FlextInfraConfigModels:
         dependency_cooldown_overrides: Annotated[
             Mapping[str, t.VariadicTuple[t.NonEmptyStr]],
             m.Field(
-                description="Per-distribution dependency cooldown override contracts",
+                description="Per-package RFC 3339 cooldown override cutoffs",
             ),
         ] = immutable_empty_mapping()
+
+    class CodegenOverridesRoot(_ConfigContract):
+        """Override root mirroring the Infra.codegen structure with override-only fields.
+
+        Every field is optional and defaults to empty so an override file can
+        declare only the deltas it needs. The conform system deep-merges this
+        onto the immutable ``codegen.yaml`` before Pydantic validation.
+        """
+
+        codegen: Annotated[
+            FlextInfraConfigModels._CodegenOverridesSection,
+            m.Field(description="Override sections for the codegen namespace"),
+        ]
+
+    class _CodegenOverridesSection(_ConfigContract):
+        """Override deltas that deep-merge onto CodegenConfigSpec fields."""
+
+        toolchain: Annotated[
+            FlextInfraConfigModels.CodegenToolchainOverridesSpec
+            | None,
+            m.Field(default=None, description="Toolchain override deltas"),
+        ] = None
+        checkout_submodules_overrides: Annotated[
+            Mapping[str, str],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-distribution checkout submodules overrides",
+            ),
+        ]
+        ci_private_submodules: Annotated[
+            Mapping[str, t.JsonMapping],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-distribution private submodule deploy-key contracts",
+            ),
+        ]
+        make: Annotated[
+            FlextInfraConfigModels._MakeOverridesSection | None,
+            m.Field(default=None, description="Make override deltas"),
+        ] = None
+        layout: Annotated[
+            FlextInfraConfigModels._LayoutOverridesSection | None,
+            m.Field(default=None, description="Layout override deltas"),
+        ] = None
+
+    class _MakeOverridesSection(_ConfigContract):
+        """Override deltas for the generated Make contract."""
+
+        custom_handler_profile_overrides: Annotated[
+            Mapping[str, t.JsonMapping],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-profile custom handler policy relaxations",
+            ),
+        ]
+
+    class _LayoutOverridesSection(_ConfigContract):
+        """Override deltas for the layout conformance contract."""
+
+        project_overrides: Annotated[
+            Mapping[str, t.JsonMapping],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description="Per-project layout deltas",
+            ),
+        ]
 
     class CodegenOverridesSpec(_ConfigContract):
         """Typed content of the config overrides layer (config/codegen-overrides.yaml).
