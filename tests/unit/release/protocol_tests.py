@@ -8,6 +8,7 @@ subject is the pull-request title.
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from flext_cli import cli
@@ -15,6 +16,7 @@ from flext_tests import tm
 from tests import TestsFlextInfraUtilities as u, c, m
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 
@@ -88,6 +90,26 @@ def _planned_release(workspace: Path) -> m.Infra.ReleasePlan:
     """Run the plan phase once and return its receipt."""
     tm.that(u.Tests.run_release_main(workspace, "--phase", "plan"), eq=0)
     return _plan(workspace)
+
+
+@contextmanager
+def _lane_with_shim(tmp_path: Path) -> Iterator[tuple[Path, Path]]:
+    """Yield the release-lane fixture with the recording ``gh`` shim on PATH.
+
+    Why: PATH is restored by the public ``env_vars_context`` facade rather than
+    ``monkeypatch``, so the fixture stays inside the test utilities contract.
+    """
+    workspace = _release_lane_workspace(tmp_path)
+    gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
+    shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
+    with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
+        yield workspace, gh_log
+
+
+def _apply_release_version(workspace: Path, integration: str) -> None:
+    """Stamp the release version once and return to the integration branch."""
+    tm.that(u.Tests.run_release_main(workspace, "--phase", "version", "--apply"), eq=0)
+    tm.ok(cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace))
 
 
 class TestsFlextInfraReleaseProtocol:
@@ -323,10 +345,7 @@ class TestsFlextInfraReleaseProtocol:
         @staticmethod
         def test_apply_opens_the_release_pull_request(tmp_path: Path) -> None:
             """Stamp, commit on the release lane, push it, and open the pull request."""
-            workspace = _release_lane_workspace(tmp_path)
-            gh_log = u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-            with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
+            with _lane_with_shim(tmp_path) as (workspace, gh_log):
                 integration = u.Tests.integration_branch(workspace)
                 # flext-core caches the parsed pyproject per process; a warm cache
                 # holding the pre-stamp document must not leak into the projections.
@@ -405,27 +424,16 @@ class TestsFlextInfraReleaseProtocol:
                         f"--head {c.Infra.RELEASE_BRANCH}"
                     ),
                 )
-            tm.that(recorded, has="--title chore(release): v0.1.0")
+                tm.that(recorded, has="--title chore(release): v0.1.0")
 
         @staticmethod
         def test_rerun_continues_the_lane_without_a_second_commit(
             tmp_path: Path,
         ) -> None:
             """A retry from the integration branch is idempotent on the open lane."""
-            workspace = _release_lane_workspace(tmp_path)
-            u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-            with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
+            with _lane_with_shim(tmp_path) as (workspace, _):
                 integration = u.Tests.integration_branch(workspace)
-                tm.that(
-                    u.Tests.run_release_main(
-                        workspace, "--phase", "version", "--apply"
-                    ),
-                    eq=0,
-                )
-                tm.ok(
-                    cli.run_checked([c.Infra.GIT, "switch", integration], cwd=workspace)
-                )
+                _apply_release_version(workspace, integration)
 
                 result = u.Tests.run_release_main(
                     workspace, "--phase", "version", "--apply"
@@ -512,17 +520,9 @@ class TestsFlextInfraReleaseProtocol:
         @staticmethod
         def test_merged_release_commit_is_tagged_and_pushed(tmp_path: Path) -> None:
             """After the release pull request merges, HEAD earns its tag once."""
-            workspace = _release_lane_workspace(tmp_path)
-            u.Tests.cli_shim(tmp_path / "bin", c.Infra.GH)
-            shim_path = f"{tmp_path / 'bin'}{os.pathsep}{os.environ['PATH']}"
-            with u.Tests.env_vars_context(env_vars={"PATH": shim_path}):
+            with _lane_with_shim(tmp_path) as (workspace, _):
                 integration = u.Tests.integration_branch(workspace)
-                tm.that(
-                    u.Tests.run_release_main(
-                        workspace, "--phase", "version", "--apply"
-                    ),
-                    eq=0,
-                )
+                _apply_release_version(workspace, integration)
                 # GitHub merges the release pull request under its title plus the
                 # pull-request number.
                 subject = (
