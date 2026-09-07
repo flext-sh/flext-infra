@@ -1,4 +1,4 @@
-{% macro mise_latest_runtime_bootstrap(project_root, mise, bootstrap) -%}
+{% macro mise_runtime_bootstrap(project_root, mise, bootstrap) -%}
 	project_root="{{ project_root }}"; \
 	mise="{{ mise }}"; \
 	mise_storage_root="$({{ bootstrap.storage_root_variable }})"; \
@@ -72,7 +72,7 @@
 	mkdir -p "$$scratch_parent"; \
 	scratch=$$(mktemp -d "$$scratch_parent/mise-toolchain.XXXXXX"); \
 	trap 'find "$$scratch" -depth -delete' EXIT; \
-	mkdir -p "$$scratch/receipt/bin"{% for _name, relative in bootstrap.transient_environment if relative not in bootstrap.empty_files %} "$$scratch/{{ relative }}"{% endfor %}; \
+	mkdir -p{% for _name, relative in bootstrap.transient_environment if relative not in bootstrap.empty_files %} "$$scratch/{{ relative }}"{% endfor %}; \
 {% for relative in bootstrap.empty_files -%}
 	: > "$$scratch/{{ relative }}"; chmod 600 "$$scratch/{{ relative }}"; \
 {% endfor -%}
@@ -137,17 +137,14 @@
 		printf '%s\n' "$$launcher_release"; \
 	}; \
 	case "$${OS:-}" in \
-		Windows_NT) mise_runtime_suffix='.exe'; latest_mise="$$scratch/receipt/bin/mise.cmd" ;; \
-		*) mise_runtime_suffix=; latest_mise="$$scratch/receipt/bin/mise" ;; \
+		Windows_NT) mise_runtime_suffix='.exe' ;; \
+		*) mise_runtime_suffix= ;; \
 	esac; \
-	seed_release=$$(mise_release_from_launcher "$$mise"); \
-	mise_install_path="$$mise_storage_root/bootstrap/mise-$$seed_release$$mise_runtime_suffix"; \
-	mise_checked "$$scratch/generate.log" mise_exec no-config "$$mise" -C "$$scratch" generate install-script --write "$$scratch/receipt/bin/mise" --windows; \
-	chmod +x "$$scratch/receipt/bin/mise"; \
+	latest_mise="$$mise"; \
 	mise_release=$$(mise_release_from_launcher "$$latest_mise"); \
 	mise_install_path="$$mise_storage_root/bootstrap/mise-$$mise_release$$mise_runtime_suffix"; \
-	mise_checked_stdout "$$scratch/receipt-version.stdout" "$$scratch/receipt-version.stderr" mise_exec no-config "$$latest_mise" --version; \
-	receipt_runtime=$$(cat "$$scratch/receipt-version.stdout"); \
+	mise_checked_stdout "$$scratch/runtime-version.stdout" "$$scratch/runtime-version.stderr" mise_exec no-config "$$latest_mise" --version; \
+	receipt_runtime=$$(cat "$$scratch/runtime-version.stdout"); \
 	case "$$receipt_runtime" in \
 		'mise '*) runtime_release=$${receipt_runtime#mise }; runtime_release=$${runtime_release%% *} ;; \
 		*) runtime_release=$${receipt_runtime%% *} ;; \
@@ -179,7 +176,7 @@
 		printf 'ERROR: missing generated mise.lock; run make gen APPLY=Y and commit it\n' >&2; \
 		exit 2; \
 	fi; \
-	{{ mise_latest_runtime_bootstrap(project_root, mise, bootstrap) }}; \
+	{{ mise_runtime_bootstrap(project_root, mise, bootstrap) }}; \
 	mise_checked "$$scratch/install.log" mise_exec project "$$latest_mise" -C "$$project_root" install --locked --yes; \
 	mise_checked "$$scratch/uv-version.log" mise_exec project "$$latest_mise" -C "$$project_root" exec -- uv --version; \
 	uv_output=$$(cat "$$scratch/uv-version.log"); \

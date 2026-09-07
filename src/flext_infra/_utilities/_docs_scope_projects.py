@@ -26,18 +26,21 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
 
     @staticmethod
     def resolve_projects(
-        workspace_root: Path, names: t.StrSequence
+        repository_root: Path, names: t.StrSequence
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Resolve project names through repository-local topology only."""
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
-        discovered = owner.discover_projects(workspace_root)
+        discovered = owner.discover_projects(repository_root)
         if discovered.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].from_failure(discovered)
         projects = list(discovered.value)
-        root = owner.absolute_lexical(workspace_root)
+        root = owner.absolute_lexical(repository_root)
         if all(project.path != root for project in projects):
             root_project = owner.project_info_for_entry(
-                root, workspace_subprojects=owner.workspace_subproject_path_set(root)
+                root,
+                workspace_declared_repositories=owner.workspace_declared_repository_path_set(
+                    root
+                ),
             )
             if root_project is not None:
                 projects.append(root_project)
@@ -63,10 +66,12 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         )
 
     @staticmethod
-    def workspace_subproject_path_set(workspace_root: Path) -> frozenset[Path]:
+    def workspace_declared_repository_path_set(
+        repository_root: Path,
+    ) -> frozenset[Path]:
         """Return lexical subprojects freshly read from this root's manifest."""
         root = FlextInfraUtilitiesDocsScopeProjectsMixin.absolute_lexical(
-            workspace_root
+            repository_root
         )
         declared = FlextInfraUtilitiesGit.git_declared_submodule_paths(root)
         if declared.failure:
@@ -75,7 +80,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
 
     @staticmethod
     def project_info_for_entry(
-        entry: Path, *, workspace_subprojects: frozenset[Path]
+        entry: Path, *, workspace_declared_repositories: frozenset[Path]
     ) -> mw.ProjectInfo | None:
         """Build one canonical project descriptor for one discovered project root."""
         entry = FlextInfraUtilitiesDocsScopeProjectsMixin.absolute_lexical(entry)
@@ -90,7 +95,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             or not project_name.strip()
         ):
             return None
-        is_workspace_subproject = entry in workspace_subprojects
+        is_workspace_declared_repository = entry in workspace_declared_repositories
         enabled = project_state.docs_meta.get("enabled", True)
         if isinstance(enabled, bool) and not enabled:
             return None
@@ -102,7 +107,7 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
         )
         has_deps = bool(project_section.get("dependencies"))
         if (
-            not is_workspace_subproject
+            not is_workspace_declared_repository
             and not has_src
             and not has_tests
             and not has_deps
@@ -128,39 +133,42 @@ class FlextInfraUtilitiesDocsScopeProjectsMixin(
             ),
             package_name=project_state.package_name,
             make_profile=make_profile,
-            declared_subproject=is_workspace_subproject,
+            declared_subproject=is_workspace_declared_repository,
         )
 
     @staticmethod
     def discover_projects(
-        workspace_root: Path,
+        repository_root: Path,
     ) -> p.Result[t.SequenceOf[mw.ProjectInfo]]:
         """Discover the root or projects declared by its own ``.gitmodules``."""
         owner = FlextInfraUtilitiesDocsScopeProjectsMixin
-        roots = owner.docs_workspace_roots(workspace_root)
+        roots = owner.docs_repository_roots(repository_root)
         if roots.failure:
             return r[t.SequenceOf[mw.ProjectInfo]].from_failure(roots)
-        workspace_root = roots.value[0]
-        excluded = owner.excluded_roots(workspace_root)
-        workspace_subprojects = owner.workspace_subproject_path_set(workspace_root)
+        repository_root = roots.value[0]
+        excluded = owner.excluded_roots(repository_root)
+        workspace_declared_repositories = owner.workspace_declared_repository_path_set(
+            repository_root
+        )
         project_roots = FlextInfraUtilitiesProjectDiscovery.discover_project_candidates(
-            workspace_root
+            repository_root
         )
         root_project: mw.ProjectInfo | None = None
         projects: list[mw.ProjectInfo] = []
         for project_root in project_roots:
             if project_root.name == "cmd" or project_root.name in excluded:
                 continue
-            if project_root == workspace_root and not owner.physical_directory_exists(
+            if project_root == repository_root and not owner.physical_directory_exists(
                 project_root / c.Infra.DEFAULT_SRC_DIR
             ):
                 continue
             project_info = owner.project_info_for_entry(
-                project_root, workspace_subprojects=workspace_subprojects
+                project_root,
+                workspace_declared_repositories=workspace_declared_repositories,
             )
             if project_info is None:
                 continue
-            if project_root == workspace_root:
+            if project_root == repository_root:
                 root_project = project_info
                 continue
             projects.append(project_info)

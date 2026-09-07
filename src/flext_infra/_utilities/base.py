@@ -23,6 +23,16 @@ class FlextInfraUtilitiesBase:
     """
 
     @staticmethod
+    def path_depth(path: Path) -> int:
+        """Return the number of components in a path."""
+        return len(path.parts)
+
+    @staticmethod
+    def path_depth_then_text(path: Path) -> tuple[int, str]:
+        """Order paths by depth and stable POSIX representation."""
+        return FlextInfraUtilitiesBase.path_depth(path), path.as_posix()
+
+    @staticmethod
     def resolve_repository_root_or_cwd(repository_root: Path | None = None) -> Path:
         """Resolve the root a verb operates on from its invocation point.
 
@@ -66,16 +76,6 @@ class FlextInfraUtilitiesBase:
         """Normalize repeated CLI sequence fields into a compact selector list."""
         names = FlextInfraUtilitiesBase.normalize_cli_values(*(values or ()))
         return names or None
-
-    @staticmethod
-    def path_depth(path: Path) -> int:
-        """Return the number of components in a path."""
-        return len(path.parts)
-
-    @staticmethod
-    def path_depth_then_text(path: Path) -> tuple[int, str]:
-        """Order paths by depth and then their stable POSIX representation."""
-        return FlextInfraUtilitiesBase.path_depth(path), path.as_posix()
 
     @staticmethod
     def first_merge_conflict_marker(content: str) -> str | None:

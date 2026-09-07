@@ -26,7 +26,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
     ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
         """Sync one workspace's generated environment files."""
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
-        repository_root = request.repository_root
+        repository_root = request.workspace_root
         if not (repository_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return cls._remove_generated_environment_files(request)
         envrc_result = cls._sync_envrc(request)
@@ -46,7 +46,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if rendered.failure:
             return r[bool].from_failure(rendered)
         return cls._write_generated_text(
-            request.repository_root / c.Infra.ENVRC_FILENAME,
+            request.workspace_root / c.Infra.ENVRC_FILENAME,
             rendered.value,
             apply=request.apply,
             force=request.force,
@@ -68,8 +68,20 @@ class FlextInfraWorkspaceEnvironmentMixin:
             / f"{destination}.j2"
         )
         render_context: (
-            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.ToolchainSpec
-        ) = context if context is not None else config.Infra.codegen.toolchain
+            m.Infra.BeadsWorkspaceEnvironmentSpec | m.Infra.EnvrcRenderSpec
+        ) = (
+            context
+            if context is not None
+            else m.Infra.EnvrcRenderSpec(
+                state_directory_name=config.Infra.codegen.toolchain.state_directory_name,
+                scratch_namespace=config.Infra.codegen.toolchain.scratch_namespace,
+                pycache_namespace=config.Infra.codegen.toolchain.pycache_namespace,
+                environment_path_prepends=(
+                    config.Infra.codegen.toolchain.environment_path_prepends
+                ),
+                mise_bootstrap=u.Infra.mise_bootstrap_environment(),
+            )
+        )
         return u.Cli.template_render(template_path, render_context)
 
     @classmethod
@@ -80,7 +92,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
         removed: list[Path] = []
         for filename in c.Infra.WORKSPACE_ENV_FILES:
-            target_path = request.repository_root / filename
+            target_path = request.workspace_root / filename
             result = cls._remove_generated_environment_file(
                 target_path, apply=request.apply
             )

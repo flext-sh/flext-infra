@@ -77,8 +77,7 @@ class FlextInfraModelsEnforcement:
             t.StrSequence, m.Field(description="Change messages for the file")
         ] = ()
         files_modified: Annotated[
-            t.StrSequence,
-            m.Field(description="Paths modified when the fix is applied"),
+            t.StrSequence, m.Field(description="Paths modified when the fix is applied")
         ] = ()
 
     class ProjectFixResult(m.Value):

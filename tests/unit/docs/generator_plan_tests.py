@@ -111,15 +111,13 @@ def test_required_directories_match_final_file_plan_targets(tmp_path: Path) -> N
             directory.mkdir()
     planned = generator.plan_files(prepared.value)
     tm.ok(planned)
-    tm.that(
-        {
-            plan.path.parent
-            for plan in planned.value
-            if plan.desired_content is not None
-            and plan.path.parent not in directories_before
-        }.issubset(set(required.value)),
-        eq=True,
-    )
+    planned_new_parents = {
+        plan.path.parent
+        for plan in planned.value
+        if plan.desired_content is not None
+        and plan.path.parent not in directories_before
+    }
+    tm.that(planned_new_parents.difference(required.value), eq=set())
 
 
 def test_plan_files_returns_exact_read_only_docs_plans(tmp_path: Path) -> None:

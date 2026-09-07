@@ -153,9 +153,7 @@ class FlextInfraModGateEngine:
                 continue
             source_path = config_root / relative
             if source_path.is_file():
-                if source_path.read_text(encoding="utf-8") == temp_path.read_text(
-                    encoding="utf-8"
-                ):
+                if source_path.read_bytes() == temp_path.read_bytes():
                     continue
             else:
                 source_path.parent.mkdir(parents=True, exist_ok=True)
@@ -425,6 +423,29 @@ class FlextInfraModGateEngine:
             f"providers={len(plan.rulesets)} rules={len(plan.rules)}\n"
         )
         sys.stderr.flush()
+<<<<<<< HEAD
+        scan_command = u.Infra.ast_grep_scan_command(
+            rules[0],
+            rule_ids=tuple(sorted(known_rule_ids)),
+            targets=targets,
+            json_stream=True,
+        )
+        run = cls._run_tool(root, scan_command, finding_exit_code=1)
+        if run.failure:
+            return r[m.Infra.ModScanReport].from_failure(run)
+        report = cls._parse_findings(
+            run.value.stdout, root, rule_files_by_id, frozenset(fixable_ids)
+        ).unwrap()
+        if run.value.outcome.raw_return_code != 0:
+            cls._validate_finding_receipt(run.value.stderr, report.findings).unwrap()
+        findings = report.findings
+        actionable_findings = report.actionable
+        detection_only_findings = report.detection_only
+        non_actionable_with_fix_findings = report.non_actionable_with_fix
+        files.update(report.files)
+        entries.extend(report.entries)
+        if fix and report.actionable:
+=======
         for ruleset in plan.rulesets:
             ruleset_files = {
                 rule_id: rule_files_by_id[rule_id] for rule_id in ruleset.rule_ids
@@ -457,6 +478,7 @@ class FlextInfraModGateEngine:
             entries.extend(report.entries)
             if not (fix and report.actionable and ruleset.fixable_rule_ids):
                 continue
+>>>>>>> origin/0.12.0-dev
             apply_command = u.Infra.ast_grep_scan_command(
                 ruleset.config,
                 rule_ids=ruleset.fixable_rule_ids,

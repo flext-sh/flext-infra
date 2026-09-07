@@ -39,10 +39,13 @@ class FlextInfraCodemodGate(FlextInfraGate):
         started = time.monotonic()
         planned = u.Infra.codemod_rule_plan(project_dir)
         if planned.failure:
+<<<<<<< HEAD
+=======
             failure = planned.error
             if not failure:
                 msg = "codemod rule planning failed without a diagnostic"
                 raise RuntimeError(msg)
+>>>>>>> origin/0.12.0-dev
             return self._build_check_gate_execution(
                 project_dir,
                 passed=False,
@@ -64,9 +67,13 @@ class FlextInfraCodemodGate(FlextInfraGate):
         raw_outputs: list[str] = []
         for ruleset in planned.value.rulesets:
             scan = self._run(
+<<<<<<< HEAD
+                self._scan_command(ruleset, project_dir),
+=======
                 u.Infra.ast_grep_scan_command(
                     ruleset.config, rule_ids=ruleset.rule_ids, json_stream=True
                 ),
+>>>>>>> origin/0.12.0-dev
                 project_dir,
                 timeout=self._check_timeout(project_dir, ctx),
             )
@@ -90,6 +97,34 @@ class FlextInfraCodemodGate(FlextInfraGate):
             started=started,
         )
 
+<<<<<<< HEAD
+    @staticmethod
+    def _scan_command(
+        ruleset: m.Infra.CodemodRuleset, project_dir: Path
+    ) -> t.StrSequence:
+        """Canonical ast-grep invocation for one composed provider ruleset."""
+        return (
+            c.Infra.SG,
+            c.Infra.SCAN,
+            "--config",
+            str(ruleset.config),
+            "--filter",
+            u.Infra.codemod_rule_filter(ruleset.rule_ids),
+            str(project_dir),
+        )
+
+    @staticmethod
+    def _rules(project_dir: Path) -> t.SequenceOf[Path]:
+        """Resolve inherited rules through the public dependency utility."""
+        return u.Infra.project_dependency_resource_files(
+            project_dir,
+            resource_parts=(c.Infra.CODEMOD_RESOURCE_DIRNAME, c.Cli.RULES_DIR_NAME),
+            distribution_prefix=c.Infra.PKG_PREFIX_HYPHEN,
+            suffix=c.Infra.CODEMOD_RULE_SUFFIX,
+        )
+
+=======
+>>>>>>> origin/0.12.0-dev
     def _issues_from_scan(
         self, scan: p.Cli.CommandOutput, provider: str
     ) -> t.SequenceOf[m.Infra.Issue]:
@@ -127,6 +162,18 @@ class FlextInfraCodemodGate(FlextInfraGate):
     def _issue_from_finding(self, line: str, provider: str) -> m.Infra.Issue:
         """Turn one ast-grep JSONL finding into an issue at its real location.
 
+<<<<<<< HEAD
+    @override
+    def _parse_check_output(
+        self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
+    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+        """Parse a single ast-grep scan result into issues."""
+        _ = ctx
+        rules = self._rules(project_dir)
+        rule_path = rules[0] if rules else project_dir
+        issues = self._issues_from_scan(result, rule_path.name)
+        return not issues, issues
+=======
         The scan is requested as ``--json=stream`` rather than as ast-grep's
         human report because that report spends several lines on each
         violation -- the message, the file banner, the source excerpt and its
@@ -166,3 +213,4 @@ class FlextInfraCodemodGate(FlextInfraGate):
             message=message,
             severity=str(c.Infra.GateSeverity.ERROR.value),
         )
+>>>>>>> origin/0.12.0-dev

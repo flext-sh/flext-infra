@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
+<<<<<<< HEAD
+from flext_infra import c, m, u
+=======
 from flext_infra import m, u
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen import (
     _codegen_staging as generic_staging,
     _mise_artifacts_journal as journal_io,
@@ -16,6 +20,11 @@ from flext_infra.codegen import (
     _mise_artifacts_state as state,
     _mise_artifacts_verification as verify,
 )
+<<<<<<< HEAD
+from flext_infra.codegen._mise_artifacts_recovery import FlextInfraMiseRecovery
+from flext_infra.codegen._mise_artifacts_staging import FlextInfraMiseStaging
+=======
+>>>>>>> origin/0.12.0-dev
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock
 from flext_infra.codegen.mise_artifacts_workspace import FlextInfraMiseWorkspacePlanner
 
@@ -101,7 +110,7 @@ class FlextInfraCodegenTransaction:
         except BlockingIOError:
             return r[T].fail(
                 "another generation transaction owns the workspace: "
-                f"{identity.value.git_dir / 'HEAD'}"
+                f"{identity.value.git_dir / c.Infra.CODEGEN_TRANSACTION_LOCK_FILENAME}"
             )
         except OSError as exc:
             return r[T].fail_op("execute generation transaction", exc)
@@ -142,6 +151,14 @@ class FlextInfraCodegenTransaction:
         transaction_directories = state.plan_transaction_directories(layout)
         if transaction_directories.failure:
             return result_type.from_failure(transaction_directories)
+        conform_directories = state.plan_directories(
+            layout,
+            phase="conform",
+            requested=u.Infra.codegen_required_directories(file_plans),
+            disposition="generated",
+        )
+        if conform_directories.failure:
+            return result_type.from_failure(conform_directories)
         plan = self._planner.snapshot(layout, config_plans)
         if plan.failure:
             return result_type.from_failure(plan)
@@ -187,8 +204,20 @@ class FlextInfraCodegenTransaction:
         )
         if staging_state.failure:
             return result_type.from_failure(staging_state)
+        with_conform_directories = journal_io.append_directories(
+            staging_journal.value, conform_directories.value
+        )
+        if with_conform_directories.failure:
+            return result_type.from_failure(with_conform_directories)
+        if with_conform_directories.value != staging_journal.value:
+            staging_state = journal_io.write(
+                layout, with_conform_directories.value, expected=staging_state.value
+            )
+            if staging_state.failure:
+                return result_type.from_failure(staging_state)
+        active_staging_journal = with_conform_directories.value
         materialized = self._materialize_directories(
-            layout, staging_journal.value, staging_state.value
+            layout, active_staging_journal, staging_state.value
         )
         if materialized.failure:
             return result_type.from_failure(materialized)
@@ -486,15 +515,15 @@ class FlextInfraCodegenTransaction:
             )
         )
 
-    def commit_locked(
+    def commit_locked[T](
         self,
         session: m.Infra.CodegenTransactionSession,
-        validator: Callable[[], p.Result[bool]],
-    ) -> p.Result[tuple[Path, ...]]:
-        """Validate final reality while recoverable, then commit and clean up."""
+        validator: Callable[[], p.Result[T]],
+    ) -> p.Result[tuple[tuple[Path, ...], T]]:
+        """Validate final reality and return its receipt after atomic commit."""
         validated = validator()
-        if validated.failure or not validated.value:
-            return r[tuple[Path, ...]].from_failure(
+        if validated.failure:
+            return r[tuple[tuple[Path, ...], T]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     validated.error or "generation fixed-point validation failed",
@@ -509,7 +538,7 @@ class FlextInfraCodegenTransaction:
             or observed_snapshot is None
             or observed_snapshot != session.journal_state
         ):
-            return r[tuple[Path, ...]].from_failure(
+            return r[tuple[tuple[Path, ...], T]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     observed.error or "generation journal changed before commit",
@@ -517,7 +546,7 @@ class FlextInfraCodegenTransaction:
             )
         committed = journal_io.commit(session.journal)
         if committed.failure:
-            return r[tuple[Path, ...]].from_failure(
+            return r[tuple[tuple[Path, ...], T]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     committed.error or "cannot validate generation commit",
@@ -527,7 +556,7 @@ class FlextInfraCodegenTransaction:
             session.plan.layout, committed.value, expected=session.journal_state
         )
         if committed_state.failure:
-            return r[tuple[Path, ...]].from_failure(
+            return r[tuple[tuple[Path, ...], T]].from_failure(
                 self._recover_failure(
                     session.plan.layout,
                     committed_state.error or "cannot persist generation commit",
@@ -537,8 +566,11 @@ class FlextInfraCodegenTransaction:
             session.plan.layout, committed.value, committed_state.value
         )
         if cleaned.failure:
-            return r[tuple[Path, ...]].from_failure(cleaned)
-        return r[tuple[Path, ...]].ok(session.written_files)
+            return r[tuple[tuple[Path, ...], T]].from_failure(cleaned)
+        return r[tuple[tuple[Path, ...], T]].ok((
+            session.written_files,
+            validated.value,
+        ))
 
     def _materialize_directories(
         self,

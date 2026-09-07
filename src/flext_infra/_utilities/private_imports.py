@@ -236,9 +236,8 @@ class FlextInfraUtilitiesPrivateImports:
                                     facade_alias
                                 )
             all_removals = {
-                module: frozenset(
-                    removals.get(module, set()) | obsolete_imports.get(module, set())
-                )
+                module: removals.get(module, set())
+                | obsolete_imports.get(module, set())
                 for module in removals.keys() | obsolete_imports.keys()
             }
             for facade_alias, package in public_imports.items():

@@ -58,6 +58,20 @@ class FlextInfraConstantsCodegen(
     "Regex to parse violation strings: [NS-00X-NNN] path:line — message."
     MISE_RELEASE_COMPONENT_COUNT: Final[int] = 3
     "Number of numeric components in a generated Mise release version."
+    MISE_LAUNCHER_DIRECTORY: Final[str] = "bin"
+    "Directory that owns generated runtime Mise launchers."
+    MISE_UNIX_LAUNCHER_FILENAME: Final[str] = "mise"
+    "Canonical Unix Mise launcher filename."
+    MISE_WINDOWS_LAUNCHER_FILENAME: Final[str] = "mise.cmd"
+    "Canonical Windows Mise launcher filename."
+    MISE_LOCK_FILENAME: Final[str] = "mise.lock"
+    "Canonical generated Mise lock filename."
+    CODEGEN_TRANSACTION_LOCK_FILENAME: Final[str] = "flext-infra-codegen.lock"
+    "Worktree-specific administrative lock for complete generation."
+    CODEGEN_TRANSACTION_LOCK_MODE: Final[int] = 0o600
+    "Owner-private mode required for the generation lock."
+    MISE_BOOTSTRAP_SEED_DIRECTORY: Final[str] = "templates/bootstrap"
+    "Package-local bootstrap seed directory for the authenticated launcher."
     MISE_BOOTSTRAP_STORAGE_ROOT_VARIABLE: Final[str] = "MISE_DATA_DIR"
     "Required caller-owned persistent root for generated Mise setup."
     MISE_BOOTSTRAP_FIXED_ENVIRONMENT: Final[t.StrPairSequence] = (

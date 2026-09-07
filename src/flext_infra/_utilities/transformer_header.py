@@ -134,10 +134,7 @@ class FlextInfraUtilitiesTransformerHeader(FlextInfraUtilitiesTransformerHeaderP
     @staticmethod
     def _alias_is_annotation_only(source: str, alias: str) -> bool:
         """Report whether every use of ``alias`` sits inside an annotation."""
-        try:
-            module = ast.parse(source)
-        except SyntaxError:
-            return False
+        module = ast.parse(source)
         spans: list[tuple[int, int, int, int]] = []
         for node in ast.walk(module):
             annotations = []

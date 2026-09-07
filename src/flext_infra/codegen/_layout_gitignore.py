@@ -89,6 +89,13 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
 
+<<<<<<< HEAD
+    @staticmethod
+    def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
+        """Make profile when the project is governed by a workspace."""
+        repository_root = r[Path].ok(
+            u.Infra.resolve_repository_root_or_cwd(project_dir)
+=======
     @classmethod
     def _managed_profile(
         cls, project_dir: Path
@@ -101,6 +108,7 @@ class FlextInfraCodegenLayoutGitignoreMixin:
         """
         repository_root = u.Infra.git_show_toplevel(
             m.Infra.GitRepoRequest(repo_root=project_dir)
+>>>>>>> origin/0.12.0-dev
         )
         if repository_root.failure:
             return r[c.Infra.MakeProfile | None].ok(None)

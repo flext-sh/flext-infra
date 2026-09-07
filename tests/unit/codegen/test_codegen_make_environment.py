@@ -30,13 +30,6 @@ class TestsCodegenMakeEnvironment:
         ).model_copy(update={"editable": True})
         project_root = tmp_path / profile.value / "fixture-project"
         WorktreeFixture.write_python_project(project_root, repository.distribution)
-        beads = test_u.Tests.beads_project(repository.distribution)
-        test_u.Tests.write_beads_project(
-            project_root,
-            workspace=beads.workspace,
-            database=beads.database,
-            issue_prefix=beads.issue_prefix,
-        )
         test_u.Tests.initialize_git_repo(project_root, origin_url=repository.url)
         provider = test_u.Tests.provider(repository.provider)
         baseline = tm.ok(u.Cli.capture(["git", "rev-parse", "HEAD"], cwd=project_root))
@@ -59,17 +52,20 @@ class TestsCodegenMakeEnvironment:
         )
         repository_root = project_root
         infra_repositories = (test_u.Tests.repository_ref(config.Infra.name),)
-        local_subprojects = (
+        local_declared_repositories = (
             (infra_repositories[0].model_copy(update={"path": Path("infra-engine")}),)
             if local_infra
             else ()
         )
         workspace = m.Infra.WorkspaceSpec(
             name="fixture-project",
+<<<<<<< Updated upstream
             beads=test_u.Tests.beads_project("fixture-project"),
+=======
+>>>>>>> Stashed changes
             repository=repository,
             project=test_u.Tests.project_spec("fixture-project"),
-            subprojects=local_subprojects,
+            declared_repositories=local_declared_repositories,
         )
         request = m.Infra.CodegenConformRequest(
             root=project_root,
@@ -146,8 +142,13 @@ class TestsCodegenMakeEnvironment:
             )
         )
         tm.that(
+<<<<<<< HEAD
+            process.outcome.raw_return_code,
+            eq=0,
+=======
             u.Cli.process_succeeded(process.outcome),
             eq=True,
+>>>>>>> origin/0.12.0-dev
             msg=process.stderr or process.stdout or "make probe failed without output",
         )
         output = process.stdout.strip().splitlines()
@@ -224,9 +225,13 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(result)
         tm.that(
+<<<<<<< HEAD
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+=======
             u.Cli.process_succeeded(process.outcome),
             eq=True,
             msg=process.stdout + process.stderr,
+>>>>>>> origin/0.12.0-dev
         )
         commands = uv_log.read_text(encoding="utf-8").splitlines()
         tm.that(commands[0], has="venv ")
@@ -261,8 +266,247 @@ class TestsCodegenMakeEnvironment:
         tm.that(process.outcome.raw_return_code, ne=0)
         tm.that(process.stdout + process.stderr, has="missing generated mise launcher")
         tm.that(mise.is_file(), eq=True)
+<<<<<<< Updated upstream
         tm.that(mise_log.exists(), eq=False)
         tm.that((project_root / ".venv").exists(), eq=False)
+=======
+        tm.that((project_root / ".venv" / "bin" / "python").is_file(), eq=True)
+        tm.that(
+            any(
+                "/.test-tmp/mise-setup." in value and value.endswith("/config")
+                for line in mise_env_log.read_text(encoding="utf-8").splitlines()
+                for value in (line.split("|", 2)[1],)
+            ),
+            eq=True,
+        )
+        setup_ceilings = {
+            line.split("|", 2)[2]
+            for line in mise_env_log.read_text(encoding="utf-8").splitlines()
+            if "/.test-tmp/mise-setup." in line
+        }
+        assert setup_ceilings == {str(project_root.parent)}
+        tm.that(beads_selection_log.exists(), eq=False)
+
+    def test_gen_lock_failure_has_zero_repository_effect(self, tmp_path: Path) -> None:
+        """Fail lock staging before conform, docs, launcher, or lock publication."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        (project_root / ".mise.toml").write_text(
+            "[settings]\nlockfile = true\n\n"
+            '[tool_config]\nlocked = true\n\n[tools]\nuv = "0.12"\n',
+            encoding="utf-8",
+        )
+        (project_root / "mise.lock").write_text("# original lock\n", encoding="utf-8")
+        (project_root / ".gitignore").write_text(
+            "# original ignore\n", encoding="utf-8"
+        )
+        mise = tmp_path / "mise-fails-lock"
+        test_u.Tests.write_executable(
+            mise,
+            "#!/bin/sh\n"
+            'case "$*" in\n'
+            '  *"generate install-script"*)\n'
+            "    output=\n"
+            '    while [ "$#" -gt 0 ]; do\n'
+            '      if [ "$1" = "--write" ]; then shift; output="$1"; fi\n'
+            "      shift\n"
+            "    done\n"
+            "    printf '#!/bin/sh\\nexit 0\\n' > \"$output\"\n"
+            "    printf '@exit /b 0\\n' > \"$output.cmd\"\n"
+            "    exit 0\n"
+            "    ;;\n"
+            "  *\" lock \"*) printf 'fixture lock failure\\n' >&2; exit 86 ;;\n"
+            "esac\n"
+            "exit 0\n",
+        )
+        tool_bin = tmp_path / "tools"
+        tool_bin.mkdir()
+        test_u.Tests.write_executable(tool_bin / "uv", "#!/bin/sh\nexit 0\n")
+        owned_paths = tuple(
+            project_root / relative
+            for relative in (".gitignore", "mise.lock", "bin/mise", "bin/mise.cmd")
+        )
+        before = {
+            path: path.read_bytes() if path.is_file() else None for path in owned_paths
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "_builtin_gen_all",
+                    "APPLY=Y",
+                    f"SETUP_MISE={mise}",
+                ],
+                cwd=project_root,
+                env={"PATH": f"{tool_bin}:{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(process.stdout + process.stderr, has="fixture lock failure")
+        after = {
+            path: path.read_bytes() if path.is_file() else None for path in owned_paths
+        }
+        tm.that(after, eq=before)
+        transaction_dirs = tuple(
+            (project_root / ".test-tmp").glob("mise-transaction.*")
+        )
+        tm.that(transaction_dirs, eq=())
+>>>>>>> Stashed changes
+
+    def test_gen_rejects_suspended_selector_before_any_effect(
+        self, tmp_path: Path
+    ) -> None:
+        """A suspended selector cannot reach config CLI, Mise, or transaction setup."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        mise_config = project_root / ".mise.toml"
+        mise_config.write_text(
+            "[settings]\nlockfile = true\n\n"
+            "[tool_config]\nlocked = true\n\n"
+            '[tools]\n"github:gastownhall/beads" = "1.2.2"\n',
+            encoding="utf-8",
+        )
+        lock_path = project_root / "mise.lock"
+        lock_path.write_text("# original lock\n", encoding="utf-8")
+        tool_log = tmp_path / "tool.log"
+        tool_bin = tmp_path / "tools"
+        tool_bin.mkdir()
+        for executable in ("mise", "uv"):
+            test_u.Tests.write_executable(
+                tool_bin / executable,
+                f"#!/bin/sh\nprintf '%s\\n' \"$0 $*\" >> '{tool_log}'\nexit 91\n",
+            )
+        before = {
+            path: path.read_bytes()
+            for path in (mise_config, lock_path, project_root / "Makefile")
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "_builtin_gen_all",
+                    "APPLY=Y",
+                    f"SETUP_MISE={tool_bin / 'mise'}",
+                ],
+                cwd=project_root,
+                env={"PATH": f"{tool_bin}:{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(process.stdout + process.stderr, has="suspended toolchain")
+        tm.that(tool_log.exists(), eq=False)
+        tm.that(
+            {
+                path: path.read_bytes()
+                for path in (mise_config, lock_path, project_root / "Makefile")
+            },
+            eq=before,
+        )
+        tm.that(tuple((project_root / ".test-tmp").glob("mise-transaction.*")), eq=())
+
+    def test_gen_trust_receives_attested_physical_payload_and_failure_is_atomic(
+        self, tmp_path: Path
+    ) -> None:
+        """Trust runs isolated on the copied payload; its failure publishes nothing."""
+        project_root, _workspace_root = self._render_makefile(
+            tmp_path, c.Infra.MakeProfile.STANDALONE
+        )
+        mise_config = project_root / ".mise.toml"
+        mise_config.write_text(
+            "[settings]\nlockfile = true\n\n"
+            '[tool_config]\nlocked = true\n\n[tools]\nuv = "0.12"\n',
+            encoding="utf-8",
+        )
+        lock_path = project_root / "mise.lock"
+        lock_path.write_text("# original lock\n", encoding="utf-8")
+        trust_log = tmp_path / "trust.log"
+        mise = tmp_path / "mise-fails-trust"
+        test_u.Tests.write_executable(
+            mise,
+            "#!/bin/sh\n"
+            'case "$*" in\n'
+            '  *"generate install-script"*)\n'
+            "    output=\n"
+            '    while [ "$#" -gt 0 ]; do\n'
+            '      if [ "$1" = "--write" ]; then shift; output="$1"; fi\n'
+            "      shift\n"
+            "    done\n"
+            "    printf '#!/bin/sh\\nexit 0\\n' > \"$output\"\n"
+            "    printf '@exit /b 0\\n' > \"$output.cmd\"\n"
+            "    exit 0\n"
+            "    ;;\n"
+            '  "trust "*|*" trust "*)\n'
+            "    trusted=${2:-}\n"
+            '    [ -f "$trusted" ] && [ ! -L "$trusted" ] || exit 88\n'
+            f'    expected="{mise_config}"\n'
+            '    sed "s/^locked = false$/locked = true/" "$trusted" | '
+            'cmp -s - "$expected" || exit 89\n'
+            f'    printf "%s|%s|%s|%s\\n" "$HOME" "$XDG_CONFIG_HOME" '
+            f'"$XDG_RUNTIME_DIR" "$(git hash-object --no-filters "$trusted")" '
+            f'> "{trust_log}"\n'
+            '    case "$HOME|$XDG_CONFIG_HOME|$XDG_RUNTIME_DIR" in\n'
+            '      *"/mise-transaction."*"/locks/0/home|"*'
+            '"/mise-transaction."*"/locks/0/config|"*'
+            '"/mise-transaction."*"/locks/0/runtime") exit 87 ;;\n'
+            "      *) exit 90 ;;\n"
+            "    esac\n"
+            "    ;;\n"
+            "esac\n"
+            "exit 0\n",
+        )
+        tool_bin = tmp_path / "tools"
+        tool_bin.mkdir()
+        test_u.Tests.write_executable(tool_bin / "uv", "#!/bin/sh\nexit 0\n")
+        owned_paths = tuple(
+            project_root / relative
+            for relative in (".mise.toml", "mise.lock", "bin/mise", "bin/mise.cmd")
+        )
+        before = {
+            path: path.read_bytes() if path.is_file() else None for path in owned_paths
+        }
+
+        process = tm.ok(
+            u.Cli.run_raw(
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "_builtin_gen_all",
+                    "APPLY=Y",
+                    f"SETUP_MISE={mise}",
+                ],
+                cwd=project_root,
+                env={"PATH": f"{tool_bin}:{os.environ['PATH']}"},
+                remove_env_keys=("MAKEFLAGS", "MAKEOVERRIDES", "MFLAGS", "UV"),
+            )
+        )
+
+        tm.that(process.exit_code, ne=0)
+        tm.that(process.stdout + process.stderr, has="Error 87")
+        tm.that(trust_log.is_file(), eq=True)
+        trust_fields = trust_log.read_text(encoding="utf-8").strip().split("|")
+        tm.that(len(trust_fields), eq=4)
+        tm.that(
+            all("/mise-transaction." in value for value in trust_fields[:3]), eq=True
+        )
+        tm.that(len(trust_fields[3]), eq=40)
+        tm.that(
+            {
+                path: path.read_bytes() if path.is_file() else None
+                for path in owned_paths
+            },
+            eq=before,
+        )
+        tm.that(tuple((project_root / ".test-tmp").glob("mise-transaction.*")), eq=())
 
     def test_dispatched_runner_preserves_provisioned_external_tools(
         self, tmp_path: Path
@@ -322,9 +566,13 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(
+<<<<<<< HEAD
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+=======
             u.Cli.process_succeeded(process.outcome),
             eq=True,
             msg=process.stdout + process.stderr,
+>>>>>>> origin/0.12.0-dev
         )
         tools = tool_log.read_text(encoding="utf-8").splitlines()
         tm.that(
@@ -341,7 +589,7 @@ class TestsCodegenMakeEnvironment:
         tm.that(
             "override UV_PROJECT_ENVIRONMENT := $(RUNTIME_VENV)" in makefile, eq=True
         )
-        tm.that("UV ?= uv" in makefile, eq=True)
+        tm.that("UV := uv" in makefile, eq=True)
         tm.that(
             (
                 "UV_RUN := env -u MYPYPATH -u VIRTUAL_ENV -u UV_PROJECT "
@@ -411,7 +659,7 @@ class TestsCodegenMakeEnvironment:
         typed `check run` owner, so a gate the owner declares cannot be left
         unscheduled by the projection.
         """
-        project_root, _workspace_root = self._render_makefile(tmp_path, profile)
+        project_root, _repository_root = self._render_makefile(tmp_path, profile)
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
         phony_declarations = tuple(
             line.removeprefix(".PHONY:").strip()
@@ -436,11 +684,19 @@ class TestsCodegenMakeEnvironment:
             tm.that(scheduled.split(","), has=gate)
         tm.that(makefile, has='--gates "$$gates" --projects .')
 
+<<<<<<< HEAD
+    def test_standalone_check_executes_the_canonical_gate_set(
+        self, tmp_path: Path
+    ) -> None:
+        """Run the sole canonical check executor with the declared default gates."""
+        project_root, _workspace_root = self._render_makefile(
+=======
     def test_standalone_check_executes_its_declared_default_gates(
         self, tmp_path: Path
     ) -> None:
         """Standalone check runs exactly the owner-declared default gate set."""
         project_root, _repository_root = self._render_makefile(
+>>>>>>> origin/0.12.0-dev
             tmp_path, c.Infra.MakeProfile.STANDALONE
         )
         invocation_log = tmp_path / "check-invocation.log"
@@ -462,7 +718,15 @@ class TestsCodegenMakeEnvironment:
                     c.Infra.MAKE,
                     "--no-print-directory",
                     "check",
+<<<<<<< HEAD
+                    (
+                        f"{config.Infra.codegen.make.apply_variable}="
+                        f"{config.Infra.codegen.make.apply_value}"
+                    ),
+                    f"UV={uv}",
+=======
                     f"{apply_variable}={apply_value}",
+>>>>>>> origin/0.12.0-dev
                 ],
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
@@ -471,6 +735,20 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(
+<<<<<<< HEAD
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+        )
+        invocation = invocation_log.read_text(encoding="utf-8")
+        tm.that(invocation, has="-m flext_infra check run")
+        tm.that(
+            invocation,
+            has=(
+                "--gates "
+                f"{','.join(config.Infra.codegen.make.check_gates_default)}"
+                " --projects ."
+            ),
+        )
+=======
             u.Cli.process_succeeded(process.outcome),
             eq=True,
             msg=process.stdout + process.stderr,
@@ -479,6 +757,7 @@ class TestsCodegenMakeEnvironment:
         invocation = invocation_log.read_text(encoding="utf-8")
         tm.that(invocation, has="-m flext_infra check run")
         tm.that(invocation, has=f"--gates {gates} --projects .")
+>>>>>>> origin/0.12.0-dev
 
     def test_dependency_upgrade_scopes_to_declared_project_locks(
         self, tmp_path: Path
@@ -498,7 +777,17 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
+<<<<<<< HEAD
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps-upgrade",
+                    "DEPENDENCY=flext-cli",
+                    "APPLY=Y",
+                ],
+=======
                 [c.Infra.MAKE, "--no-print-directory", "deps", "APPLY=Y"],
+>>>>>>> origin/0.12.0-dev
                 cwd=project_root,
                 # PATH takes the DIRECTORY holding the stub, never the stub
                 # itself: pointing it at the executable makes every lookup miss.
@@ -507,6 +796,13 @@ class TestsCodegenMakeEnvironment:
             )
         )
 
+<<<<<<< HEAD
+        tm.that(
+            process.outcome.raw_return_code, eq=0, msg=process.stdout + process.stderr
+        )
+        commands = uv_log.read_text(encoding="utf-8").splitlines()
+=======
+>>>>>>> origin/0.12.0-dev
         tm.that(
             u.Cli.process_succeeded(process.outcome),
             eq=True,
@@ -540,7 +836,17 @@ class TestsCodegenMakeEnvironment:
 
         process = tm.ok(
             u.Cli.run_raw(
+<<<<<<< HEAD
+                [
+                    c.Infra.MAKE,
+                    "--no-print-directory",
+                    "deps",
+                    "DEPENDENCY=flext-cli --all",
+                    "APPLY=Y",
+                ],
+=======
                 [c.Infra.MAKE, "--no-print-directory", "deps"],
+>>>>>>> origin/0.12.0-dev
                 cwd=project_root,
                 env={"UV": str(uv), "PATH": f"{uv.parent}:{os.environ['PATH']}"},
                 remove_env_keys=c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
@@ -548,8 +854,11 @@ class TestsCodegenMakeEnvironment:
         )
 
         tm.that(process.outcome.raw_return_code, ne=0)
+<<<<<<< HEAD
+=======
         apply_variable = config.Infra.codegen.make.apply_variable
         apply_value = config.Infra.codegen.make.apply_value
+>>>>>>> origin/0.12.0-dev
         tm.that(
             process.stdout + process.stderr,
             has=f"this action requires {apply_variable}={apply_value}",
@@ -585,6 +894,7 @@ class TestsCodegenMakeEnvironment:
         makefile = (project_root / "Makefile").read_text(encoding="utf-8")
 
         for required in (
+<<<<<<< Updated upstream
             "UV ?= uv",
             "ifneq ($(filter setup,$(MAKECMDGOALS)),)",
             "SETUP_BOOTSTRAP_ONLY := Y",
@@ -603,6 +913,9 @@ class TestsCodegenMakeEnvironment:
                 '"$$latest_mise" -C "$$project_root" exec -- env '
                 '"SETUP_DIRENV=$$direnv_executable"'
             ),
+=======
+            "UV := uv",
+>>>>>>> Stashed changes
             '$(UV) venv "$(RUNTIME_VENV)"',
             '$(UV) sync --frozen --project "$(PROJECT_ROOT)"',
             '--link-mode "$(UV_LINK_MODE)"',

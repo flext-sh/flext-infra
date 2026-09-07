@@ -34,9 +34,9 @@ class FlextInfraUtilitiesDiscovery(
     _PARENT_CONSTANTS_FLEXT_CACHE: ClassVar[dict[tuple[str, bool], t.StrSequence]] = {}
 
     @staticmethod
-    def _workspace_project_roots(workspace_root: str) -> tuple[Path, ...]:
+    def _workspace_project_roots(repository_root: str) -> tuple[Path, ...]:
         """Discover project roots once for a command-scoped workspace."""
-        resolved_root = Path(workspace_root).resolve()
+        resolved_root = Path(repository_root).resolve()
         nested_roots: set[Path] = set()
         for directory, child_names, file_names in resolved_root.walk(top_down=True):
             child_names[:] = [
@@ -350,10 +350,10 @@ class FlextInfraUtilitiesDiscovery(
         return frozenset(path.parts[0] for path in excluded.value if path.parts)
 
     @staticmethod
-    def package_init_path(workspace_root: Path, package_name: str) -> Path | None:
+    def package_init_path(repository_root: Path, package_name: str) -> Path | None:
         """Resolve a package in the selected workspace or managed environment."""
         package_parts = Path(*package_name.split("."))
-        resolved_root = workspace_root.resolve()
+        resolved_root = repository_root.resolve()
         project_roots = FlextInfraUtilitiesDiscovery._workspace_project_roots(
             str(resolved_root)
         )
@@ -445,13 +445,13 @@ class FlextInfraUtilitiesDiscovery(
     @classmethod
     def find_all_pyproject_files(
         cls,
-        workspace_root: Path,
+        repository_root: Path,
         *,
         skip_dirs: frozenset[str] | None = None,
         project_paths: t.SequenceOf[Path] | None = None,
     ) -> p.Result[t.SequenceOf[Path]]:
         """Find all managed ``pyproject.toml`` files for one workspace root."""
-        if not workspace_root.exists() or not workspace_root.is_dir():
+        if not repository_root.exists() or not repository_root.is_dir():
             return r[t.SequenceOf[Path]].ok([])
         effective_skip = skip_dirs if skip_dirs is not None else c.Infra.SKIP_DIRS
         # Explicit project paths are a hard write-scope boundary. Without one,
@@ -459,7 +459,7 @@ class FlextInfraUtilitiesDiscovery(
         scan_roots = (
             sorted({project_path.resolve() for project_path in project_paths})
             if project_paths is not None
-            else [workspace_root.resolve()]
+            else [repository_root.resolve()]
         )
         all_files: list[Path] = []
         for scan_root in scan_roots:
@@ -529,7 +529,7 @@ class FlextInfraUtilitiesDiscovery(
 
     @classmethod
     def resolve_transitive_parent_packages(
-        cls, workspace_root: Path, package_names: t.StrSequence
+        cls, repository_root: Path, package_names: t.StrSequence
     ) -> t.StrSequence:
         """Resolve parent packages transitively with ancestors ordered before children."""
         resolved: list[str] = []
@@ -540,7 +540,7 @@ class FlextInfraUtilitiesDiscovery(
             if not package_name or package_name in visited:
                 return
             visited.add(package_name)
-            init_path = cls.package_init_path(workspace_root, package_name)
+            init_path = cls.package_init_path(repository_root, package_name)
             if init_path is not None:
                 for parent_package in cls.resolve_parent_constants_flext(
                     init_path.parent, return_module=True
@@ -571,13 +571,13 @@ class FlextInfraUtilitiesDiscovery(
         )
         if not parent_packages:
             return {}
-        workspace_root = cls.rope_repository_root(project_root)
+        repository_root = cls.rope_repository_root(project_root)
         for candidate in project_root.resolve().parents:
             if (candidate / c.Infra.GITMODULES).is_file():
-                workspace_root = candidate
+                repository_root = candidate
                 break
         transitive_parent_packages = cls.resolve_transitive_parent_packages(
-            workspace_root, parent_packages
+            repository_root, parent_packages
         )
         allowed_sources = frozenset(
             package.split(".", maxsplit=1)[0]
