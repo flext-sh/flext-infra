@@ -7,4 +7,6 @@ dedicated ``executionEnvironments`` entry in the root ``pyproject.toml``
 (rationale recorded inline there).
 """
 
+from __future__ import annotations
+
 __all__: list[str] = []

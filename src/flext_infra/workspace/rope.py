@@ -18,12 +18,12 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
 
     _IDENTIFIER_PATTERN: ClassVar[t.Infra.RegexPattern] = c.Infra.IDENTIFIER_PATTERN
 
-    rope_workspace_root_override: Annotated[
+    rope_repository_root_override: Annotated[
         Path | None,
         m.Field(description="Optional Rope project root; defaults to workspace_root"),
     ] = None
 
-    _rope_workspace_root: Path
+    _rope_repository_root: Path
     _rope_project: t.Infra.RopeProject | None = u.PrivateAttr(
         default_factory=lambda: None
     )
@@ -62,32 +62,31 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def model_post_init(self, __context: t.ScalarMapping | None, /) -> None:
         """Resolve the canonical Rope root once for the full session."""
         super().model_post_init(__context)
-        self._rope_workspace_root = (
-            self.rope_workspace_root_override
-            or u.Infra.rope_workspace_root(self.workspace_root)
+        self._rope_repository_root = (
+            self.rope_repository_root_override
+            or u.Infra.rope_repository_root(self.repository_root)
         )
 
     @classmethod
     def open_workspace(
-        cls, workspace_root: Path, *, rope_workspace_root: Path | None = None
+        cls, repository_root: Path, *, rope_repository_root: Path | None = None
     ) -> Self:
         """Create one ready-to-use Rope workspace session."""
         # NOTE (multi-agent, flext-wkii.17.24): scan policy is owned only by the
         # validated config singleton, never copied into a session.
-        resolved_rope_root = rope_workspace_root or u.Infra.rope_workspace_root(
-            workspace_root
+        resolved_rope_root = rope_repository_root or u.Infra.rope_repository_root(
+            repository_root
         )
         workspace = cls(
-            workspace=workspace_root,
-            rope_workspace_root_override=resolved_rope_root,
+            workspace=repository_root, rope_repository_root_override=resolved_rope_root
         )
         _ = workspace.rope_project
         return workspace
 
     @property
-    def rope_workspace_root(self) -> Path:
+    def rope_repository_root(self) -> Path:
         """Canonical root used for the shared Rope project."""
-        return self._rope_workspace_root
+        return self._rope_repository_root
 
     @property
     def rope_project(self) -> t.Infra.RopeProject:
@@ -95,8 +94,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         rope_project = self._rope_project
         if rope_project is None:
             started_at = perf_counter()
-            u.Cli.info(f"rope: opening workspace at {self._rope_workspace_root}")
-            rope_project = u.Infra.init_rope_project(self._rope_workspace_root)
+            u.Cli.info(f"rope: opening workspace at {self._rope_repository_root}")
+            rope_project = u.Infra.init_rope_project(self._rope_repository_root)
             self._rope_project = rope_project
             u.Cli.info(f"rope: workspace ready in {perf_counter() - started_at:.2f}s")
         return rope_project
@@ -108,10 +107,10 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
         if workspace_index is None:
             started_at = perf_counter()
             u.Cli.info(
-                f"rope: indexing python workspace at {self._rope_workspace_root}"
+                f"rope: indexing python workspace at {self._rope_repository_root}"
             )
             workspace_index = u.Infra.index_rope_workspace(
-                self.rope_project, self._rope_workspace_root
+                self.rope_project, self._rope_repository_root
             )
             self._workspace_index = workspace_index
             u.Cli.info(
@@ -131,8 +130,8 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def session_snapshot(self) -> m.Infra.RopeWorkspaceSession:
         """Return the current public Rope session state."""
         return m.Infra.RopeWorkspaceSession(
-            workspace_root=self.workspace_root,
-            rope_workspace_root=self._rope_workspace_root,
+            repository_root=self.repository_root,
+            rope_repository_root=self._rope_repository_root,
             workspace_index=self.workspace_index,
         )
 
@@ -317,7 +316,7 @@ class FlextInfraRopeWorkspace(s[m.Infra.RopeWorkspaceSession]):
     def projects(self) -> t.SequenceOf[p.Infra.ProjectInfo]:
         """Return the canonical codegen project selection for this workspace."""
         if self._codegen_projects is None:
-            projects_result = u.Infra.projects(self.workspace_root)
+            projects_result = u.Infra.projects(self.repository_root)
             if projects_result.failure:
                 self._codegen_projects = ()
             else:

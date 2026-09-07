@@ -28,11 +28,9 @@ class FlextInfraEnforcementSelection:
         catalog: m.EnforcementCatalog | None = None,
         wanted: t.StrSequence = (),
         safe_only: bool = True,
-        adapterless: t.StrSequence = (),
     ) -> tuple[m.EnforcementRuleSpec, ...]:
         """Return enabled fixable rules selected for fixer execution."""
         wanted_ids = frozenset(wanted)
-        adapterless_ids = frozenset(adapterless)
         rule_catalog = catalog or cls.canonical_catalog()
         candidates = tuple(
             rule
@@ -41,10 +39,7 @@ class FlextInfraEnforcementSelection:
         )
         if wanted_ids:
             cls._validate_requested_rules(
-                candidates,
-                wanted_ids=wanted_ids,
-                adapterless_ids=adapterless_ids,
-                safe_only=safe_only,
+                candidates, wanted_ids=wanted_ids, safe_only=safe_only
             )
         return tuple(
             rule
@@ -85,7 +80,6 @@ class FlextInfraEnforcementSelection:
         candidates: tuple[m.EnforcementRuleSpec, ...],
         *,
         wanted_ids: frozenset[str],
-        adapterless_ids: frozenset[str],
         safe_only: bool,
     ) -> None:
         """Validate explicit rule selection and fail loud on impossible requests."""
@@ -109,13 +103,6 @@ class FlextInfraEnforcementSelection:
                     f"{', '.join(sorted(unsafe))}"
                 )
                 raise ValueError(msg)
-        selected_adapterless = wanted_ids & adapterless_ids
-        if selected_adapterless:
-            msg = (
-                "Requested rules have no available fixer adapter: "
-                f"{', '.join(sorted(selected_adapterless))}"
-            )
-            raise ValueError(msg)
 
 
 __all__: list[str] = ["FlextInfraEnforcementSelection"]

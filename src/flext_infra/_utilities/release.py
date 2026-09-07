@@ -1,28 +1,169 @@
-"""Release reporting utilities for the u.Infra FLEXT chain."""
+"""Release protocol utilities for the u.Infra FLEXT chain."""
 
 from __future__ import annotations
 
+import tarfile
 from collections.abc import Mapping, Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 
 from flext_cli import r, u
-from flext_infra._utilities.base import FlextInfraUtilitiesBase
-from flext_infra._utilities.dependencies import FlextInfraUtilitiesDependencies
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
+from .._utilities.dependencies import FlextInfraUtilitiesDependencies
+
 
 class FlextInfraUtilitiesRelease:
-    """Release notes and changelog utility methods exposed via u.Infra."""
+    """Bump derivation, release notes, changelog, and publish-order utilities."""
 
     @staticmethod
-    def resolve_phase_names(phase: str) -> t.StrSequence:
-        """Expand release phase selectors to the canonical ordered phase list."""
-        if phase == c.Infra.RELEASE_PHASE_ALL:
-            return tuple(c.Infra.ReleasePhase)
-        return FlextInfraUtilitiesBase.normalize_cli_values(phase)
+    def archive_member_path(name: str) -> p.Result[Path]:
+        """Return one safe relative archive member path."""
+        relative = PurePosixPath(name)
+        if (
+            not name
+            or "\\" in name
+            or relative.is_absolute()
+            or any(part in {".", ".."} for part in relative.parts)
+        ):
+            return r[Path].fail(f"unsafe archive member path: {name}")
+        if not relative.parts:
+            return r[Path].fail(f"unsafe archive member path: {name}")
+        return r[Path].ok(Path(*relative.parts))
+
+    @staticmethod
+    def materialize_tar_tree(
+        archive: tarfile.TarFile, destination: Path
+    ) -> p.Result[bool]:
+        """Materialize one trusted tar tree without path traversal."""
+        try:
+            members = tuple(archive.getmembers())
+        except tarfile.TarError as exc:
+            return r[bool].fail_op("read release archive members", exc)
+        validated_members: list[tuple[tarfile.TarInfo, Path]] = []
+        for member in members:
+            path_result = FlextInfraUtilitiesRelease.archive_member_path(member.name)
+            if path_result.failure:
+                return r[bool].from_failure(path_result)
+            if member.issym() or member.islnk():
+                return r[bool].fail(
+                    f"release archive contains symbolic or hard link: {member.name}"
+                )
+            if not member.isdir() and not member.isfile():
+                return r[bool].fail(
+                    f"release archive contains unsupported member: {member.name}"
+                )
+            validated_members.append((member, path_result.value))
+        if destination.exists():
+            return r[bool].fail(
+                f"release stage directory already exists: {destination}"
+            )
+        try:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            return r[bool].fail_op(
+                f"create release stage parent {destination.parent}", exc
+            )
+        try:
+            with TemporaryDirectory(
+                dir=destination.parent, prefix=f".{destination.name}."
+            ) as staging_dir:
+                staging = Path(staging_dir)
+                written = FlextInfraUtilitiesRelease._write_validated_tar_tree(
+                    archive, staging, validated_members
+                )
+                if written.failure:
+                    return written
+                staging.rename(destination)
+        except OSError as exc:
+            return r[bool].fail_op(
+                f"materialize release archive into {destination}", exc
+            )
+        return r[bool].ok(True)
+
+    @staticmethod
+    def _write_validated_tar_tree(
+        archive: tarfile.TarFile,
+        staging: Path,
+        validated_members: Sequence[tuple[tarfile.TarInfo, Path]],
+    ) -> p.Result[bool]:
+        """Write prevalidated tar members into a staging directory."""
+        for member, relative_path in validated_members:
+            member_path = staging / relative_path
+            if member.isdir():
+                try:
+                    member_path.mkdir(parents=True, exist_ok=True)
+                except OSError as exc:
+                    return r[bool].fail_op(
+                        f"create release archive directory {member_path}", exc
+                    )
+                continue
+            try:
+                member_path.parent.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                return r[bool].fail_op(
+                    f"create release archive parent {member_path.parent}", exc
+                )
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                return r[bool].fail(
+                    f"release archive could not open member: {member.name}"
+                )
+            try:
+                member_path.write_bytes(extracted.read())
+            except OSError as exc:
+                return r[bool].fail_op(
+                    f"write release archive member {member_path}", exc
+                )
+            finally:
+                extracted.close()
+        return r[bool].ok(True)
+
+    @staticmethod
+    def plan_bump(
+        subjects: t.StrSequence, bump_types: Mapping[str, c.Infra.VersionBump]
+    ) -> p.Result[c.Infra.VersionBump]:
+        """Derive the release bump from the merged pull-request subjects.
+
+        Every subject is the merge commit of one pull request, so it carries the
+        pull-request title. A Conventional Commits title maps through
+        ``bump_types``; ``!`` marks a breaking change. A GitHub default merge
+        subject carries no release information and therefore fails loudly: the
+        protocol requires the title, never a guess. Any other merge subject (a
+        lane absorbing its integration base) contributes nothing.
+        """
+        order = tuple(c.Infra.VersionBump)
+        bump = c.Infra.VersionBump.NONE
+        for subject in subjects:
+            if c.Infra.PULL_REQUEST_MERGE_SUBJECT_RE.match(subject):
+                return r[c.Infra.VersionBump].fail(
+                    "merged pull request without a Conventional Commits title: "
+                    f"{subject!r}"
+                )
+            match = c.Infra.CONVENTIONAL_SUBJECT_RE.match(subject)
+            if match is None:
+                continue
+            candidate = (
+                c.Infra.VersionBump.MAJOR
+                if match.group("breaking")
+                else bump_types.get(match.group("type"), c.Infra.VersionBump.NONE)
+            )
+            if order.index(candidate) > order.index(bump):
+                bump = candidate
+        return r[c.Infra.VersionBump].ok(bump)
+
+    @staticmethod
+    def is_release_subject(subject: str, version: str) -> bool:
+        """Whether ``subject`` is the protocol's release commit for ``version``.
+
+        Matches the commit as the lane wrote it and as GitHub merged it, which
+        appends the pull-request number to the subject.
+        """
+        match = c.Infra.RELEASE_COMMIT_SUBJECT_RE.match(subject)
+        return match is not None and match.group("version") == version
 
     @staticmethod
     def generate_notes(
@@ -36,14 +177,9 @@ class FlextInfraUtilitiesRelease:
         lines: t.MutableSequenceOf[str] = [
             f"# Release {tag}",
             "",
-            "## Status",
-            "",
-            "- Quality: Alpha",
-            "- Usage: Non-production",
-            "",
             "## Scope",
             "",
-            f"- Workspace release version: {version}",
+            f"- Release version: {version}",
             f"- Projects packaged: {len(project_list) + 1}",
             "",
             "## Projects impacted",
@@ -53,15 +189,9 @@ class FlextInfraUtilitiesRelease:
         lines.extend(f"- {proj.name}" for proj in project_list)
         lines.extend([
             "",
-            "## Changes since last tag",
+            "## Pull requests since last release",
             "",
             changes or "- Initial tagged release",
-            "",
-            "## Verification",
-            "",
-            "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all",
-            "- make val VALIDATE_SCOPE=workspace",
-            "- make build",
         ])
         try:
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,14 +205,14 @@ class FlextInfraUtilitiesRelease:
             )
             return r[bool].ok(True)
         except OSError as exc:
-            return r[bool].fail(f"failed to write release notes: {exc}")
+            return r[bool].fail(f"failed to write release notes: {exc}", exception=exc)
 
     @staticmethod
     def update_changelog(
-        workspace_root: Path, version: str, tag: str, notes_path: Path
+        repository_root: Path, version: str, tag: str, notes_path: Path
     ) -> p.Result[bool]:
         """Update docs/changelog and docs/releases entries."""
-        docs = workspace_root / c.Infra.DIR_DOCS
+        docs = repository_root / c.Infra.DIR_DOCS
         changelog_path = docs / "CHANGELOG.md"
         latest_path = docs / "releases" / "latest.md"
         tagged_path = docs / "releases" / f"{tag}.md"
@@ -136,13 +266,21 @@ class FlextInfraUtilitiesRelease:
         """Return changelog text with a release section for the version."""
         date = u.now().date().isoformat()
         heading = f"## {version} - "
-        section = f"{heading}{date}\n\n- Workspace release tag: `{tag}`\n- Status: Alpha, non-production\n\nFull notes: `docs/releases/{tag}.md`\n\n"
-        if heading in existing:
-            return existing
+        section = (
+            f"{heading}{date}\n\n- Release tag: `{tag}`\n\n"
+            f"Full notes: `docs/releases/{tag}.md`\n\n"
+        )
         marker = "# Changelog\n\n"
-        if marker in existing:
-            return existing.replace(marker, marker + section, 1)
-        return "# Changelog\n\n" + section + existing
+        if heading in existing:
+            updated = existing
+        elif marker in existing:
+            updated = existing.replace(marker, marker + section, 1)
+        else:
+            updated = marker + section + existing
+        # Why: a changelog ending with the section's blank line failed the
+        # markdown gate (MD012); the normalization applies on every stamp, so a
+        # rerun on an open release lane repairs a changelog written before it.
+        return updated.rstrip("\n") + "\n"
 
     @classmethod
     def release_publish_waves(
@@ -162,9 +300,7 @@ class FlextInfraUtilitiesRelease:
         for name, path in targets:
             declared = cls._release_runtime_dependencies(path)
             if declared.failure:
-                return r[t.SequenceOf[t.StrSequence]].fail(
-                    declared.error or f"release dependency read failed: {name}"
-                )
+                return r[t.SequenceOf[t.StrSequence]].from_failure(declared)
             # A dependency outside the selection is not an edge: it is already
             # on the index or out of scope, and treating it as an edge would
             # deadlock the graph on a package this release never publishes.
@@ -175,7 +311,15 @@ class FlextInfraUtilitiesRelease:
                     if dependency in selected and dependency != name
                 )
             )
-        return cls._release_kahn_waves(edges)
+        try:
+            waves = FlextInfraUtilitiesDependencies.dependency_waves(edges)
+        except ValueError as exc:
+            return r[t.SequenceOf[t.StrSequence]].fail(
+                str(exc).replace(
+                    "cyclic dependency graph", "release dependency cycle", 1
+                )
+            )
+        return r[t.SequenceOf[t.StrSequence]].ok(waves)
 
     @staticmethod
     def _release_runtime_dependencies(path: Path) -> p.Result[t.StrSequence]:
@@ -193,9 +337,7 @@ class FlextInfraUtilitiesRelease:
             )
         document = u.Cli.toml_read_document(pyproject)
         if document.failure:
-            return r[t.StrSequence].fail(
-                document.error or f"read release pyproject failed: {pyproject}"
-            )
+            return r[t.StrSequence].from_failure(document)
         payload = u.Cli.toml_as_mapping(document.value)
         project = payload.get(c.Infra.PROJECT) if payload else None
         if not isinstance(project, Mapping):
@@ -214,31 +356,6 @@ class FlextInfraUtilitiesRelease:
                 })
             )
         )
-
-    @staticmethod
-    def _release_kahn_waves(
-        edges: t.MappingKV[str, t.StrSequence],
-    ) -> p.Result[t.SequenceOf[t.StrSequence]]:
-        """Layer the dependency graph, failing loudly and naming any cycle."""
-        pending = {name: set(dependencies) for name, dependencies in edges.items()}
-        waves: t.MutableSequenceOf[t.StrSequence] = []
-        while pending:
-            ready = tuple(
-                sorted(name for name, blockers in pending.items() if not blockers)
-            )
-            if not ready:
-                # No project is unblocked while projects remain: the remainder
-                # is exactly the cyclic core, so it is named outright.
-                return r[t.SequenceOf[t.StrSequence]].fail(
-                    "release dependency cycle blocks publish order: "
-                    + ", ".join(sorted(pending))
-                )
-            waves.append(ready)
-            for name in ready:
-                del pending[name]
-            for blockers in pending.values():
-                blockers.difference_update(ready)
-        return r[t.SequenceOf[t.StrSequence]].ok(tuple(waves))
 
 
 __all__: list[str] = ["FlextInfraUtilitiesRelease"]

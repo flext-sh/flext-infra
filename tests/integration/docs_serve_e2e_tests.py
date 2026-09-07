@@ -15,6 +15,7 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
+
 from flext_infra import config
 from flext_infra.docs.server import FlextInfraDocServer
 from flext_tests import tm

@@ -12,19 +12,15 @@ name: CI
 "on":
   push:
     branches:
-      - dev
-      - develop
-      - 0.12.0-dev
       - main
+      - 0.12.0-dev
+      - 0.20.0-dev
   pull_request:
     branches:
-      - dev
-      - develop
-      - 0.12.0-dev
       - main
-    # Draft persistence produces no workflow run. A changed Review PR must be
-    # returned to Draft and promoted again, producing a new exact-SHA receipt.
-    types: [ready_for_review]
+      - 0.12.0-dev
+      - 0.20.0-dev
+    types: [opened, synchronize, reopened, ready_for_review]
 # End SECTION: triggers
 
 # Why: one active run per workflow and branch prevents obsolete CI from consuming runners.
@@ -45,58 +41,22 @@ jobs:
     timeout-minutes: 60
     env:
       CI: Y
-      # The credential helper installed below reads the token from the
-      # environment of every later step, so it is a job-level value.
-      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           submodules: false
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-      # Codegen refreshes the declared provider baseline before comparison.
-      # actions/checkout deliberately does not persist credentials, so install
-      # the runner's scoped token through the GitHub CLI's Git credential owner.
-      - name: Configure GitHub authentication
-        run: gh auth setup-git
-
-      - name: Install mise toolchain
-        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14  # v4.2.3
-        with:
-          version: 2026.9.0
-
-      # Why: the official uv cache must never be reused across differently
-      # resolved projects — cache identity is owned ONLY by uv.lock. The uv
-      # version comes from the same toolchain SSOT that renders .mise.toml,
-      # keeping one version source for local (mise) and CI (setup-uv).
-      - name: Set up uv with lock-owned cache
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
-        with:
-          version: 0.12
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-          cache-suffix: locked
-
-      # The direnv check gate runs a real `direnv exec` activation smoke. The
-      # preinstalled runner image has no direnv binary, so provision it here —
-      # the gate is intentional and its binary must exist wherever CI=Y make
-      # check runs. The smoke runs unattended, where no one can answer
-      # `direnv allow`, so allow the checkout's .envrc up front: `direnv allow
-      # <path>` computes and stores the same path-hash record an interactive
-      # allow writes. .envrc is tracked, so it exists right after checkout.
-      # This trusts only this repo's own generated file, on this runner only.
-      - name: Install direnv (check-gate dependency)
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq direnv
-          direnv allow "${{ github.workspace }}/.envrc"
+      # make setup is the only toolchain installer. It bootstraps the newest
+      # released Mise, installs the committed fleet toolchain, publishes that
+      # environment through GITHUB_PATH, and prepares the project runtime.
       - name: Restore testmon cache
         id: testmon-restore
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: |
-            .testmondata
+            ${{ github.workspace }}/../.flext-runtime/*/testmon/.testmondata
           key: testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-${{ hashFiles('uv.lock', '**/uv.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             testmon-v1-${{ runner.os }}-${{ runner.arch }}-py3.13-${{ hashFiles('uv.lock', '**/uv.lock') }}-
@@ -105,28 +65,34 @@ jobs:
       - name: setup (blocking)
         # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
         run: CI=Y make setup
+      - name: gen check (blocking)
+        run: CI=Y make conform APPLY=Y
 
-      # `make setup` renders .envrc; direnv must re-allow it here because the
-      # unattended smoke cannot answer `direnv allow`. Any content change
-      # re-blocks, so the allow MUST run after every render — including this one.
-      - name: direnv allow (rendered .envrc)
-        run: direnv allow "${{ github.workspace }}/.envrc"
+      # Setup installs the committed lock as-is (`uv sync --frozen`); a stale
+      # lock is a reviewed change through `make deps`, so CI proves it here
+      # instead of letting a runner rewrite it.
+      - name: deps check (blocking)
+        run: CI=Y make audit APPLY=Y
 
-      # Bind checkout and tag fetch to the exact promoted head. Verification
-      # fails closed for missing, invalid, partial, wrong-repository, wrong-tree,
-      # or wrong-HEAD evidence; covered gates are never executed again in CI.
-      - name: Verify local gate attestation (blocking)
-        env:
-          GATE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          git fetch --force origin "refs/tags/attest/gates/v1/$GATE_COMMIT_SHA:refs/tags/attest/gates/v1/$GATE_COMMIT_SHA"
-          .venv/bin/python -m flext_infra github verify-gates \
-            --workspace . \
-            --allowed-signers .github/attestations/allowed_signers \
-            --expected-gates gen \
-            --expected-gates check \
-            --expected-gates test
+      - name: check (blocking)
+        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: CI=Y make check APPLY=Y
 
+      # Why (aihub-v01jg): CI=Y runs ONE HALF of the gate set
+      # (lint pyright silent-failure deferred-self-reference security markdown loc-cap boundary runtime-census namespace tier-whitelist smells layout canonical-alias codemod direnv duplication); the complement
+      # (pyrefly mypy) is owned by
+      # CI=N and, without this step, ran on developer
+      # machines only. That split let real defects reach main twice: five
+      # missing-attribute errors and an inconsistent-inheritance error, each
+      # green in CI and red locally. The two contexts are strict complements by
+      # construction, so running both here costs one extra pass and closes the
+      # hole rather than trusting everyone to run the other half by hand.
+      - name: check complement (blocking)
+        run: CI=N make check
+
+      - name: test (blocking)
+        # Why (flext-v4p5): explicit CI=Y on every make invocation (job env is not enough for matrix/docker parity).
+        run: CI=Y make test APPLY=Y
 
       - name: Dump reports on failure
         if: ${{ failure() }}
@@ -164,6 +130,34 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
   # End SECTION: ci job
+
+  # === SECTION: release-plan job (managed) ===
+  # The release protocol's read-only decision on every pull request: the title
+  # must be a Conventional Commits title (it becomes the merge commit subject
+  # the next release is derived from), and no pyproject version may change
+  # outside the protocol's own release commit.
+  release-plan:
+    name: release-plan
+    permissions:
+      contents: read
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: Y
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: false
+      - name: Boot
+        run: make setup
+      - name: Release plan and guard
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: make release-plan APPLY=Y
+  # End SECTION: release-plan job
 
   # === SECTION: merge-guard job (managed) ===
   merge-guard:

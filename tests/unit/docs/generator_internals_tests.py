@@ -101,10 +101,19 @@ def test_generate_creates_selected_project_reports(tmp_path: Path) -> None:
     workspace = u.Tests.create_docs_workspace(
         tmp_path, project_names=("flext-a", "flext-b")
     )
+    generator = FlextInfraDocGenerator(
+        repository_root=workspace, selected_projects=["flext-a"]
+    )
+    prepared = generator.prepare_bundle()
+    tm.ok(prepared)
+    required = generator.required_directories(prepared.value)
+    tm.ok(required)
+    for directory in required.value:
+        directory.mkdir(parents=True, exist_ok=True)
 
-    result = FlextInfraDocGenerator().generate(
+    result = generator.generate(
         m.Infra.DocsGenerateRequest(
-            workspace_root=workspace, projects=["flext-a"], apply=True
+            repository_root=workspace, projects=["flext-a"], apply=False
         )
     )
 
