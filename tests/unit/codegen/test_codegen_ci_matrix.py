@@ -12,7 +12,6 @@ import pytest
 
 from flext_infra import c, config, t, u
 from flext_infra.codegen.project_new import FlextInfraCodegenProjectNew
-from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
 from flext_tests import tm
 
 from ._support import CodegenTestSupport
@@ -25,20 +24,12 @@ class TestCodegenCiMatrix:
 
     @staticmethod
     def _render_project(root: Path) -> Path:
-        """Render one fresh internal_flext project into root and return it."""
-        beads = tm.ok(
-            FlextInfraWorkspaceDetector.load_beads_spec(
-                Path(__file__).resolve().parents[3]
-            )
-        )
+        """Render a fresh EXTERNAL project into root and return the root."""
         service = FlextInfraCodegenProjectNew(
             name="flext-demo",
             kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
             output_root=root,
             provider="flext-sh",
-            beads_workspace=beads.workspace,
-            beads_database=beads.database,
-            beads_issue_prefix=beads.issue_prefix,
             license="MIT",
             author_name="FLEXT Team",
             author_email="team@flext.dev",
@@ -292,6 +283,16 @@ class TestCodegenCiMatrix:
             ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
         ).model_copy(update={"private_submodules": private})
         rendered = u.Cli.template_render(tpl, spec)
+            ci_trigger_branches=("dev", "develop", "0.12.0-dev", "develop", "main"),
+            python_version=codegen.toolchain.python_version,
+            mise_version=codegen.toolchain.mise_version,
+            github_actions=codegen.github_actions,
+            make=codegen.make,
+            workspace_repositories=(),
+            checkout_submodules=codegen.checkout_submodules,
+            private_submodules=private,
+        )
+        rendered = cli_u.Cli.template_render(tpl, spec)
         tm.ok(rendered)
         rendered_text: str = rendered.value
         tm.that(rendered_text, has="Init private workspace projects")
@@ -312,8 +313,8 @@ class TestCodegenCiMatrix:
                     has=f"{action.repository}@{action.sha}  # {action.version}",
                 )
 
-    def test_dependabot_does_not_delay_available_updates(self, tmp_path: Path) -> None:
-        """Every declared ecosystem can select its newest available release."""
+    def test_dependabot_does_not_cap_tool_updates(self, tmp_path: Path) -> None:
+        """Dependabot proposes released tools without inheriting the library window."""
         root = self._render_project(tmp_path / "external")
 
         document = u.Cli.yaml_load_mapping(root / ".github" / "dependabot.yml")
@@ -325,7 +326,7 @@ class TestCodegenCiMatrix:
         tm.that(ecosystems, eq={"github-actions", "pip"})
         for item in updates:
             update = t.Cli.JSON_MAPPING_ADAPTER.validate_python(item)
-            tm.that(update, lacks="cooldown")
+            tm.that("cooldown" not in update, eq=True)
 
     def test_distro_dockerfiles_emitted(self, tmp_path: Path) -> None:
         """Generated project carries one Dockerfile per supported distro."""

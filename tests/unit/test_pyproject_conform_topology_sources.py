@@ -49,7 +49,6 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=tu.Tests.beads_project("flext"),
         name="workspace",
 <<<<<<< HEAD
         repository=_repository(

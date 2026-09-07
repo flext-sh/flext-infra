@@ -33,12 +33,6 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsProjectSpec(
-            version=c.Infra.BEADS_CONFIG_VERSION,
-            workspace="flext",
-            database="flext",
-            issue_prefix="flext",
-        ),
         name="workspace",
         repository=_repository(
             "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
@@ -220,9 +214,25 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
+<<<<<<< Updated upstream
+=======
+        declared_dev_names = {
+            name
+            for requirement in document["dependency-groups"]["dev"]
+            if (name := u.Infra.dep_name(requirement)) is not None
+        }
+        # The rolling supply-chain window applies to runtime libraries only.
+        # Exemption follows the typed distribution identities, never table
+        # placement: an unknown package in dev remains a runtime library.
+>>>>>>> Stashed changes
         expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
-            for package in toolchain.dependency_cooldown_exclusions
+            for package in {
+                *toolchain.dependency_cooldown_exclusions,
+                *declared_dev_names.intersection(
+                    config.Infra.codegen.python_tool_distributions
+                ),
+            }
             if package not in toolchain.dependency_cooldown_overrides
         }
         expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
@@ -233,6 +243,10 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+        tm.that(
+            "custom-tool" not in document["tool"]["uv"]["exclude-newer-package"],
+            eq=True,
+        )
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.

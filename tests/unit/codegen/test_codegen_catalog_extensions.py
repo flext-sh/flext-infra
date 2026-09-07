@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tomllib
+from fnmatch import fnmatchcase
 from pathlib import Path
 
 import pytest
@@ -38,6 +39,7 @@ class TestsCodegenCatalogExtensions:
         tm.that(resolved.provider, eq=source.provider)
         tm.that(source.internal_distribution_prefix, eq="flext-")
 
+<<<<<<< Updated upstream
     def test_infra_repository_provider_must_resolve_exactly_once(self) -> None:
         codegen = config.Infra.codegen
         source = codegen.infra_repository
@@ -79,6 +81,14 @@ class TestsCodegenCatalogExtensions:
         tm.that(template, has='mise_install_path="$$scratch/runtime/mise')
         tm.that(template, has="receipt_runtime")
         tm.that(type(config.Infra.codegen.toolchain).model_fields, lacks="mise_version")
+=======
+    def test_bootstrap_toolchain_uses_immutable_release_selectors(self) -> None:
+        toolchain = config.Infra.codegen.toolchain
+
+        mise_parts = toolchain.mise_version.split(".")
+        tm.that(len(mise_parts), eq=3)
+        tm.that(all(part.isdecimal() for part in mise_parts), eq=True)
+>>>>>>> Stashed changes
 
     def test_setup_provisions_only_and_gen_owns_conformance(self) -> None:
         """``make setup`` provisions tooling; ``make gen`` owns conformance."""
@@ -153,7 +163,10 @@ class TestsCodegenCatalogExtensions:
         )
         workspace = m.Infra.WorkspaceSpec(
             name=root.name,
+<<<<<<< Updated upstream
             beads=test_u.Tests.beads_project(root.name),
+=======
+>>>>>>> Stashed changes
             repository=root,
             project=test_u.Tests.project_spec(root.name),
             declared_repositories=(member,),
@@ -293,12 +306,28 @@ class TestsCodegenCatalogExtensions:
             for file in plan.files
             if file.path == repository_root.resolve() / c.Infra.MAKEFILE_FILENAME
         )
+<<<<<<< Updated upstream
         tm.that(
             test_u.Tests.codegen_file_text(root_makefile),
             has=f"DECLARED_REPOSITORIES := {member.name}",
         )
         gitmodules_plan = next(
             file for file in plan.files if file.path == gitmodules.resolve()
+=======
+        for selector in mise["tools"]:
+            tm.that(
+                any(
+                    fnmatchcase(selector, pattern)
+                    for pattern in (
+                        config.Infra.codegen.toolchain.suspended_mise_selector_patterns
+                    )
+                ),
+                eq=False,
+            )
+        tm.that(
+            mise["tools"]["kubeconform"],
+            eq=config.Infra.codegen.toolchain.kubeconform_version,
+>>>>>>> Stashed changes
         )
         tm.that(gitmodules_plan.policy, eq="manual")
         tm.that(u.Infra.codegen_file_requires_effect(gitmodules_plan), eq=False)
