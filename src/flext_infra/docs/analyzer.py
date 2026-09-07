@@ -70,9 +70,7 @@ class FlextInfraDocAnalyzer(FlextInfraDocServiceBase):
                 source="code-review-graph",
             )
             return r[t.SequenceOf[m.Infra.DocsPhaseReport]].ok((report,))
-        report_dir = (
-            repository_root / c.Infra.DIR_DOCS / c.Infra.DIR_CRG_REPORTS
-        )
+        report_dir = repository_root / c.Infra.DIR_DOCS / c.Infra.DIR_CRG_REPORTS
         if apply:
             report_dir.mkdir(parents=True, exist_ok=True)
         analyses: tuple[tuple[str, str, tuple[str, ...]], ...] = (
@@ -122,15 +120,11 @@ class FlextInfraDocAnalyzer(FlextInfraDocServiceBase):
     ) -> p.Cli.CommandOutput | None:
         """Run a CRG subcommand and return the captured output, or ``None`` on failure."""
         completed = self._runner.run_raw(
-            [binary, *subcommand, "--repo", str(repo)],
-            cwd=str(repo),
-            timeout=120,
+            [binary, *subcommand, "--repo", str(repo)], cwd=str(repo), timeout=120
         )
         if completed.failure:
             self.logger.warning(
-                "crg_run_failed",
-                subcommand=subcommand[0],
-                error=completed.error or "",
+                "crg_run_failed", subcommand=subcommand[0], error=completed.error or ""
             )
             return None
         output = completed.value
@@ -175,14 +169,21 @@ class FlextInfraDocAnalyzer(FlextInfraDocServiceBase):
         if isinstance(data, list):
             lines.extend(["## Summary", "", f"**Total items: {len(data)}**", ""])
             lines.extend(["## Findings", ""])
-            lines.extend(self._format_list_item(name, item) for item in data[:_MAX_FINDINGS])
+            lines.extend(
+                self._format_list_item(name, item) for item in data[:_MAX_FINDINGS]
+            )
             if len(data) > _MAX_FINDINGS:
                 lines.append(f"- ... and {len(data) - _MAX_FINDINGS} more")
             lines.append("")
         elif isinstance(data, dict):
             for key in ("summary", "context_savings", "total_found", "min_lines"):
                 if key in data:
-                    lines.extend([f"## {key.replace('_', ' ').title()}", "", str(data[key]), ""])
+                    lines.extend([
+                        f"## {key.replace('_', ' ').title()}",
+                        "",
+                        str(data[key]),
+                        "",
+                    ])
             if "warnings" in data and isinstance(data["warnings"], list):
                 lines.extend(["## Architecture Warnings", ""])
                 lines.extend(f"- {w!s}" for w in data["warnings"])
@@ -194,20 +195,28 @@ class FlextInfraDocAnalyzer(FlextInfraDocServiceBase):
                     csize = cmt.get("size", 0)
                     lines.append(f"- {cname} ({csize} nodes)")
                 if len(data["communities"]) > _MAX_COMMUNITIES:
-                    lines.append(f"- ... and {len(data['communities']) - _MAX_COMMUNITIES} more")
+                    lines.append(
+                        f"- ... and {len(data['communities']) - _MAX_COMMUNITIES} more"
+                    )
                 lines.append("")
             if "results" in data and isinstance(data["results"], list):
                 lines.extend(["## Results", ""])
                 lines.extend(
-                    self._format_list_item(name, item) for item in data["results"][:_MAX_FINDINGS]
+                    self._format_list_item(name, item)
+                    for item in data["results"][:_MAX_FINDINGS]
                 )
                 if len(data["results"]) > _MAX_FINDINGS:
-                    lines.append(f"- ... and {len(data['results']) - _MAX_FINDINGS} more")
+                    lines.append(
+                        f"- ... and {len(data['results']) - _MAX_FINDINGS} more"
+                    )
                 lines.append("")
         lines.extend(["## Raw Output", "", "<details>", "", "```json"])
         raw_text = raw.rstrip()
         if len(raw_text) > _RAW_TRUNCATE:
-            lines.extend([raw_text[:_RAW_TRUNCATE], f"\n\n... (truncated, {len(raw_text) - _RAW_TRUNCATE} chars omitted)"])
+            lines.extend([
+                raw_text[:_RAW_TRUNCATE],
+                f"\n\n... (truncated, {len(raw_text) - _RAW_TRUNCATE} chars omitted)",
+            ])
         else:
             lines.append(raw_text)
         lines.extend(["```", "", "</details>"])
