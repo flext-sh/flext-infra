@@ -54,6 +54,15 @@ class FlextInfraConfigModels:
     # YAML is accepted only at the flext-cli loading boundary and is immediately
     # model-validated here.
 
+    class _ConfigContract(m.ContractModel):
+        """Private declarative base for schema-loaded codegen records."""
+
+        # Rendered file payloads are
+        # byte contracts; Pydantic must never trim their final newline.
+        model_config = m.ConfigDict(
+            strict=False, frozen=True, extra="forbid", str_strip_whitespace=False
+        )
+
     class MiseToolSpec(_ConfigContract):
         """One mise backend whose exact release is owned by ``mise.lock``."""
 

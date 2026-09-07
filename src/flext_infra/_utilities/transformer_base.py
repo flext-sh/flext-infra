@@ -56,7 +56,4 @@ class FlextInfraRopeTransformer(FlextInfraChangeTrackingTransformer):
         return updated, changes
 
 
-__all__: list[str] = [
-    "FlextInfraChangeTrackingTransformer",
-    "FlextInfraRopeTransformer",
-]
+__all__: list[str] = ["FlextInfraChangeTrackingTransformer"]
