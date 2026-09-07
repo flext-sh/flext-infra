@@ -48,7 +48,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
             / "templates"
             / c.Infra.TEMPLATE_VERSION_FILE
         )
-        discovered = u.Infra.discover_projects(self.workspace_root)
+        discovered = u.Infra.discover_projects(self.repository_root)
         if not discovered.success:
             return r[bool].fail("version-file: project discovery failed")
 
@@ -58,10 +58,7 @@ class FlextInfraCodegenVersionFile(s[bool]):
         for project_info in discovered.value:
             metadata_result = u.read_project_metadata(project_info.path)
             if metadata_result.failure:
-                return r[bool].fail(
-                    metadata_result.error
-                    or f"version-file: cannot load {project_info.path}"
-                )
+                return r[bool].from_failure(metadata_result)
             meta = metadata_result.value
             class_name = f"{meta.class_stem}Version"
 
@@ -79,32 +76,26 @@ class FlextInfraCodegenVersionFile(s[bool]):
             target = src_pkg / "__version__.py"
             rendered = u.Cli.template_render(template_path, meta)
             if rendered.failure:
-                return r[bool].fail(
-                    rendered.error or f"version-file: cannot render {target}"
-                )
+                return r[bool].from_failure(rendered)
             content = rendered.value
 
             if target.is_file():
                 current = u.Cli.files_read_text(target)
                 if current.failure:
-                    return r[bool].fail(
-                        current.error or f"version-file: cannot read {target}"
-                    )
+                    return r[bool].from_failure(current)
                 if current.value == content:
                     continue
 
             if self.check_only or self.dry_run:
-                u.Cli.info(f"  stale: {target.relative_to(self.workspace_root)}")
+                u.Cli.info(f"  stale: {target.relative_to(self.repository_root)}")
                 generated += 1
                 continue
 
             write_result = u.Cli.atomic_write_text_file(target, content)
             if write_result.failure:
-                return r[bool].fail(
-                    write_result.error or f"version-file: cannot write {target}"
-                )
+                return r[bool].from_failure(write_result)
             generated += 1
-            u.Cli.info(f"  generated: {target.relative_to(self.workspace_root)}")
+            u.Cli.info(f"  generated: {target.relative_to(self.repository_root)}")
 
         verb = "would generate" if (self.check_only or self.dry_run) else "generated"
         u.Cli.info(f"version-file: {verb} {generated}, skipped {skipped}")

@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from flext_cli import u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra._utilities.rope_core import FlextInfraUtilitiesRopeCore
 from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
+
+from .._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
+from .._utilities.rope_core import FlextInfraUtilitiesRopeCore
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -35,23 +36,18 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _string_values(value: t.Infra.InfraValue | None) -> t.StrSequence:
         """Normalize one infra sequence payload into strings."""
-        try:
-            items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
-        except c.ValidationError:
+        if value is None:
             return []
+        items = t.Infra.INFRA_SEQ_ADAPTER.validate_python(value)
         return [str(item) for item in items]
 
     @staticmethod
     def _string_mapping(value: t.Infra.InfraValue | None) -> t.StrMapping:
         """Normalize one infra mapping payload into string keys and values."""
-        try:
-            items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
-        except c.ValidationError:
+        if value is None:
             return {}
-        normalized_items: dict[str, str] = {
-            key: str(entry) for key, entry in items.items()
-        }
-        return normalized_items
+        items = t.Infra.INFRA_MAPPING_ADAPTER.validate_python(value)
+        return {key: str(entry) for key, entry in items.items()}
 
     @staticmethod
     def _module_file(project_root: Path, module_name: str) -> Path:
@@ -79,7 +75,7 @@ class FlextInfraUtilitiesDocsApi:
     @classmethod
     def _imported_symbol_binding(
         cls, source: str, *, current_module: str, symbol_name: str, package_module: bool
-    ) -> tuple[str, str]:
+    ) -> t.Pair[str, str]:
         """Return the source module and original name for one imported symbol."""
         return FlextInfraUtilitiesRopeAnalysis.imported_symbol_binding_source(
             source,
@@ -543,7 +539,7 @@ class FlextInfraUtilitiesDocsApi:
     @staticmethod
     def _iter_docstring_checks(
         project_root: Path, contract: t.JsonMapping
-    ) -> t.SequenceOf[tuple[str, str, bool]]:
+    ) -> t.SequenceOf[t.Triple[str, str, bool]]:
         """Evaluate every public docstring target once (SSOT).
 
         Yields ``(rel_file, missing_message, documented)`` for the package
@@ -564,7 +560,7 @@ class FlextInfraUtilitiesDocsApi:
                 contract.get("module_exports", [])
             )
         )
-        results: t.MutableSequenceOf[tuple[str, str, bool]] = []
+        results: t.MutableSequenceOf[t.Triple[str, str, bool]] = []
         module_docstring_checks = [
             (module_name, f"public module `{module_name}` is missing a docstring")
             for module_name in module_list

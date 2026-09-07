@@ -96,7 +96,7 @@ class FlextInfraGateContractReportMixin:
     def _violation_rows(
         scripts: t.SequenceOf[m.Infra.GateContractScriptInfo],
     ) -> t.SequenceOf[t.JsonDict]:
-        def violation_key(row: t.JsonDict) -> tuple[str, str]:
+        def violation_key(row: t.JsonDict) -> t.Pair[str, str]:
             return str(row.get("script", "")), str(row.get("check", ""))
 
         rows = [
@@ -152,7 +152,7 @@ class FlextInfraGateContractReportMixin:
             options=m.Cli.JsonWriteOptions(indent=2, sort_keys=True),
         )
         if write.failure:
-            return r[Path].fail(write.error or f"cannot write {report_path}")
+            return r[Path].from_failure(write)
         return r[Path].ok(report_path)
 
     def _print_summary(

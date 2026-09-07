@@ -1,5 +1,7 @@
 """Tests for version diagnostics."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import flext_infra as infra_pkg

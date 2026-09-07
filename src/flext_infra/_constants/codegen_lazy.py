@@ -19,7 +19,7 @@ class FlextInfraConstantsCodegenLazy:
     "Maximum length of a public facade alias."
     AUTOGEN_HEADER: Final[str] = "# AUTO-GENERATED FILE — Regenerate with: make gen"
     "Header prepended to every auto-generated ``__init__.py`` file."
-    AUTOGEN_HEADERS: Final[tuple[str, str]] = (
+    AUTOGEN_HEADERS: Final[t.Pair[str, str]] = (
         AUTOGEN_HEADER,
         "# @generated AUTO-GENERATED FILE — Regenerate with: make gen",
     )
@@ -41,11 +41,13 @@ class FlextInfraConstantsCodegenLazy:
         "_root_typing_parts",
     })
     "Closed set of retired root registry module and package names."
-    ROOT_TEMPLATE_RUNTIME_IMPORTS: Final[frozenset[str]] = frozenset({
+    ROOT_TEMPLATE_BINDINGS: Final[frozenset[str]] = frozenset({
+        "MappingProxyType",
+        "TYPE_CHECKING",
         "build_lazy_import_map",
         "install_lazy_exports",
     })
-    "Names bound eagerly by the canonical root initializer template."
+    "Names owned by the canonical root initializer template, never public exports."
     TEST_ONLY_SOURCE_MODULE_RE: Final[t.RegexPattern] = re.compile(
         r"^(?:_?test(?:_[A-Za-z0-9_]+)?|[A-Za-z0-9_]+_tests?)\.py$"
     )

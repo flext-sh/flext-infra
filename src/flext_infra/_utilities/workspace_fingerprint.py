@@ -9,9 +9,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra._utilities.git import FlextInfraUtilitiesGit
 from flext_infra.constants import c
 from flext_infra.models import m
+
+from .._utilities.git import FlextInfraUtilitiesGit
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -72,9 +73,7 @@ class FlextInfraUtilitiesWorkspaceFingerprint:
             m.Infra.GitRepoRequest(repo_root=root)
         )
         if inputs.failure:
-            return r[m.Infra.WorkspaceFingerprint].fail(
-                inputs.error or f"not a Git worktree: {root}"
-            )
+            return r[m.Infra.WorkspaceFingerprint].from_failure(inputs)
         paths_result_value = inputs.value.paths_z
         index_result_value = inputs.value.index_z
         head = inputs.value.head

@@ -25,12 +25,12 @@ def _create_pyproject(directory: Path, content: str) -> Path:
     return pyproject_path
 
 
-_TEST_WORKSPACE_ROOT = Path(__file__).resolve().parent
+_TEST_REPOSITORY_ROOT = Path(__file__).resolve().parent
 
 
-def _manager(workspace_root: Path | None = None) -> FlextInfraExtraPathsManager:
+def _manager(repository_root: Path | None = None) -> FlextInfraExtraPathsManager:
     return FlextInfraExtraPathsManager(
-        workspace_root=workspace_root or _TEST_WORKSPACE_ROOT
+        repository_root=repository_root or _TEST_REPOSITORY_ROOT
     )
 
 
@@ -186,7 +186,10 @@ class TestsFlextInfraDepsExtraPathsSync:
         (tmp_path / "src").mkdir()
         manager = _manager(tmp_path)
         expected_extra = manager.pyright_extra_paths(project_dir=tmp_path, is_root=True)
-        expected_mypy = manager.pyrefly_search_paths(project_dir=tmp_path, is_root=True)
+        # mypy derives independently of pyrefly since cosmos-45hiv: mypy must
+        # not receive the project root (it enumerates roots and aborts on the
+        # same file resolving under two module names).
+        expected_mypy = manager.mypy_search_paths(project_dir=tmp_path, is_root=True)
         tm.that(isinstance(expected_extra, tuple), eq=True)
         tm.that(isinstance(expected_mypy, tuple), eq=True)
         doc = u.Cli.toml_document()

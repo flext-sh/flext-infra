@@ -13,7 +13,7 @@ _PROVIDER_SPEC = config.Infra.codegen.providers[0]
 
 
 def _repository(
-    distribution: str, *, role: c.Infra.RepositoryRole, path: str
+    distribution: str, *, role: c.Infra.MakeProfile, path: str
 ) -> m.Infra.RepositoryRef:
     provider = config.Infra.codegen.providers[0]
     return m.Infra.RepositoryRef(
@@ -23,47 +23,30 @@ def _repository(
         path=Path(path),
         role=role,
         provider=provider.name,
-        checkout=(
-            c.Infra.CheckoutKind.ROOT
-            if role is c.Infra.RepositoryRole.WORKSPACE
-            else c.Infra.CheckoutKind.SUBMODULE
-        ),
+        kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
         codegen=c.Infra.CodegenKind.CONFORM,
-        package=role is not c.Infra.RepositoryRole.WORKSPACE,
-        editable=role is not c.Infra.RepositoryRole.WORKSPACE,
+        package=role is not c.Infra.MakeProfile.WORKSPACE,
+        editable=role is not c.Infra.MakeProfile.WORKSPACE,
         read_only=False,
-    )
-
-
-def _project_spec(*, version: str) -> m.Infra.ProjectSpec:
-    """Build project metadata whose non-version fields come from the SSOT."""
-    return test_u.Tests.project_spec("external-consumer").model_copy(
-        update={"version": version}
     )
 
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=m.Infra.BeadsProjectSpec(
-            version=c.Infra.BEADS_CONFIG_VERSION,
-            workspace="flext",
-            database="flext",
-            issue_prefix="flext",
-        ),
         name="workspace",
         repository=_repository(
-            "workspace", role=c.Infra.RepositoryRole.WORKSPACE, path="."
+            "workspace", role=c.Infra.MakeProfile.WORKSPACE, path="."
         ),
-        subprojects=(
+        declared_repositories=(
             _repository(
-                "flext-core", role=c.Infra.RepositoryRole.STANDALONE, path="flext-core"
+                "flext-core", role=c.Infra.MakeProfile.STANDALONE, path="flext-core"
             ),
         ),
     )
 
 
 class TestsFlextInfraCodegenPyprojectConform:
-    def test_workspace_root_uses_workspace_provenance(self) -> None:
+    def test_repository_root_uses_workspace_provenance(self) -> None:
         workspace = _workspace()
         result = u.Infra.pyproject_dependencies_conform(
             """[project]
@@ -78,7 +61,7 @@ workspace = true
 """,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
         document = tomllib.loads(tm.ok(result))
         tm.that(document["project"]["dependencies"], eq=["flext-core"])
@@ -86,12 +69,12 @@ workspace = true
 
     def test_standalone_uses_catalog_git_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.subprojects[0]
+        member = workspace.declared_repositories[0]
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
         document = tomllib.loads(tm.ok(result))
         tm.that(
@@ -113,7 +96,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
         )
         second = tm.ok(
@@ -121,7 +104,7 @@ constraint-dependencies = ["uv>=0", "requests<3"]
                 first,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
         )
 
@@ -144,7 +127,7 @@ constraint-dependencies = ["uv>=0"]
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
             )
         )
 
@@ -154,21 +137,23 @@ constraint-dependencies = ["uv>=0"]
 
     def test_standalone_rejects_non_https_catalog_provenance(self) -> None:
         workspace = _workspace()
-        member = workspace.subprojects[0].model_copy(
+        member = workspace.declared_repositories[0].model_copy(
             update={"url": "git@github.com:flext-sh/flext-core.git"}
         )
-        invalid_workspace = workspace.model_copy(update={"subprojects": (member,)})
+        invalid_workspace = workspace.model_copy(
+            update={"declared_repositories": (member,)}
+        )
         result = u.Infra.pyproject_dependencies_conform(
             '[project]\nname = "external-consumer"\ndependencies = ["flext-core"]\n',
             providers=config.Infra.codegen.providers,
             workspace=invalid_workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
         tm.that(result.failure, eq=True)
 
     def test_workspace_rejects_conflicting_direct_source(self) -> None:
         workspace = _workspace()
-        member = workspace.subprojects[0]
+        member = workspace.declared_repositories[0]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 '[project]\nname = "workspace"\n'
@@ -180,7 +165,7 @@ constraint-dependencies = ["uv>=0"]
             ),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
         tm.fail(result, has="workspace dependency declares a conflicting direct source")
 
@@ -199,6 +184,8 @@ dev = ["custom-tool>=1"]
 
 [tool.uv]
 required-version = ">=0"
+exclude-newer = "7 days"
+exclude-newer-package = { cryptography = false }
 
 [tool.pyrefly]
 python-interpreter-path = "../.venv/bin/python"
@@ -208,7 +195,7 @@ python-interpreter-path = "../.venv/bin/python"
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
                 required_dev_dependencies=required_dev,
             )
@@ -218,7 +205,7 @@ python-interpreter-path = "../.venv/bin/python"
                 first,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
                 required_dev_dependencies=required_dev,
             )
@@ -227,13 +214,22 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
-        # Why (flext-6itas.4): exclude-newer-package merges boolean exclusions
-        # with per-package RFC 3339 cutoffs (b3f3fb75c added
-        # dependency_cooldown_overrides so a floor published after the shared
-        # cooldown can get its own cutoff instead of only a name-only bypass).
+        declared_dev_names = {
+            name
+            for requirement in document["dependency-groups"]["dev"]
+            if (name := u.Infra.dep_name(requirement)) is not None
+        }
+        # The rolling supply-chain window applies to runtime libraries only.
+        # Exemption follows the typed distribution identities, never table
+        # placement: an unknown package in dev remains a runtime library.
         expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
-            for package in toolchain.dependency_cooldown_exclusions
+            for package in {
+                *toolchain.dependency_cooldown_exclusions,
+                *declared_dev_names.intersection(
+                    config.Infra.codegen.python_tool_distributions
+                ),
+            }
             if package not in toolchain.dependency_cooldown_overrides
         }
         expected_exclude_newer_package.update(toolchain.dependency_cooldown_overrides)
@@ -244,6 +240,10 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that("required-version" not in document["tool"]["uv"], eq=True)
         tm.that("python-interpreter-path" not in document["tool"]["pyrefly"], eq=True)
         tm.that("custom-tool>=1" in document["dependency-groups"]["dev"], eq=True)
+        tm.that(
+            "custom-tool" not in document["tool"]["uv"]["exclude-newer-package"],
+            eq=True,
+        )
         # Why (CodeRabbit 3742335224): assert the exact requirement the typed
         # SSOT declares, not merely the package name. A name-only assertion
         # stays green even if the generated floor drifts away from the owner.
@@ -254,10 +254,9 @@ python-interpreter-path = "../.venv/bin/python"
         # measures. The expectation now derives from the same SSOT sequence
         # production reads, so it survives any legitimate change to that set.
         # A declared floor reaches the rendered group verbatim UNLESS it names a
-        # workspace project, which dependency provenance rewrites to its pinned
-        # git requirement (measured: "flext-tests" renders as
-        # "flext-tests @ git+.../flext-tests.git@<branch>"). Asserting by
-        # package name keeps both shapes in scope without re-encoding either.
+        # workspace project, which dependency provenance rewrites to its tracked
+        # integration-branch source. Asserting by package name keeps both shapes
+        # in scope without re-encoding either.
         rendered_names = {
             u.Infra.dep_name(requirement)
             for requirement in document["dependency-groups"]["dev"]
@@ -267,80 +266,23 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(
             document["project"]["dependencies"][0],
             eq=(
-                f"{workspace.subprojects[0].distribution} @ "
-                f"git+{workspace.subprojects[0].url}@{_PROVIDER_SPEC.branch}"
+                f"{workspace.declared_repositories[0].distribution} @ "
+                f"git+{workspace.declared_repositories[0].url}@{_PROVIDER_SPEC.branch}"
             ),
         )
 
-    def test_declared_manifest_version_is_projected_onto_project_table(self) -> None:
-        """The manifest owns the release version; conformance projects it.
-
-        Why (hq-36xk): the scaffold template renders `version = "{{ version }}"`
-        but carries `overwrite: false`, so on an existing repository nothing
-        propagated a manifest bump into `[project].version`. Deriving the
-        expectation from the same spec production reads keeps this test valid
-        when the declared version legitimately changes.
-        """
-        project = config.Infra.codegen.scaffold.project
-        declared = _project_spec(version="9.9.9")
-        workspace = _workspace().model_copy(update={"project": declared})
+    def test_conformance_never_writes_the_project_version(self) -> None:
+        """The release protocol is the only version writer; conform reads only."""
+        workspace = _workspace().model_copy(
+            update={"project": test_u.Tests.project_spec("external-consumer")}
+        )
         conformed = tm.ok(
             u.Infra.pyproject_conform(
                 '[project]\nname = "external-consumer"\n'
                 'version = "0.0.1"\ndependencies = []\n',
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
-                toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=project.dev,
-            )
-        )
-        document = tomllib.loads(conformed)
-        tm.that(document["project"]["version"], eq=declared.version)
-
-    def test_project_version_conformance_is_idempotent(self) -> None:
-        """A pyproject already matching the manifest is left byte-identical."""
-        project = config.Infra.codegen.scaffold.project
-        declared = _project_spec(version="9.9.9")
-        workspace = _workspace().model_copy(update={"project": declared})
-        source = (
-            '[project]\nname = "external-consumer"\n'
-            f'version = "{declared.version}"\ndependencies = []\n'
-        )
-        first = tm.ok(
-            u.Infra.pyproject_conform(
-                source,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
-                toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=project.dev,
-            )
-        )
-        second = tm.ok(
-            u.Infra.pyproject_conform(
-                first,
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
-                toolchain=config.Infra.codegen.toolchain,
-                required_dev_dependencies=project.dev,
-            )
-        )
-        tm.that(second, eq=first)
-        tm.that(tomllib.loads(first)["project"]["version"], eq=declared.version)
-
-    def test_workspace_without_project_metadata_leaves_version_untouched(self) -> None:
-        """A topology-only manifest declares no version, so none is projected."""
-        workspace = _workspace()
-        tm.that(workspace.project is None, eq=True)
-        conformed = tm.ok(
-            u.Infra.pyproject_conform(
-                '[project]\nname = "external-consumer"\n'
-                'version = "0.0.1"\ndependencies = []\n',
-                providers=config.Infra.codegen.providers,
-                workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
             )
@@ -363,7 +305,7 @@ dev = ["rumdl>=0.2.46", "custom-tool>=1"]
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=toolchain,
                 required_dev_dependencies=("rumdl>=0.2.45",),
             )
@@ -390,7 +332,7 @@ dependencies = []
                 source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+                workspace_mode=c.Infra.MakeProfile.STANDALONE,
                 toolchain=config.Infra.codegen.toolchain,
                 required_dev_dependencies=config.Infra.codegen.scaffold.project.dev,
                 uv_exclude_dependencies=(exclusion,),

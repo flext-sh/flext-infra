@@ -6,7 +6,7 @@ from pathlib import Path
 
 from flext_infra import FlextInfraWorktreeService, c
 from flext_tests import tm
-from tests.unit.workspace.worktree_fixture import WorktreeFixture
+from tests.unit.workspace import WorktreeFixture
 
 
 class TestsWorktreeRemoval(WorktreeFixture):
@@ -18,22 +18,12 @@ class TestsWorktreeRemoval(WorktreeFixture):
         """A registered child keeps its epic lane alive until the child is gone."""
         repository = self._repository(tmp_path)
         epic_branch = "feature/epic-beta"
-        epic = Path(
-            tm.ok(
-                FlextInfraWorktreeService(
-                    workspace_root=repository,
-                    operation=c.Infra.WorktreeOperation.ADD,
-                    branch=epic_branch,
-                    base="HEAD",
-                    apply_changes=True,
-                ).execute()
-            )
-        )
+        epic = Path(self.add_worktree(repository, epic_branch))
         child_branch = "feature/child-two"
         child = Path(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.ADD,
                     branch=child_branch,
                     base=epic_branch,
@@ -44,7 +34,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         )
 
         refused = FlextInfraWorktreeService(
-            workspace_root=repository,
+            repository_root=repository,
             operation=c.Infra.WorktreeOperation.REMOVE,
             branch=epic_branch,
             apply_changes=True,
@@ -57,7 +47,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         tm.that(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.REMOVE,
                     branch=child_branch,
                     apply_changes=True,
@@ -68,7 +58,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         tm.that(
             tm.ok(
                 FlextInfraWorktreeService(
-                    workspace_root=repository,
+                    repository_root=repository,
                     operation=c.Infra.WorktreeOperation.REMOVE,
                     branch=epic_branch,
                     apply_changes=True,
@@ -84,7 +74,7 @@ class TestsWorktreeRemoval(WorktreeFixture):
         missing = tmp_path / "no-such-epic"
 
         result = FlextInfraWorktreeService(
-            workspace_root=repository,
+            repository_root=repository,
             operation=c.Infra.WorktreeOperation.ADD,
             branch="feature/child-orphan",
             base="HEAD",

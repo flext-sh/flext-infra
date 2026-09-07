@@ -27,8 +27,8 @@ from flext_infra import c
 from flext_tests import tm
 
 
-def _workspace_root() -> Path:
-    """Return the workspace root that owns this checkout."""
+def _repository_root() -> Path:
+    """Return the repository root that owns this checkout."""
     return Path(__file__).resolve().parents[2]
 
 
@@ -39,7 +39,7 @@ def _make_surfaces() -> tuple[Path, ...]:
     next regeneration. The shipped templates are therefore in scope: they are
     where the defect must not exist.
     """
-    root = _workspace_root()
+    root = _repository_root()
     names = (c.Infra.MAKEFILE_FILENAME, c.Infra.CUSTOM_MAKE_FILENAME)
     templates = Path(flext_infra.__file__).resolve().parent / "templates"
     return (

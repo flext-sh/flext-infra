@@ -1,7 +1,7 @@
 """Tests for the module-cap SUPREME LAW (§3.1) gate.
 
-The gate flags any module whose tokei `code` line count exceeds the owned cap
-``c.Infra.LOC_CAP_MAX`` and accepts modules under it, exercised through the
+The gate flags any module whose scc `Code` line count exceeds the owned cap
+the config-owned ceiling and accepts modules under it, exercised through the
 public gate runner. Fixtures derive from that constant so a legitimate cap
 change never silently inverts these assertions (UNIVERSAL_CORE P0).
 """
@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from flext_infra import c, r
+import pytest
+
+from flext_infra import config, r
 from flext_infra.gates.loc_cap import FlextInfraLocCapGate
 from flext_tests import tm
 from tests import u
@@ -20,10 +22,9 @@ if TYPE_CHECKING:
 
     from tests import t
 
-# Why (operator 2026-08-07, cap 200 -> 1000): these fixtures MUST be derived
-# from c.Infra.LOC_CAP_MAX, never hardcoded. A literal 250 silently became
-# "under cap" when the cap was raised, turning the over-cap test into a lie.
-_OVER_CAP_LOC = c.Infra.LOC_CAP_MAX + 50
+# Fixtures are derived from the current cap so a future owner change cannot
+# silently invert these assertions.
+_OVER_CAP_LOC = config.Infra.codegen.loc_cap.max_lines + 50
 _UNDER_CAP_LOC = 1
 _OVER_CAP = (
     "from __future__ import annotations\n\n"
@@ -31,15 +32,15 @@ _OVER_CAP = (
     + "\n"
 )
 _UNDER_CAP = "from __future__ import annotations\n\nx = 1\n"
-_TOKEI_OVER_CAP = (
-    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":'
+_SCC_OVER_CAP = (
+    '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
     f"{_OVER_CAP_LOC}"
-    "}}]}}"
+    "}]}]"
 )
-_TOKEI_UNDER_CAP = (
-    '{"Python":{"reports":[{"name":"src/sample.py","stats":{"code":'
+_SCC_UNDER_CAP = (
+    '[{"Name":"Python","Files":[{"Location":"src/sample.py","Code":'
     f"{_UNDER_CAP_LOC}"
-    "}}]}}"
+    "}]}]"
 )
 
 
@@ -61,7 +62,7 @@ class TestLocCapGate:
     def test_over_cap_module_is_flagged(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_OVER_CAP)
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.stub_run(stdout=_TOKEI_OVER_CAP))
+            r.ok(u.Tests.create_command_output(stdout=_SCC_OVER_CAP))
         ])
 
         result = u.Tests.run_gate_check(
@@ -74,7 +75,7 @@ class TestLocCapGate:
     def test_under_cap_module_passes(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
         runner = u.Tests.SequenceRunner([
-            r.ok(u.Tests.stub_run(stdout=_TOKEI_UNDER_CAP))
+            r.ok(u.Tests.create_command_output(stdout=_SCC_UNDER_CAP))
         ])
 
         result = u.Tests.run_gate_check(
@@ -85,14 +86,12 @@ class TestLocCapGate:
 
     def test_tool_execution_failure_is_not_silenced(self, tmp_path: Path) -> None:
         project = _gate_project(tmp_path, name="demo-project", module_src=_UNDER_CAP)
-        runner = u.Tests.SequenceRunner([r.fail("tokei is unavailable")])
+        runner = u.Tests.SequenceRunner([r.fail("scc is unavailable")])
 
-        result = u.Tests.run_gate_check(
-            FlextInfraLocCapGate, tmp_path, project, runner=runner
-        )
-
-        tm.that(result.result.passed, eq=False)
-        tm.that(tuple(issue.code for issue in result.issues), has="LOC_CAP_EXEC")
+        with pytest.raises(RuntimeError, match="scc is unavailable"):
+            u.Tests.run_gate_check(
+                FlextInfraLocCapGate, tmp_path, project, runner=runner
+            )
 
 
 __all__: t.StrSequence = []

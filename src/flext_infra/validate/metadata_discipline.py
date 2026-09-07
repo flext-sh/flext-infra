@@ -15,10 +15,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_infra import c
-from flext_infra.validate._rope_import_boundary import FlextInfraRopeImportBoundaryBase
+
+from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from flext_infra import t
 
 
 class FlextInfraValidateMetadataDiscipline(FlextInfraRopeImportBoundaryBase):
@@ -54,4 +57,4 @@ class FlextInfraValidateMetadataDiscipline(FlextInfraRopeImportBoundaryBase):
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraValidateMetadataDiscipline",)
+__all__: t.VariadicTuple[str] = ("FlextInfraValidateMetadataDiscipline",)

@@ -6,8 +6,8 @@ from operator import itemgetter
 from typing import TYPE_CHECKING
 
 from flext_infra import c, u
-from flext_infra._utilities.rope_analysis import FlextInfraUtilitiesRopeAnalysis
-from flext_infra.transformers.base import FlextInfraChangeTrackingTransformer
+
+from .._utilities.transformer_base import FlextInfraChangeTrackingTransformer
 
 if TYPE_CHECKING:
     from flext_infra import m, t
@@ -74,20 +74,15 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         add_keywords: t.MutableStrMapping,
     ) -> str:
         """Rewrite keyword arguments in calls to ``simple_name`` via rope-located ranges."""
-        pymodule = FlextInfraUtilitiesRopeAnalysis.parse_string_module(source)
-        if pymodule is None:
-            return source
+        pymodule = u.Infra.parse_string_module(source)
         line_offsets = self._line_offsets(source)
         edits: list[tuple[int, int, str]] = []
-        for node in FlextInfraUtilitiesRopeAnalysis.walk_ast_nodes(pymodule.get_ast()):
-            if FlextInfraUtilitiesRopeAnalysis.node_kind(node) != "Call":
+        for node in u.Infra.walk_ast_nodes(pymodule.get_ast()):
+            if u.Infra.node_kind(node) != "Call":
                 continue
-            if (
-                FlextInfraUtilitiesRopeAnalysis.name_of(getattr(node, "func", None))
-                != simple_name
-            ):
+            if u.Infra.name_of(getattr(node, "func", None)) != simple_name:
                 continue
-            span = FlextInfraUtilitiesRopeAnalysis.line_col_range(node)
+            span = u.Infra.line_col_range(node)
             if span is None:
                 continue
             lineno, col_offset, end_lineno, end_col_offset = span
@@ -115,7 +110,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         keyword_renames: t.MutableStrMapping,
         remove_keywords: t.Infra.StrSet,
         add_keywords: t.MutableStrMapping,
-    ) -> tuple[str, bool]:
+    ) -> t.Pair[str, bool]:
         """Rewrite keywords inside a single call's source slice (regex per-name)."""
         result = call_text
         changed = False
@@ -160,7 +155,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result, changed
 
     @staticmethod
-    def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> tuple[str, int]:
+    def _drop_keyword(text: str, pattern: t.Infra.RegexPattern) -> t.Pair[str, int]:
         """Remove ``<name>=<value>[,]?`` occurrences from a call slice."""
         result = text
         drops = 0
@@ -197,7 +192,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return result, drops
 
     @staticmethod
-    def _line_offsets(source: str) -> tuple[int, ...]:
+    def _line_offsets(source: str) -> t.VariadicTuple[int]:
         """Cumulative byte offsets at each line start."""
         offsets = [0]
         for line in source.splitlines(keepends=True):
@@ -205,7 +200,7 @@ class FlextInfraRefactorSignaturePropagator(FlextInfraChangeTrackingTransformer)
         return tuple(offsets)
 
     @staticmethod
-    def _offset(line_offsets: tuple[int, ...], line: int, column: int) -> int:
+    def _offset(line_offsets: t.VariadicTuple[int], line: int, column: int) -> int:
         """Convert ``(line, column)`` to a byte offset."""
         return line_offsets[line - 1] + column
 

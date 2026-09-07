@@ -21,6 +21,12 @@ pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture
+def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove the outer checkout identity for explicit conform test consumers."""
+    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
+
+
+@pytest.fixture
 def infra_public_root() -> Iterator[ModuleType]:
     """Reload the root public package after clearing lazy-export caches.
 

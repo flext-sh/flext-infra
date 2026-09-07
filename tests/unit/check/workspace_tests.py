@@ -23,7 +23,9 @@ if TYPE_CHECKING:
 class TestFlextInfraWorkspaceChecker:
     """Test suite for FlextInfraWorkspaceChecker."""
 
-    @pytest.fixture(autouse=True)
+    pytestmark = pytest.mark.usefixtures("_clear_make_ci_token")
+
+    @pytest.fixture
     def _clear_make_ci_token(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(c.Infra.PYTEST_ENV_CI, raising=False)
 
@@ -32,7 +34,7 @@ class TestFlextInfraWorkspaceChecker:
         checker = FlextInfraWorkspaceChecker()
         tm.that(checker, none=False)
 
-    def test_init_with_custom_workspace_root(self, tmp_path: Path) -> None:
+    def test_init_with_custom_repository_root(self, tmp_path: Path) -> None:
         """Test that checker accepts custom workspace root."""
         checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
         tm.that(checker, none=False)
@@ -67,8 +69,12 @@ class TestFlextInfraWorkspaceChecker:
         )
         package_dir = project_dir / "src" / "flext_core"
         package_dir.mkdir(parents=True, exist_ok=True)
-        (package_dir / "__init__.py").write_text("", encoding="utf-8")
-        (package_dir / "module.py").write_text("value = 1\n", encoding="utf-8")
+        (package_dir / "__init__.py").write_text(
+            '"""Fixture package."""\n', encoding="utf-8"
+        )
+        (package_dir / "module.py").write_text(
+            '"""Fixture module."""\n\nvalue = 1\n', encoding="utf-8"
+        )
         test_u.Tests.declare_workspace_projects(tmp_path, (project_dir.name,))
         init_result = cli_u.Cli.run_raw(["git", "init"], cwd=tmp_path)
         add_result = cli_u.Cli.run_raw(["git", "add", "flext-core"], cwd=tmp_path)
@@ -97,11 +103,16 @@ class TestFlextInfraWorkspaceChecker:
         tm.ok(result)
         tm.that(result.value, eq=["lint", "pyrefly", "mypy", "pyright"])
 
-    def test_resolve_gates_deduplicates(self) -> None:
-        """Test that resolve_gates removes duplicate gate names."""
+    def test_resolve_gates_rejects_a_repeated_gate(self) -> None:
+        """A gate named twice is an operator mistake, not something to absorb.
+
+        Silently collapsing the repeat would run exactly the gates the
+        operator asked for while hiding that the request did not say what
+        they thought it said.
+        """
         result = FlextInfraWorkspaceChecker.resolve_gates(["lint", "lint", "format"])
-        tm.ok(result)
-        tm.that(result.value.count("lint"), eq=1)
+        tm.fail(result)
+        tm.that(result.error, has="duplicate gate 'lint'")
 
     def test_resolve_gates_with_invalid_gate(self) -> None:
         """Test that resolve_gates fails on invalid gate name."""

@@ -10,12 +10,12 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
-import re as _re
 from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar, Final
 
 from flext_infra import c
 from flext_tests import FlextTestsConstants
+from tests.constants_scan import TestsFlextInfraConstantsScanMixin
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -29,7 +29,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
     All base constants from FlextTestsConstants are available through inheritance.
     """
 
-    class Tests(FlextTestsConstants.Tests):
+    class Tests(TestsFlextInfraConstantsScanMixin, FlextTestsConstants.Tests):
         """Flat constants optimized for data-driven infra tests."""
 
         GIT_LOCAL_ENV_KEYS: Final[t.StrSequence] = (
@@ -52,6 +52,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         """Repository-local variables Git exports to hooks and aliases."""
 
         MAKE_ISOLATION_ENV_KEYS: Final[t.StrSequence] = (
+            "APPLY",
             "BASH_ENV",
             "CHANGED_ONLY",
             "CHECK_GATES",
@@ -63,7 +64,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "FLEXT_INFRA_PYTHON",
             "FLEXT_ROOT",
             "FLEXT_STANDALONE",
-            "FLEXT_WORKSPACE_ROOT",
+            "FLEXT_REPOSITORY_ROOT",
             "MATCH",
             "PROJECT",
             "PROJECTS",
@@ -73,61 +74,17 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "UV",
             "VALIDATE_GATES",
             "WHAT",
-            "WORKSPACE_ROOT",
+            "REPOSITORY_ROOT",
             *c.Infra.ORCHESTRATOR_REMOVE_ENV_KEYS,
         )
         """Environment inherited from an outer Make invocation to discard in tests."""
 
-        RELEASE_PHASE_VALIDATE: Final[str] = c.Infra.VERB_VALIDATE
-        RELEASE_PHASE_VERSION: Final[str] = c.Infra.VERSION
-        RELEASE_PHASE_BUILD: Final[str] = c.Infra.DIR_BUILD
-        RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.VERB_PUBLISH
+        RELEASE_PHASE_PLAN: Final[str] = c.Infra.ReleasePhase.PLAN
+        RELEASE_PHASE_VERSION: Final[str] = c.Infra.ReleasePhase.VERSION
+        RELEASE_PHASE_TAG: Final[str] = c.Infra.ReleasePhase.TAG
+        RELEASE_PHASE_BUILD: Final[str] = c.Infra.ReleasePhase.BUILD
+        RELEASE_PHASE_PUBLISH: Final[str] = c.Infra.ReleasePhase.PUBLISH
 
-        ALL_PHASES: Final[t.StrSequence] = (
-            RELEASE_PHASE_VALIDATE,
-            RELEASE_PHASE_VERSION,
-            RELEASE_PHASE_BUILD,
-            RELEASE_PHASE_PUBLISH,
-        )
-
-        LOG_NOISE_LINES: Final[t.StrSequence] = (
-            "make[1]: Nothing to be done",
-            "INFO: running tests",
-            "warning: ignoring duplicate",
-            "Success: 5 passed",
-            "make[2]: Entering directory",
-        )
-        LOG_ERROR_LINES: Final[t.StrSequence] = (
-            "ERROR: something went wrong",
-            "FAIL: test_foo failed",
-            "error: compilation failed",
-            "E  AssertionError: mismatch",
-            "FAILED tests/test_foo.py::test_bar",
-        )
-        LOG_PATTERN_CASES: ClassVar[tuple[tuple[str, int], ...]] = (
-            ("error: compilation failed", 1),
-            ("E  AssertionError: mismatch", 1),
-            ("FAILED tests/test_foo.py::test_bar", 1),
-            ("make[2]: Entering directory", 0),
-            ("warning: ignoring duplicate", 0),
-            ("Success: 5 passed", 0),
-        )
-        LOG_ERROR_PREFIX_RE: ClassVar[t.Infra.RegexPattern] = _re.compile(
-            r"^(ERROR|FAIL|error|E\s+AssertionError|FAILED)"
-        )
-        LOG_MIXED_SCENARIO_LINES: Final[t.StrSequence] = (
-            "make[1]: running",
-            "ERROR: build failed",
-            "INFO: post-build",
-            "FAIL: test broken",
-            "Total: 2 failed",
-        )
-        SCANNER_HELLO_RE: Final[t.Infra.RegexPattern] = _re.compile(
-            r"hello", _re.MULTILINE
-        )
-        LAZY_INIT_EXPORT_NAME_RE: Final[t.Infra.RegexPattern] = _re.compile(
-            r'["\']([^"\']+)["\']'
-        )
         INFRA_PUBLIC_ROOT_EXPORTS: Final[t.StrSequence] = (
             "FlextInfra",
             "c",
@@ -172,6 +129,7 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
             "u",
         )
         INFRA_PUBLIC_UTILITY_NAMESPACE_METHODS: Final[t.StrSequence] = (
+            "class_nesting_plan",
             "current_workspace_version",
             "parse_semver",
         )
@@ -208,23 +166,28 @@ class TestsFlextInfraConstants(FlextTestsConstants, c):
         REFACTOR_RULE_ITERATIONS: Final[int] = 100
         REFACTOR_RULE_MAX_SECONDS: Final[float] = 0.1
 
+        # flext-perf.4: gen pipeline performance thresholds (lazy-init stage).
+        GEN_PIPELINE_PROJECT_COUNT: Final[int] = 20
+        GEN_PIPELINE_MODULES_PER_PROJECT: Final[int] = 5
+        GEN_PIPELINE_MAX_SECONDS: Final[float] = 30.0
+        GEN_PIPELINE_MEMORY_MAX_MB: Final[float] = 500.0
+
         RELEASE_VERSION_BASE: Final[str] = "0.1.0"
-        RELEASE_VERSION_SELECTED: Final[str] = "1.2.0"
-        RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
-        RELEASE_VERSION_NEXT_DEV: Final[str] = "1.1.0.dev0"
-        RELEASE_BUMP_MINOR: Final[str] = "minor"
+        RELEASE_VERSION_PATCH: Final[str] = "0.1.1"
+        RELEASE_VERSION_PRERELEASE: Final[str] = "0.1.0rc0"
         RELEASE_PROJECTS: Final[tuple[str, str]] = ("flext-a", "flext-b")
+        # Fixture members depend on these siblings, so a release build must see
+        # them to pin their declared versions.
+        RELEASE_INTERNAL_DEPENDENCIES: Final[tuple[str, str]] = (
+            "flext-core",
+            "flext-tests",
+        )
         RELEASE_TAG_TARGET: Final[str] = "v1.0.0"
-        RELEASE_NOTES_FILENAME: Final[str] = "RELEASE_NOTES.md"
+        RELEASE_VERSION_TARGET: Final[str] = "1.0.0"
         RELEASE_NOTES_HEADING: Final[str] = "# Release v1.0.0"
-        RELEASE_NOTES_CHANGE_LINE: Final[str] = "- abc123 fix release flow"
+        RELEASE_NOTES_CHANGE_LINE: Final[str] = "- fix: release flow"
         RELEASE_INITIAL_CHANGE_LINE: Final[str] = "- Initial tagged release"
         RELEASE_CHANGELOG_HEADER: Final[str] = "# Changelog\n\n"
-        RELEASE_VERIFICATION_LINES: Final[t.StrSequence] = (
-            "- make rel INTERACTIVE=0 CREATE_BRANCHES=0 RELEASE_PHASE=all",
-            "- make val VALIDATE_SCOPE=workspace",
-            "- make build",
-        )
 
 
 c = TestsFlextInfraConstants

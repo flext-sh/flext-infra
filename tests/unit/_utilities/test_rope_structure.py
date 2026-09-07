@@ -18,6 +18,9 @@ _SOURCE = (
     "        import os\n"
     "        return os\n"
 )
+_MULTILINE_IMPORT = (
+    "from package.private import (  # inline explanation\n    ExportedName,\n)\n"
+)
 
 
 class TestsFlextInfraRopeStructure:
@@ -69,3 +72,9 @@ class TestsFlextInfraRopeStructure:
 
     def test_empty_source_returns_no_statements(self) -> None:
         tm.that(u.Infra.logical_statements(""), eq=())
+
+    def test_preserves_newlines_in_multiline_statement(self) -> None:
+        statements = u.Infra.logical_statements(_MULTILINE_IMPORT)
+
+        tm.that(statements[0].text, eq=_MULTILINE_IMPORT.rstrip("\n"))
+        tm.that(statements[0].category, eq=c.Infra.StatementCategory.FROM_IMPORT)

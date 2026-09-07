@@ -1,6 +1,6 @@
 """Tests for canonical dependency source selection by topology role.
 
-The workspace root owns the local ``workspace = true`` overlay. Publishable
+The repository root owns the local ``workspace = true`` overlay. Publishable
 projects retain their catalog Git provenance so the same package metadata works
 outside the workspace; uv applies the root overlay when resolving them locally.
 
@@ -16,7 +16,7 @@ from flext_infra import c, config, m, u
 from flext_tests import tm
 from tests import TestsFlextInfraUtilities as tu
 
-_ROLE = c.Infra.RepositoryRole
+_ROLE = c.Infra.MakeProfile
 # flext-o26p: provider identity, branch and base URL come from the config SSOT,
 # never from literals repeated in the test.
 _PROVIDER_SPEC = config.Infra.codegen.providers[0]
@@ -24,12 +24,14 @@ _PROVIDER = _PROVIDER_SPEC.name
 
 
 def _repository(
-    distribution: str,
-    *,
-    role: c.Infra.RepositoryRole,
-    path: str,
-    checkout: c.Infra.CheckoutKind,
+    distribution: str, *, role: c.Infra.MakeProfile, path: str
 ) -> m.Infra.RepositoryRef:
+    """Declare one governed repository by its role and its own path.
+
+    Topology is exactly ``role`` (``.gitmodules`` present or not) plus the
+    path the workspace root sees; nothing else records where the checkout
+    physically sits.
+    """
     return m.Infra.RepositoryRef(
         name=distribution,
         distribution=distribution,
@@ -37,7 +39,7 @@ def _repository(
         path=Path(path),
         role=role,
         provider=_PROVIDER,
-        checkout=checkout,
+        kind=c.Infra.ProjectKind.INTERNAL_FLEXT,
         codegen=c.Infra.CodegenKind.CONFORM,
         package=True,
         editable=True,
@@ -47,35 +49,19 @@ def _repository(
 
 def _workspace() -> m.Infra.WorkspaceSpec:
     return m.Infra.WorkspaceSpec(
-        beads=tu.Tests.beads_project("flext"),
         name="workspace",
-        repository=_repository(
-            "workspace",
-            role=_ROLE.WORKSPACE,
-            path=".",
-            checkout=c.Infra.CheckoutKind.ROOT,
-        ),
-        subprojects=(
-            _repository(
-                "flext-core",
-                role=_ROLE.STANDALONE,
-                path="flext-core",
-                checkout=c.Infra.CheckoutKind.SUBMODULE,
-            ),
+        repository=_repository("workspace", role=_ROLE.WORKSPACE, path="."),
+        declared_repositories=(
+            _repository("flext-core", role=_ROLE.STANDALONE, path="flext-core"),
         ),
     )
 
 
 def _workspace_with_consumer() -> m.Infra.WorkspaceSpec:
     workspace = _workspace()
-    consumer = _repository(
-        "flext-api",
-        role=_ROLE.STANDALONE,
-        path="flext-api",
-        checkout=c.Infra.CheckoutKind.SUBMODULE,
-    )
+    consumer = _repository("flext-api", role=_ROLE.STANDALONE, path="flext-api")
     return workspace.model_copy(
-        update={"subprojects": (*workspace.subprojects, consumer)}
+        update={"declared_repositories": (*workspace.declared_repositories, consumer)}
     )
 
 
@@ -96,14 +82,14 @@ workspace = true
 
 
 class TestsFlextInfraPyprojectConformTopologySources:
-    def test_workspace_root_never_gets_git_specifier(self) -> None:
+    def test_repository_root_never_gets_git_specifier(self) -> None:
         workspace = _workspace()
 
         result = u.Infra.pyproject_dependencies_conform(
             _PYPROJECT,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
 
         rendered = tm.ok(result)
@@ -124,7 +110,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             external,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
 
         rendered = tm.ok(result)
@@ -132,7 +118,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
         # The expected specifier is derived from the same declared repository
         # contract the generator reads - never a hardcoded URL or branch.
-        project = workspace.subprojects[0]
+        project = workspace.declared_repositories[0]
         tm.that(
             dependencies,
             eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
@@ -140,9 +126,9 @@ class TestsFlextInfraPyprojectConformTopologySources:
 
     def test_publishable_project_keeps_catalog_git_provenance(self) -> None:
         workspace = _workspace_with_consumer()
-        provider = workspace.subprojects[0]
+        provider = workspace.declared_repositories[0]
         publishable_project = (
-            f'[project]\nname = "{workspace.subprojects[1].distribution}"\n'
+            f'[project]\nname = "{workspace.declared_repositories[1].distribution}"\n'
             'version = "0.1.0"\n'
             'dependencies = ["flext-core"]\n'
         )
@@ -151,7 +137,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             publishable_project,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
 
         rendered = tm.ok(result)
@@ -169,7 +155,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
     def test_publishable_project_pins_unmapped_provider_source_to_branch(self) -> None:
         """Derive the declared branch for a provider absent from subprojects."""
         workspace = _workspace_with_consumer()
-        consumer = workspace.subprojects[1]
+        consumer = workspace.declared_repositories[1]
         result = u.Infra.pyproject_dependencies_conform(
             (
                 f'[project]\nname = "{consumer.distribution}"\n'
@@ -179,7 +165,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
             ),
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+            workspace_mode=c.Infra.MakeProfile.WORKSPACE,
         )
 
         rendered = tm.ok(result)
@@ -199,7 +185,7 @@ class TestsFlextInfraPyprojectConformTopologySources:
     ) -> None:
         """Prove uv resolves project Git metadata through the root overlay."""
         workspace = _workspace_with_consumer()
-        provider, consumer = workspace.subprojects
+        provider, consumer = workspace.declared_repositories
         root = tmp_path / "workspace"
         provider_root = root / provider.path
         consumer_root = root / consumer.path
@@ -227,7 +213,7 @@ workspace = true
                 root_source,
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+                workspace_mode=c.Infra.MakeProfile.WORKSPACE,
             )
         )
         consumer_rendered = tm.ok(
@@ -239,7 +225,7 @@ workspace = true
                 ),
                 providers=config.Infra.codegen.providers,
                 workspace=workspace,
-                workspace_mode=c.Infra.WorkspaceMode.WORKSPACE,
+                workspace_mode=c.Infra.MakeProfile.WORKSPACE,
             )
         )
         (root / c.Infra.PYPROJECT_FILENAME).write_text(root_rendered, encoding="utf-8")
@@ -267,7 +253,7 @@ workspace = true
             )
         )
 
-        tm.that(lock_result.exit_code, eq=0)
+        tm.that(u.Cli.process_succeeded(lock_result.outcome), eq=True)
         lock_content = (root / c.Infra.UV_LOCK_FILENAME).read_text(encoding="utf-8")
         packages = tu.Tests.toml_tables_at(lock_content, "package")
         provider_packages = [
@@ -285,17 +271,18 @@ workspace = true
             _PYPROJECT,
             providers=config.Infra.codegen.providers,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
         )
 
-        project = workspace.subprojects[0]
+        project = workspace.declared_repositories[0]
         rendered = tm.ok(result)
         dependencies = tu.Tests.toml_strings_at(rendered, "project", "dependencies")
         tm.that(
             dependencies,
             eq=(f"{project.distribution} @ git+{project.url}@{_PROVIDER_SPEC.branch}",),
         )
-        uv = tu.Tests.toml_table_at(rendered, "tool", "uv")
-        workspace_table = tu.Tests.toml_table_at(rendered, "tool", "uv", "workspace")
-        tm.that(workspace_table.get("members"), eq=[])
-        tm.that("sources" in uv, eq=False)
+        parsed = u.Cli.toml_parse_text(rendered)
+        if parsed is None:
+            message = "rendered dependency metadata is invalid TOML"
+            raise AssertionError(message)
+        tm.that("tool" in parsed, eq=False)

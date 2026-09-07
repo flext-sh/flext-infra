@@ -25,14 +25,14 @@ from flext_tests import tm
 _TARGET_LINE = re.compile(r"^(?P<names>[a-z][a-z0-9 _-]*):(?!=)")
 
 
-def _workspace_root() -> Path:
-    """Return the workspace root that owns this checkout."""
+def _repository_root() -> Path:
+    """Return the repository root that owns this checkout."""
     return Path(__file__).resolve().parents[2]
 
 
 def _custom_surfaces() -> tuple[Path, ...]:
     """Return every custom Make surface present in the workspace."""
-    root = _workspace_root()
+    root = _repository_root()
     name = c.Infra.CUSTOM_MAKE_FILENAME
     return tuple(
         sorted(
@@ -62,7 +62,7 @@ class TestsFlextInfraCustomSurfaceNeverShadowsPublicVerbs:
 
     def test_no_custom_surface_redefines_a_public_verb(self) -> None:
         """No custom.mk on disk overrides a generated public verb recipe."""
-        root = _workspace_root()
+        root = _repository_root()
         offenders = {
             str(surface.relative_to(root)): shadowed
             for surface in _custom_surfaces()

@@ -25,7 +25,7 @@ _super_modules = [
     p for p in COMMON_DIR.parents if p.name == "modules" and p.parent.name == ".git"
 ]
 _resolve_root = _super_modules[0].parent.parent if _super_modules else ROOT
-WORKSPACE_ROOT = Path(
+REPOSITORY_ROOT = Path(
     tm.ok(
         u.Cli.capture(
             ["git", "rev-parse", "--path-format=absolute", "--show-toplevel"],
@@ -58,3 +58,20 @@ def test_markdownlint_does_not_suppress_strict_rules() -> None:
     assert config.get("MD064") is not False
     assert config.get("MD075") is not False
     assert config["MD013"]["line_length"] <= 500
+
+
+def test_flext_law_requires_automated_structural_rewires() -> None:
+    law = (REPOSITORY_ROOT / ".agents/skills/flext-law/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+
+    for required in (
+        "`make mod APPLY=Y`",
+        "`ast-grep` rewrites",
+        "Rope semantic refactors",
+        "`pyright-langserver` diagnostics",
+        "GitHub and CRG belong to ai-hub",
+        "never imports ai-hub or CRG as a library",
+        "Repetitive manual call-site editing is prohibited",
+    ):
+        tm.that(law, has=required)

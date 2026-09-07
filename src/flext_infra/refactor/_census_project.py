@@ -23,7 +23,9 @@ class FlextInfraRefactorCensusProjectMixin:
     """
 
     if TYPE_CHECKING:
-        fail_fast: bool
+
+        @property
+        def fail_fast(self) -> bool: ...
 
         @staticmethod
         def _include_rule(
@@ -69,9 +71,9 @@ class FlextInfraRefactorCensusProjectMixin:
         self,
         project: str,
         *,
-        objects: tuple[m.Infra.Census.Object, ...],
-        seed_violations: tuple[m.Infra.Census.Violation, ...],
-        fixes: tuple[m.Infra.Census.Fix, ...],
+        objects: t.VariadicTuple[m.Infra.Census.Object],
+        seed_violations: t.VariadicTuple[m.Infra.Census.Violation],
+        fixes: t.VariadicTuple[m.Infra.Census.Fix],
         duplicate_keys: frozenset[str],
         rule_names: t.StrSequence | None,
         selected_rules: frozenset[str] | None = None,

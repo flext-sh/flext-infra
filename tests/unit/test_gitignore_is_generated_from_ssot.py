@@ -20,14 +20,13 @@ from flext_tests import tm
 from tests import u as test_u
 
 
-def _workspace_root() -> Path:
+def _repository_root() -> Path:
     """Return the workspace root that owns this checkout."""
     return Path(flext_infra.__file__).resolve().parents[2]
 
 
-def _is_allowed_by_policy(relative_path: str) -> bool:
-    """Return whether the shipped SSOT policy keeps *relative_path* trackable."""
-    rendered = "\n".join(test_u.Tests.ignore_patterns_for(_workspace_root())) + "\n"
+def _is_allowed_by_policy(rendered: str, relative_path: str) -> bool:
+    """Return whether one policy snapshot keeps *relative_path* trackable."""
     return test_u.Tests.is_tracked_under(rendered, relative_path)
 
 
@@ -49,13 +48,39 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
             for item in config.Infra.codegen.managed_files
             if item.policy != c.Infra.MANAGED_FILE_POLICY_DELEGATED
         )
+        rendered = (
+            "\n".join(test_u.Tests.ignore_patterns_for(_repository_root())) + "\n"
+        )
         blocked = tuple(
             item.path.as_posix()
             for item in committed
-            if not _is_allowed_by_policy(item.path.as_posix())
+            if not _is_allowed_by_policy(rendered, item.path.as_posix())
         )
 
         tm.that(blocked, eq=())
+
+    def test_vendored_package_directory_is_trackable(self) -> None:
+        """A vendored tree inside the package stays tracked and therefore packaged.
+
+        Why (flext-f6gqq): hatchling honours .gitignore, so an unanchored
+        ``vendor/`` rule silently dropped ``src/<pkg>/vendor`` from the wheel
+        while still ignoring the root-level vendor tree it was meant for.
+        """
+        rendered = tm.ok(
+            FlextInfraCodegenConform.render_project_gitignore(
+                config.Infra.codegen,
+                profile=c.Infra.MakeProfile.STANDALONE,
+                project_name="probe-project",
+            )
+        )
+
+        tm.that(
+            test_u.Tests.is_tracked_under(
+                rendered, "src/probe_project/vendor/docx/document.py"
+            ),
+            eq=True,
+        )
+        tm.that(test_u.Tests.is_tracked_under(rendered, "vendor/module.go"), eq=False)
 
     def test_declared_projects_are_trackable_under_the_rendered_policy(self) -> None:
         """A project declared in the manifest is trackable in the rendered body.
@@ -68,14 +93,13 @@ class TestsFlextInfraGitignoreIsGeneratedFromSsot:
         """
         projects = ("probe-project", "nested/probe-project")
         workspace = m.Infra.WorkspaceSpec(
-            beads=test_u.Tests.beads_project("flext"),
             name="probe-root",
             repository=test_u.Tests.repository_ref("probe-root"),
-            subprojects=tuple(
+            declared_repositories=tuple(
                 test_u.Tests.repository_ref(
                     Path(item).name,
                     path=Path(item),
-                    role=c.Infra.RepositoryRole.STANDALONE,
+                    role=c.Infra.MakeProfile.STANDALONE,
                 )
                 for item in projects
             ),

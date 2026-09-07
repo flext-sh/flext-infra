@@ -43,7 +43,7 @@ def _create_workspace(root: Path, *, python_minor: int = 13) -> Path:
 def _make_enforcer(workspace: Path) -> FlextInfraPythonVersionEnforcer:
     class _TestEnforcer(FlextInfraPythonVersionEnforcer):
         @override
-        def _workspace_root_from_file(self, file: str | Path) -> Path:
+        def _repository_root_from_file(self, file: str | Path) -> Path:
             _ = file
             return workspace
 

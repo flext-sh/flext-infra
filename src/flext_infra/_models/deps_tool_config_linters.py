@@ -6,10 +6,9 @@ from typing import Annotated
 
 from flext_core import m
 from flext_infra import t
-from flext_infra._models._defaults import ImmutableEmptyMapping
-from flext_infra._models.deps_tool_config_project import (
-    FlextInfraModelsDepsToolConfigProject,
-)
+
+from .._models._defaults import ImmutableEmptyMapping
+from .._models.deps_tool_config_project import FlextInfraModelsDepsToolConfigProject
 
 
 class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProject):
@@ -244,7 +243,7 @@ class FlextInfraModelsDepsToolConfigLinters(FlextInfraModelsDepsToolConfigProjec
             ),
         ] = m.Field(default_factory=ImmutableEmptyMapping)
         overrides: Annotated[
-            tuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolConfigLinters.MypyOverrideConfig],
             m.Field(
                 description="Per-module mypy overrides for auto-generated files and PEP 695 generics."
             ),

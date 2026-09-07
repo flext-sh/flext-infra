@@ -7,16 +7,13 @@ from flext_tests import tm
 
 
 class TestsToolchainGoBackend:
-    """The independent Go runtime follows one compatible release line."""
+    """The independent Go runtime follows the moving fleet selector."""
 
-    def test_go_version_is_a_compatible_release_line(self) -> None:
-        """Keep Go policy explicit without coupling it to the Beads backend."""
+    def test_go_version_tracks_latest_without_coupling_to_beads(self) -> None:
+        """Keep Go policy explicit while mise.lock owns its exact release."""
         toolchain = config.Infra.codegen.toolchain
 
-        tm.that(toolchain.go_version, has=".")
-        tm.that(
-            all(part.isdecimal() for part in toolchain.go_version.split(".")), eq=True
-        )
+        tm.that(toolchain.go_version, eq="latest")
 
 
 __all__: tuple[str, ...] = ()

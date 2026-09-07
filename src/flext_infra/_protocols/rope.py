@@ -65,10 +65,10 @@ class FlextInfraProtocolsRope(Protocol):
     class RopeWorkspaceDsl(Protocol):
         """Public DSL contract for one shared Rope workspace session."""
 
-        workspace_root: Path
+        repository_root: Path
 
         @property
-        def rope_workspace_root(self) -> Path: ...
+        def rope_repository_root(self) -> Path: ...
 
         @property
         def rope_project(self) -> t.Infra.RopeProject: ...
@@ -110,6 +110,8 @@ class FlextInfraProtocolsRope(Protocol):
         def name_index(
             self,
         ) -> t.MappingKV[str, tuple[tuple[Path, str, tuple[int, ...]], ...]]: ...
+
+        def import_dependents(self, import_target: str) -> tuple[Path, ...]: ...
 
         def objects(
             self,
@@ -291,12 +293,37 @@ class FlextInfraProtocolsRope(Protocol):
         def project_root(file_path: Path) -> Path | None: ...
 
         @staticmethod
-        def init_rope_project(workspace_root: Path) -> t.Infra.RopeProject: ...
+        def init_rope_project(repository_root: Path) -> t.Infra.RopeProject: ...
+
+        @staticmethod
+        def init_rope_workspace(repository_root: Path) -> t.Infra.RopeProject: ...
 
         @staticmethod
         def get_resource_from_path(
             rope_project: t.Infra.RopeProject, file_path: Path
         ) -> t.Infra.RopeResource | None: ...
+
+    @runtime_checkable
+    class CensusModuleRule(Protocol):
+        """Call contract shared by the symbol-indexed census rule scanners.
+
+        Every structural census rule that consults the module symbol index is
+        invoked through this one contract, so the census dispatcher owns a
+        single call site instead of one hand-written block per rule.
+        """
+
+        def __call__(
+            self,
+            rope: p.Infra.RopeWorkspaceDsl,
+            file_path: Path,
+            *,
+            project_name: str,
+            objects: t.VariadicTuple[m.Infra.Census.Object] | None,
+            applied: frozenset[str],
+            selected_kinds: frozenset[str],
+            symbol_index: t.MappingKV[str, t.Pair[str, int]],
+            convention: m.Infra.RopeModuleConvention,
+        ) -> tuple[list[m.Infra.Census.Violation], list[m.Infra.Census.Fix]]: ...
 
 
 __all__: list[str] = ["FlextInfraProtocolsRope"]

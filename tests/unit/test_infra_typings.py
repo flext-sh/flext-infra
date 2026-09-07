@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from flext_infra import config
 from flext_tests import tm
 from tests import c, t
 
@@ -29,13 +30,14 @@ class TestsFlextInfraInfraTypings:
         tm.that(list(items), eq=expected)
 
     def test_infra_mapping_adapter_validates_real_workspace_payload(self) -> None:
+        python_version = config.Infra.codegen.toolchain.python_version
         payload = t.Infra.INFRA_MAPPING_ADAPTER.validate_python({
-            "python": {"version": "3.13"},
+            "python": {"version": python_version},
             "paths": ["src", "tests"],
             "enabled": True,
         })
 
-        tm.that(payload["python"], eq={"version": "3.13"})
+        tm.that(payload["python"], eq={"version": python_version})
         tm.that(payload["paths"], eq=["src", "tests"])
         tm.that(payload["enabled"], eq=True)
 

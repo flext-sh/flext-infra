@@ -60,7 +60,7 @@ class TestsFlextInfraDocServer:
         def test_execute_propagates_selection_failure(self, tmp_path: Path) -> None:
             workspace = tu.Tests.create_docs_workspace(tmp_path)
 
-            result = FlextInfraDocServer(workspace_root=workspace).execute()
+            result = FlextInfraDocServer(repository_root=workspace).execute()
 
             tm.fail(result)
 

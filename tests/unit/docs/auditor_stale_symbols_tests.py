@@ -16,6 +16,39 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _write_demo_pyproject(root: Path) -> None:
+    """Declare the demo distribution the public-contract reader resolves."""
+    _write(
+        root / "pyproject.toml",
+        (
+            "[project]\n"
+            'name = "demo-pkg"\n'
+            'version = "0.1.0"\n'
+            'description = "Demo public exports project"\n'
+        ),
+    )
+
+
+def _write_demo_facade(package_root: Path) -> None:
+    """Publish one documented concrete symbol through a re-exporting facade."""
+    _write(
+        package_root / "facade.py",
+        (
+            '"""Demo public facade."""\n\n'
+            "from demo_pkg._internal import LiveSymbol\n\n"
+            '__all__: list[str] = ["LiveSymbol"]\n'
+        ),
+    )
+    _write(
+        package_root / "_internal.py",
+        (
+            '"""Demo internal implementation."""\n\n'
+            "class LiveSymbol:\n"
+            '    """Concrete public symbol docs."""\n'
+        ),
+    )
+
+
 def _stale_symbol_scope(tmp_path: Path) -> m.Infra.DocScope:
     workspace = tmp_path / "workspace"
     project = workspace / "flext-demo"
@@ -149,15 +182,7 @@ def test_public_contract_resolves_local_tuple_public_exports(tmp_path: Path) -> 
 
 def test_public_contract_resolves_imported_lazy_public_exports(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
-    _write(
-        tmp_path / "pyproject.toml",
-        (
-            "[project]\n"
-            'name = "demo-pkg"\n'
-            'version = "0.1.0"\n'
-            'description = "Demo public exports project"\n'
-        ),
-    )
+    _write_demo_pyproject(tmp_path)
     _write(
         package_root / "__init__.py",
         (
@@ -175,22 +200,7 @@ def test_public_contract_resolves_imported_lazy_public_exports(tmp_path: Path) -
             ")\n"
         ),
     )
-    _write(
-        package_root / "facade.py",
-        (
-            '"""Demo public facade."""\n\n'
-            "from demo_pkg._internal import LiveSymbol\n\n"
-            '__all__: list[str] = ["LiveSymbol"]\n'
-        ),
-    )
-    _write(
-        package_root / "_internal.py",
-        (
-            '"""Demo internal implementation."""\n\n'
-            "class LiveSymbol:\n"
-            '    """Concrete public symbol docs."""\n'
-        ),
-    )
+    _write_demo_facade(package_root)
     _write(
         package_root / "_exports.py",
         (
@@ -222,15 +232,7 @@ def test_public_contract_resolves_imported_lazy_public_exports(tmp_path: Path) -
 
 def test_public_contract_resolves_imported_lazy_import_map(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
-    _write(
-        tmp_path / "pyproject.toml",
-        (
-            "[project]\n"
-            'name = "demo-pkg"\n'
-            'version = "0.1.0"\n'
-            'description = "Demo public exports project"\n'
-        ),
-    )
+    _write_demo_pyproject(tmp_path)
     _write(
         package_root / "__init__.py",
         (
@@ -264,22 +266,7 @@ def test_public_contract_resolves_imported_lazy_import_map(tmp_path: Path) -> No
             ")\n"
         ),
     )
-    _write(
-        package_root / "facade.py",
-        (
-            '"""Demo public facade."""\n\n'
-            "from demo_pkg._internal import LiveSymbol\n\n"
-            '__all__: list[str] = ["LiveSymbol"]\n'
-        ),
-    )
-    _write(
-        package_root / "_internal.py",
-        (
-            '"""Demo internal implementation."""\n\n'
-            "class LiveSymbol:\n"
-            '    """Concrete public symbol docs."""\n'
-        ),
-    )
+    _write_demo_facade(package_root)
 
     contract = u.Infra.public_contract(tmp_path, "demo_pkg")
 
@@ -289,15 +276,7 @@ def test_public_contract_resolves_imported_lazy_import_map(tmp_path: Path) -> No
 
 def test_docstring_issues_accepts_direct_part_flext_docstring(tmp_path: Path) -> None:
     package_root = tmp_path / "src" / "demo_pkg"
-    _write(
-        tmp_path / "pyproject.toml",
-        (
-            "[project]\n"
-            'name = "demo-pkg"\n'
-            'version = "0.1.0"\n'
-            'description = "Demo public exports project"\n'
-        ),
-    )
+    _write_demo_pyproject(tmp_path)
     _write(
         package_root / "__init__.py",
         (

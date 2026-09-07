@@ -118,7 +118,7 @@ class TestsDocstringCoverage:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project, checks="docstrings"
+                repository_root=project, checks="docstrings"
             ).execute()
 
             tm.ok(result)
@@ -133,7 +133,7 @@ class TestsDocstringCoverage:
         def test_default_checks_runs_full_suite(self, tmp_path: Path) -> None:
             project = _write_project(tmp_path)
 
-            result = FlextInfraDocAuditor(workspace_root=project).execute()
+            result = FlextInfraDocAuditor(repository_root=project).execute()
 
             tm.ok(result)
             summary = json.loads(
@@ -151,7 +151,7 @@ class TestsDocstringCoverage:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project, checks="docstrings", docstring_min=80.0
+                repository_root=project, checks="docstrings", docstring_min=80.0
             ).execute()
 
             tm.fail(result)
@@ -172,7 +172,7 @@ class TestsDocstringCoverage:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project, checks="docstrings", docstring_min=40.0
+                repository_root=project, checks="docstrings", docstring_min=40.0
             ).execute()
 
             tm.ok(result)
@@ -181,7 +181,7 @@ class TestsDocstringCoverage:
             project = _write_project(tmp_path)
 
             result = FlextInfraDocAuditor(
-                workspace_root=project, checks="docstrings"
+                repository_root=project, checks="docstrings"
             ).execute()
 
             tm.ok(result)
