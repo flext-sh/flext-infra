@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from fnmatch import fnmatchcase
 from hashlib import sha256
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, ClassVar, override
+from typing import TYPE_CHECKING, Annotated, TypeIs, override
 
 from flext_core import r
 from flext_infra import c, config, m, t, u
@@ -102,6 +102,26 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             character in "0123456789abcdef" for character in digest
         )
 
+    @staticmethod
+    def _shell_launcher_version(content: str) -> str | None:
+        prefix = 'local mise_version="${MISE_VERSION:-'
+        suffix = '}"'
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if line.startswith(prefix) and line.endswith(suffix):
+                return line.removeprefix(prefix).removesuffix(suffix)
+        return None
+
+    @staticmethod
+    def is_mise_release(value: str | None) -> TypeIs[str]:
+        """Return whether a runtime identity is an exact Mise release."""
+        if value is None:
+            return False
+        parts = value.split(".")
+        return len(parts) == c.Infra.MISE_RELEASE_COMPONENT_COUNT and all(
+            part.isdecimal() for part in parts
+        )
+
     @classmethod
     def launcher_release(cls, root: Path) -> p.Result[str]:
         """Return the one exact release embedded by both generated launchers."""
@@ -124,8 +144,8 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one native staged bootstrap seed without executing live bytes."""
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[str].from_failure(source)
-        windows = path.name == "mise.cmd"
+            return r[str].fail(source.error or f"missing generated Mise seed: {path}")
+        windows = path.name == c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
         release = (
             cls._assignment(source.value, "pinned_version")
             if windows
@@ -174,6 +194,14 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
                 )
         return r[str].ok(release)
 
+    @classmethod
+    def validate_launchers(cls, root: Path) -> p.Result[bool]:
+        """Validate both generated launchers and their identical release."""
+        release = cls.launcher_release(root)
+        if release.failure:
+            return r[bool].from_failure(release)
+        return r[bool].ok(True)
+
     def validate_artifacts(self, project_root: Path) -> p.Result[bool]:
         """Validate one project's committed Mise artifacts entirely offline."""
         config_result = self._read_toml(project_root / ".mise.toml")
@@ -185,9 +213,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         suspended = self._validate_suspended_selectors(tools_result.value)
         if suspended.failure:
             return suspended
-        release = self.launcher_release(project_root)
-        if release.failure:
-            return r[bool].fail(release.error or "invalid committed Mise launchers")
+        launcher_result = self.validate_launchers(project_root)
+        if launcher_result.failure:
+            return launcher_result
         return r[bool].ok(True)
 
     @override
@@ -204,9 +232,9 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
             return suspended
         if self.config_only:
             return r[bool].ok(True)
-        release = self.launcher_release(self.workspace_root)
-        if release.failure:
-            return r[bool].fail(release.error or "invalid committed Mise launchers")
+        launcher_result = self.validate_launchers(self.workspace_root)
+        if launcher_result.failure:
+            return launcher_result
         return r[bool].ok(True)
 
 

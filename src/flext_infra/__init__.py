@@ -158,7 +158,6 @@ if TYPE_CHECKING:
     from .gates.smells import FlextInfraSmellsGate
     from .gates.tier_whitelist import FlextInfraTierWhitelistGate
     from .git import FlextInfraGitService
-    from .iteration import FlextInfraUtilitiesIteration
     from .maintenance.clean import FlextInfraCleanService
     from .maintenance.python_version import FlextInfraPythonVersionEnforcer
     from .models import FlextInfraModels, FlextInfraModels as m
@@ -428,7 +427,6 @@ __all__: tuple[str, ...] = (
     "FlextInfraTransformerTier0ImportFixer",
     "FlextInfraTypes",
     "FlextInfraUtilities",
-    "FlextInfraUtilitiesIteration",
     "FlextInfraValidateFreshImport",
     "FlextInfraValidateImportCycles",
     "FlextInfraValidateLazyMapFreshness",
@@ -632,7 +630,6 @@ _LAZY_IMPORTS = MappingProxyType(
             ".gates.smells": ("FlextInfraSmellsGate",),
             ".gates.tier_whitelist": ("FlextInfraTierWhitelistGate",),
             ".git": ("FlextInfraGitService",),
-            ".iteration": ("FlextInfraUtilitiesIteration",),
             ".maintenance": ("maintenance",),
             ".maintenance.clean": ("FlextInfraCleanService",),
             ".maintenance.python_version": ("FlextInfraPythonVersionEnforcer",),

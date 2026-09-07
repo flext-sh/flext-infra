@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_core import r
-from flext_infra import m, u
+from flext_infra import config, m, u
 from flext_infra.codegen import _mise_artifacts_candidates as candidates
 from flext_infra.codegen._mise_artifacts_files import (
     FlextInfraMiseArtifactsFiles as files,
@@ -70,7 +70,7 @@ class FlextInfraMiseStaging:
             project.artifacts.windows_launcher,
         )
         for source, (name, mode) in zip(
-            artifact_states, files.ARTIFACT_SPECS, strict=True
+            artifact_states, files.ARTIFACT_SPECS[:2], strict=True
         ):
             if source.content is None:
                 return r[bool].fail(
@@ -79,6 +79,13 @@ class FlextInfraMiseStaging:
             copied = process.write_new(stage_root / name, source.content, mode)
             if copied.failure:
                 return copied
+        locked = u.Infra.update_mise_lock(
+            stage_root,
+            platforms=config.Infra.codegen.toolchain.mise_lock_platforms,
+            staging_parent=project.layout.transaction_root / "mise-lock",
+        )
+        if locked.failure:
+            return locked
         validated = self._owner.validate_artifacts(stage_root)
         if validated.failure:
             return r[bool].from_failure(validated)

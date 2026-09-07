@@ -39,8 +39,8 @@ go = "{{ go_version }}"
 # qlty ships no mise registry alias; the github backend selector is the only
 # resolvable form (bare 'qlty' fails mise install: 'not found in registry').
 # GitHub Artifact Attestations is an external-token capability and is not
-# selected by setup/gen; the lock still authenticates the downloaded bytes by
-# checksum without silently requiring a personal GitHub credential.
+# selected by setup/gen, so installation never silently requires a personal
+# GitHub credential.
 [tools."github:qltysh/qlty"]
 version = "{{ qlty_version }}"
 github_attestations = false

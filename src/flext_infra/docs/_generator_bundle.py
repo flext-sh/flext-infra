@@ -50,7 +50,7 @@ class FlextInfraDocGeneratorBundleMixin:
                 "docs publication is owned by codegen conform; "
                 "the generation transaction must publish plan_files()"
             )
-        roots = u.Infra.docs_repository_roots(request.repository_root)
+        roots = u.Infra.docs_workspace_roots(request.repository_root)
         if roots.failure:
             return r[m.Infra.DocsGenerationBundle].from_failure(roots)
         repository_root = roots.value[0]
