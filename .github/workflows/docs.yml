@@ -4,10 +4,9 @@ name: Docs
 "on":
   push:
     branches:
-      - dev
-      - develop
-      - 0.12.0-dev
       - main
+      - 0.12.0-dev
+      - 0.20.0-dev
     paths:
       - "docs/**"
       - "mkdocs.yml"
@@ -36,22 +35,14 @@ jobs:
           submodules: false
           fetch-depth: 0
 
-      - name: Install mise toolchain
-        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14  # v4.2.3
-        with:
-          version: 2026.8.14
-
       - name: Sync workspace toolchain
         run: make setup
 
       - name: Generation drift (blocking)
-        run: make gen WHAT=check
+        run: make conform APPLY=Y
 
-      - name: Docs audit (blocking)
-        run: make docs WHAT=audit
-
-      - name: Docs validate (blocking)
-        run: make docs WHAT=validate
+      - name: Docs lifecycle (blocking)
+        run: make docs APPLY=Y
 
       # Failure diagnostics execute only after the original Make step has
       # already propagated its exact status to Actions.
@@ -90,7 +81,7 @@ jobs:
             apps/*/.reports/**/audit-report.md
             apps/*/.reports/**/validate-summary.json
             apps/*/.reports/**/validate-report.md
-          if-no-files-found: ignore
+          if-no-files-found: error
           retention-days: 7
 
   build:
@@ -107,16 +98,11 @@ jobs:
           submodules: false
           fetch-depth: 0
 
-      - name: Install mise toolchain
-        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14  # v4.2.3
-        with:
-          version: 2026.8.14
-
       - name: Sync workspace toolchain
         run: make setup
 
       - name: Build site
-        run: make docs WHAT=build
+        run: make docs APPLY=Y
 
       - name: Verify byte-identical repository
         run: |

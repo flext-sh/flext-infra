@@ -6,7 +6,8 @@ from typing import Annotated, ClassVar
 
 from flext_core import m
 from flext_infra import c, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
+
+from .._models._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigTypeCheckers:
@@ -36,7 +37,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
         class ExecutionEnvironment(m.ContractModel):
             """Pyright execution environment entry."""
 
-            model_config: ClassVar[m.ConfigDict] = m.ConfigDict(populate_by_name=True)
+            model_config: ClassVar[t.ConfigDict] = m.ConfigDict(populate_by_name=True)
 
             root: Annotated[
                 str, m.Field(description="Execution environment root path.")
@@ -111,7 +112,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
-                    description="Typings paths used in subproject configs.",
+                    description="Typings paths used in declared_repository configs.",
                 ),
             ]
             ignored_diagnostic_globs: Annotated[
@@ -239,7 +240,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="project-typings-paths",
-                    description="Typings paths used in subproject configs.",
+                    description="Typings paths used in declared_repository configs.",
                 ),
             ]
             env_dirs: Annotated[
@@ -267,7 +268,7 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 t.StrSequence,
                 m.Field(
                     alias="project-shared-search-paths",
-                    description="Additional shared workspace paths for subproject pyrefly search-path.",
+                    description="Additional shared workspace paths for declared_repository pyrefly search-path.",
                 ),
             ]
 

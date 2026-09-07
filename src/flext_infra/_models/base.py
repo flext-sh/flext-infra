@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import Annotated, ClassVar
 
 from flext_cli import m
-
 from flext_infra import c, t
-from flext_infra._models._defaults import ImmutableEmptyMapping
-from flext_infra._models.mixins import FlextInfraModelsMixins as mm
+
+from .._models._defaults import ImmutableEmptyMapping
+from .._models.mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsBase:
@@ -24,10 +24,7 @@ class FlextInfraModelsBase:
         """Structured process outcome propagated through a Result failure."""
 
         exit_code: Annotated[
-            int, m.Field(ge=0, le=255, description="Process-compatible exit code")
-        ]
-        raw_exit_code: Annotated[
-            int, m.Field(description="Raw subprocess return code before signal mapping")
+            int, m.Field(description="Exact subprocess return code without remapping")
         ]
         classification: Annotated[
             t.NonEmptyStr,
@@ -100,13 +97,13 @@ class FlextInfraModelsBase:
         # trailing newline every FLEXT module requires). ContractModel sets
         # str_strip_whitespace=True, which would corrupt written files, so the
         # canonical contract config is inherited with stripping disabled.
-        model_config: ClassVar[m.ConfigDict] = {
+        model_config: ClassVar[t.ConfigDict] = {
             **m.ContractModel.model_config,
             "str_strip_whitespace": False,
         }
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Repository root used for lint and pytest checks")
         ]
         updated_source: Annotated[
             str, m.Field(description="Replacement source content to write")
@@ -123,7 +120,7 @@ class FlextInfraModelsBase:
         """Validated options for transactionally writing multiple sources."""
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Repository root used for lint and pytest checks")
         ]
         expected_sources: Annotated[
             t.MappingKV[Path, str],
@@ -148,7 +145,7 @@ class FlextInfraModelsBase:
         """Validated options for a protected single-file edit pipeline."""
 
         workspace: Annotated[
-            Path, m.Field(description="Workspace root used for lint and pytest checks")
+            Path, m.Field(description="Repository root used for lint and pytest checks")
         ]
         before_source: Annotated[
             str, m.Field(description="Original source text used for diff and restore")

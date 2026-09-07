@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 def _run_git(repo: Path, *args: str) -> None:
     result = u.Cli.run_raw([c.Infra.GIT, *args], cwd=repo)
     tm.ok(result)
-    tm.that(result.value.exit_code, eq=0)
+    tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
 
 
 def _init_git_repo(repo: Path) -> None:
@@ -66,7 +66,7 @@ class TestsFlextInfraUtilitiessafety:
         )
 
     def test_rollback_to_checkpoint_succeeds_for_non_repo(self, tmp_path: Path) -> None:
-        result = u.Infra.rollback_to_checkpoint(tmp_path)
+        result = u.Infra.rollback_to_checkpoint(tmp_path, "checkpoint-ref")
 
         tm.ok(result)
         tm.that(result.value, eq=True)

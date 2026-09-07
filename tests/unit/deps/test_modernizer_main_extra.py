@@ -17,6 +17,22 @@ if TYPE_CHECKING:
 class TestsFlextInfraDepsModernizerMainExtra:
     """Validate edge cases through the public modernizer API."""
 
+    @staticmethod
+    def _ran_modernizer(modernizer_workspace: Path) -> str:
+        """Run the constraint-rewriting modernizer and return the rendered root."""
+        modernizer = FlextInfraPyprojectModernizer(
+            repository_root=modernizer_workspace,
+            apply_changes=True,
+            rewrite_constraints=True,
+            skip_comments=True,
+            skip_check=True,
+        )
+
+        tm.that(modernizer.run(), eq=0)
+        return (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
+            encoding="utf-8"
+        )
+
     @pytest.mark.parametrize(
         ("content", "expected"),
         [
@@ -35,7 +51,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
             (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
                 content, encoding="utf-8"
             )
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=workspace)
+        modernizer = FlextInfraPyprojectModernizer(repository_root=workspace)
         tm.that(modernizer.run(), eq=expected)
 
     def test_audit_returns_zero_after_workspace_is_canonical(
@@ -43,13 +59,13 @@ class TestsFlextInfraDepsModernizerMainExtra:
     ) -> None:
         """Reach a fixed point after one canonical apply."""
         apply_exit = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
+            repository_root=modernizer_workspace,
             apply_changes=True,
             skip_comments=True,
             skip_check=True,
         ).run()
         audit_exit = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace, audit=True, skip_comments=True
+            repository_root=modernizer_workspace, audit=True, skip_comments=True
         ).run()
         tm.that(apply_exit, eq=0)
         tm.that(audit_exit, eq=0)
@@ -63,7 +79,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         )
         selected_pyproject.write_text("[invalid", encoding="utf-8")
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace_with_projects,
+            repository_root=modernizer_workspace_with_projects,
             apply_changes=True,
             skip_comments=True,
             skip_check=False,
@@ -75,7 +91,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
     ) -> None:
         """Reject constraint rewriting when the lock SSOT is unavailable."""
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
+            repository_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
             skip_comments=True,
@@ -146,7 +162,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         member_lock = modernizer_workspace / "flext-core" / c.Infra.UV_LOCK_FILENAME
 
         exit_code = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
+            repository_root=modernizer_workspace,
             apply_changes=True,
             rewrite_constraints=True,
             skip_comments=True,
@@ -218,17 +234,8 @@ class TestsFlextInfraDepsModernizerMainExtra:
             '[project]\nname = "flext-core"\nversion = "0.12.0-dev"\n', encoding="utf-8"
         )
 
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
-            apply_changes=True,
-            rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
-        )
-
-        tm.that(modernizer.run(), eq=0)
-        rendered = (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-            encoding="utf-8"
+        rendered = TestsFlextInfraDepsModernizerMainExtra._ran_modernizer(
+            modernizer_workspace
         )
         tm.that(rendered, has='"requests>=2.32.4"')
         tm.that(rendered, has="\"httpx[socks]>=0.28.1; python_version < '3.14'\"")
@@ -262,31 +269,27 @@ class TestsFlextInfraDepsModernizerMainExtra:
             encoding="utf-8",
         )
 
-        modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=modernizer_workspace,
-            apply_changes=True,
-            rewrite_constraints=True,
-            skip_comments=True,
-            skip_check=True,
+        rendered = TestsFlextInfraDepsModernizerMainExtra._ran_modernizer(
+            modernizer_workspace
         )
-
-        tm.that(modernizer.run(), eq=0)
-        tm.that(
-            (modernizer_workspace / c.Infra.PYPROJECT_FILENAME).read_text(
-                encoding="utf-8"
-            ),
-            has='"requests>=2.32.4"',
-        )
+        tm.that(rendered, has='"requests>=2.32.4"')
 
     def test_run_scopes_default_audit_to_root_without_external_siblings(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Keep default modernization inside the declared workspace boundary."""
-        workspace = tmp_path / "flext"
-        workspace.mkdir()
-        (workspace / c.Infra.PYPROJECT_FILENAME).write_text(
-            "[project]\nname='flext'\n", encoding="utf-8"
+        workspace = u.Tests.mk_project(
+            tmp_path,
+            "flext",
+            pyproject=(
+                "[project]\n"
+                "name='flext'\n"
+                "version='0.1.0'\n"
+                "requires-python='>=3.13,<3.14'\n"
+                "dependencies=[]\n"
+            ),
         )
+        u.Tests.write_project_beads_config(workspace, "flext")
         external = tmp_path / "gruponos-data"
         (external / "src" / "gruponos_data").mkdir(parents=True)
         external_pyproject = external / c.Infra.PYPROJECT_FILENAME
@@ -296,7 +299,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         )
 
         modernizer = FlextInfraPyprojectModernizer(
-            workspace_root=workspace, audit=True, skip_comments=True
+            repository_root=workspace, audit=True, skip_comments=True
         )
 
         tm.that(modernizer.run(), eq=1)
@@ -309,7 +312,7 @@ class TestsFlextInfraDepsModernizerMainExtra:
         """Return the exact formatter process failure from the public conform path."""
         (tmp_path / ".taplo.toml").write_text('include = ["/x/["]\n', encoding="utf-8")
         source = '[project]\nname = "sample"\nversion = "0.1.0"\n'
-        modernizer = FlextInfraPyprojectModernizer(workspace_root=tmp_path)
+        modernizer = FlextInfraPyprojectModernizer(repository_root=tmp_path)
 
         result = modernizer.conform_source(source, path=tmp_path / "pyproject.toml")
 

@@ -42,8 +42,6 @@ Infra:
           - .tmp/**
           - .claude/**
           - .vscode/**
-          - .codegraph/**
-          - .code-review-graph/**
           - .serena/**
           - .snapshots/**
           - .benchmarks/**
@@ -140,6 +138,13 @@ Infra:
             - multi-line-summary-second-line
             - no-self-use
             - non-imperative-mood
+            # Autouse is the correct contract for suite-wide isolation guards:
+            # requiring every test to opt in would let live state leak whenever
+            # one consumer omitted the fixture.
+            - pytest-fixture-autouse
+            # See the rationale below: this rule and ban-private-import demand
+            # opposite forms for the same import.
+            - relative-imports
             - too-many-arguments
             - too-many-branches
             - too-many-locals
@@ -152,9 +157,15 @@ Infra:
             - typing-only-standard-library-import
             - typing-only-third-party-import
           ignored-rule-rationales:
-            unsorted-imports:
-              Ruff sorts TYPE_CHECKING imports lexically and reverses the mandatory
-              semantic c-t-p-m-u dependency order in FLEXT facades.
+            relative-imports: >-
+              The codemod rule ban-private-import requires the opposite form.
+              Same-owner implementation modules use relative sibling imports and
+              every other consumer uses a public facade, because an absolute
+              private import couples a consumer to an owner layout. Selecting
+              both gates makes every internal import fail one of them.
+              Converting the 304 findings produced 301 ban-private-import
+              errors and took the suite from 1717 to 3135, so the architectural
+              rule decides.
             import-outside-top-level:
               Public facade models are imported lazily only at validation and
               construction sites to preserve the c-t-p-m-u graph and prevent runtime cycles.
@@ -169,12 +180,6 @@ Infra:
             # under `.venv`, which `exclude` already removes from the lint
             # surface. A vendored generated file that ever becomes tracked gets
             # its rules named here, per UNIVERSAL_CORE r19.
-            # Command surfaces are dispatched by FILE NAME, not imported as
-            # modules, so a hyphenated command (loc-cap.py) is the correct CLI
-            # spelling rather than an invalid module name. Scoped to the
-            # dispatcher directory and to that single rule (UNIVERSAL_CORE r19:
-            # justified per rule, never a blanket mask).
-            "scripts/cmd/**/*.py": [invalid-module-name, shebang-not-executable]
             # Examples are executable documentation loaded by path, not
             # importable modules, so module-name and shebang rules do not apply.
             "**/examples/**/*.py": [invalid-module-name, shebang-not-executable]
@@ -552,17 +557,26 @@ Infra:
         # process wall adds one minute for orderly worker/report shutdown.
         run-timeout-seconds: 600
         termination-grace-seconds: 2
+        # The first failing test is the only actionable red. Continuing after
+        # it wastes runtime and obscures the causal failure.
+        max-failures: 1
         enforcement-plugin: flext_tests_enforcement
         progress-args: [--verbose]
         report-args: [-ra, --durations=25, --durations-min=0.001, --tb=short]
         diagnostic-args: [-rA, --durations=0, --tb=long, --showlocals]
-        # Subprocess-heavy generation tests exhausted memory repeatedly with
-        # four workers on a loaded multi-lane host. Two keeps parallel coverage
-        # while bounding concurrent imports and nested interpreters.
+        # The full suite nests Make, Git, and Python subprocesses. Four workers
+        # previously exhausted that process topology, and a 16-worker run on a
+        # 20-CPU/63-GiB host produced six independent item timeouts. Two is the
+        # highest measured stable ceiling; live CPU and memory remain stricter
+        # additional bounds on smaller hosts.
         parallel-workers: 2
-        # Work stealing drains uneven codegen/subprocess tails without the
-        # serialized 99% tail measured under loadscope.
-        parallel-distribution: worksteal
+        # Reserve physical memory for each xdist worker and its child process
+        # tree; this bound may reduce the tested ceiling on smaller hosts.
+        parallel-worker-memory-gb: 2
+        # Keep scheduling centralized so -x stops feeding workers after the
+        # first failure. Work stealing pre-allocated an entire worker queue and
+        # continued hundreds of cases for minutes after a decisive failure.
+        parallel-distribution: load
         profile-sort: cumulative
         profile-limit: 50
         min-version: "8.0"
@@ -616,6 +630,7 @@ Infra:
       tomlsort:
         all: true
         in_place: true
+        process-timeout-seconds: 60
         sort_first: [project, build-system, tool, dependency-groups]
       vulture:
         # NOTE (multi-agent, flext-j47u): Vulture 2.16 reports keyword-bearing

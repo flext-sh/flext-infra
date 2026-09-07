@@ -7,22 +7,23 @@ SPDX-License-Identifier: MIT
 from __future__ import annotations
 
 from flext_cli import c
-from flext_infra._constants.base import FlextInfraConstantsBase
-from flext_infra._constants.census import FlextInfraConstantsCensus
-from flext_infra._constants.check import FlextInfraConstantsCheck
-from flext_infra._constants.cli import FlextInfraConstantsCli
-from flext_infra._constants.codegen import FlextInfraConstantsCodegen
-from flext_infra._constants.codegen_project import FlextInfraConstantsCodegenProject
-from flext_infra._constants.deps import FlextInfraConstantsDeps
-from flext_infra._constants.detectors import FlextInfraConstantsDetectors
-from flext_infra._constants.docs import FlextInfraConstantsDocs
-from flext_infra._constants.git import FlextInfraConstantsGit
-from flext_infra._constants.github import FlextInfraConstantsGithub
-from flext_infra._constants.refactor import FlextInfraConstantsRefactor
-from flext_infra._constants.release import FlextInfraConstantsRelease
-from flext_infra._constants.rope import FlextInfraConstantsRope
-from flext_infra._constants.source_code import FlextInfraConstantsSourceCode
-from flext_infra._constants.workspace import FlextInfraConstantsWorkspace
+
+from ._constants.base import FlextInfraConstantsBase
+from ._constants.census import FlextInfraConstantsCensus
+from ._constants.check import FlextInfraConstantsCheck
+from ._constants.cli import FlextInfraConstantsCli
+from ._constants.codegen import FlextInfraConstantsCodegen
+from ._constants.codegen_project import FlextInfraConstantsCodegenProject
+from ._constants.deps import FlextInfraConstantsDeps
+from ._constants.detectors import FlextInfraConstantsDetectors
+from ._constants.docs import FlextInfraConstantsDocs
+from ._constants.git import FlextInfraConstantsGit
+from ._constants.namespace import FlextInfraConstantsNamespace
+from ._constants.refactor import FlextInfraConstantsRefactor
+from ._constants.release import FlextInfraConstantsRelease
+from ._constants.rope import FlextInfraConstantsRope
+from ._constants.source_code import FlextInfraConstantsSourceCode
+from ._constants.workspace import FlextInfraConstantsWorkspace
 
 
 class FlextInfraConstants(c):
@@ -39,8 +40,8 @@ class FlextInfraConstants(c):
         FlextInfraConstantsDeps,
         FlextInfraConstantsDetectors,
         FlextInfraConstantsDocs,
-        FlextInfraConstantsGithub,
         FlextInfraConstantsGit,
+        FlextInfraConstantsNamespace,
         FlextInfraConstantsSourceCode,
         FlextInfraConstantsRefactor,
         FlextInfraConstantsRelease,

@@ -8,35 +8,41 @@ Infra:
       # compatible 3.13 patch; no patch is pinned in generated repositories.
       # Derived as computed fields on ToolchainSpec:
       #   python_required_version -> >=3.13,<3.14
-      # uv is supplied by the caller environment and is deliberately not pinned.
-      # Dependency floors live in pyproject; uv.lock owns resolved versions.
+      # Every fleet binary is selected as latest. mise.lock alone owns the
+      # resolved immutable versions and checksums; dependency floors remain in
+      # pyproject and uv.lock alone owns their resolved Python distributions.
       python_version: "3.13"
+      state_directory_name: .flext-runtime
+      scratch_namespace: scratch
+      pycache_namespace: pycache
+      mise_namespace: mise-artifacts
       uv_link_mode: copy
       # Supported resolution environments for the generated lock. Windows is
       # not a supported deployment target: the win32 split resolves meltano's
       # structlog<26 cap against flext-core's structlog>=26.1 floor and is
       # unsatisfiable, so uv must skip that split instead of failing the lock.
       uv_environments: ["sys_platform == 'linux'", "sys_platform == 'darwin'"]
-      # Supply-chain cooldown SSOT (CWE-829): projected to uv exclude-newer and
-      # every Dependabot ecosystem so updates never raise floors that uv blocks.
+      # Supply-chain cooldown SSOT shared by uv and generated update policy.
       dependency_cooldown_days: 7
-      # Security updates are not delayed by Dependabot; match that behavior in
-      # uv only for explicitly reviewed security floors.
       dependency_cooldown_exclusions: [cryptography]
-      # Non-Python toolchain floors consumed by generated .mise.toml and CI.
-      # Patch releases float; minor and major do not. mise resolves the newest
-      # patch inside the declared minor.
-      uv_version: "0.12"
-      kubectl_version: "1.32"
-      helm_version: "3.19"
-      kind_version: "0.31"
-      taplo_version: "0.10"
-      ast_grep_version: "0.45"
-      gitleaks_version: "8.30"
-      tokei_version: "14.0"
-      kubeconform_version: "0.8"
-      qlty_version: "0.642"
-      mise_version: "2026.8.14"
+      dependency_cooldown_overrides: {}
+      # Moving selectors consumed by generated .mise.toml and CI. Freezing a
+      # major, minor, or patch here would create a second lock owner and prevent
+      # setup from converging the fleet on the newest published release.
+      uv_version: latest
+      kubectl_version: latest
+      helm_version: latest
+      kind_version: latest
+      direnv_version: latest
+      taplo_version: latest
+      ast_grep_version: latest
+      gitleaks_version: latest
+      scc_version: latest
+      kubeconform_version: latest
+      qlty_version: "0.642.0"
+      node_version: "26.8"
+      jscpd_version: "5.1.2"
+      waza_version: "0.38.7"
       mise_lock_platforms:
         - linux-x64
         - linux-arm64
@@ -44,35 +50,19 @@ Infra:
         - linux-arm64-musl
         - macos-x64
         - macos-arm64
-        - windows-x64
-      mise_lock_platform_exclusions:
-        # Keyed by full mise selector (that is the key the lock validator
-        # resolves). gc does not build for Windows: its process control uses
-        # syscall.Kill/Flock (unix-only), so no windows-x64 artifact can exist.
-        github:marlon-costa-dc/gascity:
-          - windows-x64
-        ast-grep:
-          - linux-x64-musl
-          - linux-arm64-musl
-        tokei:
-          - linux-x64
-          - linux-arm64
-          - linux-x64-musl
-          - linux-arm64-musl
-          - macos-x64
-          - macos-arm64
-          - windows-x64
       protected_mise_tools:
         - beads
         - gascity
       go_version: "1.26"
       gascity:
-        # The fleet gc is the operator's build of upstream tag v1.4.1: the
-        # source tree is byte-identical, but it links beads v1.2.2 without a
-        # module replace, so the native store's version_compat gate stops
-        # degrading every rig to the fork-per-op BdStore fallback.
+        # The fleet gc is the operator's fork carrying the native-store
+        # compatibility correction required by every governed rig.
         selector: github:marlon-costa-dc/gascity
-        version: "1.4.1-fc2"
+        # Operator order 2026-09-04: always the newest release of OUR fork.
+        # Freezing this stranded the fleet on a build predating its own source
+        # fix (415a2ea8c, read_timeout 15000 -> 120000), whose 15s bound killed
+        # DOLT_GC at 17s and left the hq store unbacked for days.
+        version: latest
         # Suffixed release tag; mise only resolves it when told it is a prerelease.
         prerelease: true
         # Selector shapes that identify gc in a mise manifest, so a regenerated
@@ -83,15 +73,16 @@ Infra:
           - "*:*/gascity"
       beads:
         selector: github:marlon-costa-dc/beads
-        version: "1.2.2-fd1"
-        # The fleet bd is the operator's fork: it carries 4c1c40337
-        # "fix(list): stop bd list from looping forever on hierarchy cycles",
-        # absent from upstream v1.2.2, which has already produced a 17.7 GB
-        # runaway and an OOM on this host. The tag is a prerelease, so mise
-        # must be allowed to resolve it.
+        # Operator order 2026-09-04: always the newest release of OUR fork.
+        # The selector, not a pinned version, is what keeps the fleet off
+        # upstream; freezing the version only rejects our own later releases.
+        version: latest
+        # The fleet bd is the operator's fork carrying the hierarchy-cycle
+        # guard required to prevent unbounded list traversal. Its releases use
+        # prerelease tags, so mise must be allowed to resolve them.
         prerelease: true
         # Selector shapes that identify this tool in a mise manifest, so a
-        # regenerated .mise.toml cannot silently replace the pinned release.
+        # regenerated .mise.toml cannot silently replace the selected fork.
         selector_patterns:
           - bd
           - beads
@@ -119,15 +110,6 @@ Infra:
           - convergence
           - step
 
-    # Why (ai-hub-qwoc): the ast-grep project contract for every governed
-    # repository. A provider manifest may declare sgconfig.yml as a required
-    # surface, so it is rendered from here instead of hand-written per repo.
-    sgconfig:
-      rule_dirs:
-        - ast-grep-rules
-      test_dirs:
-        - ast-grep-rule-tests
-
     # actions/checkout submodules mode for every generated workflow.
     # 'false' is the safe default: the workflow GITHUB_TOKEN cannot clone
     # sibling PRIVATE repositories, so 'recursive' aborts the job at checkout
@@ -136,53 +118,49 @@ Infra:
     checkout_submodules: "false"
     checkout_submodules_overrides: {}
 
-    # Per-distribution private workspace member auth for CI. The default
+    # Runner packages a distribution's own tests need (Ubuntu apt names),
+    # installed by the generated CI before the gates run. A test that drives
+    # a real external engine keeps running in CI instead of being skipped;
+    # the engine is declared here, once, at the fleet SSOT.
+    ci_system_packages:
+      flext-cli:
+        # tests/test_xlsx_recalc.py: headless LibreOffice recalculation.
+        - libreoffice-calc
+    # Per-distribution private composed-project auth for CI. The default
     # GITHUB_TOKEN cannot clone sibling private repos; these projects declare
     # read-only deploy-key secrets that the generated workflow materializes
     # before `make setup` (which otherwise fails on HTTPS submodule clone).
     ci_private_submodules:
       cosmos-main:
+        known_hosts: &github_ssh_known_hosts
+          - github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
         paths:
           - apps/cosmos-charts
           - apps/cosmos-gitops
         deploy_keys:
           - secret: CHARTS_DEPLOY_KEY
-            host_alias: github-charts
             submodule: cosmos-charts
             path: apps/cosmos-charts
-            ssh_url: git@github-charts:datacosmos-br/cosmos-charts.git
+            remote: git@github.com:datacosmos-br/cosmos-charts.git
           - secret: GITOPS_DEPLOY_KEY
-            host_alias: github.com
             submodule: cosmos-gitops
             path: apps/cosmos-gitops
-            ssh_url: git@github.com:datacosmos-br/cosmos-gitops.git
+            remote: git@github.com:datacosmos-br/cosmos-gitops.git
       invest:
+        known_hosts: *github_ssh_known_hosts
         paths:
           - neptor
         deploy_keys:
           - secret: NEPTOR_DEPLOY_KEY
-            host_alias: github-neptor
             submodule: neptor
             path: neptor
-            ssh_url: git@github-neptor:marlonsc/neptor.git
+            remote: git@github.com:marlonsc/neptor.git
 
     github_actions:
       checkout:
         repository: actions/checkout
         version: v7.0.1
         sha: 3d3c42e5aac5ba805825da76410c181273ba90b1
-      setup-python:
-        repository: actions/setup-python
-        version: v7.0.0
-        sha: 5fda3b95a4ea91299a34e894583c3862153e4b97
-      setup-uv:
-        repository: astral-sh/setup-uv
-        version: v9.0.0
-        sha: c771a70e6277c0a99b617c7a806ffedaca235ff9
-      mise:
-        repository: jdx/mise-action
-        version: v4.2.3
-        sha: 9e7f7633ff6f6d6048a9418a68d48f288f50eb14
       kind:
         repository: helm/kind-action
         version: v1.14.0
@@ -207,7 +185,6 @@ Infra:
         repository: actions/deploy-pages
         version: v5.0.0
         sha: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
-
     uv_exclude_dependencies:
       # Standalone CI installs the project editable while sibling flext packages
       # declare the same package via git+https@integration. uv rejects that as
@@ -284,6 +261,13 @@ Infra:
         - main
         - 0.12.0-dev
         - 0.20.0-dev
+      # Pushes to these branches trigger the generated CI workflow. The renderer
+      # adds the repository's own integration branch to this list; it never
+      # hardcodes a fleet branch name.
+      ci_trigger_branches:
+        - main
+        - 0.12.0-dev
+        - 0.20.0-dev
       # Ordered names tried against live Git to derive each repository's
       # baseline. The FLEXT fleet integrates on 0.12.0-dev, which is a release
       # name and therefore belongs here rather than inside the package: a
@@ -313,12 +297,16 @@ Infra:
         discovery_scope: none
 
     make:
-      selector: WHAT
       # Why (mro-dipb): adaptive testmon GitHub Actions cache policy.
       # save_enabled stays false while storage-limit API returns HTTP 402 /
       # flext-infra sits near the default Actions cache ceiling (QUOTA_HOLD).
       testmon_cache:
         schema_version: 1
+        namespace: testmon
+        invocation_namespace: pytest
+        database_filename: .testmondata
+        target_directory: tests
+        reports_directory: .reports/tests
         mode: bootstrap
         save_enabled: false
         max_bootstrap_generations: 3
@@ -349,8 +337,10 @@ Infra:
         # make fmt / make fix APPLY=Y only. This supersedes the earlier
         # check_gates_skip list, which could drift out of sync with the set it
         # was meant to complement.
-        # RULING 1: CI is ternary (Y/N/absent). CI=Y revokes pytest; CI=N runs
-        # full pytest+coverage; absent = testmon incremental.
+        # RULING 1: CI is ternary (Y/N/absent). CI=Y owns the Review workflow,
+        # including full pytest+coverage while attestation is not selected;
+        # CI=N owns the complementary local check gates; absent uses testmon
+        # for incremental developer runs.
         #
         # The set is the SLOW whole-program type checkers, matching
         # PROJECT_CHECK_GATES_LOCAL_VALUES: those are the gates worth deferring
@@ -372,9 +362,10 @@ Infra:
         - { verb: gen, apply: true, contexts: [local, pre_push] }
         - { verb: fmt, apply: true, contexts: [local, pre_commit] }
         - { verb: fix, apply: true, contexts: [local, pre_commit] }
-        - { verb: check, apply: false, contexts: [local, ci, pre_push, pre_commit] }
-        # Why (mro-v4p5): CI must not execute pytest. Local + pre-push keep make test.
-        - { verb: test, apply: false, contexts: [local, pre_push] }
+        - { verb: check, apply: true, contexts: [local, ci, pre_push, pre_commit] }
+        # Review CI proves the complete native gate set. Draft PRs do not select
+        # the job, while attestation reuse is selected externally by AI Hub.
+        - { verb: test, apply: true, contexts: [local, ci, pre_push] }
       # Artifacts `make clean` removes. Read by Makefile.j2 for the cache
       # sweep and the root-level directory/file lists.
       clean:
@@ -387,6 +378,8 @@ Infra:
           - .benchmarks
           - .hypothesis
         root_dirs:
+          - .test-tmp
+          - .test-runtime
           - build
           - dist
           - htmlcov
@@ -442,7 +435,7 @@ Infra:
             local_checkout: ~/flext/flext-infra
           - organization: datacosmos-br
             repository: ai-hub
-            branch: develop
+            branch: dev
             local_checkout: ~/.ai-hub
           - organization: datacosmos-br
             repository: cosmos-docgen
@@ -458,119 +451,83 @@ Infra:
             local_checkout: ~/invest
       verbs:
         - name: help
-          default_what: usage
-          whats: [usage]
-          apply_guarded: false
+          description: Show the complete selector-free public interface.
+          requires_apply: false
         - name: setup
-          default_what: environment
-          whats: [environment]
-          apply_guarded: false
+          description: Provision the declared environment and hooks.
+          requires_apply: false
         - name: deps
-          default_what: check
-          whats: [check, lock, upgrade]
-          # `lock` and `upgrade` rewrite the lockfile and call _require_apply,
-          # so declaring the verb unguarded made them unreachable: the dispatch
-          # rejected APPLY=Y while the recipe demanded it.
-          apply_guarded: true
-          apply_what: upgrade
+          description: Upgrade, lock, and conform every declared dependency.
+          requires_apply: true
         - name: build
-          default_what: artifacts
-          whats: [artifacts]
-          apply_guarded: false
+          description: Build the project distribution artifacts.
+          requires_apply: true
         - name: check
-          default_what: all
-          whats: [all]
-          apply_guarded: false
+          description: Run every configured non-test gate.
+          requires_apply: true
         - name: test
-          default_what: all
-          # all = incremental testmon run; cache-* maintain .testmondata locally.
-          # Coverage is on unless CI=Y (no separate cov verb).
-          # accepts_apply: APPLY=Y is legal for WHAT=cache-clear without putting
-          # test in mutation_verbs (fingerprint still ignores .testmondata*).
-          whats: [all, cache-status, cache-clear, cache-checkpoint]
-          apply_guarded: false
-          accepts_apply: true
-          apply_what: all
+          description: Run the complete suite through the persistent testmon cache.
+          requires_apply: true
         - name: fmt
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
+          description: Apply canonical formatting.
+          requires_apply: true
         - name: fix
-          default_what: check
-          whats: [check, all, apply]
-          apply_guarded: true
-          apply_what: apply
-        - name: run
-          default_what: default
-          whats: [default]
-          apply_guarded: false
-          # Custom `_custom_run_*` handlers may mutate under APPLY=Y without
-          # entering the serialized mutation set (daemon/mcp must not take the
-          # checkout lock). accepts_apply unlocks the APPLY token only.
-          accepts_apply: true
-          apply_what: default
-        - name: work
-          default_what: status
-          whats: [help, status, start, land, finish]
-          # `work` mutates only for start/land/finish; status is the read-only
-          # fixed-point after mutation, so serialize-make can re-check without APPLY=Y.
-          # apply_what stays singular by model contract: it is only the implicit
-          # WHAT selected when callers set APPLY=Y without naming one explicitly.
-          apply_guarded: true
-          apply_what: start
+          description: Apply every configured safe correction.
+          requires_apply: true
+        - name: fix-enforcement
+          description: Apply the safe fix actions declared by the enforcement catalog.
+          requires_apply: true
+        - name: audit
+          description: Inspect ownership, dependency, and generated-state health.
+          requires_apply: false
         - name: status
-          default_what: diagnostics
-          whats: [diagnostics]
-          apply_guarded: false
+          description: Report the resolved runtime and repository state.
+          requires_apply: false
         - name: docs
-          # `validate` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          # `WHAT=all` remains the explicit full pipeline meta-selector.
-          default_what: validate
-          whats: [all, generate, fix, audit, build, validate]
-          # generate/fix materialize artifacts: the generated handler picks
-          # --apply or --check from APPLY, and the docs workflow calls
-          # `make docs WHAT=generate APPLY=Y`. Without apply_guarded the
-          # dispatcher omits _APPLY_WHAT_docs and rejects APPLY as read-only.
-          apply_guarded: true
-          apply_what: generate
+          description: Generate, repair, build, and validate documentation.
+          requires_apply: true
         - name: clean
-          default_what: status
-          whats: [status, generated]
-          # `clean generated` deletes generated output and calls _require_apply.
-          # `clean status` is the read-only fixed-point after mutation (must differ
-          # from apply_what so serialize-make can re-check without APPLY=Y).
-          apply_guarded: true
-          apply_what: generated
-        - name: release
-          default_what: status
-          whats: [status]
-          apply_guarded: false
+          description: Remove every declared disposable artifact.
+          requires_apply: true
+        - name: release-plan
+          description: Resolve the release decision through the public protocol.
+          requires_apply: true
+        - name: release-version
+          description: Materialize the planned version.
+          requires_apply: true
+        - name: release-tag
+          description: Tag the verified release commit.
+          requires_apply: true
+        - name: release-build
+          description: Build the release receipt and artifacts.
+          requires_apply: true
+        - name: publication
+          description: Publish only receipt-attested release artifacts.
+          requires_apply: true
         - name: gen
-          default_what: check
-          # `init` is the narrow package-initializer owner. It intentionally
-          # bypasses conform so regenerating lazy ``__init__.py`` files never
-          # discovers workspace topology or inspects external runtime state.
-          whats: [check, all, apply, init]
-          apply_guarded: true
-          apply_what: apply
+          description: Regenerate every managed projection atomically.
+          requires_apply: true
+        - name: conform
+          description: Prove generated projections are at their fixed point.
+          requires_apply: true
+        - name: initialize
+          description: Materialize the declared package initializer graph.
+          requires_apply: true
         - name: mod
-          default_what: check
-          whats: [check, all, apply]
-          # `mod` batch-applies the sgconfig ast-grep rules under the
-          # ruff/pyrefly rollback circuit (checkpoint + re-measure); check is
-          # the read-only dry-run fixed-point after mutation.
-          apply_guarded: true
-          apply_what: apply
+          description: Apply the declared structural codemods.
+          requires_apply: true
+        - name: waza
+          description: Validate provider-neutral governance semantics with Waza.
+          requires_apply: true
+        - name: duplication
+          description: Run the canonical jscpd duplicate-code gate.
+          requires_apply: true
       custom_handler_policy:
         filename: custom.mk
-        # Why (ai-hub-qwoc): the generated Makefile's _dispatch macro routes every
-        # unknown WHAT to a `_custom_<verb>_<what>` handler -- that IS the canonical
-        # extension mechanism for new WHATs, distinct from pre-/post- lifecycle hooks.
-        # The validator must accept both shapes the runtime itself dispatches to, or
-        # every project that defines a custom WHAT handler fails `codegen conform`.
-        target_pattern: "^((pre|post)-(help|setup|deps|build|check|test|fmt|fix|run|work|status|clean|release|gen|mod)(-[a-z0-9][a-z0-9-]*)?|_custom_(help|setup|deps|build|check|test|fmt|fix|run|work|status|docs|clean|release|gen|mod)_[a-z0-9][a-z0-9_-]*)$"
+        # Custom behavior is one private whole-verb replacement or one lifecycle
+        # hook. Selector-specific handlers are prohibited because public verbs are
+        # already the complete operation and APPLY=Y is their sole mutation input.
+        target_pattern: "^((pre|post)-[a-z][a-z0-9-]*|_custom-[a-z][a-z0-9-]*)$"
         allow_public_targets: false
         allow_toolchain_declarations: false
       custom_handler_profile_overrides:
@@ -600,8 +557,6 @@ Infra:
       # REQUIRED_GITIGNORE_ENTRIES constant; .direnv keeps the legacy vscode/
       # watch/source-scan projections (order-sensitive, after .claude).
       - { name: .direnv, source_scan_ignore: true }
-      - { name: .code-review-graph }
-      - { name: .codegraph }
       - { name: .dolt }
       - { name: .dolt_dropped_databases }
       - { name: .doltcfg }
@@ -611,6 +566,8 @@ Infra:
       - { name: .omo }
       - { name: .pylance_cache, vscode_exclude: false }
       - { name: .pytest_cache, source_scan_ignore: true }
+      - { name: .test-tmp, source_scan_ignore: true }
+      - { name: .test-runtime, source_scan_ignore: true }
       - { name: .testmondata, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-wal, is_dir: false, source_scan_ignore: true }
       - { name: .testmondata-shm, is_dir: false, source_scan_ignore: true }
@@ -729,9 +686,10 @@ Infra:
         }
 
     vscode:
-      # Canonical .vscode/settings.json content injected with merge semantics:
-      # scalar/list keys are enforced, map keys are union-merged (project entries
-      # are preserved). Recursive "**" venv search globs are forbidden: they make
+      # Canonical .vscode/settings.json content injected with owner semantics:
+      # scalar/list keys and artifact maps are exact; explicitly declared
+      # non-artifact maps retain project extensions. Recursive "**" venv search
+      # globs are forbidden: they make
       # the Python Environments locator (pet) walk entire repository trees and
       # hang interpreter discovery on large monorepos.
       scalar_settings:
@@ -786,7 +744,6 @@ Infra:
         - conftest.py
         - mkdocs.yml
         - uv.lock
-        - sgconfig.yml
       canonical_root_dotfiles:
         - .gitignore
         - .gitattributes
@@ -985,7 +942,6 @@ Infra:
             - schema.json
             - version.json
             - surface-catalog.json
-            - crg-watch.toml
             - env.example
             - bootstrap.ps1
           ignore_globs:
@@ -1111,15 +1067,19 @@ Infra:
       - path: .github/scripts/check-beads-policy.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: .github/scripts/check-cqrs-compliance.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: .github/scripts/flext-law-loop.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: .github/scripts/install-git-hooks.sh
         owner: codegen
         policy: full
+        mode: 493 # 0o755
       - path: tests/fixtures/ci/docker/alpine.Dockerfile
         owner: codegen
         policy: full
@@ -1159,11 +1119,6 @@ Infra:
       - path: .envrc
         owner: codegen
         policy: full
-      # Why (ai-hub-qwoc): codegen owns the ast-grep contract end to end, so the
-      # rendered file is fully managed and never hand-edited.
-      - path: sgconfig.yml
-        owner: codegen
-        policy: full
       - path: .gitignore
         owner: codegen
         policy: merge
@@ -1173,10 +1128,21 @@ Infra:
       - path: .mise.toml
         owner: codegen
         policy: full
+      - path: .markdownlint.json
+        owner: codegen
+        policy: full
+      - path: .markdownlintignore
+        owner: codegen
+        policy: full
       - path: .pre-commit-config.yaml
         owner: pre-commit
         policy: full
       - path: .python-version
+        owner: codegen
+        policy: full
+      # Qlty refuses to scan without a repository configuration. Keep the
+      # blocking smells posture fleet-wide and generated from this SSOT.
+      - path: .qlty/qlty.toml
         owner: codegen
         policy: full
       - path: .vscode/settings.json
@@ -1185,6 +1151,13 @@ Infra:
       - path: LICENSE
         owner: codegen
         policy: create-only
+      # Release build policies (flext-to3n7): fully generated fleet-wide bytes.
+      - path: config/build-constraints.txt
+        owner: codegen
+        policy: full
+      - path: config/gitleaks-release.toml
+        owner: codegen
+        policy: full
       - path: Makefile
         owner: make
         policy: full
@@ -1209,42 +1182,6 @@ Infra:
         # undeclared made absorbing an integration base that still carried the
         # previous lint projection unresolvable through the canonical surface.
         conflict_sections: [tool.pytest.ini_options, tool.uv, tool.ruff.lint.per-file-ignores]
-
-    # Automated semantic versioning, owned by the market tool rather than by a
-    # local implementation. python-semantic-release reads Conventional Commits,
-    # decides major/minor/patch, writes the version, generates the changelog and
-    # creates the tag. We already had bump_version/parse_semver and a release
-    # orchestrator, but nothing DERIVED the bump: a human still passed
-    # `bump=minor` by hand, which is exactly the judgement call the commit
-    # history already encodes and the one a human gets wrong.
-    #
-    # Declared here so every generated pyproject carries the same contract and
-    # no project hand-rolls its own. Exceptions belong in `overrides` below,
-    # never in a project-local edit.
-    release:
-      tool: python-semantic-release
-      # `uv` is the runner: no separate install step, no global state.
-      runner: uv
-      # Commit parser and the branch that produces releases. FLEXT branch model:
-      # 0.12.0-dev is the integration branch, main is the produced release.
-      commit_parser: conventional
-      release_branch: 0.12.0-dev
-      # Where the version lives. Both are kept in step by the tool itself, so a
-      # tag can never disagree with the packaged metadata.
-      version_variables:
-        - src/{package}/version.py:__version__
-      version_toml:
-        - pyproject.toml:project.version
-      # Build through the canonical verb so a release artifact is produced the
-      # same way a local build is; a second build path is a second contract.
-      build_command: uv build
-      # Tag shape shared with the workspace release workflow.
-      tag_format: "v{version}"
-      # Changelog is generated, never hand-maintained.
-      changelog_file: CHANGELOG.md
-      # Per-distribution exceptions. A project lands here only when its release
-      # contract genuinely differs from the standard.
-      overrides: {}
 
     scaffold:
       build:
@@ -1332,7 +1269,6 @@ Infra:
             - "!typings/"
             - "!libs/"
             - "!.vscode/"
-            - "!.code-review-graph/"
             - "!.claude/"
             - "!.claude-plugin/"
             # Provider surfaces are generated governance artifacts owned by the
@@ -1357,14 +1293,10 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!scripts/"
-            - "!scripts/cmd/"
-            - "!scripts/cmd/**"
             - "scripts/*.py"
             - "scripts/*.sh"
             - "scripts/*.md"
             - "scripts/maintenance/"
-            - "!scripts/dispatch.py"
-            - "!scripts/__init__.py"
         - name: "TRACK: Beads team config; keep Dolt data, runtime state, and JSONL exports local."
           profiles: [workspace, standalone]
           patterns:
@@ -1401,7 +1333,6 @@ Infra:
           profiles: [workspace]
           patterns:
             - "!.mise.toml"
-            - "!.default-python-packages"
             - "!.python-version"
         - name: "Docker configuration"
           profiles: [workspace]
@@ -1412,6 +1343,10 @@ Infra:
           patterns:
             - "!Makefile"
             - "!Makefile.flext-docker"
+            - "!*.mk"
+            # jscpd detector SSOT consumed by the committed `make duplication`
+            # target (flext-1sm3w); the deny-first root cannot swallow it.
+            - "!.jscpd.json"
             - "!*.mk"
             # The generated toolchain lock pins every tool to a checksum. A
             # clean CI checkout must receive it, so the deny-first root cannot
@@ -1498,6 +1433,44 @@ Infra:
         - name: "Skill scan reports (transient, regenerated by skill_validate.py)"
           patterns:
             - ".agents/skills/*/report.json"
+        # Why: the Gas City pack runtime writes skill symlinks (`<pack>.<skill>`,
+        # absolute links into its cache) and an ownership manifest into a
+        # registered rig's provider trees whenever it runs. They are runtime
+        # state, never source: tracked, they break every consumer that refuses
+        # symlinks (the release snapshot validator rejected flext-infra's own
+        # build on `.agents/skills/core.gc-agents`). Only Gas City packs project
+        # dotted skill names; governed skills are kebab-case directories.
+        - name: "Gas City skill projections (runtime state, never source)"
+          patterns:
+            - ".agents/skills/.gc-skill-ownership.json"
+            - ".agents/skills/core.gc-*"
+            - ".agents/skills/gascity.*"
+            - ".agents/skills/gc.*"
+            - ".claude/skills/.gc-skill-ownership.json"
+            - ".claude/skills/core.gc-*"
+            - ".claude/skills/gascity.*"
+            - ".claude/skills/gc.*"
+            - ".codex/skills/.gc-skill-ownership.json"
+            - ".codex/skills/core.gc-*"
+            - ".codex/skills/gascity.*"
+            - ".codex/skills/gc.*"
+        # Why (flext-uwhzz): a registered rig also receives the Gas City runtime
+        # directory (events, gate slots, scripts pinned to the city's absolute
+        # path, per-session settings) and hosts its lane checkouts under
+        # `<rig>/worktrees/<lane>`. Both are per-machine runtime state carrying
+        # machine-absolute paths; tracked copies broke every other checkout.
+        - name: "Gas City rig runtime and lane worktrees (runtime state, never source)"
+          patterns:
+            - ".gc/"
+            - "/worktrees/"
+        # Why (flext-uwhzz): ai-hub `gen` projects a project association and a
+        # project-scoped Cursor MCP document into every governed checkout; the
+        # MCP document carries the gateway socket path resolved on the machine
+        # that ran the generator. Both are projection outputs, never source.
+        - name: "AI Hub workspace projections (runtime state, never source)"
+          patterns:
+            - "/.aihub/"
+            - "/.cursor/mcp.json"
         - name: "Aider AI data"
           patterns:
             - ".aider/"
@@ -1544,7 +1517,6 @@ Infra:
             - "**/*.egg-info/"
             - "**/dist/"
             - "**/build/"
-            - "!scripts/cmd/build/"
             - "**/.eggs/"
         - name: "Skill validation temporary reports"
           patterns:
@@ -1593,7 +1565,11 @@ Infra:
             - "**/*.dylib"
             - "**/*.test"
             - "**/*.out"
-            - "vendor/"
+            # Anchored: only a root-level Go vendor tree is ignorable. Unanchored
+            # `vendor/` also matched a vendored package inside src/ (flext-cli
+            # src/flext_cli/vendor), and hatchling honours .gitignore, so the
+            # published wheel silently shipped without it (flext-f6gqq).
+            - "/vendor/"
         - name: "Node.js inside allowed directories"
           patterns:
             - "**/node_modules/"
@@ -1626,7 +1602,7 @@ Infra:
             - "**/.tmp/"
         - name: "Build and quality tool artifacts inside allowed directories"
           patterns:
-            - "**/.qlty/"
+            - "**/.qlty/*"
             - "**/.meltano/"
             - "**/.serena/"
         - name: "Backup files inside allowed directories"
@@ -1821,18 +1797,23 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        - source: base/gitignore.j2
-          destination: .gitignore
+        # Why (flext-to3n7): the release build phase snapshots these two policy
+        # files before the first artifact build (hash-pinned build backend for
+        # `uv build --require-hashes`, and the Gitleaks policy). They are one
+        # fleet-wide policy owned here and projected into every repository;
+        # a repository never hand-writes its own (overwrite: true).
+        - source: base/config/build-constraints.txt.j2
+          destination: config/build-constraints.txt
           profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
-        # Why (ai-hub-qwoc): a provider manifest may declare sgconfig.yml as a
-        # required surface. Without a generator it was hand-written in one
-        # repository and absent in another, so provider discovery failed closed
-        # with "missing declared file: sgconfig.yml". Rendering it from the SSOT
-        # gives every governed repository the same ast-grep contract.
-        - source: base/sgconfig.yml.j2
-          destination: sgconfig.yml
+          overwrite: true
+        - source: base/config/gitleaks-release.toml.j2
+          destination: config/gitleaks-release.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        - source: base/gitignore.j2
+          destination: .gitignore
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
@@ -1841,6 +1822,11 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
+        - source: base/qlty.toml.j2
+          destination: .qlty/qlty.toml
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
         - source: base/env.example.j2
           destination: .env.example
           profiles: [workspace, standalone]
@@ -1851,9 +1837,20 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: false
-        # Ledger routing config: rendered only for the workspace root (owned
-        # ledger) and marker-attached standalones (routing-only); the engine
-        # planner skips every other profile/class (mro-z89e governance).
+        - source: base/markdownlint.json.j2
+          destination: .markdownlint.json
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        - source: base/markdownlintignore.j2
+          destination: .markdownlintignore
+          profiles: [workspace, standalone]
+          delegate: render
+          overwrite: true
+        # Ledger routing config: rendered only for repositories that own a
+        # ledger. The workspace root owns a shared ledger when a gitlink's
+        # Every repository renders its own `.beads` configuration; the shared
+        # ledger is reached by the declared city endpoint, never by a link.
         - source: base/beads-config.yaml.j2
           destination: .beads/config.yaml
           profiles: [workspace, standalone]
@@ -1878,11 +1875,13 @@ Infra:
           profiles: [workspace, standalone]
           delegate: render
           overwrite: true
+        # Every repository releases itself through the protocol; the workspace
+        # root additionally publishes its members to the package index.
         - source: base/.github/workflows/release.yml.j2
           destination: .github/workflows/release.yml
-          profiles: [workspace]
+          profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/tests/fixtures/ci/docker/ubuntu.Dockerfile.j2
           destination: tests/fixtures/ci/docker/ubuntu.Dockerfile
           profiles: [workspace, standalone]
@@ -1942,7 +1941,7 @@ Infra:
           destination: config/beads.yaml
           profiles: [workspace, standalone]
           delegate: render
-          overwrite: false
+          overwrite: true
         - source: base/src/__init__.py.j2
           destination: "src/{package_name}/__init__.py"
           profiles: [workspace, standalone]

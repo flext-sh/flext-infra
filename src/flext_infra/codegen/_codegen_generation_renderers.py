@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import c, t, u
-from flext_infra.codegen._codegen_generation_lazy_entries import (
+
+from ._codegen_generation_lazy_entries import (
     FlextInfraCodegenGenerationLazyEntriesMixin,
 )
 
@@ -22,45 +24,54 @@ class FlextInfraCodegenGenerationRenderersMixin(
     """Render codegen models through the canonical CLI template facade."""
 
     @staticmethod
+    def _template_path(template_name: str) -> Path:
+        """Resolve one packaged lazy-init template source."""
+        template_root = (Path(__file__).resolve().parent.parent / "templates").resolve()
+        template_path = (template_root / template_name).resolve()
+        if not template_path.is_relative_to(template_root):
+            msg = f"lazy-init template escapes its source root: {template_name}"
+            raise ValueError(msg)
+        return template_path
+
+    @staticmethod
     def _render_model(
         template_name: str, context: p.Model, *, target_filename: str
     ) -> str:
-        """Render and deterministically format a typed Python artifact."""
-        template_root = Path(__file__).resolve().parent.parent / "templates"
-        rendered = u.Cli.template_render(
-            template_root / template_name, context
-        ).unwrap()
+        """Render and deterministically format a typed Python artifact.
+
+        flext-perf.3 (agent: codex): the two Ruff invocations (import
+        organization + format) run as a single piped shell pipeline
+        (``set -o pipefail; ruff check --fix-only | ruff format``) instead
+        of two separate ``run_raw`` subprocess round-trips, halving the
+        per-file Python/subprocess orchestration overhead.
+        """
+        template_path = FlextInfraCodegenGenerationRenderersMixin._template_path(
+            template_name
+        )
+        template_root = template_path.parent
+        rendered = u.Cli.template_render(template_path, context).unwrap()
         compile(rendered, target_filename, "exec")
-        organize_result = u.Cli.run_raw(
-            [
-                c.Infra.RUFF,
-                c.Infra.CHECK,
-                "--fix-only",
-                "--stdin-filename",
-                target_filename,
-                "-",
-            ],
-            cwd=template_root,
-            input_data=rendered.encode(c.Cli.ENCODING_DEFAULT),
+        filename = shlex.quote(target_filename)
+        input_bytes = rendered.encode(c.Cli.ENCODING_DEFAULT)
+        pipeline_cmd = (
+            f"set -o pipefail;"
+            f" {c.Infra.RUFF} {c.Infra.CHECK} --fix-only"
+            f" --stdin-filename {filename} -"
+            f" | {c.Infra.RUFF} {c.Infra.FORMAT}"
+            f" --stdin-filename {filename} -"
         )
-        if organize_result.failure:
-            raise ValueError(organize_result.error or "ruff import organization failed")
-        organized = organize_result.unwrap()
-        if organized.exit_code != 0:
-            detail = (organized.stderr or organized.stdout).strip()
-            msg = f"ruff import organization failed ({organized.exit_code}): {detail}"
-            raise ValueError(msg)
-        format_result = u.Cli.run_raw(
-            [c.Infra.RUFF, c.Infra.FORMAT, "--stdin-filename", target_filename, "-"],
-            cwd=template_root,
-            input_data=organized.stdout.encode(c.Cli.ENCODING_DEFAULT),
+        pipe_result = u.Cli.run_raw(
+            ["bash", "-c", pipeline_cmd], cwd=template_root, input_data=input_bytes
         )
-        if format_result.failure:
-            raise ValueError(format_result.error or "ruff format failed")
-        output = format_result.unwrap()
-        if output.exit_code != 0:
+        if pipe_result.failure:
+            raise ValueError(pipe_result.error or "ruff formatting pipeline failed")
+        output = pipe_result.unwrap()
+        if not u.Cli.process_succeeded(output.outcome):
             detail = (output.stderr or output.stdout).strip()
-            msg = f"ruff format failed ({output.exit_code}): {detail}"
+            msg = (
+                f"ruff formatting pipeline failed "
+                f"({output.outcome.raw_return_code}): {detail}"
+            )
             raise ValueError(msg)
         rendered_output: str = (
             t.Infra.STR_ADAPTER.validate_python(output.stdout).rstrip() + "\n"
