@@ -568,13 +568,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         routes = self._conform_workspace_beads_routes(request)
         if routes.failure:
             return r[m.Infra.CodegenResult].from_failure(routes)
-        verified = r[m.Infra.CodegenPlan].ok(published.value[1])
-        if routes.value:
-            verified = self.plan(request)
-            if verified.failure:
-                return r[m.Infra.CodegenResult].from_failure(verified)
+        verified = self.plan(request)
+        if verified.failure:
+            return r[m.Infra.CodegenResult].from_failure(verified)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=published.value[0])
+            m.Infra.CodegenResult(
+                plan=verified.value, written_files=published.value
+            )
         )
 
     def _conform_workspace_beads_routes(
@@ -664,9 +664,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[m.Infra.CodegenPlan].fail(
-                verified.error or "post-publication conform planning failed"
-            )
+            return r[m.Infra.CodegenPlan].from_failure(verified)
         ancestry = self._validate_ancestry(verified.value)
         if ancestry.failure:
             return r[m.Infra.CodegenPlan].from_failure(ancestry)
@@ -841,8 +839,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         f"{repository_root} != {root}"
                     )
             else:
+                # The governing root is the requested checkout, never the
+                # previous iteration's member: resolving the second declared
+                # repository against the first produced <root>/alpha/beta.
                 repository_root_result = self._repository_root(
-                    repository_root, workspace, repository
+                    root, workspace, repository
                 )
                 if repository_root_result.failure:
                     return r[m.Infra.CodegenPlan].from_failure(repository_root_result)
@@ -2199,6 +2200,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                         repository_root
                     ),
                     private_submodules=codegen.ci_private_submodules.get(dist),
+                    private_dependency_auth=codegen.ci_private_dependency_auth.get(
+                        dist
+                    ),
                     system_packages=tuple(codegen.ci_system_packages.get(dist, ())),
                 )
             )

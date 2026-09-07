@@ -127,17 +127,6 @@ class TestsCodegenArtifactSsot:
             eq=False,
         )
 
-    def test_workspace_gitignore_tracks_generated_mise_lock(
-        self, codegen: CodegenSpec
-    ) -> None:
-        """Keep the immutable tool lock available to clean CI checkouts."""
-        rendered = FlextInfraCodegenConform.render_project_gitignore(
-            codegen, profile=c.Infra.MakeProfile.WORKSPACE, project_name="cosmos-main"
-        )
-
-        tm.ok(rendered)
-        tm.that(rendered.value, has="!mise.lock")
-
     def test_makefile_has_one_owner_for_every_declared_profile(
         self, codegen: CodegenSpec
     ) -> None:

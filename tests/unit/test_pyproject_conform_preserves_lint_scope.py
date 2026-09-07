@@ -51,9 +51,9 @@ def _ssot_per_file_ignores() -> frozenset[str]:
     project: set[str] = set()
     for path in sorted((_repository_root() / "config").glob("*.yaml")):
         payload = tm.ok(u.Cli.yaml_safe_load(path))
-        managed = u.Tests.mapping(payload.get("ManagedArtifacts") or {})
-        ruff_section = u.Tests.mapping(managed.get("Ruff") or {})
-        project.update(u.Tests.mapping(ruff_section.get("per_file_ignores") or {}))
+        managed = u.Tests.toml_mapping(payload.get("ManagedArtifacts") or {})
+        ruff_section = u.Tests.toml_mapping(managed.get("Ruff") or {})
+        project.update(u.Tests.toml_mapping(ruff_section.get("per_file_ignores") or {}))
     return fleet | frozenset(project)
 
 

@@ -13,13 +13,13 @@ from flext_infra.codegen import (
     _codegen_staging as generic_staging,
     _mise_artifacts_publication as publication,
 )
-from flext_infra.codegen._mise_artifacts_journal import (
+from ._mise_artifacts_journal import (
     FlextInfraMiseArtifactsJournal as journal_io,
 )
-from flext_infra.codegen._mise_artifacts_state import (
+from ._mise_artifacts_state import (
     FlextInfraMiseArtifactsState as state,
 )
-from flext_infra.codegen._mise_artifacts_verification import (
+from ._mise_artifacts_verification import (
     FlextInfraMiseArtifactsVerification as verify,
 )
 from flext_infra.codegen.mise_artifacts_lock import FlextInfraMiseLock

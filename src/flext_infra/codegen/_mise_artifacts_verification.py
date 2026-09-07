@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra.codegen._mise_artifacts_files import (
+from ._mise_artifacts_files import (
     FlextInfraMiseArtifactsFiles as files,
 )
 

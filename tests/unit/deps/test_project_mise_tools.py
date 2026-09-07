@@ -8,7 +8,7 @@ from flext_infra import m
 from flext_tests import tm
 from tests import u
 
-_RENDERED = '[settings]\nlockfile = true\n\n[tools]\npython = "3.13"\n'
+_RENDERED = '[tools]\npython = "3.13"\n'
 
 
 def _project(root: Path, tools_yaml: str) -> Path:

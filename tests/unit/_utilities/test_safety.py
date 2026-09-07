@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 def _run_git(repo: Path, *args: str) -> None:
     result = u.Cli.run_raw([c.Infra.GIT, *args], cwd=repo)
     tm.ok(result)
-    tm.that(result.value.outcome.raw_return_code, eq=0)
+    tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True)
 
 
 def _init_git_repo(repo: Path) -> None:

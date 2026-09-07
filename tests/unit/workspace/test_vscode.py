@@ -51,10 +51,10 @@ class TestsFlextInfraCodegenVscode:
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(search_paths, eq=u.Tests.vscode_declared_search_paths())
         tm.that("./apps/*/.venv" in search_paths, eq=False)
-        excludes = u.Tests.mapping(doc["files.exclude"])
+        excludes = u.Tests.toml_mapping(doc["files.exclude"])
         tm.that("**/.retired-cache" in excludes, eq=False)
         tm.that(excludes["**/.mypy_cache"], eq=True)
-        overrides = u.Tests.mapping(doc["python.analysis.diagnosticSeverityOverrides"])
+        overrides = u.Tests.toml_mapping(doc["python.analysis.diagnosticSeverityOverrides"])
         tm.that(overrides["reportUnknownMemberType"], eq="none")
         tm.that(overrides["reportUntypedBaseClass"], eq="none")
         tm.that(doc["python.languageServer"], eq="None")

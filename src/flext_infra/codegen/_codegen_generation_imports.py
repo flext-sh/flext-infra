@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from flext_infra import c
-from flext_infra.codegen._codegen_generation_paths import (
+from ._codegen_generation_paths import (
     FlextInfraCodegenGenerationPathsMixin,
 )
 

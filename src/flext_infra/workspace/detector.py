@@ -271,12 +271,12 @@ class FlextInfraWorkspaceDetector(
 
     @staticmethod
     def _gitmodule_contract(
-        workspace_root: Path, subproject_path: Path
+        repository_root: Path, subproject_path: Path
     ) -> p.Result[t.Pair[str, str]]:
         """Read one exact URL/branch pair from the local ``.gitmodules``."""
         contract = u.Infra.gitmodule_contract(
             m.Infra.GitSubmoduleContractRequest(
-                repo_root=workspace_root, member_path=subproject_path.as_posix()
+                repo_root=repository_root, member_path=subproject_path.as_posix()
             )
         )
         if contract.failure:
@@ -634,7 +634,7 @@ class FlextInfraWorkspaceDetector(
         )
 
     @staticmethod
-    def resolve_workspace_root(repository_root: Path) -> p.Result[Path]:
+    def resolve_repository_root(repository_root: Path) -> p.Result[Path]:
         """Return the requested checkout; parent and primary trees are irrelevant."""
         resolved_root = repository_root.expanduser().resolve()
         if not resolved_root.is_dir():

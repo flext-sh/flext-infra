@@ -26,7 +26,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
     ) -> p.Result[m.Infra.WorkspaceEnvironmentSyncResult]:
         """Sync one workspace's generated environment files."""
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
-        repository_root = request.workspace_root
+        repository_root = request.repository_root
         if not (repository_root / c.Infra.PYPROJECT_FILENAME).is_file():
             return cls._remove_generated_environment_files(request)
         envrc_result = cls._sync_envrc(request)
@@ -46,7 +46,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         if rendered.failure:
             return r[bool].from_failure(rendered)
         return cls._write_generated_text(
-            request.workspace_root / c.Infra.ENVRC_FILENAME,
+            request.repository_root / c.Infra.ENVRC_FILENAME,
             rendered.value,
             apply=request.apply,
             force=request.force,
@@ -92,7 +92,7 @@ class FlextInfraWorkspaceEnvironmentMixin:
         result_type = m.Infra.WorkspaceEnvironmentSyncResult
         removed: list[Path] = []
         for filename in c.Infra.WORKSPACE_ENV_FILES:
-            target_path = request.workspace_root / filename
+            target_path = request.repository_root / filename
             result = cls._remove_generated_environment_file(
                 target_path, apply=request.apply
             )

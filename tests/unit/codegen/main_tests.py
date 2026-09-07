@@ -209,11 +209,7 @@ class TestMainEntryPoint:
             "--help",
         ])
         tm.ok(result)
-        tm.that(
-            result.value.outcome.raw_return_code,
-            eq=0,
-            msg=result.value.stderr or result.value.stdout,
-        )
+        tm.that(u.Cli.process_succeeded(result.value.outcome), eq=True, msg=result.value.stderr or result.value.stdout)
         tm.that(" ".join(result.value.stdout.split()), contains=route.help_text)
 
     def test_managed_conflict_is_planned_and_published_atomically(
@@ -254,11 +250,7 @@ class TestMainEntryPoint:
             [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
         tm.ok(applied)
-        tm.that(
-            applied.value.outcome.raw_return_code,
-            eq=0,
-            msg=applied.value.stderr or applied.value.stdout,
-        )
+        tm.that(u.Cli.process_succeeded(applied.value.outcome), eq=True, msg=applied.value.stderr or applied.value.stdout)
         rendered = pyproject.read_text(encoding="utf-8")
         tm.that(rendered, lacks="<<<<<<<")
         ini_options = u.Tests.toml_table_at(rendered, "tool", "pytest", "ini_options")
@@ -274,11 +266,7 @@ class TestMainEntryPoint:
             [*command, "apply"], cwd=root, env={"PYTHONPATH": str(root / "src")}
         )
         tm.ok(fixed_point)
-        tm.that(
-            fixed_point.value.outcome.raw_return_code,
-            eq=0,
-            msg=fixed_point.value.stderr or fixed_point.value.stdout,
-        )
+        tm.that(u.Cli.process_succeeded(fixed_point.value.outcome), eq=True, msg=fixed_point.value.stderr or fixed_point.value.stdout)
         tm.that(pyproject.read_bytes(), eq=published)
         tm.that(journal.exists(), eq=False)
         tm.that(transaction.exists(), eq=False)
@@ -289,20 +277,22 @@ class TestMainEntryPoint:
         """Reject a present invalid artifact before credential/network work."""
         root = infra_git_repo
         _seed_public_conform_checkout(root)
-        lock = root / "mise.lock"
-        lock_state = tm.ok(u.Cli.atomic_read_binary_file_state(lock, required=True))
-        lock_mode = lock_state.mode
-        tm.that(lock_mode is None, eq=False)
-        if lock_mode is None:
-            msg = "required Mise lock has no permission mode"
+        launcher = root / "bin" / "mise"
+        launcher_state = tm.ok(
+            u.Cli.atomic_read_binary_file_state(launcher, required=True)
+        )
+        launcher_mode = launcher_state.mode
+        tm.that(launcher_mode is None, eq=False)
+        if launcher_mode is None:
+            msg = "required Mise launcher has no permission mode"
             raise AssertionError(msg)
-        if lock_state.content is None:
-            msg = "required Mise lock has no bytes"
+        if launcher_state.content is None:
+            msg = "required Mise launcher has no bytes"
             raise AssertionError(msg)
-        corrupted = lock_state.content + b"\ninvalid = [\n"
+        corrupted = launcher_state.content + b"\nchecksum_linux_x86_64=invalid\n"
         tm.ok(
             u.Cli.atomic_write_binary_file_guarded(
-                lock_state, corrupted, permission_mode=lock_mode
+                launcher_state, corrupted, permission_mode=launcher_mode
             )
         )
         journal, transaction = _mise_transaction_state(root)
@@ -319,7 +309,7 @@ class TestMainEntryPoint:
             applied.value.stdout + applied.value.stderr,
             lacks="MISE_GITHUB_CREDENTIAL_COMMAND is required",
         )
-        tm.that(lock.read_bytes(), eq=corrupted)
+        tm.that(launcher.read_bytes(), eq=corrupted)
         tm.that(journal.exists(), eq=False)
         tm.that(transaction.exists(), eq=False)
 

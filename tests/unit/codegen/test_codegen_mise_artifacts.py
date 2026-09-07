@@ -1,12 +1,10 @@
-"""Offline contracts for generated Mise launchers and lock metadata."""
+"""Offline contracts for generated Mise declarations and launchers."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from flext_infra import config, m, r, u
+from flext_infra import config, m, u
 from flext_infra.codegen.mise_artifacts import FlextInfraCodegenMiseArtifacts
 from flext_tests import tm
 from tests import u as test_u
@@ -68,56 +66,18 @@ class TestsCodegenMiseArtifacts:
         )
 
     @staticmethod
-    def _write_lock(
-        root: Path,
-        *,
-        selector: str = "github:example/tool",
-        platforms: tuple[str, ...] | None = None,
-        include_checksum: bool = True,
-        extra_lock_selector: str | None = None,
+    def _write_config(
+        root: Path, *, selector: str = "github:example/tool", version: str = "latest"
     ) -> None:
-        selected_platforms = (
-            config.Infra.codegen.toolchain.mise_lock_platforms
-            if platforms is None
-            else platforms
-        )
         (root / ".mise.toml").write_text(
             "\n".join((
-                "[settings]",
-                "lockfile = true",
-                "[tool_config]",
-                "locked = true",
-                f'[tools."{selector}"]',
-                'version = "latest"',
+                "[tools]",
+                'python = "3.13"',
+                f'"{selector}" = "{version}"',
                 "",
             )),
             encoding="utf-8",
         )
-        lines = [
-            "lockfile_version = 1",
-            "",
-            f'[[tools."{selector}"]]',
-            'version = "1.2.3"',
-            f'backend = "{selector}"',
-            'specifiers = ["latest"]',
-        ]
-        checksum = "b" * 64
-        for platform in selected_platforms:
-            lines.extend((
-                "",
-                f'[tools."{selector}"."platforms.{platform}"]',
-                *((f'checksum = "sha256:{checksum}"',) if include_checksum else ()),
-                f'url = "https://example.invalid/{platform}/tool"',
-            ))
-        if extra_lock_selector is not None:
-            lines.extend((
-                "",
-                f'[[tools."{extra_lock_selector}"]]',
-                'version = "9.9.9"',
-                f'backend = "{extra_lock_selector}"',
-                'specifiers = ["9.9"]',
-            ))
-        (root / "mise.lock").write_text("\n".join((*lines, "")), encoding="utf-8")
 
     @classmethod
     def _project(
@@ -125,19 +85,11 @@ class TestsCodegenMiseArtifacts:
         root: Path,
         *,
         selector: str = "github:example/tool",
-        platforms: tuple[str, ...] | None = None,
-        include_checksum: bool = True,
-        extra_lock_selector: str | None = None,
+        version: str = "latest",
     ) -> Path:
         root.mkdir(parents=True)
         cls._write_launchers(root)
-        cls._write_lock(
-            root,
-            selector=selector,
-            platforms=platforms,
-            include_checksum=include_checksum,
-            extra_lock_selector=extra_lock_selector,
-        )
+        cls._write_config(root, selector=selector, version=version)
         (root / "pyproject.toml").write_text(
             "[project]\n"
             f'name = "{config.Infra.name}"\n'
@@ -169,91 +121,76 @@ class TestsCodegenMiseArtifacts:
 
         tm.ok(result, eq=True)
 
-    def test_config_preflight_rejects_suspended_selector_before_lock_access(
+    def test_config_preflight_rejects_suspended_selector_before_publication(
         self, tmp_path: Path
     ) -> None:
-        """A dormant capability cannot reach lock, download, or publication."""
+        """A dormant capability cannot reach download or publication."""
         root = tmp_path / "project"
         root.mkdir()
-        (root / ".mise.toml").write_text(
-            "[settings]\n"
-            "lockfile = true\n"
-            "[tool_config]\n"
-            "locked = true\n"
-            "[tools]\n"
-            'beads = "1.2.2"\n',
-            encoding="utf-8",
-        )
+        (root / ".mise.toml").write_text('[tools]\nbeads = "1.2.2"\n', encoding="utf-8")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
             "config_only": True,
         }).execute()
 
         tm.fail(result, has=["suspended toolchain", "beads"])
-        tm.that((root / "mise.lock").exists(), eq=False)
+        tm.that((root / "bin").exists(), eq=False)
 
-    def test_apply_prunes_unconfigured_lock_tools_through_the_lock_owner(
+    def test_config_only_validation_skips_launcher_contract(
         self, tmp_path: Path
     ) -> None:
-        """Retire stale generated lock entries without invoking Mise."""
-        stale_selector = "github:example/stale"
-        root = self._project(tmp_path / "project", extra_lock_selector=stale_selector)
+        """Config-only mode validates the declaration without tool-owned effects."""
+        root = tmp_path / "project"
+        root.mkdir()
+        self._write_config(root)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "workspace_root": root,
+            "repository_root": root,
+            "config_only": True,
+        }).execute()
+
+        tm.ok(result, eq=True)
+        tm.that((root / "bin").exists(), eq=False)
+
+    def test_full_validation_requires_committed_launchers(self, tmp_path: Path) -> None:
+        root = tmp_path / "project"
+        root.mkdir()
+        self._write_config(root)
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "repository_root": root,
+            "check_only": True,
+        }).execute()
+
+        tm.fail(result, has="Mise seed")
+
+    def test_tools_section_is_mandatory(self, tmp_path: Path) -> None:
+        root = tmp_path / "project"
+        root.mkdir()
+        (root / ".mise.toml").write_text("[settings]\n", encoding="utf-8")
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "repository_root": root,
+            "config_only": True,
+        }).execute()
+
+        tm.fail(result, has="[tools]")
+
+    def test_apply_validates_the_same_offline_contract(self, tmp_path: Path) -> None:
+        """Apply mode owns no tool effect: it validates declarations and launchers."""
+        root = self._project(tmp_path / "project")
+
+        result = FlextInfraCodegenMiseArtifacts.model_validate({
+            "repository_root": root,
             "apply_changes": True,
         }).execute()
 
         tm.ok(result, eq=True)
-        tm.that((root / "mise.lock").read_text(encoding="utf-8"), lacks=stale_selector)
 
-    def test_missing_platform_checksum_is_rejected(self, tmp_path: Path) -> None:
-        root = self._project(tmp_path / "project", include_checksum=False)
-
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "repository_root": root,
-            "check_only": True,
-        }).execute()
-
-        tm.fail(result, has="checksum")
-
-    def test_explicit_apply_is_rejected_by_validation_service(
-        self, tmp_path: Path
-    ) -> None:
-        root = self._project(tmp_path / "project", include_checksum=False)
-        lock_path = root / "mise.lock"
-        before = lock_path.read_bytes()
-
-        apply_result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "repository_root": root,
-            "apply_changes": True,
-        }).execute()
-
-        tm.fail(apply_result, has="owned by codegen conform")
-        tm.that(lock_path.read_bytes(), eq=before)
-
-    def test_validation_rejects_unsafe_checksum_source(self, tmp_path: Path) -> None:
-        root = self._project(tmp_path / "project", include_checksum=False)
-        lock_path = root / "mise.lock"
-        lock_path.write_text(
-            lock_path.read_text(encoding="utf-8").replace(
-                "https://example.invalid", "http://example.invalid"
-            ),
-            encoding="utf-8",
-        )
-
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "repository_root": root,
-            "check_only": True,
-        }).execute()
-
-        tm.fail(result, has="not safe")
-
-    def test_tool_support_is_discovered_from_generated_lock(
-        self, tmp_path: Path
-    ) -> None:
-        root = self._project(tmp_path / "project", platforms=("linux-x64",))
+    def test_latest_selectors_validate_without_resolution(self, tmp_path: Path) -> None:
+        """The unlocked fleet declares moving selectors resolved at setup time."""
+        root = self._project(tmp_path / "project", selector="npm:jscpd")
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "repository_root": root,
@@ -261,18 +198,6 @@ class TestsCodegenMiseArtifacts:
         }).execute()
 
         tm.ok(result, eq=True)
-
-    def test_lock_tool_set_must_equal_generated_config(self, tmp_path: Path) -> None:
-        root = self._project(
-            tmp_path / "project", extra_lock_selector="github:example/other"
-        )
-
-        result = FlextInfraCodegenMiseArtifacts.model_validate({
-            "repository_root": root,
-            "check_only": True,
-        }).execute()
-
-        tm.fail(result, has="tool set mismatch")
 
     def test_launcher_version_drift_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project")
@@ -285,34 +210,33 @@ class TestsCodegenMiseArtifacts:
 
         tm.fail(result, has="launcher version drift")
 
-    def test_undeclared_platform_metadata_is_rejected_as_residue(
-        self, tmp_path: Path
-    ) -> None:
+    def test_launcher_checksum_gap_is_rejected(self, tmp_path: Path) -> None:
         root = self._project(tmp_path / "project")
-        lock_path = root / "mise.lock"
-        with lock_path.open("a", encoding="utf-8") as lock:
-            lock.write(
-                '\n[tools."github:example/tool"."platforms.plan9-x64"]\n'
-                f'checksum = "sha256:{"b" * 64}"\n'
-                'url = "https://example.invalid/plan9-x64/tool"\n'
-            )
+        launcher = root / "bin" / "mise"
+        launcher.write_text(
+            launcher.read_text(encoding="utf-8").replace(
+                f'checksum_macos_arm64="{self._launcher_checksum()}"\n', ""
+            ),
+            encoding="utf-8",
+        )
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "repository_root": root,
             "check_only": True,
         }).execute()
 
-        tm.fail(result, has="platform metadata mismatch")
+        tm.fail(result, has="checksum missing")
 
-    def test_backend_without_platform_artifacts_is_valid(self, tmp_path: Path) -> None:
-        root = self._project(tmp_path / "project", selector="npm:jscpd", platforms=())
+    def test_unix_launcher_requires_executable_mode(self, tmp_path: Path) -> None:
+        root = self._project(tmp_path / "project")
+        (root / "bin" / "mise").chmod(0o644)
 
         result = FlextInfraCodegenMiseArtifacts.model_validate({
             "repository_root": root,
             "check_only": True,
         }).execute()
 
-        tm.ok(result, eq=True)
+        tm.fail(result, has="not executable")
 
     def test_project_filter_is_internal_to_make_propagation(self) -> None:
         """Keep project selection on the Make propagation boundary."""

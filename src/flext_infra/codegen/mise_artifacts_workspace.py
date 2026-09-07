@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen._mise_artifacts_files import (
+from ._mise_artifacts_files import (
     FlextInfraMiseArtifactsFiles as files,
 )
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
@@ -301,10 +301,7 @@ class FlextInfraMiseWorkspacePlanner:
             replacement_content = config_plan.desired_content
             config_sources = config_plan.source_states
         artifacts: list[m.Cli.AtomicFileState] = []
-        for path in (
-            layout.artifacts.unix_launcher,
-            layout.artifacts.windows_launcher,
-        ):
+        for path in (layout.artifacts.unix_launcher, layout.artifacts.windows_launcher):
             state = files.read_state(path, required=False)
             if state.failure:
                 return r[m.Infra.MiseToolchainProjectState].from_failure(state)

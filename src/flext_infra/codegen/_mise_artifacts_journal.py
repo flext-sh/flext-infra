@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING, Literal, cast
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra.codegen._mise_artifacts_files import (
+from ._mise_artifacts_files import (
     FlextInfraMiseArtifactsFiles as files,
 )
-from flext_infra.codegen._mise_artifacts_process import (
+from ._mise_artifacts_process import (
     FlextInfraMiseArtifactsProcess as process,
 )
-from flext_infra.codegen._mise_artifacts_state import (
+from ._mise_artifacts_state import (
     FlextInfraMiseArtifactsState as state,
 )
 

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 class FlextInfraCodegenMiseArtifacts(s[bool]):
     """Validate unlocked latest-version Mise declarations and launchers."""
+
     config_only: Annotated[
         bool,
         m.Field(
@@ -33,7 +34,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     def _read_toml(path: Path) -> p.Result[t.JsonMapping]:
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[t.JsonMapping].fail(source.error or f"cannot read {path.name}")
+            return r[t.JsonMapping].from_failure(source)
         payload = u.Cli.toml_mapping_from_text(source.value)
         if payload is None:
             return r[t.JsonMapping].fail(f"invalid TOML in {path.name}")
@@ -144,7 +145,7 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
         """Validate one native staged bootstrap seed without executing live bytes."""
         source = u.Cli.files_read_text(path)
         if source.failure:
-            return r[str].fail(source.error or f"missing generated Mise seed: {path}")
+            return r[str].from_failure(source)
         windows = path.name == c.Infra.MISE_WINDOWS_LAUNCHER_FILENAME
         release = (
             cls._assignment(source.value, "pinned_version")
@@ -221,18 +222,18 @@ class FlextInfraCodegenMiseArtifacts(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Validate generated Mise declarations and launchers entirely offline."""
-        config_result = self._read_toml(self.workspace_root / ".mise.toml")
+        config_result = self._read_toml(self.repository_root / ".mise.toml")
         if config_result.failure:
-            return r[bool].fail(config_result.error or "invalid .mise.toml")
+            return r[bool].from_failure(config_result)
         tools_result = self._tool_specifiers(config_result.value)
         if tools_result.failure:
-            return r[bool].fail(tools_result.error or "invalid .mise.toml tools")
+            return r[bool].from_failure(tools_result)
         suspended = self._validate_suspended_selectors(tools_result.value)
         if suspended.failure:
             return suspended
         if self.config_only:
             return r[bool].ok(True)
-        launcher_result = self.validate_launchers(self.workspace_root)
+        launcher_result = self.validate_launchers(self.repository_root)
         if launcher_result.failure:
             return launcher_result
         return r[bool].ok(True)

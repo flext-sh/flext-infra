@@ -58,7 +58,7 @@ def test_markdownlint_does_not_suppress_strict_rules() -> None:
     assert config.get("MD050") is not False
     assert config.get("MD064") is not False
     assert config.get("MD075") is not False
-    line_length = u.Tests.mapping(config["MD013"])["line_length"]
+    line_length = u.Tests.toml_mapping(config["MD013"])["line_length"]
     assert isinstance(line_length, int)
     assert line_length <= 500
 

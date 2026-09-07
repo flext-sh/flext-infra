@@ -37,11 +37,9 @@ class TestsCodegenBeadsProjection:
         for managed in config.Infra.codegen.managed_files:
             (root / managed.path).parent.mkdir(parents=True, exist_ok=True)
         result = FlextInfraCodegenConform(repository_root=root).plan(
-            test_u.Tests.conform_request(
-                root,
-                scope=c.Infra.CodegenConformScope.SELF,
-                mode=c.Infra.CodegenConformMode.CHECK,
-            )
+            u.Tests.conform_request(root,
+            scope=c.Infra.CodegenConformScope.SELF,
+            mode=c.Infra.CodegenConformMode.CHECK,)
         )
         tm.ok(result)
         return m.Infra.CodegenPlan.model_validate(result.value)
@@ -55,7 +53,7 @@ class TestsCodegenBeadsProjection:
         return (
             None
             if match is None or match.desired_content is None
-            else test_u.Tests.codegen_file_text(match)
+            else u.Tests.codegen_file_text(match)
         )
 
     def test_local_identity_renders_only_declarative_beads_files(

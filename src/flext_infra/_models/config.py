@@ -528,6 +528,24 @@ class FlextInfraConfigModels:
             ),
         ]
 
+    class CiPrivateDependencyAuthSpec(_ConfigContract):
+        """GitHub App identity minting installation tokens for private deps."""
+
+        app_id_secret: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description="CI secret holding the private-dependency App id",
+            ),
+        ]
+        private_key_secret: Annotated[
+            t.NonEmptyStr,
+            m.Field(
+                pattern=r"^[A-Z][A-Z0-9_]*$",
+                description="CI secret holding the private-dependency App key",
+            ),
+        ]
+
     class CiPrivateSubmodulesSpec(_ConfigContract):
         """Per-distribution private submodule init contract for generated CI."""
 
@@ -690,6 +708,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Optional private-subproject deploy-key init for this "
                     "distribution; None means the workflow skips the step"
+                ),
+            ),
+        ] = None
+        private_dependency_auth: Annotated[
+            FlextInfraConfigModels.CiPrivateDependencyAuthSpec | None,
+            m.Field(
+                default=None,
+                description=(
+                    "Optional GitHub App token minting for private git "
+                    "dependencies; None means the workflow skips the step"
                 ),
             ),
         ] = None
@@ -2745,6 +2773,16 @@ class FlextInfraConfigModels:
                 description=(
                     "Per-distribution private submodule deploy-key contracts "
                     "rendered into generated CI before make setup"
+                ),
+            ),
+        ]
+        ci_private_dependency_auth: Annotated[
+            Mapping[str, FlextInfraConfigModels.CiPrivateDependencyAuthSpec],
+            m.Field(
+                default_factory=immutable_empty_mapping,
+                description=(
+                    "Per-distribution GitHub App identity minting installation "
+                    "tokens for private git dependencies in generated CI"
                 ),
             ),
         ]
