@@ -68,15 +68,7 @@ class TestCodegenLinkedWorktreeTopology:
             )
         )
 
-<<<<<<< Updated upstream
         (makefile_plan,) = plan.files
-=======
-        makefile = (lane / c.Infra.MAKEFILE_FILENAME).read_text(encoding="utf-8")
-        tm.that(makefile, has="MAKE_PROFILE := standalone")
-        tm.that(applied.plan.workspace.name, eq="fixture-project")
-        tm.that(applied.plan.workspace.beads, none=True)
-        tm.that(bool(applied.written_files), eq=True)
->>>>>>> Stashed changes
         tm.that(
             u.Tests.codegen_file_text(makefile_plan), has="MAKE_PROFILE := standalone"
         )
@@ -176,7 +168,6 @@ class TestCodegenLinkedWorktreeTopology:
             ),
             eq=project_names,
         )
-<<<<<<< Updated upstream
         for project_name in project_names:
             beads = tm.ok(
                 FlextInfraWorkspaceDetector.load_beads_spec(root / project_name)
@@ -185,9 +176,6 @@ class TestCodegenLinkedWorktreeTopology:
             tm.that(beads.database, eq="root-database")
             tm.that(beads.issue_prefix, eq="root-prefix")
             tm.that((root / project_name / ".beads").is_symlink(), eq=True)
-=======
-        tm.that(workspace.beads, none=True)
->>>>>>> Stashed changes
 
         applied = tm.ok(
             FlextInfraCodegenConform.execute_request(

@@ -86,9 +86,12 @@ class TestsToolchainRequirement:
             runtime_libraries.isdisjoint(codegen.python_tool_distributions), eq=True
         )
         tm.that(
-            set(codegen.python_tool_distributions).isdisjoint(
-                {"requests", "jinja2", "pydantic", "setuptools-scm"}
-            ),
+            set(codegen.python_tool_distributions).isdisjoint({
+                "requests",
+                "jinja2",
+                "pydantic",
+                "setuptools-scm",
+            }),
             eq=True,
         )
 

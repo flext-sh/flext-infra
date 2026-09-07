@@ -117,11 +117,7 @@ def _verify(
 def test_signed_gate_attestation_round_trip_is_local(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-<<<<<<< HEAD
     _repo, allowed_signers = signed_repository_factory(tmp_path)
-=======
-    allowed_signers = signed_repository_factory(tmp_path)
->>>>>>> origin/0.12.0-dev
     created = u.Infra.git_create_gate_attestation(_request(tmp_path))
 
     tm.ok(created)
@@ -136,11 +132,7 @@ def test_signed_gate_attestation_round_trip_is_local(
 def test_gate_attestation_normalizes_network_remote_git_suffix(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-<<<<<<< HEAD
     _repo, allowed_signers = signed_repository_factory(tmp_path)
-=======
-    allowed_signers = signed_repository_factory(tmp_path)
->>>>>>> origin/0.12.0-dev
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     remote = tm.ok(
         u.Infra.git_remote_url(m.Infra.GitRemoteUrlRequest(repo_root=tmp_path))
@@ -155,11 +147,7 @@ def test_gate_attestation_normalizes_network_remote_git_suffix(
 def test_gate_attestation_verifies_selected_commit_with_equal_tree(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-<<<<<<< HEAD
     _repo, allowed_signers = signed_repository_factory(tmp_path)
-=======
-    allowed_signers = signed_repository_factory(tmp_path)
->>>>>>> origin/0.12.0-dev
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
     selected_sha = _head(tmp_path)
     selected_tree = _rev_parse(tmp_path, "HEAD^{tree}")
@@ -180,11 +168,7 @@ def test_gate_attestation_verifies_selected_commit_with_equal_tree(
 def test_gate_attestation_rejects_incomplete_coverage(
     tmp_path: Path, signed_repository_factory: Callable[[Path], Path]
 ) -> None:
-<<<<<<< HEAD
     _repo, allowed_signers = signed_repository_factory(tmp_path)
-=======
-    allowed_signers = signed_repository_factory(tmp_path)
->>>>>>> origin/0.12.0-dev
     tm.ok(u.Infra.git_create_gate_attestation(_request(tmp_path)))
 
     verified = _verify(tmp_path, allowed_signers, _head(tmp_path), "check")

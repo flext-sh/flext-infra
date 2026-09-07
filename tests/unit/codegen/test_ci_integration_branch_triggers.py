@@ -34,7 +34,6 @@ def _render_ci(*, repository_branch: str) -> str:
     )
     return tm.ok(cli_u.Cli.template_render(_CI_TEMPLATE, spec))
 
-
     ci_template = (
         Path(__file__).resolve().parents[3]
         / "src/flext_infra/templates/project/base/.github/workflows/ci.yml.j2"
