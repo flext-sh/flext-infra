@@ -213,19 +213,18 @@ class FlextInfraUtilitiesCodemodRules:
                 canonicalize_name(name) for name in raw_distributions
             }:
                 continue
-            # Data distributions (native ML runtimes, wheels without Python
-            # sources) expose directory names that are not importable modules;
-            # they cannot host codemod provider configs.
+            # Data and native distributions (ML runtimes, compiled wheels)
+            # expose directory names that are not importable modules; they
+            # cannot host codemod provider configs and are skipped, never
+            # treated as provider failures.
             if not package_name or not all(
                 part.isidentifier()
                 for part in package_name.replace("/", ".").split(".")
             ):
                 continue
-            spec = find_spec(package_name)
+            spec = find_spec(package_name.replace("/", "."))
             if spec is None:
-                return r[t.SequenceOf[Path]].fail(
-                    f"distribution package is not importable: {package_name}"
-                )
+                continue
             roots = tuple(Path(path) for path in spec.submodule_search_locations or ())
             if not roots and spec.origin is not None:
                 roots = (Path(spec.origin).parent,)
