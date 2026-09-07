@@ -28,7 +28,7 @@ class FlextInfraReleaseOrchestratorPhases(
 
     @staticmethod
     def _build_targets(
-        workspace_root: Path, project_names: t.StrSequence
+        repository_root: Path, project_names: t.StrSequence
     ) -> p.Result[t.SequenceOf[t.Pair[str, Path]]]:
         """Resolve release build targets from the configured eligibility policy.
 
@@ -37,7 +37,7 @@ class FlextInfraReleaseOrchestratorPhases(
         (``config.Infra.release.publishable_prefixes``); an empty tuple means no
         prefix filter, so a single-project repository publishes itself.
         """
-        projects_result = u.Infra.resolve_projects(workspace_root, project_names)
+        projects_result = u.Infra.resolve_projects(repository_root, project_names)
         if projects_result.failure:
             return r[t.SequenceOf[t.Pair[str, Path]]].from_failure(projects_result)
         prefixes = tuple(config.Infra.release.publishable_prefixes)
@@ -53,7 +53,7 @@ class FlextInfraReleaseOrchestratorPhases(
         return r[t.SequenceOf[t.Pair[str, Path]]].ok(unique)
 
     @staticmethod
-    def _internal_versions(workspace_root: Path) -> p.Result[t.StrMapping]:
+    def _internal_versions(repository_root: Path) -> p.Result[t.StrMapping]:
         """Map every visible internal distribution to its own declared version.
 
         Each repository versions independently, so release metadata pins a
@@ -63,12 +63,12 @@ class FlextInfraReleaseOrchestratorPhases(
         internal dependency) is what the committed ``uv.lock`` resolved for it:
         the version that sibling declared at the pinned commit.
         """
-        projects = u.Infra.resolve_projects(workspace_root, ())
+        projects = u.Infra.resolve_projects(repository_root, ())
         if projects.failure:
             return r[t.StrMapping].from_failure(projects)
         versions: dict[str, str] = dict(
             u.Infra.locked_dependency_versions(
-                workspace_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
+                repository_root / c.Infra.UV_LOCK_FILENAME, sources=("git",)
             )
         )
         for project in projects.value:
@@ -175,13 +175,13 @@ class FlextInfraReleaseOrchestratorPhases(
 
     @classmethod
     def _snapshot_build_policy(
-        cls, workspace_root: Path, output_dir: Path
+        cls, repository_root: Path, output_dir: Path
     ) -> p.Result[m.Infra.BuildPolicy]:
         """Capture one immutable policy pair before the first project build."""
         policy_dir = output_dir / "policy"
         constraints_path = policy_dir / "build-constraints.txt"
         constraints_result = cls._snapshot_policy_file(
-            workspace_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
+            repository_root / c.Infra.RELEASE_BUILD_CONSTRAINTS_PATH,
             constraints_path,
             policy_root=policy_dir,
         )
@@ -189,7 +189,7 @@ class FlextInfraReleaseOrchestratorPhases(
             return r[m.Infra.BuildPolicy].from_failure(constraints_result)
         gitleaks_path = policy_dir / "gitleaks-release.toml"
         gitleaks_result = cls._snapshot_policy_file(
-            workspace_root / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
+            repository_root / c.Infra.RELEASE_GITLEAKS_CONFIG_PATH,
             gitleaks_path,
             policy_root=policy_dir,
         )

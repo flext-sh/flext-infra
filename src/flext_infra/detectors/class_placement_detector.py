@@ -35,6 +35,8 @@ class FlextInfraClassPlacementDetector:
                 ctx.rope_project, res
             )
         )
+        single_governed_class = len(governed_classes) == 1
+
         # 1. Misplaced governed classes → family relocation action.
         for ci, family in governed_classes:
             if FlextInfraClassPlacementDetector._in_canonical_location(

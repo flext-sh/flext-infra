@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+import pytest
 
 from flext_infra import c, m, main as infra_main, u
 from flext_tests import tm
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class TestsFlextInfraModCliRoute:
     """Exercise reporter behavior only through exported CLI and utility facades."""
 
+    @pytest.mark.codemod_epic
     def test_receipt_is_complete_and_replaced_by_zero_scan(
         self, mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -24,7 +22,12 @@ class TestsFlextInfraModCliRoute:
         tm.ok(u.Cli.ensure_dir(generated_hook.parent))
         tm.ok(u.Cli.atomic_write_text_file(generated_hook, "value = 1\n"))
 
-        first_exit = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
+        first_exit = infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+        ])
         first_console_capture = capsys.readouterr()
         first_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(report_path, required=True)
@@ -67,7 +70,12 @@ class TestsFlextInfraModCliRoute:
         tm.that(first_console, lacks='"ruleId"')
 
         tm.ok(u.Cli.atomic_write_text_file(sample_path, "value = 1\n"))
-        second_exit = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
+        second_exit = infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+        ])
         second_console_capture = capsys.readouterr()
         second_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(report_path, required=True)
@@ -90,6 +98,7 @@ class TestsFlextInfraModCliRoute:
         tm.that(second_console, has=second_digest)
         tm.that(second_console, lacks=first_digest)
 
+    @pytest.mark.codemod_epic
     def test_apply_validates_rewrites_before_reporting_detection_only_findings(
         self, mod_workspace: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -97,14 +106,18 @@ class TestsFlextInfraModCliRoute:
         actionable_path = mod_workspace / "actionable.py"
         tm.ok(
             u.Cli.atomic_write_text_file(
-                actionable_path, "publication=m.Infra.MiseToolchainPublication\n"
+                actionable_path,
+                (
+                    "from flext_infra import m\n"
+                    "publication=m.Infra.MiseToolchainPublication\n"
+                ),
             )
         )
 
         exit_code = infra_main([
             "refactor",
             "mod",
-            "--workspace",
+            "--repository-root",
             str(mod_workspace),
             "--apply",
         ])
@@ -122,6 +135,7 @@ class TestsFlextInfraModCliRoute:
         tm.that(console, has="Would reformat")
         tm.that(console, has=str(actionable_path))
 
+    @pytest.mark.codemod_epic
     def test_scan_keeps_prefix_rule_ids_exact(self, mod_workspace: Path) -> None:
         config_path = mod_workspace / c.Infra.CODEMOD_CONFIG_FILENAME
         rules_root = (
@@ -172,7 +186,12 @@ class TestsFlextInfraModCliRoute:
             )
         )
 
-        exit_code = infra_main(["refactor", "mod", "--workspace", str(mod_workspace)])
+        exit_code = infra_main([
+            "refactor",
+            "mod",
+            "--repository-root",
+            str(mod_workspace),
+        ])
         report_state = tm.ok(
             u.Cli.atomic_read_binary_file_state(
                 mod_workspace / c.Infra.MOD_SCAN_REPORT_RELATIVE_PATH, required=True

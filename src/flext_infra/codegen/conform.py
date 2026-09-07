@@ -223,11 +223,17 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         request = self.request or m.Infra.CodegenConformRequest(
             root=self.repository_root
         )
-        if (
-            c.Infra.CodegenConformSurface(request.what)
-            is c.Infra.CodegenConformSurface.ALL
-        ):
+        surface = c.Infra.CodegenConformSurface(request.what)
+        if surface is c.Infra.CodegenConformSurface.ALL:
             return self._execute_managed(request)
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.APPLY:
+            mise_owner = FlextInfraCodegenMiseArtifacts(
+                repository_root=request.root, apply_changes=True, check_only=False
+            )
+            transaction = FlextInfraCodegenTransaction(mise_owner)
+            return transaction.run_locked(
+                prepare=False, operation=lambda _scope_root: self._execute_plan(request)
+            )
         return self._execute_plan(request)
 
     def _execute_plan(
@@ -374,7 +380,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(())
         profile = workspace.repository.role
         root = request.root.expanduser().resolve()
-        directories = {root}
+        directories = {root, root / c.Infra.MISE_LAUNCHER_DIRECTORY}
         for entry in config.Infra.codegen.templates.entries:
             if profile not in entry.profiles:
                 continue
@@ -388,7 +394,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             directories.add((root / relative).parent)
         created: list[m.Cli.AtomicDirectoryState] = []
-        for directory in sorted(directories, key=self._directory_depth):
+        for directory in sorted(directories, key=u.Infra.path_depth):
             planned = u.Cli.atomic_plan_directory_chain(directory)
             if planned.failure:
                 rollback = self._rollback_scaffold_directories(tuple(created))
@@ -413,11 +419,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             created.extend(materialized.value)
         return r[tuple[m.Cli.AtomicDirectoryState, ...]].ok(tuple(created))
-
-    @staticmethod
-    def _directory_depth(path: Path) -> int:
-        """Return a stable shallow-first directory-chain ordering key."""
-        return len(path.parts)
 
     @staticmethod
     def _rollback_scaffold_directories(
@@ -544,6 +545,9 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 with_directories.value, docs_plans.error or "docs planning failed"
             )
             return r[m.Infra.CodegenResult].from_failure(aborted)
+        docs_analysis = m.Infra.CodegenPhaseAnalysis(
+            phase="docs", files=docs_plans.value, inputs=docs_bundle.value.source_states
+        )
         with_docs = transaction.append_phase_locked(
             with_directories.value, "docs", docs_plans.value
         )
@@ -551,18 +555,26 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[m.Infra.CodegenResult].from_failure(with_docs)
         published = transaction.commit_locked(
             with_docs.value,
-            lambda: self._validate_managed_fixed_point(request, with_docs.value),
+            lambda: self._validate_managed_fixed_point(
+                request,
+                with_docs.value,
+                transaction,
+                lazy_analysis.value,
+                docs_analysis,
+            ),
         )
         if published.failure:
             return r[m.Infra.CodegenResult].from_failure(published)
         routes = self._conform_workspace_beads_routes(request)
         if routes.failure:
             return r[m.Infra.CodegenResult].from_failure(routes)
-        verified = self.plan(request)
-        if verified.failure:
-            return r[m.Infra.CodegenResult].from_failure(verified)
+        verified = r[m.Infra.CodegenPlan].ok(published.value[1])
+        if routes.value:
+            verified = self.plan(request)
+            if verified.failure:
+                return r[m.Infra.CodegenResult].from_failure(verified)
         return r[m.Infra.CodegenResult].ok(
-            m.Infra.CodegenResult(plan=verified.value, written_files=published.value)
+            m.Infra.CodegenResult(plan=verified.value, written_files=published.value[0])
         )
 
     def _conform_workspace_beads_routes(
@@ -584,18 +596,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         if workspace_result.failure:
             return r[bool].from_failure(workspace_result)
         workspace = workspace_result.value
-        if c.Infra.CodegenConformScope(request.scope) is (
-            c.Infra.CodegenConformScope.SELF
-        ):
-            return FlextInfraCodegenConform._beads_route_state(root)
         if not workspace.subprojects:
-            return r[bool].ok(True)
+            return r[bool].ok(False)
         owner = root / c.Infra.BEADS_DIRNAME
         if not owner.is_dir() or owner.is_symlink():
             return r[bool].fail(
                 f"workspace Beads ledger owner is not physical: {owner}"
             )
-        for repository in workspace.subprojects:
+        for repository in workspace.declared_repositories:
             state = FlextInfraCodegenConform._beads_route_state(
                 (root / repository.path).resolve()
             )
@@ -621,8 +629,35 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             Path(c.Infra.BEADS_METADATA_RELPATH).name,
             c.Infra.BEADS_LOCAL_VERSION_FILENAME,
         })
-        route = root / c.Infra.BEADS_DIRNAME
-        if route.is_symlink():
+        pending: list[Path] = []
+        for repository in workspace.subprojects:
+            member = (root / repository.path).resolve()
+            route = member / c.Infra.BEADS_DIRNAME
+            if route.is_symlink():
+                if route.resolve() != owner.resolve():
+                    return r[bool].fail(
+                        f"workspace Beads ledger route has another owner: {route}"
+                    )
+                continue
+            if route.exists():
+                if not route.is_dir():
+                    return r[bool].fail(
+                        f"workspace Beads ledger route is not a directory: {route}"
+                    )
+                unexpected = sorted(
+                    entry.name
+                    for entry in route.iterdir()
+                    if entry.name not in allowed_entries
+                )
+                if unexpected:
+                    return r[bool].fail(
+                        f"workspace member has unmerged Beads state at {route}: "
+                        + ", ".join(unexpected)
+                    )
+            pending.append(route)
+        if not pending:
+            return r[bool].ok(False)
+        if c.Infra.CodegenConformMode(request.mode) is c.Infra.CodegenConformMode.CHECK:
             return r[bool].fail(
                 "composed project reaches the workspace ledger through a "
                 f"cross-project symbolic link: {route}"
@@ -648,15 +683,20 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         request: m.Infra.CodegenConformRequest,
         session: m.Infra.CodegenTransactionSession,
-    ) -> p.Result[bool]:
+        transaction: FlextInfraCodegenTransaction,
+        lazy_analysis: m.Infra.CodegenPhaseAnalysis,
+        docs_analysis: m.Infra.CodegenPhaseAnalysis,
+    ) -> p.Result[m.Infra.CodegenPlan]:
         """Replan conform against live bytes before the journal can commit."""
         u.Cli.info("stage=verify-fixed-point")
         verified = self.plan(request)
         if verified.failure:
-            return r[bool].from_failure(verified)
+            return r[m.Infra.CodegenPlan].fail(
+                verified.error or "post-publication conform planning failed"
+            )
         ancestry = self._validate_ancestry(verified.value)
         if ancestry.failure:
-            return ancestry
+            return r[m.Infra.CodegenPlan].from_failure(ancestry)
         residual = tuple(
             file
             for file in verified.value.files
@@ -664,54 +704,25 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         )
         if residual:
             paths = ", ".join(str(file.path) for file in residual)
-            return r[bool].fail(
+            return r[m.Infra.CodegenPlan].fail(
                 f"codegen publication did not reach a fixed point: {paths}"
             )
-        lazy_analysis = FlextInfraCodegenLazyInit(
-            repository_root=request.root
-        ).plan_files()
-        if lazy_analysis.failure:
-            return r[bool].from_failure(lazy_analysis)
-        lazy_residual = tuple(
-            file
-            for file in lazy_analysis.value.files
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if lazy_residual:
-            paths = ", ".join(str(file.path) for file in lazy_residual)
-            return r[bool].fail(
-                f"lazy-init publication did not reach a fixed point: {paths}"
-            )
-        docs_generator = FlextInfraDocGenerator(
-            repository_root=request.root,
-            projects=tuple(
-                repository.name for repository in verified.value.repositories
-            ),
-        )
-        docs_bundle = docs_generator.prepare_bundle()
-        if docs_bundle.failure:
-            return r[bool].from_failure(docs_bundle)
-        docs_plans = docs_generator.plan_files(docs_bundle.value)
-        if docs_plans.failure:
-            return r[bool].from_failure(docs_plans)
-        docs_residual = tuple(
-            file
-            for file in docs_plans.value
-            if u.Infra.codegen_file_requires_effect(file)
-        )
-        if docs_residual:
-            paths = ", ".join(str(file.path) for file in docs_residual)
-            return r[bool].fail(
-                f"docs publication did not reach a fixed point: {paths}"
-            )
+        u.Cli.info("stage=verify-lazy-init-receipt")
+        lazy_fixed_point = transaction.validate_phase_analysis_locked(lazy_analysis)
+        if lazy_fixed_point.failure:
+            return r[m.Infra.CodegenPlan].from_failure(lazy_fixed_point)
+        u.Cli.info("stage=verify-docs-receipt")
+        docs_fixed_point = transaction.validate_phase_analysis_locked(docs_analysis)
+        if docs_fixed_point.failure:
+            return r[m.Infra.CodegenPlan].from_failure(docs_fixed_point)
         mise = FlextInfraCodegenMiseArtifacts(
             repository_root=request.root, apply_changes=False, check_only=True
         )
         for project in session.plan.projects:
             validated = mise.validate_artifacts(project.layout.root)
             if validated.failure:
-                return r[bool].from_failure(validated)
-        return r[bool].ok(True)
+                return r[m.Infra.CodegenPlan].from_failure(validated)
+        return r[m.Infra.CodegenPlan].ok(verified.value)
 
     @staticmethod
     def _mise_config_plans(
@@ -761,11 +772,11 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         """Build and validate the complete selection without writing."""
         config_spec = config.Infra.codegen
         root = request.root.expanduser().resolve()
-        workspace_root = root
+        repository_root = root
         workspace = self.initial_workspace
         if workspace is None:
             workspace_result = FlextInfraWorkspaceDetector.load_workspace_spec(
-                workspace_root
+                repository_root
             )
             if workspace_result.failure:
                 return r[m.Infra.CodegenPlan].from_failure(workspace_result)
@@ -858,7 +869,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     )
             else:
                 repository_root_result = self._repository_root(
-                    workspace_root, workspace, repository
+                    repository_root, workspace, repository
                 )
                 if repository_root_result.failure:
                     return r[m.Infra.CodegenPlan].from_failure(repository_root_result)
@@ -914,7 +925,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             else:
                 repository_plan = self._plan_existing_repository(
                     root=repository_root,
-                    workspace_root=workspace_root,
+                    repository_root=repository_root,
                     repository=target.repository,
                     target=target,
                     workspace=local_workspace,
@@ -947,7 +958,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             environments.append(
                 self._uv_environment_plan(
                     root=repository_root,
-                    workspace_root=workspace_root,
+                    repository_root=repository_root,
                     target=target,
                     workspace=local_workspace,
                     config=config_spec,
@@ -1191,8 +1202,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         # descends far enough to reach the subproject itself.
         member_patterns: list[str] = []
         if workspace is not None:
-            for subproject in workspace.subprojects:
-                parts = subproject.path.as_posix().strip("/").split("/")
+            for declared_repository in workspace.declared_repositories:
+                parts = declared_repository.path.as_posix().strip("/").split("/")
                 # Every ancestor is unignored so git can descend into the
                 # subproject, then its contents are unignored with the `/**` form.
                 prefixes = [
@@ -1247,14 +1258,14 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         scope = c.Infra.CodegenConformScope(request.scope)
         if scope is c.Infra.CodegenConformScope.SELF:
             selected = (current_repository,)
-        elif scope is c.Infra.CodegenConformScope.SUBPROJECTS:
-            if not workspace.subprojects:
+        elif scope is c.Infra.CodegenConformScope.DECLARED:
+            if not workspace.declared_repositories:
                 return r[tuple[m.Infra.RepositoryRef, ...]].fail(
                     "subprojects scope requires local .gitmodules entries"
                 )
-            selected = tuple(workspace.subprojects)
+            selected = tuple(workspace.declared_repositories)
         else:
-            selected = (workspace.repository, *workspace.subprojects)
+            selected = (workspace.repository, *workspace.declared_repositories)
         mutable = tuple(
             repository
             for repository in selected
@@ -1587,7 +1598,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
         self,
         *,
         root: Path,
-        workspace_root: Path,
+        repository_root: Path,
         repository: m.Infra.RepositoryRef,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
@@ -1648,7 +1659,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 )
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].ok((dependency_plan.value,))
         modernizer = FlextInfraPyprojectModernizer(
-            repository_root=workspace_root,
+            repository_root=repository_root,
             skip_check=True,
             managed_artifacts=managed_artifacts.value.resolution,
         )
@@ -1990,7 +2001,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[t.VariadicTuple[m.Infra.ManagedGitlinkSpec]]:
         """Resolve provider baselines only for mutable governed subprojects."""
         resolved: list[m.Infra.ManagedGitlinkSpec] = []
-        for repository in workspace.subprojects:
+        for repository in workspace.declared_repositories:
             provider = cls._repository_provider(repository, codegen)
             if provider.failure:
                 return r[tuple[m.Infra.ManagedGitlinkSpec, ...]].from_failure(provider)
@@ -2171,7 +2182,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             if provider.failure:
                 return r[p.Model].from_failure(provider)
             workspace_repositories = (
-                tuple(workspace.subprojects)
+                tuple(workspace.declared_repositories)
                 if target.make_profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -2245,8 +2256,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             )
         if destination == c.Infra.MAKEFILE_FILENAME:
             profile = target.make_profile
-            subprojects = (
-                tuple(workspace.subprojects)
+            declared_repositories = (
+                tuple(workspace.declared_repositories)
                 if profile is c.Infra.MakeProfile.WORKSPACE
                 else ()
             )
@@ -2269,10 +2280,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     repository_root_rel=FlextInfraCodegenConform._repository_root_rel(
                         workspace
                     ),
-                    workspace_subprojects=tuple(
-                        item.path.as_posix() for item in workspace.subprojects
+                    workspace_declared_repositories=tuple(
+                        item.path.as_posix() for item in workspace.declared_repositories
                     ),
-                    workspace_repositories=subprojects,
+                    workspace_repositories=declared_repositories,
                     workspace_gitlinks=gitlinks.value,
                     uv_link_mode=FlextInfraCodegenConform._link_mode(
                         repository, codegen.toolchain
@@ -2341,8 +2352,8 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     ) -> p.Result[m.Infra.MakeRenderContext]:
         """Build the typed context consumed by the generated Makefile."""
         profile = target.make_profile
-        subprojects = (
-            tuple(workspace.subprojects)
+        declared_repositories = (
+            tuple(workspace.declared_repositories)
             if profile is c.Infra.MakeProfile.WORKSPACE
             else ()
         )
@@ -2387,10 +2398,10 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     workspace
                 ),
                 makefile_custom_include=c.Infra.MAKEFILE_CUSTOM_INCLUDE,
-                workspace_subprojects=tuple(
-                    item.path.as_posix() for item in workspace.subprojects
+                workspace_declared_repositories=tuple(
+                    item.path.as_posix() for item in workspace.declared_repositories
                 ),
-                workspace_repositories=subprojects,
+                workspace_repositories=declared_repositories,
                 workspace_gitlinks=gitlinks.value,
                 extra_verbs=repository.extra_verbs,
                 script_dispatch=repository.script_dispatch,
@@ -3008,13 +3019,13 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
     def _uv_environment_plan(
         *,
         root: Path,
-        workspace_root: Path,
+        repository_root: Path,
         target: m.Infra.RepositoryConformTarget,
         workspace: m.Infra.WorkspaceSpec,
         config: m.Infra.CodegenConfigSpec,
     ) -> m.Infra.UvEnvironmentPlan:
         """Describe the exact setup overlay without executing uv."""
-        del workspace_root
+        del repository_root
         workspace_environment = target.make_profile is c.Infra.MakeProfile.WORKSPACE
         environment_root = target.root
         groups: t.VariadicTuple[str] = ("dev", "codegen")
@@ -3023,7 +3034,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             groups = (*groups, "workspace")
             editable_repositories = tuple(
                 item
-                for item in (workspace.repository, *workspace.subprojects)
+                for item in (workspace.repository, *workspace.declared_repositories)
                 if item.package and item.editable and not item.read_only
             )
         return m.Infra.UvEnvironmentPlan(

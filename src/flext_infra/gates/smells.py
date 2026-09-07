@@ -27,6 +27,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
     filtered by SARIF URI prefix.
     """
 
+    _scan_cache: ClassVar[dict[str, p.Cli.CommandOutput]] = {}
     gate_id: ClassVar[str] = "smells"
     gate_name: ClassVar[str] = "Code Smells"
     can_fix: ClassVar[bool] = True
@@ -139,7 +140,7 @@ class FlextInfraSmellsGate(FlextInfraGate):
         return not issues, issues
 
     def _workspace_scan(self) -> p.Cli.CommandOutput:
-        """Scan the workspace once per root and preserve its exact process result."""
+        """Run one fresh workspace scan and preserve its exact process result."""
         key = str(self._repository_root)
         cached = self._scan_cache.get(key)
         if cached is not None:

@@ -13,6 +13,8 @@ SPDX-License-Identifier: MIT
 
 from __future__ import annotations
 
+import collections.abc
+
 from flext_cli import t
 
 from ._typings.adapters import FlextInfraTypesAdapters
@@ -28,6 +30,8 @@ class FlextInfraTypes(t):
     Parent types (``t.Scalar``, ``t.StrMapping``, etc.) are inherited
     transparently from ``FlextTypes`` via FLEXT.
     """
+
+    type Container[T] = collections.abc.Container[T]
 
     class Infra(FlextInfraTypesAdapters, FlextInfraTypesRope, FlextInfraTypesBase):
         """Infrastructure-domain type aliases.

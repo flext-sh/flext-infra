@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 from flext_infra.constants import c
 from flext_infra.models import m
 

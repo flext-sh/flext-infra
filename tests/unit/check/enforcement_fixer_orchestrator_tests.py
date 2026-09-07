@@ -9,11 +9,11 @@ from types import SimpleNamespace
 import pytest
 
 from flext_cli import cli
-from flext_infra import m, main as infra_main, p, t, u
+from flext_infra import m, main as infra_main, p, t
 from flext_infra.fixers.manual_fixer import FlextInfraManualFixerAdapter
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
 from flext_tests import tm
-from tests import c, u as test_u
+from tests import c, u
 
 
 class TestsEnforcementFixerOrchestrator:
@@ -37,7 +37,7 @@ class TestsEnforcementFixerOrchestrator:
         source_file.parent.mkdir(parents=True)
         source_file.write_text("from __future__ import annotations\n", encoding="utf-8")
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            repository_root=tmp_path,
+            repository_root=project_dir,
             selected_projects=("demo",),
             rules=("ENFORCE-045",),
             safe_only=False,
@@ -64,7 +64,7 @@ class TestsEnforcementFixerOrchestrator:
         stub_file.write_text("from demo import x as x\n", encoding="utf-8")
         excluded_stub.write_text("x: int\n", encoding="utf-8")
         orchestrator = FlextInfraEnforcementFixerOrchestrator(
-            repository_root=tmp_path,
+            repository_root=project_dir,
             selected_projects=("demo",),
             rules=("ENFORCE-090",),
             safe_only=False,
@@ -259,7 +259,7 @@ class TestsEnforcementFixerOrchestrator:
 
         def run_git(args: t.StrSequence) -> None:
             output = cli.run_raw([c.Infra.GIT, *args], cwd=project_dir).value
-            tm.that(u.Cli.process_succeeded(output.outcome), eq=True)
+            tm.that(output.outcome.raw_return_code, eq=0)
 
         run_git(("init",))
         run_git(("add", "--", "pyproject.toml", "src"))
