@@ -20,12 +20,16 @@ if TYPE_CHECKING:
 
     import pytest
 
+    from tests import m, p, t
+
 
 class TestGateErrorReportingPublicBehavior:
     """Verify gate issue parsing through the public ``check()`` contract."""
 
     @staticmethod
-    def failing_markdown_run(tmp_path: Path, runner: object) -> object:
+    def failing_markdown_run(
+        tmp_path: Path, runner: p.Cli.CommandRunner
+    ) -> p.Result[t.SequenceOf[m.Infra.ProjectResult]]:
         """Run the markdown gate once through the checker with one runner."""
         project_dir = u.Tests.mk_project(tmp_path, "p1")
         _ = (project_dir / "README.md").write_text("# Project\n", encoding="utf-8")

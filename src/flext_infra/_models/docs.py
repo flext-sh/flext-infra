@@ -158,7 +158,7 @@ class FlextInfraModelsDocs(FlextInfraModelsDocsGeneration, _FlextInfraDocsContra
             t.StrTuple, m.Field(default=(), description="Rope-resolved public symbols")
         ] = ()
         export_bindings: Annotated[
-            tuple[FlextInfraModelsDocs._FlextInfraDocsContracts.DocsExportBinding, ...],
+            tuple[_FlextInfraDocsContracts.DocsExportBinding, ...],
             m.Field(default=(), description="Export-to-module bindings"),
         ] = ()
         modules: Annotated[

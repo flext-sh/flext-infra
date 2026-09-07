@@ -15,12 +15,18 @@ from tests import u
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra.gates.base_gate import FlextInfraGate
+    from tests import m, p
+
 
 class TestExtendedRunnerExtras:
     @staticmethod
     def gate_check_with_issue(
-        gate_class: object, tmp_path: Path, project_dir: Path, runner: object = None
-    ) -> object:
+        gate_class: type[FlextInfraGate],
+        tmp_path: Path,
+        project_dir: Path,
+        runner: p.Cli.CommandRunner | None = None,
+    ) -> m.Infra.GateExecution:
         """Run one gate with a runner and assert exactly one issue fails it."""
         result = u.Tests.run_gate_check(
             gate_class, tmp_path, project_dir, runner=runner

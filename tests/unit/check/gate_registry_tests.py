@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class TestGateRegistry:
     @staticmethod
-    def _apply_alias_fix(tmp_path: Path, project_dir: Path) -> object:
+    def _apply_alias_fix(tmp_path: Path, project_dir: Path) -> m.Infra.GateExecution:
         """Write the canonical root manifest and apply the alias gate fix."""
         (project_dir / "pyproject.toml").write_text(
             '[project]\nname = "flext-infra"\nversion = "0.1.0"\n', encoding="utf-8"
