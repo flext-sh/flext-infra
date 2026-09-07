@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tomllib
-from fnmatch import fnmatchcase
 from pathlib import Path
 
 import pytest

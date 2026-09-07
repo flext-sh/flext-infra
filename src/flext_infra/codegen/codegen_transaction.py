@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, m, u
-from flext_infra import m, u
 from flext_infra.codegen import (
     _codegen_staging as generic_staging,
     _mise_artifacts_journal as journal_io,
