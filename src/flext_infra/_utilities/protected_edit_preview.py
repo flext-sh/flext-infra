@@ -9,18 +9,26 @@ from pathlib import Path
 from flext_infra.constants import c
 from flext_infra.typings import t
 
-from .._utilities.protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
+from .protected_edit_linting import FlextInfraUtilitiesProtectedEditLinting
 
 
 class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLinting):
     """Preview and revert-report helpers for protected edit workflows."""
 
     @staticmethod
+    def _normalized_source_updates(updates: t.MappingKV[Path, str]) -> dict[Path, str]:
+        """Return one update map keyed by resolved path in deterministic order."""
+        return {
+            path.resolve(): content
+            for path, content in sorted(updates.items(), key=operator.itemgetter(0))
+        }
+
+    @staticmethod
     def _preview_write_baselines(
         updates: t.MappingKV[Path, str],
         workspace: Path,
         gates: t.StrSequence | None = None,
-    ) -> tuple[
+    ) -> t.Pair[
         MutableMapping[Path, str | None], MutableMapping[Path, t.Infra.LintSnapshot]
     ]:
         """Preview write baselines."""
@@ -128,10 +136,9 @@ class FlextInfraUtilitiesProtectedEditPreview(FlextInfraUtilitiesProtectedEditLi
         if not updates:
             return (True, [])
 
-        normalized_updates = {
-            path.resolve(): content
-            for path, content in sorted(updates.items(), key=operator.itemgetter(0))
-        }
+        normalized_updates = (
+            FlextInfraUtilitiesProtectedEditPreview._normalized_source_updates(updates)
+        )
         before_sources, before_lints = (
             FlextInfraUtilitiesProtectedEditPreview._preview_write_baselines(
                 normalized_updates, workspace, gates=gates

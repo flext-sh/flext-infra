@@ -37,7 +37,7 @@ class FlextInfraCodegenLazyInitGenerationMixin(
         *,
         planner: FlextInfraCodegenLazyInitPlanner,
         target_package_dir: Path | None = None,
-    ) -> tuple[m.Infra.LazyInitPlan, ...]:
+    ) -> t.VariadicTuple[m.Infra.LazyInitPlan]:
         """Resolve every selected package plan bottom-up without effects."""
         dir_exports: MutableMapping[str, t.LazyAliasMap] = {}
         planned: list[m.Infra.LazyInitPlan] = []

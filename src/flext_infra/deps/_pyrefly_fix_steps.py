@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import c, config, t, u
-from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
+
+from .extra_paths import FlextInfraExtraPathsManager
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -84,7 +85,7 @@ class FlextInfraConfigFixerSteps:
 
     def _strip_ignored_sub_configs(
         self, pyrefly: MutableMapping[str, t.Infra.InfraValue]
-    ) -> p.Result[tuple[t.StrSequence, bool]]:
+    ) -> p.Result[t.Pair[t.StrSequence, bool]]:
         """Drop ignore=true entries from tool.pyrefly.sub-config."""
         sub_configs = pyrefly.get(c.Infra.SUB_CONFIG)
         if not isinstance(sub_configs, list):

@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING, Final
 
 from flext_core import c
 
-from .._constants.base import FlextInfraConstantsBase as cb
+from .base import FlextInfraConstantsBase as cb
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
 def _build_namespace_file_to_family(
-    mapping: Sequence[tuple[str, Sequence[str]]],
+    mapping: Sequence[t.Pair[str, Sequence[str]]],
 ) -> t.StrMapping:
     """Build file name → family alias mapping from (alias, file_names) pairs."""
     result: dict[str, str] = {}
@@ -29,7 +29,7 @@ def _build_namespace_file_to_family(
 
 
 def _build_namespace_family_expected_alias(
-    mapping: Sequence[tuple[str, Sequence[str]]], suffixes: t.StrMapping
+    mapping: Sequence[t.Pair[str, Sequence[str]]], suffixes: t.StrMapping
 ) -> t.MappingKV[str, t.StrPair]:
     """Build file name → (alias, suffix) mapping from family specs."""
     result: dict[str, t.StrPair] = {}
@@ -97,6 +97,7 @@ class FlextInfraConstantsRefactor:
         r"^---\s*$", re.MULTILINE
     )
     CODEMOD_CONFIG_FILENAME: Final[str] = "sgconfig.yml"
+    # Why: restored — deleted declaration with consumers left behind in codemod_rules.py
     CODEMOD_CONFIG_RELPATH: Final[Path] = Path(CODEMOD_RESOURCE_DIRNAME) / (
         CODEMOD_CONFIG_FILENAME
     )
@@ -109,6 +110,7 @@ class FlextInfraConstantsRefactor:
     CODEMOD_SCOPE_RUNTIME: Final[str] = "runtime"
     CODEMOD_SNAPSHOT_DIRNAME: Final[str] = "__snapshots__"
     CODEMOD_SNAPSHOT_SUFFIX: Final[str] = "-snapshot.yml"
+    CODEMOD_EPHEMERAL_DIRNAME: Final[str] = "__pycache__"
     REFACTOR_CONFIG_KEYS: Final[t.StrSequence] = (
         RK_PROJECT_SCAN_DIRS,
         RK_FILE_EXTENSIONS,
@@ -155,9 +157,8 @@ class FlextInfraConstantsRefactor:
     RULE_MATCHERS_BY_KIND: Final[
         t.MappingKV[
             RefactorRuleKind,
-            tuple[
-                tuple[frozenset[str], frozenset[str], frozenset[str], frozenset[str]],
-                ...,
+            t.VariadicTuple[
+                t.Quad[frozenset[str], frozenset[str], frozenset[str], frozenset[str]]
             ],
         ]
     ] = MappingProxyType({
@@ -388,7 +389,7 @@ class FlextInfraConstantsRefactor:
         "flext-grpc",
     })
     "Known platform-layer packages."
-    INTEGRATION_CLASS_PREFIXES: Final[tuple[str, ...]] = (
+    INTEGRATION_CLASS_PREFIXES: Final[t.VariadicTuple[str]] = (
         "FlextTap",
         "FlextTarget",
         "FlextDbt",

@@ -11,9 +11,9 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
-from .._utilities.docs_contract import FlextInfraUtilitiesDocsContract
-from .._utilities.docs_scope import FlextInfraUtilitiesDocsScope
+from ._docs_scope_build import FlextInfraUtilitiesDocsScopeBuildMixin
+from .docs_contract import FlextInfraUtilitiesDocsContract
+from .docs_scope import FlextInfraUtilitiesDocsScope
 
 if TYPE_CHECKING:
     from collections.abc import Callable

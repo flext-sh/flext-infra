@@ -13,10 +13,10 @@ from flext_infra import config, m
 from flext_infra.constants import c
 from flext_infra.typings import t
 
-from .._utilities._project_discovery_candidates import (
+from ._project_discovery_candidates import (
     FlextInfraUtilitiesProjectDiscoveryCandidatesMixin,
 )
-from .._utilities.git import FlextInfraUtilitiesGit
+from .git import FlextInfraUtilitiesGit
 
 
 class FlextInfraUtilitiesProjectDiscovery(
@@ -59,7 +59,7 @@ class FlextInfraUtilitiesProjectDiscovery(
         configured_order = {name: idx for idx, name in enumerate(configured_projects)}
         ordered: list[Path] = []
 
-        def configured_key(candidate: Path) -> tuple[int, str]:
+        def configured_key(candidate: Path) -> t.Pair[int, str]:
             relative = candidate.relative_to(resolved_repository_root).as_posix()
             return configured_order.get(
                 relative, len(configured_projects)

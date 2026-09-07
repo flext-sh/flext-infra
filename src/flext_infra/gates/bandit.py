@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra.gates.base_gate import FlextInfraGate
+
+from .base_gate import FlextInfraGate
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -21,6 +22,12 @@ class FlextInfraBanditGate(FlextInfraGate):
     gate_id: ClassVar[str] = c.Infra.SECURITY
     gate_name: ClassVar[str] = "Bandit"
     can_fix: ClassVar[bool] = False
+    check_module_command_prefix: ClassVar[t.StrSequence] = (c.Infra.BANDIT, "-r")
+    check_module_command_suffix: ClassVar[t.StrSequence] = (
+        "-f",
+        c.Infra.OUTPUT_JSON,
+        "--quiet",
+    )
 
     @override
     def _get_check_dirs(
@@ -33,19 +40,9 @@ class FlextInfraBanditGate(FlextInfraGate):
         return [c.Infra.DEFAULT_SRC_DIR]
 
     @override
-    def _build_check_command(
-        self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
-    ) -> t.StrSequence:
-        """Build check command."""
-        _ = project_dir, ctx
-        return self._python_module_command(
-            c.Infra.BANDIT, "-r", *check_dirs, "-f", c.Infra.OUTPUT_JSON, "--quiet"
-        )
-
-    @override
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse check output."""
         _ = project_dir, ctx
         issues: t.MutableSequenceOf[m.Infra.Issue] = []

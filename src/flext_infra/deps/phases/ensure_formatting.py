@@ -15,7 +15,7 @@ class FlextInfraEnsureFormattingToolingPhase:
 
     def _phases(
         self,
-    ) -> tuple[
+    ) -> t.Quad[
         m.Infra.Deps.Toml.PhaseConfig,
         m.Infra.Deps.Toml.PhaseConfig,
         m.Infra.Deps.Toml.PhaseConfig,

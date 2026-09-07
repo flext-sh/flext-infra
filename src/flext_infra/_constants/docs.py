@@ -16,11 +16,14 @@ class FlextInfraConstantsDocs:
     DOCS_CONFIG_FILENAME: Final[str] = "docs_config.json"
     DOCS_INSECURE_WEB_SCHEME: Final[str] = "http"
     DOCS_SECURE_WEB_SCHEME: Final[str] = "https"
+    # A generated document may point outward, never carry a payload: a `data:`
+    # target embeds its content in the link and can execute in a rendered page,
+    # which is why the sanitizer has always stripped it. Declaring it here as a
+    # preserved scheme made the catalog disagree with the only consumer.
     DOCS_EXTERNAL_SCHEMES: Final[frozenset[str]] = frozenset({
         DOCS_SECURE_WEB_SCHEME,
         "mailto",
         "tel",
-        "data",
     })
     DOCS_FRAGMENT_PREFIX: Final[str] = "#"
     PYTHON_FENCE_RUFF_EXTEND_IGNORE: Final[t.StrSequence] = (

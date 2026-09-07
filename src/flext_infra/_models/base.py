@@ -13,8 +13,8 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 from flext_infra import c, t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import ImmutableEmptyMapping
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsBase:
@@ -48,7 +48,7 @@ class FlextInfraModelsBase:
             m.Field(description="Aggregate SHA-256 for HEAD, index, and worktree"),
         ]
         entries: Annotated[
-            tuple[FlextInfraModelsBase.WorkspaceFingerprintEntry, ...],
+            t.VariadicTuple[FlextInfraModelsBase.WorkspaceFingerprintEntry],
             m.Field(description="Ordered per-path fingerprints"),
         ]
 

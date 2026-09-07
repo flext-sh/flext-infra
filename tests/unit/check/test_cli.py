@@ -73,7 +73,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -94,7 +94,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -114,7 +114,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -135,7 +135,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",
@@ -161,7 +161,7 @@ class TestWorkspaceCheckCli:
         exit_code = main([
             "check",
             "run",
-            "--workspace",
+            "--repository-root",
             str(workspace),
             "--gates",
             "lint",

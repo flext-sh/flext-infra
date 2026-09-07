@@ -8,11 +8,9 @@ from typing import Annotated, Literal, Self
 from flext_cli import m, u
 from flext_infra import t
 
-from .._models._defaults import ImmutableEmptyMapping
-from .._models.deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
-from .._models.deps_tool_config_type_checkers import (
-    FlextInfraModelsDepsToolConfigTypeCheckers,
-)
+from ._defaults import ImmutableEmptyMapping
+from .deps_tool_config_linters import FlextInfraModelsDepsToolConfigLinters
+from .deps_tool_config_type_checkers import FlextInfraModelsDepsToolConfigTypeCheckers
 
 
 class FlextInfraModelsDepsToolSettings(
@@ -146,7 +144,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         progress_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="progress-args",
                 min_length=1,
@@ -154,7 +152,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         report_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="report-args",
                 min_length=1,
@@ -162,7 +160,7 @@ class FlextInfraModelsDepsToolSettings(
             ),
         ]
         diagnostic_args: Annotated[
-            tuple[t.NonEmptyStr, ...],
+            t.VariadicTuple[t.NonEmptyStr],
             m.Field(
                 alias="diagnostic-args",
                 min_length=1,
@@ -599,7 +597,7 @@ class FlextInfraModelsDepsToolSettings(
             t.StrTuple, m.Field(description="Resolved environment import paths")
         ]
         settings: Annotated[
-            tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting],
             m.Field(description="Resolved environment diagnostics"),
         ]
 
@@ -638,11 +636,11 @@ class FlextInfraModelsDepsToolSettings(
             t.StrTuple, m.Field(description="Resolved Pyright import paths")
         ]
         pyright_settings: Annotated[
-            tuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingScalarSetting],
             m.Field(description="Resolved Pyright scalar settings"),
         ]
         pyright_execution_environments: Annotated[
-            tuple[FlextInfraModelsDepsToolSettings.ToolingPyrightEnvironment, ...],
+            t.VariadicTuple[FlextInfraModelsDepsToolSettings.ToolingPyrightEnvironment],
             m.Field(description="Resolved Pyright environments"),
         ]
         ruff_src: Annotated[

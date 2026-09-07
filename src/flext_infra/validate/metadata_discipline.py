@@ -21,6 +21,8 @@ from ._rope_import_boundary import FlextInfraRopeImportBoundaryBase
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from flext_infra import t
+
 
 class FlextInfraValidateMetadataDiscipline(FlextInfraRopeImportBoundaryBase):
     """Detect rogue ``tomllib`` imports outside canonical metadata modules."""
@@ -55,4 +57,4 @@ class FlextInfraValidateMetadataDiscipline(FlextInfraRopeImportBoundaryBase):
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraValidateMetadataDiscipline",)
+__all__: t.VariadicTuple[str] = ("FlextInfraValidateMetadataDiscipline",)

@@ -6,7 +6,10 @@ import operator
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from ._codegen_generation_paths import FlextInfraCodegenGenerationPathsMixin
+from flext_infra import c
+from flext_infra.codegen._codegen_generation_paths import (
+    FlextInfraCodegenGenerationPathsMixin,
+)
 
 if TYPE_CHECKING:
     from flext_infra import t
@@ -68,7 +71,7 @@ class FlextInfraCodegenGenerationImportsMixin(FlextInfraCodegenGenerationPathsMi
         return groups
 
     @staticmethod
-    def _import_item_sort_key(item: t.StrPair) -> tuple[str, bool]:
+    def _import_item_sort_key(item: t.StrPair) -> t.Pair[str, bool]:
         """Order an imported symbol by source name, then alias status."""
         export_name, imported_name = item
         return imported_name or export_name, export_name != imported_name

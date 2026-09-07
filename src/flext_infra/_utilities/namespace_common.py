@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 
 from flext_infra.constants import c
 
-from .._utilities.iteration import FlextInfraUtilitiesIteration
-from .._utilities.rope_source import FlextInfraUtilitiesRopeSource
+from .iteration import FlextInfraUtilitiesIteration
+from .rope_source import FlextInfraUtilitiesRopeSource
 
 if TYPE_CHECKING:
     from flext_infra.typings import t
@@ -87,7 +87,7 @@ class FlextInfraUtilitiesRefactorNamespaceCommon:
     @staticmethod
     def find_top_level_block(
         *, lines: t.StrSequence, header: str
-    ) -> tuple[int, int] | None:
+    ) -> t.Pair[int, int] | None:
         """Find top level block."""
         start_idx = -1
         for idx, line in enumerate(lines):

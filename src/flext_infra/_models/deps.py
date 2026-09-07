@@ -8,10 +8,10 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import t
 
-from .._models._defaults import immutable_empty_mapping
-from .._models.deps_toml import FlextInfraModelsDepsToml
-from .._models.deps_tool_config import FlextInfraModelsDepsToolSettings
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import immutable_empty_mapping
+from .deps_toml import FlextInfraModelsDepsToml
+from .deps_tool_config import FlextInfraModelsDepsToolSettings
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDepsToml):
@@ -20,7 +20,7 @@ class FlextInfraModelsDeps(FlextInfraModelsDepsToolSettings, FlextInfraModelsDep
     class DetectCommand(mm.WriteMixin, m.ContractModel):
         """Canonical CLI payload for ``flext-infra deps detect``.
 
-        Inherits ``apply``/``dry_run``, ``workspace``, ``projects``,
+        Inherits ``apply``/``dry_run``, ``repository_root``, ``projects``,
         ``fail_fast``, ``verbose`` from ``WriteMixin``.
         """
 

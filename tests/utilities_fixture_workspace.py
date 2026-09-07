@@ -41,6 +41,19 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         return project_dir
 
     @staticmethod
+    def demo_project(root: Path, *, name: str = "demo-project") -> tuple[Path, Path]:
+        """Create one minimal buildable project; return its root and package dir."""
+        project = root / name
+        package_dir = project / "src" / name.replace("-", "_")
+        package_dir.mkdir(parents=True)
+        (project / "pyproject.toml").write_text(
+            f"[project]\nname='{name}'\n", encoding="utf-8"
+        )
+        (project / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
+        (package_dir / "__init__.py").write_text("", encoding="utf-8")
+        return project, package_dir
+
+    @staticmethod
     def src_package(project_dir: Path, package_name: str, *, pyproject: str) -> Path:
         """Create one ``src``-layout package plus its ``pyproject.toml``.
 
@@ -262,7 +275,7 @@ class TestsFlextInfraUtilitiesWorkspaceFixtureMixin:
         tmp_path: Path, *, project_name: str = "p1", with_src: bool = False
     ) -> tuple[FlextInfraWorkspaceChecker, Path]:
         """Provide the typed test helper `create_checker_project`."""
-        checker = FlextInfraWorkspaceChecker(workspace=tmp_path)
+        checker = FlextInfraWorkspaceChecker(repository_root=tmp_path)
         project_dir = TestsFlextInfraUtilitiesWorkspaceFixtureMixin.mk_project(
             tmp_path, project_name
         )

@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from flext_tests import tm
 from tests import c, u
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class TestsFlextInfraLazyInitHelpers:
@@ -535,7 +531,7 @@ class TestsFlextInfraLazyInitHelpers:
         tm.that(generated, lacks='"flext_parent": ("x",)')
 
     def test_installed_parent_alias_uses_the_nearest_actual_owner(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, tmp_path: Path
     ) -> None:
         """Skip an importable parent that does not export the requested alias."""
         repository_root, package_root = u.Tests.create_lazy_init_workspace(
@@ -554,7 +550,6 @@ class TestsFlextInfraLazyInitHelpers:
             '__all__ = ("r",)\nr = object()\nraise RuntimeError("must not import")\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
-        monkeypatch.syspath_prepend(str(installed_root))
         package_root.joinpath(c.Infra.CONSTANTS_PY).write_text(
             "from nearest_parent import c\n"
             "from owner_parent import r\n\n"
@@ -645,8 +640,6 @@ class TestsFlextInfraLazyInitHelpers:
         tests_unit_root.joinpath(c.Infra.INIT_PY).write_text(
             "", encoding=c.Cli.ENCODING_DEFAULT
         )
-<<<<<<< HEAD
-=======
         # `__all__` is the publication contract on EVERY surface — a module
         # that declares nothing publishes nothing, in tests exactly as in src.
         # The fixture declares its publics like every other module here does,
@@ -666,7 +659,6 @@ class TestsFlextInfraLazyInitHelpers:
             '__all__: list[str] = ["TestsFlextDemoUnitModels"]\n',
             encoding=c.Cli.ENCODING_DEFAULT,
         )
->>>>>>> origin/0.12.0-dev
 
         tm.that(u.Tests.run_lazy_init(repository_root), eq=0)
         init_content = tests_unit_root.joinpath(c.Infra.INIT_PY).read_text(

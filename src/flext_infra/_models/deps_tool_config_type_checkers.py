@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import c, t
 
-from .._models._defaults import ImmutableEmptyMapping
+from ._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsDepsToolConfigTypeCheckers:
@@ -123,9 +123,8 @@ class FlextInfraModelsDepsToolConfigTypeCheckers:
                 ),
             ]
             diagnostic_path_overrides: Annotated[
-                tuple[
-                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride,
-                    ...,
+                t.VariadicTuple[
+                    FlextInfraModelsDepsToolConfigTypeCheckers.PyrightConfig.DiagnosticPathOverride
                 ],
                 m.Field(
                     alias="diagnostic-path-overrides",

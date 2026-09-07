@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from flext_infra.protocols import p
 from flext_infra.typings import t
 
-from .._utilities.rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
+from .rope_runtime_base import FlextInfraUtilitiesRopeRuntimeBase
 
 
 class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
@@ -117,7 +117,7 @@ class FlextInfraUtilitiesRopeRuntimeModules(FlextInfraUtilitiesRopeRuntimeBase):
         cls,
         module_name: str,
         level: int,
-        names_and_aliases: t.SequenceOf[tuple[str, str | None]],
+        names_and_aliases: t.SequenceOf[t.Pair[str, str | None]],
     ) -> t.Infra.RopeFromImport:
         from_import_factory = cls._runtime_callable(
             "rope.refactor.importutils.importinfo", "FromImport"

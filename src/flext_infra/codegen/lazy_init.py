@@ -17,10 +17,10 @@ from typing import TYPE_CHECKING, override
 from flext_core import r
 from flext_infra import c, config, m, u
 from flext_infra.base import s
-from flext_infra.codegen.lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 from flext_infra.workspace.rope import FlextInfraRopeWorkspace
 
 from ._lazy_init_generation import FlextInfraCodegenLazyInitGenerationMixin
+from .lazy_init_planner import FlextInfraCodegenLazyInitPlanner
 
 if TYPE_CHECKING:
     from flext_infra import p, t
@@ -109,15 +109,15 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
     ) -> p.Result[m.Infra.CodegenPhaseAnalysis]:
         """Build immutable plans from one stable Rope workspace snapshot."""
         workspace_index = rope.workspace_index
-        resolved_repository_root = self.repository_root.resolve()
+        resolved_workspace_root = self.repository_root.resolve()
         indexed_package_dirs = tuple(
             sorted(
                 (
                     package_dir.resolve()
                     for package_dir in workspace_index.package_dirs
-                    if package_dir.is_relative_to(resolved_repository_root)
+                    if package_dir.is_relative_to(resolved_workspace_root)
                     and not frozenset(
-                        package_dir.relative_to(resolved_repository_root).parts
+                        package_dir.relative_to(resolved_workspace_root).parts
                     )
                     & c.Infra.OBSOLETE_ROOT_SUPPORT_NAMES
                 ),
@@ -157,7 +157,7 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         package_dirs = self._package_dirs_for_target(
             indexed_package_dirs,
             target_package_dir=target_package_dir,
-            repository_root=resolved_repository_root,
+            workspace_root=resolved_workspace_root,
         )
         snapshots = self._snapshot_planner_inputs(workspace_index)
         if snapshots.failure:
@@ -206,12 +206,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         indexed_package_dirs: t.SequenceOf[Path],
         *,
         target_package_dir: Path | None,
-        repository_root: Path,
-    ) -> tuple[Path, ...]:
+        workspace_root: Path,
+    ) -> t.VariadicTuple[Path]:
         """Select the target's source/test scope and its production sibling."""
         if target_package_dir is None:
             return tuple(indexed_package_dirs)
-        target_parts = target_package_dir.relative_to(repository_root).parts
+        target_parts = target_package_dir.relative_to(workspace_root).parts
         boundary_names = frozenset({
             c.Infra.DEFAULT_SRC_DIR,
             *c.Infra.NON_PUBLIC_LAZY_ROOTS,
@@ -230,9 +230,9 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
         return tuple(
             package_dir
             for package_dir in indexed_package_dirs
-            if package_dir.relative_to(repository_root).parts[: len(scope_prefix)]
+            if package_dir.relative_to(workspace_root).parts[: len(scope_prefix)]
             == scope_prefix
-            or package_dir.relative_to(repository_root).parts[: len(production_prefix)]
+            or package_dir.relative_to(workspace_root).parts[: len(production_prefix)]
             == production_prefix
         )
 
@@ -263,8 +263,12 @@ class FlextInfraCodegenLazyInit(s[bool], FlextInfraCodegenLazyInitGenerationMixi
                 if is_private_scope and entry.project_root is not None
                 else ""
             )
-            for class_info in rope.semantic(entry.file_path).class_infos:
-                name = class_info.name
+            for obj in rope.objects(
+                entry.file_path, include_local_scopes=False, include_references=False
+            ):
+                if obj.kind != "class" or obj.scope_path:
+                    continue
+                name = obj.name
                 if len(name) < c.Infra.DUPLICATE_CLASS_MIN_LEN or not name[0].isupper():
                     continue
                 scoped_modules[name, scope_key].add(entry.module_name)

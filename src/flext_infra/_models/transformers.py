@@ -12,7 +12,7 @@ from typing import Annotated, ClassVar
 from flext_cli import m
 from flext_infra import t
 
-from .._models._defaults import ImmutableEmptyMapping
+from ._defaults import ImmutableEmptyMapping
 
 
 class FlextInfraModelsTransformers:
@@ -44,7 +44,7 @@ class FlextInfraModelsTransformers:
             str, m.Field(description="Prospective source bytes after migration")
         ]
         changes: Annotated[
-            tuple[str, ...], m.Field(description="Recorded migration operations")
+            t.VariadicTuple[str], m.Field(description="Recorded migration operations")
         ] = ()
 
     class Tier0ImportAnalysis(m.Value):

@@ -12,17 +12,27 @@ from typing import TYPE_CHECKING, ClassVar, override
 
 import libcst as cst
 
+from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
+from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from flext_infra._utilities.discovery import FlextInfraUtilitiesDiscovery
-from flext_infra._utilities.transformer_base import FlextInfraRopeTransformer
+from .._utilities.discovery import FlextInfraUtilitiesDiscovery
+from .._utilities.transformer_base import FlextInfraRopeTransformer
 
 if TYPE_CHECKING:
     from flext_infra import t
 
 
 class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
+    """Migrate cross-project alias imports to the canonical policy owner.
+
+    Rewrites ``import``/``from`` statements that reach a module through a
+    foreign project alias into imports rooted at the policy owner resolved
+    from the file path (or an explicit ``current_project``), inserting the
+    canonical local imports the rewritten statements require.
+    """
+
     class _CstImportHelpers:
         """Static libcst helpers for reading and building import statements."""
 
@@ -43,7 +53,7 @@ class FlextInfraRefactorProjectAliasMigrator(FlextInfraRopeTransformer):
             return None
 
         @staticmethod
-        def import_aliases(node: cst.ImportFrom) -> tuple[cst.ImportAlias, ...]:
+        def import_aliases(node: cst.ImportFrom) -> t.VariadicTuple[cst.ImportAlias]:
             """Return plain import aliases, ignoring ``*`` imports."""
             if isinstance(node.names, cst.ImportStar):
                 return ()

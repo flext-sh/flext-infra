@@ -39,7 +39,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
         """Run the lazy-init generator in check-only mode, collect stale inits.
 
         Args:
-            workspace_root: Root directory under which to scan packages.
+            repository_root: Root directory under which to scan packages.
 
         Returns:
             r with ValidationReport listing each stale ``__init__.py`` as a violation.
@@ -73,11 +73,7 @@ class FlextInfraValidateLazyMapFreshness(s[bool]):
     @override
     def execute(self) -> p.Result[bool]:
         """Execute the freshness validation using the repository owner."""
-        report_result = self.build_report(self.repository_root)
-        if report_result.failure:
-            return r[bool].from_failure(report_result)
-        report = report_result.unwrap()
-        return r[bool].ok(True) if report.passed else r[bool].fail(report.summary)
+        return self._report_execution(self.build_report(self.repository_root))
 
 
 __all__: t.StrSequence = ("FlextInfraValidateLazyMapFreshness",)

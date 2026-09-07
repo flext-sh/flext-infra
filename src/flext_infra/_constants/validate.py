@@ -115,7 +115,7 @@ class FlextInfraConstantsSharedInfra:
     MYPY_STUB_RE: Final[t.RegexPattern] = re.compile(
         r"Library stubs not installed for ['\"](\S+?)['\"]"
     )
-    INTERNAL_PREFIXES: Final[tuple[str, ...]] = ("flext_", "flext-")
+    INTERNAL_PREFIXES: Final[t.VariadicTuple[str]] = ("flext_", "flext-")
     METADATA_TOMLLIB_MODULES: Final[frozenset[str]] = frozenset({"tomllib"})
     METADATA_ALLOWLIST_PATH_MARKERS: Final[t.StrSequence] = (
         "flext-core/src/flext_core/_utilities/project_metadata.py",
@@ -137,7 +137,11 @@ class FlextInfraConstantsSharedInfra:
     # workspace declares for itself — a fleet that integrates on a versioned
     # line names it there rather than asking for a constant here. Product- and
     # release-specific names do not belong in this tuple.
-    INTEGRATION_BRANCH_PREFERENCE: Final[tuple[str, ...]] = ("develop", "dev", "main")
+    INTEGRATION_BRANCH_PREFERENCE: Final[t.VariadicTuple[str]] = (
+        "develop",
+        "dev",
+        "main",
+    )
 
     # --- File names (was: class Files) ---
     PYPROJECT_FILENAME: Final[str] = "pyproject.toml"

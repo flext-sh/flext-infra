@@ -11,13 +11,11 @@ from flext_core import r
 from flext_infra.constants import c
 from flext_infra.models import m
 
-from ..._utilities._git.worktree_checkpoint import (
-    FlextInfraUtilitiesGitWorktreeCheckpointMixin,
-)
-from ..._utilities._git.worktree_io import git_stdin
+from .worktree_checkpoint import FlextInfraUtilitiesGitWorktreeCheckpointMixin
+from .worktree_io import git_stdin
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 class FlextInfraUtilitiesGitWorktreePatchMixin(
@@ -59,7 +57,7 @@ class FlextInfraUtilitiesGitWorktreePatchMixin(
         return cls._git_check_patch_at(delta.source_root, delta.patch, reverse=True)
 
     @staticmethod
-    def _git_patch_added_paths(patch: bytes) -> tuple[Path, ...]:
+    def _git_patch_added_paths(patch: bytes) -> t.VariadicTuple[Path]:
         """Return paths declared as new files by one binary Git patch."""
         added: list[Path] = []
         current: Path | None = None

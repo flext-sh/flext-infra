@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
@@ -16,7 +15,7 @@ if TYPE_CHECKING:
         FlextInfraWorkspaceBeadsEnvironmentMixin,
         FlextInfraWorkspaceEnvironmentSync,
     )
-    from .environment_contracts import envrc_contract_violations
+    from .environment_contracts import FlextInfraWorkspaceEnvironmentContracts
     from .environment_provenance import FlextInfraWorkspaceEnvironmentProvenance
     from .flext_binding import FlextInfraFlextBindingService
     from .orchestrator import FlextInfraOrchestratorService
@@ -27,10 +26,10 @@ __all__: tuple[str, ...] = (
     "FlextInfraRopeWorkspace",
     "FlextInfraWorkspaceBeadsEnvironmentMixin",
     "FlextInfraWorkspaceDetector",
+    "FlextInfraWorkspaceEnvironmentContracts",
     "FlextInfraWorkspaceEnvironmentMixin",
     "FlextInfraWorkspaceEnvironmentProvenance",
     "FlextInfraWorkspaceEnvironmentSync",
-    "envrc_contract_violations",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
@@ -42,7 +41,7 @@ _LAZY_IMPORTS = MappingProxyType(
                 "FlextInfraWorkspaceBeadsEnvironmentMixin",
                 "FlextInfraWorkspaceEnvironmentSync",
             ),
-            ".environment_contracts": ("envrc_contract_violations",),
+            ".environment_contracts": ("FlextInfraWorkspaceEnvironmentContracts",),
             ".environment_provenance": ("FlextInfraWorkspaceEnvironmentProvenance",),
             ".flext_binding": ("FlextInfraFlextBindingService",),
             ".orchestrator": ("FlextInfraOrchestratorService",),

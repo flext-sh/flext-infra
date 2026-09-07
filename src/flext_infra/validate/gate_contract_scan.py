@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from flext_infra import u
-from flext_infra.validate.gate_contract_errors import GateContractInfraError
+
+from .gate_contract_errors import GateContractInfraError
 
 if TYPE_CHECKING:
     from flext_infra import t

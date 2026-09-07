@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from flext_infra import c
@@ -29,19 +28,21 @@ class TestsFlextInfraCodegenVscode:
         project_root.mkdir()
         _write_settings(
             project_root,
-            json.dumps({
-                "python.languageServer": "None",
-                "files.exclude": {"**/.retired-cache": True},
-                "python.analysis.diagnosticSeverityOverrides": {
-                    "reportUnknownMemberType": "none"
-                },
-            })
+            tm.ok(
+                u.Cli.json_dumps({
+                    "python.languageServer": "None",
+                    "files.exclude": {"**/.retired-cache": True},
+                    "python.analysis.diagnosticSeverityOverrides": {
+                        "reportUnknownMemberType": "none"
+                    },
+                })
+            )
             + "\n",
         )
 
         result = FlextInfraCodegen.render_vscode_settings(project_root)
         tm.ok(result)
-        doc = json.loads(result.value)
+        doc = u.Tests.json_payload(result.value)
         tm.that(doc["python.analysis.typeCheckingMode"], eq="strict")
         tm.that(
             doc["python.defaultInterpreterPath"],
@@ -50,9 +51,10 @@ class TestsFlextInfraCodegenVscode:
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(search_paths, eq=u.Tests.vscode_declared_search_paths())
         tm.that("./apps/*/.venv" in search_paths, eq=False)
-        tm.that("**/.retired-cache" in doc["files.exclude"], eq=False)
-        tm.that(doc["files.exclude"]["**/.mypy_cache"], eq=True)
-        overrides = doc["python.analysis.diagnosticSeverityOverrides"]
+        excludes = u.Tests.mapping(doc["files.exclude"])
+        tm.that("**/.retired-cache" in excludes, eq=False)
+        tm.that(excludes["**/.mypy_cache"], eq=True)
+        overrides = u.Tests.mapping(doc["python.analysis.diagnosticSeverityOverrides"])
         tm.that(overrides["reportUnknownMemberType"], eq="none")
         tm.that(overrides["reportUntypedBaseClass"], eq="none")
         tm.that(doc["python.languageServer"], eq="None")
@@ -96,7 +98,7 @@ class TestsFlextInfraCodegenVscode:
         tm.ok(result)
         tm.ok(standalone)
         tm.that(result.value.encode(), eq=standalone.value.encode())
-        doc = json.loads(result.value)
+        doc = u.Tests.json_payload(result.value)
         search_paths = doc[c.Infra.VSCODE_PYTHON_ENVS_SEARCH_PATHS_KEY]
         tm.that(search_paths, eq=u.Tests.vscode_declared_search_paths())
         tm.that("./apps/a/.venv" in search_paths, eq=False)

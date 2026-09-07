@@ -82,7 +82,7 @@ class TestsFlextInfraIntegrationInfraIntegration:
         document = project_dir / "README.md"
         document.write_text("not a heading   \n", encoding="utf-8")
         context = m.Infra.GateContext(
-            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+            repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
         )
 
         execution = FlextInfraMarkdownGate(tmp_path).fix(project_dir, context)

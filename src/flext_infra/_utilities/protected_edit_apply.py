@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import operator
 import shutil
 from collections.abc import MutableMapping
 from pathlib import Path
@@ -15,7 +14,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from .._utilities.protected_edit_preview import FlextInfraUtilitiesProtectedEditPreview
+from .protected_edit_preview import FlextInfraUtilitiesProtectedEditPreview
 
 if TYPE_CHECKING:
     from flext_infra.protocols import p
@@ -305,10 +304,9 @@ class FlextInfraUtilitiesProtectedEditApply(FlextInfraUtilitiesProtectedEditPrev
         if not updates:
             return (True, [])
 
-        normalized_updates = {
-            path.resolve(): content
-            for path, content in sorted(updates.items(), key=operator.itemgetter(0))
-        }
+        normalized_updates = (
+            FlextInfraUtilitiesProtectedEditApply._normalized_source_updates(updates)
+        )
         expected_sources = {
             path.resolve(): content
             for path, content in request.expected_sources.items()

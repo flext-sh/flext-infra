@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from flext_core import r
 from flext_infra import c, t
 
-from .._utilities.base import FlextInfraUtilitiesBase
+from .base import FlextInfraUtilitiesBase
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -93,4 +93,4 @@ class FlextInfraUtilitiesManagedConflicts:
         return r[str].ok("".join(recovered))
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesManagedConflicts",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesManagedConflicts",)

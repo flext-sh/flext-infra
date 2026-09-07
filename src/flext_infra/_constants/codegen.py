@@ -64,8 +64,6 @@ class FlextInfraConstantsCodegen(
     "Canonical Unix Mise launcher filename."
     MISE_WINDOWS_LAUNCHER_FILENAME: Final[str] = "mise.cmd"
     "Canonical Windows Mise launcher filename."
-    MISE_LOCK_FILENAME: Final[str] = "mise.lock"
-    "Canonical generated Mise lock filename."
     CODEGEN_TRANSACTION_LOCK_FILENAME: Final[str] = "flext-infra-codegen.lock"
     "Worktree-specific administrative lock for complete generation."
     CODEGEN_TRANSACTION_LOCK_MODE: Final[int] = 0o600
@@ -166,7 +164,7 @@ class FlextInfraConstantsCodegen(
         LAZY_INIT = "lazy_init"
         CENSUS_AFTER = "census_after"
 
-    PIPELINE_STAGE_ORDER: Final[tuple[PipelineStage, ...]] = (
+    PIPELINE_STAGE_ORDER: Final[t.VariadicTuple[PipelineStage]] = (
         PipelineStage.DISCOVER,
         PipelineStage.TOOLCHAIN,
         PipelineStage.PY_TYPED,

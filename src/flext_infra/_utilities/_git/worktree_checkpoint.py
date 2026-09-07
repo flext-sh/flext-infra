@@ -12,9 +12,7 @@ from flext_infra.constants import c
 from flext_infra.models import m
 from flext_infra.typings import t
 
-from ..._utilities._git.worktree_materialization import (
-    FlextInfraUtilitiesGitWorktreeMaterializationMixin,
-)
+from .worktree_materialization import FlextInfraUtilitiesGitWorktreeMaterializationMixin
 
 if TYPE_CHECKING:
     from flext_infra import p
@@ -54,7 +52,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
     def _git_create_checkpoint_commit(
         cls,
         worktree_root: Path,
-        gitlink_exclusions: tuple[str, ...],
+        gitlink_exclusions: t.VariadicTuple[str],
         excluded: t.SequenceOf[Path],
         message: str,
     ) -> str:
@@ -113,7 +111,7 @@ class FlextInfraUtilitiesGitWorktreeCheckpointMixin(
         return commit_sha
 
     @staticmethod
-    def _transaction_exclusion_pathspecs() -> tuple[str, ...]:
+    def _transaction_exclusion_pathspecs() -> t.VariadicTuple[str]:
         """Pathspecs that exclude tool-cache directories from operation deltas."""
         return tuple(
             f":(exclude){name}"

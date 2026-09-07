@@ -7,25 +7,28 @@ from typing import Annotated, ClassVar
 from flext_core import m
 from flext_infra import t
 
-from .._models._defaults import immutable_empty_mapping
-from .._models.mixins import FlextInfraModelsMixins as mm
+from ._defaults import immutable_empty_mapping
+from .mixins import FlextInfraModelsMixins as mm
 
 
 class FlextInfraModelsRefactorViolations:
     """Class-nesting violation, helper classification, and analysis report models."""
 
     class ClassNestingViolation(
-        mm.ConfidenceLevelMixin,
-        mm.RewriteScopeMixin,
-        mm.FileLineViolationMixin,
-        m.ArbitraryTypesModel,
+        mm.ConfidenceLevelMixin, mm.FileLineViolationMixin, m.ArbitraryTypesModel
     ):
-        """Normalized class-nesting violation with rewrite metadata."""
+        """Loose top-level class and the facade its module policy derives for it."""
 
         model_config: ClassVar[t.ConfigDict] = m.ConfigDict(frozen=True)
         class_name: Annotated[t.NonEmptyStr, m.Field(description="Class name")]
         target_namespace: Annotated[
-            str, m.Field(description="Expected namespace class")
+            str,
+            m.Field(
+                description=(
+                    "Facade class derived from the module's namespace policy; "
+                    "empty when the module declares no family to nest under"
+                )
+            ),
         ] = ""
 
     class ClassNestingReport(m.ArbitraryTypesModel):
@@ -37,8 +40,8 @@ class FlextInfraModelsRefactorViolations:
         confidence_counts: t.IntMapping = m.Field(
             default_factory=immutable_empty_mapping, description="Confidence histogram"
         )
-        violations: tuple[
-            FlextInfraModelsRefactorViolations.ClassNestingViolation, ...
+        violations: t.VariadicTuple[
+            FlextInfraModelsRefactorViolations.ClassNestingViolation
         ] = m.Field(default_factory=tuple, description="Violation details")
         per_file_counts: t.IntMapping = m.Field(
             default_factory=immutable_empty_mapping,
@@ -71,18 +74,18 @@ class FlextInfraModelsRefactorViolations:
         totals: t.IntMapping = m.Field(
             default_factory=immutable_empty_mapping, description="Category totals"
         )
-        suggestions: tuple[
-            FlextInfraModelsRefactorViolations.HelperClassification, ...
+        suggestions: t.VariadicTuple[
+            FlextInfraModelsRefactorViolations.HelperClassification
         ] = m.Field(default_factory=tuple, description="Classification suggestions")
-        manual_review: tuple[
-            FlextInfraModelsRefactorViolations.HelperClassification, ...
+        manual_review: t.VariadicTuple[
+            FlextInfraModelsRefactorViolations.HelperClassification
         ] = m.Field(default_factory=tuple, description="Manual-review candidates")
 
     class HelperFileAnalysis(m.ArbitraryTypesModel):
         """Helper file analysis."""
 
-        suggestions: tuple[
-            FlextInfraModelsRefactorViolations.HelperClassification, ...
+        suggestions: t.VariadicTuple[
+            FlextInfraModelsRefactorViolations.HelperClassification
         ] = m.Field(
             default_factory=tuple, description="Helper classifications from one file"
         )
@@ -90,8 +93,8 @@ class FlextInfraModelsRefactorViolations:
             default_factory=immutable_empty_mapping,
             description="Category totals for file helpers",
         )
-        manual_review: tuple[
-            FlextInfraModelsRefactorViolations.HelperClassification, ...
+        manual_review: t.VariadicTuple[
+            FlextInfraModelsRefactorViolations.HelperClassification
         ] = m.Field(
             default_factory=tuple, description="Helpers requiring manual review"
         )
@@ -118,8 +121,8 @@ class FlextInfraModelsRefactorViolations:
             default_factory=immutable_empty_mapping,
             description="Per-file per-pattern counts",
         )
-        top_files: tuple[
-            FlextInfraModelsRefactorViolations.ViolationTopFileSection, ...
+        top_files: t.VariadicTuple[
+            FlextInfraModelsRefactorViolations.ViolationTopFileSection
         ] = m.Field(default_factory=tuple, description="Top hotspot files")
         files_scanned: Annotated[t.NonNegativeInt, m.Field(description="Files scanned")]
         helper_classification: FlextInfraModelsRefactorViolations.HelperClassificationReport = m.Field(

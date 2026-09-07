@@ -3,15 +3,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from flext_core.lazy import build_lazy_import_map, install_lazy_exports
 
 if TYPE_CHECKING:
     from .attestation import FlextInfraUtilitiesGitAttestationMixin
-    from .remote import canonical_origin_remote, redact_origin_remote
+    from .remote import FlextInfraUtilitiesGitRemote
     from .repo import FlextInfraUtilitiesGitRepo
     from .scope import FlextInfraUtilitiesGitScopeMixin
     from .semantic_identity import FlextInfraUtilitiesGitSemanticIdentityMixin
@@ -34,6 +33,7 @@ if TYPE_CHECKING:
     from .worktree_status import FlextInfraUtilitiesGitWorktreeStatusMixin
 __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitAttestationMixin",
+    "FlextInfraUtilitiesGitRemote",
     "FlextInfraUtilitiesGitRepo",
     "FlextInfraUtilitiesGitScopeMixin",
     "FlextInfraUtilitiesGitSemanticIdentityMixin",
@@ -51,16 +51,14 @@ __all__: tuple[str, ...] = (
     "FlextInfraUtilitiesGitWorktreeRemovalMixin",
     "FlextInfraUtilitiesGitWorktreeRootsMixin",
     "FlextInfraUtilitiesGitWorktreeStatusMixin",
-    "canonical_origin_remote",
     "git_stdin",
-    "redact_origin_remote",
 )
 
 _LAZY_IMPORTS = MappingProxyType(
     build_lazy_import_map(
         MappingProxyType({
             ".attestation": ("FlextInfraUtilitiesGitAttestationMixin",),
-            ".remote": ("canonical_origin_remote", "redact_origin_remote"),
+            ".remote": ("FlextInfraUtilitiesGitRemote",),
             ".repo": ("FlextInfraUtilitiesGitRepo",),
             ".scope": ("FlextInfraUtilitiesGitScopeMixin",),
             ".semantic_identity": ("FlextInfraUtilitiesGitSemanticIdentityMixin",),

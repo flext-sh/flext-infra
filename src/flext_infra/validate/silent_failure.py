@@ -22,22 +22,11 @@ class FlextInfraSilentFailureValidator(s[bool]):
         str | None, m.Field(description="Project filter (comma-separated)")
     ] = None
 
-    def _selected_projects(
-        self, projects: t.SequenceOf[p.Infra.ProjectInfo]
-    ) -> t.SequenceOf[p.Infra.ProjectInfo]:
-        """Return the selected projects."""
-        if self.project_filter is None:
-            return projects
-        selected = {
-            item.strip() for item in self.project_filter.split(",") if item.strip()
-        }
-        return [project for project in projects if project.name in selected]
-
     def build_report(self) -> p.Result[m.Infra.ValidationReport]:
         """Build one validation report for the selected workspace projects."""
         issues: t.MutableSequenceOf[str] = []
         projects_result = u.Infra.projects(self.repository_root)
-        projects = self._selected_projects(
+        projects = self._filtered_projects(
             tuple(projects_result.unwrap()) if projects_result.success else ()
         )
         for project in projects:

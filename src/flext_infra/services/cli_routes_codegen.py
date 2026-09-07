@@ -25,7 +25,8 @@ from flext_infra.deps.extra_paths import FlextInfraExtraPathsManager
 from flext_infra.deps.fix_pyrefly_config import FlextInfraConfigFixer
 from flext_infra.deps.modernizer import FlextInfraPyprojectModernizer
 from flext_infra.fixers.orchestrator import FlextInfraEnforcementFixerOrchestrator
-from flext_infra.services.cli_route_base import CliRouteBase
+
+from .cli_route_base import CliRouteBase
 
 
 class CodegenRoutes(CliRouteBase):

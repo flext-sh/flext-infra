@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -19,6 +20,13 @@ class FlextInfraGate:
     gate_id: ClassVar[str] = ""
     gate_name: ClassVar[str] = ""
     can_fix: ClassVar[bool] = False
+    # A gate whose check command is one fixed ``python -m`` invocation wrapped
+    # around its resolved check dirs declares the invocation here instead of
+    # restating the ``_build_check_command`` override.
+    check_module_command_prefix: ClassVar[t.StrSequence] = ()
+    check_module_command_suffix: ClassVar[t.StrSequence] = ()
+    # Name of the external scanner a gate provisions on PATH, when it uses one.
+    scanner_binary: ClassVar[str] = ""
 
     def __init__(
         self, repository_root: Path, *, runner: p.Cli.CommandRunner | None = None
@@ -90,12 +98,56 @@ class FlextInfraGate:
             env=self._check_env(project_dir, ctx),
             remove_env_keys=self._check_remove_env_keys(project_dir, ctx),
         )
+        return self._parsed_gate_execution(project_dir, ctx, result, started)
+
+    @classmethod
+    def _resolve_binary(cls) -> str | None:
+        """Locate the provisioned scanner on PATH; None when absent."""
+        return shutil.which(cls.scanner_binary)
+
+    def _tool_failure_issue(self, scan: p.Cli.CommandOutput) -> m.Infra.Issue:
+        """Scanner absence/crash must never read as a clean pass."""
+        return m.Infra.Issue(
+            file=c.Infra.PYPROJECT_FILENAME,
+            line=1,
+            column=0,
+            code=self.gate_id,
+            message=scan.stderr or f"{self.scanner_binary} execution failed",
+            severity=str(c.Infra.GateSeverity.ERROR.value),
+        )
+
+    def _parsed_gate_execution(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        result: p.Cli.CommandOutput,
+        started: float,
+    ) -> m.Infra.GateExecution:
+        """Parse one tool result and assemble the gate execution it reports."""
         passed, issues = self._parse_check_output(result, project_dir, ctx)
         return self._build_check_gate_execution(
             project_dir,
             passed=passed,
             issues=issues,
             raw_output=self._raw_output(result),
+            started=started,
+            ctx=ctx,
+        )
+
+    def _detected_gate_execution(
+        self,
+        project_dir: Path,
+        ctx: m.Infra.GateContext,
+        *,
+        issues: t.SequenceOf[m.Infra.Issue],
+        started: float,
+    ) -> m.Infra.GateExecution:
+        """Assemble one gate execution from detector-produced issues."""
+        return self._build_check_gate_execution(
+            project_dir,
+            passed=len(issues) == 0,
+            issues=issues,
+            raw_output="\n".join(issue.formatted for issue in issues),
             started=started,
             ctx=ctx,
         )
@@ -224,13 +276,23 @@ class FlextInfraGate:
     def _build_check_command(
         self, project_dir: Path, ctx: m.Infra.GateContext, check_dirs: t.StrSequence
     ) -> t.StrSequence:
-        """Build the tool CLI command. Default: none (check overridden directly)."""
-        _ = project_dir, ctx, check_dirs
-        return []
+        """Build the tool CLI command from the declared module invocation.
+
+        Default: none, so a gate that overrides ``check`` directly still gets no
+        command.
+        """
+        _ = project_dir, ctx
+        if not self.check_module_command_prefix:
+            return []
+        return self._python_module_command(
+            *self.check_module_command_prefix,
+            *check_dirs,
+            *self.check_module_command_suffix,
+        )
 
     def _parse_check_output(
         self, result: p.Cli.CommandOutput, project_dir: Path, ctx: m.Infra.GateContext
-    ) -> tuple[bool, t.SequenceOf[m.Infra.Issue]]:
+    ) -> t.Pair[bool, t.SequenceOf[m.Infra.Issue]]:
         """Parse tool output into (passed, issues). Default: no-op (check overridden)."""
         _ = result, project_dir, ctx
         return True, ()
@@ -277,14 +339,7 @@ class FlextInfraGate:
             return self._skip_result(project_dir, started)
         cmd = self._build_fix_command(project_dir, ctx, targets)
         result = self._run(cmd, project_dir)
-        passed, issues = self._parse_check_output(result, project_dir, ctx)
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=passed,
-            issues=issues,
-            raw_output=self._raw_output(result),
-            started=started,
-        )
+        return self._parsed_gate_execution(project_dir, ctx, result, started)
 
     def _check_only_fix_result(self, project_dir: Path) -> m.Infra.GateExecution:
         """Return a non-mutating fix preview for check-only gate contexts."""
@@ -415,13 +470,8 @@ class FlextInfraScannerGateMixin(FlextInfraGate):
             ]
         finally:
             rope_project.close()
-        return self._build_check_gate_execution(
-            project_dir,
-            passed=len(issues) == 0,
-            issues=issues,
-            raw_output="\n".join(issue.formatted for issue in issues),
-            started=started,
-            ctx=ctx,
+        return self._detected_gate_execution(
+            project_dir, ctx, issues=issues, started=started
         )
 
     def _detect_file_issues(

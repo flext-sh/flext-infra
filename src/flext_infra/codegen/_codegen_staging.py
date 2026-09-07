@@ -8,13 +8,15 @@ from typing import TYPE_CHECKING
 
 from flext_core import r
 from flext_infra import m, u
-from flext_infra.codegen import (
-    _mise_artifacts_files as files,
-    _mise_artifacts_process as process,
+from flext_infra.codegen._mise_artifacts_files import (
+    FlextInfraMiseArtifactsFiles as files,
+)
+from flext_infra.codegen._mise_artifacts_process import (
+    FlextInfraMiseArtifactsProcess as process,
 )
 
 if TYPE_CHECKING:
-    from flext_infra import p
+    from flext_infra import p, t
 
 
 _PHASES = frozenset({"conform", "lazy-init", "docs"})
@@ -23,8 +25,8 @@ _PHASES = frozenset({"conform", "lazy-init", "docs"})
 def stage_file_plans(
     layout: m.Infra.MiseToolchainWorkspaceLayout,
     phase: str,
-    plans: tuple[m.Infra.CodegenFilePlan, ...],
-) -> p.Result[tuple[m.Infra.CodegenStagedFile, ...]]:
+    plans: t.VariadicTuple[m.Infra.CodegenFilePlan],
+) -> p.Result[t.VariadicTuple[m.Infra.CodegenStagedFile]]:
     """Stage one exact phase without changing any live destination."""
     result_type = r[tuple[m.Infra.CodegenStagedFile, ...]]
     if phase not in _PHASES:

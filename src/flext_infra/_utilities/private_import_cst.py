@@ -9,6 +9,8 @@ from libcst.codemod import CodemodContext
 from libcst.codemod.visitors import AddImportsVisitor
 from libcst.metadata import MetadataWrapper, ParentNodeProvider, QualifiedNameProvider
 
+from .._utilities.qualified_names import FlextInfraUtilitiesQualifiedNames
+
 if TYPE_CHECKING:
     from flext_infra.typings import t
 
@@ -68,13 +70,24 @@ class FlextInfraUtilitiesPrivateImportCst:
                 )
                 raise ValueError(msg)
             parent = self.get_metadata(ParentNodeProvider, original_node)
-            if isinstance(parent, cst.ImportAlias):
+            if FlextInfraUtilitiesQualifiedNames.rebinds_name_in_place(
+                parent, original_node
+            ):
                 return updated_node
-            if isinstance(parent, cst.Attribute) and parent.attr is original_node:
+            target = targets.pop()
+            # A consumer that binds the private symbol under the very alias its
+            # public facade already publishes (`c`, `t`, `p`, `m`, `u`) spells
+            # the final form before the cutover runs: `m.Metadata` is already
+            # the target path. Rewriting the base there appends the nested
+            # segment a second time and yields `m.Metadata.Metadata`.
+            if (
+                isinstance(parent, cst.Attribute)
+                and parent.value is original_node
+                and target.startswith(f"{original_node.value}.")
+                and target.endswith(f".{parent.attr.value}")
+            ):
                 return updated_node
-            if isinstance(parent, cst.Arg) and parent.keyword is original_node:
-                return updated_node
-            return cst.parse_expression(targets.pop())
+            return cst.parse_expression(target)
 
         @override
         def leave_ImportFrom(

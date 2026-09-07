@@ -85,9 +85,15 @@ class TestTierWhitelistAbstractionBoundary:
         self, tmp_path: Path, v: FlextInfraValidateTierWhitelist
     ) -> None:
         # Emulate a flext-core layout — bare pydantic is legal here.
-        src = tmp_path / "flext-core" / "src" / "flext_core"
+        project = tmp_path / "flext-core"
+        src = project / "src" / "flext_core"
         src.mkdir(parents=True, exist_ok=True)
         (src / "__init__.py").write_text("", encoding="utf-8")
+        # A project declares its own name; the exemption is granted to the
+        # declaring project, never to a directory that merely looks like it.
+        (project / "pyproject.toml").write_text(
+            '[project]\nname = "flext-core"\nversion = "0.1.0"\n', encoding="utf-8"
+        )
         tf(base_dir=src).create(
             "from pydantic import BaseModel\nX = BaseModel\n", "abstractions.py"
         )

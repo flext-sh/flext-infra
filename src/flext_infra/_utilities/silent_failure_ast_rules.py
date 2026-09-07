@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from typing import override
 
+from flext_infra import t
+
 from .._utilities.silent_failure_ast_base import FlextInfraUtilitiesSilentFailureAstBase
 
 
@@ -117,13 +119,26 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
             return test.operand.value.id
         return None
 
-    def _add_guard(self, node: ast.If, result_name: str) -> None:
+    def _sentinel_return_context(
+        self, node: ast.If | ast.ExceptHandler
+    ) -> t.Pair[ast.Return, str | None] | None:
+        """Return the first sentinel return in ``node`` with its Result inner type.
+
+        ``None`` when the branch returns no sentinel, so the caller emits nothing.
+        """
         returned = self._first_sentinel_return(node.body)
         if returned is None:
-            return
+            return None
         function = self._enclosing_function(node)
         inner = self._result_inner_type(function) if function is not None else None
-        replacement: tuple[int, int, str] | None = None
+        return returned, inner
+
+    def _add_guard(self, node: ast.If, result_name: str) -> None:
+        context = self._sentinel_return_context(node)
+        if context is None:
+            return
+        returned, inner = context
+        replacement: t.Triple[int, int, str] | None = None
         action = "manual"
         if inner is not None:
             label = result_name.removesuffix("_result").replace("_", " ").strip()
@@ -148,12 +163,11 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
         )
 
     def _add_except_sentinel(self, node: ast.ExceptHandler) -> None:
-        returned = self._first_sentinel_return(node.body)
-        if returned is None:
+        context = self._sentinel_return_context(node)
+        if context is None:
             return
-        function = self._enclosing_function(node)
-        inner = self._result_inner_type(function) if function is not None else None
-        replacement: tuple[int, int, str] | None = None
+        returned, inner = context
+        replacement: t.Triple[int, int, str] | None = None
         action = "manual"
         if inner is not None and node.name is not None:
             start, end = self._line_offsets(returned.lineno)
@@ -176,4 +190,4 @@ class FlextInfraUtilitiesSilentFailureAstRules(FlextInfraUtilitiesSilentFailureA
         )
 
 
-__all__: tuple[str, ...] = ("FlextInfraUtilitiesSilentFailureAstRules",)
+__all__: t.VariadicTuple[str] = ("FlextInfraUtilitiesSilentFailureAstRules",)

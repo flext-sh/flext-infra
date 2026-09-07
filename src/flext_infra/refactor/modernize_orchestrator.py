@@ -37,7 +37,7 @@ class FlextInfraModernizeOrchestrator:
         self, params: m.Infra.ModernizeInput
     ) -> p.Result[t.SequenceOf[m.Infra.Result]]:
         """Run modernize across selected projects."""
-        repository_root = params.workspace_path
+        repository_root = params.repository_root
         project_roots = self._resolve_projects(repository_root, params.projects)
         if not project_roots:
             return r[t.SequenceOf[m.Infra.Result]].fail(

@@ -21,9 +21,10 @@ pytest_plugins = ["tests.unit.fixtures", "tests.unit.fixtures_git"]
 
 
 @pytest.fixture
-def isolate_github_trigger_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+def isolate_github_trigger_sha() -> Iterator[None]:
     """Remove the outer checkout identity for explicit conform test consumers."""
-    monkeypatch.delenv(c.Infra.ENV_VAR_GITHUB_SHA, raising=False)
+    with u.Tests.env_vars_context(vars_to_clear=(c.Infra.ENV_VAR_GITHUB_SHA,)):
+        yield
 
 
 @pytest.fixture

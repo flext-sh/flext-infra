@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING, Annotated, override
 
 from flext_core import r
 from flext_infra import c, m, t, u
-from flext_infra.docs.base import FlextInfraDocServiceBase
+
+from .base import FlextInfraDocServiceBase
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -36,7 +36,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def discover(
         sources: t.MappingKV[Path, str],
-    ) -> t.MappingKV[str, tuple[tuple[ast.Module, str, str, str], ...]]:
+    ) -> t.MappingKV[str, t.VariadicTuple[t.Quad[ast.Module, str, str, str]]]:
         """Discover facade aliases and roots from live source assignments."""
         discovered: dict[str, list[tuple[ast.Module, str, str, str]]] = {}
         for path, source in sorted(sources.items()):
@@ -57,7 +57,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
             class_names = {
                 node.name for node in tree.body if isinstance(node, ast.ClassDef)
             }
-            owners: set[tuple[str, str]] = set()
+            owners: set[t.Pair[str, str]] = set()
             for node in tree.body:
                 target: ast.expr | None = None
                 value: ast.expr | None = None
@@ -98,7 +98,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
     @staticmethod
     def public_reference(
         *,
-        owners: t.SequenceOf[tuple[ast.Module, str, str, str]],
+        owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]],
         package: str,
         qualified: str,
     ) -> str | None:
@@ -129,7 +129,7 @@ class FlextInfraUtilitiesPrivateImportFacades:
                 continue
 
             def collect(
-                node: ast.ClassDef, public_path: str, imports: dict[str, str] = imports
+                node: ast.ClassDef, public_path: str, imports: dict[str, str]
             ) -> None:
                 if any(
                     isinstance(base, ast.Name) and imports.get(base.id) == qualified
@@ -138,9 +138,9 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     references.add(public_path)
                 for child in node.body:
                     if isinstance(child, ast.ClassDef):
-                        collect(child, f"{public_path}.{child.name}")
+                        collect(child, f"{public_path}.{child.name}", imports)
 
-            collect(root_class, facade_alias)
+            collect(root_class, facade_alias, imports)
         if not references:
             return None
         deepest = max(reference.count(".") for reference in references)
@@ -156,8 +156,30 @@ class FlextInfraUtilitiesPrivateImportFacades:
         return canonical.pop()
 
     @staticmethod
+    def facade_alias_binding(
+        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], alias: str | None
+    ) -> str | None:
+        """Return the alias when the owning package publishes it as a facade.
+
+        A private symbol imported under a name the owner already publishes is a
+        facade binding, not a class reference: the consumer writes ``m.X``
+        against the facade, so the cutover swaps the import statement and every
+        usage stays exactly as written.
+        """
+        if alias is None:
+            return None
+        return next(
+            (
+                facade_alias
+                for _tree, facade_alias, _root_name, _facade_file in owners
+                if facade_alias == alias
+            ),
+            None,
+        )
+
+    @staticmethod
     def public_root_name(
-        *, owners: t.SequenceOf[tuple[ast.Module, str, str, str]], facade_alias: str
+        *, owners: t.SequenceOf[t.Quad[ast.Module, str, str, str]], facade_alias: str
     ) -> str | None:
         """Return the public long name assigned to a canonical facade alias."""
         roots = {
@@ -190,7 +212,8 @@ class FlextInfraUtilitiesPrivateImportFacades:
                     and imported.asname is None
                 )
                 or (
-                    node.module in removals
+                    node.module is not None
+                    and node.module in removals
                     and imported.name in removals[node.module]
                     and (imported.asname or imported.name) == alias
                 )

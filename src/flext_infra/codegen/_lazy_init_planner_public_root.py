@@ -24,7 +24,7 @@ class FlextInfraCodegenLazyInitPlannerPublicRootMixin:
         export_names: set[str],
         lazy_map: t.MutableLazyAliasMap,
         eager_names: frozenset[str],
-    ) -> tuple[set[str], t.MutableLazyAliasMap]:
+    ) -> t.Pair[set[str], t.MutableLazyAliasMap]:
         declared_contract = (
             self._declared_root_contract(context)
             if context.current_pkg.startswith("flext_")

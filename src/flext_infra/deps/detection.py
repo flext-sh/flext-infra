@@ -8,7 +8,8 @@ from typing import override
 
 from flext_core import r
 from flext_infra import c, m, p, t, u
-from flext_infra.deps.detection_analysis import FlextInfraDependencyDetectionAnalysis
+
+from .detection_analysis import FlextInfraDependencyDetectionAnalysis
 
 
 class FlextInfraDependencyDetectionService(FlextInfraDependencyDetectionAnalysis):

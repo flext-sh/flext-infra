@@ -13,8 +13,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from flext_infra import c, config, m, p, r, t, u
-from flext_infra.codegen.conform import FlextInfraCodegenConform
 from flext_infra.workspace.detector import FlextInfraWorkspaceDetector
+
+from .conform import FlextInfraCodegenConform
 
 
 class FlextInfraCodegenLayoutGitignoreMixin:
@@ -89,18 +90,11 @@ class FlextInfraCodegenLayoutGitignoreMixin:
             return r[t.Infra.LayoutStatus].from_failure(written)
         return r[t.Infra.LayoutStatus].ok("applied")
 
-    @classmethod
-    def _managed_profile(
-        cls, project_dir: Path
-    ) -> p.Result[c.Infra.MakeProfile | None]:
-        """Make profile when the project is governed by a workspace.
-
-        ``ok(None)`` means the project sits outside any Git repository and is
-        therefore external by definition. Workspace or target resolution
-        failures are never mapped to "external"; they propagate.
-        """
-        repository_root = u.Infra.git_show_toplevel(
-            m.Infra.GitRepoRequest(repo_root=project_dir)
+    @staticmethod
+    def _managed_profile(project_dir: Path) -> c.Infra.MakeProfile | None:
+        """Make profile when the project is governed by a workspace."""
+        repository_root = r[Path].ok(
+            u.Infra.resolve_repository_root_or_cwd(project_dir)
         )
         if repository_root.failure:
             return r[c.Infra.MakeProfile | None].ok(None)

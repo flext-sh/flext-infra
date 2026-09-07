@@ -321,7 +321,7 @@ class TestBanditAndMarkdownGates:
         (project_dir / "README.md").write_text("# Title   \n", encoding="utf-8")
         runner = u.Tests.sequence_runner(r.ok(u.Tests.create_command_output()))
         context = m.Infra.GateContext(
-            workspace=tmp_path, reports_dir=tmp_path, apply_fixes=True
+            repository_root=tmp_path, reports_dir=tmp_path, apply_fixes=True
         )
 
         gate = FlextInfraMarkdownGate(tmp_path, runner=runner)

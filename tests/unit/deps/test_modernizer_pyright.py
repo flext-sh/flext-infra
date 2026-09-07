@@ -16,6 +16,58 @@ if TYPE_CHECKING:
     from tests import m
 
 
+def _pyright_tables(
+    doc: t.Cli.TomlDocument,
+) -> tuple[MutableMapping[str, t.JsonValue], MutableMapping[str, t.JsonValue]] | None:
+    """Unwrap and type-guard the tool and tool.pyright tables."""
+    tool = u.Cli.toml_unwrap_item(doc["tool"])
+    tm.that(tool, is_=MutableMapping)
+    if not isinstance(tool, MutableMapping):
+        return None
+    pyright = u.Cli.toml_unwrap_item(tool["pyright"])
+    tm.that(pyright, is_=MutableMapping)
+    if not isinstance(pyright, MutableMapping):
+        return None
+    return tool, pyright
+
+
+def _pyright_baseline(doc: t.Cli.TomlDocument) -> t.JsonMapping | None:
+    """Unwrap the rendered pyright table and assert its runtime-owned baseline."""
+    tables = _pyright_tables(doc)
+    if tables is None:
+        return None
+    _, pyright = tables
+    _assert_runtime_owned_virtualenv(pyright)
+    tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
+    return pyright
+
+
+def _assert_declared_ignores(
+    pyright: t.JsonMapping, expected_ignores: t.StrSequence
+) -> None:
+    """Assert the rendered ignore list, or its absence when nothing is declared."""
+    if expected_ignores:
+        tm.that(
+            sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))),
+            eq=sorted(expected_ignores),
+        )
+    else:
+        tm.that(pyright, lacks="ignore")
+
+
+def _sample_project(tmp_path: Path, source_dir_name: str) -> Path:
+    """Create one governed flext-sample project with a src package and manifest."""
+    project_dir = tmp_path / "flext-sample"
+    source_dir = project_dir / source_dir_name / "flext_sample"
+    source_dir.mkdir(parents=True)
+    (source_dir / "__init__.py").write_text("", encoding="utf-8")
+    (project_dir / "pyproject.toml").write_text(
+        "[project]\nname='flext-sample'\nversion='0.1.0'\n", encoding="utf-8"
+    )
+    u.Tests.write_project_beads_config(project_dir, "flext-sample")
+    return project_dir
+
+
 def _assert_runtime_owned_virtualenv(pyright: t.JsonMapping) -> None:
     """Assert shared Pyright config leaves environment selection to Make."""
     tm.that(pyright, lacks="venv")
@@ -24,23 +76,6 @@ def _assert_runtime_owned_virtualenv(pyright: t.JsonMapping) -> None:
 
 class TestsFlextInfraDepsModernizerPyright:
     """Declarative tests for generated Pyright configuration."""
-
-    @staticmethod
-    def _pyright_tables(
-        doc: t.Cli.TomlDocument,
-    ) -> (
-        tuple[MutableMapping[str, t.JsonValue], MutableMapping[str, t.JsonValue]] | None
-    ):
-        """Unwrap and type-guard the tool and tool.pyright tables."""
-        tool = u.Cli.toml_unwrap_item(doc["tool"])
-        tm.that(tool, is_=MutableMapping)
-        if not isinstance(tool, MutableMapping):
-            return None
-        pyright = u.Cli.toml_unwrap_item(tool["pyright"])
-        tm.that(pyright, is_=MutableMapping)
-        if not isinstance(pyright, MutableMapping):
-            return None
-        return tool, pyright
 
     def test_python_discovery_ignores_member_only_container(
         self, tmp_path: Path
@@ -79,11 +114,7 @@ class TestsFlextInfraDepsModernizerPyright:
         (excluded / "module.py").write_text("VALUE = 2\n", encoding="utf-8")
 
         discovered = infra_u.Infra.discover_python_dirs(
-<<<<<<< HEAD
             tmp_path, workspace_excluded_top_dirs=frozenset({excluded.name})
-=======
-            tmp_path, workspace_excluded_top_dirs=frozenset((excluded.name,))
->>>>>>> origin/0.12.0-dev
         )
 
         tm.that(discovered, eq=[included.name])
@@ -146,24 +177,16 @@ class TestsFlextInfraDepsModernizerPyright:
             doc, is_root=True, repository_root=tmp_path
         )
 
-        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
-        if tables is None:
+        pyright = _pyright_baseline(doc)
+        if pyright is None:
             return
-        _, pyright = tables
-        _assert_runtime_owned_virtualenv(pyright)
-        tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["exclude"]))),
             eq=sorted(set(rules.default_excludes)),
         )
-        expected_ignores = [*rules.root_typings_paths, *rules.ignored_diagnostic_globs]
-        if expected_ignores:
-            tm.that(
-                sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))),
-                eq=sorted(expected_ignores),
-            )
-        else:
-            tm.that(pyright, lacks="ignore")
+        _assert_declared_ignores(
+            pyright, [*rules.root_typings_paths, *rules.ignored_diagnostic_globs]
+        )
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
             eq=[rules.source_dir],
@@ -193,12 +216,9 @@ class TestsFlextInfraDepsModernizerPyright:
             doc, is_root=False
         )
 
-        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
-        if tables is None:
+        pyright = _pyright_baseline(doc)
+        if pyright is None:
             return
-        _, pyright = tables
-        _assert_runtime_owned_virtualenv(pyright)
-        tm.that(u.Cli.toml_unwrap_item(pyright["reportUntypedBaseClass"]), eq="none")
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
             eq=sorted(rules.env_dirs),
@@ -260,21 +280,13 @@ class TestsFlextInfraDepsModernizerPyright:
             doc, is_root=False, project_dir=project_dir
         )
 
-        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        tables = _pyright_tables(doc)
         if tables is None:
             return
         _, pyright = tables
-        expected_ignores = [
-            *rules.project_typings_paths,
-            *rules.ignored_diagnostic_globs,
-        ]
-        if expected_ignores:
-            tm.that(
-                sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["ignore"]))),
-                eq=sorted(expected_ignores),
-            )
-        else:
-            tm.that(pyright, lacks="ignore")
+        _assert_declared_ignores(
+            pyright, [*rules.project_typings_paths, *rules.ignored_diagnostic_globs]
+        )
         tm.that(
             sorted(u.Tests.toml_strings(u.Cli.toml_unwrap_item(pyright["include"]))),
             eq=sorted([rules.source_dir, rules.test_like_dirs[0]]),
@@ -305,14 +317,9 @@ class TestsFlextInfraDepsModernizerPyright:
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         rules = tool_config_document.tools.pyright.path_rules
-        project_dir = tmp_path / "flext-sample"
-        source_dir = project_dir / rules.source_dir / "flext_sample"
-        source_dir.mkdir(parents=True)
-        (source_dir / "__init__.py").write_text("", encoding="utf-8")
+        project_dir = _sample_project(tmp_path, rules.source_dir)
         pyproject = project_dir / "pyproject.toml"
-        source = "[project]\nname='flext-sample'\nversion='0.1.0'\n"
-        pyproject.write_text(source, encoding="utf-8")
-        u.Tests.write_project_beads_config(project_dir, "flext-sample")
+        source = pyproject.read_text(encoding="utf-8")
 
         rendered = tm.ok(
             FlextInfraPyprojectModernizer(
@@ -346,14 +353,7 @@ class TestsFlextInfraDepsModernizerPyright:
         self, tmp_path: Path, tool_config_document: m.Infra.ToolConfigDocument
     ) -> None:
         rules = tool_config_document.tools.pyright.path_rules
-        project_dir = tmp_path / "flext-sample"
-        source_dir = project_dir / rules.source_dir / "flext_sample"
-        source_dir.mkdir(parents=True)
-        (source_dir / "__init__.py").write_text("", encoding="utf-8")
-        (project_dir / "pyproject.toml").write_text(
-            "[project]\nname='flext-sample'\nversion='0.1.0'\n", encoding="utf-8"
-        )
-        u.Tests.write_project_beads_config(project_dir, "flext-sample")
+        project_dir = _sample_project(tmp_path, rules.source_dir)
         doc = u.Cli.toml_document()
 
         _ = FlextInfraEnsurePyrightConfigPhase(tool_config_document).apply(
@@ -364,7 +364,7 @@ class TestsFlextInfraDepsModernizerPyright:
             declared_python_dirs_are_complete=True,
         )
 
-        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        tables = _pyright_tables(doc)
         if tables is None:
             return
         _, pyright = tables
@@ -457,7 +457,7 @@ class TestsFlextInfraDepsModernizerPyright:
             doc, is_root=False, project_dir=tmp_path
         )
 
-        tables = TestsFlextInfraDepsModernizerPyright._pyright_tables(doc)
+        tables = _pyright_tables(doc)
         if tables is None:
             return
         _, pyright = tables

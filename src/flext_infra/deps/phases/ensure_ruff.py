@@ -161,7 +161,7 @@ class FlextInfraEnsureRuffConfigPhase:
             *workspace_namespaces,
             *self._workspace_project_namespaces(path.parent),
         })
-        lint_nested_values: t.SequenceOf[tuple[str, t.JsonValue]] = (
+        lint_nested_values: t.SequenceOf[t.Pair[str, t.JsonValue]] = (
             ("select", u.normalize_to_json_value(sorted(ruff_cfg.lint.select))),
             (c.Infra.IGNORE, u.normalize_to_json_value(effective_ignore)),
         )
