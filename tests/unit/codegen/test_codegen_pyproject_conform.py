@@ -214,8 +214,6 @@ python-interpreter-path = "../.venv/bin/python"
         tm.that(second, eq=first)
         tm.that(document["tool"]["uv"]["link-mode"], eq=toolchain.uv_link_mode)
         tm.that(document["tool"]["uv"]["exclude-newer"], eq=toolchain.uv_exclude_newer)
-<<<<<<< Updated upstream
-=======
         declared_dev_names = {
             name
             for requirement in document["dependency-groups"]["dev"]
@@ -224,7 +222,6 @@ python-interpreter-path = "../.venv/bin/python"
         # The rolling supply-chain window applies to runtime libraries only.
         # Exemption follows the typed distribution identities, never table
         # placement: an unknown package in dev remains a runtime library.
->>>>>>> Stashed changes
         expected_exclude_newer_package: dict[str, bool | str] = {
             package: False
             for package in {

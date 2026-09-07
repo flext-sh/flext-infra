@@ -591,11 +591,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                     baseline.error
                     or "repository integration baseline resolution failed"
                 )
-            current_make_profile = (
-                c.Infra.MakeProfile.WORKSPACE
-                if current_repository.role is c.Infra.RepositoryRole.WORKSPACE
-                else c.Infra.MakeProfile.STANDALONE
-            )
             current_target = m.Infra.RepositoryConformTarget(
                 repository=current_repository,
                 root=root,
@@ -1313,7 +1308,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             initial_tooling.value,
             codegen=codegen,
             workspace=workspace,
-            workspace_mode=c.Infra.WorkspaceMode.STANDALONE,
+            workspace_mode=c.Infra.MakeProfile.STANDALONE,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,
@@ -1378,11 +1373,6 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
                 pyproject_read.error or f"pyproject read failed: {pyproject}"
             )
-        workspace_mode = (
-            c.Infra.WorkspaceMode.WORKSPACE
-            if target.make_profile is c.Infra.MakeProfile.WORKSPACE
-            else c.Infra.WorkspaceMode.STANDALONE
-        )
         # Workspace root owns resolution for attached subprojects (uv reads
         # exclude-dependencies only from the workspace root). Subprojects still
         # receive their own routed excludes for standalone CI clones.
@@ -1399,7 +1389,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
                 pyproject_read.value,
                 codegen=codegen,
                 workspace=workspace,
-                workspace_mode=workspace_mode,
+                workspace_mode=target.make_profile,
             )
             if dependency_result.failure:
                 return r[t.SequenceOf[m.Infra.CodegenFilePlan]].fail(
@@ -1452,7 +1442,7 @@ class FlextInfraCodegenConform(s[m.Infra.CodegenResult]):
             pyproject_read.value,
             codegen=codegen,
             workspace=workspace,
-            workspace_mode=workspace_mode,
+            workspace_mode=target.make_profile,
             toolchain=codegen.toolchain,
             required_dev_dependencies=codegen.scaffold.project.dev,
             uv_link_mode=repository.uv_link_mode,

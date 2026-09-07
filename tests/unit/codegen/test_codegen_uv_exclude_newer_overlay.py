@@ -58,10 +58,6 @@ class TestCodegenUvExcludeNewerOverlay:
             ),
         )
 
-<<<<<<< Updated upstream
-
-__all__: tuple[str, ...] = ()
-=======
     def test_overlay_declares_an_absolute_instant_not_a_window(self) -> None:
         """The pinned form is an instant, so it never ages past a floor."""
         pinned = "2026-08-05T00:00:00Z"
@@ -105,4 +101,3 @@ codegen = ["rumdl", "jinja2"]
             tm.that(exemptions[tool_distribution], eq=False)
         for runtime_library in ("setuptools-scm", "requests", "pydantic", "jinja2"):
             tm.that(runtime_library not in exemptions, eq=True)
->>>>>>> Stashed changes
